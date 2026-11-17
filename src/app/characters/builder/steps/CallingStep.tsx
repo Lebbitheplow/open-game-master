@@ -2,16 +2,19 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { GameTerm } from "@/components/ui/GameTerm";
+import { textKey } from "@/lib/language/text-logic";
 import { InfoButton, InfoDialog } from "@/components/ui/InfoDialog";
 import { describeFeature, describeSkill } from "@/lib/help";
+import { contentName } from "@/lib/content/names";
 import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { firstSentence } from "@/lib/help/rules-text";
 import { CLASS_ROLES, classRoles, type ClassRole } from "@/lib/srd/class-roles";
 import { subclassBlurb } from "@/lib/srd/features";
-import { SRD_SKILLS } from "@/lib/srd";
+import { SRD_SKILLS, skillLabel } from "@/lib/srd";
 import { displayName, type Reskinned } from "@/lib/worlds/reskin-logic";
 import type { WorldPack } from "@/lib/worlds/types";
 import { classCard } from "../cardFaces";
+import { CardText } from "../CardText";
 import { abilityName, hitDieChip } from "../lineage";
 import { useShowNumbers } from "../numbersPref";
 import { OptionCardGrid, type CardFacet, type OptionCardGroup } from "../OptionCardGrid";
@@ -28,6 +31,9 @@ import { fillClassSkills, type PlaystyleId } from "../playstyles";
 import FeatChoicesFields, { knownTraining } from "../FeatChoicesFields";
 import { Field, PickForMe, PickPill, StepPanel, inputClass } from "./shared";
 import { featChoice } from "@/lib/schemas/sheet";
+import { useLocale, useT } from "@/lib/locale";
+import { classDisplayNameFor } from "@/lib/characters/class-words";
+import type { Locale } from "@/lib/messages-logic";
 
 // Step 1 (backlog F4: how you want to play comes first): the setting's
 // notices, then the class (the playstyle question and "Help me build" over
@@ -102,6 +108,8 @@ export function CallingStep({
   // multiclassing setting, always true in the library.
   multiclassAllowed?: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const { subclass } = state;
   const { effectiveLevel } = derived;
   // The first class's own levels and features: a class taken after it
@@ -171,41 +179,49 @@ export function CallingStep({
     const entryOf = (id: string) => classes.find((candidate) => candidate.id === id);
     const magicOf = (id: string) => {
       const type = entryOf(id)?.casterType ?? "none";
-      return type === "none" ? "None" : type === "half" || type === "artificer" ? "Half caster" : "Full caster";
+      return type === "none" ? t("None", { context: "builder.calling.magicNone" }) : type === "half" || type === "artificer" ? t("Half caster") : t("Full caster");
     };
     const bookOf = (id: string) => {
       const entry = entryOf(id);
-      return entry?.genres?.length ? entry.genres.map(genreWords).join(", ") : entry?.source || "Core rules";
+      return entry?.genres?.length ? entry.genres.map(genreWords).join(", ") : entry?.source || t("Core rules");
     };
     const ids = [...readings.keys()];
     const present = (values: string[]) => [...new Set(values)].sort().map((value) => ({ value, label: value }));
+    const roleLabels: Record<string, string> = {
+      Tank: t("Tank"),
+      DPS: t("DPS"),
+      Healer: t("Healer"),
+      Support: t("Support"),
+      Control: t("Control"),
+      Utility: t("Utility"),
+    };
     return [
       {
         key: "role",
-        label: "Role",
-        options: CLASS_ROLES.filter((role) => ids.some((id) => readings.get(id)?.roles.includes(role))).map((role) => ({ value: role, label: role })),
+        label: t("Role"),
+        options: CLASS_ROLES.filter((role) => ids.some((id) => readings.get(id)?.roles.includes(role))).map((role) => ({ value: role, label: roleLabels[role] ?? role })),
         test: (id, role) => Boolean(readings.get(id)?.roles.includes(role as ClassRole)),
       },
       {
         key: "magic",
-        label: "Magic",
-        options: ["None", "Half caster", "Full caster"].filter((kind) => ids.some((id) => magicOf(id) === kind)).map((kind) => ({ value: kind, label: kind })),
+        label: t("Magic", { context: "builder.calling.facetMagic" }),
+        options: ([t("None", { context: "builder.calling.magicNone" }), t("Half caster"), t("Full caster")] as string[]).filter((kind) => ids.some((id) => magicOf(id) === kind)).map((kind) => ({ value: kind, label: kind })),
         test: (id, kind) => magicOf(id) === kind,
       },
       {
         key: "plays",
-        label: "Plays like",
-        options: ["Fighter", "Wizard", "Cleric", "Rogue"].map((core) => ({ value: core, label: core })),
+        label: t("Plays like"),
+        options: ["Fighter", "Wizard", "Cleric", "Rogue"].map((core) => ({ value: core, label: contentName("classes", core, locale) })),
         test: (id, core) => Boolean(readings.get(id)?.playsLike.includes(core)),
       },
       {
         key: "book",
-        label: "Book",
+        label: t("Book"),
         options: present(ids.map(bookOf)),
         test: (id, book) => bookOf(id) === book,
       },
     ];
-  }, [classes, readings]);
+  }, [classes, readings, t, locale]);
   const details = detailsFor
     ? classGroups.flatMap((group) => group.options).find((option) => option.id === detailsFor)
     : undefined;
@@ -213,7 +229,7 @@ export function CallingStep({
   return (
     <div className="space-y-4">
       {notices}
-      <StepPanel title="Choose a class" ornate anchor="class">
+      <StepPanel title={t("Choose a class")} ornate anchor="class">
         {/* A plain-language way in, above the full catalog it points into.
             "Easy to learn" there and the setting's star in the grid mean
             different things: one is about play, the other about the world. */}
@@ -233,25 +249,25 @@ export function CallingStep({
           onHelpMeBuild={playstyle?.onHelpMeBuild}
         />
         {genderField}
-        <Field label="Class" className="mt-4">
+        <Field label={t("Class")} className="mt-4">
           {klass ? (
             <span className="mb-3 flex flex-wrap items-center gap-x-1 text-xs text-stone-500">
-              <span className="text-amber-200">{klass.name}:</span>{" "}
+              <span className="text-amber-200">{classDisplayNameFor(klass.id, locale)}:</span>{" "}
               {/* In words first (backlog F11); the die joins them with "Show rules and numbers" on. */}
-              <GameTerm id="hit_dice">{hitDieChip(klass.hitDie, numbers)}</GameTerm> ·{" "}
-              <GameTerm id="saving_throw">saves</GameTerm>{" "}
-              {klass.saves.map(abilityName).join(", ")}
+              <GameTerm id="hit_dice"><CardText text={hitDieChip(klass.hitDie, numbers)} /></GameTerm> ·{" "}
+              <GameTerm id="saving_throw">{t("saves")}</GameTerm>{" "}
+              {klass.saves.map((ability) => t(abilityName(ability))).join(", ")}
               {klass.spellAbility ? (
                 <>
                   {" · "}
-                  <GameTerm id={klass.spellAbility}>{abilityName(klass.spellAbility)}</GameTerm>{" "}
-                  caster
-                  {klass.castingLabel ? ` (spells flavored as ${klass.castingLabel})` : ""}
+                  <GameTerm id={klass.spellAbility}>{t(abilityName(klass.spellAbility))}</GameTerm>{" "}
+                  {t(" caster")}
+                  {klass.castingLabel ? t(" (spells flavored as {label})", { label: klass.castingLabel }) : ""}
                 </>
               ) : null}
               <InfoButton
-                label={klass.name}
-                text={classInfoText(klass)}
+                label={classDisplayNameFor(klass.id, locale)}
+                text={classInfoText(klass, t)}
                 reference={{ kind: "classes", slug: klass.id }}
               />
             </span>
@@ -277,11 +293,12 @@ export function CallingStep({
             // is read about at length.
             meta={
               details
-                ? classDetailsMeta({
+                ? classDetailsMeta(t, {
                     id: details.id,
                     meta: details.meta,
                     saves: classes.find((candidate) => candidate.id === details.id)?.saves,
                     reading: readings.get(details.id),
+                    locale,
                   }).join(" · ")
                 : undefined
             }
@@ -291,11 +308,11 @@ export function CallingStep({
         </Field>
         {levelField}
         {offersSubclass ? (
-          <Field label="Subclass" className="mt-3" anchor="subclass">
+          <Field label={t("Subclass")} className="mt-3" anchor="subclass">
             <OptionPicker
               value={subclass}
               groups={subclassGroups}
-              placeholder="None yet"
+              placeholder={t("None yet")}
               className={inputClass}
               onChange={state.changeSubclass}
             />
@@ -304,7 +321,7 @@ export function CallingStep({
                 <>
                   <span className="grow">
                     {firstSentence(chosenArchetype?.desc || subclassBlurb(klass?.id ?? "", subclass)) ??
-                      "A specialization within your class."}
+                      t("A specialization within your class.")}
                   </span>
                   <InfoButton
                     label={subclass}
@@ -317,12 +334,10 @@ export function CallingStep({
               ) : (
                 <>
                   <span className="grow">
-                    <span className="text-amber-300">Still to choose. </span>
-                    Your <GameTerm id="subclass">subclass</GameTerm> is the biggest choice about how
-                    this character plays. Tap the info icon next to any option to read what it does
-                    before choosing.
+                    <span className="text-amber-300">{t("Still to choose. ")}</span>
+                    {t("Your subclass is the biggest choice about how this character plays. Tap the info icon next to any option to read what it does before choosing.")}
                   </span>
-                  {onPickForMe ? <PickForMe what="a subclass" onPick={() => onPickForMe("subclass")} /> : null}
+                  {onPickForMe ? <PickForMe what={t("a subclass")} onPick={() => onPickForMe("subclass")} /> : null}
                 </>
               )}
             </span>
@@ -345,12 +360,14 @@ export function CallingStep({
         ) : subclassLockedAt !== null && klass ? (
           // Below the class's subclass level the menu stays shut and says
           // when the choice comes, instead of listing picks that vanished.
-          <Field label="Subclass" className="mt-3">
+          <Field label={t("Subclass")} className="mt-3">
             <p className="rounded-lg border border-dashed border-stone-700/70 bg-stone-950/40 px-3 py-2 text-xs text-stone-400">
-              A {klass.name.toLowerCase()} chooses a <GameTerm id="subclass">subclass</GameTerm> at level{" "}
-              {subclassLockedAt}; there is nothing to pick at {derived.multiclass ? `${klass.name.toLowerCase()} level` : "level"}{" "}
-              {primaryLevel}. The choice comes with that level-up, and subclasses made in the Workshop wait for that
-              level too.
+              {t("A {class} chooses a subclass at level {level}; there is nothing to pick at {at} {then}. The choice comes with that level-up, and subclasses made in the Workshop wait for that level too.", {
+                class: classDisplayNameFor(klass.id, locale).toLowerCase(),
+                level: subclassLockedAt,
+                at: derived.multiclass ? t("{class} level", { class: classDisplayNameFor(klass.id, locale).toLowerCase() }) : t("level", { context: "builder.calling.levelWord" }),
+                then: primaryLevel,
+              })}
             </p>
             {subclassNote}
           </Field>
@@ -373,10 +390,10 @@ export function CallingStep({
         <StepPanel
           title={
             derived.multiclass
-              ? `What your ${klass?.name.toLowerCase() ?? "class"} gains by its level ${primaryLevel}`
-              : `What you gain at level ${effectiveLevel}`
+              ? t("What your {class} gains by its level {level}", { class: klass?.name.toLowerCase() ?? "", level: primaryLevel })
+              : t("What you gain at level {level}", { level: effectiveLevel })
           }
-          help="Tap any name to read what it does. Racial traits and background perks are added on top when the character is saved."
+          help={t("Tap any name to read what it does. Racial traits and background perks are added on top when the character is saved.")}
         >
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {grantedFeatures.map((feature) => (
@@ -387,8 +404,8 @@ export function CallingStep({
                 {displayName(pack, "features", feature.name)}
                 <InfoButton
                   label={feature.name}
-                  meta={feature.level ? `Level ${feature.level}` : undefined}
-                  text={klass ? describeFeature(klass.id, subclass, feature.name) : null}
+                  meta={feature.level ? t("Level {level}", { level: feature.level }) : undefined}
+                  text={klass ? describeFeature(klass.id, subclass, feature.name, locale) : null}
                 />
               </span>
             ))}
@@ -399,12 +416,12 @@ export function CallingStep({
       {klass ? (
         <StepPanel
           anchor="classSkills"
-          title={`Class skills (pick ${klass.skillChoices.count})`}
+          title={t("Class skills (pick {count})", { count: klass.skillChoices.count })}
           help={
             <>
               {klass.skillChoices.count - state.chosenSkills.length > 0 ? (
                 <span className="text-amber-300">
-                  {klass.skillChoices.count - state.chosenSkills.length} still to choose.{" "}
+                  {t("{count} still to choose. ", { count: klass.skillChoices.count - state.chosenSkills.length })}
                   <button
                     type="button"
                     onClick={() => {
@@ -421,33 +438,44 @@ export function CallingStep({
                     className="underline-offset-2 hover:underline"
                     data-suggest-skills
                   >
-                    Suggest the rest
-                  </button>{" "}
+                    {t("Suggest the rest")}
+                  </button>
+                  {" · "}
                 </span>
               ) : suggested?.length && suggested.every((id) => state.chosenSkills.includes(id)) ? (
                 <span key={suggested.join()} className="reveal block text-amber-200/90">
-                  Suggested for a {klass.name.toLowerCase()}:{" "}
-                  {suggested.map((id) => SRD_SKILLS.find((entry) => entry.id === id)?.name ?? id).join(", ")}. Tap any to
-                  change it.{" "}
+                  {t("Suggested for a {class}: {list}. Tap any to change it. ", {
+                    class: classDisplayNameFor(klass.id, locale).toLowerCase(),
+                    list: suggested.map((id) => skillLabel(id, locale)).join(", "),
+                  })}
                 </span>
               ) : null}
-              A <GameTerm id="skill">skill</GameTerm> you are proficient in adds your{" "}
-              <GameTerm id="proficiency_bonus">proficiency bonus</GameTerm> to rolls that use
-              it. Tap any ⓘ to see which ability a skill leans on. A greyed skill is already yours
-              from your race or background, so a class pick on it would be wasted.
+              {t("A")}{" "}
+              <GameTerm id="skill">{t("skill")}</GameTerm>
+              {t(" you are proficient in adds your ")}
+              <GameTerm id="proficiency_bonus">{t("proficiency bonus")}</GameTerm>
+              {t(" to rolls that use it. Tap any ⓘ to see which ability a skill leans on. A greyed skill is already yours from your race or background, so a class pick on it would be wasted.")}
             </>
           }
         >
           <div className="flex flex-wrap gap-2">
             {klass.skillChoices.from.map((skillId) => {
-              const skill = SRD_SKILLS.find((entry) => entry.id === skillId);
-              const name = skill?.name ?? skillId;
+              const name = skillLabel(skillId, locale);
               const source = skillSources.get(skillId.trim().toLowerCase());
-              const grantedBy = source === "race" ? race?.name : source === "background" ? background?.name : "";
+              const sourceWord = source === "race" ? t("race") : source === "background" ? t("background", { context: "builder.calling.sourceBackground" }) : "";
+              const grantedBy = source === "race" && race ? contentName("species", race, locale) : source === "background" && background ? contentName("backgrounds", background, locale) : "";
               const trait = source === "race" && race ? grantingTrait(race.id, name) : null;
               const info = source
-                ? `${name} is already yours: your ${source}${grantedBy ? ` (${grantedBy})` : ""} grants it${trait ? ` through ${trait}` : ""}, so it is not offered as a class pick here.\n\n${describeSkill(skillId) ?? ""}`.trim()
-                : describeSkill(skillId);
+                ? t("{name} is already yours: your {source} grants it{via}, so it is not offered as a class pick here.", {
+                    name,
+                    source: sourceWord,
+                    via: trait ? t(" through {trait}", { trait }) : "",
+                  }).concat(
+                    grantedBy ? ` (${grantedBy})` : "",
+                    "\n\n",
+                    describeSkill(t, skillId, locale) ?? "",
+                  ).trim()
+                : describeSkill(t, skillId, locale);
               return (
                 <PickPill
                   key={skillId}
@@ -458,7 +486,7 @@ export function CallingStep({
                   info={{ text: info }}
                 >
                   {name}
-                  {source ? ` (${source})` : ""}
+                  {source ? t(" ({source})", { source: sourceWord }) : ""}
                 </PickPill>
               );
             })}
@@ -481,25 +509,36 @@ function genreWords(genre: string): string {
 // book, its saves, its job in a fight and which of the core four it plays
 // like. The card's details dialog and the build math panel's picks both
 // read it.
-export function classDetailsMeta({
-  id,
-  meta,
-  saves,
-  reading,
-}: {
-  id: string;
-  meta?: string;
-  saves?: string[];
-  reading?: ReturnType<typeof classRoles>;
-}): string[] {
+export function classDetailsMeta(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  {
+    id,
+    meta,
+    saves,
+    reading,
+    locale = "en",
+  }: {
+    id: string;
+    meta?: string;
+    saves?: string[];
+    reading?: ReturnType<typeof classRoles>;
+    // The reader's language, for the class names in a play line.
+    locale?: Locale;
+  },
+): string[] {
+  const likeWords = (names: string) =>
+    names
+      .split(/\s*\+\s*/)
+      .map((name) => contentName("classes", name.trim(), locale))
+      .join(" + ");
   return [
     meta,
-    saves?.length ? `Saves ${saves.map(abilityName).join(", ")}` : "",
-    reading ? `Role: ${reading.roles.join(" / ")}` : "",
+    saves?.length ? t("Saves {list}", { list: saves.map((ability) => t(abilityName(ability))).join(", ") }) : "",
+    reading ? t("Role: {roles}", { roles: reading.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? role).join(" / ") }) : "",
     reading
       ? reading.playsLike.toLowerCase() === id.toLowerCase()
-        ? "One of the core four"
-        : `Plays like ${reading.playsLike}${reading.suggested ? " (suggested)" : ""}`
+        ? t("One of the core four")
+        : t("Plays like {like}", { like: likeWords(reading.playsLike) }).concat(reading.suggested ? t(" (suggested)") : "")
       : "",
   ].filter((part): part is string => Boolean(part));
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { EmbeddingLanguageCheck, ProbedLanguage } from "@/lib/embedding-language-logic";
 import { embeddingWarning, type EmbeddingWarning } from "@/lib/embedding-language-text";
+import { useT } from "@/lib/locale";
 import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
@@ -17,6 +18,7 @@ import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 // An app's screens opened on an older host, which has no check route, ask
 // nothing (SERVER_FEATURES embeddingLanguage in src/lib/capabilities.ts).
 export function useEmbeddingWarning(languages: readonly TableLanguage[]): EmbeddingWarning | null {
+  const t = useT();
   const offered = hostOffers(useCapabilities(), "embeddingLanguage");
   // A string, so a new array with the same languages asks nothing again.
   const asked = JSON.stringify(
@@ -51,5 +53,5 @@ export function useEmbeddingWarning(languages: readonly TableLanguage[]): Embedd
     };
   }, [asked]);
   // Checks for the languages asked before these say nothing about them.
-  return known?.asked === asked ? embeddingWarning(known.checks) : null;
+  return known?.asked === asked ? embeddingWarning(known.checks, t) : null;
 }

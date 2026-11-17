@@ -66,6 +66,10 @@ const { ENEMY_TURN_NAME } = await import("../src/lib/dm/turn-owner.ts");
 const { findSummonForm } = await import("../src/lib/srd/summon-forms.ts");
 const { summonSchema } = await import("../src/lib/schemas/summon.ts");
 const { composerGate } = await import("../src/app/campaigns/[campaignId]/composerGate.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The gate's placeholder sentences come from the dictionaries; this suite
+// reads the English ones.
+const en = (key, vars) => translate("en", key, vars);
 const { ENEMY_TURNS_CUE } = await import("../src/lib/dm/enemies-due.ts");
 const { handleDismissCompanion } = await import("../src/lib/dm/companion-tools.ts");
 const { startDmTurn } = await import("../src/lib/dm/turn.ts");
@@ -1283,7 +1287,7 @@ await test("Only a hold for the enemies' turns reads as one: held responses arou
   const { world, heroes: [kara, brom] } = await table(["Kara", "Brom"], { goblinFace: 12 });
   const shown = () => activePublicEncounter(world.campaignId).enemyTurns;
   const words = () =>
-    composerGate({
+    composerGate(en, {
       floor: getFloor(world.campaignId),
       sheets: world.sheets(),
       meUserId: userOf(world, brom.id),

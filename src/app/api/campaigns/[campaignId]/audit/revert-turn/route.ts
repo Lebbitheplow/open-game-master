@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requireStoryAuthority, seesStorytellerSecrets } from "@/lib/campaign-api";
 import { runTurnRevert } from "@/lib/dm/turn-revert-run";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,17 +37,21 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The event log shows the refusal and the warnings raw (EventLog.tsx post),
+  // so they answer in the asker's language.
+  const t = requestT(request);
 
   const raw = await request.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid revert request." }, { status: 400 });
+    return Response.json({ error: t("Invalid revert request.") }, { status: 400 });
   }
   const { turnId, confirm } = parsed.data;
 
   const result = runTurnRevert(context.campaign, context.user.id, turnId, {
     confirm,
     seesSecrets: seesStorytellerSecrets(context),
+    t,
   });
   if (result.ok) {
     return Response.json(result);

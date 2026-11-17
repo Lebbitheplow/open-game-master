@@ -17,6 +17,9 @@ process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 register("./lib/register-alias.mjs", import.meta.url);
 
 const tier = await import("../src/lib/speed-tier.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The refusal reasons are the dictionary's; the tests read them in English, the source.
+const t = (key, vars) => translate("en", key, vars);
 const { speedStatus } = await import("../src/lib/speed-status.ts");
 const { requestCustomMessage } = await import("../src/lib/model-client.ts");
 const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
@@ -31,21 +34,21 @@ const ok = (name) => {
 // ---- the rules ----
 assert.equal(typeof tier.openAiFastModel, "undefined", "no model is judged by its name");
 for (const model of ["gpt-6.1-sol", "gpt-4.1", "my-finetune", "ft:gpt-6-sol:org::abc"]) {
-  assert.equal(tier.apiSpeedEligibility({ endpointKind: "openai", model }).ok, true, model);
+  assert.equal(tier.apiSpeedEligibility(t, { endpointKind: "openai", model }).ok, true, model);
 }
-assert.equal(tier.apiSpeedEligibility({ endpointKind: "openai", model: "  " }).ok, false, "a model has to be named");
-assert.equal(tier.apiSpeedEligibility({ endpointKind: "openrouter", model: "gpt-6.1-sol" }).ok, false);
-assert.equal(tier.apiSpeedEligibility({ endpointKind: "local", model: "gpt-6.1-sol" }).ok, false);
+assert.equal(tier.apiSpeedEligibility(t, { endpointKind: "openai", model: "  " }).ok, false, "a model has to be named");
+assert.equal(tier.apiSpeedEligibility(t, { endpointKind: "openrouter", model: "gpt-6.1-sol" }).ok, false);
+assert.equal(tier.apiSpeedEligibility(t, { endpointKind: "local", model: "gpt-6.1-sol" }).ok, false);
 ok("Fast is offered on OpenAI's API for any named model, and nowhere else");
 
 const claudeModels = [{ id: "opus", fast: true }, { id: "sonnet" }];
-assert.equal(tier.agentSpeedEligibility({ harnessId: "claude", model: "opus", models: claudeModels }).ok, true);
-assert.equal(tier.agentSpeedEligibility({ harnessId: "claude", model: "sonnet", models: claudeModels }).ok, false, "listed without Fast");
-assert.equal(tier.agentSpeedEligibility({ harnessId: "claude", model: "claude-opus-4-8", models: claudeModels }).ok, false, "not listed on this sign-in");
-assert.equal(tier.agentSpeedEligibility({ harnessId: "claude", model: "", models: claudeModels }).ok, false, "the program's default may be any model");
-assert.equal(tier.agentSpeedEligibility({ harnessId: "codex", model: "gpt-6.1-sol", models: [{ id: "gpt-6.1-sol", fast: true }] }).ok, true);
-assert.equal(tier.agentSpeedEligibility({ harnessId: "codex", model: "gpt-6-mini", models: [{ id: "gpt-6-mini" }] }).ok, false);
-assert.equal(tier.agentSpeedEligibility({ harnessId: "opencode", model: "anything", models: [] }).ok, false);
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "claude", model: "opus", models: claudeModels }).ok, true);
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "claude", model: "sonnet", models: claudeModels }).ok, false, "listed without Fast");
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "claude", model: "claude-opus-4-8", models: claudeModels }).ok, false, "not listed on this sign-in");
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "claude", model: "", models: claudeModels }).ok, false, "the program's default may be any model");
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "codex", model: "gpt-6.1-sol", models: [{ id: "gpt-6.1-sol", fast: true }] }).ok, true);
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "codex", model: "gpt-6-mini", models: [{ id: "gpt-6-mini" }] }).ok, false);
+assert.equal(tier.agentSpeedEligibility(t, { harnessId: "opencode", model: "anything", models: [] }).ok, false);
 assert.equal(tier.effectiveSpeedWord("priority"), "fast");
 assert.equal(tier.effectiveSpeedWord("default"), "standard");
 assert.equal(tier.effectiveSpeedWord(""), null);

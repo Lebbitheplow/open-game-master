@@ -9,6 +9,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { cn } from "@/lib/cn";
 import { KitButton, LoadFailed, panelRow, RowMenu } from "./PanelKit";
 import { PIN_TOKEN_CAP, pinTokens, totalPinTokens } from "@/lib/dm/pin-logic";
+import { useT } from "@/lib/locale";
 
 // Pinned memories: excerpts that ride in every prompt, unconditionally.
 //
@@ -74,6 +75,7 @@ function PinItem({ pin, onUnpin }: { pin: PinRow; onUnpin: (id: string) => void 
 }
 
 export function PinsPanel({ campaignId, version }: { campaignId: string; version: number }) {
+  const t = useT();
   const [pins, setPins] = useState<PinRow[]>([]);
   // A refused or failed read is shown in the server's words with a way to
   // ask again, never as "nothing here yet" (issue 140).
@@ -83,7 +85,7 @@ export function PinsPanel({ campaignId, version }: { campaignId: string; version
 
   useEffect(() => {
     let cancelled = false;
-    void readLoad<{ pins?: PinRow[] }>(fetch(`/api/campaigns/${campaignId}/pins`), "The pins").then((outcome) => {
+    void readLoad<{ pins?: PinRow[] }>(t, fetch(`/api/campaigns/${campaignId}/pins`), t("The pins")).then((outcome) => {
       if (cancelled) {
         return;
       }
@@ -95,8 +97,7 @@ export function PinsPanel({ campaignId, version }: { campaignId: string; version
     return () => {
       cancelled = true;
     };
-  }, [campaignId, reload, version, settle]);
-
+  }, [ campaignId, reload, version, settle, t ]);
   const unpin = useCallback(
     async (pinId: string) => {
       await fetch(`/api/campaigns/${campaignId}/pins`, {

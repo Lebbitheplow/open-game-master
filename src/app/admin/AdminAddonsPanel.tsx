@@ -16,6 +16,8 @@ import { sourceFacts } from "@/lib/addons/registry-index";
 import { forgetAddons } from "@/lib/addons/use-addons";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT, useTp } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 
 // Admin > Addons: the downloader list (addons/catalog.json in the Open
 // Dungeon Master repository, audited entry by entry), the addons this
@@ -25,20 +27,22 @@ import { ui } from "@/lib/ui";
 
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 
-const CATEGORY_LABEL: Record<CatalogAddon["category"], string> = {
+const CATEGORY_KEYS: Record<CatalogAddon["category"], MessageKey> = {
   maps: "Maps and the board",
   content: "Content and import",
   table: "At the table",
   tools: "Tools",
 };
 
-const KIND_LABEL: Record<string, string> = {
+const KIND_KEYS: Record<string, MessageKey> = {
   workshopImporters: "Imports",
   mapGenerators: "Maps",
   boardViews: "Board view",
 };
 
 export function AdminAddonsPanel() {
+  const t = useT();
+  const tp = useTp();
   const [state, setState] = useState<AdminAddonsState | null>(null);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -50,7 +54,7 @@ export function AdminAddonsPanel() {
   const load = useCallback(async () => {
     const response = await fetch("/api/admin/addons").catch(() => null);
     if (response?.ok) setState(await response.json());
-    else setError("Could not read this server's addons.");
+    else setError(t("Could not read this server's addons."));
   }, []);
 
   useEffect(() => {
@@ -61,7 +65,7 @@ export function AdminAddonsPanel() {
         if (live) setState(data);
       })
       .catch(() => {
-        if (live) setError("Could not read this server's addons.");
+        if (live) setError(t("Could not read this server's addons."));
       });
     return () => {
       live = false;
@@ -82,8 +86,8 @@ export function AdminAddonsPanel() {
   async function confirmReplace(data: { replaces?: { name: string; from: string } | null }): Promise<boolean> {
     if (!data.replaces) return false;
     return appConfirm(
-      `${data.replaces.name} is already installed from ${data.replaces.from}. Replace it with this one? It keeps its settings and its data folder, and starts switched off so you can read what the new one asks for.`,
-      { title: "Replace this addon?", actionLabel: "Replace it", tone: "plain" },
+      t("{name} is already installed from {from}. Replace it with this one? It keeps its settings and its data folder, and starts switched off so you can read what the new one asks for.", { name: data.replaces.name, from: data.replaces.from }),
+      { title: t("Replace this addon?"), actionLabel: t("Replace it", { context: "admin.addons.replaceAction" }), tone: "plain" },
     );
   }
 
@@ -107,12 +111,12 @@ export function AdminAddonsPanel() {
         data = await response.json().catch(() => ({}));
       }
       if (!response.ok) {
-        setError(data.replaces ? "Nothing was replaced." : data.error || "That did not work.");
+        setError(data.replaces ? t("Nothing was replaced.") : data.error || t("That did not work.", { context: "admin.addons.fail" }));
         return null;
       }
       return data;
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.addons.unreachable" }));
       return null;
     } finally {
       setBusyId("");
@@ -120,11 +124,11 @@ export function AdminAddonsPanel() {
   }
 
   function installedNotice(data: { installed: { name: string; version: string }; updated: boolean; newPermissions?: string[]; setupTask?: string }, from = "") {
-    const asks = data.newPermissions?.length ? " It asks for permissions: read them before you switch it on." : "";
-    const setup = data.setupTask ? " Its setup has started." : "";
+    const asks = data.newPermissions?.length ? t(" It asks for permissions: read them before you switch it on.") : "";
+    const setup = data.setupTask ? t(" Its setup has started.") : "";
     return data.updated
-      ? `Updated ${data.installed.name} to v${data.installed.version}${from}.${setup}${asks}`
-      : `Installed ${data.installed.name}${from}. It is off until you switch it on below.${asks}`;
+      ? t("Updated {name} to v{version}{from}.{setup}{asks}", { name: data.installed.name, version: data.installed.version, from, setup, asks })
+      : t("Installed {name}{from}. It is off until you switch it on below.{asks}", { name: data.installed.name, from, asks });
   }
 
   async function install(addonId: string, parts?: string[]) {
@@ -141,7 +145,7 @@ export function AdminAddonsPanel() {
     if (!data) return;
     setGithubLink("");
     forgetAddons();
-    await changed(`${installedNotice(data, data.from ? ` (${data.from})` : "")} It has not been reviewed: read what it asks for before you switch it on.`);
+    await changed(`${installedNotice(data, data.from ? ` (${data.from})` : "")}${t(" It has not been reviewed: read what it asks for before you switch it on.")}`);
   }
 
   async function saveConfig(patch: { registryUrl?: string; allowFiles?: boolean }) {
@@ -151,16 +155,16 @@ export function AdminAddonsPanel() {
       setNotice(
         patch.allowFiles !== undefined
           ? patch.allowFiles
-            ? "Installing from files and links is on."
-            : "Installing from files and links is off."
-          : "Catalog saved.",
+            ? t("Installing from files and links is on.")
+            : t("Installing from files and links is off.")
+          : t("Catalog saved."),
       );
     }
   }
 
   async function onFile(file: File) {
     if (file.size >= MAX_FILE_BYTES) {
-      setError("An addon archive installed from a file may be up to 64 MB.");
+      setError(t("An addon archive installed from a file may be up to 64 MB."));
       return;
     }
     setBusyId("upload");
@@ -180,13 +184,15 @@ export function AdminAddonsPanel() {
         data = await response.json().catch(() => ({}));
       }
       if (!response.ok) {
-        setError(data.replaces ? "Nothing was replaced." : data.error || "Could not install that archive.");
+        setError(data.replaces ? t("Nothing was replaced.") : data.error || t("That did not work.", { context: "admin.addons.fail" }));
         return;
       }
       forgetAddons();
-      await changed(`${data.updated ? "Updated" : "Installed"} ${data.installed.name} from ${file.name}. It has not been reviewed: read what it asks for before you switch it on.`);
+      await changed(data.updated
+        ? t("Updated {name} from {file}. It has not been reviewed: read what it asks for before you switch it on.", { name: data.installed.name, file: file.name })
+        : t("Installed {name} from {file}. It has not been reviewed: read what it asks for before you switch it on.", { name: data.installed.name, file: file.name }));
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.addons.unreachable" }));
     } finally {
       setBusyId("");
     }
@@ -202,16 +208,12 @@ export function AdminAddonsPanel() {
   return (
     <div className="space-y-4 text-sm">
       <section className={cn(ui.card, "ornate texture-noise p-5")}>
-        <SectionHead level="h2" title="Addons" glyph="system-plugin" />
+        <SectionHead level="h2" title={t("Addons")} glyph="system-plugin" />
         <p className="text-xs leading-5 text-stone-400">
-          An addon is a program that runs beside this server and adds to what it can do: reading a rulebook PDF into a
-          workshop, building a battle map with 3D tools, drawing the board another way. Addons only reach the app through
-          the doors it opens for them, and what they make is checked by the same rules as everything else.
+          {t("An addon is a program that runs beside this server and adds to what it can do: reading a rulebook PDF into a workshop, building a battle map with 3D tools, drawing the board another way. Addons only reach the app through the doors it opens for them, and what they make is checked by the same rules as everything else.")}
         </p>
         <p className="mt-2 text-xs leading-5 text-stone-500">
-          Addons on the list were audited before they were added: each lives in its author&apos;s own GitHub
-          repository, and the exact files that were checked are what you install. An addon still runs as a program on this
-          computer with this server&apos;s permissions, so install the ones you trust. Each is off until you switch it on.
+          {t("Addons on the list were audited before they were added: each lives in its author's own GitHub repository, and the exact files that were checked are what you install. An addon still runs as a program on this computer with this server's permissions, so install the ones you trust. Each is off until you switch it on.")}
         </p>
         {!state.support.supported ? (
           <p role="status" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
@@ -226,9 +228,9 @@ export function AdminAddonsPanel() {
       {notice ? <p role="status" className="live-in text-xs text-amber-200">{notice}</p> : null}
 
       <section className={cn(ui.card, "texture-noise p-5")}>
-        <SectionHead title="Installed" glyph="system-homebrew" aside={<span className="tabular-nums">{state.installed.length}</span>} />
+        <SectionHead title={t("Installed", { context: "admin.worlds.installedHeading" })} glyph="system-homebrew" aside={<span className="tabular-nums">{state.installed.length}</span>} />
         {!state.installed.length ? (
-          <EmptyState art="chest" size="sm" title="No addons yet." hint="Pick one from the list below." />
+          <EmptyState art="chest" size="sm" title={t("No addons yet.")} hint={t("Pick one from the list below.")} />
         ) : (
           <ul className="stagger space-y-2">
             {state.installed.map((addon) => (
@@ -247,14 +249,14 @@ export function AdminAddonsPanel() {
 
       <section className={cn(ui.card, "texture-noise p-5")}>
         <SectionHead
-          title="Available to download"
+          title={t("Available to download")}
           glyph="system-share"
           aside={available.length ? <span className="tabular-nums">{available.length}</span> : undefined}
         />
         {!state.support.supported ? (
-          <EmptyState art="scrolls" size="sm" title="Addons are not available on this server." />
+          <EmptyState art="scrolls" size="sm" title={t("Addons are not available on this server.")} />
         ) : !state.catalog.url ? (
-          <EmptyState art="scrolls" size="sm" title="This server's addon list is turned off." hint="Clear the list address below to use the Open Game Master list." />
+          <EmptyState art="scrolls" size="sm" title={t("This server's addon list is turned off.")} hint={t("Clear the list address below to use the Open Game Master list.")} />
         ) : state.catalog.error ? (
           <p role="alert" className="motion-shake rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
             {state.catalog.error}
@@ -263,13 +265,13 @@ export function AdminAddonsPanel() {
           <EmptyState
             art="chest"
             size="sm"
-            title={state.catalog.addons.length ? "Everything on the list is installed." : "No addons are on the list yet."}
+            title={state.catalog.addons.length ? t("Everything on the list is installed.") : t("No addons are on the list yet.")}
           />
         ) : (
           <div className="space-y-4">
             {categories.map((category) => (
               <div key={category}>
-                <p className={cn(ui.sectionEyebrow, "mb-2")}>{CATEGORY_LABEL[category]}</p>
+                <p className={cn(ui.sectionEyebrow, "mb-2")}>{t(CATEGORY_KEYS[category])}</p>
                 <ul className="stagger grid gap-2 sm:grid-cols-2">
                   {available
                     .filter((entry) => entry.category === category)
@@ -289,27 +291,25 @@ export function AdminAddonsPanel() {
         )}
         {state.catalog.bundled ? (
           <p className="mt-2 text-[11px] leading-4 text-stone-500">
-            GitHub could not be reached, so this is the list this version of Open Game Master shipped with. Addons
-            added since then show once it can be reached again.
+            {t("GitHub could not be reached, so this is the list this version of Open Game Master shipped with. Addons added since then show once it can be reached again.")}
           </p>
         ) : null}
         {state.catalog.skipped ? (
           <p className="mt-2 text-[11px] text-stone-500">
-            {state.catalog.skipped} {state.catalog.skipped === 1 ? "entry" : "entries"} in the catalog could not be read and
-            {state.catalog.skipped === 1 ? " is" : " are"} not shown.
+            {tp("1 entry in the catalog could not be read and is not shown.", "{count} entries in the catalog could not be read and are not shown.", { count: state.catalog.skipped })}
           </p>
         ) : null}
       </section>
 
       <section className={cn(ui.card, "texture-noise p-5")}>
-        <SectionHead title="Addon list, files and links" glyph="tab-facts" />
+        <SectionHead title={t("Addon list, files and links")} glyph="tab-facts" />
         <div className="flex flex-wrap items-center gap-2">
           <input
             key={state.config.registryUrl}
             ref={registryInput}
             defaultValue={state.config.registryUrl}
-            placeholder="Blank uses the Open Game Master list"
-            aria-label="Addon list address"
+            placeholder={t("Blank uses the Open Game Master list")}
+            aria-label={t("Addon list address")}
             className={cn(ui.input, "min-w-0 flex-1 text-xs")}
           />
           <button
@@ -319,27 +319,28 @@ export function AdminAddonsPanel() {
             className={cn(ui.btnSmall, "text-xs")}
           >
             {busyId === "config" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Save
+            {t("Save", { context: "admin.worlds.save" })}
           </button>
         </div>
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
-          Blank falls through to the <span className="font-code">ADDON_REGISTRY_URL</span> environment variable, then to the
-          Open Game Master list. Point it at your own over https, or set it to <span className="font-code">off</span>.
+          {t("Blank falls through to the ")}
+          <span className="font-code">ADDON_REGISTRY_URL</span>
+          {t(" environment variable, then to the Open Game Master list. Point it at your own over https, or set it to ")}
+          <span className="font-code">off</span>.
           {state.catalog.url ? <span className="block break-all font-code">Reading: {state.catalog.url}</span> : null}
         </p>
 
         <div className="mt-4 flex items-start justify-between gap-3">
           <span className="min-w-0 text-xs text-stone-300">
-            Install addons from files and links
+            {t("Install addons from files and links")}
             <span className="block text-[11px] leading-4 text-stone-500">
-              For trying an addon before it is on the list, or running your own: a .zip, or a GitHub repository. Nobody
-              has reviewed an addon that arrives this way.
+              {t("For trying an addon before it is on the list, or running your own: a .zip, or a GitHub repository. Nobody has reviewed an addon that arrives this way.")}
             </span>
           </span>
           <Switch
             on={state.config.allowFiles}
             onChange={(next) => void saveConfig({ allowFiles: next })}
-            label="Install addons from files and links"
+            label={t("Install addons from files and links")}
             disabled={busyId === "config"}
           />
         </div>
@@ -366,8 +367,8 @@ export function AdminAddonsPanel() {
               <input
                 value={githubLink}
                 onChange={(event) => setGithubLink(event.target.value)}
-                placeholder="owner/repo, or a link to a repository, release or folder"
-                aria-label="GitHub link to an addon"
+                placeholder={t("owner/repo, or a link to a repository, release or folder")}
+                aria-label={t("GitHub link to an addon")}
                 className={cn(ui.input, "min-w-0 flex-1 text-xs")}
               />
               <button
@@ -376,12 +377,11 @@ export function AdminAddonsPanel() {
                 className={cn(ui.btnSmall, "text-xs")}
               >
                 {busyId === "github" ? <Loader2 className="size-3.5 animate-spin" /> : <GitBranch className="size-3.5" />}
-                Install from GitHub
+                {t("Install from GitHub")}
               </button>
             </form>
             <p className="mt-1 text-[11px] leading-4 text-stone-500">
-              Takes the newest release (its .zip, or its source), or the branch or folder the link points at. Its card
-              offers an update when there is a newer release or commit.
+              {t("Takes the newest release (its .zip, or its source), or the branch or folder the link points at. Its card offers an update when there is a newer release or commit.")}
             </p>
             <button
               type="button"
@@ -390,7 +390,7 @@ export function AdminAddonsPanel() {
               className={cn(ui.btnSmall, "mt-3 text-xs")}
             >
               {busyId === "upload" ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-              Choose an addon .zip
+              {t("Choose an addon .zip")}
             </button>
           </div>
         ) : null}
@@ -410,9 +410,11 @@ function CatalogEntry({
   busy: boolean;
   onInstall: (parts?: string[]) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const adds = Object.entries(entry.contributes)
     .filter(([, titles]) => titles.length)
-    .map(([kind, titles]) => `${KIND_LABEL[kind] ?? kind}: ${titles.join(", ")}`);
+    .map(([kind, titles]) => `${KIND_KEYS[kind] ? t(KIND_KEYS[kind]) : kind}: ${titles.join(", ")}`);
   const source = sourceFacts(entry.source);
   const parts = entry.parts ?? [];
   const [chosen, setChosen] = useState<string[]>(() => parts.filter((part) => part.default).map((part) => part.id));
@@ -426,27 +428,27 @@ function CatalogEntry({
       <CreditLine credit={entry.credit ?? catalogCredit(entry)} />
       {source ? (
         <p className="text-[11px] leading-4 text-stone-500">
-          <a href={source.url} target="_blank" rel="noreferrer" className="hover:text-amber-200" title={`${source.repo} at the reviewed commit`}>
-            The reviewed commit, {entry.source.commit.slice(0, 7)}
+          <a href={source.url} target="_blank" rel="noreferrer" className="hover:text-amber-200" title={t("{repo} at the reviewed commit", { repo: source.repo })}>
+            {t("The reviewed commit, {hash}", { hash: entry.source.commit.slice(0, 7) })}
           </a>
         </p>
       ) : null}
       <p className="mt-1 text-xs text-stone-400">{entry.description}</p>
       <ModifiesLine modifies={entry.modifies} className="mt-1" />
       {adds.length ? <p className="mt-1 text-[11px] text-stone-400">{adds.join(" · ")}</p> : null}
-      {entry.needs.length ? <p className="mt-1 text-[11px] text-stone-500">Needs installed: {entry.needs.join(", ")}</p> : null}
+      {entry.needs.length ? <p className="mt-1 text-[11px] text-stone-500">{t("Needs installed: {list}", { list: entry.needs.join(", ") })}</p> : null}
       {entry.permissions.length ? (
         <p className="mt-1 text-[11px] text-stone-500">
-          Asks to: {entry.permissions.map((permission) => permissions[permission]?.label ?? permission).join("; ")}
+          {t("Asks to: {list}", { list: entry.permissions.map((permission) => permissions[permission]?.label ?? permission).join("; ") })}
         </p>
       ) : null}
-      {entry.platforms ? <p className="mt-1 text-[11px] text-stone-500">Runs on {entry.platforms.map(platformName).join(", ")}</p> : null}
+      {entry.platforms ? <p className="mt-1 text-[11px] text-stone-500">{t("Runs on {list}", { list: entry.platforms.map(platformName).join(", ") })}</p> : null}
       {entry.exclusive.length ? (
-        <p className="mt-1 text-[11px] text-stone-500">Takes turns with other addons for: {entry.exclusive.join(", ")}</p>
+        <p className="mt-1 text-[11px] text-stone-500">{t("Takes turns with other addons for: {list}", { list: entry.exclusive.join(", ") })}</p>
       ) : null}
       {entry.clashes.map((clash) => (
         <p key={clash.name} className="mt-1 text-[11px] text-amber-300/90">
-          Cannot run beside {clash.name}, which this server has: {clash.reason}
+          {t("Cannot run beside {name}, which this server has: {reason}", { name: clash.name, reason: clash.reason })}
         </p>
       ))}
       {!entry.fit.ok ? <p className="mt-1 text-[11px] text-amber-300/90">{entry.fit.reason}</p> : null}
@@ -459,16 +461,18 @@ function CatalogEntry({
           className={cn(ui.btnSmall, "text-xs")}
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          {parts.length ? `Install with ${chosen.length} of ${parts.length} parts` : "Install"}
+          {parts.length ? t("Install with {chosen} of {total} parts", { chosen: chosen.length, total: parts.length }) : t("Install")}
         </button>
         <span className="text-[10px] text-stone-500">
           {Math.max(1, Math.round(entry.bytes / 1024 / 1024))} MB
-          {entry.setupMB ? `, then about ${entry.setupMB >= 1024 ? `${(entry.setupMB / 1024).toFixed(1)} GB` : `${entry.setupMB} MB`} at setup` : ""}
-          {partBytes ? `, and up to ${formatBytes(partBytes)} for its parts` : ""}
+          {entry.setupMB
+            ? t(", then about {size} at setup", { size: entry.setupMB >= 1024 ? `${(entry.setupMB / 1024).toFixed(1)} GB` : `${entry.setupMB} MB` })
+            : ""}
+          {partBytes ? t(", and up to {size} for its parts", { size: formatBytes(partBytes) }) : ""}
         </span>
         {entry.homepage && !source ? (
           <a href={entry.homepage} target="_blank" rel="noreferrer" className="text-[11px] text-amber-200/80 hover:text-amber-200">
-            Source
+            {t("Source")}
           </a>
         ) : null}
       </div>

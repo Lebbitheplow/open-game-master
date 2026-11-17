@@ -12,6 +12,7 @@ import type { MadeAsset } from "@/lib/dm/world-outline";
 import type { WorldApi, WorldState } from "./useWorld";
 import type { OpenSystem } from "./WorldForgePanel";
 import { TypeChip } from "./world-ui";
+import { useT } from "@/lib/locale";
 
 // "Draft a world from this idea" (plan M5 item 1, audit WF-08). A line or
 // two about the world comes back as an outline, with counts: people,
@@ -27,11 +28,11 @@ import { TypeChip } from "./world-ui";
 type Task = { state: "waiting" | "making" | "made" | "failed"; ref?: string; error?: string; made?: MadeAsset };
 type Phase = "review" | "making" | "done";
 
-const SHELVES: ReadonlyArray<{ shelf: Shelf; label: string }> = [
-  { shelf: "npc", label: "People" },
-  { shelf: "location", label: "Places" },
-  { shelf: "faction", label: "Factions" },
-  { shelf: "lore", label: "Lore" },
+const SHELVES: ReadonlyArray<{ shelf: Shelf; labelKey: string }> = [
+  { shelf: "npc", labelKey: "People" },
+  { shelf: "location", labelKey: "Places" },
+  { shelf: "faction", labelKey: "Factions" },
+  { shelf: "lore", labelKey: "Lore" },
 ];
 
 // A tick with a finger-sized target: the box sits in a 40px square that
@@ -41,6 +42,7 @@ const TICK = "-m-3 flex size-10 shrink-0 cursor-pointer items-center justify-cen
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void; onOpenSystem?: OpenSystem }) {
+  const t = useT();
   const { doc } = world;
   const [idea, setIdea] = useState("");
   const [hint, setHint] = useState("");
@@ -61,7 +63,7 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
       const response = await fetch(`/api/campaigns/${api.campaignId}/world/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       return { ok: response.ok, json: await response.json().catch(() => ({})) };
     } catch {
-      return { ok: false, json: { error: "The server could not be reached." } };
+      return { ok: false, json: { error: t("The server could not be reached.", { context: "workshop.world.paint.unreachable" }) } };
     }
   };
 
@@ -71,7 +73,7 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
     const { ok, json } = await post("outline", { step: "outline", idea, hint });
     setDrafting(false);
     if (!ok || !json.outline) {
-      setError(typeof json.error === "string" ? json.error : "The outline could not be drafted.");
+      setError(typeof json.error === "string" ? json.error : t("The outline could not be drafted."));
       return;
     }
     const next = json.outline as Outline;
@@ -113,11 +115,11 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
       const { ok, json } = await post("ai", { tool: "apply", entities: [{ ...row, name }], links: [], stubs: [] });
       const applied = json as unknown as ForgeApplied;
       const made = ok ? applied.made?.[0] : undefined;
-      task = made ? { state: "made", ref: made.ref } : { state: "failed", error: applied.failed?.[0]?.error ?? (typeof json.error === "string" ? json.error : "It could not be made.") };
+      task = made ? { state: "made", ref: made.ref } : { state: "failed", error: applied.failed?.[0]?.error ?? (typeof json.error === "string" ? json.error : t("It could not be made.")) };
     } else {
       const { ok, json } = await post("outline", { step: "asset", asset: { ...row, name }, premise: outline?.premise ?? "" });
       const made = ok ? (json.made as MadeAsset | undefined) : undefined;
-      task = made ? { state: "made", ref: made.entryRef, made } : { state: "failed", error: typeof json.error === "string" ? json.error : "It could not be made." };
+      task = made ? { state: "made", ref: made.entryRef, made } : { state: "failed", error: typeof json.error === "string" ? json.error : t("It could not be made.") };
     }
     next = { ...next, [row.key]: task };
     setTasks(next);
@@ -137,7 +139,7 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
       stubs: [],
     });
     if (!ok) {
-      setLinkLines((lines) => [...lines, { text: `Links not written: ${typeof json.error === "string" ? json.error : "the server could not be reached"}.`, left: true }]);
+      setLinkLines((lines) => [...lines, { text: t("Links not written: {error}.", { error: typeof json.error === "string" ? json.error : t("The server could not be reached.", { context: "workshop.world.paint.unreachable" }) }), left: true }]);
       return;
     }
     const next = new Set([...done, ...ready.map(({ index }) => index)]);
@@ -179,45 +181,44 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
       {!outline ? (
         <>
           <p className="text-sm text-stone-400">
-            Write a line or two about the world you want. A model drafts an outline: people, places, factions and lore, and a few creatures and items to play with, each counted. Nothing is made until you tick what to keep.
+            {t("Write a line or two about the world you want. A model drafts an outline: people, places, factions and lore, and a few creatures and items to play with, each counted. Nothing is made until you tick what to keep.")}
           </p>
-          <textarea className={cn(ui.input, "min-h-28")} placeholder="A drowned kingdom where the tide-priests ration dry land, and smugglers trade in the bones of sea giants..." aria-label="Your idea for the world" maxLength={4_000} value={idea} onChange={(event) => setIdea(event.target.value)} />
+          <textarea className={cn(ui.input, "min-h-28")} placeholder={t("A drowned kingdom where the tide-priests ration dry land, and smugglers trade in the bones of sea giants...")} aria-label={t("Your idea for the world")} maxLength={4_000} value={idea} onChange={(event) => setIdea(event.target.value)} />
           <div className="flex flex-wrap items-center gap-2">
-            <input className={cn(ui.input, "max-w-md flex-1 text-xs")} placeholder="Steer it (optional): grim, low magic, say" aria-label="Steer the outline" maxLength={300} value={hint} onChange={(event) => setHint(event.target.value)} />
+            <input className={cn(ui.input, "max-w-md flex-1 text-xs")} placeholder={t("Steer it (optional): grim, low magic, say")} aria-label={t("Steer the outline")} maxLength={300} value={hint} onChange={(event) => setHint(event.target.value)} />
             <KitButton tone="primary" busy={drafting} disabled={drafting || !idea.trim()} onClick={draft} data-tour="world-outline">
-              {drafting ? null : <Wand2 className="size-3.5" />} Draft an outline
+              {drafting ? null : <Wand2 className="size-3.5" />} {t("Draft an outline")}
             </KitButton>
           </div>
-          <p className="text-[11px] text-stone-500">To pull names out of notes you already have, without inventing anything, use Forge instead.</p>
+          <p className="text-[11px] text-stone-500">{t("To pull names out of notes you already have, without inventing anything, use Forge instead.")}</p>
         </>
       ) : null}
       {error ? <PanelError>{error}</PanelError> : null}
 
       {outline && phase === "review" ? (
-        <section className="flex flex-col gap-2 animate-fade-up" aria-label="The outline">
+        <section className="flex flex-col gap-2 animate-fade-up" aria-label={t("The outline")}>
           {outline.premise ? <p className="text-sm text-stone-200">{outline.premise}</p> : null}
           {counts ? (
             <p className="text-xs text-stone-400" data-testid="outline-counts">
-              {[
-                plural(counts.people, "person", "people"),
-                plural(counts.places, "place", "places"),
-                plural(counts.factions, "faction", "factions"),
-                plural(counts.lore, "lore entry", "lore entries"),
-                plural(counts.creatures, "creature", "creatures"),
-                plural(counts.items, "item", "items"),
-              ].join(" · ")}
-              . Nothing is made yet.
+              {t("{people} people · {places} places · {factions} factions · {lore} lore entries · {creatures} creatures · {items} items. Nothing is made yet.", {
+                people: counts.people,
+                places: counts.places,
+                factions: counts.factions,
+                lore: counts.lore,
+                creatures: counts.creatures,
+                items: counts.items,
+              })}
             </p>
           ) : null}
           {outline.left.map((line) => (
             <p key={line} className="text-xs text-amber-300">{line}</p>
           ))}
-          {SHELVES.map(({ shelf, label }) => {
+          {SHELVES.map(({ shelf, labelKey }) => {
             const rows = entries.filter((row) => row.shelf === shelf);
             if (!rows.length) return null;
             return (
               <div key={shelf} className="flex flex-col gap-1">
-                <h3 className="eyebrow text-[10px] text-amber-400/80">{label}</h3>
+                <h3 className="eyebrow text-[10px] text-amber-400/80">{t(labelKey)}</h3>
                 <ul className="flex flex-col gap-1.5">
                   {rows.map((row) => (
                     <OutlineRow key={row.key} name={names[row.key] ?? row.name} summary={row.summary} picked={Boolean(picked[row.key])} existing={Boolean(row.existing)} onPick={(value) => setPicked((now) => ({ ...now, [row.key]: value }))} onName={(value) => setNames((now) => ({ ...now, [row.key]: value }))} onOpen={row.existing ? () => onOpen(row.existing) : undefined}>
@@ -230,8 +231,8 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
           })}
           {assets.length ? (
             <div className="flex flex-col gap-1">
-              <h3 className="eyebrow text-[10px] text-amber-400/80">To play with</h3>
-              <p className="text-[11px] text-stone-500">Each is built and checked by its own tool, the way that tool&apos;s own are, with a World entry linked to it. One model call each.</p>
+              <h3 className="eyebrow text-[10px] text-amber-400/80">{t("To play with")}</h3>
+              <p className="text-[11px] text-stone-500">{t("Each is built and checked by its own tool, the way that tool's own are, with a World entry linked to it. One model call each.")}</p>
               <ul className="flex flex-col gap-1.5">
                 {assets.map((row) => (
                   <OutlineRow key={row.key} name={names[row.key] ?? row.name} summary={row.summary} picked={Boolean(picked[row.key])} existing={false} onPick={(value) => setPicked((now) => ({ ...now, [row.key]: value }))} onName={(value) => setNames((now) => ({ ...now, [row.key]: value }))}>
@@ -243,37 +244,37 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
           ) : null}
           {outline.links.length ? (
             <div className="flex flex-col gap-1">
-              <h3 className="eyebrow text-[10px] text-amber-400/80">Links</h3>
+              <h3 className="eyebrow text-[10px] text-amber-400/80">{t("Links")}</h3>
               <ul className="flex flex-col gap-1">
                 {outline.links.map((link, index) => (
                   <li key={`${link.from}-${link.to}-${link.label}`} className="flex items-center gap-2 text-sm text-stone-300">
                     <label className={TICK}>
-                      <input type="checkbox" className="size-4 accent-amber-400" aria-label={`Keep ${nameOf(link.from)} ${link.label} ${nameOf(link.to)}`} checked={Boolean(linkPicked[index])} onChange={(event) => setLinkPicked((now) => now.map((value, at) => (at === index ? event.target.checked : value)))} />
+                      <input type="checkbox" className="size-4 accent-amber-400" aria-label={t("Keep {from} {label} {to}", { from: nameOf(link.from), label: link.label, to: nameOf(link.to) })} checked={Boolean(linkPicked[index])} onChange={(event) => setLinkPicked((now) => now.map((value, at) => (at === index ? event.target.checked : value)))} />
                     </label>
                     {nameOf(link.from)} <span className="text-stone-500">{link.label}</span> {nameOf(link.to)}
                   </li>
                 ))}
               </ul>
-              <p className="text-[11px] text-stone-500">A link is made once both its ends are.</p>
+              <p className="text-[11px] text-stone-500">{t("A link is made once both its ends are.")}</p>
             </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <KitButton tone="small" onClick={reset}>Throw it away</KitButton>
+            <KitButton tone="small" onClick={reset}>{t("Throw it away", { context: "workshop.world.outline.throwAway" })}</KitButton>
             <KitButton tone="primary" disabled={!ticked.length} onClick={makeTicked} data-testid="outline-make">
-              <Check className="size-3.5" /> Make the ticked ({ticked.length})
+              <Check className="size-3.5" /> {t("Make the ticked ({count})", { count: ticked.length })}
             </KitButton>
           </div>
         </section>
       ) : null}
 
       {outline && phase !== "review" ? (
-        <section className="flex flex-col gap-2" aria-label="Making the outline">
+        <section className="flex flex-col gap-2" aria-label={t("Making the outline")}>
           <p className={cn("rounded-lg border px-3 py-2 text-xs", failedCount && phase === "done" ? "border-amber-600/50 bg-amber-900/15 text-amber-100" : "border-emerald-700/40 bg-emerald-900/15 text-stone-200")} role="status" data-testid="outline-progress">
             {phase === "making"
-              ? `Making ${Math.min(madeCount + failedCount + 1, taskRows.length)} of ${taskRows.length}...`
+              ? t("Making {at} of {total}...", { at: Math.min(madeCount + failedCount + 1, taskRows.length), total: taskRows.length })
               : failedCount
-                ? `Made ${madeCount} of ${taskRows.length}. ${failedCount === 1 ? "One was" : `${failedCount} were`} not made: each can be retried on its own below.`
-                : `Made all ${taskRows.length}.`}
+                ? t("Made {made} of {total}. {failed} were not made: each can be retried on its own below.", { made: madeCount, total: taskRows.length, failed: failedCount })
+                : t("Made all {total}.", { total: taskRows.length })}
           </p>
           <ul className="flex flex-col gap-1.5">
             {taskRows.map((row) => {
@@ -283,29 +284,29 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
                   <div className="flex flex-wrap items-center gap-2">
                     {task.state === "made" ? <Check className="size-4 text-emerald-400" aria-hidden="true" /> : task.state === "failed" ? <CircleAlert className="size-4 text-ember-300" aria-hidden="true" /> : task.state === "making" ? <Loader2 className="size-4 animate-spin text-amber-300" aria-hidden="true" /> : <span className="size-4 rounded-full border border-stone-600" aria-hidden="true" />}
                     {task.state === "failed" ? (
-                      <input className={cn(ui.input, "w-48 py-1 text-sm")} aria-label={`Name for ${row.name}`} maxLength={80} value={names[row.key] ?? row.name} onChange={(event) => setNames((now) => ({ ...now, [row.key]: event.target.value }))} />
+                      <input className={cn(ui.input, "w-48 py-1 text-sm")} aria-label={t("Name for {slug}", { slug: row.name })} maxLength={80} value={names[row.key] ?? row.name} onChange={(event) => setNames((now) => ({ ...now, [row.key]: event.target.value }))} />
                     ) : (
                       <span className="text-sm text-stone-100">{names[row.key] ?? row.name}</span>
                     )}
-                    <span className="text-[11px] text-stone-500">{"shelf" in row ? "World entry" : row.kind === "creature" ? "Bestiary" : "Homebrew"}</span>
-                    <span className="sr-only">{task.state === "made" ? "made" : task.state === "failed" ? "failed" : task.state === "making" ? "making" : "waiting"}</span>
+                    <span className="text-[11px] text-stone-500">{"shelf" in row ? t("World entry") : row.kind === "creature" ? t("Bestiary") : t("Homebrew")}</span>
+                    <span className="sr-only">{task.state === "made" ? t("made") : task.state === "failed" ? t("failed") : task.state === "making" ? t("making") : t("waiting", { context: "workshop.world.outline.stateWaiting" })}</span>
                     <span className="ml-auto flex flex-wrap gap-1">
                       {task.state === "made" && task.made && onOpenSystem ? (
                         <KitButton tone="small" onClick={() => onOpenSystem(task.made!.kind === "creature" ? "bestiary" : "homebrew", { id: task.made!.id, from: task.made!.entryRef })}>
-                          {task.made.kind === "creature" ? "Edit stats" : "Edit item"}
+                          {task.made.kind === "creature" ? t("Edit stats") : t("Edit item")}
                         </KitButton>
                       ) : null}
-                      {task.state === "made" && task.ref ? <KitButton tone="small" onClick={() => onOpen(task.ref!)}>World entry</KitButton> : null}
+                      {task.state === "made" && task.ref ? <KitButton tone="small" onClick={() => onOpen(task.ref!)}>{t("World entry")}</KitButton> : null}
                       {task.state === "failed" && phase === "done" ? (
-                        <KitButton tone="small" onClick={() => retry(row)} aria-label={`Retry ${names[row.key] ?? row.name}`}>
-                          <RotateCcw className="size-3.5" /> Retry
+                        <KitButton tone="small" onClick={() => retry(row)} aria-label={t("Retry {name}", { name: names[row.key] ?? row.name })}>
+                          <RotateCcw className="size-3.5" /> {t("Retry")}
                         </KitButton>
                       ) : null}
                     </span>
                   </div>
                   {task.state === "made" && task.made ? (
                     <p className="text-xs text-stone-400">
-                      Made {task.made.name} in {task.made.lands}: {task.made.detail}.{task.made.entryError ? ` Its World entry was not made: ${task.made.entryError}` : ""}
+                      {t("Made {name} in {lands}: {detail}.", { name: task.made.name, lands: task.made.lands, detail: task.made.detail })}{task.made.entryError ? ` ${t("Its World entry was not made: {error}", { error: task.made.entryError })}` : ""}
                     </p>
                   ) : null}
                   {task.state === "failed" ? <p className="text-xs text-ember-300" role="alert">{task.error}</p> : null}
@@ -318,17 +319,17 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
           ))}
           {linksUnticked.length ? (
             <p className="text-xs text-amber-300">
-              Links not made, because one end was not ticked: {linksUnticked.map((link) => `${nameOf(link.from)} ${link.label} ${nameOf(link.to)}`).join("; ")}.
+              {t("Links not made, because one end was not ticked: {list}.", { list: linksUnticked.map((link) => `${nameOf(link.from)} ${link.label} ${nameOf(link.to)}`).join("; ") })}
             </p>
           ) : null}
           {waitingLinks.length ? (
             <p className="text-xs text-amber-300">
-              Links waiting for an end that was not made: {waitingLinks.map((link) => `${nameOf(link.from)} ${link.label} ${nameOf(link.to)}`).join("; ")}. A retry that makes it writes them.
+              {t("Links waiting for an end that was not made: {list}. A retry that makes it writes them.", { list: waitingLinks.map((link) => `${nameOf(link.from)} ${link.label} ${nameOf(link.to)}`).join("; ") })}
             </p>
           ) : null}
           {phase === "done" ? (
             <div className="flex justify-end">
-              <KitButton tone="small" onClick={reset}>Draft another outline</KitButton>
+              <KitButton tone="small" onClick={reset}>{t("Draft another outline")}</KitButton>
             </div>
           ) : null}
         </section>
@@ -343,15 +344,16 @@ function assetLine(row: OutlineAsset): string {
 }
 
 function OutlineRow({ name, summary, picked, existing, onPick, onName, onOpen, children }: { name: string; summary: string; picked: boolean; existing: boolean; onPick: (value: boolean) => void; onName: (value: string) => void; onOpen?: () => void; children: React.ReactNode }) {
+  const t = useT();
   return (
     <li className={cn("panel flex flex-col gap-1 rounded-lg p-2.5", !picked && "opacity-60")}>
       <div className="flex flex-wrap items-center gap-2">
         <label className={TICK}>
-          <input type="checkbox" className="size-4 accent-amber-400" aria-label={`Make ${name}`} checked={picked} disabled={existing} onChange={(event) => onPick(event.target.checked)} />
+          <input type="checkbox" className="size-4 accent-amber-400" aria-label={t("Make {name}", { name })} checked={picked} disabled={existing} onChange={(event) => onPick(event.target.checked)} />
         </label>
-        <input className={cn(ui.input, "w-48 max-w-full py-1 text-sm")} aria-label="Name" maxLength={80} value={name} disabled={existing} onChange={(event) => onName(event.target.value)} />
+        <input className={cn(ui.input, "w-48 max-w-full py-1 text-sm")} aria-label={t("Name")} maxLength={80} value={name} disabled={existing} onChange={(event) => onName(event.target.value)} />
         {existing && onOpen ? (
-          <button type="button" onClick={onOpen} className="pk-chip text-[11px] text-stone-400">already in the world</button>
+          <button type="button" onClick={onOpen} className="pk-chip text-[11px] text-stone-400">{t("already in the world")}</button>
         ) : null}
         {children}
       </div>

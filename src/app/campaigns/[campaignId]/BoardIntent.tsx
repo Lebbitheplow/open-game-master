@@ -3,6 +3,7 @@
 import { Crosshair, Footprints, Sparkles, Swords, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { TILE } from "@/app/campaigns/[campaignId]/battleMapCells";
 import { TokenFace } from "@/app/campaigns/[campaignId]/BoardChrome";
 import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
@@ -43,6 +44,7 @@ export function IntentLayer({
   faceOf: (token: StageToken) => Array<string | null | undefined>;
 }) {
   const [litId, setLitId] = useState<string | null>(null);
+  const t = useT();
   const byId = useMemo(() => new Map(tokens.map((token) => [token.id, token])), [tokens]);
   const shown = useMemo(
     () => visibleIntents(intents, tokens.map((token) => token.id), round),
@@ -95,7 +97,7 @@ export function IntentLayer({
           <button
             key={actor.id}
             type="button"
-            aria-label={intentSentence(intent, actor.name, target?.name)}
+            aria-label={intentSentence(intent, actor.name, target?.name, t)}
             aria-pressed={isLit}
             data-lit={isLit}
             onPointerEnter={(event) => {
@@ -147,7 +149,7 @@ export function IntentLayer({
             className="size-6 rounded-full border border-[rgba(220,38,38,0.7)]"
           />
           <span className="min-w-0 truncate font-serif text-[12.5px] text-[#e9e6f4]">
-            {intentSentence(lit, litActor.name, litTarget?.name)}
+            {intentSentence(lit, litActor.name, litTarget?.name, t)}
           </span>
           {litTarget ? (
             <TokenFace

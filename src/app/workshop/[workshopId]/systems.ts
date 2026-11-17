@@ -31,6 +31,11 @@ import type { IconRef } from "@/lib/icons";
 // records the other cards already count (links, events, secrets, maps), from
 // its own route too. Rules is a yes-or-no rather than a number, and Share has
 // nothing to count.
+//
+// The names, taglines and count lines live in the dictionaries under
+// `workshop.system.*`: the data keeps ids and icons, and the readers pass the
+// translator they already hold (the way home/types.ts agoLabel does), so a
+// language switch rewords every card with the rest of the hub.
 
 export type WorldCount = { entries: number; links: number; events: number; secrets: number; maps: number };
 
@@ -40,25 +45,23 @@ export function systemGlyph(id: SystemId): IconRef {
 }
 
 export const WORKSHOP_SYSTEMS = [
-  { id: "world", label: "WorldForge", blurb: "Build the world", icon: Orbit },
-  { id: "storyboard", label: "Storyboard", blurb: "Plan the arc", icon: LayoutGrid },
-  { id: "party", label: "Party", blurb: "Who it is built for", icon: UserRound },
-  { id: "maps", label: "Battle maps", blurb: "Rooms to fight in", icon: MapIcon },
-  { id: "region", label: "Region", blurb: "The overworld & its places", icon: Globe2 },
-  { id: "encounters", label: "Encounters", blurb: "Fights, budgeted", icon: Swords },
-  { id: "cast", label: "Cast", blurb: "NPCs & agendas", icon: Users },
-  { id: "factions", label: "Factions", blurb: "Powers & standing", icon: Flag },
-  { id: "bestiary", label: "Bestiary", blurb: "Homebrew monsters", icon: Skull },
-  { id: "homebrew", label: "Homebrew", blurb: "Items, spells & options", icon: FlaskConical },
-  { id: "lore", label: "Lore", blurb: "Facts, handouts & shops", icon: BookOpen },
-  { id: "tables", label: "Tables", blurb: "Roll tables", icon: Dices },
-  { id: "rules", label: "Rules", blurb: "House & variant", icon: Scale },
-  { id: "plugin", label: "Plugin", blurb: "Build a world pack", icon: Puzzle },
-  { id: "share", label: "Share", blurb: "Export a bundle", icon: Share2 },
+  { id: "world", icon: Orbit },
+  { id: "storyboard", icon: LayoutGrid },
+  { id: "party", icon: UserRound },
+  { id: "maps", icon: MapIcon },
+  { id: "region", icon: Globe2 },
+  { id: "encounters", icon: Swords },
+  { id: "cast", icon: Users },
+  { id: "factions", icon: Flag },
+  { id: "bestiary", icon: Skull },
+  { id: "homebrew", icon: FlaskConical },
+  { id: "lore", icon: BookOpen },
+  { id: "tables", icon: Dices },
+  { id: "rules", icon: Scale },
+  { id: "plugin", icon: Puzzle },
+  { id: "share", icon: Share2 },
 ] as const satisfies ReadonlyArray<{
   id: string;
-  label: string;
-  blurb: string;
   icon: LucideIcon;
 }>;
 
@@ -68,16 +71,29 @@ export function isSystemId(value: string | null): value is SystemId {
   return WORKSHOP_SYSTEMS.some((system) => system.id === value);
 }
 
+// The card's name and tagline, by the system's id.
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+
+export function systemLabel(t: Translator, id: SystemId): string {
+  return ({ "world": t("WorldForge"), "storyboard": t("Storyboard"), "party": t("Party"), "maps": t("Battle maps"), "region": t("Region"), "encounters": t("Encounters"), "cast": t("Cast", { context: "workshop.system.cast.label" }), "factions": t("Factions"), "bestiary": t("Bestiary"), "homebrew": t("Homebrew"), "lore": t("Lore", { context: "workshop.system.lore.label" }), "tables": t("Tables"), "rules": t("Rules"), "plugin": t("Plugin"), "share": t("Share", { context: "workshop.system.share.label" }) } as Record<string, string>)[id] ?? String(id);
+}
+
+export function systemBlurb(t: Translator, id: SystemId): string {
+  return ({ "world": t("Build the world"), "storyboard": t("Plan the arc"), "party": t("Who it is built for"), "maps": t("Rooms to fight in"), "region": t("The overworld & its places"), "encounters": t("Fights, budgeted"), "cast": t("NPCs & agendas"), "factions": t("Powers & standing"), "bestiary": t("Homebrew monsters"), "homebrew": t("Items, spells & options"), "lore": t("Facts, handouts & shops"), "tables": t("Roll tables"), "rules": t("House & variant"), "plugin": t("Build a world pack"), "share": t("Export a bundle") } as Record<string, string>)[id] ?? String(id);
+}
+
 // What a card shows big and what the system title says after its name.
 // `figure` is null when there is nothing to count (Share) and, for the
 // bestiary, while its count is still on the wire.
 export type SystemCount = { figure: string | null; phrase: string; total: number };
 
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
+// A counted word with its plural: "3 fights", "1 fight".
+function countWord(t: Translator, key: string, count: number): string {
+  return t(key, { count });
 }
 
 export function systemCount(
+  t: Translator,
   id: SystemId,
   workshop: WorkshopSummary,
   bestiary: number | null,
@@ -89,20 +105,29 @@ export function systemCount(
   const contents = workshop.contents;
   switch (id) {
     case "world": {
-      if (!world) return { figure: null, phrase: "counting", total: 0 };
+      if (!world) return { figure: null, phrase: t("counting"), total: 0 };
       const pieces = world.links + world.events + world.secrets + world.maps;
       return {
         figure: String(world.entries),
         phrase: world.entries
-          ? `${plural(world.entries, "entry", "entries")}, ${plural(world.links, "link", "links")}, ${plural(world.events, "event", "events")}`
-          : "an empty world",
+          ? [
+              countWord(t, "workshop.system.world.entries", world.entries),
+              countWord(t, "workshop.system.world.links", world.links),
+              countWord(t, "workshop.system.world.events", world.events),
+            ].join(", ")
+          : t("an empty world"),
         total: pieces,
       };
     }
     case "plugin":
       return {
         figure: plugin === null ? null : String(plugin),
-        phrase: plugin === null ? "counting" : plugin ? plural(plugin, "entry in the pack", "entries in the pack") : "no pack yet",
+        phrase:
+          plugin === null
+            ? t("counting")
+            : plugin
+              ? countWord(t, "workshop.system.plugin.pack", plugin)
+              : t("no pack yet"),
         total: plugin ?? 0,
       };
     case "party": {
@@ -111,59 +136,59 @@ export function systemCount(
         figure: String(party.size),
         phrase:
           pregens === null
-            ? `at level ${party.level}`
-            : `at level ${party.level}, ${plural(pregens, "pregen ready", "pregens ready")}`,
+            ? t("at level {level}", { level: party.level })
+            : `${t("at level {level}", { level: party.level })}, ${countWord(t, "workshop.system.party.pregens", pregens)}`,
         total: pregens ?? 0,
       };
     }
     case "homebrew":
       return {
         figure: homebrew === null ? null : String(homebrew),
-        phrase: homebrew === null ? "counting" : plural(homebrew, "piece of homebrew", "pieces of homebrew"),
+        phrase: homebrew === null ? t("counting") : countWord(t, "workshop.system.homebrew.count", homebrew),
         total: homebrew ?? 0,
       };
     case "storyboard": {
       const count = contents.storyboard;
       return {
         figure: String(count),
-        phrase: count ? "a board in progress" : "no board yet",
+        phrase: count ? t("a board in progress") : t("no board yet"),
         total: count,
       };
     }
     case "maps":
-      return { figure: String(contents.maps), phrase: `${contents.maps} in the drawer`, total: contents.maps };
+      return { figure: String(contents.maps), phrase: countWord(t, "{count} in the drawer", contents.maps), total: contents.maps };
     case "region": {
       // Places live here: the overworld pins every location the workshop
       // knows, so they are counted on this card rather than on Lore, whose
       // tab lists only lore entries (issue #121 saw a 28 over a list of 16).
       const count = contents.overworld;
       const places = contents.locations;
-      const drawn = count ? "the overworld is drawn" : "no overworld yet";
+      const drawn = count ? t("the overworld is drawn") : t("no overworld yet");
       return {
         figure: String(count + places),
-        phrase: places ? `${drawn}, ${plural(places, "place", "places")} on it` : drawn,
+        phrase: places ? `${drawn}, ${countWord(t, "workshop.system.region.places", places)}` : drawn,
         total: count + places,
       };
     }
     case "encounters":
       return {
         figure: String(contents.encounters),
-        phrase: plural(contents.encounters, "fight", "fights"),
+        phrase: countWord(t, "workshop.system.encounters.count", contents.encounters),
         total: contents.encounters,
       };
     case "cast":
       return {
         figure: String(contents.npcs),
-        phrase: plural(contents.npcs, "person", "people"),
+        phrase: countWord(t, "workshop.system.cast.count", contents.npcs),
         total: contents.npcs,
       };
     case "factions":
       // Not counted on the summary; the panel reads its own list.
-      return { figure: null, phrase: "powers of the world", total: 0 };
+      return { figure: null, phrase: t("powers of the world"), total: 0 };
     case "bestiary":
       return {
         figure: bestiary === null ? null : String(bestiary),
-        phrase: bestiary === null ? "counting" : plural(bestiary, "monster", "monsters"),
+        phrase: bestiary === null ? t("counting") : countWord(t, "workshop.system.bestiary.count", bestiary),
         total: bestiary ?? 0,
       };
     case "lore": {
@@ -171,33 +196,34 @@ export function systemCount(
       // names them too (audit WA-10).
       const count = contents.lore;
       const shops = contents.shops ?? 0;
-      const entries = plural(count, "entry", "entries");
+      const entries = countWord(t, "workshop.system.lore.entries", count);
       return {
         figure: String(count + shops),
-        phrase: shops ? `${entries}, ${plural(shops, "shop", "shops")}` : entries,
+        phrase: shops ? `${entries}, ${countWord(t, "workshop.system.lore.shops", shops)}` : entries,
         total: count + shops,
       };
     }
     case "tables":
       return {
         figure: String(contents.tables),
-        phrase: plural(contents.tables, "table", "tables"),
+        phrase: countWord(t, "workshop.system.tables.count", contents.tables),
         total: contents.tables,
       };
     case "rules":
       return {
-        figure: contents.houseRules ? "set" : "none",
-        phrase: contents.houseRules ? "house rules set" : "no house rules yet",
+        figure: contents.houseRules ? t("set") : t("none", { context: "workshop.system.rules.figureNone" }),
+        phrase: contents.houseRules ? t("house rules set") : t("no house rules yet"),
         total: 0,
       };
     case "share":
-      return { figure: null, phrase: "export a bundle", total: 0 };
+      return { figure: null, phrase: t("export a bundle"), total: 0 };
   }
 }
 
 // "41 pieces of prep": every countable thing in the workshop, for the hub's
 // section heading.
 export function totalPieces(
+  t: Translator,
   workshop: WorkshopSummary,
   bestiary: number | null,
   homebrew: number | null = null,
@@ -206,7 +232,7 @@ export function totalPieces(
   world: WorldCount | null = null,
 ): number {
   return WORKSHOP_SYSTEMS.reduce(
-    (sum, system) => sum + systemCount(system.id, workshop, bestiary, homebrew, pregens, plugin, world).total,
+    (sum, system) => sum + systemCount(t, system.id, workshop, bestiary, homebrew, pregens, plugin, world).total,
     0,
   );
 }

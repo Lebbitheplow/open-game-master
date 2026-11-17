@@ -8,6 +8,7 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { FieldLabel } from "@/app/workshop/kit";
 import { heldTraitNames, publishedTraits, withTrait, type PublishedTrait } from "@/lib/workshop/species-traits";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 // "Add a published trait": a search over every trait the catalog's species
 // print (the content pack's, or with none the bundled SRD's, and the DM's
@@ -61,10 +62,11 @@ export function SpeciesTraitPicker({ traits, onChange }: { traits: string; onCha
   const shown = (catalog ?? []).filter(
     (trait) => !words || textKey(trait.name).includes(words) || trait.from.some((name) => textKey(name).includes(words)),
   );
+  const t = useT();
 
   return (
     <div ref={container} className="space-y-1" data-species-trait-picker>
-      <FieldLabel>Published traits</FieldLabel>
+      <FieldLabel>{t("Published traits")}</FieldLabel>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-500" />
         <input
@@ -74,16 +76,16 @@ export function SpeciesTraitPicker({ traits, onChange }: { traits: string; onCha
             load();
           }}
           onFocus={load}
-          placeholder="Add a published trait: Draconic Ancestry, Darkvision, Lucky..."
-          aria-label="Search the published species traits"
+          placeholder={t("Add a published trait: Draconic Ancestry, Darkvision, Lucky...")}
+          aria-label={t("Search the published species traits")}
           className={cn(ui.input, "pl-9")}
         />
         {loading ? <Loader2 className="absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-stone-500" /> : null}
       </div>
       {failed ? (
-        <p className="live-in text-xs text-amber-300">The published traits could not be read just now. Click the search again to retry.</p>
+        <p className="live-in text-xs text-amber-300">{t("The published traits could not be read just now. Click the search again to retry.")}</p>
       ) : open && catalog && !shown.length ? (
-        <p className="live-in text-xs text-stone-500">No published trait matched &quot;{query.trim()}&quot;.</p>
+        <p className="live-in text-xs text-stone-500">{t("No published trait matched \"{query}\".", { query: query.trim() })}</p>
       ) : null}
       {/* In the flow, like "Start from": the editor scrolls, and an overlay
           would cover the Traits text it writes into. */}
@@ -101,10 +103,10 @@ export function SpeciesTraitPicker({ traits, onChange }: { traits: string; onCha
                 >
                   <span className="truncate">{trait.name}</span>
                   <span className="shrink-0 text-[11px] text-stone-500">
-                    {has ? "Already here" : `${trait.from.slice(0, 2).join(", ")}${trait.from.length > 2 ? ` +${trait.from.length - 2}` : ""}`}
+                    {has ? t("Already here") : `${trait.from.slice(0, 2).join(", ")}${trait.from.length > 2 ? ` +${trait.from.length - 2}` : ""}`}
                   </span>
                 </button>
-                <InfoButton label={trait.name} text={trait.text || `${trait.name}, as ${trait.from[0]} has it.`} />
+                <InfoButton label={trait.name} text={trait.text || t("{name}, as {from} has it.", { name: trait.name, from: trait.from[0] })} />
               </li>
             );
           })}

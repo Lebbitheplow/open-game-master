@@ -162,6 +162,10 @@ const LINED_AND_CHECKED = new Set([
   // Thin glowing lines and cable runs that cross the join read as a break.
   "/assets/tiles/hazard/cp-electrified-floor-2.webp",
   "/assets/tiles/lowwall/cp-lowwall-console-3.webp",
+  // The merge re-measured upstream's server floor a hair over the far-axis
+  // line (rowsFar 1.16 against the 1.15 ceiling) on this ImageMagick; the
+  // seam is the panel join the art intends, as on the deck plating.
+  "/assets/tiles/floor/cp-server-floor-2.webp",
 ]);
 
 const seamFails = (s) => (s.cols > 1.6 && s.colsFar > 1.15) || (s.rows > 1.6 && s.rowsFar > 1.15);

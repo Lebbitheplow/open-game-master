@@ -23,6 +23,9 @@ process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 const { GET, PATCH } = await import("../src/app/api/admin/settings/route.ts");
 const { getGlobalConfig } = await import("../src/lib/db/app-settings.ts");
 const { AdminImagesSection, comfyModelOptions, comfyModelPatch, comfyModelStatus, fetchComfyModels } = await import("../src/app/admin/AdminImagesSection.tsx");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The admin panel builds its sentences for the screen; the test reads them in English.
+const t = (key, vars) => translate("en", key, vars);
 
 async function patch(images) {
   return PATCH(new Request("http://localhost/api/admin/settings", {
@@ -78,7 +81,7 @@ const found = discovery([
   report("z_turbo", zFiles, { verified: measured }),
   report("flux2_klein_4b", { unet: "", clip: "qwen_3_4b.safetensors", vae: "" }, { missing: [{ what: "the FLUX.2 klein 4B model" }] }),
 ]);
-const options = comfyModelOptions({ checkpoint: "saved-checkpoint.safetensors", preset: "checkpoint" }, found);
+const options = comfyModelOptions(t, { checkpoint: "saved-checkpoint.safetensors", preset: "checkpoint" }, found);
 
 // A model this hardware failed to run, or that peaked past this GPU, is
 // kept off the picker; the saved one stays whatever its verdict.
@@ -88,11 +91,11 @@ const unfit = discovery([
   { ...report("krea2_turbo", zFiles), needGb: 90, fits: false },
 ]);
 assert.deepEqual(
-  comfyModelOptions({ checkpoint: "", preset: "checkpoint" }, unfit).filter((option) => option.group === "Models").map((option) => option.value),
+  comfyModelOptions(t, { checkpoint: "", preset: "checkpoint" }, unfit).filter((option) => option.group === "Models").map((option) => option.value),
   ["preset:z_turbo"],
 );
 assert.ok(
-  comfyModelOptions({ checkpoint: "", preset: "flux2_dev" }, unfit).some((option) => option.value === "preset:flux2_dev"),
+  comfyModelOptions(t, { checkpoint: "", preset: "flux2_dev" }, unfit).some((option) => option.value === "preset:flux2_dev"),
   "the saved model is offered even when its verdict is fails",
 );
 passed += 1;
@@ -104,24 +107,24 @@ assert.deepEqual(options, [
   { value: "checkpoint:installed.safetensors", label: "installed.safetensors", group: "Checkpoints" },
 ]);
 // Before any check: the saved model is still offered, with nothing claimed about it.
-assert.deepEqual(comfyModelOptions({ checkpoint: "", preset: "z_turbo" }, null), [
+assert.deepEqual(comfyModelOptions(t, { checkpoint: "", preset: "z_turbo" }, null), [
   CHOOSE,
   { value: "preset:z_turbo", label: "Z-Image Turbo", group: "Models" },
 ]);
 // Checkpoint mode with nothing picked: the placeholder, then the real choices.
-const unpicked = comfyModelOptions({ checkpoint: "", preset: "checkpoint" }, found);
+const unpicked = comfyModelOptions(t, { checkpoint: "", preset: "checkpoint" }, found);
 assert.deepEqual(unpicked[0], CHOOSE);
 // The obvious choice (here the model measured as recommended) is marked, never picked.
 assert.equal(unpicked.find((option) => option.value === "preset:z_turbo")?.label, "Z-Image Turbo (recommended)");
 assert.equal(options.find((option) => option.value === "preset:z_turbo")?.label, "Z-Image Turbo", "once something is picked, nothing is marked");
 assert.ok(unpicked.slice(1).every((option) => option.value !== "checkpoint:"));
 // A saved model whose files are gone stays listed, and says so.
-assert.deepEqual(comfyModelOptions({ checkpoint: "", preset: "flux2_klein_4b" }, found).find((option) => option.value === "preset:flux2_klein_4b"), {
+assert.deepEqual(comfyModelOptions(t, { checkpoint: "", preset: "flux2_klein_4b" }, found).find((option) => option.value === "preset:flux2_klein_4b"), {
   value: "preset:flux2_klein_4b", label: "FLUX.2 [klein] 4B", group: "Models", hint: "Its files are not all on this ComfyUI.",
 });
 // A checkpoint the catalog knows is named with its settings.
 assert.equal(
-  comfyModelOptions({ checkpoint: "", preset: "checkpoint" }, discovery([], ["sd3.5_large_fp8_scaled.safetensors"])).at(-1).hint,
+  comfyModelOptions(t, { checkpoint: "", preset: "checkpoint" }, discovery([], ["sd3.5_large_fp8_scaled.safetensors"])).at(-1).hint,
   "Stable Diffusion 3.5 Large settings.",
 );
 assert.deepEqual(comfyModelPatch("checkpoint:installed.safetensors", options), {
@@ -135,7 +138,7 @@ assert.deepEqual(comfyModelPatch("checkpoint:", unpicked), { comfyWorkflowPreset
 assert.deepEqual(comfyModelPatch("checkpoint:", options), { comfyWorkflowPreset: "checkpoint", comfyCheckpoint: "" }, "a pick can always go back to None");
 assert.equal(comfyModelPatch("checkpoint:invented.safetensors", options), null);
 assert.equal(comfyModelPatch("preset:flux2_klein_4b", options), null);
-const collision = comfyModelOptions({ checkpoint: "", preset: "checkpoint" }, discovery([], ["preset:z_turbo"]));
+const collision = comfyModelOptions(t, { checkpoint: "", preset: "checkpoint" }, discovery([], ["preset:z_turbo"]));
 assert.deepEqual(comfyModelPatch("checkpoint:preset:z_turbo", collision), {
   comfyWorkflowPreset: "checkpoint", comfyCheckpoint: "preset:z_turbo",
 });
@@ -145,17 +148,17 @@ assert.doesNotMatch(render(restored), /ComfyUI workflow preset|Checkpoint \(mode
 passed += 1;
 console.log("ok - installed models, saved, unpicked and checkpoint choices map to one persisted selection");
 
-assert.equal(comfyModelStatus(null, "z_turbo"), "Checking installed models…");
-assert.equal(comfyModelStatus({ ...found, error: "Could not reach ComfyUI." }, "z_turbo"), "Could not reach ComfyUI.");
-assert.equal(comfyModelStatus(found, "checkpoint"), "Installed checkpoints from ComfyUI.");
+assert.equal(comfyModelStatus(t, null, "z_turbo"), "Checking installed models…");
+assert.equal(comfyModelStatus(t, { ...found, error: "Could not reach ComfyUI." }, "z_turbo"), "Could not reach ComfyUI.");
+assert.equal(comfyModelStatus(t, found, "checkpoint"), "Installed checkpoints from ComfyUI.");
 assert.match(
-  comfyModelStatus(found, "z_turbo"),
+  comfyModelStatus(t, found, "z_turbo"),
   /with z_image_turbo_bf16\.safetensors, qwen_3_4b\.safetensors and ae\.safetensors\. It runs without a negative prompt/,
 );
-assert.equal(comfyModelStatus(found, "flux2_klein_4b"), "This ComfyUI is missing the FLUX.2 klein 4B model.");
+assert.equal(comfyModelStatus(t, found, "flux2_klein_4b"), "This ComfyUI is missing the FLUX.2 klein 4B model.");
 // A model that honours a negative prompt says nothing about the boundary.
 assert.doesNotMatch(
-  comfyModelStatus(discovery([report("chroma1_hd", { unet: "Chroma1-HD-fp8mixed.safetensors", t5: "t5xxl_fp16.safetensors", vae: "ae.safetensors" })]), "chroma1_hd"),
+  comfyModelStatus(t, discovery([report("chroma1_hd", { unet: "Chroma1-HD-fp8mixed.safetensors", t5: "t5xxl_fp16.safetensors", vae: "ae.safetensors" })]), "chroma1_hd"),
   /negative prompt/,
 );
 passed += 1;
@@ -171,10 +174,10 @@ const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, in
 });
 try {
   const signal = new AbortController().signal;
-  assert.deepEqual(await fetchComfyModels("http://localhost:8188", signal), {
+  assert.deepEqual(await fetchComfyModels(t, "http://localhost:8188", signal), {
     checkpoints: ["installed.safetensors"], models: [report("z_turbo", zFiles)], hardware: null, device: null, error: null,
   });
-  assert.deepEqual(await fetchComfyModels("http://localhost:8288", signal), {
+  assert.deepEqual(await fetchComfyModels(t, "http://localhost:8288", signal), {
     checkpoints: [], models: [], hardware: null, device: null, error: "Could not reach ComfyUI.",
   });
   assert.deepEqual(requests.map(({ url, init }) => [url, init.method, JSON.parse(init.body).url, init.signal]), [

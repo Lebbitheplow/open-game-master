@@ -9,6 +9,7 @@ import { SpeciesFields } from "@/app/workshop/homebrew/SpeciesFields";
 import { BackgroundFields } from "@/app/workshop/homebrew/BackgroundFields";
 import { engineFeatNames } from "@/lib/srd/feat-effects";
 import { compareNames } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 // The character-option forms: feat, background, species, subclass. Each
 // writes the field names the character builder already reads for the
@@ -25,23 +26,24 @@ const RUNS_AS_OPTIONS = [
 ];
 
 function FeatFields({ data, set }: { data: Data; set: (patch: Data) => void }) {
+  const t = useT();
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       <TextField
-        label="Prerequisite"
+        label={t("prerequisite")}
         value={String(data.prerequisite ?? "")}
         onChange={(prerequisite) => set({ prerequisite })}
         placeholder="Strength 13 or higher"
         maxLength={200}
-        hint="Leave empty for none. The builder shows it beside the feat."
+        hint={t("Leave empty for none. The builder shows it beside the feat.")}
         suggestions={PREREQUISITE_SUGGESTIONS}
       />
       <SelectField
-        label="Runs at the table as"
+        label={t("Runs at the table as")}
         value={String(data.runsAs ?? "")}
-        options={RUNS_AS_OPTIONS}
+        options={RUNS_AS_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
         onChange={(runsAs) => set({ runsAs: runsAs || undefined })}
-        hint="A published feat whose rules the server applies under this feat's name (a renamed Sharpshooter). Its own text is read for what it grants either way."
+        hint={t("A published feat whose rules the server applies under this feat's name (a renamed Sharpshooter). Its own text is read for what it grants either way.")}
       />
     </div>
   );

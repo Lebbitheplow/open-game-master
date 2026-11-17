@@ -11,6 +11,7 @@ import { foretoldLeft, foretoldWithout, singleD20Expression, withForetoldD20 } f
 import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,35 +31,38 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The card shows the refusal raw (PendingRollCard.tsx foretell), so it
+  // answers in the asker's language.
+  const t = requestT(request);
   const parsed = choiceSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: "Invalid number." }, { status: 400 });
+    return Response.json({ error: t("Invalid number.") }, { status: 400 });
   }
-  const paused = refuseDuringBreak(campaignId);
+  const paused = refuseDuringBreak(campaignId, undefined, request);
   if (paused) {
     return paused;
   }
 
   const pending = getPendingRoll(pendingRollId);
   if (!pending || pending.campaignId !== campaignId) {
-    return Response.json({ error: "Roll not found." }, { status: 404 });
+    return Response.json({ error: t("Roll not found.") }, { status: 404 });
   }
   if (pending.status !== "pending") {
-    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   }
   if (pending.userId !== context.user.id) {
-    return Response.json({ error: "This is not your roll." }, { status: 403 });
+    return Response.json({ error: t("This is not your roll.") }, { status: 403 });
   }
   // Portent is declared before the roll, and these dice are thrown.
   if (pending.thrown) {
-    return Response.json({ error: "The dice have already landed, and Portent is used before the roll." }, { status: 409 });
+    return Response.json({ error: t("The dice have already landed, and Portent is used before the roll.") }, { status: 409 });
   }
   if (!canWaitOnRoll(pending.kind) || pending.attack) {
-    return Response.json({ error: "Portent can be used here on an ability check or a saving throw." }, { status: 409 });
+    return Response.json({ error: t("Portent can be used here on an ability check or a saving throw.") }, { status: 409 });
   }
   const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
   if (!sheet || sheet.userId !== context.user.id) {
-    return Response.json({ error: "Only the character's own player uses their Portent." }, { status: 403 });
+    return Response.json({ error: t("Only the character's own player uses their Portent.") }, { status: 403 });
   }
   const { value } = parsed.data;
   // A stop in this turn may have promised the number already.
@@ -67,7 +71,7 @@ export async function POST(
     free = foretoldWithout(free, promised);
   }
   if (!free.includes(value)) {
-    return Response.json({ error: `${sheet.name} holds no foretold ${value}.` }, { status: 409 });
+    return Response.json({ error: t("{name} holds no foretold {value}.", { name: sheet.name, value }) }, { status: 409 });
   }
 
   let outcome;
@@ -77,7 +81,7 @@ export async function POST(
     outcome = null;
   }
   if (!outcome) {
-    return Response.json({ error: "This roll has no d20 to replace." }, { status: 409 });
+    return Response.json({ error: t("This roll has no d20 to replace.") }, { status: 409 });
   }
 
   spendForetold(context.campaign, sheet.id, value, pending.turnId, pending.detail || pending.kind.replaceAll("_", " "));
@@ -87,12 +91,12 @@ export async function POST(
   if (options.length) {
     const waiting = setPendingThrown(pending.id, { outcome, options, choosing: false, landing, deadline: afterRollDeadline(campaignId, pending.userId) });
     if (!waiting) {
-      return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+      return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
     }
     armAfterRollKeep(waiting.id, waiting.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(waiting) });
     return Response.json({ pendingRoll: publicPendingRoll(waiting) });
   }
   const roll = landPendingRoll(context.campaign, pending, outcome, landing);
-  return roll ? Response.json(landedBody(roll)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+  return roll ? Response.json(landedBody(roll)) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
 }

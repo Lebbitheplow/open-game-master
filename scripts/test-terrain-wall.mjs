@@ -7,12 +7,14 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+
 const { TERRAIN, blocksMove, blocksMoveFor, blocksSight, moveCost, tileIndex } = await import(
   "../src/lib/battlemap/types.ts"
 );
 const { findPath, reachableTiles } = await import("../src/lib/battlemap/movement.ts");
 const { computeFov, coverBetween, hasLineOfSight } = await import("../src/lib/battlemap/los.ts");
-const { BRUSHES, BRUSH_LABELS, BRUSH_EFFECTS, paintTerrain } = await import("../src/lib/battlemap/paint.ts");
+const { BRUSHES, BRUSH_LABEL_KEYS, BRUSH_EFFECT_KEYS, paintTerrain } = await import("../src/lib/battlemap/paint.ts");
 const { STAMP_CHARS } = await import("../src/lib/battlemap/stamp.ts");
 const { generateBattleMap } = await import("../src/lib/battlemap/generate.ts");
 
@@ -34,8 +36,8 @@ test("the tile exists and has the right rules", () => {
 
 test("the painter, the stamps and the palette know it", () => {
   assert.ok(BRUSHES.includes("lowwall"));
-  assert.equal(BRUSH_LABELS.lowwall, "Low wall");
-  assert.match(BRUSH_EFFECTS.lowwall, /cover/);
+  assert.equal(translate("en", BRUSH_LABEL_KEYS.lowwall), "Low wall");
+  assert.match(translate("en", BRUSH_EFFECT_KEYS.lowwall), /cover/);
   assert.ok(STAMP_CHARS.includes("|"));
 });
 

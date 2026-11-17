@@ -37,6 +37,15 @@ import { checklistSpell } from "@/lib/srd/spell-lists";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { costGate, standingGate, type Gate, type HandCard, type HandCost, type HandOptions, type HandTurn, type SpellFact } from "@/lib/battlemap/hand-core";
 import { castingCost, factFor, spellCard } from "@/lib/battlemap/hand-spells";
+import { translate } from "@/lib/messages-logic";
+import { pluralOf } from "@/lib/messages-logic";
+
+// The card's own words (table.hand.items.*) read with the hand's translator,
+// as the rest of the hand's builders do (t-last, the dictionary's English by
+// default). The item's and the spell's own names stay as the sheet carries
+// them — the spell's name renders through the names tables on its card.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export type ItemCastRow = { item: EquipmentItem; entry: ItemSpell; scroll: boolean };
 
@@ -68,8 +77,6 @@ export function itemCastRows(sheet: Pick<CharacterSheet, "equipment">): ItemCast
   });
 }
 
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-
 // The count of charges in words, or null for an item with none, or one whose count
 // is rolled the first time it is used.
 function chargeCount(item: EquipmentItem): { left: number; most: number } | null {
@@ -78,31 +85,33 @@ function chargeCount(item: EquipmentItem): { left: number; most: number } | null
   return { left: chargesLeft(item, rule), most: chargeMax(rule) };
 }
 
-function resourceLine({ item, entry, scroll }: ItemCastRow): string {
-  if (scroll) return item.qty > 1 ? `Scroll ×${item.qty}` : "Scroll, one use";
-  if (entry.usesUp) return "One use";
-  if (!entry.charges) return "At will";
+function resourceLine({ item, entry, scroll }: ItemCastRow, t: T): string {
+  const tp = pluralOf(t);
+  if (scroll) return item.qty > 1 ? t("Scroll ×{count}", { count: item.qty }) : t("Scroll, one use");
+  if (entry.usesUp) return t("One use");
+  if (!entry.charges) return t("At will");
   const count = chargeCount(item);
-  return count ? `Charges ${count.left}/${count.most}, costs ${entry.charges}` : `Costs ${plural(entry.charges, "charge")}`;
+  return count ? t("Charges {left}/{most}, costs {charges}", { left: count.left, most: count.most, charges: entry.charges }) : tp("Costs {count} charge", "Costs {count} charges", { count: entry.charges });
 }
 
-const WORDS = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
+const WORD_KEY = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
 
 // What the card's face says of paying for it: no slot, and what it does take. The
 // item is in the card's name, and the face has room for a line or two.
-function paying(sheet: CharacterSheet, { item, entry, scroll }: ItemCastRow): string {
+function paying(sheet: CharacterSheet, { item, entry, scroll }: ItemCastRow, t: T): string {
+  const tp = pluralOf(t);
   if (scroll) {
     const dc = scrollCheckDc(sheet, item);
-    const ability = sheet.spellcasting ? WORDS[sheet.spellcasting.ability] : "";
-    return `No slot: the scroll is used up.${dc !== null ? ` A DC ${dc} ${ability} check first: a failure loses the scroll and casts nothing.` : ""}`;
+    const ability = sheet.spellcasting ? t(WORD_KEY[sheet.spellcasting.ability]) : "";
+    return t("No slot: the scroll is used up.{dc}", { dc: dc !== null ? t(" A DC {dc} {ability} check first: a failure loses the scroll and casts nothing.", { dc, ability }) : "" });
   }
   const rule = chargeRuleOf(item);
   const left = rule && chargeCount(item)?.left === 0;
-  const risk = entry.charges && rule?.overuseRisk && left ? ` Used again before dawn: a ${rule.overuseRisk}% chance it tears and casts nothing.` : "";
-  const check = entry.check ? ` A DC ${entry.check.dc} ${WORDS[entry.check.ability]} check first: a failure casts nothing.` : "";
-  const higher = entry.perCharge ? " More charges cast it higher: say so in your own words." : "";
-  const spends = entry.usesUp ? "using it destroys it" : entry.charges ? plural(entry.charges, "charge") : "at will";
-  return `No slot: ${spends}.${risk}${check}${higher}`;
+  const risk = entry.charges && rule?.overuseRisk && left ? t(" Used again before dawn: a {risk}% chance it tears and casts nothing.", { risk: rule.overuseRisk }) : "";
+  const check = entry.check ? t(" A DC {dc} {ability} check first: a failure casts nothing.", { dc: entry.check.dc, ability: t(WORD_KEY[entry.check.ability]) }) : "";
+  const higher = entry.perCharge ? t(" More charges cast it higher: say so in your own words.") : "";
+  const spends = entry.usesUp ? t("using it destroys it") : entry.charges ? tp("{count} charge", "{count} charges", { count: entry.charges }) : t("at will");
+  return t("No slot: {spends}.{risk}{check}{higher}", { spends, risk, check, higher });
 }
 
 // A spell of a minute or more from an item whose text does not make it an
@@ -112,18 +121,18 @@ export function itemCastHeld({ entry, scroll }: Pick<ItemCastRow, "entry" | "scr
   return !scroll && !entry.bonusAction && !entry.asAction && castingCost(fact.castingTime) === null;
 }
 
-function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact: SpellFact, cost: HandCost, done: boolean): Gate[] {
+function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact: SpellFact, cost: HandCost, done: boolean, t: T): Gate[] {
   const { item, entry, scroll } = row;
   const paid = done || new Set(turn.marks ?? []).has(spellDrawnMark(entry.spell));
   const held = castingOf(sheet);
   const casting: Gate =
     held?.fromRing && linesNamed([item], held.fromRing).length && textKey(held.spell) === textKey(entry.spell)
-      ? { reason: `${sheet.name} is casting ${entry.spell}: it takes effect when the casting is done.`, spent: false }
+      ? { reason: t("{name} is casting {spell}: it takes effect when the casting is done.", { name: sheet.name, spell: entry.spell }), spent: false }
       : null;
   const reason = (text: string | null): Gate => (text ? { reason: text, spent: false } : null);
   const named = linesNamed(sheet.equipment, item.name);
-  const standing = standingGate(sheet, turn, cost === "bonus" ? "bonus" : "action");
-  const pay = paid ? null : costGate(cost, turn, sheet, `using ${item.name}`);
+  const standing = standingGate(sheet, turn, cost === "bonus" ? "bonus" : "action", t);
+  const pay = paid ? null : costGate(cost, turn, sheet, `using ${item.name}`, t);
   if (scroll) {
     return [reason(scrollUnreadable(sheet, item)), standing, pay];
   }
@@ -132,21 +141,22 @@ function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact:
   const beadSpent = beadRefusal(item, entry.spell);
   return [
     // The engine will not guess between them (item-use.ts).
-    named.length > 1 ? reason(`"${item.name}" could mean ${named.map((line) => line.name).join(" or ")}; name the item exactly. Nothing was spent.`) : null,
+    named.length > 1 ? reason(t("\"{item}\" could mean {names}; name the item exactly. Nothing was spent.", { item: item.name, names: named.map((line) => line.name).join(t(" or ")) })) : null,
     reason(itemBarrier(sheet, item)),
     standing,
     casting,
     // A reaction spell answers its trigger through use_reaction, which no action
     // from an item can stand in for (cast-guard.ts).
-    castingCost(fact.castingTime) === "reaction" ? reason(`${entry.spell} is cast as a reaction: say so in your own words when its trigger comes.`) : null,
-    !rule && entry.charges ? reason(`${item.name} holds no charges, and ${entry.spell} from it costs ${entry.charges}. Nothing was spent.`) : null,
-    short ? { reason: `${short} Nothing was spent.`, spent: true } : null,
+    castingCost(fact.castingTime) === "reaction" ? reason(t("{spell} is cast as a reaction: say so in your own words when its trigger comes.", { spell: entry.spell })) : null,
+    !rule && entry.charges ? reason(t("{item} holds no charges, and {spell} from it costs {charges}. Nothing was spent.", { item: item.name, spell: entry.spell, charges: entry.charges })) : null,
+    short ? { reason: t("{short} {tail}", { short, tail: t("Nothing was spent.") }), spent: true } : null,
     beadSpent ? { reason: beadSpent, spent: true } : null,
     pay,
   ];
 }
 
-export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
+export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions, t: T = enT): HandCard[] {
+  const tp = pluralOf(t);
   return itemCastRows(sheet).flatMap((row) => {
     const { item, entry, scroll } = row;
     const fact: SpellFact = factFor(entry.spell, options) ?? { level: entry.level, school: "", castingTime: "", range: "", desc: "", higherLevel: "", concentration: false };
@@ -169,17 +179,17 @@ export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: Co
       },
       holds: long && Boolean(turn.table) && !done,
       free: done,
-      gates: gatesFor(sheet, turn, row, fact, cost, done),
+      gates: gatesFor(sheet, turn, row, fact, cost, done, t),
       item: {
         id: `spell:item:${textKey(item.name)}:${textKey(entry.spell)}`,
-        name: scroll ? `Scroll: ${entry.spell}` : `${item.name}: ${entry.spell}`,
+        name: scroll ? t("Scroll: {spell}", { spell: entry.spell }) : t("{item}: {spell}", { item: item.name, spell: entry.spell }),
         cost,
-        resource: resourceLine(row),
-        note: `${paying(sheet, row)}${long && turn.table && !done ? " It takes turns to cast: this begins it and holds your action each turn, and the item pays when it is done." : ""}`,
+        resource: resourceLine(row, t),
+        note: `${paying(sheet, row, t)}${long && turn.table && !done ? t(" It takes turns to cast: this begins it and holds your action each turn, and the item pays when it is done.") : ""}`,
       },
       fromItem: scroll
-        ? { key: "scrolls", label: "Scrolls", note: "" }
-        : { key: textKey(item.name), label: item.name, note: count ? `${count.left} of ${plural(count.most, "charge")}` : "" },
+        ? { key: "scrolls", label: t("Scrolls"), note: "" }
+        : { key: textKey(item.name), label: item.name, note: count ? tp("{left} of {count} charge", "{left} of {count} charges", { left: count.left, count: count.most }) : "" },
     });
     return card ? [card] : [];
   });

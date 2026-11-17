@@ -14,11 +14,11 @@ export const dynamic = "force-dynamic";
 
 // The campaign on one axis (docs/vtt-parity-implementation-plan.md 5.5).
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

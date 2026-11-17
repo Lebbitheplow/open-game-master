@@ -6,6 +6,11 @@
 import { comfyStatus, type ComfyStatus } from "@/lib/comfyui";
 import { hostAvailability } from "@/lib/harness/discover";
 import { describeMachine, machine, storytellerFit, storytellerQuant, type StorytellerFit } from "@/lib/model-registry/hardware";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the scan's answers are read by surfaces that word
+// themselves; the machine summary rides along until one asks in kind.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { replyTimeout } from "@/lib/reply-timeout";
 import {
   COMFYUI_PORT,
@@ -157,7 +162,7 @@ export async function scanLocalServices(ownPort = process.env.PORT): Promise<Sca
     seenPorts.add(port);
     return true;
   });
-  return { inContainer, text, comfyui, kokoro, whisper, machine: { summary: describeMachine(here), fit: storytellerFit(here), quant: storytellerQuant(here) } };
+  return { inContainer, text, comfyui, kokoro, whisper, machine: { summary: describeMachine(enT, here), fit: storytellerFit(here), quant: storytellerQuant(here) } };
 }
 
 export type ModelListing =

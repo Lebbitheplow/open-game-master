@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 // The quest log (docs/vtt-parity-implementation-plan.md section 5.7).
 // Everyone reads the party's; whoever steers the story writes.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -25,7 +25,7 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireStoryAuthority(campaignId);
+  const context = await requireStoryAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

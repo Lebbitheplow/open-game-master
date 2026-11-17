@@ -4,7 +4,24 @@ import { register } from "node:module";
 
 register("./lib/register-routes.mjs", import.meta.url);
 
-const { translate, translatePlural } = await import("../src/lib/i18n/translate.ts");
+const { translate, translatePlural, catalogInstalled } = await import("../src/lib/i18n/translate.ts");
+
+// 0. The catalog is installed, never imported by the translator: imported, its
+// 1 MB rode in every page's first load (scripts/bundle-budget.json). Until it
+// is in, French reads English; the server's modules install it, a browser
+// fetches it as its own chunk.
+assert.equal(catalogInstalled("fr"), false);
+assert.equal(translate("fr", "Loading…"), "Loading…", "no catalog yet: the English source");
+for (const file of ["../src/lib/i18n/translate.ts", "../src/lib/messages-logic.ts", "../src/lib/locale.tsx"]) {
+  const source = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+  assert.doesNotMatch(source, /^import[^;]*fr\.json/m, `${file} imports the catalog into every page`);
+}
+assert.match(fs.readFileSync(new URL("../src/lib/i18n/catalog-loader.ts", import.meta.url), "utf8"), /import\("\.\/fr\.json"\)/, "the browser fetches the catalog on demand");
+for (const file of ["../src/lib/request-locale.ts", "../src/app/layout.tsx", "../src/instrumentation.ts"]) {
+  assert.match(fs.readFileSync(new URL(file, import.meta.url), "utf8"), /i18n\/fr-catalog/, `${file} installs the catalog on the server`);
+}
+await import("../src/lib/i18n/fr-catalog.ts");
+assert.equal(catalogInstalled("fr"), true);
 const { localeFromAcceptLanguage, resolveLocale, resolveRequestLocale } = await import("../src/lib/i18n/locale.ts");
 const frCatalog = JSON.parse(fs.readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8"));
 

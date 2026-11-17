@@ -10,12 +10,16 @@ import {
 } from "@/app/campaigns/[campaignId]/GameSettingsPanel";
 import type { StepProps } from "@/app/create-campaign/draft";
 import { flipRow, tableSheet, type SheetInfo, type SheetRowKey } from "@/app/create-campaign/table-sheet";
+import { useT } from "@/lib/locale";
 
-const INFO: Record<SheetInfo, { label: string; text: string }> = {
-  livingWorld: { label: "What does Living World do?", text: LIVING_WORLD_INFO },
-  bonds: { label: "What are Bonds?", text: BONDS_INFO },
-  romance: { label: "How does Romance work?", text: ROMANCE_INFO },
-  narrationGuard: { label: "What is the outcome check?", text: NARRATION_GUARD_INFO },
+// The rows' own labels and hints come from table-sheet.ts (the table sheet's
+// own vocabulary, still English); the ⓘ dialogs' questions and texts are
+// translated (the text constants are message keys).
+const INFO: Record<SheetInfo, { labelKey: string; text: string }> = {
+  livingWorld: { labelKey: "What does Living World do?", text: LIVING_WORLD_INFO },
+  bonds: { labelKey: "What are Bonds?", text: BONDS_INFO },
+  romance: { labelKey: "How does Romance work?", text: ROMANCE_INFO },
+  narrationGuard: { labelKey: "What is the outcome check?", text: NARRATION_GUARD_INFO },
 };
 
 // Some of the table sheet's switches (table-sheet.ts decides which exist in
@@ -30,7 +34,8 @@ export function SheetRows({
   keys,
   onFlip,
 }: StepProps & { keys: readonly SheetRowKey[]; onFlip?: () => void }) {
-  const rows = tableSheet(draft, gates)
+  const t = useT();
+  const rows = tableSheet(t, draft, gates)
     .flatMap((group) => group.rows)
     .filter((row) => keys.includes(row.key))
     .sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key));
@@ -64,7 +69,7 @@ export function SheetRows({
           </button>
           {row.counted && row.on ? <span className="cc-dot" aria-hidden="true" /> : null}
           {row.info ? (
-            <InfoButton label={INFO[row.info].label} text={INFO[row.info].text} className="absolute right-1.5 top-1.5" />
+            <InfoButton label={t(INFO[row.info].labelKey)} text={t(INFO[row.info].text)} className="absolute right-1.5 top-1.5" />
           ) : null}
         </div>
       ))}

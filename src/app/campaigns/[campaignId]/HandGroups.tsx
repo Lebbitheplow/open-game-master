@@ -5,6 +5,7 @@ import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cardArtwork } from "@/lib/battlemap/card-art";
+import { useT } from "@/lib/locale";
 import type { HandCard } from "@/lib/battlemap/hand";
 import {
   GROUP_SEARCH_OVER,
@@ -26,7 +27,12 @@ import { HandCardFace } from "@/app/campaigns/[campaignId]/HandCardFace";
 // actions, and the group opened as a hand of its own, with a Back spine to
 // the main hand. Styles in src/app/styles/hand-groups.css.
 
-const costWord: Record<string, string> = { action: "action", bonus: "bonus action", reaction: "reaction" };
+// The costs a card may be paid in, in words (table.hand.cost.word.*).
+const costWordKey: Record<string, string> = {
+  action: "action",
+  bonus: "bonus action",
+  reaction: "reaction",
+};
 
 // The fan's lean for this many cards, as the main hand works it out.
 export function fanStep(count: number): number {
@@ -62,10 +68,11 @@ function HandGroupFaceInner({
   onOpen: (group: HandGroup) => void;
   genre?: string | null;
 }) {
+  const t = useT();
   const quiet = Boolean(group.disabled) && !waiting;
   const names = group.cards.map((card) => card.name);
-  const open = group.costs.filter((entry) => entry.open).map((entry) => costWord[entry.cost]);
-  const label = `${group.name}: ${groupSummary(group)}.${open.length ? ` Has ${open.join(", ")} cards ready.` : ""} Open`;
+  const open = group.costs.filter((entry) => entry.open).map((entry) => t(costWordKey[entry.cost]));
+  const label = `${group.name}: ${groupSummary(group)}.${open.length ? t(" Has {costs} cards ready.", { costs: open.join(", ") }) : ""} ${t("Open", { context: "table.hand.group.open" })}`;
   return (
     <div className="hand-slot" style={slotStyle(index, offset, step)}>
       <button
@@ -96,7 +103,7 @@ function HandGroupFaceInner({
                 <span key={entry.cost} className="hand-cost-dot" data-cost={entry.cost} data-open={entry.open ? "true" : undefined} />
               ))}
             </span>
-            {fresh ? <span className="hand-group-new">New</span> : <span className="hand-range">Open</span>}
+            {fresh ? <span className="hand-group-new">{t("New", { context: "table.hand.card.new" })}</span> : <span className="hand-range">{t("Open", { context: "table.hand.group.open" })}</span>}
           </span>
           <span className="hand-art hand-group-art" aria-hidden="true">
             {group.icons.map((icon, at) => {
@@ -128,7 +135,7 @@ function HandGroupFaceInner({
             <span key={section.id} className="hand-row" style={{ "--i": at } as CSSProperties}>
               <span className="hand-row-key">{group.sections.length > 1 ? section.label : `${section.cards.length} ${group.noun[1]}`}</span>
               <span className="hand-row-value" data-tone={section.note ? "cost" : "muted"}>
-                {group.sections.length > 1 ? [section.cards.length, section.note].filter(Boolean).join(" · ") : section.note || "Open to choose"}
+                {group.sections.length > 1 ? [section.cards.length, section.note].filter(Boolean).join(" · ") : section.note || t("Open to choose")}
               </span>
             </span>
           ))}
@@ -159,6 +166,7 @@ export function HandFindTools({
   label: string;
   className?: string;
 }) {
+  const t = useT();
   if (!chips.length && !search) return null;
   const toggle = (chip: FilterChip) => {
     if (chip.id === "concentration") {
@@ -171,7 +179,7 @@ export function HandFindTools({
   return (
     <div className={`hand-find ${className ?? ""}`}>
       {chips.length ? (
-        <span className="hand-find-chips" role="group" aria-label={`Filter ${label}`}>
+        <span className="hand-find-chips" role="group" aria-label={t("Filter {label}", { label })}>
           {chips.map((chip) => {
             const on = chip.id === "concentration" ? filter.concentration : filter.costs.includes(chip.id);
             return (
@@ -198,8 +206,8 @@ export function HandFindTools({
             type="search"
             value={filter.query}
             onChange={(event) => onFilter({ ...filter, query: event.target.value })}
-            placeholder="Find by name or damage"
-            aria-label={`Search ${label}`}
+            placeholder={t("Find by name or damage")}
+            aria-label={t("Search {label}", { label })}
             maxLength={60}
             enterKeyHint="search"
             autoComplete="off"
@@ -249,11 +257,12 @@ export function HandGroupView({
   onBack: () => void;
   genre?: string | null;
 }) {
+  const t = useT();
   const [sectionId, setSectionId] = useState(() => openingSection(group));
   const [filter, setFilter] = useState<HandFilter>(NO_FILTER);
   const backRef = useRef<HTMLButtonElement>(null);
   const tabsId = useId();
-  const chips = useMemo(() => filterChips(group.cards), [group.cards]);
+  const chips = useMemo(() => filterChips(group.cards, t), [group.cards, t]);
   const searching = filtering(filter);
   const section = group.sections.find((entry) => entry.id === sectionId) ?? group.sections[0];
   const shown = searching ? filterCards(group.cards, filter) : section?.cards ?? [];
@@ -276,7 +285,7 @@ export function HandGroupView({
 
   const middle = shown.length / 2;
   const step = fanStep(shown.length);
-  const panelLabel = searching ? `${group.name} found` : tabs ? `${group.name}, ${section?.label}` : group.name;
+  const panelLabel = searching ? t("{name} found", { name: group.name }) : tabs ? t("{name}, {section}", { name: group.name, section: section?.label ?? "" }) : group.name;
   return (
     <div className="hand-group" data-group-key={group.key}>
       <div className="hand-group-bar">
@@ -286,13 +295,13 @@ export function HandGroupView({
         </span>
         {searching ? (
           <p className="hand-group-found" role="status">
-            {shown.length ? `${shown.length} of ${group.cards.length} ${group.noun[1]}` : `No ${group.noun[1]} match`}
+            {shown.length ? t("{found} of {total} {noun}", { found: shown.length, total: group.cards.length, noun: group.noun[1] }) : t("No {noun} match", { noun: group.noun[1] })}
             <button type="button" className="hand-group-clear" onClick={() => setFilter(NO_FILTER)}>
-              <X aria-hidden="true" className="size-3" /> Clear
+              <X aria-hidden="true" className="size-3" /> {t("Clear", { context: "action.clear" })}
             </button>
           </p>
         ) : tabs ? (
-          <div role="tablist" aria-label={`${group.name} by ${group.key === "items" ? "item" : "level"}`} className="hand-group-tabs">
+          <div role="tablist" aria-label={t("{name} by {key}", { name: group.name, key: group.key === "items" ? t("item") : t("level", { context: "table.hand.group.keyLevel" }) })} className="hand-group-tabs">
             {group.sections.map((entry, at) => {
               const chosen = entry.id === section?.id;
               return (
@@ -339,10 +348,10 @@ export function HandGroupView({
           type="button"
           className="hand-back"
           onClick={onBack}
-          aria-label={`Back to your hand from ${group.name}`}
+          aria-label={t("Back to your hand from {name}", { name: group.name })}
         >
           <ArrowLeft aria-hidden="true" className="hand-back-arrow" />
-          <span className="hand-back-word">Your hand</span>
+          <span className="hand-back-word">{t("Your hand")}</span>
         </button>
         {shown.map((card, index) => (
           <HandCardFace

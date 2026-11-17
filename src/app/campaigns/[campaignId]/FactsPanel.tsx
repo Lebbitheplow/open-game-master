@@ -11,12 +11,14 @@ import { FACT_CATEGORIES, isSecretFact, isStorytellerFact, type FactCategory } f
 import { KitButton, PanelError, RowMenu, panelField, panelRow } from "./PanelKit";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useT } from "@/lib/locale";
 
 // The world-state fact sheet: server-tracked canon extracted at chapter
 // close (plus manual pins). Everyone sees party-known facts; the lead can
 // pin, edit, retire, add facts, and peek at DM-only secrets.
 
-const CATEGORY_LABELS: Record<FactCategory, string> = {
+// The categories' words by value; the keys live with the facts group.
+const CATEGORY_KEYS: Record<FactCategory, string> = {
   location: "Places",
   npc: "People",
   promise: "Promises & debts",
@@ -46,6 +48,7 @@ function FactCard({
   steersStory: boolean;
   refresh: () => Promise<void>;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(fact.fact);
   const [busy, setBusy] = useState(false);
@@ -64,14 +67,14 @@ function FactCard({
     }
   }
 
-  const pinTitle = fact.pinned ? "Unpin" : "Pin: always kept in front of the GM, never auto-replaced";
+  const pinTitle = fact.pinned ? t("Unpin", { context: "facts.unpin" }) : t("Pin: always kept in front of the GM, never auto-replaced");
   const items: ContextMenuItem[] = steersStory
     ? [
         { id: "pin", label: pinTitle, glyph: "ui-pin", disabled: busy, onSelect: () => void patch({ pinned: !fact.pinned }) },
-        { id: "edit", label: "Edit", glyph: "ui-edit", onSelect: () => setEditing(true) },
+        { id: "edit", label: t("Edit"), glyph: "ui-edit", onSelect: () => setEditing(true) },
         {
           id: "retire",
-          label: "Retire: the GM stops treating this as true",
+          label: t("Retire: the GM stops treating this as true"),
           glyph: "ui-delete",
           tone: "danger",
           separated: true,
@@ -82,16 +85,16 @@ function FactCard({
     : [];
 
   return (
-    <ContextMenu as="li" items={editing ? [] : items} label={fact.subject || CATEGORY_LABELS[fact.category]} className={panelRow}>
+    <ContextMenu as="li" items={editing ? [] : items} label={fact.subject || t(CATEGORY_KEYS[fact.category])} className={panelRow}>
       {editing ? (
         <div className="reveal space-y-1.5">
-          <DictateField label="Fact" onTranscript={(spoken) => setText((current) => appendDictation(current, spoken, 300))}>
+          <DictateField label={t("Fact")} onTranscript={(spoken) => setText((current) => appendDictation(current, spoken, 300))}>
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
               rows={2}
               maxLength={300}
-              aria-label="Fact"
+              aria-label={t("Fact")}
               className={cn(panelField, "leading-5")}
             />
           </DictateField>
@@ -106,7 +109,7 @@ function FactCard({
               }}
             >
               {busy ? null : <Check className="size-3.5" />}
-              Save
+              {t("Save", { context: "action.save" })}
             </KitButton>
             <KitButton
               onClick={() => {
@@ -114,7 +117,7 @@ function FactCard({
                 setText(fact.fact);
               }}
             >
-              <X className="size-3.5" /> Cancel
+              <X className="size-3.5" /> {t("Cancel")}
             </KitButton>
           </div>
         </div>
@@ -129,7 +132,7 @@ function FactCard({
           </p>
           <div className="mt-1 flex min-h-6 items-center gap-2 text-[11px] text-stone-500">
             <span className={isSecretFact(fact.knownBy) ? "text-violet-300" : undefined}>
-              {isStorytellerFact(fact.knownBy) ? "Storyteller secret" : isSecretFact(fact.knownBy) ? "GM secret" : CATEGORY_LABELS[fact.category]}
+              {isStorytellerFact(fact.knownBy) ? t("Storyteller secret") : isSecretFact(fact.knownBy) ? t("GM secret") : t(CATEGORY_KEYS[fact.category])}
             </span>
             {steersStory ? (
               <span className="ml-auto flex shrink-0 items-center gap-0.5">
@@ -145,7 +148,7 @@ function FactCard({
                 >
                   {busy ? null : fact.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
                 </KitButton>
-                <RowMenu items={items} label={fact.subject || CATEGORY_LABELS[fact.category]} />
+                <RowMenu items={items} label={fact.subject || t(CATEGORY_KEYS[fact.category])} />
               </span>
             ) : null}
           </div>
@@ -162,6 +165,7 @@ function FactComposer({
   campaignId: string;
   refresh: () => Promise<void>;
 }) {
+  const t = useT();
   const [category, setCategory] = useState<FactCategory>("world");
   const [subject, setSubject] = useState("");
   const [fact, setFact] = useState("");
@@ -182,14 +186,14 @@ function FactComposer({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not save the fact.");
+        setError(data.error || t("Could not save the fact."));
         return;
       }
       setSubject("");
       setFact("");
       await refresh();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -197,8 +201,8 @@ function FactComposer({
 
   return (
     <div className="panel rounded-lg p-2.5">
-      <SectionHead title="Pin a fact" glyph="tab-facts" level="h4" />
-      <div data-pill-group="" role="group" aria-label="Category" className="mb-1.5 flex flex-wrap gap-1">
+      <SectionHead title={t("Pin a fact")} glyph="tab-facts" level="h4" />
+      <div data-pill-group="" role="group" aria-label={t("Category")} className="mb-1.5 flex flex-wrap gap-1">
         {FACT_CATEGORIES.map((value) => (
           <button
             data-on={category === value ? "" : undefined}
@@ -208,7 +212,7 @@ function FactComposer({
             onClick={() => setCategory(value)}
             className="pk-pill pk-tap motion-press"
           >
-            {CATEGORY_LABELS[value]}
+            {t(CATEGORY_KEYS[value])}
           </button>
         ))}
       </div>
@@ -216,25 +220,25 @@ function FactComposer({
         value={subject}
         onChange={(event) => setSubject(event.target.value)}
         maxLength={80}
-        placeholder="Subject (who or what it is about)"
-        aria-label="Subject"
+        placeholder={t("Subject (who or what it is about)")}
+        aria-label={t("Subject")}
         className={cn(panelField, "mb-1.5")}
       />
-      <DictateField label="Fact" onTranscript={(text) => setFact((current) => appendDictation(current, text, 300))}>
+      <DictateField label={t("Fact")} onTranscript={(text) => setFact((current) => appendDictation(current, text, 300))}>
         <textarea
           value={fact}
           onChange={(event) => setFact(event.target.value)}
           rows={2}
           maxLength={300}
-          placeholder="One sentence the GM must never contradict"
-          aria-label="Fact"
+          placeholder={t("One sentence the GM must never contradict")}
+          aria-label={t("Fact")}
           className={cn(panelField, "leading-5")}
         />
       </DictateField>
       {error ? <PanelError className="mt-1">{error}</PanelError> : null}
       <KitButton tone="secondary" onClick={submit} disabled={busy || !fact.trim()} busy={busy} className="mt-1.5 w-full">
         {busy ? null : <BookMarked className="size-3.5" />}
-        Pin fact
+        {t("Pin fact")}
       </KitButton>
     </div>
   );
@@ -251,6 +255,7 @@ export function FactsPanel({
   steersStory: boolean;
   refreshFacts: () => Promise<void>;
 }) {
+  const t = useT();
   // Lead-only peek at DM secrets: fetched separately so the spoilers never
   // sit in shared state, and merged in only while the toggle is on.
   const [secrets, setSecrets] = useState<WorldFact[] | null>(null);
@@ -289,7 +294,7 @@ export function FactsPanel({
 
       {pinned.length ? (
         <div className="reveal space-y-1.5">
-          <SectionHead title="Pinned" glyph="tab-facts" aside={pinned.length} />
+          <SectionHead title={t("Pinned")} glyph="tab-facts" aside={pinned.length} />
           <ul className="stagger space-y-1.5">
             {pinned.map((fact) => (
               <FactCard
@@ -311,7 +316,7 @@ export function FactsPanel({
         }
         return (
           <div key={category} className="space-y-1.5">
-            <SectionHead title={CATEGORY_LABELS[category]} glyph={CATEGORY_GLYPHS[category]} aside={entries.length} />
+            <SectionHead title={t(CATEGORY_KEYS[category])} glyph={CATEGORY_GLYPHS[category]} aside={entries.length} />
             <ul className="stagger space-y-1.5">
               {entries.map((fact) => (
                 <FactCard
@@ -328,14 +333,14 @@ export function FactsPanel({
       })}
 
       {!facts.length ? (
-        <EmptyState size="sm" art="board" title={`Nothing recorded yet. The GM writes durable facts here as chapters close${steersStory ? ", or pin one yourself above" : ""}.`} />
+        <EmptyState size="sm" art="board" title={`${t("Nothing recorded yet. The GM writes durable facts here as chapters close")}${steersStory ? t(", or pin one yourself above") : ""}.`} />
       ) : null}
 
       {steersStory ? (
         <div className="reveal space-y-1.5">
           <KitButton tone="link" onClick={toggleSecrets} aria-expanded={Boolean(secrets)}>
             {secrets ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            {secrets ? "Hide GM secrets" : "Show GM secrets (spoilers)"}
+            {secrets ? t("Hide GM secrets") : t("Show GM secrets (spoilers)")}
           </KitButton>
           {secrets ? (
             secrets.length ? (
@@ -351,7 +356,7 @@ export function FactsPanel({
                 ))}
               </ul>
             ) : (
-              <p className="live-in px-1 text-xs text-stone-500">No GM secrets recorded.</p>
+              <p className="live-in px-1 text-xs text-stone-500">{t("No GM secrets recorded.")}</p>
             )
           ) : null}
         </div>

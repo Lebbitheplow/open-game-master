@@ -5,6 +5,10 @@ import { signed, type HandCard } from "@/lib/battlemap/hand-core";
 import type { PublicLairOption, PublicLegendaryActions, PublicLegendaryOption, PublicLegendaryRoute } from "@/lib/dm/enemy-actions-view";
 import { monsterAttackIcon } from "@/lib/battlemap/attack-art";
 import { BASE, cardKey, saveWord, type MonsterHandEnemy } from "@/lib/battlemap/monster-hand-parts";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // A legendary action's option (issue 685 audit, 4.G): offered only while the
 // projection says one can be taken now (enemy-actions-view.ts
@@ -12,7 +16,7 @@ import { BASE, cardKey, saveWord, type MonsterHandEnemy } from "@/lib/battlemap/
 // "Attack: Tail"), its cost and what is left on the card, and a cost above
 // what is left held with legendary_action's own sentence. A card is one call:
 // the spend and what it buys together (src/lib/dm/legendary-play.ts).
-export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendaryActions, option: PublicLegendaryOption, route: PublicLegendaryRoute | null): HandCard {
+export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendaryActions, option: PublicLegendaryOption, route: PublicLegendaryRoute | null, t: T = enT): HandCard {
   const attack = route?.attack;
   const ability = route?.ability;
   const many = option.routes.length > 1;
@@ -26,10 +30,10 @@ export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendar
     // Two short parts the card shows on two lines at its left edge, which a
     // fan never covers (HandCardFace.tsx): "· 3 of 3 left" lay under the next
     // card.
-    resource: `Costs ${option.cost} · ${legendary.left}/${legendary.max} left`,
+    resource: t("Costs {cost} · {left}/{max} left", { cost: option.cost, left: legendary.left, max: legendary.max }),
     description: option.text,
     // An option the server cannot read is spent, and the rest is the GM's.
-    rules: route ? `${route.how}.` : "The server cannot read this option: playing it spends the action, and you resolve the rest by hand from its line.",
+    rules: route ? `${route.how}.` : t("The server cannot read this option: playing it spends the action, and you resolve the rest by hand from its line."),
     target,
     disabled: refusal,
     spent: Boolean(refusal),
@@ -53,7 +57,7 @@ export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendar
       type: "attack",
       range: attack.range,
       dice: `${attack.damage} ${attack.type}`.trim(),
-      roll: `${signed(attack.toHit)} to hit`,
+      roll: t("{bonus} to hit", { bonus: `${signed(attack.toHit)}` }),
       condition: attack.onHit ?? "",
       icon: monsterAttackIcon(enemy.name, attack.name, Boolean(attack.spellAttack)),
       toHit: attack.toHit,
@@ -70,7 +74,7 @@ export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendar
       type: ability.damage ? "spell" : "control",
       range: "",
       dice: ability.damage ? `${ability.damage} ${ability.damageType ?? ""}`.trim() : (ability.condition ?? ""),
-      roll: `${saveWord(ability.save)} save DC ${ability.dc}`,
+      roll: t("{ability} save DC {dc}", { ability: saveWord(ability.save), dc: ability.dc, context: "table.hand.monster.saveRoll" }),
       condition: ability.condition ?? "",
       icon: { kind: "action", key: "cast" },
       toHit: null,
@@ -84,9 +88,9 @@ export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendar
   return {
     ...shared,
     type: route?.spells ? "spell" : "feature",
-    range: route?.square ? `${route.square.feet} ft` : "",
+    range: route?.square ? t("{feet} ft", { feet: route.square.feet }) : "",
     dice: "",
-    roll: "no roll",
+    roll: t("no roll", { context: "table.hand.roll.none" }),
     icon: { kind: "action", key: route?.square ? "dash" : "cast" },
     toHit: null,
     damage: null,
@@ -99,31 +103,31 @@ export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendar
 
 // A lair option's card name: its opening words ("The ground shakes"), the
 // whole line on the card's face and in its hover text.
-export function lairTitle(line: string): string {
+export function lairTitle(line: string, t: T = enT): string {
   const clause = line.split(/[.;:,]/)[0]?.trim() ?? "";
   const words = clause.split(/\s+/).filter(Boolean);
-  return words.length > 5 ? `${words.slice(0, 4).join(" ")}…` : clause || "Lair action";
+  return words.length > 5 ? `${words.slice(0, 4).join(" ")}…` : clause || t("Lair action");
 }
 
 // The lair's own action on initiative count 20 (losing ties), on the card of
 // the creature whose block prints it: offered only while the lair may act
 // this round, an option with a save played on everyone caught in it.
-export function lairCard(enemy: MonsterHandEnemy, option: PublicLairOption): HandCard {
+export function lairCard(enemy: MonsterHandEnemy, option: PublicLairOption, t: T = enT): HandCard {
   const save = option.save;
   return {
     ...BASE,
     id: `monster:${enemy.id}:lair:${option.number}`,
     type: save ? (save.damage ? "spell" : "control") : "feature",
-    name: `Lair: ${lairTitle(option.line)}`,
+    name: t("Lair: {title}", { title: lairTitle(option.line, t) }),
     cost: "lair",
     range: "",
     dice: save?.damage ? `${save.damage} ${save.type ?? ""}`.trim() : (save?.laid.join(", ") ?? ""),
-    roll: save ? `${saveWord(save.saveAbility)} save DC ${save.dc}` : "no roll",
-    rules: [option.line, save ? "Pick everyone caught in it." : "", save && save.laid.length > 1 ? `Set ${save.laid.slice(1).join(" and ")} on each who failed from the console.` : ""]
+    roll: save ? t("{ability} save DC {dc}", { ability: saveWord(save.saveAbility), dc: save.dc, context: "table.hand.monster.saveRoll" }) : t("no roll", { context: "table.hand.roll.none" }),
+    rules: [option.line, save ? t("Pick everyone caught in it.") : "", save && save.laid.length > 1 ? t("Set {list} on each who failed from the console.", { list: save.laid.slice(1).join(t(" and ", { context: "table.hand.join.and" })) }) : ""]
       .filter(Boolean)
       .join(" "),
     description: option.line,
-    resource: "Initiative 20",
+    resource: t("Initiative 20"),
     condition: save?.condition ?? "",
     icon: { kind: "action", key: "cast" },
     target: save ? "enemy" : "none",

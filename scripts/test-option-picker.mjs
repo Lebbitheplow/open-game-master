@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { register } from "node:module";
 
+register("./lib/register-alias.mjs", import.meta.url);
 register("./lib/register-dialog-inline.mjs", import.meta.url);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");

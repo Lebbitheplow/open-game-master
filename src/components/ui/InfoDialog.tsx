@@ -7,6 +7,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import type { IconRef } from "@/lib/icons";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { Dialog } from "@/components/ui/Dialog";
 import type { ItemSheet } from "@/lib/help/item-sheet";
 import { firstSentence, parseRulesBlocks } from "@/lib/help/rules-text";
@@ -103,6 +104,7 @@ export function renderRules(text: string): ReactNode {
 function ContentBody({ reference }: { reference: ContentRef }) {
   // The table the dialog opened at reads its DMs' homebrew.
   const campaignId = useContentCampaign();
+  const t = useT();
   const [state, setState] = useState<{ text: string | null; loading: boolean }>({
     text: null,
     loading: true,
@@ -114,12 +116,12 @@ function ContentBody({ reference }: { reference: ContentRef }) {
       try {
         const { describeContentEntry } = await import("@/lib/help");
         const { needsNote } = await import("@/lib/content/levelup-logic");
-        const { BEST_EFFORT_NOTE } = await import("@/lib/content/reading-logic");
         // An entry built on rules this game does not play, or played from
         // mechanics the app read and nobody checked, says so first (issue
-        // #570).
+        // #570). The note is the reader's words — the keyed "best effort"
+        // line, whose English is reading-logic's constant.
         const withNote = (entry: { needs?: Parameters<typeof needsNote>[0]; bestEffort?: boolean } | undefined, text: string | null) => {
-          const notes = [needsNote(entry?.needs ?? []), entry?.bestEffort ? BEST_EFFORT_NOTE : null].filter(Boolean);
+          const notes = [needsNote(entry?.needs ?? []), entry?.bestEffort ? t("Best effort: the app read this entry's rules from its text, and nobody has checked that reading yet. If it plays differently from what the text says, the text and the GM win, and a workshop copy can fix it for your table.") : null].filter(Boolean);
           return text && notes.length ? `${notes.join("\n\n")}\n\n${text}` : text;
         };
         const response = await fetch(
@@ -159,7 +161,7 @@ function ContentBody({ reference }: { reference: ContentRef }) {
     return () => {
       cancelled = true;
     };
-  }, [reference.kind, reference.slug, reference.name, campaignId]);
+  }, [reference.kind, reference.slug, reference.name, campaignId, t]);
 
   if (state.loading) {
     return (
@@ -399,6 +401,7 @@ export function InfoButton({
   size?: "sm" | "md";
 }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   // Nothing to say and nothing to look up: render no control at all rather
   // than a button that opens an empty box.
   if (!text?.trim() && !reference) {
@@ -413,7 +416,7 @@ export function InfoButton({
           event.stopPropagation();
           setOpen(true);
         }}
-        aria-label={`What is ${label}?`}
+        aria-label={t("What is {label}?", { label })}
         // tap-reach: the glyph stays small in its line, a finger gets 40 px
         // round it (audit WA-08).
         className={cn(

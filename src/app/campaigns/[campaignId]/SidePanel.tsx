@@ -6,6 +6,7 @@ import { tabPane } from "@/lib/table-layout";
 import { usePaneShown, useTableLayoutApi } from "@/app/campaigns/[campaignId]/table-layout-context";
 import { useDocked } from "@/app/campaigns/[campaignId]/useDocked";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { ui } from "@/lib/ui";
 import { IconRail, type IconRailItem } from "@/components/ui/IconRail";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -61,6 +62,7 @@ function SidePanelInner({
   const shown = usePaneShown("panel");
   const visible = shown && (docked || mobileVisible);
   const { tab, steersStory } = content;
+  const t = useT();
   // Keep the board's keyed owner while native controls switch beside it.
   const contentTabs: PanelTab[] = boardOnStage ? ["battle", tab === "battle" ? "party" : tab] : [tab];
 
@@ -117,20 +119,20 @@ function SidePanelInner({
           ))
         ) : (
           <p className="motion-tab px-2 py-6 text-center font-serif text-sm italic text-stone-400">
-            Every tab has a pane of its own. Put one back from its bar to see it here again.
+            {t("Every tab has a pane of its own. Put one back from its bar to see it here again.")}
           </p>
         )}
       </div>
       {/* The rail sits on the outer edge, away from the chat, so the eye
           reads chat, context, then the switch between contexts. It scrolls
           on a short window rather than clipping the last tabs. */}
-      <div className="cine-rail hidden w-16 shrink-0 flex-col items-stretch gap-1 overflow-y-auto border-l border-amber-500/15 bg-gradient-to-b from-stone-950/60 to-transparent px-1.5 py-2 [scrollbar-width:none] lg:flex">
+      <div className="cine-rail hidden w-[4.75rem] shrink-0 flex-col items-stretch gap-1 overflow-y-auto border-l border-amber-500/15 bg-gradient-to-b from-stone-950/60 to-transparent px-1 py-2 [scrollbar-width:none] lg:flex">
         {layout?.canWiden ? (
-          <Tooltip content={wide ? "Narrow the panel" : "Widen the panel"} side="left">
+          <Tooltip content={wide ? t("Narrow the panel") : t("Widen the panel")} side="left">
             <button
               type="button"
               onClick={() => layout.setPanelWide(!wide)}
-              aria-label={wide ? "Narrow the panel" : "Widen the panel"}
+              aria-label={wide ? t("Narrow the panel") : t("Widen the panel")}
               className={cn(ui.railCell, "h-8 shrink-0 justify-center py-0")}
             >
               {wide ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}

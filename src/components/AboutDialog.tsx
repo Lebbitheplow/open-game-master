@@ -8,6 +8,7 @@ import type { BuildInfo, UpdateStatus } from "@/lib/build-info";
 import { cn } from "@/lib/cn";
 import { shellHost } from "@/lib/shell-host";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 
 // About this server (issue 102): the release it runs, the exact build behind
 // that number, and whether a newer release is out. It exists so "is the fix
@@ -86,6 +87,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function UpdateLine({ update, build }: { update: UpdateStatus; build: BuildInfo }) {
+  const t = useT();
   if (update.state === "off") {
     return (
       <p className="text-sm text-stone-400">
@@ -107,7 +109,7 @@ function UpdateLine({ update, build }: { update: UpdateStatus; build: BuildInfo 
     return (
       <div className="live-in rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
         <p className="text-sm text-amber-100">
-          {latest.prerelease ? "Beta" : "Version"} {latest.version} is out{released ? ` (${released})` : ""}. This server runs {build.version}.
+          {latest.prerelease ? t("Beta") : t("Version")} {latest.version} is out{released ? ` (${released})` : ""}. This server runs {build.version}.
         </p>
         <a href={latest.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-amber-300 underline-offset-2 hover:underline">
           What is new in {latest.version} <ExternalLink className="size-3" />
@@ -127,6 +129,7 @@ function UpdateLine({ update, build }: { update: UpdateStatus; build: BuildInfo 
 }
 
 export function AboutDialog({ open, onOpenChange, isAdmin = false }: { open: boolean; onOpenChange: (open: boolean) => void; isAdmin?: boolean }) {
+  const t = useT();
   const [about, setAbout] = useState<About | null>(null);
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -179,7 +182,7 @@ export function AboutDialog({ open, onOpenChange, isAdmin = false }: { open: boo
           <div>
             <p className="gold-title font-display text-xl tracking-wide">Open Game Master</p>
             <p className="mt-0.5 text-sm text-stone-300">
-              Version <span className="font-code text-amber-100">{build.version}</span>
+              {t("Version")} <span className="font-code text-amber-100">{build.version}</span>
               {about.serverName && about.serverName !== "Open Game Master" ? <span className="text-stone-500"> on {about.serverName}</span> : null}
             </p>
           </div>
@@ -203,7 +206,7 @@ export function AboutDialog({ open, onOpenChange, isAdmin = false }: { open: boo
               </Row>
             ) : null}
             {build.builtAt ? <Row label="Built">{moment(build.builtAt)}</Row> : null}
-            {"channel" in about.update ? <Row label="Update channel">{about.update.channel === "beta" ? "Beta (nightly builds)" : "Stable"}</Row> : null}
+            {"channel" in about.update ? <Row label={t("Update channel")}>{about.update.channel === "beta" ? t("Beta (nightly builds)") : t("Stable", { context: "about.stableChannel" })}</Row> : null}
             {"checkedAt" in about.update ? <Row label="Checked for updates">{moment(about.update.checkedAt)}</Row> : null}
           </dl>
           <p className={cn("text-xs leading-relaxed", build.dirty ? "text-amber-300/90" : "text-stone-500")}>{buildLine(build)}</p>

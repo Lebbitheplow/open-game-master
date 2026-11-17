@@ -21,7 +21,7 @@ import { asiPickAmount } from "@/lib/srd/race-asi";
 import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice, type Ability, type AsiChoice } from "@/lib/schemas/sheet";
-import { SRD_SKILLS } from "@/lib/srd";
+import { skillLabel, SRD_SKILLS } from "@/lib/srd";
 import { companionImprovements, preferredSpellOrder } from "@/lib/srd/companion-build";
 import { authoredFeatDesc } from "@/lib/srd/feat-effects";
 import type { FeatChoices } from "@/lib/srd/feat-grants";
@@ -235,6 +235,11 @@ export function suggestBuilds(answers: QuizAnswers, offered: Offered): BuildSeed
 export type FilledPick = { target: BlockerTarget; label: string; value: string };
 
 export type FillContext = {
+  // The caller's translator (home/types.ts agoLabel pattern): the filled
+  // picks' labels read in the reader's language.
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  // The reader's locale, for the skills' official names.
+  locale?: "en" | "fr";
   fields: BuilderDraftFields;
   derived: BuilderDerived;
   race: RaceOption | undefined;
@@ -261,10 +266,9 @@ export type FillContext = {
 
 export type FillRound = { patch: Partial<BuilderDraftFields>; filled: FilledPick[] };
 
-const skillName = (id: string) => SRD_SKILLS.find((skill) => skill.id === id)?.name ?? id;
-const ABILITY_WORDS: Record<Ability, string> = {
-  str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma",
-};
+// A skill's name in the reader's language (the official French words where
+// the dictionaries carry them), the English row standing in.
+const skillName = (id: string, locale: "en" | "fr" = "en") => skillLabel(id, locale);
 const has = (list: readonly string[], name: string) => list.some((entry) => textKey(entry) === textKey(name));
 
 // Fills a slot-indexed list's blanks (and the slots past its end) from the
@@ -335,7 +339,7 @@ export function fillRound(ctx: FillContext): FillRound {
   const wants = (target: BlockerTarget) => !ctx.only || ctx.only.includes(target);
   const patch: Partial<BuilderDraftFields> = {};
   const filled: FilledPick[] = [];
-  const note = (target: BlockerTarget, value: string, label = TARGET_WORDS[target]) => filled.push({ target, label, value });
+  const note = (target: BlockerTarget, value: string, label = ctx.t(TARGET_WORDS[target])) => filled.push({ target, label, value });
 
   // The three big choices, in the order they lean on each other: the class
   // decides which species fits, the answers which background.
@@ -381,7 +385,7 @@ export function fillRound(ctx: FillContext): FillRound {
       patch.scores = standardFor(klass, STANDARD_ARRAY);
     }
     const order = abilityPriority(klass);
-    note("scores", `highest in ${ABILITY_WORDS[order[0]]}, then ${ABILITY_WORDS[order[1]]}`);
+    note("scores", ctx.t("highest in {first}, then {second}", { first: ({ "str": ctx.t("Strength"), "dex": ctx.t("Dexterity"), "con": ctx.t("Constitution"), "int": ctx.t("Intelligence"), "wis": ctx.t("Wisdom"), "cha": ctx.t("Charisma") } as Record<string, string>)[order[0]] ?? String(order[0]), second: ({ "str": ctx.t("Strength"), "dex": ctx.t("Dexterity"), "con": ctx.t("Constitution"), "int": ctx.t("Intelligence"), "wis": ctx.t("Wisdom"), "cha": ctx.t("Charisma") } as Record<string, string>)[order[1]] ?? String(order[1]) }));
   }
   if (!fields.name.trim() && wants("name")) {
     const race = ctx.race ?? offered.races.find((entry) => entry.id === patch.raceId);
@@ -432,7 +436,7 @@ export function fillRound(ctx: FillContext): FillRound {
     if (added.length) {
       patch.backgroundSkills = next;
       added.forEach((skill) => proficient.add(skill));
-      note("backgroundSkills", added.map(skillName).join(", "));
+      note("backgroundSkills", added.map((skill) => skillName(skill, ctx.locale)).join(", "));
     }
   }
 
@@ -464,7 +468,7 @@ export function fillRound(ctx: FillContext): FillRound {
     const { next, added } = fillSlots(fields.racialAsi, choice.count, candidates);
     if (added.length) {
       patch.racialAsi = next as Array<Ability | "">;
-      note("racialAsi", added.map((ability) => ABILITY_WORDS[ability as Ability]).join(", "));
+      note("racialAsi", added.map((ability) => ({ "str": ctx.t("Strength"), "dex": ctx.t("Dexterity"), "con": ctx.t("Constitution"), "int": ctx.t("Intelligence"), "wis": ctx.t("Wisdom"), "cha": ctx.t("Charisma") } as Record<string, string>)[ability] ?? String(ability)).join(", "));
     }
   }
   if (race.skillChoice && wants("racialSkills")) {
@@ -473,7 +477,7 @@ export function fillRound(ctx: FillContext): FillRound {
     if (added.length) {
       patch.racialSkills = next;
       added.forEach((skill) => proficient.add(skill));
-      note("racialSkills", added.map(skillName).join(", "));
+      note("racialSkills", added.map((skill) => skillName(skill, ctx.locale)).join(", "));
     }
   }
   if (race.trainingChoice && (fields.racialTraining ?? []).filter(Boolean).length < race.trainingChoice.count && wants("racialTraining")) {
@@ -481,14 +485,14 @@ export function fillRound(ctx: FillContext): FillRound {
     const added = freeSkillOrder(proficient, ALL_SKILLS).filter((skill) => !held.includes(skill)).slice(0, race.trainingChoice.count - held.length);
     if (added.length) {
       patch.racialTraining = [...held, ...added];
-      note("racialTraining", added.map(skillName).join(", "));
+      note("racialTraining", added.map((skill) => skillName(skill, ctx.locale)).join(", "));
     }
   }
   if (race.expertiseChoice && !fields.racialExpertise && wants("racialExpertise")) {
     const pick = [...(patch.racialTraining ?? fields.racialTraining ?? []), ...(race.skills ?? [])].find((entry) => (ALL_SKILLS as readonly string[]).includes(entry));
     if (pick) {
       patch.racialExpertise = pick;
-      note("racialExpertise", skillName(pick));
+      note("racialExpertise", skillName(pick, ctx.locale));
     }
   }
   if (race.weaponChoice && (fields.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count && wants("racialWeapons")) {
@@ -544,7 +548,7 @@ export function fillRound(ctx: FillContext): FillRound {
     if (added.length) {
       patch.repeatSkills = next;
       added.forEach((skill) => proficient.add(skill));
-      note("repeatSkills", added.map(skillName).join(", "));
+      note("repeatSkills", added.map((skill) => skillName(skill, ctx.locale)).join(", "));
     }
   }
 
@@ -569,7 +573,7 @@ export function fillRound(ctx: FillContext): FillRound {
     if (added.length) {
       patch.chosenSkills = next;
       added.forEach((skill) => proficient.add(skill));
-      note("classSkills", added.map(skillName).join(", "));
+      note("classSkills", added.map((skill) => skillName(skill, ctx.locale)).join(", "));
     }
   }
   if (wants("tools")) {
@@ -633,7 +637,7 @@ export function fillRound(ctx: FillContext): FillRound {
     }
     if (added.length) {
       patch.featChoices = featChoices;
-      note("subclass", added.join(", "), "Subclass training");
+      note("subclass", added.join(", "), ctx.t("Subclass training"));
     }
   }
   // What a feat the player took leaves open (Linguist's three languages,
@@ -673,7 +677,7 @@ export function fillRound(ctx: FillContext): FillRound {
     const add = candidates.slice(0, expertiseSlots - expertiseHeld.length);
     if (add.length) {
       patch.expertisePicks = [...expertiseHeld, ...add];
-      note("expertise", add.map(skillName).join(", "));
+      note("expertise", add.map((skill) => skillName(skill, ctx.locale)).join(", "));
     }
   }
   if (wants("options")) {
@@ -742,7 +746,7 @@ export function fillRound(ctx: FillContext): FillRound {
         if (!choice) break;
         next[index] = choice;
         scores = applyOne(scores, choice);
-        words.push(`level ${derived.asiSlotLevels[index]}: ${asiWords(choice)}`);
+        words.push(ctx.t("level {level}: {words}", { level: derived.asiSlotLevels[index], words: asiWords(ctx.t, choice) }));
       }
       if (words.length) {
         for (let index = 0; index < next.length; index += 1) next[index] = next[index] ?? null;
@@ -791,9 +795,16 @@ function applyOne(scores: Record<Ability, number>, choice: AsiChoice): Record<Ab
   return next;
 }
 
-function asiWords(choice: AsiChoice): string {
-  if (choice.mode === "plus2") return `+2 ${ABILITY_WORDS[choice.ability]}`;
-  if (choice.mode === "plus1x2") return choice.abilities.map((ability) => `+1 ${ABILITY_WORDS[ability]}`).join(", ");
+// The improvement the fill picked, in the reader's words; the feat's name
+// rides as it was built.
+function asiWords(t: (key: string, vars?: Record<string, string | number>) => string, choice: AsiChoice): string {
+  if (choice.mode === "plus2") return t("+2 {ability}", { ability: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[choice.ability] ?? String(choice.ability) });
+  if (choice.mode === "plus1x2") {
+    const [first, second] = choice.abilities;
+    return first === second
+      ? t("+2 {ability}", { ability: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[first] ?? String(first) })
+      : t("+1 {first}, +1 {second}", { first: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[first] ?? String(first), second: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[second] ?? String(second) });
+  }
   return choice.feat;
 }
 

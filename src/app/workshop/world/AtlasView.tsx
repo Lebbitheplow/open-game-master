@@ -16,6 +16,7 @@ import { isBound, movedText, OutOfStep, PinRegionActions, RegionBar, RegionNotic
 import { PlaceBattleMaps, type OpenPrep } from "./PlaceBattleMaps";
 import { CornerEditor, DeleteReview, MapSettings, NotSaved, PointFields, useAtlasDelete } from "./AtlasEdit";
 import { PartyBar } from "./AtlasParty";
+import { useT } from "@/lib/locale";
 import type { WorldEntity } from "@/lib/db/world-forge";
 
 // The atlas, after WorldForge's map tab: pictures of the world with pins on
@@ -61,6 +62,7 @@ export function AtlasView({
   atTable?: boolean;
 }) {
   const { doc } = world;
+  const t = useT();
   const [mapId, setMapId] = useState(doc.maps[0]?.id ?? "");
   const [mode, setMode] = useState<Mode>("look");
   const [selected, setSelected] = useState<{ kind: "pin" | "region"; id: string } | null>(null);
@@ -113,7 +115,7 @@ export function AtlasView({
       doc.pins.map((pin) => (pin.id === id ? { ...pin, x: to.x, y: to.y } : pin)),
       (moves) =>
         region.setNotice({
-          text: movedText(moves),
+          text: movedText(moves, t),
           undo: () => {
             const now = latest.current;
             return now.api.patch({ pins: now.doc.pins.map((pin) => (pin.id === id ? { ...pin, x: from.x, y: from.y } : pin)) });
@@ -188,8 +190,8 @@ export function AtlasView({
           <RegionNoticeLine region={region} />
         </div>
         <MapIcon className="size-8 text-amber-400/70" />
-        <p className="max-w-md text-sm text-stone-400">The atlas holds pictures of the world, with a pin on each place that matters and maps inside maps. Start with the widest one.</p>
-        {making ? <div className="w-full max-w-md text-left">{newMapForm()}</div> : <KitButton tone="primary" onClick={() => setMaking({ name: "", image: "" })}><Plus className="size-3.5" /> First map</KitButton>}
+        <p className="max-w-md text-sm text-stone-400">{t("The atlas holds pictures of the world, with a pin on each place that matters and maps inside maps. Start with the widest one.")}</p>
+        {making ? <div className="w-full max-w-md text-left">{newMapForm()}</div> : <KitButton tone="primary" onClick={() => setMaking({ name: "", image: "" })}><Plus className="size-3.5" /> {t("First map")}</KitButton>}
       </div>
     );
   }
@@ -227,7 +229,7 @@ export function AtlasView({
             ))}
           </nav>
           <div className="ml-auto flex gap-1" role="radiogroup" aria-label="What a click does">
-            {([["look", MousePointer2, "Look"], ["pin", MapPin, "Place a pin"], ["region", Hexagon, "Draw a region"]] as const).map(([value, Icon, label]) => (
+            {([["look", MousePointer2, t("Look", { context: "atlas.mode.look" })], ["pin", MapPin, t("Place a pin")], ["region", Hexagon, t("Draw a region")]] as const).map(([value, Icon, label]) => (
               <button key={value} type="button" role="radio" aria-checked={mode === value} onClick={() => { setMode(value); setDrawing([]); }} className={cn(ui.btnSmall, "px-2 py-1 text-xs", mode === value && "border-amber-500/60 bg-amber-400/10 text-amber-100")}>
                 <Icon className="size-3.5" /> {label}
               </button>

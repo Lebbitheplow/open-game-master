@@ -99,8 +99,8 @@ const noop = () => {};
   assert.match(dialog, /sm:max-h-\[88dvh\] sm:w-\[min\(48rem,94vw\)\]/, "the centred card from a tablet up");
   const posts = [...dialog.matchAll(/post\(\{ libraryCharacterId: ([\w.]+) \}\)/g)].map((match) => match[1]);
   assert.deepEqual(posts, ["pending.id"], "the only library add is the confirm button's");
-  assert.match(dialog, /Add \{pending\.name\} to the party at level \{level\}\?/, "the question names who and at what level");
-  assert.match(dialog, /Change first/, "#321's Change first stays");
+  assert.match(dialog, /t\("Add \{name\} to the party at level \{level\}\?", \{ name: pending\.name, level \}\)/, "the question names who and at what level");
+  assert.match(dialog, /t\("Change first"\)/, "#321's Change first stays");
   assert.match(dialog, /worldPackId=\{worldPackId\}/, "#321's world pack stays");
   console.log("ok: the companion builder is full screen on a phone and asks before a library add (Q11)");
 }

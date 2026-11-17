@@ -16,6 +16,10 @@ import { serverEnv } from "@/lib/server-env";
 import type { HarnessId, HarnessModel } from "@/lib/harness/types";
 import type { ListedModel } from "@/lib/setup/discovery-logic";
 import snapshot from "./snapshot.json";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: these verdicts are rules, not words a surface shows.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import {
   assessModel,
   catalogModelCount,
@@ -302,7 +306,7 @@ export function fitListedModels(baseUrl: string, models: ListedModel[]): ListedM
     // The server's own word on the window (OpenRouter's context_length)
     // outranks the catalog's, as its word on tool calls does.
     const catalog = model.context ? { ...row, contextTokens: model.context } : row;
-    if (assessModel({ role: "story", id: model.id, catalog, listed: true }).fit === "unfit") continue;
+    if (assessModel(enT, { role: "story", id: model.id, catalog, listed: true }).fit === "unfit") continue;
     out.push({
       ...model,
       label: row.status === "deprecated" && !/deprecated/i.test(model.label) ? `${model.label} (deprecated)` : model.label,
@@ -322,7 +326,7 @@ export function recommendListed(baseUrl: string, models: ListedModel[], role: Mo
   const hint = providerForBaseUrl(baseUrl, providers);
   const ranked = models
     .map((model) => ({ model, row: findCatalogModel(providers, model.id, hint) }))
-    .filter(({ model, row }) => row && assessModel({ role, id: model.id, catalog: row, listed: true }).fit === "ok")
+    .filter(({ model, row }) => row && assessModel(enT, { role, id: model.id, catalog: row, listed: true }).fit === "ok")
     .sort((a, b) => {
       const x = a.row as CatalogModel;
       const y = b.row as CatalogModel;

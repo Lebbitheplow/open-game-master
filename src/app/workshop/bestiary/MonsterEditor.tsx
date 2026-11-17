@@ -31,6 +31,7 @@ import { CR_CHOICES } from "@/app/workshop/bestiary/types";
 import { AbilitiesEditor, RegenerationEditor, RoutineEditor } from "@/app/workshop/bestiary/BlockActionFields";
 import { SpellcastingEditor } from "@/app/workshop/bestiary/SpellcastingFields";
 import { BorrowParts } from "@/app/workshop/bestiary/BorrowParts";
+import { useLocale, useT } from "@/lib/locale";
 
 const CR_OPTIONS = CR_CHOICES.map((cr) => ({ value: String(cr), label: crLabel(cr) }));
 
@@ -77,6 +78,8 @@ export function MonsterEditor({
   layout?: "inline" | "sheet";
 }) {
   const sheet = layout === "sheet";
+  const t = useT();
+  const locale = useLocale();
   const setStats = (patch: Partial<MonsterDraft["stats"]>) =>
     onDraft({ ...draft, stats: { ...draft.stats, ...patch } });
   const [openFolds, setOpenFolds] = useState<ReadonlySet<MonsterFold>>(new Set());
@@ -85,7 +88,7 @@ export function MonsterEditor({
       id={`monster-${id}`}
       title={title}
       glyph={glyph}
-      summary={monsterFoldSummary(id, draft)}
+      summary={monsterFoldSummary(id, draft, t, locale)}
       open={openFolds.has(id)}
       onToggle={(open) =>
         setOpenFolds((current) => {
@@ -101,7 +104,7 @@ export function MonsterEditor({
   );
   const actionsFold = fold(
     "actions",
-    "Actions and specials",
+    t("Actions and specials"),
     "system-bestiary",
     <>
       <RoutineEditor draft={draft} onChange={onDraft} />
@@ -109,11 +112,11 @@ export function MonsterEditor({
       <SectionedTraitEditor draft={draft} onChange={onDraft} />
     </>,
   );
-  const spellcastingFold = fold("spellcasting", "Spellcasting", "cue-magic-cast", <SpellcastingEditor draft={draft} onChange={onDraft} />);
-  const regenerationFold = fold("regeneration", "Regeneration", "rest-hp", <RegenerationEditor draft={draft} onChange={onDraft} />);
+  const spellcastingFold = fold("spellcasting", t("Spellcasting"), "cue-magic-cast", <SpellcastingEditor draft={draft} onChange={onDraft} />);
+  const regenerationFold = fold("regeneration", t("Regeneration"), "rest-hp", <RegenerationEditor draft={draft} onChange={onDraft} />);
   const sensesFold = fold(
     "senses",
-    "Skills, senses and languages",
+    t("Skills, senses and languages"),
     "sense-darkvision",
     <>
       <SkillsAndSenses draft={draft} onChange={onDraft} />
@@ -127,7 +130,7 @@ export function MonsterEditor({
         sheet ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "flex flex-wrap items-end gap-2",
       )}
     >
-      <Field as="label" label="Name" className={cn(sheet && "col-span-2 sm:col-span-3")}>
+      <Field as="label" label={t("Name")} className={cn(sheet && "col-span-2 sm:col-span-3")}>
         <input
           value={draft.name}
           onChange={(event) =>
@@ -136,33 +139,33 @@ export function MonsterEditor({
           className={cn(ui.input, sheet ? "w-full" : "w-48")}
         />
       </Field>
-      <Field label="Challenge">
+      <Field label={t("Challenge")}>
         <span className={cn("block", !sheet && "w-24")}>
           <Select
-            label="Challenge"
+            label={t("Challenge")}
             value={String(draft.stats.cr)}
             onChange={(next) => setStats({ cr: Number(next) })}
             options={CR_OPTIONS}
           />
         </span>
       </Field>
-      <NumberField label="AC" value={draft.stats.ac} min={1} max={30} onChange={(ac) => setStats({ ac })} />
+      <NumberField label={t("AC")} value={draft.stats.ac} min={1} max={30} onChange={(ac) => setStats({ ac })} />
       <NumberField
-        label="Hit points"
+        label={t("Hit points")}
         value={draft.stats.maxHp}
         min={1}
         max={2000}
         onChange={(maxHp) => setStats({ maxHp })}
       />
       <NumberField
-        label="Swings"
+        label={t("Swings")}
         value={draft.stats.attacksPerTurn ?? 1}
         min={1}
         max={MAX_SWINGS}
         onChange={(attacksPerTurn) => setStats({ attacksPerTurn })}
       />
       <NumberField
-        label="Dex mod"
+        label={t("Dex mod")}
         value={draft.stats.dexMod}
         min={-5}
         max={10}
@@ -173,22 +176,22 @@ export function MonsterEditor({
 
   const extraDamage = (
     <NumberField
-      label="Extra damage a round"
+      label={t("Extra damage a round")}
       value={draft.extraDamagePerRound}
       min={0}
       max={400}
       onChange={(extraDamagePerRound) => onDraft({ ...draft, extraDamagePerRound })}
-      hint="A breath weapon or a round of spellcasting, averaged. The rating cannot see it otherwise."
+      hint={t("A breath weapon or a round of spellcasting, averaged. The rating cannot see it otherwise.")}
     />
   );
 
   const description = (
-    <Field as="label" label="What it is">
+    <Field as="label" label={t("What it is")}>
       <textarea
         value={desc}
         onChange={(event) => onDesc(event.target.value)}
         rows={2}
-        placeholder="A knight's armour walking with nobody inside it."
+        placeholder={t("A knight's armour walking with nobody inside it.")}
         className={cn(ui.input, "resize-y")}
       />
     </Field>
@@ -196,7 +199,7 @@ export function MonsterEditor({
 
   const rating = readout ? (
     <>
-      <SectionHead title="The rating the numbers support" glyph="rest-xp" className="mb-0" />
+      <SectionHead title={t("The rating the numbers support")} glyph="rest-xp" className="mb-0" />
       <RatingLine readout={readout} />
       <Working parts={readout.derived.parts} notes={readout.derived.notes} />
       <div className="stagger-pop flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
@@ -209,7 +212,7 @@ export function MonsterEditor({
               {row.stat}
             </span>{" "}
             <span className="text-stone-600">
-              ({row.verdict}, CR {crLabel(readout.statedCr)} wants {row.expected})
+              {t("({verdict}, CR {cr} wants {expected})", { verdict: row.verdict, cr: crLabel(readout.statedCr), expected: row.expected })}
             </span>
           </span>
         ))}
@@ -228,10 +231,10 @@ export function MonsterEditor({
           className={ui.btnPrimary}
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Save the block
+          {t("Save the block")}
         </button>
         <span className="text-[11px] text-stone-500">
-          Saving recalculates the rating from what is on screen.
+          {t("Saving recalculates the rating from what is on screen.")}
         </span>
       </div>
     </>
@@ -242,7 +245,7 @@ export function MonsterEditor({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-6">
           <div className="flex flex-col gap-3">
-            <SectionHead title="The block" glyph="system-bestiary" className="mb-0" />
+            <SectionHead title={t("The block")} glyph="system-bestiary" className="mb-0" />
             {coreStats}
             <AbilityScores draft={draft} onChange={onDraft} />
             <AttackEditor draft={draft} onChange={onDraft} />
@@ -252,7 +255,7 @@ export function MonsterEditor({
             <PrintedBlockView draft={draft} />
           </div>
           <div className="flex flex-col gap-3">
-            <SectionHead title="Catalogue and defences" glyph="rest-ac" className="mb-0" />
+            <SectionHead title={t("Catalogue and defences")} glyph="rest-ac" className="mb-0" />
             <MonsterKitPanel draft={draft} onChange={onDraft} />
             <BorrowParts draft={draft} onChange={onDraft} />
             <SizeAndDefences draft={draft} onChange={onDraft} />
@@ -270,7 +273,7 @@ export function MonsterEditor({
 
   return (
     <div className="flex flex-col gap-3 border-t border-stone-800 p-3">
-      <SectionHead title="The block" glyph="system-bestiary" className="mb-0" />
+      <SectionHead title={t("The block")} glyph="system-bestiary" className="mb-0" />
       {coreStats}
       <AbilityScores draft={draft} onChange={onDraft} />
       <MonsterKitPanel draft={draft} onChange={onDraft} />

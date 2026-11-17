@@ -4,13 +4,14 @@ import { ExternalLink, Loader2, RefreshCw, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { DEFAULT_WINDOW, STORY_WINDOW_NEEDS, windowLabel } from "@/lib/story-window";
+import { DEFAULT_WINDOW, storyNeeds, windowLabel } from "@/lib/story-window";
 import { BackendProbe } from "@/app/admin/BackendProbe";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { AgentPanel } from "@/app/setup/AgentPanel";
 import { StartHints } from "@/app/setup/StartHints";
 import { NO_LIST, type Draft, type ModelList } from "@/app/setup/draft";
 import { ChoiceCard, ChoiceCards, FoundRow, ModelPicker, ScanMark, host, type ScanResult } from "@/app/setup/SetupParts";
+import { useT, useTp } from "@/lib/locale";
 import {
   KEY_PROVIDERS,
   keyForListing,
@@ -69,39 +70,41 @@ export function StorytellerStep({
   savedKeyBase: string;
   inContainer: boolean;
 }) {
+  const t = useT();
+  const tp = useTp();
   const found = scan?.text ?? [];
   const pick = (story: Draft["story"]) => update((current) => ({ ...current, story }));
   return (
     <div className="space-y-4">
-      <ChoiceCards label="Who tells the story">
+      <ChoiceCards label={t("Who tells the story")}>
         <ChoiceCard
           picked={draft.story === "local"}
           onPick={() => pick("local")}
           glyph="ui-ai"
-          title="A model on this computer"
-          sub="llama.cpp recommended; Ollama, LM Studio, vLLM and other servers work too. Free to play and private; needs at least 16 GB of graphics memory."
-          badge={scanning ? { text: "Looking…", tone: "off" } : found.length ? { text: `Found ${found.length}`, tone: "ready" } : null}
+          title={t("A model on this computer")}
+          sub={t("llama.cpp recommended; Ollama, LM Studio, vLLM and other servers work too. Free to play and private; needs at least 16 GB of graphics memory.")}
+          badge={scanning ? { text: t("Looking…"), tone: "off" } : found.length ? { text: tp("Found {count}", "Found {count}", { count: found.length }), tone: "ready" } : null}
         />
         <ChoiceCard
           picked={draft.story === "key"}
           onPick={() => pick("key")}
           glyph="tab-admin"
-          title="An API key"
-          sub="OpenAI, OpenRouter or another provider. No GPU needed; each turn is billed to the key."
+          title={t("An API key")}
+          sub={t("OpenAI, OpenRouter or another provider. No GPU needed; each turn is billed to the key.")}
         />
         <ChoiceCard
           picked={draft.story === "agent"}
           onPick={() => pick("agent")}
           glyph="system-share"
-          title="An agent you already pay for"
-          sub="Claude Code, Codex, opencode, Grok Build or Pi, signed in on this computer, narrating on its own plan."
+          title={t("An agent you already pay for")}
+          sub={t("Claude Code, Codex, opencode, Grok Build or Pi, signed in on this computer, narrating on its own plan.")}
         />
         <ChoiceCard
           picked={draft.story === "none"}
           onPick={() => pick("none")}
           glyph="tab-characters"
-          title="A person at the table"
-          sub="No AI. Someone narrates, usually over voice chat, and the app keeps the sheets, dice and maps."
+          title={t("A person at the table")}
+          sub={t("No AI. Someone narrates, usually over voice chat, and the app keeps the sheets, dice and maps.")}
         />
       </ChoiceCards>
 
@@ -128,9 +131,7 @@ export function StorytellerStep({
         </div>
       ) : draft.story === "none" ? (
         <p key="none" className="reveal su-note">
-          Tables on this server will have a person in the Game Master&apos;s seat. The app still rolls the dice, keeps
-          every sheet and map, and can step in for the monsters or a read-aloud when the GM asks. You can add an AI
-          storyteller here later.
+          {t("Tables on this server will have a person in the Game Master's seat. The app still rolls the dice, keeps every sheet and map, and can step in for the monsters or a read-aloud when the GM asks. You can add an AI storyteller here later.")}
         </p>
       ) : null}
     </div>
@@ -156,6 +157,8 @@ function LocalPanel({
   inContainer: boolean;
   machine: ScanResult["machine"] | null;
 }) {
+  const t = useT();
+  const tp = useTp();
   const local = draft.local;
   const [looking, setLooking] = useState(false);
   const setLocal = (patch: Partial<Draft["local"]>) => update((current) => ({ ...current, local: { ...current.local, ...patch } }));
@@ -198,14 +201,18 @@ function LocalPanel({
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-xs font-medium text-stone-400">
           <ScanMark scanning={scanning} found={found.length > 0} />
-          {scanning ? "Looking for model servers on this computer…" : found.length ? "Found on this computer" : "Nothing is answering on this computer yet"}
+          {scanning
+            ? t("Looking for model servers on this computer…")
+            : found.length
+              ? t("Found on this computer")
+              : t("Nothing is answering on this computer yet")}
         </span>
         <button type="button" className={ui.btnSmall} onClick={onRescan} disabled={scanning} aria-busy={scanning}>
-          <RefreshCw className={cn("size-3.5", scanning && "animate-spin")} /> Look again
+          <RefreshCw className={cn("size-3.5", scanning && "animate-spin")} /> {t("Look again", { context: "setup.local.lookAgain" })}
         </button>
       </div>
 
-      <div role="radiogroup" aria-label="Model servers" className="stagger space-y-2">
+      <div role="radiogroup" aria-label={t("Model servers")} className="stagger space-y-2">
         {found.map((entry) => (
           <FoundRow
             key={entry.baseUrl}
@@ -216,20 +223,22 @@ function LocalPanel({
                 typed: false,
                 model: entry.recommended,
                 list: entry.needsKey
-                  ? { ...NO_LIST, state: "failed", needsKey: true, error: `${host(entry.baseUrl)} wants its API key.` }
+                  ? { ...NO_LIST, state: "failed", needsKey: true, error: t("{host} wants its API key.", { host: host(entry.baseUrl) }) }
                   : { state: "ok", models: entry.models, recommended: entry.recommended, error: "", needsKey: false },
               })
             }
             title={`${entry.label} · ${host(entry.baseUrl)}`}
-            detail={entry.needsKey ? "Wants its API key" : `${entry.models.length} ${entry.models.length === 1 ? "model" : "models"}${entry.recommended ? `, ${entry.recommended}` : ""}`}
+            detail={entry.needsKey
+              ? t("Wants its API key")
+              : `${tp("1 model", "{count} models", { count: entry.models.length })}${entry.recommended ? `, ${entry.recommended}` : ""}`}
             tone={entry.needsKey ? "warn" : "ok"}
           />
         ))}
         <FoundRow
           picked={local.typed}
           onPick={() => setLocal({ typed: true, list: NO_LIST })}
-          title="Somewhere else"
-          detail="Another port, or another computer on your network"
+          title={t("Somewhere else")}
+          detail={t("Another port, or another computer on your network")}
           tone="off"
         />
       </div>
@@ -239,7 +248,7 @@ function LocalPanel({
       {local.typed ? (
         <div key="typed" className="reveal flex flex-wrap items-end gap-2">
           <label className="block min-w-0 flex-1">
-            <span className="mb-1 block text-xs font-medium text-stone-400">Server address</span>
+            <span className="mb-1 block text-xs font-medium text-stone-400">{t("Server address")}</span>
             <input
               className={ui.input}
               value={local.baseUrl}
@@ -248,7 +257,7 @@ function LocalPanel({
             />
           </label>
           <button type="button" className={ui.btnSecondary} onClick={look} disabled={looking || !local.baseUrl.trim()} aria-busy={looking}>
-            {looking ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} Look
+            {looking ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} {t("Look", { context: "setup.local.look" })}
           </button>
         </div>
       ) : null}
@@ -256,18 +265,18 @@ function LocalPanel({
       {local.list.needsKey || local.apiKey ? (
         <div key="key" className="reveal flex flex-wrap items-end gap-2">
           <label className="block min-w-0 flex-1">
-            <span className="mb-1 block text-xs font-medium text-stone-400">The server&apos;s API key</span>
+            <span className="mb-1 block text-xs font-medium text-stone-400">{t("The server's API key")}</span>
             <input
               type="password"
               className={ui.input}
               value={local.apiKey}
               onChange={(event) => setLocal({ apiKey: event.target.value })}
-              placeholder={keySavedHere ? "•••••••• (saved, leave blank to keep it)" : "The --api-key it was started with"}
+              placeholder={keySavedHere ? t("•••••••• (saved, leave blank to keep it)") : t("The --api-key it was started with")}
               autoComplete="off"
             />
           </label>
           <button type="button" className={ui.btnSecondary} onClick={look} disabled={looking || (!local.apiKey.trim() && !keySavedHere)} aria-busy={looking}>
-            {looking ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} Look again
+            {looking ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} {t("Look again", { context: "setup.local.lookAgain" })}
           </button>
         </div>
       ) : null}
@@ -280,7 +289,7 @@ function LocalPanel({
 
       {local.list.models.length ? (
         <ModelPicker
-          label="Model"
+          label={t("Model")}
           models={local.list.models}
           value={local.model}
           recommended={local.list.recommended}
@@ -288,9 +297,9 @@ function LocalPanel({
         />
       ) : local.typed || local.baseUrl ? (
         <label className="reveal block">
-          <span className="mb-1 block text-xs font-medium text-stone-400">Model name</span>
-          <input className={ui.input} value={local.model} onChange={(event) => setLocal({ model: event.target.value })} placeholder="A model the server lists" />
-          <span className="mt-1 block text-[11px] text-stone-500">The name the server knows it by. Look fills this in once the server answers.</span>
+          <span className="mb-1 block text-xs font-medium text-stone-400">{t("Model name")}</span>
+          <input className={ui.input} value={local.model} onChange={(event) => setLocal({ model: event.target.value })} placeholder={t("A model the server lists")} />
+          <span className="mt-1 block text-[11px] text-stone-500">{t("The name the server knows it by. Look fills this in once the server answers.")}</span>
         </label>
       ) : null}
 
@@ -304,18 +313,20 @@ function LocalPanel({
         />
       ) : null}
       <p className="text-[11px] leading-4 text-stone-500">
-        {STORY_WINDOW_NEEDS}{" "}
+        {storyNeeds(t)}{" "}
         {chosenFound?.ollamaNative
-          ? `The app asks this Ollama for up to ${windowLabel(DEFAULT_WINDOW)} itself.`
+          ? t("The app asks this Ollama for up to {window} itself.", { window: windowLabel(DEFAULT_WINDOW) })
           : chosenFound?.kind === "ollama"
-            ? `Ollama runs a model at its own context length, 4K on a card under 24 GB: start it with OLLAMA_CONTEXT_LENGTH=${DEFAULT_WINDOW}.`
-            : "The server sets it (llama-server's -c)."}
+            ? t("Ollama runs a model at its own context length, 4K on a card under 24 GB: start it with OLLAMA_CONTEXT_LENGTH={window}.", { window: DEFAULT_WINDOW })
+            : t("The server sets it (llama-server's -c).")}
       </p>
     </div>
   );
 }
 
 function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update; savedKeyFor: KeyProviderId | null }) {
+  const t = useT();
+  const tp = useTp();
   const key = draft.key;
   const provider = keyProvider(key.provider);
   const [checking, setChecking] = useState(false);
@@ -358,7 +369,7 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
   function typeKey(value: string) {
     const guess = providerForKey(value);
     if (guess && guess !== key.provider && key.provider !== "other") {
-      setSwitched(`That looks like an ${keyProvider(guess).label} key, so ${keyProvider(guess).label} is chosen.`);
+      setSwitched(t("That looks like an {provider} key, so {provider} is chosen.", { provider: keyProvider(guess).label }));
       setKey({ apiKey: value, provider: guess, list: NO_LIST, model: "" });
       return;
     }
@@ -375,7 +386,7 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
             setSwitched("");
             setKey({ provider: next, list: NO_LIST, model: "" });
           }}
-          label="Provider"
+          label={t("Provider")}
           className="w-max"
         />
       </div>
@@ -386,7 +397,7 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
       ) : null}
       {key.provider === "other" ? (
         <label key="base" className="reveal block">
-          <span className="mb-1 block text-xs font-medium text-stone-400">The provider&apos;s OpenAI-compatible address</span>
+          <span className="mb-1 block text-xs font-medium text-stone-400">{t("The provider's OpenAI-compatible address")}</span>
           <input
             className={ui.input}
             value={key.baseUrl}
@@ -398,10 +409,10 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
       <div className="flex flex-wrap items-end gap-2">
         <label className="block min-w-0 flex-1">
           <span className="mb-1 flex items-center justify-between gap-2 text-xs font-medium text-stone-400">
-            API key
+            {t("API key", { context: "admin.text.apiKey" })}
             {provider.keyUrl ? (
               <a href={provider.keyUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-amber-200 hover:text-amber-100">
-                Get a {provider.label} key <ExternalLink className="size-3" />
+                {t("Get a {provider} key", { provider: provider.label })} <ExternalLink className="size-3" />
               </a>
             ) : null}
           </span>
@@ -417,7 +428,7 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
                 typeKey(pasted);
               }
             }}
-            placeholder={keptKey ? "•••••••• (saved, leave blank to keep it)" : provider.keyPlaceholder}
+            placeholder={keptKey ? t("•••••••• (saved, leave blank to keep it)") : provider.keyPlaceholder}
             autoComplete="off"
           />
         </label>
@@ -428,12 +439,11 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
           disabled={checking || (!key.apiKey.trim() && !keptKey) || (key.provider === "other" && !key.baseUrl.trim())}
           aria-busy={checking}
         >
-          {checking ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} Check the key
+          {checking ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} {t("Check the key")}
         </button>
       </div>
       <p className="text-[11px] leading-4 text-stone-500">
-        Saved on this server and never shown again, to anyone. Every table on the server narrates on it, so the Players step can
-        keep strangers out.
+        {t("Saved on this server and never shown again, to anyone. Every table on the server narrates on it, so the Players step can keep strangers out.")}
       </p>
       {key.list.state === "failed" ? (
         <p key={key.list.error} role="alert" className="motion-shake text-sm text-red-400">
@@ -441,12 +451,11 @@ function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update
         </p>
       ) : null}
       {key.list.models.length ? (
-        <ModelPicker label="Model" models={key.list.models} value={key.model} recommended={key.list.recommended} onChange={(model) => setKey({ model })} />
+        <ModelPicker label={t("Model")} models={key.list.models} value={key.model} recommended={key.list.recommended} onChange={(model) => setKey({ model })} />
       ) : null}
       {provider.coversMedia ? (
         <p className="su-note">
-          One OpenAI key also paints the pictures, reads the story aloud and takes dictation. The next two steps can use it with
-          nothing more to paste.
+          {t("One OpenAI key also paints the pictures, reads the story aloud and takes dictation. The next two steps can use it with nothing more to paste.")}
         </p>
       ) : null}
       {key.model && key.list.state === "ok" ? (

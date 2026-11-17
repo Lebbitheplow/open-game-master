@@ -17,9 +17,17 @@ import { classAtLevel } from "./multiclassBuild";
 import { applyChoices } from "@/lib/srd/level-up";
 import { fightingStyleSlots } from "@/lib/srd/feature-effects";
 import { classFeaturesFor, subclassLevelFor } from "@/lib/srd/features";
-import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { spellbookAllowance, spellStyleFor } from "@/lib/srd/spell-prep";
 import type { ThirdCasterSetting } from "@/lib/srd/third-caster";
+import { translate } from "@/lib/messages-logic";
+import type { Locale } from "@/lib/messages-logic";
+import { ordinalOf } from "@/lib/characters/join-changes";
+import { contentName } from "@/lib/content/names";
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export type ProgressionInput = {
   classId: string;
@@ -94,32 +102,50 @@ export type ProgressionRow = {
   mark: "current" | "next" | null;
 };
 
-const ORDINALS = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
-
-export function ordinal(level: number): string {
-  return ORDINALS[level] ?? `${level}th`;
-}
-
 // An improvement as the player picked it: "+2 Strength", "+1 Strength, +1
-// Constitution", "Feat: Alert".
-export function improvementWords(choice: AsiChoice): string {
+// Constitution", "Feat: Alert". The ability names are the dictionaries'
+// (sheet.ability.*) and the feat's name reads in the reader's language
+// (contentName, the official maps); the stored pick stays English.
+// improvementWords is the English form, kept for the tests and any caller
+// without a translator.
+export function improvementWordsT(t: T, choice: AsiChoice, locale: Locale = "en"): string {
+  const abilityWord = (ability: string) => ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[ability] ?? String(ability);
   if (choice.mode === "plus2") {
-    return `+2 ${ABILITY_NAMES[choice.ability] ?? choice.ability}`;
+    return t("+2 {ability}", { ability: abilityWord(choice.ability) });
   }
   if (choice.mode === "plus1x2") {
     const [first, second] = choice.abilities;
     return first === second
-      ? `+2 ${ABILITY_NAMES[first] ?? first}`
-      : `+1 ${ABILITY_NAMES[first] ?? first}, +1 ${ABILITY_NAMES[second] ?? second}`;
+      ? t("+2 {ability}", { ability: abilityWord(first) })
+      : t("+1 {first}, +1 {second}", { first: abilityWord(first), second: abilityWord(second) });
   }
-  return `Feat: ${choice.feat}${choice.ability ? ` (+1 ${ABILITY_NAMES[choice.ability] ?? choice.ability})` : ""}`;
+  return t("Feat: {feat}{ability}", {
+    feat: contentName("feats", choice.feat, locale),
+    ability: choice.ability ? t(" (+1 {ability})", { ability: abilityWord(choice.ability) }) : "",
+  });
+}
+
+export function improvementWords(choice: AsiChoice): string {
+  return improvementWordsT(enT, choice, "en");
+}
+
+// The caster cap's label the math builds ("spells known"), in the reader's
+// words; an unknown label reads as it was built.
+const SPELL_CAP_KEYS: Record<string, string> = {
+  "spells known": "spells known",
+  "spells prepared": "spells prepared",
+};
+
+export function spellCapLabel(t: T, label: string): string {
+  const key = SPELL_CAP_KEYS[label];
+  return key ? t(key) : label;
 }
 
 const TEN: AbilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
 
-export function levelProgressionRows(input: ProgressionInput): ProgressionRow[] {
+export function levelProgressionRows(input: ProgressionInput, t: T = enT, locale: Locale = "en"): ProgressionRow[] {
   if ((input.classes?.length ?? 0) > 1) {
-    return classListRows(input, input.classes ?? []);
+    return classListRows(input, input.classes ?? [], t, locale);
   }
   const last = Math.max(1, Math.min(20, Math.floor(input.level)));
   const pickLevel = subclassLevelFor(input.classId);
@@ -171,7 +197,7 @@ export function levelProgressionRows(input: ProgressionInput): ProgressionRow[] 
       features,
       subclass: pickLevel === level ? { pick: input.subclass.trim() || null } : null,
       improvement:
-        slotIndex >= 0 ? { pick: choice ? improvementWords(choice) : null, takenInPlay: takenInPlay && !choice } : null,
+        slotIndex >= 0 ? { pick: choice ? improvementWordsT(t, choice, locale) : null, takenInPlay: takenInPlay && !choice } : null,
       slots,
       cantrips: caster.casts ? caster.cantripCap : null,
       spells,
@@ -187,7 +213,7 @@ export function levelProgressionRows(input: ProgressionInput): ProgressionRow[] 
 // and the casting of the levels taken so far: the shared slots as the
 // server works them, a warlock's pact slots apart, and the casting class's
 // counts at its own level.
-function classListRows(input: ProgressionInput, classes: ReadonlyArray<ProgressionClass>): ProgressionRow[] {
+function classListRows(input: ProgressionInput, classes: ReadonlyArray<ProgressionClass>, t: T = enT, locale: Locale = "en"): ProgressionRow[] {
   const last = Math.max(1, Math.min(20, Math.floor(input.level)));
   const styles = [...(input.styles ?? [])];
   const list = classes.map((entry) => ({ ...entry, id: entry.classId }));
@@ -256,7 +282,7 @@ function classListRows(input: ProgressionInput, classes: ReadonlyArray<Progressi
       features,
       subclass: subclassLevelFor(entry.classId) === classLevel ? { pick: entry.subclass.trim() || null } : null,
       improvement:
-        slotIndex >= 0 ? { pick: choice ? improvementWords(choice) : null, takenInPlay: takenInPlay && !choice } : null,
+        slotIndex >= 0 ? { pick: choice ? improvementWordsT(t, choice, locale) : null, takenInPlay: takenInPlay && !choice } : null,
       slots,
       pact: pactRow ? { level: pactRow.level, count: pactRow.max } : null,
       classLabel: `${entry.name} ${classLevel}`,
@@ -283,6 +309,8 @@ export function progressionColumns(rows: readonly ProgressionRow[]): { subclass:
 }
 
 // A row's slots in words: "1st 4, 2nd 3", or a dash.
-export function slotWords(slots: ProgressionRow["slots"]): string {
-  return slots.length ? slots.map((slot) => `${ordinal(slot.level)} ${slot.count}`).join(", ") : "-";
+export function slotWords(slots: ProgressionRow["slots"], t: T = enT): string {
+  return slots.length
+    ? slots.map((slot) => t("{ordinal} {count}", { ordinal: ordinalOf(t, slot.level), count: slot.count })).join(", ")
+    : "-";
 }

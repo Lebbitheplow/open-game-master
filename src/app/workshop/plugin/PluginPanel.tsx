@@ -19,6 +19,7 @@ import { PublishSection } from "@/app/workshop/plugin/PublishSection";
 import { MagicSection, PeopleSection } from "@/app/workshop/plugin/ReskinSection";
 import { SettingSection } from "@/app/workshop/plugin/SettingSection";
 import { PLUGIN_SECTIONS, type Flushed, type SectionId } from "@/app/workshop/plugin/types";
+import { useT, useTp } from "@/lib/locale";
 
 // The Plugin system: a world pack written in the workshop.
 //
@@ -53,6 +54,7 @@ const KEEPALIVE_BYTES = 60_000;
 // behind it (a reopened panel's read, Pull, Try again) are not held forever.
 const SAVE_TIMEOUT_MS = 60_000;
 // Said when Pull stops for a save that did not land; gone once one does.
+// The state keeps the key and the panel translates it.
 const PULL_WAITS = "Pull waits for the draft to save, and it did not. Nothing was pulled; your changes are kept here. Try again.";
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -76,6 +78,8 @@ export function PluginPanel({
   workshopId: string;
   onChanged?: (count: number) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const [draft, setDraft] = useState<WorldPackDraft | null>(null);
   const [section, setSection] = useState<SectionId>("identity");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -120,7 +124,7 @@ export function PluginPanel({
     () =>
       // After any write still on its way from an earlier visit to this tool.
       (chains.get(workshopId) ?? Promise.resolve())
-        .then(() => readLoad<StoredReply>(fetch(`/api/workshops/${workshopId}/plugin`), "The draft"))
+        .then(() => readLoad<StoredReply>(t, fetch(`/api/workshops/${workshopId}/plugin`), t("The draft")))
         .then((outcome) => {
           if (!mounted.current) return;
           if (outcome.error !== null) {
@@ -129,7 +133,7 @@ export function PluginPanel({
           }
           const parsed = worldPackDraftSchema.safeParse(outcome.payload.draft);
           if (!parsed.success) {
-            setError("The draft could not be read.");
+            setError(t("The draft could not be read."));
             return;
           }
           setError("");
@@ -139,8 +143,7 @@ export function PluginPanel({
             setWizardOpen(true);
           }
         }),
-    [workshopId, adopt],
-  );
+    [ workshopId, adopt, t ],  );
 
   // Writes the draft on screen once the writes before it are done; true
   // when the server holds it after.
@@ -161,7 +164,7 @@ export function PluginPanel({
         const live = mounted.current;
         if (live) setSaveState("saving");
         const body = JSON.stringify({ draft: next });
-        const sent = await readWrite<StoredReply>(
+        const sent = await readWrite<StoredReply>(t,
           fetch(`/api/workshops/${workshopId}/plugin`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -169,7 +172,7 @@ export function PluginPanel({
             keepalive: !live && new TextEncoder().encode(body).length < KEEPALIVE_BYTES,
             signal: AbortSignal.timeout(SAVE_TIMEOUT_MS),
           }),
-          "The draft could not be saved.",
+          t("That could not be saved."),
         );
         if (sent.error !== null) {
           if (mounted.current) {
@@ -188,8 +191,7 @@ export function PluginPanel({
         }
         return true;
       }),
-    [workshopId],
-  );
+    [ workshopId, t ],  );
 
   useEffect(() => {
     mounted.current = true;
@@ -251,13 +253,13 @@ export function PluginPanel({
       // The pull merges into the server's copy and hands that back for the
       // screen, so it goes only once the screen's copy is the server's.
       if (!(await flushSave()).ok) {
-        setError(PULL_WAITS);
+        setError(t(PULL_WAITS));
         return;
       }
       const sent = await inTurn(workshopId, () =>
-        readWrite<StoredReply & { added?: number; omissions?: Array<{ assets: string[] }> }>(
+        readWrite<StoredReply & { added?: number; omissions?: Array<{ assets: string[] }> }>(t,
           fetch(`/api/workshops/${workshopId}/plugin/pull`, { method: "POST" }),
-          "Nothing could be pulled.",
+          t("Nothing could be pulled."),
         ),
       );
       if (sent.error !== null) {
@@ -276,11 +278,11 @@ export function PluginPanel({
       // What stayed behind is listed whole on the Publish tab; the notice
       // only counts it, so a pull never reads as having taken everything.
       const left = (data.omissions ?? []).reduce((sum, omission) => sum + omission.assets.length, 0);
-      const behind = left ? ` ${left} ${left === 1 ? "entry stays" : "entries stay"} in the workshop; Check & publish lists them.` : "";
+      const behind = left ? ` ${tp("{count} entry stays in the workshop; Check & publish lists them.", "{count} entries stay in the workshop; Check & publish lists them.", { count: left })}` : "";
       setPullNotice(
         data.added
-          ? `Pulled ${data.added} ${data.added === 1 ? "entry" : "entries"} into the setting lists.${behind}`
-          : `Nothing new to pull.${behind || " Write some factions, lore, places or hook cards first."}`,
+          ? `${tp("Pulled {count} entry into the setting lists.", "Pulled {count} entries into the setting lists.", { count: data.added })}${behind}`
+          : `${t("Nothing new to pull.")}${behind || ` ${t("Write some factions, lore, places or hook cards first.")}`}`,
       );
     } finally {
       setPulling(false);
@@ -296,10 +298,10 @@ export function PluginPanel({
     }
     setError("");
     const sent = await inTurn(workshopId, () =>
-      readWrite<StoredReply>(fetch(`/api/workshops/${workshopId}/plugin`, { method: "DELETE" }), "The draft could not be thrown away."),
+      readWrite<StoredReply>(t, fetch(`/api/workshops/${workshopId}/plugin`, { method: "DELETE" }), t("The draft could not be thrown away.")),
     );
     if (sent.error !== null) {
-      setError(`${sent.error} The draft on screen is kept.`);
+      setError(`${sent.error} ${t("The draft on screen is kept.")}`);
       // The edit whose autosave was cancelled above still goes.
       if (JSON.stringify(latest.current) !== savedJson.current) void save();
       return;
@@ -349,33 +351,33 @@ export function PluginPanel({
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display tracking-wide text-amber-50">{draft.name.trim() || "An unnamed world"}</p>
+          <p className="truncate font-display tracking-wide text-amber-50">{draft.name.trim() || t("An unnamed world")}</p>
           <p className="text-[11px] text-stone-500">
-            {count ? `${count} ${count === 1 ? "entry" : "entries"}` : "Nothing named yet"}
-            {Object.keys(draft.art).length ? `, ${Object.keys(draft.art).length} pictures` : ""}
+            {count ? tp("{count} entry", "{count} entries", { count }) : t("Nothing named yet")}
+            {Object.keys(draft.art).length ? t(", {count} pictures", { count: Object.keys(draft.art).length }) : ""}
             <span className="ml-2 inline-flex items-center gap-1 text-stone-600" aria-live="polite">
               {saveState === "saving" ? <Loader2 className="size-3 animate-spin" /> : null}
               {saveState === "saved" ? <Check className="size-3 text-emerald-500" /> : null}
-              {saveState === "saving" ? "saving" : saveState === "saved" ? "saved" : saveState === "dirty" ? "unsaved" : saveState === "error" ? "not saved" : ""}
+              {saveState === "saving" ? t("saving") : saveState === "saved" ? t("saved") : saveState === "dirty" ? t("unsaved") : saveState === "error" ? t("not saved") : ""}
             </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setWizardOpen(true)} data-tour="plugin-guided" className={cn(ui.btnSmall, "text-xs")}>
-            <Wand2 className="size-3.5" /> Guided setup
+            <Wand2 className="size-3.5" /> {t("Guided setup", { context: "workshop.plugin.panel.guidedSetup" })}
           </button>
           <button type="button" onClick={() => void pull()} disabled={pulling} data-tour="plugin-pull" className={cn(ui.btnSmall, "text-xs")}>
-            {pulling ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Pull from this workshop
+            {pulling ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} {t("Pull from this workshop")}
           </button>
           <button type="button" onClick={() => setSection("publish")} data-tour="plugin-publish" className={cn(ui.btnSmall, "text-xs")}>
-            <Download className="size-3.5" /> Check &amp; publish
+            <Download className="size-3.5" /> {t("Check & publish")}
           </button>
         </div>
         {pullNotice ? <p className="live-in basis-full text-xs text-amber-200/90">{pullNotice}</p> : null}
         {saveState === "error" && saveError ? (
-          <LoadFailed error={`${saveError} Your changes are kept here.`} onRetry={() => void flushSave()} className="basis-full" />
+          <LoadFailed error={`${saveError} ${t("Your changes are kept here.", { context: "workshop.plugin.panel.changesKept" })}`} onRetry={() => void flushSave()} className="basis-full" />
         ) : null}
-        {error && !(error === PULL_WAITS && saveState === "saved") ? <PanelError className="basis-full">{error}</PanelError> : null}
+        {error && !(error === t(PULL_WAITS) && saveState === "saved") ? <PanelError className="basis-full">{error}</PanelError> : null}
       </section>
 
       <div data-tour="plugin-sections" className="w-fit max-w-full">
@@ -384,7 +386,7 @@ export function PluginPanel({
           value={section}
           onChange={setSection}
           size="sm"
-          label="Part of the pack"
+          label={t("Part of the pack")}
         />
       </div>
 
@@ -411,7 +413,7 @@ export function PluginPanel({
       <Sheet
         open={wizardOpen}
         onOpenChange={setWizardOpen}
-        title="Guided setup"
+        title={t("Guided setup", { context: "workshop.plugin.panel.guidedSetup" })}
         hideTitle
         className="top-0 h-dvh max-h-none rounded-none pt-[max(0.5rem,env(safe-area-inset-top))] lg:top-1/2 lg:h-[min(92vh,44rem)] lg:w-[min(96vw,48rem)] lg:rounded-xl"
       >

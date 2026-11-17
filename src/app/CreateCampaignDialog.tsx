@@ -10,12 +10,12 @@ import { submitWorldSetup, worldSetupProblems, type WorldSetupLeft } from "@/app
 import { submitContentImport } from "@/app/workshop/ContentImportPicker";
 import type { CampaignDefaults, CampaignDefaultSettings } from "@/lib/campaign-defaults";
 import { groupByFranchise, type WorldPackSummary } from "@/lib/worlds/summary";
-import { genrePreset } from "@/lib/genres";
 import type { Genre } from "@/lib/schemas/game-settings";
 import { applyPack, clearPack, DEFAULT_DRAFT, type CampaignDraft, type WizardGates } from "@/app/create-campaign/draft";
 import { appDefaultSettings, applyDefaults, defaultsFromDraft } from "@/app/create-campaign/defaults";
 import { DefaultsBar, DefaultsDialog, DefaultsPanel, type DefaultsActions, type StartFrom } from "@/app/create-campaign/DefaultsFields";
 import { presetTheme } from "@/app/create-campaign/portals";
+import { useLocale } from "@/lib/locale";
 import { EssentialsStep } from "@/app/create-campaign/EssentialsStep";
 import { ExperienceStep } from "@/app/create-campaign/ExperienceStep";
 import { ReviewStep, type EditTarget } from "@/app/create-campaign/ReviewStep";
@@ -24,6 +24,7 @@ import { useCampaignDefaults } from "@/app/create-campaign/useCampaignDefaults";
 import { withCapabilities, type ServerCapabilities } from "@/app/create-campaign/capabilities";
 import { narratorVoiceFor } from "@/lib/tts-voices";
 import { campaignPayload } from "@/app/create-campaign/payload";
+import { useT, useTp } from "@/lib/locale";
 
 const STEP_KEYS: readonly StepKey[] = ["essentials", "experience", "review"];
 
@@ -54,9 +55,18 @@ export function CreateCampaignDialog({
   onCreated: (campaignId: string) => void;
   solo?: boolean;
 }) {
+  const t = useT();
+  const tp = useTp();
   // The default genre's preset writes the first theme, exactly as picking any
   // other portal would; typing in the field takes it over for good.
-  const [draft, setDraft] = useState<CampaignDraft>(() => presetTheme(DEFAULT_DRAFT));
+  const locale = useLocale();
+  // The handlers below read the locale through a ref, kept current after
+  // each render (never written during one).
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
+  const [draft, setDraft] = useState<CampaignDraft>(() => presetTheme(DEFAULT_DRAFT, locale));
   // Every write goes through here, from handlers and callbacks only, so the
   // ref is always the draft as last written: a save pressed right after
   // typing reads the line just typed.
@@ -147,7 +157,7 @@ export function CreateCampaignDialog({
   // limits over that. The campaign's own fields stay (defaults.ts).
   const startFromSettings = (source: StartFrom, settings: CampaignDefaultSettings) => {
     fromSaved.current = source === "mine";
-    const applied = applyDefaults(latest.current, settings, selectedPack);
+    const applied = applyDefaults(latest.current, settings, selectedPack, localeRef.current);
     const limits = capabilitiesNow.current;
     // The app's own setup plays in the server's language, as a fresh draft does.
     const language = source === "mine" ? undefined : limits?.language;
@@ -227,13 +237,13 @@ export function CreateCampaignDialog({
   const choosePack = (pack: WorldPackSummary) => patch(applyPack(latest.current, pack));
   // Leaving a pack hands the theme back to the genre's preset, unless the
   // person typed their own.
-  const dropPack = () => patch(presetTheme(clearPack(latest.current, selectedPack)));
+  const dropPack = () => patch(presetTheme(clearPack(latest.current, selectedPack), localeRef.current));
   // Picking a bare genre by hand leaves the pack. A pack is defined as its
   // baseGenre plus overrides, so letting the two disagree would blend the
   // pack's flavor over the wrong preset and overlay its monsters onto the
   // wrong bestiary catalog.
   const pickGenre = (genre: Genre) =>
-    patch(presetTheme({ ...(latest.current.worldPack ? clearPack(latest.current, selectedPack) : latest.current), genre }));
+    patch(presetTheme({ ...(latest.current.worldPack ? clearPack(latest.current, selectedPack) : latest.current), genre }, localeRef.current));
 
   // Saving reads the draft after a half-typed line or veil has been kept: an
   // input still holding focus is blurred first, and the save waits a turn
@@ -247,14 +257,14 @@ export function CreateCampaignDialog({
     setDefaultsMessage(null);
     setDefaultsBusy(true);
     setTimeout(() => {
-      void defaults.save(defaultsFromDraft({ ...latest.current, ...wanted.current })).then((outcome) => {
+      void defaults.save(defaultsFromDraft({ ...latest.current, ...wanted.current }, localeRef.current)).then((outcome) => {
         setDefaultsBusy(false);
         if (outcome.ok) {
           setStartFrom("mine");
           setLate(false);
-          setDefaultsMessage({ tone: "ok", text: "Saved. Campaigns you make from now on start from these choices." });
+          setDefaultsMessage({ tone: "ok", text: t("Saved. Campaigns you make from now on start from these choices.") });
         } else {
-          setDefaultsMessage({ tone: "error", text: `${outcome.error} Nothing here changed, and you can still create the campaign.` });
+          setDefaultsMessage({ tone: "error", text: t("{error} Nothing here changed, and you can still create the campaign.", { error: outcome.error }) });
         }
       });
     }, 0);
@@ -270,12 +280,12 @@ export function CreateCampaignDialog({
     onUseMine: () => {
       if (defaults.state.status === "saved") {
         startFromSettings("mine", defaults.state.defaults.settings);
-        setDefaultsMessage({ tone: "ok", text: "This campaign now starts from your defaults." });
+        setDefaultsMessage({ tone: "ok", text: t("This campaign now starts from your defaults.") });
       }
     },
     onUseApp: () => {
       startFromSettings("app", appDefaultSettings());
-      setDefaultsMessage({ tone: "ok", text: "This campaign now starts from the app's defaults." });
+      setDefaultsMessage({ tone: "ok", text: t("This campaign now starts from the app's defaults.") });
     },
     onSave: saveDefaults,
     onRemove: () => {
@@ -283,11 +293,7 @@ export function CreateCampaignDialog({
       void defaults.remove().then((outcome) => {
         setDefaultsBusy(false);
         setStartFrom("app");
-        setDefaultsMessage(
-          outcome.ok
-            ? { tone: "ok", text: "Removed. New campaigns start from the app's defaults; this one keeps what it has." }
-            : { tone: "error", text: outcome.error },
-        );
+        setDefaultsMessage(outcome.ok ? { tone: "ok", text: t("Removed. New campaigns start from the app's defaults; this one keeps what it has.") } : { tone: "error", text: outcome.error });
       });
     },
     onManage: () => setManaging(true),
@@ -358,7 +364,7 @@ export function CreateCampaignDialog({
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          setError(data.error || "Could not create the campaign.");
+          setError(data.error || t("Could not create the campaign."));
           return;
         }
         campaignId = String(data.campaign.id);
@@ -376,7 +382,7 @@ export function CreateCampaignDialog({
         const imported = await submitContentImport(campaignId, latest.current.contentImport);
         importDone = !imported || imported.ok;
         if (imported && !imported.ok) {
-          problems.push(`${prep?.title ?? "The prep you chose"} did not come in: ${imported.error}`);
+          problems.push(t("{title} did not come in: {error}", { title: prep?.title ?? t("The prep you chose"), error: imported.error }));
         }
       }
       if (problems.length) {
@@ -386,14 +392,14 @@ export function CreateCampaignDialog({
       setFollowUp(null);
       onCreated(campaignId);
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
   }
 
   const stepProps = { draft, patch, gates };
-  const title = solo ? "New solo adventure" : "New campaign";
+  const title = solo ? t("New solo adventure") : t("New campaign");
   const activeKey = STEP_KEYS[Math.min(Math.max(step, 0), STEP_KEYS.length - 1)];
   // The step's short name stays as the eyebrow; the question under it is the
   // gold title, which rises again each time its step comes on screen.
@@ -407,9 +413,9 @@ export function CreateCampaignDialog({
   );
   const backToReview = fromReview ? (
     <div className="cc-return">
-      <span className="min-w-0 flex-1">Editing from the review. Nothing you set is lost.</span>
+      <span className="min-w-0 flex-1">{t("Editing from the review. Nothing you set is lost.")}</span>
       <button type="button" className="cc-link" onClick={() => setStep(STEP_KEYS.indexOf("review"))}>
-        Back to review
+        {t("Back to review")}
       </button>
     </div>
   ) : null;
@@ -418,9 +424,9 @@ export function CreateCampaignDialog({
   const steps = [
     {
       key: "essentials",
-      label: "Essentials",
-      title: heading("essentials", "The essentials", solo ? "What is this adventure?" : "What is this campaign?"),
-      blurb: "A name, who runs it, the party and the world. The groups at the bottom can wait.",
+      label: t("Essentials"),
+      title: heading("essentials", t("The essentials"), solo ? t("What is this adventure?") : t("What is this campaign?")),
+      blurb: t("A name, who runs it, the party and the world. The groups at the bottom can wait."),
       content: (
         <>
           {backToReview}
@@ -442,14 +448,14 @@ export function CreateCampaignDialog({
         </>
       ),
       canContinue: hasTitle,
-      blocker: hasTitle ? null : solo ? "Name the adventure first." : "Name the campaign first.",
+      blocker: hasTitle ? null : solo ? t("Name the adventure first.") : t("Name the campaign first."),
       onBlocked: () => titleRef.current?.focus(),
     },
     {
       key: "experience",
-      label: "Experience",
-      title: heading("experience", "The experience", "How does this table feel?"),
-      blurb: "How the table sounds first, then its atmosphere and safety. All of it can change later in the lobby too.",
+      label: t("Experience", { context: "creator.step.experience" }),
+      title: heading("experience", t("The experience"), t("How does this table feel?")),
+      blurb: t("How the table sounds first, then its atmosphere and safety. All of it can change later in the lobby too."),
       content: (
         <>
           {backToReview}
@@ -459,9 +465,9 @@ export function CreateCampaignDialog({
     },
     {
       key: "review",
-      label: "Review",
-      title: heading("review", "Review", "Here is what you made"),
-      blurb: "Ready the table. The cover is the tile this will wear on the home screen until you paint it one.",
+      label: t("Review", { context: "creator.step.review" }),
+      title: heading("review", t("Review", { context: "creator.review.eyebrow" }), t("Here is what you made")),
+      blurb: t("Ready the table. The cover is the tile this will wear on the home screen until you paint it one."),
       content: (
         <ReviewStep
           {...stepProps}
@@ -493,10 +499,10 @@ export function CreateCampaignDialog({
   // The choices so far, in one quiet line in the header, so a later step
   // still says which world it is furnishing.
   const draftLine = [
-    genrePreset(draft.genre).name,
-    solo ? "solo" : `${draft.maxPlayers} players`,
-    `level ${draft.startingLevel}`,
-    draft.difficulty,
+    ({ "high_fantasy": t("High fantasy"), "dark_fantasy": t("Dark fantasy"), "mystery": t("Mystery"), "horror": t("Horror"), "cyberpunk": t("Cyberpunk"), "steampunk": t("Steampunk"), "post_apocalyptic": t("Post-apocalyptic"), "custom": t("Custom", { context: "creator.genre.custom" }), "coverAria": t("{name} cover plate"), "humansOnly": t("all-human world") } as Record<string, string>)[draft.genre] ?? String(draft.genre),
+    solo ? t("solo") : tp("{count} player", "{count} players", { count: draft.maxPlayers }),
+    t("level {level}", { level: draft.startingLevel }),
+    t(draft.difficulty),
   ].join(" · ");
 
   return (
@@ -515,7 +521,7 @@ export function CreateCampaignDialog({
         >
           <Dialog.Title className="sr-only">{title}</Dialog.Title>
           <Dialog.Close
-            aria-label="Close"
+            aria-label={t("Close", { context: "action.close" })}
             className="absolute right-3 top-3 z-10 rounded p-1 text-stone-400 hover:bg-stone-900 sm:right-5 sm:top-5"
           >
             <X className="size-4" />
@@ -536,7 +542,7 @@ export function CreateCampaignDialog({
             doneLabel={
               <>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                {followUp ? "Try again" : solo ? "Create adventure" : "Create campaign"}
+                {followUp ? t("Try again", { context: "creator.done.retry" }) : solo ? t("Create adventure") : t("Create campaign")}
               </>
             }
             className="[&>header]:pr-9"

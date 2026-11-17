@@ -18,6 +18,7 @@ import type { PartyState } from "@/lib/dm/party-logic";
 import { formationPartyIds } from "@/lib/dm/roster";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,9 @@ function arranges(context: MemberContext): boolean {
 
 export async function POST(request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  // The refusals read the asker's language; the party panel shows them raw.
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -82,7 +85,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
 
   if (body.do !== "answer" && !arranges(context)) {
     return Response.json(
-      { error: "Only the party lead arranges the travel formation. Ask for a change on your own character instead." },
+      { error: t("Only the party lead arranges the travel formation. Ask for a change on your own character instead.") },
       { status: 403 },
     );
   }

@@ -19,6 +19,10 @@ const { layZone } = await import("../src/lib/battlemap/zones.ts");
 const { zoneRowFor } = await import("../src/lib/battlemap/zones-spells.ts");
 const { parseMessageIntent, describeIntent, intentCorrection } = await import("../src/lib/dm/intent-logic.ts");
 const { adjudication } = await import("../src/lib/dm/invoke-catalog.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The aim bar's words take the reader's translator (composerGate); this
+// suite reads the English source lines.
+const t = (key, vars) => translate("en", key, vars);
 
 let passed = 0;
 function test(name, fn) {
@@ -105,7 +109,7 @@ test("a blast's card is laid on the board: a burst on a point, a cone, a line an
 
   const hands = card("Burning Hands").area;
   assert.equal(hands.pick, "direction");
-  assert.equal(area.pickHint(hands, {}), "Tap the board where the cone points.");
+  assert.equal(area.pickHint(t, hands, {}), "Tap the board where the cone points.");
   const cone = area.areaCells(hands, area.nextPick(hands, {}, { x: 9, y: 4 }), MAP, { x: 4, y: 4 }).cells;
   assert.ok(cone.includes(at(5, 4)) && cone.includes(at(7, 5)), "the cone fans out from beside the caster");
   assert.ok(!cone.includes(at(4, 4)) && !cone.includes(at(3, 4)), "never the caster's own square, nor behind them");

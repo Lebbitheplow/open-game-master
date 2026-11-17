@@ -10,6 +10,7 @@ import { headerButtonClass } from "@/app/campaigns/[campaignId]/headerButton";
 import { HeaderGlyph } from "@/app/campaigns/[campaignId]/SessionGlyph";
 import { useVoiceSpeaking } from "@/app/campaigns/[campaignId]/liveStore";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { useT, useTp } from "@/lib/locale";
 import type { TurnEnforcement, VoiceFloorMode } from "@/lib/voice/turn-logic";
 import type { VoiceRosterEntry } from "@/lib/voice/types";
 
@@ -62,6 +63,8 @@ export function VoiceDock({
   transcribe?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
+  const tp = useTp();
   // Read here rather than handed down: who is talking ticks for as long as
   // the call lasts, and the dock is the only header piece that cares.
   const speaking = useVoiceSpeaking();
@@ -124,10 +127,10 @@ export function VoiceDock({
   const count = roster?.length ?? 0;
   const someoneSpeaking = Boolean(speaking?.userId);
   const tip = onCall
-    ? `Voice chat: you are on the call with ${count} ${count === 1 ? "person" : "people"}`
+    ? tp("Voice chat: you are on the call with {count} person", "Voice chat: you are on the call with {count} people", { count })
     : count
-      ? `Voice chat: ${count} on the call`
-      : "Voice chat";
+      ? t("Voice chat: {count} on the call", { count })
+      : t("Voice chat", { context: "voice.chat" });
 
   return (
     <>
@@ -139,7 +142,7 @@ export function VoiceDock({
             anchor();
             setOpen((current) => !current);
           }}
-          aria-label="Voice chat"
+          aria-label={t("Voice chat", { context: "voice.chat" })}
           aria-expanded={open}
           data-tour="header-voice"
           className={cn(
@@ -150,12 +153,12 @@ export function VoiceDock({
           )}
         >
           <HeaderGlyph glyph="ui-voice" className={cn(onCall && someoneSpeaking && "animate-pulse")} />
-          <span className="hidden text-sm md:inline">Voice</span>
+          <span className="hidden text-sm md:inline">{t("Voice", { context: "voice.voice" })}</span>
           {count ? (
             <span
               key={count}
               className="count-pop absolute -right-1 -top-1 rounded-full bg-gradient-to-b from-amber-300 to-amber-500 px-1 text-[9px] font-semibold leading-3 text-amber-950 shadow-glow-gold md:static md:ml-0.5 md:px-1.5 md:text-[10px] md:leading-4"
-              aria-label={`${count} on the call`}
+              aria-label={t("{count} on the call", { count })}
             >
               {count}
             </span>
@@ -177,7 +180,7 @@ export function VoiceDock({
               <div
                 ref={panelRef}
                 role="dialog"
-                aria-label="Voice chat"
+                aria-label={t("Voice chat", { context: "voice.chat" })}
                 style={{ "--dock-top": "4rem", "--dock-right": "1rem" } as CSSProperties}
                 className={cn(
                   open ? "block" : "hidden",
@@ -199,7 +202,7 @@ export function VoiceDock({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  aria-label="Close"
+                  aria-label={t("Close", { context: "voice.close" })}
                   className="absolute right-2 top-1 z-10 rounded-md p-1.5 text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200 lg:hidden"
                 >
                   <X className="size-4" />

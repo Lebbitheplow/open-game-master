@@ -3,12 +3,15 @@
 import { X } from "lucide-react";
 import type { TourEnd } from "@/lib/tours/account-logic";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 
 // The first fight's two-row card (docs/visual-overhaul-plan.md 5.7): play a
 // card, or type your move. Shown once per account through the tours' record
 // (src/lib/tours/tour-store.ts), and brought back by the Hand's question mark.
 export { HAND_TUTORIAL_ID } from "@/lib/tours/registry";
 
+// The two rows, as dictionary keys (table.hand.tutorial.*). Presentation
+// only: the amber card row, then the plain typing row.
 const ROWS = [
   {
     tag: "Card",
@@ -27,11 +30,12 @@ const ROWS = [
 ];
 
 export function HandTutorial({ onDismiss }: { onDismiss: (how: TourEnd) => void }) {
+  const t = useT();
   return (
-    <div className="mb-2 animate-fade-up rounded-xl border border-stone-700/60 bg-stone-950/80 p-2.5" role="note" aria-label="How the hand works">
+    <div className="mb-2 animate-fade-up rounded-xl border border-stone-700/60 bg-stone-950/80 p-2.5" role="note" aria-label={t("How the hand works")}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-display text-xs uppercase tracking-[0.14em] text-amber-200/90">Your turn, two ways</span>
-        <button type="button" onClick={() => onDismiss("ended")} aria-label="Close the hand tutorial" className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200">
+        <span className="font-display text-xs uppercase tracking-[0.14em] text-amber-200/90">{t("Your turn, two ways")}</span>
+        <button type="button" onClick={() => onDismiss("ended")} aria-label={t("Close the hand tutorial")} className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200">
           <X className="size-4" />
         </button>
       </div>
@@ -39,18 +43,18 @@ export function HandTutorial({ onDismiss }: { onDismiss: (how: TourEnd) => void 
         {ROWS.map((row) => (
           <div key={row.tag} className={`flex items-start gap-2.5 rounded-lg border p-2.5 ${row.className}`}>
             <span className={`mt-0.5 shrink-0 rounded border px-1.5 py-0.5 font-display text-[9px] uppercase tracking-[0.16em] ${row.tagClassName}`}>
-              {row.tag}
+              {t(row.tag)}
             </span>
             <span className="min-w-0">
-              <span className="block font-display text-sm font-semibold text-stone-100">{row.title}</span>
-              <span className="block font-serif text-[13px] leading-snug text-stone-400">{row.body}</span>
+              <span className="block font-display text-sm font-semibold text-stone-100">{t(row.title)}</span>
+              <span className="block font-serif text-[13px] leading-snug text-stone-400">{t(row.body)}</span>
             </span>
           </div>
         ))}
       </div>
       <div className="mt-2 flex justify-end">
         <button type="button" onClick={() => onDismiss("done")} className={ui.btnSmall}>
-          Got it
+          {t("Got it")}
         </button>
       </div>
     </div>

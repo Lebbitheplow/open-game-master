@@ -2,6 +2,7 @@
 
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import type { EmbeddingWarning } from "@/lib/embedding-language-text";
+import { useT } from "@/lib/locale";
 import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 import { useEmbeddingWarning } from "@/lib/use-embedding-warning";
 
@@ -20,6 +21,7 @@ export function EmbeddingLanguageBanner({
   warning: EmbeddingWarning;
   onChangeLanguage?: () => void;
 }) {
+  const t = useT();
   return (
     <SessionBanner
       glyph="system-lore"
@@ -27,7 +29,7 @@ export function EmbeddingLanguageBanner({
       actions={
         onChangeLanguage ? (
           <button type="button" className={bannerButtonClass(true)} onClick={onChangeLanguage}>
-            Table language
+            {t("Table language")}
           </button>
         ) : undefined
       }

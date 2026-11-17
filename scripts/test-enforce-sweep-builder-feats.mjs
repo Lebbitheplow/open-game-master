@@ -25,6 +25,7 @@ import { expand, sweepRows } from "./lib/sweep-builder-rows.mjs";
 import { openFillSweep } from "./lib/sweep-builder-fill.mjs";
 import { doors, key } from "./lib/sweep-builder.mjs";
 import * as known from "./lib/sweep-builder-known-feats.mjs";
+const { translate } = await import("../src/lib/messages-logic.ts");
 
 const nopack = process.env.CONTENT_DB_PATH === "/nonexistent";
 const prefix = nopack ? "nopack-feat" : "feat";
@@ -99,9 +100,12 @@ function judged(fields, row) {
   const featJudge = builderFeatJudge(facts, { [textKey(row.name)]: entryPrerequisite(row) });
   // The save check as the wizard runs it, the judge with it: enforce-builder's
   // own gate passes none, and without one no feat's prerequisite is read.
-  const blocker = facts.race && facts.klass && facts.background ? sb.builder.submit.validateBuilder({ ...facts, featJudge }) : built.blocker;
+  // The gate reads through the dictionary; the suite reads it in English.
+  const blocker = facts.race && facts.klass && facts.background ? sb.builder.submit.validateBuilder(enT, { ...facts, featJudge }) : built.blocker;
   return { built: { ...built, blocker }, featJudge };
 }
+
+const enT = (key, vars) => translate("en", key, vars);
 
 function verdict(base, row, featDescs) {
   return judgeEntry(judged({ ...base.fields, featDescs }, row).featJudge, row, true);

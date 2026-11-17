@@ -10,6 +10,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { navigateTo } from "@/lib/navigation";
+import { useT } from "@/lib/locale";
 
 // Invite-link landing: /join/CODE. Logged-in users are joined and forwarded
 // to the campaign; everyone else logs in or registers first, with the
@@ -36,6 +37,7 @@ function genreLabel(genre: string): string {
 }
 
 export default function JoinPage({ params }: { params: Promise<{ code: string }> }) {
+  const t = useT();
   const { code } = use(params);
   const roomCode = code.toUpperCase();
   const [state, setState] = useState<"checking" | "auth" | "joining" | "error">("checking");
@@ -67,13 +69,13 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not join the campaign.");
+        setError(data.error || t("Could not join the campaign."));
         setState("error");
         return;
       }
       navigateTo(`/campaigns/${data.campaign.id}`);
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "join.unreachable" }));
       setState("error");
     }
   }, [roomCode]);
@@ -95,25 +97,25 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
     <main className="bg-starfield flex flex-1 items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-sm animate-fade-up-slow">
         {/* The invitation: the cover as the letterhead, sealed in wax. */}
-        <section className={cn(ui.card, "ornate texture-noise invite-letter mb-8 p-3")} aria-label="Campaign invite">
+        <section className={cn(ui.card, "ornate texture-noise invite-letter mb-8 p-3")} aria-label={t("Campaign invite")}>
           <CampaignCover
             cover={preview?.cover ? { id: "", url: preview.cover.url } : null}
-            title={preview?.title ?? `Room ${roomCode}`}
+            title={preview?.title ?? t("Room {code}", { code: roomCode })}
             genre={preview?.genre}
             seed={roomCode}
           />
           <div className="px-2 pb-3 pt-4 text-center">
             <p className="eyebrow text-[10px] text-amber-400/80">
-              {preview ? "You\u2019re invited to" : "You\u2019re invited"}
+              {preview ? t("You’re invited to") : t("You’re invited")}
             </p>
             <h1 className="gold-title mt-1 text-balance font-display text-2xl tracking-wide">
-              {preview?.title ?? "Join the table"}
+              {preview?.title ?? t("Join the table", { context: "join.fallbackTitle" })}
             </h1>
             {preview ? (
               <p className="reveal mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-stone-400">
                 <span className="inline-flex items-center gap-1">
                   <GameIcon icon={{ kind: "glyph", key: "tab-party" }} size="size-5" />
-                  {preview.playerCount}/{preview.maxPlayers} adventurers
+                  {t("{count}/{max} adventurers", { count: preview.playerCount, max: preview.maxPlayers })}
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-5" />
@@ -121,13 +123,13 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-5" />
-                  Lvl {preview.startingLevel}
+                  {t("Lvl {level}", { level: preview.startingLevel })}
                 </span>
-                {preview.seatOpen ? null : <span className="w-full text-amber-300/90">not taking new players right now</span>}
+                {preview.seatOpen ? null : <span className="w-full text-amber-300/90">{t("not taking new players right now")}</span>}
               </p>
             ) : null}
             <p className="mt-3 text-sm text-stone-500">
-              Room code <span className="room-chip">{roomCode}</span>
+              {t("Room code ")}<span className="room-chip">{roomCode}</span>
             </p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -139,7 +141,7 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
             <div className="reveal flex flex-col items-center gap-3 py-6" role="status">
               <D20Spinner className="size-7 text-amber-300" />
               <p className="font-serif text-sm text-stone-400">
-                {state === "joining" ? "Taking your seat" : "Checking your session"}
+                {state === "joining" ? t("Taking your seat") : t("Checking your session")}
               </p>
             </div>
           ) : state === "error" ? (
@@ -151,18 +153,18 @@ export default function JoinPage({ params }: { params: Promise<{ code: string }>
                 {error}
               </p>
               <Link href="/" className={ui.btnSecondary}>
-                Back to Open Game Master
+                {t("Back to Open Game Master")}
               </Link>
             </div>
           ) : (
             <>
-              <SectionHead title="Sign in to take your seat" glyph="tab-admin" level="h2" />
+              <SectionHead title={t("Sign in to take your seat")} glyph="tab-admin" level="h2" />
               <AuthForm joinCode={roomCode} onAuthed={() => join()} />
               {/* A way out that is not the browser's back button, which an
                   installed app does not have. */}
               <p className="mt-4 text-center">
                 <Link href="/" className="text-xs text-stone-500 hover:text-amber-200">
-                  Not now, back to Open Game Master
+                  {t("Not now, back to Open Game Master")}
                 </Link>
               </p>
             </>

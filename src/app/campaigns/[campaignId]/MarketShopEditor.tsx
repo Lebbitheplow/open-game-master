@@ -12,7 +12,13 @@ import { MARKUP_STEPS, costToCopper, type StockLine } from "@/lib/dm/shop-logic"
 import { formatPrice, parseCoins, unreadCoins } from "@/lib/srd/currency";
 import { withoutBonus } from "@/lib/srd/item-row";
 import { KitButton, panelField, SettingToggle } from "./PanelKit";
+import { KIND_KEYS, SIZE_KEYS } from "./MarketPanel";
 import { textKey } from "@/lib/language/text-logic";
+import { useT, useTp } from "@/lib/locale";
+
+// The translator's shape, for the label helper below: `t` comes in first
+// (src/lib/story-window.ts).
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 // The Market's shop editor (#171), for whoever holds the prep: the DM seat,
 // the lead of an AI-narrated table, the workshop's author. Every field is
@@ -44,16 +50,22 @@ const SIZES = ["hamlet", "village", "town", "city"] as const;
 const MAX_LINES = 60;
 
 // The haggle ladder in words, so a markup is picked rather than typed.
-function markupLabel(step: number): string {
-  return step === 1 ? "List price" : step < 1 ? `${Math.round((1 - step) * 100)}% off` : step === 2 ? "Double" : `+${Math.round((step - 1) * 100)}%`;
+function markupLabel(t: T, step: number): string {
+  return step === 1
+    ? t("List price")
+    : step < 1
+      ? t("{pct}% off", { pct: Math.round((1 - step) * 100) })
+      : step === 2
+        ? t("Double", { context: "market.editor.double" })
+        : t("+{pct}%", { pct: Math.round((step - 1) * 100) });
 }
-
-const MARKUP_OPTIONS = MARKUP_STEPS.map((step) => ({ value: String(step), label: markupLabel(step) }));
 
 // A price typed the way the table says it ("15 gp", "2 sp 5 cp", a bare
 // number is gold), shown back in coin. A slip that is not a price keeps the
 // last good one and says so.
 function CoinField({ value, onChange, label }: { value: number; onChange: (cp: number) => void; label: string }) {
+  const t = useT();
+  const tp = useTp();
   const [draft, setDraft] = useState<string | null>(null);
   const [bad, setBad] = useState<string | null>(null);
   const commit = () => {
@@ -65,7 +77,7 @@ function CoinField({ value, onChange, label }: { value: number; onChange: (cp: n
       onChange(parsed);
       setBad(null);
     } else {
-      setBad(parsed === null ? unreadCoins(draft) : "Write a price like 15 gp, 2 sp or 5 cp.");
+      setBad(parsed === null ? unreadCoins(t, draft) : t("Write a price like 15 gp, 2 sp or 5 cp."));
     }
     setDraft(null);
   };
@@ -102,6 +114,8 @@ export function MarketShopEditor({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const [draft, setDraft] = useState({
     name: shop.name,
     kind: shop.kind,
@@ -134,16 +148,16 @@ export function MarketShopEditor({
     try {
       // A PATCH sent twice lands the same, so a lost answer is only said,
       // and the shelf stays as typed to send again (audit WA-05).
-      const sent = await readWrite(
+      const sent = await readWrite(t,
         fetch(`/api/campaigns/${campaignId}/shops/${shop.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         }),
-        "The shop could not be saved.",
+        t("The shop could not be saved."),
       );
       if (sent.error !== null) {
-        setError(sent.unanswered ? `${sent.error} The shelf is kept here; save again.` : sent.error);
+        setError(sent.unanswered ? `${sent.error} ${t("The shelf is kept here; save again.")}` : sent.error);
         return false;
       }
       onSaved();
@@ -171,47 +185,47 @@ export function MarketShopEditor({
     );
 
   return (
-    <div className="panel reveal space-y-2.5 rounded-lg p-2.5" aria-label={`Edit ${shop.name}`}>
+    <div className="panel reveal space-y-2.5 rounded-lg p-2.5" aria-label={t("Edit {name}", { name: shop.name })}>
       <div className="flex flex-wrap items-center gap-1.5">
-        <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} maxLength={80} aria-label="Shop name" className={cn(panelField, "min-w-[9rem] flex-1")} />
-        <Select size="sm" label="Kind of shop" value={draft.kind} options={KINDS.map((kind) => ({ value: kind as string, label: kind }))} onChange={(kind) => setDraft({ ...draft, kind })} className="pk-w-28" />
-        <Select size="sm" label="Size of the place" value={draft.size} options={SIZES.map((size) => ({ value: size as string, label: size }))} onChange={(size) => setDraft({ ...draft, size })} className="pk-w-24" />
+        <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} maxLength={80} aria-label={t("Shop name")} className={cn(panelField, "min-w-[9rem] flex-1")} />
+        <Select size="sm" label={t("Kind of shop")} value={draft.kind} options={KINDS.map((kind) => ({ value: kind as string, label: t(KIND_KEYS[kind]) }))} onChange={(kind) => setDraft({ ...draft, kind })} className="pk-w-28" />
+        <Select size="sm" label={t("Size of the place")} value={draft.size} options={SIZES.map((size) => ({ value: size as string, label: t(SIZE_KEYS[size]) }))} onChange={(size) => setDraft({ ...draft, size })} className="pk-w-24" />
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         <Select
           size="sm"
-          label="Where it stands"
+          label={t("Where it stands")}
           value={draft.locationId}
-          options={[{ value: "", label: "No place yet" }, ...places.map((place) => ({ value: place.id, label: place.name, icon: { kind: "glyph" as const, key: "tab-map" } }))]}
+          options={[{ value: "", label: t("No place yet") }, ...places.map((place) => ({ value: place.id, label: place.name, icon: { kind: "glyph" as const, key: "tab-map" } }))]}
           onChange={(locationId) => setDraft({ ...draft, locationId })}
         />
         <Select
           size="sm"
-          label="Who keeps it"
+          label={t("Who keeps it")}
           value={draft.keeperNpcId}
-          options={[{ value: "", label: "Nobody named" }, ...keepers.map((npc) => ({ value: npc.id, label: npc.name, icon: { kind: "glyph" as const, key: "system-cast" } }))]}
+          options={[{ value: "", label: t("Nobody named") }, ...keepers.map((npc) => ({ value: npc.id, label: npc.name, icon: { kind: "glyph" as const, key: "system-cast" } }))]}
           onChange={(keeperNpcId) => setDraft({ ...draft, keeperNpcId })}
         />
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <SettingToggle on={draft.buys} onToggle={() => setDraft({ ...draft, buys: !draft.buys })}>
-          Buys from the party
+          {t("Buys from the party")}
         </SettingToggle>
-        <Select size="sm" label="Prices" value={draft.markup} options={MARKUP_OPTIONS} onChange={(markup) => setDraft({ ...draft, markup })} className="pk-w-28" />
+        <Select size="sm" label={t("Prices")} value={draft.markup} options={MARKUP_STEPS.map((step) => ({ value: String(step), label: markupLabel(t, step) }))} onChange={(markup) => setDraft({ ...draft, markup })} className="pk-w-28" />
         <span className="flex items-center gap-1.5 text-xs text-stone-400">
-          Restocks every
-          <NumberStepper size="sm" label="Days between restocks" value={draft.restockDays} min={0} max={365} onChange={(restockDays) => setDraft({ ...draft, restockDays })} suffix="days" />
+          {t("Restocks every")}
+          <NumberStepper size="sm" label={t("Days between restocks")} value={draft.restockDays} min={0} max={365} onChange={(restockDays) => setDraft({ ...draft, restockDays })} suffix={t("days")} />
         </span>
       </div>
       <p className="text-[11px] text-stone-500">
         {draft.restockDays === 0
-          ? "It never restocks: what is sold stays sold."
+          ? t("It never restocks: what is sold stays sold.")
           : shop.preparedStock
-            ? `A restock refills this shelf every ${draft.restockDays} day${draft.restockDays === 1 ? "" : "s"}; what the party sold the keeper stays.`
-            : `It restocks from the content pack every ${draft.restockDays} day${draft.restockDays === 1 ? "" : "s"} until you save a shelf here.`}
+            ? tp("A restock refills this shelf every {count} day; what the party sold the keeper stays.", "A restock refills this shelf every {count} days; what the party sold the keeper stays.", { count: draft.restockDays })
+            : tp("It restocks from the content pack every {count} day until you save a shelf here.", "It restocks from the content pack every {count} days until you save a shelf here.", { count: draft.restockDays })}
       </p>
 
-      <ul className="stagger space-y-1" aria-label="The shelf">
+      <ul className="stagger space-y-1" aria-label={t("The shelf")}>
         {lines.map((line, index) => (
           <li key={index} className="flex flex-wrap items-center gap-1 rounded-md border border-stone-800/80 bg-stone-950/40 p-1.5">
             <GameIcon icon={{ kind: "item", key: line.itemName || "pack", family: "item-gear" }} size="size-6" />
@@ -219,23 +233,23 @@ export function MarketShopEditor({
               value={line.itemName}
               onChange={(event) => setLine(index, { itemName: event.target.value })}
               maxLength={80}
-              placeholder="Item name"
-              aria-label={`Line ${index + 1} item`}
+              placeholder={t("Item name")}
+              aria-label={t("Line {n} item", { n: index + 1 })}
               className={cn(panelField, "min-w-[7rem] flex-1", !line.itemName.trim() && "border-amber-500/50")}
             />
-            <NumberStepper size="sm" label={`Line ${index + 1} count`} value={line.qty} min={0} max={999} onChange={(qty) => setLine(index, { qty })} />
-            <CoinField label={`Line ${index + 1} price`} value={line.priceCp} onChange={(priceCp) => setLine(index, { priceCp })} />
-            <KitButton tone="iconDanger" always aria-label={`Take ${line.itemName || "this line"} off the shelf`} onClick={() => setLines((current) => current.filter((_, at) => at !== index))}>
+            <NumberStepper size="sm" label={t("Line {n} count", { n: index + 1 })} value={line.qty} min={0} max={999} onChange={(qty) => setLine(index, { qty })} />
+            <CoinField label={t("Line {n} price", { n: index + 1 })} value={line.priceCp} onChange={(priceCp) => setLine(index, { priceCp })} />
+            <KitButton tone="iconDanger" always aria-label={line.itemName ? t("Take {name} off the shelf", { name: line.itemName }) : t("Take this line off the shelf")} onClick={() => setLines((current) => current.filter((_, at) => at !== index))}>
               <X className="size-3.5" />
             </KitButton>
             {line.srdName && textKey(line.srdName) !== textKey(withoutBonus(line.itemName)) ? (
               <span className="flex basis-full items-center gap-1 text-[11px] text-stone-400">
-                <span className="rounded border border-stone-700/80 px-1.5 py-0.5">Listed as {line.srdName}</span>
+                <span className="rounded border border-stone-700/80 px-1.5 py-0.5">{t("Listed as {name}", { name: line.srdName })}</span>
                 <KitButton
                   tone="iconDanger"
                   always
-                  aria-label={`Sell ${line.itemName || "this line"} as no listed item`}
-                  title="Sell it as no listed item: nothing the catalog says about it applies"
+                  aria-label={line.itemName ? t("Sell {name} as no listed item", { name: line.itemName }) : t("Sell this line as no listed item")}
+                  title={t("Sell it as no listed item: nothing the catalog says about it applies")}
                   onClick={() => setLine(index, { srdName: undefined })}
                 >
                   <X className="size-3.5" />
@@ -246,21 +260,21 @@ export function MarketShopEditor({
               value={line.note}
               onChange={(event) => setLine(index, { note: event.target.value })}
               maxLength={120}
-              placeholder="A note for the storyteller (optional)"
-              aria-label={`Line ${index + 1} note`}
+              placeholder={t("A note for the storyteller (optional)")}
+              aria-label={t("Line {n} note", { n: index + 1 })}
               className={cn(panelField, "basis-full")}
             />
           </li>
         ))}
-        {!lines.length ? <li className="text-xs italic text-stone-500">Bare shelves. Add what this shop sells.</li> : null}
+        {!lines.length ? <li className="text-xs italic text-stone-500">{t("Bare shelves. Add what this shop sells.")}</li> : null}
       </ul>
 
       {lines.length < MAX_LINES ? (
         <div className="space-y-1.5">
           <ContentPick
             kind="items"
-            label="Add an item from the catalog"
-            placeholder="Add from the catalog: lantern, rope, potion..."
+            label={t("Add an item from the catalog")}
+            placeholder={t("Add from the catalog: lantern, rope, potion...")}
             onPick={(entry) =>
               addLine({
                 itemName: entry.name.slice(0, 80),
@@ -272,28 +286,28 @@ export function MarketShopEditor({
             }
           />
           <KitButton tone="link" onClick={() => addLine({ itemName: "", qty: 1, priceCp: 100, note: "" })}>
-            <Plus className="size-3.5" /> Write a line by hand
+            <Plus className="size-3.5" /> {t("Write a line by hand")}
           </KitButton>
         </div>
       ) : (
-        <p className="text-[11px] text-stone-500">A shelf holds {MAX_LINES} lines.</p>
+        <p className="text-[11px] text-stone-500">{t("A shelf holds {n} lines.", { n: MAX_LINES })}</p>
       )}
 
       {error ? <p role="alert" className="live-in motion-shake text-xs text-red-300">{error}</p> : null}
-      {unnamed ? <p className="live-in text-[11px] text-amber-300/90">Name every line, or take it off the shelf.</p> : null}
+      {unnamed ? <p className="live-in text-[11px] text-amber-300/90">{t("Name every line, or take it off the shelf.")}</p> : null}
       <div className="flex flex-wrap items-center gap-1.5">
         <KitButton tone="primary" disabled={Boolean(busy) || unnamed} busy={busy === "save"} onClick={() => void save()}>
-          Save the shop
+          {t("Save the shop")}
         </KitButton>
-        <KitButton onClick={onCancel}>Cancel</KitButton>
+        <KitButton onClick={onCancel}>{t("Cancel")}</KitButton>
         <span className="flex-1" />
         {shop.preparedStock ? (
           <KitButton tone="link" disabled={Boolean(busy)} onClick={() => void send({ stockFromPack: true }, "pack")}>
-            Let the pack restock it
+            {t("Let the pack restock it")}
           </KitButton>
         ) : null}
-        <KitButton disabled={Boolean(busy)} busy={busy === "restock"} onClick={() => void send({ restock: true }, "restock")} title="Refill the shelf now, as a restock day would">
-          <RotateCw className="size-3.5" /> Restock now
+        <KitButton disabled={Boolean(busy)} busy={busy === "restock"} onClick={() => void send({ restock: true }, "restock")} title={t("Refill the shelf now, as a restock day would")}>
+          <RotateCw className="size-3.5" /> {t("Restock now")}
         </KitButton>
       </div>
     </div>

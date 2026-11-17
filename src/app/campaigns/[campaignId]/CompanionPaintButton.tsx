@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { useT } from "@/lib/locale";
 import { KitButton } from "./PanelKit";
 
 // How long the card watches a painting before it stops asking: the queue is
@@ -22,6 +23,7 @@ export function CompanionPaintButton({ campaignId, sheet }: { campaignId: string
   // the old one is cleared first, and the new one comes with the sheet.
   const [pressedOver, setPressedOver] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const t = useT();
   const polls = useRef(0);
   const portraitUrl = sheet.portrait?.url ?? "";
   const painting = pressedOver !== null && (!portraitUrl || portraitUrl === pressedOver);
@@ -43,11 +45,11 @@ export function CompanionPaintButton({ campaignId, sheet }: { campaignId: string
       if (data.status === "failed") {
         window.clearInterval(timer);
         setPressedOver(null);
-        setError("The portrait could not be painted. Try again, or upload one.");
+        setError(t("The portrait could not be painted. Try again, or upload one."));
       }
     }, POLL_MS);
     return () => window.clearInterval(timer);
-  }, [painting, campaignId, sheet.id]);
+  }, [painting, campaignId, sheet.id, t]);
 
   async function paint() {
     setError("");
@@ -56,11 +58,11 @@ export function CompanionPaintButton({ campaignId, sheet }: { campaignId: string
       const response = await fetch(`/api/campaigns/${campaignId}/companions/${sheet.id}/portrait`, { method: "POST" });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? "Could not start the painting.");
+        setError(data.error ?? t("Could not start the painting."));
         setPressedOver(null);
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
       setPressedOver(null);
     }
   }
@@ -71,11 +73,15 @@ export function CompanionPaintButton({ campaignId, sheet }: { campaignId: string
         onClick={paint}
         disabled={painting}
         busy={painting}
-        title={`The image model paints ${sheet.name} a new face from their sheet${portraitUrl ? ", replacing this one" : ""}.`}
+        title={
+          portraitUrl
+            ? t("The image model paints {name} a new face from their sheet, replacing this one.", { name: sheet.name })
+            : t("The image model paints {name} a new face from their sheet.", { name: sheet.name })
+        }
         className="w-full justify-center"
       >
         {painting ? null : <Sparkles className="size-3.5" aria-hidden="true" />}
-        {painting ? "Painting portrait…" : portraitUrl ? "Paint a new portrait" : "Paint a portrait"}
+        {painting ? t("Painting portrait…", { context: "table.companion.painting" }) : portraitUrl ? t("Paint a new portrait") : t("Paint a portrait")}
       </KitButton>
       {error ? (
         <p role="alert" className="text-xs text-red-300">

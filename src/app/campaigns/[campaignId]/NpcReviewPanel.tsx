@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { MAX_NPC_NAME } from "@/lib/dm/entity-review-logic";
+import { useT } from "@/lib/locale";
 
 // Lead-only NPC roster hygiene.
 //
@@ -25,6 +26,7 @@ type ReviewNpc = {
 type Suggestion = { name: string; matches: string };
 
 export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
+  const t = useT();
   const [npcs, setNpcs] = useState<ReviewNpc[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -64,13 +66,13 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          setError(data.error ?? "That did not go through.");
+          setError(data.error ?? t("That did not go through."));
           return false;
         }
         await load();
         return true;
       } catch {
-        setError("That did not go through.");
+        setError(t("That did not go through."));
         return false;
       } finally {
         setBusy(false);
@@ -95,7 +97,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
   if (!loaded) {
     return (
       <p className="flex items-center gap-1 text-[11px] text-stone-500">
-        <Loader2 className="size-3 animate-spin" /> Loading...
+        <Loader2 className="size-3 animate-spin" /> {t("Loading...")}
       </p>
     );
   }
@@ -106,10 +108,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
     <div className="space-y-3">
       {/* No heading: the card that owns this panel already titles it. */}
       <p className="text-[11px] leading-4 text-stone-500">
-        The GM rarely spells a name the same way twice over fifty turns. Close matches are
-        flagged here rather than merged for you, because two similar names are often two
-        people. Merging keeps the old spelling as an alias, so nothing already written stops
-        resolving.
+        {t("The GM rarely spells a name the same way twice over fifty turns. Close matches are flagged here rather than merged for you, because two similar names are often two people. Merging keeps the old spelling as an alias, so nothing already written stops resolving.")}
       </p>
 
       {error ? <p className="motion-shake text-[11px] text-red-400">{error}</p> : null}
@@ -117,7 +116,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
       {suggestions.length ? (
         <div className="reveal space-y-1.5">
           <p className="text-[10px] font-medium uppercase tracking-wide text-stone-600">
-            Possible duplicates
+            {t("Possible duplicates")}
           </p>
           {suggestions.map((suggestion) => {
             const left = byName(suggestion.name);
@@ -129,11 +128,11 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
               >
                 <p className="text-[11px] leading-4 text-stone-200">
                   <span className="font-medium">{suggestion.name}</span>
-                  <span className="text-stone-500"> and </span>
+                  <span className="text-stone-500"> {t("and", { context: "npc.review.and" })} </span>
                   <span className="font-medium">{suggestion.matches}</span>
                 </p>
                 <p className="mt-0.5 text-[11px] text-stone-500">
-                  Keep one and fold the other into it, or dismiss if they are two people.
+                  {t("Keep one and fold the other into it, or dismiss if they are two people.")}
                 </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   {left && right ? (
@@ -146,7 +145,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                         }
                         className={cn(ui.btnSmall, "px-2 py-1 text-[11px]")}
                       >
-                        <Merge className="size-3" /> Keep &ldquo;{left.name}&rdquo;
+                        <Merge className="size-3" /> {t("Keep \"{name}\"", { name: left.name })}
                       </button>
                       <button
                         type="button"
@@ -156,7 +155,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                         }
                         className={cn(ui.btnSmall, "px-2 py-1 text-[11px]")}
                       >
-                        <Merge className="size-3" /> Keep &ldquo;{right.name}&rdquo;
+                        <Merge className="size-3" /> {t("Keep \"{name}\"", { name: right.name })}
                       </button>
                     </>
                   ) : null}
@@ -172,7 +171,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                     }
                     className={cn(ui.btnSmall, "px-2 py-1 text-[11px]")}
                   >
-                    <X className="size-3" /> Different people
+                    <X className="size-3" /> {t("Different people")}
                   </button>
                 </div>
               </div>
@@ -181,16 +180,16 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
         </div>
       ) : (
         <p className="text-[11px] leading-4 text-stone-600">
-          No close matches to review. New ones appear here as the GM names people.
+          {t("No close matches to review. New ones appear here as the GM names people.")}
         </p>
       )}
 
       <div className="space-y-1">
         <p className="text-[10px] font-medium uppercase tracking-wide text-stone-600">
-          Everyone the campaign is tracking
+          {t("Everyone the campaign is tracking")}
         </p>
         {!npcs.length ? (
-          <p className="reveal text-[11px] text-stone-600">Nobody yet.</p>
+          <p className="reveal text-[11px] text-stone-600">{t("Nobody yet.")}</p>
         ) : (
           <ul className="stagger space-y-1">
             {npcs.map((npc) => (
@@ -221,14 +220,14 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                         onClick={() => void submitRename(npc.id)}
                         className={cn(ui.btnSmall, "px-2 py-0.5 text-[11px]")}
                       >
-                        <Check className="size-3" /> Save
+                        <Check className="size-3" /> {t("Save")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRenaming(null)}
                         className={cn(ui.btnSmall, "px-2 py-0.5 text-[11px]")}
                       >
-                        Cancel
+                        {t("Cancel")}
                       </button>
                     </div>
                   </div>
@@ -238,16 +237,16 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                       <p className="text-[11px] leading-4 text-stone-200">
                         {npc.name}
                         {npc.archived ? (
-                          <span className="ml-1 text-stone-600">(archived)</span>
+                          <span className="ml-1 text-stone-600">{t("(archived)")}</span>
                         ) : null}
                       </p>
                       <p className="text-[11px] leading-4 text-stone-500">
-                        {npc.attitude}
+                        {t(npc.attitude)}
                         {npc.location ? ` · ${npc.location}` : ""}
                       </p>
                       {npc.aliases.length ? (
                         <p className="reveal mt-0.5 text-[11px] leading-4 text-stone-600">
-                          also called {npc.aliases.join(", ")}
+                          {t("also called {aliases}", { aliases: npc.aliases.join(", ") })}
                         </p>
                       ) : null}
                     </div>
@@ -260,8 +259,8 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                         setError("");
                       }}
                       className={cn(ui.iconAction, "p-1")}
-                      title="Rename"
-                      aria-label={`Rename ${npc.name}`}
+                      title={t("Rename")}
+                      aria-label={t("Rename {name}", { name: npc.name })}
                     >
                       <Pencil className="size-3" />
                     </button>

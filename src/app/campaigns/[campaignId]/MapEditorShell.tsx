@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Minus, Plus, Redo2, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import type { CanvasControls } from "@/app/campaigns/[campaignId]/TerrainCanvas";
 import { MapRail } from "@/app/campaigns/[campaignId]/MapRail";
 import { hasDials } from "@/app/campaigns/[campaignId]/MapOptions";
@@ -91,6 +92,7 @@ export function MapEditorShell({
   closeGap?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const rootRef = useRef<HTMLDivElement>(null);
   const [wide, setWide] = useState(false);
   const [sheet, setSheet] = useState<"tool" | "layers" | null>(null);
@@ -114,8 +116,8 @@ export function MapEditorShell({
       <button
         type="button"
         disabled={!undo.canUndo}
-        aria-label="Undo"
-        title="Undo (Ctrl+Z)"
+        aria-label={t("Undo")}
+        title={t("Undo (Ctrl+Z)")}
         onClick={undo.onUndo}
         className={cn("flex items-center justify-center rounded-md border border-stone-700 text-stone-300 hover:text-amber-200 disabled:opacity-35 motion-press", undoSize)}
       >
@@ -124,38 +126,38 @@ export function MapEditorShell({
       <button
         type="button"
         disabled={!undo.canRedo}
-        aria-label="Redo"
-        title="Redo (Ctrl+Shift+Z)"
+        aria-label={t("Redo")}
+        title={t("Redo (Ctrl+Shift+Z)")}
         onClick={undo.onRedo}
         className={cn("flex items-center justify-center rounded-md border border-stone-700 text-stone-300 hover:text-amber-200 disabled:opacity-35 motion-press", undoSize)}
       >
         <Redo2 className="size-4" />
       </button>
-      {wide && back !== undefined ? <span className="ml-1 font-mono text-[10px] text-stone-500">{back} back</span> : null}
+      {wide && back !== undefined ? <span className="ml-1 font-mono text-[10px] text-stone-500">{t("{n} back", { n: back })}</span> : null}
     </span>
   ) : null;
 
   const switches = (
     <>
-      <ToggleChip active={grid} onClick={() => onGrid(!grid)} title="The grid lines over the map">
-        Grid
+      <ToggleChip active={grid} onClick={() => onGrid(!grid)} title={t("The grid lines over the map")}>
+        {t("Grid")}
       </ToggleChip>
-      <ToggleChip active={dmView} onClick={() => onDmView(!dmView)} title="Off shows the map as a player finds it: no GM-only labels, door states or overlay">
-        GM view
+      <ToggleChip active={dmView} onClick={() => onDmView(!dmView)} title={t("Off shows the map as a player finds it: no GM-only labels, door states or overlay")}>
+        {t("GM view")}
       </ToggleChip>
     </>
   );
   const zoomer = (
     <span className="flex shrink-0 items-center gap-1">
-      <button type="button" aria-label="Zoom out" onClick={() => controls.current?.zoomOut()} className="flex size-8 items-center justify-center rounded-md border border-stone-700 text-stone-400 hover:text-amber-200">
+      <button type="button" aria-label={t("Zoom out")} onClick={() => controls.current?.zoomOut()} className="flex size-8 items-center justify-center rounded-md border border-stone-700 text-stone-400 hover:text-amber-200">
         <Minus className="size-3.5" />
       </button>
-      <button type="button" aria-label="Zoom in" onClick={() => controls.current?.zoomIn()} className="flex size-8 items-center justify-center rounded-md border border-stone-700 text-stone-400 hover:text-amber-200">
+      <button type="button" aria-label={t("Zoom in")} onClick={() => controls.current?.zoomIn()} className="flex size-8 items-center justify-center rounded-md border border-stone-700 text-stone-400 hover:text-amber-200">
         <Plus className="size-3.5" />
       </button>
       <button
         type="button"
-        title="Fit the whole map"
+        title={t("Fit the whole map")}
         onClick={() => controls.current?.fit()}
         className="h-8 min-w-12 rounded-md px-1 text-stone-300 hover:text-amber-200"
       >
@@ -239,7 +241,7 @@ export function MapEditorShell({
               onClick={() => setSheet(sheet === "tool" ? null : "tool")}
               className="h-11 rounded-lg border border-amber-500/40 bg-amber-400/5 text-amber-100 motion-press"
             >
-              <span className="font-display text-[11px] uppercase tracking-[0.16em]">{held ? held.label : "Tool"}</span>
+              <span className="font-display text-[11px] uppercase tracking-[0.16em]">{held ? held.label : t("Tool")}</span>
             </button>
             <button
               type="button"
@@ -247,7 +249,7 @@ export function MapEditorShell({
               onClick={() => setSheet(sheet === "layers" ? null : "layers")}
               className="h-11 rounded-lg border border-stone-700 bg-stone-900/50 text-stone-200 motion-press"
             >
-              <span className="font-display text-[11px] uppercase tracking-[0.16em]">Layers</span>
+              <span className="font-display text-[11px] uppercase tracking-[0.16em]">{t("Layers")}</span>
             </button>
           </div>
 
@@ -255,21 +257,21 @@ export function MapEditorShell({
             <>
               <button
                 type="button"
-                aria-label="Close the sheet"
+                aria-label={t("Close the sheet")}
                 onClick={() => setSheet(null)}
                 className="map-scrim absolute inset-0 z-30 bg-[#05030d]/55"
               />
               <section
                 role="dialog"
-                aria-label={sheet === "tool" ? "Tool options" : "Layers"}
+                aria-label={sheet === "tool" ? t("Tool options") : t("Layers")}
                 className="map-sheet absolute inset-x-0 bottom-0 z-40 flex max-h-[78%] flex-col rounded-t-2xl border border-b-0 border-stone-600/60 bg-stone-950 shadow-elev-2"
               >
                 <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-2">
                   <span aria-hidden="true" className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-stone-600/70" />
                   <span className="pt-2 font-display text-[11px] uppercase tracking-[0.14em] text-amber-300">
-                    {sheet === "tool" ? "Options" : "The map"}
+                    {sheet === "tool" ? t("Options") : t("The map")}
                   </span>
-                  <button type="button" aria-label="Close" onClick={() => setSheet(null)} className="flex size-10 items-center justify-center rounded-md text-stone-400 hover:text-stone-200">
+                  <button type="button" aria-label={t("Close", { context: "action.close" })} onClick={() => setSheet(null)} className="flex size-10 items-center justify-center rounded-md text-stone-400 hover:text-stone-200">
                     <X className="size-4" />
                   </button>
                 </div>

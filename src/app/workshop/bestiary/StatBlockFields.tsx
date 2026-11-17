@@ -29,6 +29,8 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { Select } from "@/components/ui/Select";
 import { Field, FieldLabel, OptionalStepper, addChip, chip, chipOn, chipRow, rowIcon } from "@/app/workshop/kit";
 import { textKey } from "@/lib/language/text-logic";
+import { translate } from "@/lib/messages-logic";
+import { useT } from "@/lib/locale";
 
 // The printed half of a stat block (docs/workshop-parity-audit.md phase
 // 12): ability scores, skills, senses, languages and alignment, the spells
@@ -72,8 +74,9 @@ const SENSE_GLYPHS: Record<string, string> = {
 // What each skill and alignment means, for the ⓘ beside those lists. The
 // alignment blurbs are the character builder's; the bestiary's list uses
 // the spelled-out names, so they are matched by name.
+const en = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 const SKILL_GLOSSARY: GlossaryEntry[] = SKILL_NAMES.flatMap((name) => {
-  const blurb = describeSkill(name.toLowerCase().replace(/\s+/g, "_")) ?? describeSkill(name);
+  const blurb = describeSkill(en, name.toLowerCase().replace(/\s+/g, "_")) ?? describeSkill(en, name);
   return blurb ? [{ name, blurb }] : [];
 });
 const ALIGNMENT_GLOSSARY: GlossaryEntry[] = Object.values(ALIGNMENT_LABELS).map((entry) => ({
@@ -82,6 +85,7 @@ const ALIGNMENT_GLOSSARY: GlossaryEntry[] = Object.values(ALIGNMENT_LABELS).map(
 }));
 
 export function AbilityScores({ draft, onChange }: { draft: MonsterDraft; onChange: (draft: MonsterDraft) => void }) {
+  const t = useT();
   const stats = draft.stats;
   const set: Setter = (patch) => onChange({ ...draft, stats: { ...stats, ...patch } });
   const scores = stats.abilities ?? {};
@@ -109,7 +113,7 @@ export function AbilityScores({ draft, onChange }: { draft: MonsterDraft; onChan
   return (
     <div className="space-y-1">
       <SectionHead
-        title="Ability scores"
+        title={t("Ability scores", { context: "workshop.bestiary.stats.abilityScores" })}
         glyph="ability-str"
         className="mb-1"
         aside={
@@ -118,9 +122,9 @@ export function AbilityScores({ draft, onChange }: { draft: MonsterDraft; onChan
             onClick={derive}
             disabled={!Object.keys(scores).length}
             className={cn(ui.btnSmall, addChip)}
-            title="Set the DEX modifier and the saving throws from these scores"
+            title={t("Set the DEX modifier and the saving throws from these scores")}
           >
-            Saves from scores
+            {t("Saves from scores")}
           </button>
         }
       />
@@ -135,7 +139,7 @@ export function AbilityScores({ draft, onChange }: { draft: MonsterDraft; onChan
               ) : null}
             </span>
             <OptionalStepper
-              label={`${ability.toUpperCase()} score`}
+              label={t("{ability} score", { ability: ability.toUpperCase() })}
               min={1}
               max={50}
               fallback={10}
@@ -150,6 +154,7 @@ export function AbilityScores({ draft, onChange }: { draft: MonsterDraft; onChan
 }
 
 export function SkillsAndSenses({ draft, onChange }: { draft: MonsterDraft; onChange: (draft: MonsterDraft) => void }) {
+  const t = useT();
   const stats = draft.stats;
   const set: Setter = (patch) => onChange({ ...draft, stats: { ...stats, ...patch } });
   const skills = stats.skills ?? {};
@@ -167,10 +172,10 @@ export function SkillsAndSenses({ draft, onChange }: { draft: MonsterDraft; onCh
   return (
     <div className="space-y-2">
       <div className="space-y-1">
-        <SectionHead title="Skills and senses" glyph="skill-perception" className="mb-1" />
+        <SectionHead title={t("Skills and senses")} glyph="skill-perception" className="mb-1" />
         <span className="flex items-center gap-1">
-          <FieldLabel>Skills (tap to add, type the bonus)</FieldLabel>
-          <OptionGlossary title="Skills" entries={SKILL_GLOSSARY} />
+          <FieldLabel>{t("Skills (tap to add, type the bonus)")}</FieldLabel>
+          <OptionGlossary title={t("Skills")} entries={SKILL_GLOSSARY} />
         </span>
         <div className={cn("stagger-pop", chipRow)}>
           {SKILL_NAMES.map((name) => {
@@ -198,7 +203,7 @@ export function SkillsAndSenses({ draft, onChange }: { draft: MonsterDraft; onCh
                 {on ? (
                   <NumberStepper
                     size="sm"
-                    label={`${name} bonus`}
+                    label={t("{name} bonus", { name })}
                     min={-5}
                     max={20}
                     value={bonus}
@@ -218,7 +223,7 @@ export function SkillsAndSenses({ draft, onChange }: { draft: MonsterDraft; onCh
               <FieldLabel className="capitalize">{name}</FieldLabel>
             </span>
             <OptionalStepper
-              label={`${name} in feet`}
+              label={t("{name} in feet", { name })}
               min={0}
               max={600}
               step={5}
@@ -232,10 +237,10 @@ export function SkillsAndSenses({ draft, onChange }: { draft: MonsterDraft; onCh
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1">
             <GameIcon icon={{ kind: "glyph", key: "sense-passive-perception" }} size="size-5" />
-            <FieldLabel>Passive Perception</FieldLabel>
+            <FieldLabel>{t("Passive Perception")}</FieldLabel>
           </span>
           <OptionalStepper
-            label="Passive Perception"
+            label={t("Passive Perception")}
             min={1}
             max={40}
             fallback={passiveDefault}
@@ -243,27 +248,28 @@ export function SkillsAndSenses({ draft, onChange }: { draft: MonsterDraft; onCh
             onChange={(next) => setSense("passivePerception", next)}
           />
           {typeof senses.passivePerception === "number" ? null : (
-            <span className="text-[11px] text-stone-500">Unset, so it reads as {passiveDefault}.</span>
+            <span className="text-[11px] text-stone-500">{t("Unset, so it reads as {value}.", { value: passiveDefault })}</span>
           )}
         </div>
       </div>
       <p className="text-[11px] text-stone-500">
-        A hiding character has to beat the passive Perception; the printed number wins, then the skill, then Wisdom.
+        {t("A hiding character has to beat the passive Perception; the printed number wins, then the skill, then Wisdom.")}
       </p>
     </div>
   );
 }
 
 export function LanguagesAndHabitat({ draft, onChange }: { draft: MonsterDraft; onChange: (draft: MonsterDraft) => void }) {
+  const t = useT();
   const stats = draft.stats;
   const set: Setter = (patch) => onChange({ ...draft, stats: { ...stats, ...patch } });
   const environment = stats.environment ?? [];
   const spells = stats.spells ?? [];
   return (
     <div className="space-y-2">
-      <SectionHead title="Tongue, creed and habitat" glyph="system-lore" className="mb-1" />
+      <SectionHead title={t("Tongue, creed and habitat")} glyph="system-lore" className="mb-1" />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Field as="label" label="Languages">
+        <Field as="label" label={t("Languages")}>
           <div className="flex flex-wrap items-center gap-1.5">
             <input
               value={stats.languages ?? ""}
@@ -273,15 +279,15 @@ export function LanguagesAndHabitat({ draft, onChange }: { draft: MonsterDraft; 
               className={cn(ui.input, "min-w-32 flex-1")}
             />
             <AddFromList
-              prompt="Add"
+              prompt={t("Add")}
               options={LANGUAGES}
               onPick={(term) => set({ languages: appendTerm(stats.languages ?? "", term) })}
             />
           </div>
         </Field>
-        <Field label="Alignment" aside={<OptionGlossary title="Alignments" entries={ALIGNMENT_GLOSSARY} />}>
+        <Field label={t("Alignment")} aside={<OptionGlossary title={t("Alignments")} entries={ALIGNMENT_GLOSSARY} />}>
           <Select
-            label="Alignment"
+            label={t("Alignment")}
             value={stats.alignment ?? ""}
             onChange={(next) => set({ alignment: next || undefined })}
             options={ALIGNMENT_OPTIONS}
@@ -291,12 +297,12 @@ export function LanguagesAndHabitat({ draft, onChange }: { draft: MonsterDraft; 
       {/* With a Spellcasting block the list is the block's own (SpellcastingFields). */}
       {stats.spellcasting ? null : (
       <div className="flex flex-col gap-1">
-        <FieldLabel>Spells known (by name, comma separated)</FieldLabel>
+        <FieldLabel>{t("Spells known (by name, comma separated)")}</FieldLabel>
         <input
           defaultValue={spells.join(", ")}
           key={spells.join("|")}
           maxLength={800}
-          aria-label="Spells known"
+          aria-label={t("Spells known")}
           placeholder="Fire Bolt, Shield, Misty Step"
           onBlur={(event) => {
             const next = event.target.value.split(",").map((name) => name.trim()).filter(Boolean);
@@ -308,8 +314,8 @@ export function LanguagesAndHabitat({ draft, onChange }: { draft: MonsterDraft; 
         />
         <ContentPick
           kind="spells"
-          label="Find a spell in the catalogue to add"
-          placeholder="Find a spell to add..."
+          label={t("Find a spell in the catalogue to add")}
+          placeholder={t("Find a spell to add...")}
           onPick={(entry) => {
             if (!spells.some((known) => textKey(known) === textKey(entry.name))) {
               set({ spells: [...spells, entry.name] });
@@ -317,12 +323,12 @@ export function LanguagesAndHabitat({ draft, onChange }: { draft: MonsterDraft; 
           }}
         />
         <span className="text-[11px] text-stone-500">
-          The GM running it sees the list. Put a round of casting into extra damage so the rating counts it.
+          {t("The GM running it sees the list. Put a round of casting into extra damage so the rating counts it.")}
         </span>
       </div>
       )}
       <div className="space-y-1">
-        <FieldLabel>Found in</FieldLabel>
+        <FieldLabel>{t("Found in")}</FieldLabel>
         <div className={cn("stagger-pop", chipRow)}>
           {ENVIRONMENTS.map((place) => {
             const on = environment.includes(place);
@@ -350,18 +356,19 @@ export function LanguagesAndHabitat({ draft, onChange }: { draft: MonsterDraft; 
 // The trait list with a section on every line. The line stored is the one
 // the DM prompt prints, prefix and all (src/lib/bestiary/block-sections.ts).
 export function SectionedTraitEditor({ draft, onChange }: { draft: MonsterDraft; onChange: (draft: MonsterDraft) => void }) {
+  const t = useT();
   const traits = draft.stats.traits;
   const setTraits = (next: string[]) => onChange({ ...draft, stats: { ...draft.stats, traits: next } });
   return (
     <div className="flex flex-col gap-1.5">
-      <SectionHead title="Traits and actions" glyph="tab-notes" className="mb-0" />
+      <SectionHead title={t("Traits and actions")} glyph="tab-notes" className="mb-0" />
       {traits.map((trait, index) => {
         const { section, text } = sectionOfLine(trait);
         return (
           <div key={index} className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
             <span className="w-40 shrink-0">
               <Select
-                label="Section"
+                label={t("Section")}
                 value={section}
                 onChange={(next) => setTraits(traits.map((row, at) => (at === index ? withSection(row, next) : row)))}
                 options={SECTION_OPTIONS}
@@ -380,7 +387,7 @@ export function SectionedTraitEditor({ draft, onChange }: { draft: MonsterDraft;
               type="button"
               onClick={() => setTraits(traits.filter((_, at) => at !== index))}
               className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}
-              aria-label="Remove trait"
+              aria-label={t("Remove trait")}
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -401,7 +408,7 @@ export function SectionedTraitEditor({ draft, onChange }: { draft: MonsterDraft;
           ))}
         </div>
       ) : (
-        <p className="text-[11px] text-stone-500">The block is full at {MAX_TRAITS} lines.</p>
+        <p className="text-[11px] text-stone-500">{t("The block is full at {count} lines.", { count: MAX_TRAITS })}</p>
       )}
     </div>
   );

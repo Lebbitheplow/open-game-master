@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Life between adventures on the sheet (SRD 5.1, Between Adventures, and the
@@ -16,6 +17,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 type BetweenLine = { text: string; kind: "affliction" | "between"; secret?: boolean };
 
 export function SheetBetween({ sheet, className }: { sheet: CharacterSheet; className?: string }) {
+  const t = useT();
   const [lines, setLines] = useState<BetweenLine[]>([]);
   // The purse, the conditions and the edit stamp change when the engine
   // charges a lifestyle, moves a disease or finishes a craft.
@@ -41,7 +43,7 @@ export function SheetBetween({ sheet, className }: { sheet: CharacterSheet; clas
   if (!lines.length) return null;
   return (
     <div className={cn("reveal rounded-lg border border-stone-800 bg-stone-950/40 px-3 py-2", className)}>
-      <p className="mb-1 text-[10px] uppercase tracking-[0.14em] text-stone-500">Between adventures</p>
+      <p className="mb-1 text-[10px] uppercase tracking-[0.14em] text-stone-500">{t("Between adventures")}</p>
       <ul className="stagger-up space-y-0.5 text-xs">
         {lines.map((line) => (
           <li
@@ -54,7 +56,7 @@ export function SheetBetween({ sheet, className }: { sheet: CharacterSheet; clas
             <span aria-hidden="true" className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", line.kind === "affliction" ? "bg-red-400/80" : "bg-amber-400/70")} />
             <span>
               {line.text}
-              {line.secret ? <span className="ml-1 text-[10px] uppercase tracking-wide text-stone-500">(GM only)</span> : null}
+              {line.secret ? <span className="ml-1 text-[10px] uppercase tracking-wide text-stone-500">{t("(GM only)")}</span> : null}
             </span>
           </li>
         ))}

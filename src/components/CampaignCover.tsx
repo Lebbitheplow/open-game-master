@@ -1,5 +1,8 @@
+"use client";
+
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import type { CampaignCover as CampaignCoverRef } from "@/lib/campaign-types";
 import { variantUrl, type VariantWidth } from "@/lib/image-variant-url";
 import { campaignPlaceholder } from "@/lib/placeholders";
@@ -41,6 +44,7 @@ export function CampaignCover({
 }) {
   const pending = status === "queued" || status === "generating";
   const url = cover?.url ? (width ? variantUrl(cover.url, width) : cover.url) : campaignPlaceholder(genre, seed ?? "");
+  const t = useT();
   return (
     <div
       className={cn(
@@ -51,8 +55,8 @@ export function CampaignCover({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
-        alt={cover ? `${title} cover art` : ""}
-        aria-label={cover ? undefined : `${title} has no cover art yet`}
+        alt={cover ? t("{title} cover art", { title }) : ""}
+        aria-label={cover ? undefined : t("{title} has no cover art yet", { title })}
         className={cn("size-full object-cover", !cover && pending && "opacity-40")}
         loading="lazy"
       />

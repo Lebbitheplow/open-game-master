@@ -4,6 +4,7 @@ import { Check, Copy, QrCode, Share2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { copyText } from "@/lib/clipboard";
 import { shareableAddresses } from "@/lib/server-address";
 import { shareSheet } from "@/lib/shell-host";
@@ -28,6 +29,7 @@ import { drawQrCode } from "@/lib/qr-code";
 // corner, and the lobby's room-code card already carries a QR that names
 // this server along with the room.
 export function ServerAddressButton() {
+  const t = useT();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState("");
@@ -139,12 +141,12 @@ export function ServerAddressButton() {
         {open ? (
           <div
             role="dialog"
-            aria-label="This server's address"
+            aria-label={t("This server's address")}
             className={cn(ui.card, "ornate w-72 origin-bottom-right animate-scale-in border-amber-400/30 p-4 shadow-glow-gold")}
           >
             <div className="mb-2 flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className={ui.sectionEyebrow}>This server</p>
+                <p className={ui.sectionEyebrow}>{t("This server")}</p>
                 <p className="truncate font-display text-sm tracking-wide text-amber-50">
                   {serverName || "Open Game Master"}
                 </p>
@@ -152,7 +154,7 @@ export function ServerAddressButton() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t("Close", { context: "action.close" })}
                 className="rounded p-1 text-stone-400 hover:bg-stone-900"
               >
                 <X className="size-4" />
@@ -162,12 +164,12 @@ export function ServerAddressButton() {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={qrDataUrl}
-                alt={`QR code for ${picked}`}
+                alt={t("QR code for {address}", { address: picked })}
                 className="mx-auto size-56 rounded-lg border border-amber-400/20"
               />
             ) : (
               <div className="mx-auto flex size-56 items-center justify-center rounded-lg border border-dashed border-stone-700 text-xs text-stone-500">
-                Preparing the code...
+                {t("Preparing the code...")}
               </div>
             )}
             <p className="mt-3 break-all font-code text-xs text-amber-100">{picked}</p>
@@ -179,7 +181,7 @@ export function ServerAddressButton() {
                 className={cn(ui.btnSmall, "flex-1 justify-center")}
               >
                 {copied ? <Check className="size-4 text-emerald-300" /> : <Copy className="size-4" />}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t("Copied") : t("Copy")}
               </button>
               {sheet ? (
                 <button
@@ -188,13 +190,12 @@ export function ServerAddressButton() {
                   disabled={!picked}
                   className={cn(ui.btnSmall, "flex-1 justify-center")}
                 >
-                  <Share2 className="size-4" /> Share
+                  <Share2 className="size-4" /> {t("Share", { context: "action.share" })}
                 </button>
               ) : null}
             </div>
             <p className="mt-2 text-[11px] leading-4 text-stone-500">
-              Scan with the Open Game Master app to add this server, or with a phone camera
-              to open it in a browser.
+              {t("Scan with the Open Game Master app to add this server, or with a phone camera to open it in a browser.")}
             </p>
           </div>
         ) : null}
@@ -202,8 +203,8 @@ export function ServerAddressButton() {
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          aria-label={open ? "Hide this server's address" : "Show this server's address"}
-          title="This server's address and QR code"
+          aria-label={open ? t("Hide this server's address") : t("Show this server's address")}
+          title={t("This server's address and QR code")}
           className="flex size-10 items-center justify-center rounded-full border border-amber-500/30 bg-stone-950/90 text-amber-200 shadow-glow-gold backdrop-blur transition-colors hover:border-amber-400/60 hover:text-amber-100"
         >
           <QrCode className="size-5" />

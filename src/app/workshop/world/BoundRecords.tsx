@@ -9,6 +9,7 @@ import { BINDINGS_MAX, isPlaceBinding, type Binding, type BindingKind, type Plac
 import type { WorldEntity } from "@/lib/db/world-forge";
 import type { WorldApi } from "./useWorld";
 import type { OpenSystem } from "./WorldForgePanel";
+import { useT } from "@/lib/locale";
 
 // "Use at the table": the playable records a World entry stands for (audit
 // finding WF-17). A creature's stat block in the Bestiary, an artifact's
@@ -19,7 +20,7 @@ import type { OpenSystem } from "./WorldForgePanel";
 
 // A place's battle maps and encounters are its own section (PlaceBattleMaps).
 type RecordKind = Exclude<BindingKind, PlaceBindingKind>;
-const WORDS: Record<RecordKind, { one: string; tool: string; system: string }> = {
+const WORD_KEYS: Record<RecordKind, { one: string; tool: string; system: string }> = {
   monster: { one: "stat block", tool: "Bestiary", system: "bestiary" },
   item: { one: "item", tool: "Homebrew", system: "homebrew" },
 };
@@ -50,6 +51,7 @@ export function BoundRecords({
   const [fights, setFights] = useState<Array<{ id: string; name: string }>>([]);
   const [fight, setFight] = useState("__new");
   const [added, setAdded] = useState("");
+  const t = useT();
   const bindings = entity.entry.bindings;
   const full = bindings.length >= BINDINGS_MAX;
 
@@ -94,8 +96,8 @@ export function BoundRecords({
     setError("");
     const outcome = await api.update(entity.ref, { bindings: next }, { bindings });
     setBusy(false);
-    if (!outcome) setError(api.error || "That link did not save.");
-    else if ("conflicts" in outcome) setError("Someone else changed this entry's links meanwhile. Here they are as they are now; try again.");
+    if (!outcome) setError(api.error || t("That link did not save."));
+    else if ("conflicts" in outcome) setError(t("Someone else changed this entry's links meanwhile. Here they are as they are now; try again."));
     return Boolean(outcome && !("conflicts" in outcome));
   }
 
@@ -119,7 +121,7 @@ export function BoundRecords({
     setBusy(false);
     const id = data.monster?.id ?? data.entry?.id;
     if (!response.ok || !id) {
-      setError(data.error ?? `That ${WORDS[kind].one} could not be made.`);
+      setError(data.error ?? t("That {one} could not be made.", { one: t(WORD_KEYS[kind].one) }));
       return;
     }
     await link(kind, `homebrew:${id}`);
@@ -136,12 +138,12 @@ export function BoundRecords({
     const data = (await response.json().catch(() => ({}))) as { templateId?: string; error?: string };
     setBusy(false);
     if (!response.ok || !data.templateId) {
-      setError(data.error ?? "That fight could not be changed.");
+      setError(data.error ?? t("The test fight could not be set up."));
       return;
     }
     setFighting(null);
     if (onOpenSystem) onOpenSystem("encounters", { id: data.templateId, from: entity.ref });
-    else setAdded(fight === "__new" ? `A new fight, ${entity.name}, is with this campaign's prepared fights.` : `Added to ${fights.find((entry) => entry.id === fight)?.name ?? "the fight"}.`);
+    else setAdded(fight === "__new" ? t("A new fight, {name}, is with this campaign's prepared fights.", { name: entity.name }) : t("Added to {name}.", { name: fights.find((entry) => entry.id === fight)?.name ?? t("the fight") }));
   }
 
   // Every WorldForge page is the DM's (requireStoryAuthority): linking needs
@@ -151,51 +153,51 @@ export function BoundRecords({
   return (
     <section className="flex flex-col gap-2" data-testid="world-bound">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="eyebrow text-[10px] text-stone-500">Use at the table</span>
+        <span className="eyebrow text-[10px] text-stone-500">{t("Use at the table")}</span>
         {loreOnly ? (
-          <span className="rounded-md border border-amber-700/50 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-300" data-testid="world-lore-only" title="Not an item the table can hold until one is linked">
-            Lore only
+          <span className="rounded-md border border-amber-700/50 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-300" data-testid="world-lore-only" title={t("Not an item the table can hold until one is linked")}>
+            {t("Lore only")}
           </span>
         ) : null}
       </div>
-      {loreOnly ? <p className="text-xs text-stone-400">The table cannot hold this yet: link it to an item, or make one, and shops and inventories can offer it.</p> : null}
+      {loreOnly ? <p className="text-xs text-stone-400">{t("The table cannot hold this yet: link it to an item, or make one, and shops and inventories can offer it.")}</p> : null}
 
       {entity.bound.flatMap((record) => (isPlaceBinding(record.kind) ? [] : [{ ...record, kind: record.kind as RecordKind }])).map((record) => (
         <div key={`${record.kind}|${record.ref}`} className="flex flex-wrap items-center gap-1.5 rounded-lg border border-stone-700/60 px-2 py-1.5 text-sm" data-testid="world-bound-record">
-          <span className="text-[10px] uppercase tracking-[0.12em] text-stone-500">{WORDS[record.kind].one}</span>
+          <span className="text-[10px] uppercase tracking-[0.12em] text-stone-500">{t(WORD_KEYS[record.kind].one)}</span>
           {record.found ? (
             <span className="text-stone-100">
               {record.name}
               {record.detail ? <span className="text-stone-500"> · {record.detail}</span> : null}
             </span>
           ) : (
-            <span className="text-amber-300">Not found at this table any more</span>
+            <span className="text-amber-300">{t("Not found at this table any more")}</span>
           )}
           <span className="ml-auto flex flex-wrap gap-1">
             {record.found && record.ownId && onOpenSystem ? (
-              <KitButton tone="small" onClick={() => onOpenSystem(WORDS[record.kind].system, { id: record.ownId, from: entity.ref })} title={`Open it in the ${WORDS[record.kind].tool}`}>
-                Open
+              <KitButton tone="small" onClick={() => onOpenSystem(WORD_KEYS[record.kind].system as never, { id: record.ownId, from: entity.ref })} title={t("Open it in the {tool}", { tool: t(WORD_KEYS[record.kind].tool) })}>
+                {t("Open", { context: "action.open" })}
               </KitButton>
             ) : null}
             {record.found && record.kind === "monster" ? (
               <KitButton tone="small" onClick={() => setFighting(fighting === record.ref ? null : record.ref)} aria-expanded={fighting === record.ref}>
-                <Swords className="size-3.5" /> Add to a fight
+                <Swords className="size-3.5" /> {t("Add to a fight")}
               </KitButton>
             ) : null}
-            <KitButton tone="small" busy={busy} disabled={busy} onClick={() => void setLinks(bindings.filter((binding) => !(binding.kind === record.kind && binding.ref === record.ref)))} title="Unlink it from this entry; the record itself stays">
-              <Unlink className="size-3.5" /> Unlink
+            <KitButton tone="small" busy={busy} disabled={busy} onClick={() => void setLinks(bindings.filter((binding) => !(binding.kind === record.kind && binding.ref === record.ref)))} title={t("Unlink it from this entry; the record itself stays")}>
+              <Unlink className="size-3.5" /> {t("Unlink")}
             </KitButton>
           </span>
           {fighting === record.ref ? (
             <div className="flex w-full flex-wrap items-center gap-1.5 pt-1">
               <Select
-                label="Which fight"
+                label={t("Which fight")}
                 value={fight}
                 onChange={setFight}
-                options={[{ value: "__new", label: `A new fight: ${entity.name}` }, ...fights.map((entry) => ({ value: entry.id, label: entry.name }))]}
+                options={[{ value: "__new", label: t("A new fight: {name}", { name: entity.name }) }, ...fights.map((entry) => ({ value: entry.id, label: entry.name }))]}
               />
               <KitButton tone="primary" busy={busy} disabled={busy} onClick={() => void addToFight(record.ref)}>
-                Add it
+                {t("Add it")}
               </KitButton>
             </div>
           ) : null}
@@ -205,38 +207,38 @@ export function BoundRecords({
       {!full ? (
         adding ? (
           <div className="flex flex-col gap-1.5 rounded-lg border border-stone-700/60 p-2" data-testid="world-bound-adding">
-            <span className="text-xs text-stone-400">{`Link a ${WORDS[adding].one} from your own ${WORDS[adding].tool}, or the rulebook's.`}</span>
+            <span className="text-xs text-stone-400">{t("Link a {one} from your own {tool}, or the rulebook's.", { one: t(WORD_KEYS[adding].one), tool: t(WORD_KEYS[adding].tool) })}</span>
             {own.length ? (
               <Select
-                label={`Your ${WORDS[adding].one}s`}
+                label={t("Your {one}s", { one: t(WORD_KEYS[adding].one) })}
                 value="__none"
-                placeholder={`Your ${WORDS[adding].one}s`}
+                placeholder={t("Your {one}s", { one: t(WORD_KEYS[adding].one) })}
                 onChange={(ref) => ref !== "__none" && void link(adding, ref)}
-                options={[{ value: "__none", label: `Pick one of yours` }, ...own.map((row) => ({ value: row.ref, label: row.name }))]}
+                options={[{ value: "__none", label: t("One of yours") }, ...own.map((row) => ({ value: row.ref, label: row.name }))]}
               />
             ) : null}
             <ContentPick
               kind={adding === "monster" ? "monsters" : "items"}
-              label={`Pick a ${WORDS[adding].one} from the rulebook`}
+              label={t("Pick a {one} from the rulebook", { one: t(WORD_KEYS[adding].one) })}
               placeholder={adding === "monster" ? "Goblin, Owlbear..." : "Lantern, Rope..."}
               onPick={(entry) => entry.slug && void link(adding, entry.slug)}
             />
             <span className="flex flex-wrap gap-1.5">
               <KitButton tone="small" busy={busy} disabled={busy} onClick={() => void make(adding)}>
-                <Plus className="size-3.5" /> Make a new one: {entity.name}
+                <Plus className="size-3.5" /> {t("Make a new one: {name}", { name: entity.name })}
               </KitButton>
               <KitButton tone="small" onClick={() => setAdding(null)}>
-                Cancel
+                {t("Cancel")}
               </KitButton>
             </span>
           </div>
         ) : (
           <span className="flex flex-wrap gap-1.5">
             <KitButton tone="small" onClick={() => setAdding("monster")}>
-              <Link2 className="size-3.5" /> A stat block
+              <Link2 className="size-3.5" /> {t("A stat block")}
             </KitButton>
             <KitButton tone="small" onClick={() => setAdding("item")}>
-              <Link2 className="size-3.5" /> An item
+              <Link2 className="size-3.5" /> {t("An item")}
             </KitButton>
           </span>
         )

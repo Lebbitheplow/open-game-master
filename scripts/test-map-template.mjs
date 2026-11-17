@@ -5,9 +5,14 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
+
 const {
   MAX_TEMPLATE_FEET,
-  SHAPE_LABELS,
+  SHAPE_LABEL_KEYS,
   TEMPLATE_SHAPES,
   describeTemplate,
   templateTiles,
@@ -45,7 +50,7 @@ const at = (idx) => ({ x: idx % WIDTH, y: Math.floor(idx / WIDTH) });
 
 test("every shape has a label", () => {
   for (const shape of TEMPLATE_SHAPES) {
-    assert.ok(SHAPE_LABELS[shape], `${shape} has no label`);
+    assert.ok(SHAPE_LABEL_KEYS[shape], `${shape} has no label`);
   }
 });
 
@@ -206,11 +211,11 @@ test("only the tokens standing in it are caught", () => {
 
 test("a template describes itself in one line", () => {
   assert.equal(
-    describeTemplate({ shape: "cone", origin: { x: 0, y: 0 }, target: { x: 1, y: 0 }, sizeFeet: 15 }, 6),
+    describeTemplate(enT, { shape: "cone", origin: { x: 0, y: 0 }, target: { x: 1, y: 0 }, sizeFeet: 15 }, 6),
     "Cone, 15 ft length, 6 tiles",
   );
   assert.match(
-    describeTemplate({ shape: "line", origin: { x: 0, y: 0 }, target: { x: 1, y: 0 }, sizeFeet: 5 }, 1),
+    describeTemplate(enT, { shape: "line", origin: { x: 0, y: 0 }, target: { x: 1, y: 0 }, sizeFeet: 5 }, 1),
     /1 tile$/,
   );
 });

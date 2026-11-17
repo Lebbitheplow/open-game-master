@@ -15,14 +15,22 @@ import { cn } from "@/lib/cn";
 import { downloadBlob } from "@/lib/download";
 import { readLoad, useLoadStatus } from "@/lib/load-state";
 import { ui } from "@/lib/ui";
+import { useT, useTp } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 import type { ServerLogEntry, ServerLogPage } from "@/lib/server-log";
 
 type Filter = "all" | "warn" | "error";
 
+const FILTER_KEYS: Record<Filter, MessageKey> = {
+  all: "Everything",
+  warn: "Warnings",
+  error: "Errors",
+};
+
 const FILTERS: SegmentedOption<Filter>[] = [
-  { value: "all", label: "Everything" },
-  { value: "warn", label: "Warnings" },
-  { value: "error", label: "Errors" },
+  { value: "all", label: "" },
+  { value: "warn", label: "" },
+  { value: "error", label: "" },
 ];
 
 const LEVEL_TONE: Record<ServerLogEntry["level"], string> = {
@@ -45,6 +53,8 @@ function clock(at: number): string {
 // goes to the console too; this keeps the last two thousand since the
 // server started, with keys and tokens cut out.
 export function AdminServerLogPanel() {
+  const t = useT();
+  const tp = useTp();
   const [entries, setEntries] = useState<ServerLogEntry[]>([]);
   const [meta, setMeta] = useState<Pick<ServerLogPage, "startedAt" | "capacity" | "firstSeq"> | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -57,7 +67,7 @@ export function AdminServerLogPanel() {
   const scroller = useRef<HTMLDivElement>(null);
 
   const pull = useCallback(async () => {
-    const outcome = await readLoad<ServerLogPage>(fetch(`/api/admin/logs?after=${latest.current}`, { cache: "no-store" }), "The server log");
+    const outcome = await readLoad<ServerLogPage>(t, fetch(`/api/admin/logs?after=${latest.current}`, { cache: "no-store" }), t("The server log"));
     settle(outcome);
     const page = outcome.payload;
     if (!page) {
@@ -74,8 +84,7 @@ export function AdminServerLogPanel() {
     if (page.entries.length) {
       setEntries((kept) => [...kept, ...page.entries].slice(-KEEP));
     }
-  }, [settle]);
-
+  }, [ settle, t ]);
   useEffect(() => {
     void pull();
   }, [pull]);
@@ -112,14 +121,14 @@ export function AdminServerLogPanel() {
     lines.map((entry) => `${new Date(entry.at).toISOString()} ${entry.level.toUpperCase().padEnd(5)} ${entry.text}`).join("\n");
 
   async function copy() {
-    setNote((await copyText(asText(shown))) ? `Copied ${shown.length} line${shown.length === 1 ? "" : "s"}.` : "The clipboard refused the copy.");
+    setNote((await copyText(asText(shown))) ? tp("Copied 1 line.", "Copied {count} lines.", { count: shown.length }) : t("The clipboard refused the copy."));
   }
 
   async function download() {
     setNote("");
     const response = await fetch("/api/admin/logs?format=text", { cache: "no-store" }).catch(() => null);
     if (!response?.ok) {
-      setNote("The log could not be downloaded.");
+      setNote(t("The log could not be downloaded."));
       return;
     }
     downloadBlob(`odm-server-log-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.txt`, await response.blob());
@@ -132,44 +141,42 @@ export function AdminServerLogPanel() {
   return (
     <section className="panel reveal space-y-3 rounded-xl p-4">
       <SectionHead
-        title="Server log"
+        title={t("Server log")}
         glyph="cue-bell"
         aside={
           <span className="inline-flex items-center gap-2 text-xs text-stone-400">
-            Live
-            <Switch on={follow} onChange={setFollow} label="Follow the log live" />
+            {t("Live")}
+            <Switch on={follow} onChange={setFollow} label={t("Follow the log live")} />
           </span>
         }
       />
       <p className="text-xs text-stone-500">
-        {meta
-          ? `The last ${meta.capacity.toLocaleString()} lines since the server started at ${new Date(meta.startedAt).toLocaleString()}. `
-          : ""}
-        The server&apos;s console keeps every line as well (the terminal, <code>docker logs</code>, or the desktop
-        app&apos;s local-server.log). Keys and tokens are cut out. Report a problem saves the newest lines and the
-        server&apos;s setup in one file for a GitHub issue; at a table it is in Help.
+        {meta ? t("The last {capacity} lines since the server started at {date}. ", { capacity: meta.capacity.toLocaleString(), date: new Date(meta.startedAt).toLocaleString() }) : ""}
+        {t("The server's console keeps every line as well (the terminal, ")}
+        <code>docker logs</code>
+        {t(", or the desktop app's local-server.log). Keys and tokens are cut out. Report a problem saves the newest lines and the server's setup in one file for a GitHub issue; at a table it is in Help.")}
       </p>
       {loadError ? <LoadFailed error={loadError} onRetry={() => void pull()} /> : null}
       <div className="flex flex-wrap items-center gap-2">
-        <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} size="sm" label="Show" />
+        <SegmentedControl options={FILTERS.map((option) => ({ ...option, label: t(FILTER_KEYS[option.value]) }))} value={filter} onChange={setFilter} size="sm" label={t("Show", { context: "admin.log.showLabel" })} />
         <label className="relative min-w-[10rem] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search the log"
-            aria-label="Search the log"
+            placeholder={t("Search the log")}
+            aria-label={t("Search the log")}
             className={cn(ui.input, "py-1.5 pl-8 text-sm")}
           />
         </label>
         <button type="button" onClick={() => void copy()} className={ui.btnSmall} disabled={!shown.length}>
-          <Copy className="size-3.5" /> Copy
+          <Copy className="size-3.5" /> {t("Copy")}
         </button>
         <button type="button" onClick={() => void download()} className={ui.btnSmall}>
-          <Download className="size-3.5" /> Download
+          <Download className="size-3.5" /> {t("Download")}
         </button>
         <button type="button" onClick={() => setReportOpen(true)} className={ui.btnSmall} data-report-problem>
-          <Bug className="size-3.5" /> Report a problem
+          <Bug className="size-3.5" /> {t("Report a problem")}
         </button>
       </div>
       <ReportProblemDialog open={reportOpen} onOpenChange={setReportOpen} endpoint="/api/admin/report-bundle" />
@@ -191,8 +198,8 @@ export function AdminServerLogPanel() {
         <EmptyState
           art="board"
           size="sm"
-          title={entries.length ? "Nothing matches" : "Nothing logged yet"}
-          hint={entries.length ? "Try another filter or search." : "Lines appear here as the server writes them."}
+          title={entries.length ? t("Nothing matches") : t("Nothing logged yet")}
+          hint={entries.length ? t("Try another filter or search.") : t("Lines appear here as the server writes them.")}
         />
       )}
     </section>

@@ -1,6 +1,7 @@
 import { isErrorResponse, requirePrepAuthority } from "@/lib/campaign-api";
 import { getEncounterTemplate, getTemplateSetup, setTemplateSetup } from "@/lib/db/encounter-templates";
 import { describeFightSetup } from "@/lib/workshop/fight-setup-logic";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,26 +12,27 @@ export const dynamic = "force-dynamic";
 // set-up is written only by saving a test's moment
 // (src/app/api/campaigns/[campaignId]/fight-setup/route.ts).
 
-async function resolve(campaignId: string, templateId: string) {
+async function resolve(campaignId: string, templateId: string, request: Request) {
   const context = await requirePrepAuthority(campaignId);
   if (isErrorResponse(context)) {
     return { error: context };
   }
+  const t = requestT(request);
   const template = getEncounterTemplate(templateId);
   // The id comes from the URL: the campaign check stops one campaign's id
   // reaching another's fight.
   if (!template || template.campaignId !== campaignId) {
-    return { error: Response.json({ error: "No such prepared encounter." }, { status: 404 }) };
+    return { error: Response.json({ error: t("No such prepared encounter.") }, { status: 404 }) };
   }
   return { template };
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string; templateId: string }> },
 ) {
   const { campaignId, templateId } = await params;
-  const resolved = await resolve(campaignId, templateId);
+  const resolved = await resolve(campaignId, templateId, request);
   if ("error" in resolved) {
     return resolved.error;
   }
@@ -39,11 +41,11 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string; templateId: string }> },
 ) {
   const { campaignId, templateId } = await params;
-  const resolved = await resolve(campaignId, templateId);
+  const resolved = await resolve(campaignId, templateId, request);
   if ("error" in resolved) {
     return resolved.error;
   }

@@ -27,9 +27,10 @@ function draftOf(faction: FactionView): Draft {
   };
 }
 import { findLostCreate, readLoad, readWrite, useLoadStatus } from "@/lib/load-state";
-import { FACTION_ATTITUDES, REPUTATION_MAX, REPUTATION_MIN, reputationLabel, type FactionAttitude } from "@/lib/dm/faction-logic";
+import { FACTION_ATTITUDES, REPUTATION_MAX, REPUTATION_MIN, attitudeLabel, reputationLabel, type FactionAttitude } from "@/lib/dm/faction-logic";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useT } from "@/lib/locale";
 
 // Factions (docs/vtt-parity-implementation-plan.md section 6): a card per
 // faction with its crest, its stance, the party's standing on a ladder
@@ -44,7 +45,6 @@ export type FactionView = {
   tags: string[];
   portraitPath: string;
   standing: number;
-  standingLabel: string;
   members: Array<{ id: string; name: string; portraitUrl: string }>;
   goal?: string;
   power?: number;
@@ -79,6 +79,7 @@ export function FactionsPanel({
   // how prep says where it starts, and that travels.
   workshop?: boolean;
 }) {
+  const t = useT();
   const showsStanding = !workshop;
   const [factions, setFactions] = useState<FactionView[] | null>(null);
   const [editing, setEditing] = useState<string | "new" | null>(null);
@@ -92,7 +93,7 @@ export function FactionsPanel({
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<{ factions?: FactionView[] }>(fetch(`/api/campaigns/${campaignId}/factions`), "The factions").then((outcome) => {
+    readLoad<{ factions?: FactionView[] }>(t, fetch(`/api/campaigns/${campaignId}/factions`), t("The factions")).then((outcome) => {
       if (cancelled) {
         return;
       }
@@ -104,8 +105,7 @@ export function FactionsPanel({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, refreshKey, reload, settle]);
-
+  }, [ campaignId, refreshKey, reload, settle, t ]);
   function startEdit(faction: FactionView) {
     setError("");
     setDraft(draftOf(faction));
@@ -134,13 +134,13 @@ export function FactionsPanel({
     try {
       const body = { ...draft, tags: draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean) };
       const creating = editing === "new";
-      const sent = await readWrite(
+      const sent = await readWrite(t,
         fetch(creating ? `/api/campaigns/${campaignId}/factions` : `/api/campaigns/${campaignId}/factions/${editing}`, {
           method: creating ? "POST" : "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         }),
-        "That faction could not be saved.",
+        t("That faction could not be saved."),
       );
       if (sent.error !== null) {
         // A new faction whose answer was lost is looked for first: the
@@ -149,7 +149,7 @@ export function FactionsPanel({
         if (sent.unanswered && creating) {
           const name = draft.name.trim();
           const reread = async () =>
-            (await readLoad<{ factions?: FactionView[] }>(fetch(`/api/campaigns/${campaignId}/factions`), "The factions")).payload?.factions ?? null;
+            (await readLoad<{ factions?: FactionView[] }>(t, fetch(`/api/campaigns/${campaignId}/factions`), t("The factions"))).payload?.factions ?? null;
           const found = await findLostCreate(loaded ? factions : null, reread, (faction) => faction.name === name);
           setReload((current) => current + 1);
           if (found === "made") {
@@ -158,8 +158,8 @@ export function FactionsPanel({
           }
           setError(
             found === "missing"
-              ? "The server did not answer and the faction is not in the list, so it was not added. Your words are kept; press Add again."
-              : "The server could not be reached, so it is not known yet whether the faction was added. Your words are kept. Check the list before adding it again.",
+              ? t("The server did not answer and the faction is not in the list, so it was not added. Your words are kept; press Add again.")
+              : t("The server could not be reached, so it is not known yet whether the faction was added. Your words are kept. Check the list before adding it again."),
           );
           return;
         }
@@ -175,37 +175,37 @@ export function FactionsPanel({
   }
 
   async function remove(faction: FactionView) {
-    if (!(await appConfirm(`Take ${faction.name} out of the world?`, { actionLabel: "Take them out", tone: "danger" }))) {
+    if (!(await appConfirm(t("Take {name} out of the world?", { name: faction.name }), { actionLabel: t("Take them out"), tone: "danger" }))) {
       return;
     }
     setError("");
-    const sent = await readWrite(fetch(`/api/campaigns/${campaignId}/factions/${faction.id}`, { method: "DELETE" }), "That faction could not be taken out.");
+    const sent = await readWrite(t, fetch(`/api/campaigns/${campaignId}/factions/${faction.id}`, { method: "DELETE" }), t("That faction could not be taken out."));
     setError(sent.error ?? "");
     setReload((current) => current + 1);
   }
 
   async function setStanding(faction: FactionView, standing: number) {
     setError("");
-    const sent = await readWrite(
+    const sent = await readWrite(t,
       fetch(`/api/campaigns/${campaignId}/factions/${faction.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ standing }),
       }),
-      "The standing could not be changed.",
+      t("The standing could not be changed."),
     );
     setError(sent.error ?? "");
     setReload((current) => current + 1);
   }
 
   if (factions === null) {
-    return loadError ? <LoadFailed error={loadError} onRetry={() => setReload((current) => current + 1)} /> : <PanelLoading label="Reading the banners..." />;
+    return loadError ? <LoadFailed error={loadError} onRetry={() => setReload((current) => current + 1)} /> : <PanelLoading label={t("Reading the banners...")} />;
   }
   return (
     <div className="space-y-2">
       {loaded && loadError ? <LoadFailed error={loadError} onRetry={() => setReload((current) => current + 1)} /> : null}
       <SectionHead
-        title="Factions"
+        title={t("Factions")}
         glyph="tab-factions"
         aside={
           steersStory && editing === null ? (
@@ -217,7 +217,7 @@ export function FactionsPanel({
               }}
               data-tour="factions-add"
             >
-              <Plus className="size-3.5" /> Add one
+              <Plus className="size-3.5" /> {t("Add one")}
             </KitButton>
           ) : factions.length ? (
             factions.length
@@ -227,31 +227,31 @@ export function FactionsPanel({
       {error ? <PanelError>{error}</PanelError> : null}
       {editing !== null ? (
         <div className="panel reveal space-y-1.5 rounded-lg p-2.5">
-          <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} maxLength={80} placeholder="The Reed Court" aria-label="Faction name" className={panelField} />
-          <DictateField label="What the table knows of them" onTranscript={(text) => setDraft((current) => ({ ...current, blurb: appendDictation(current.blurb, text, 400) }))}>
-            <textarea value={draft.blurb} onChange={(event) => setDraft({ ...draft, blurb: event.target.value })} rows={2} maxLength={400} placeholder="What the table knows of them" aria-label="What the table knows of them" className={panelField} />
+          <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} maxLength={80} placeholder={t("The Reed Court")} aria-label={t("Faction name")} className={panelField} />
+          <DictateField label={t("What the table knows of them")} onTranscript={(text) => setDraft((current) => ({ ...current, blurb: appendDictation(current.blurb, text, 400) }))}>
+            <textarea value={draft.blurb} onChange={(event) => setDraft({ ...draft, blurb: event.target.value })} rows={2} maxLength={400} placeholder={t("What the table knows of them")} aria-label={t("What the table knows of them")} className={panelField} />
           </DictateField>
-          <DictateField label="What they want" onTranscript={(text) => setDraft((current) => ({ ...current, goal: appendDictation(current.goal, text, 400) }))}>
-            <textarea value={draft.goal} onChange={(event) => setDraft({ ...draft, goal: event.target.value })} rows={2} maxLength={400} placeholder="What they want (only you read this)" aria-label="What they want (only you read this)" className={cn(panelField, "border-violet-900/60 focus:border-violet-500/70")} />
+          <DictateField label={t("What they want", { context: "faction.wantLabel" })} onTranscript={(text) => setDraft((current) => ({ ...current, goal: appendDictation(current.goal, text, 400) }))}>
+            <textarea value={draft.goal} onChange={(event) => setDraft({ ...draft, goal: event.target.value })} rows={2} maxLength={400} placeholder={t("What they want (only you read this)")} aria-label={t("What they want (only you read this)")} className={cn(panelField, "border-violet-900/60 focus:border-violet-500/70")} />
           </DictateField>
-          <div data-pill-group="" role="group" aria-label="Attitude" className="flex flex-wrap items-center gap-1">
+          <div data-pill-group="" role="group" aria-label={t("Attitude")} className="flex flex-wrap items-center gap-1">
             {FACTION_ATTITUDES.map((attitude) => (
               <button data-on={draft.attitude === attitude ? "" : undefined} key={attitude} type="button" aria-pressed={draft.attitude === attitude} onClick={() => setDraft({ ...draft, attitude })} className="pk-pill pk-tap motion-press capitalize">
                 <GameIcon icon={{ kind: "glyph", key: attitudeGlyph(attitude) }} size="size-4" />
-                {attitude}
+                {attitudeLabel(t, attitude)}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2 text-xs text-stone-400">
             <span>Power</span>
-            <Slider min={0} max={5} value={draft.power} onChange={(power) => setDraft({ ...draft, power })} label="Power" className="min-w-0 flex-1" />
+            <Slider min={0} max={5} value={draft.power} onChange={(power) => setDraft({ ...draft, power })} label={t("Power", { context: "faction.powerLabel" })} className="min-w-0 flex-1" />
             <span key={draft.power} className="count-pop w-4 text-right tabular-nums text-stone-200">{draft.power}</span>
           </div>
-          <input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder="Tags, comma separated" aria-label="Tags, comma separated" className={panelField} />
+          <input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder={t("Tags, comma separated")} aria-label={t("Tags, comma separated")} className={panelField} />
           <LoreImageField imagePath={draft.portraitPath} onChange={(portraitPath) => setDraft({ ...draft, portraitPath })} />
           <div className="flex gap-1.5">
             <KitButton tone="primary" disabled={busy || !draft.name.trim()} busy={busy} onClick={() => void save()}>
-              {editing === "new" ? "Add" : "Save"}
+              {editing === "new" ? t("Add") : t("Save", { context: "faction.save" })}
             </KitButton>
             <KitButton
               onClick={() => {
@@ -268,12 +268,12 @@ export function FactionsPanel({
       {!factions.length && editing === null ? <EmptyState
           size="sm"
           art="board"
-          title="No factions yet. The powers of this world are unnamed."
+          title={t("No factions yet. The powers of this world are unnamed.")}
           hint={
             steersStory
               ? workshop
-                ? "Name each power, what the table knows of it, what it wants and how it starts out toward the party."
-                : "Name each power, what the table knows of it and what it wants, and set where the party stands with it."
+                ? t("Name each power, what the table knows of it, what it wants and how it starts out toward the party.")
+                : t("Name each power, what the table knows of it and what it wants, and set where the party stands with it.")
               : undefined
           }
         /> : null}
@@ -281,16 +281,16 @@ export function FactionsPanel({
         {factions.map((faction) => {
           const items: ContextMenuItem[] = steersStory
             ? [
-                { id: "edit", label: "Edit", glyph: "ui-edit", onSelect: () => startEdit(faction) },
+                { id: "edit", label: t("Edit"), glyph: "ui-edit", onSelect: () => startEdit(faction) },
                 ...(showsStanding ? Array.from({ length: REPUTATION_MAX - REPUTATION_MIN + 1 }, (_, index) => REPUTATION_MIN + index) : []).map((step, index) => ({
                   id: `standing-${step}`,
-                  label: `Standing ${step > 0 ? "+" : ""}${step}: ${reputationLabel(step)}`,
+                  label: t("Standing {step}: {word}", { step: `${step > 0 ? "+" : ""}${step}`, word: reputationLabel(t, step) }),
                   glyph: step < 0 ? "attitude-hostile" : step === 0 ? "attitude-neutral" : "attitude-friendly",
                   separated: index === 0,
                   disabled: step === faction.standing,
                   onSelect: () => void setStanding(faction, step),
                 })),
-                { id: "remove", label: `Remove ${faction.name}`, glyph: "ui-delete", tone: "danger" as const, separated: true, onSelect: () => void remove(faction) },
+                { id: "remove", label: t("Remove {name}", { name: faction.name }), glyph: "ui-delete", tone: "danger" as const, separated: true, onSelect: () => void remove(faction) },
               ]
             : [];
           return (
@@ -307,13 +307,13 @@ export function FactionsPanel({
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-medium text-stone-100">
                     <span className="min-w-0 truncate">{faction.name}</span>
-                    <GlyphChip glyph={attitudeGlyph(faction.attitude)} className="capitalize">{faction.attitude}</GlyphChip>
+                    <GlyphChip glyph={attitudeGlyph(faction.attitude)} className="capitalize">{attitudeLabel(t, faction.attitude)}</GlyphChip>
                     {faction.power !== undefined ? <span className="text-[11px] font-normal text-violet-300">power {faction.power}</span> : null}
                   </p>
                   {faction.blurb ? <p className="reveal text-xs leading-5 text-stone-400">{faction.blurb}</p> : null}
                   {faction.goal ? <p className="reveal text-xs italic leading-5 text-violet-300/80">Goal: {faction.goal}</p> : null}
                   {showsStanding ? (
-                    <div className="mt-1 flex items-center gap-1" title={`The party is ${faction.standingLabel} to them`}>
+                    <div className="mt-1 flex items-center gap-1" title={t("The party is {word} to them", { word: reputationLabel(t, faction.standing) })}>
                       {Array.from({ length: REPUTATION_MAX - REPUTATION_MIN + 1 }, (_, index) => REPUTATION_MIN + index).map((step) => (
                         <button
                           key={step}
@@ -328,7 +328,7 @@ export function FactionsPanel({
                           )}
                         />
                       ))}
-                      <span key={faction.standing} className="count-pop ml-1 text-[11px] text-stone-400">{reputationLabel(faction.standing)}</span>
+                      <span key={faction.standing} className="count-pop ml-1 text-[11px] text-stone-400">{reputationLabel(t, faction.standing)}</span>
                     </div>
                   ) : null}
                   {faction.members.length ? (

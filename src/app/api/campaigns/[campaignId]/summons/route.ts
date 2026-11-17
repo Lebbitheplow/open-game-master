@@ -8,6 +8,7 @@ import { hasPactOfTheChain } from "@/lib/dm/pet-build";
 import { thrallSpell } from "@/lib/dm/ar-ws-thralls";
 import { familiarCatalogue, isFindFamiliar } from "@/lib/srd/familiar-forms";
 import { summonCatalogue, summonSpellFor, type SummonCatalogue } from "@/lib/srd/summon-spells";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,14 +43,15 @@ export async function GET(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const url = new URL(request.url);
   const parsed = querySchema.safeParse({ spells: url.searchParams.getAll("spell"), characterId: url.searchParams.get("characterId") ?? undefined });
   if (!parsed.success) {
-    return Response.json({ error: `Ask about 1 to ${MAX_SPELLS} spells by name: ?spell=Conjure%20Animals.` }, { status: 400 });
+    return Response.json({ error: t("Ask about 1 to {max} spells by name: ?spell=Conjure%20Animals.", { max: MAX_SPELLS }) }, { status: 400 });
   }
   const caster = parsed.data.characterId ? getSheetById(parsed.data.characterId) : null;
   if (parsed.data.characterId && caster?.campaignId !== campaignId) {
-    return Response.json({ error: "That character is not at this table." }, { status: 404 });
+    return Response.json({ error: t("That character is not at this table.") }, { status: 404 });
   }
   const authors = tableAuthors(campaignId);
   const summons: Record<string, SummonCatalogue> = {};

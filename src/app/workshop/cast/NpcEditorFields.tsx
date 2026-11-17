@@ -18,7 +18,7 @@ import {
   type RelationGraph,
 } from "@/lib/npcs/forge";
 import { npcRoleOptions } from "@/lib/placeholders";
-import { GENDERS, type Gender } from "@/lib/gender";
+import { GENDERS, genderLabel, type Gender } from "@/lib/gender";
 import { NPC_RACE_OPTIONS } from "@/lib/npc-race";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { AttractionPicker, NPC_ATTRACTION_HINT } from "@/components/AttractionPicker";
@@ -31,6 +31,7 @@ import {
 } from "@/app/campaigns/[campaignId]/NpcFields";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useLocale, useT } from "@/lib/locale";
 import { KNOWN_BEFORE_HOW_CHARS, type KnownBeforeGrade } from "@/lib/dm/known-before-logic";
 
 // "Before the story" (issue 731): whether the whole party already knows this
@@ -42,6 +43,14 @@ const KNOWN_BEFORE_OPTIONS: Array<{ value: KnownBeforeGrade | "none"; label: str
   { value: "friend", label: "Friends", hint: "On good terms, a patron or an old contact; bonds open at Cordial" },
   { value: "close", label: "Close", hint: "A mentor or old friend to them all; bonds open at Friendly" },
 ];
+
+// The goal boxes' placeholders, as keys read in the reader's language; a
+// field the map does not know keeps the English NpcFields carries.
+const GOAL_PLACEHOLDER_KEYS: Record<string, string> = {
+  scene: "Right now, in the next scene",
+  session: "Working toward over a few sessions",
+  ambition: "What they would give up everything for",
+};
 
 // The four sections of the NPC form: who they are on the surface, who they
 // are underneath, what they want, and how they feel about everyone else.
@@ -91,27 +100,29 @@ export function NpcEditorFields({
   const known = draft.knownBefore ?? null;
   const keepsRace = hostOffers(useCapabilities(), "npcRace");
   const roles = npcRoleOptions(genre);
+  const t = useT();
+  const locale = useLocale();
   return (
     <>
       <section
         className="panel space-y-2 rounded-xl p-3"
         data-tour="cast-fields"
       >
-        <SectionHead title="On the surface" glyph="system-cast" className="mb-0" />
+        <SectionHead title={t("On the surface")} glyph="system-cast" className="mb-0" />
         <div className="flex flex-wrap items-center gap-1.5">
           <input
             value={draft.name}
             onChange={(event) => onChange({ ...draft, name: event.target.value })}
-            placeholder="Their name"
+            placeholder={t("Their name")}
             className={cn(ui.input, "min-w-32 flex-1")}
           />
           <input
             list={roleListId}
             value={draft.role}
             onChange={(event) => onChange({ ...draft, role: event.target.value })}
-            placeholder="What they do"
-            aria-label="Role: pick one or type your own"
-            title="Pick a role or type your own. It chooses their stand-in face until a portrait exists."
+            placeholder={t("What they do")}
+            aria-label={t("Role: pick one or type your own")}
+            title={t("Pick a role or type your own. It chooses their stand-in face until a portrait exists.")}
             className={cn(ui.input, "w-full sm:w-40")}
           />
           <datalist id={roleListId}>
@@ -123,17 +134,17 @@ export function NpcEditorFields({
           </datalist>
           <span className="w-full sm:w-60">
           <Select<NpcDraft["attitude"]>
-            label="Attitude to the party"
+            label={t("Attitude to the party")}
             value={draft.attitude}
             onChange={(attitude) => onChange({ ...draft, attitude })}
             options={ATTITUDES.map((attitude) => ({
               value: attitude,
               label:
                 attitude === "hostile"
-                  ? "Hostile to the party"
+                  ? t("Hostile to the party")
                   : attitude === "friendly"
-                    ? "Friendly to the party"
-                    : "Indifferent",
+                    ? t("Friendly to the party")
+                    : t("Indifferent"),
               icon: {
                 kind: "glyph" as const,
                 key: attitude === "hostile" ? "attitude-hostile" : attitude === "friendly" ? "attitude-friendly" : "attitude-neutral",
@@ -143,10 +154,10 @@ export function NpcEditorFields({
           </span>
           <span className="w-full sm:w-40">
           <Select<Gender>
-            label="Gender"
+            label={t("Gender")}
             value={draft.gender}
             onChange={(gender) => onChange({ ...draft, gender })}
-            options={[{ value: "", label: "Unspecified" }, ...GENDERS.map((gender) => ({ value: gender, label: gender }))]}
+            options={[{ value: "", label: t("Unspecified") }, ...GENDERS.map((gender) => ({ value: gender, label: genderLabel(gender, locale) }))]}
           />
           </span>
           {/* Beside the gender because the two pick the stand-in face
@@ -156,10 +167,10 @@ export function NpcEditorFields({
           {keepsRace ? (
             <span className="w-full sm:w-48">
             <Select<string>
-              label="Race"
+              label={t("Race")}
               value={draft.race ?? ""}
               onChange={(race) => onChange({ ...draft, race })}
-              options={[{ value: "", label: "Unspecified" }, ...NPC_RACE_OPTIONS]}
+              options={[{ value: "", label: t("Unspecified") }, ...NPC_RACE_OPTIONS]}
             />
             </span>
           ) : null}
@@ -170,7 +181,7 @@ export function NpcEditorFields({
         <AttractionPicker
           value={draft.attraction ?? { genders: [], note: "" }}
           onChange={(attraction) => onChange({ ...draft, attraction })}
-          hint={NPC_ATTRACTION_HINT}
+          hintKey={NPC_ATTRACTION_HINT}
           className="sm:max-w-md"
         />
 
@@ -178,8 +189,8 @@ export function NpcEditorFields({
           value={draft.location}
           list={places.length ? placeListId : undefined}
           onChange={(event) => onChange({ ...draft, location: event.target.value })}
-          placeholder="Where they are usually found"
-          aria-label="Location: pick a place on the map or type your own"
+          placeholder={t("Where they are usually found")}
+          aria-label={t("Location: pick a place on the map or type your own")}
           className={ui.input}
         />
         {places.length ? (
@@ -198,13 +209,13 @@ export function NpcEditorFields({
               aliases: event.target.value.split(",").map((alias) => alias.trim()).filter(Boolean),
             })
           }
-          placeholder="Other names they answer to, separated by commas"
+          placeholder={t("Other names they answer to, separated by commas")}
           className={ui.input}
         />
 
         <div className="flex items-start gap-1.5">
           <DictateField
-            label="What a player notices first"
+            label={t("What a player notices first")}
             className="min-w-0 flex-1"
             onTranscript={(text) => onChange({ ...draft, trait: appendDictation(draft.trait, text) })}
           >
@@ -212,7 +223,7 @@ export function NpcEditorFields({
               value={draft.trait}
               onChange={(event) => onChange({ ...draft, trait: event.target.value })}
               rows={2}
-              placeholder="What a player notices about them first"
+              placeholder={t("What a player notices about them first")}
               className={ui.input}
             />
           </DictateField>
@@ -221,11 +232,11 @@ export function NpcEditorFields({
 
         {factions.length ? (
           <Select
-            label="Faction"
+            label={t("Faction")}
             value={draft.factionId}
             onChange={(factionId) => onChange({ ...draft, factionId })}
             options={[
-              { value: "", label: "No faction" },
+              { value: "", label: t("No faction") },
               ...factions.map((faction) => ({ value: faction.id, label: faction.name, icon: { kind: "glyph" as const, key: "system-factions" } })),
             ]}
           />
@@ -235,13 +246,13 @@ export function NpcEditorFields({
             brings them in as it, under their own name. */}
         <div className="flex flex-wrap items-center gap-1.5">
           <GameIcon icon={{ kind: "glyph", key: "system-bestiary" }} size="size-7" />
-          <span className="text-xs text-stone-400">Fights as</span>
+          <span className="text-xs text-stone-400">{t("Fights as")}</span>
           {draft.statBlock ? (
             <span className="pop-in inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-stone-900/60 py-0.5 pl-2.5 pr-1 text-xs text-stone-200">
-              {draft.statBlock.startsWith("homebrew:") ? "your own stat block" : draft.statBlock.replace(/-/g, " ")}
+              {draft.statBlock.startsWith("homebrew:") ? t("your own stat block") : draft.statBlock.replace(/-/g, " ")}
               <button
                 type="button"
-                aria-label="Clear the stat block"
+                aria-label={t("Clear the stat block")}
                 onClick={() => onChange({ ...draft, statBlock: "" })}
                 className={cn(ui.iconAction, "rounded-full p-1 opacity-100 hover:text-red-300")}
               >
@@ -251,8 +262,8 @@ export function NpcEditorFields({
           ) : null}
           <ContentPick
             kind="monsters"
-            label="Pick the stat block they fight with"
-            placeholder={draft.statBlock ? "Another stat block..." : "Veteran, Bandit Captain, Priest..."}
+            label={t("Pick the stat block they fight with")}
+            placeholder={draft.statBlock ? t("Another stat block...") : t("Veteran, Bandit Captain, Priest...")}
             className="min-w-48 flex-1"
             onPick={(entry) => onChange({ ...draft, statBlock: entry.slug ?? entry.name })}
           />
@@ -265,7 +276,7 @@ export function NpcEditorFields({
           <GameIcon icon={{ kind: "glyph", key: "tab-ambience" }} size="size-7" />
           <span className="min-w-0 flex-1 sm:max-w-72">
           <VoicePicker
-            label="Voice"
+            label={t("Voice", { context: "voice.voice" })}
             value={draft.voice?.voiceId ?? ""}
             onChange={(voiceId) =>
               onChange({
@@ -273,7 +284,7 @@ export function NpcEditorFields({
                 voice: voiceId ? { voiceId, speed: draft.voice?.speed ?? 1 } : null,
               })
             }
-            noneLabel="The narrator's voice"
+            noneLabel={t("The narrator's voice")}
             className="w-full"
           />
           </span>
@@ -281,10 +292,10 @@ export function NpcEditorFields({
             <>
               <VoicePreviewButton voice={draft.voice.voiceId} />
               <span className="flex items-center gap-2 text-xs text-stone-400">
-                Pace
+                {t("Pace", { context: "voice.voices.pace" })}
                 <span className="w-28">
                 <Slider
-                  label="Pace"
+                  label={t("Pace", { context: "voice.voices.pace" })}
                   min={0.7}
                   max={1.4}
                   step={0.05}
@@ -304,40 +315,38 @@ export function NpcEditorFields({
           with someone (issue 731); a person hostile to the party has none. */}
       {knownBeforeOpen && draft.attitude !== "hostile" ? (
         <section className="panel space-y-2 rounded-xl p-3" data-tour="cast-known-before">
-          <SectionHead title="Before the story" glyph="tab-bonds" className="mb-0" />
+          <SectionHead title={t("Before the story")} glyph="tab-bonds" className="mb-0" />
           <p id={knownLabelId} className="text-xs text-stone-300">
-            Does the whole party already know them when the story begins?
+            {t("Does the whole party already know them when the story begins?")}
           </p>
           <span className="block sm:max-w-md" aria-describedby={knownLabelId}>
             <Select<KnownBeforeGrade | "none">
-              label="Does the whole party already know them when the story begins?"
+              label={t("Does the whole party already know them when the story begins?")}
               value={known?.grade ?? "none"}
               onChange={(grade) =>
                 onChange({ ...draft, knownBefore: grade === "none" ? null : { grade, how: known?.how ?? "" } })
               }
-              options={KNOWN_BEFORE_OPTIONS.map((option) => ({ ...option, icon: { kind: "glyph" as const, key: option.value === "none" ? "attitude-neutral" : "tab-bonds" } }))}
+              options={KNOWN_BEFORE_OPTIONS.map((option) => ({ value: option.value, label: t(option.label), hint: t(option.hint), icon: { kind: "glyph" as const, key: option.value === "none" ? "attitude-neutral" : "tab-bonds" } }))}
             />
           </span>
           {known ? (
             <div className="pop-in space-y-1">
               <label htmlFor={howId} className="block text-xs text-stone-300">
-                How the party knows them
+                {t("How the party knows them")}
               </label>
               <input
                 id={howId}
                 value={known.how}
                 maxLength={KNOWN_BEFORE_HOW_CHARS}
                 onChange={(event) => onChange({ ...draft, knownBefore: { grade: known.grade, how: event.target.value } })}
-                placeholder="She hired you twice to guard her caravans"
+                placeholder={t("She hired you twice to guard her caravans")}
                 aria-describedby={howHintId}
                 aria-invalid={!known.how.trim()}
                 className={ui.input}
               />
               <p id={howHintId} className="text-[11px] text-stone-500">
-                {known.how.trim() ? "" : "Needed. "}
-                Use only what the adventure&apos;s opening says the whole party shares. Every hero in the party as the
-                story begins starts with this bond, and this line is its first memory on the Bonds tab and for the GM. A
-                hero who joins later meets them fresh.
+                {known.how.trim() ? "" : t("Needed. ")}
+                {t("Use only what the adventure's opening says the whole party shares. Every hero in the party as the story begins starts with this bond, and this line is its first memory on the Bonds tab and for the GM. A hero who joins later meets them fresh.")}
               </p>
             </div>
           ) : null}
@@ -345,18 +354,18 @@ export function NpcEditorFields({
       ) : null}
 
       <section className="panel space-y-2 rounded-xl p-3">
-        <SectionHead title="Who they are" glyph="tab-bonds" className="mb-0" aside={suggest("personality")} />
+        <SectionHead title={t("Who they are")} glyph="tab-bonds" className="mb-0" aside={suggest("personality")} />
         <PersonalitySliders draft={draft} onChange={onChange} />
       </section>
 
       <section className="panel space-y-2 rounded-xl p-3">
-        <SectionHead title="What they want" glyph="quest-active" className="mb-0" />
+        <SectionHead title={t("What they want", { context: "workshop.cast.whatTheyWant" })} glyph="quest-active" className="mb-0" />
         {GOAL_FIELDS.map(([field, placeholder]) => (
           <div key={field} className="flex items-center gap-1.5">
             <input
               value={goalText(draft, field)}
               onChange={(event) => onChange(setGoal(draft, field, event.target.value))}
-              placeholder={placeholder}
+              placeholder={GOAL_PLACEHOLDER_KEYS[field] ? t(GOAL_PLACEHOLDER_KEYS[field]) : placeholder}
               className={cn(ui.input, "min-w-0 flex-1")}
             />
             {field === "session" && draft.goals.session ? (
@@ -368,13 +377,12 @@ export function NpcEditorFields({
           </div>
         ))}
         <p className="text-[11px] text-stone-500">
-          The middle one advances on background dice at the end of a chapter, so its progress is
-          the engine&apos;s to move, not yours.
+          {t("The middle one advances on background dice at the end of a chapter, so its progress is the engine's to move, not yours.")}
         </p>
       </section>
 
       <section className="panel space-y-2 rounded-xl p-3">
-        <SectionHead title="How they feel about other people" glyph="attitude-wary" className="mb-0" />
+        <SectionHead title={t("How they feel about other people")} glyph="attitude-wary" className="mb-0" />
         <RelationEditor draft={draft} graph={graph} others={others} onChange={onChange} />
       </section>
     </>

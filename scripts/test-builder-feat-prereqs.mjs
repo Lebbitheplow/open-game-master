@@ -23,6 +23,8 @@ const { builderFeatCandidate, builderFeatJudge, judgeEntry, unmetFeatMessage } =
   "../src/app/characters/builder/featPrereqs.ts"
 );
 const { abilitiesBlocker, ancestryBlocker } = await import("../src/app/characters/builder/submit.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { SelectedPrerequisite } = await import("../src/app/characters/builder/AsiFeatEditor.tsx");
 const { checkPrerequisite, judgeFeats, unmetPrerequisite } = await import("../src/lib/srd/legality/features.ts");
 
@@ -154,14 +156,14 @@ test("a picked feat is rechecked when a score it depends on changes, flagged and
   ];
   const before = runBuilder(picked);
   assert.equal(before.judge.checkFeat("Skulker")?.state, "met");
-  assert.equal(ancestryBlocker(before.state, before.race, before.background, before.derived, before.judge), null);
+  assert.equal(ancestryBlocker(t, before.state, before.race, before.background, before.derived, before.judge), null);
 
   const after = runBuilder([...picked, (state) => state.setScores({ ...SCORES, dex: 10, wis: 14 })]);
   assert.deepEqual(after.state.feats, ["Skulker"], "the feat is not silently removed");
   const check = after.judge.checkFeat("Skulker");
   assert.equal(check?.state, "unmet");
   assert.equal(check?.requirements[0].note, "Needs Dexterity 13, you have 10");
-  const blocked = ancestryBlocker(after.state, after.race, after.background, after.derived, after.judge);
+  const blocked = ancestryBlocker(t, after.state, after.race, after.background, after.derived, after.judge);
   assert.equal(blocked?.target, "racialFeat");
   assert.equal(blocked?.message, "Skulker: Needs Dexterity 13, you have 10. Pick another feat, or change what it depends on.");
   assert.equal(unmetFeatMessage(after.judge, ["Alert"]), null, "a feat with no prerequisite is never flagged");
@@ -223,14 +225,14 @@ test("an improvement's feat is rechecked at the Abilities step's Continue", () =
   assert.equal(judgeEntry(open.judge, row("Inspiring Leader"))?.blocked, false);
 
   const taken = runBuilder([...fighter4, (state) => state.setAsiChoices([{ mode: "feat", feat: "Defensive Duelist" }])]);
-  assert.equal(abilitiesBlocker(taken.derived, taken.state, taken.judge), null);
+  assert.equal(abilitiesBlocker(t, taken.derived, taken.state, taken.judge), null);
   const lowered = runBuilder([
     ...fighter4,
     (state) => state.setAsiChoices([{ mode: "feat", feat: "Defensive Duelist" }]),
     (state) => state.setScores({ str: 15, dex: 8, con: 13, int: 10, wis: 14, cha: 12 }),
   ]);
   assert.deepEqual(lowered.state.asiChoices, [{ mode: "feat", feat: "Defensive Duelist" }]);
-  const blocked = abilitiesBlocker(lowered.derived, lowered.state, lowered.judge);
+  const blocked = abilitiesBlocker(t, lowered.derived, lowered.state, lowered.judge);
   assert.equal(blocked?.target, "asi");
   assert.match(blocked?.message ?? "", /^Defensive Duelist: Needs Dexterity 13, you have 8\./);
 });

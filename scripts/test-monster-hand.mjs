@@ -15,6 +15,8 @@ const { deriveMonsterHand, lairTitle, monsterCalls, monsterInvoke, monsterSenten
 const { lairChoices, lairResolution, lairSave } = await import("../src/lib/dm/legendary-logic.ts");
 const { previewRows } = await import("../src/lib/battlemap/hand-play.ts");
 const { monsterAttackIcon } = await import("../src/lib/battlemap/attack-art.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { cardArtwork } = await import("../src/lib/battlemap/card-art.ts");
 
 let passed = 0;
@@ -137,7 +139,7 @@ test("an incapacitated enemy's cards are held with the reason", () => {
 const drake = { id: "e1", name: "Drake", status: "alive", conditions: [], actions: enemyActionsView(encounter(), enemy()) };
 
 test("the hand holds one card per attack, one per ability, and Flee, with the engine's numbers on them", () => {
-  const cards = deriveMonsterHand(drake);
+  const cards = deriveMonsterHand(t, drake);
   assert.deepEqual(
     cards.map((card) => card.name),
     ["Bite", "Claw", "Acid Spit", "Fire Breath", "Frightful Presence", "Flee"],
@@ -174,7 +176,7 @@ test("a card that cannot be played says why: the ability's reason first, then th
     encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, abilities: { e1: { spent: ["fire breath"] } }, acted: { round: 1, ids: ["e1"] } } }),
     enemy(),
   );
-  const cards = deriveMonsterHand({ ...drake, actions: spent });
+  const cards = deriveMonsterHand(t, { ...drake, actions: spent });
   assert.match(cards[0].disabled, /already taken its action/);
   assert.equal(cards[0].spent, true);
   assert.match(cards[3].disabled, /has not recharged/);
@@ -184,29 +186,29 @@ test("a card that cannot be played says why: the ability's reason first, then th
 });
 
 test("an enemy the projection carries no actions for has no cards (a player's view)", () => {
-  assert.deepEqual(deriveMonsterHand({ id: "e1", name: "Drake", status: "alive", conditions: [] }), []);
+  assert.deepEqual(deriveMonsterHand(t, { id: "e1", name: "Drake", status: "alive", conditions: [] }), []);
 });
 
 test("the preview works a bite against the party's real armour class", () => {
-  const [biteCard] = deriveMonsterHand(drake);
+  const [biteCard] = deriveMonsterHand(t, drake);
   const rows = previewRows(biteCard, { id: "s1", name: "Kael", kind: "enemy", ac: 16, conditions: [] }, []);
   const toHit = rows.find((row) => row.key === "To hit");
   assert.match(toHit.value, /\+5 vs AC 16 · 50%/);
 });
 
 test("a played attack is the console's enemy_attack, with the advantage asked for", () => {
-  const [biteCard] = deriveMonsterHand(drake);
+  const [biteCard] = deriveMonsterHand(t, drake);
   assert.deepEqual(monsterInvoke(biteCard, ["s1"]), {
     name: "enemy_attack",
     args: { enemyId: "e1", targetCharacterId: "s1", attack: "Bite" },
   });
   assert.deepEqual(monsterInvoke(biteCard, ["s1"], "advantage").args.advantage, "advantage");
   assert.equal(monsterInvoke(biteCard, []), null);
-  assert.equal(monsterSentence("Drake", biteCard, ["Kael"]), "Drake attacks Kael with its Bite.");
+  assert.equal(monsterSentence(t, "Drake", biteCard, ["Kael"]), "Drake attacks Kael with its Bite.");
 });
 
 test("an ability on one target is cast_at_player; on several it is one aoe_damage call", () => {
-  const cards = deriveMonsterHand(drake);
+  const cards = deriveMonsterHand(t, drake);
   const breath = cards[3];
   assert.deepEqual(monsterInvoke(breath, ["s1"]), {
     name: "cast_at_player",
@@ -220,11 +222,11 @@ test("an ability on one target is cast_at_player; on several it is one aoe_damag
   assert.deepEqual(monsterInvoke(fear, ["s1"]).args, {
     characterId: "s1", casterEnemyId: "e1", enemyAbility: "Frightful Presence", saveAbility: "wis", dc: 12, condition: "frightened", rounds: 10,
   });
-  assert.equal(monsterSentence("Drake", breath, ["Kael", "Lys", "Bran"]), "Drake uses Fire Breath on Kael, Lys and Bran.");
+  assert.equal(monsterSentence(t, "Drake", breath, ["Kael", "Lys", "Bran"]), "Drake uses Fire Breath on Kael, Lys and Bran.");
 });
 
 test("a creature on the other side (issue 503): its row takes the bite by id, and an area splits sheets from rows", () => {
-  const cards = deriveMonsterHand(drake);
+  const cards = deriveMonsterHand(t, drake);
   const rows = new Set(["e2"]);
   assert.deepEqual(monsterInvoke(cards[0], ["e2"], "none", rows).args, { enemyId: "e1", targetCharacterId: "e2", attack: "Bite" });
   assert.deepEqual(monsterInvoke(cards[3], ["s1", "e2"], "none", rows).args, {
@@ -233,21 +235,21 @@ test("a creature on the other side (issue 503): its row takes the bite by id, an
 });
 
 test("Flee is enemy_flees and needs no target", () => {
-  const cards = deriveMonsterHand(drake);
+  const cards = deriveMonsterHand(t, drake);
   assert.deepEqual(monsterInvoke(cards[5], []), { name: "enemy_flees", args: { enemyId: "e1", reason: "Breaks off and runs." } });
-  assert.equal(monsterSentence("Drake", cards[5], []), "Drake breaks off and flees.");
+  assert.equal(monsterSentence(t, "Drake", cards[5], []), "Drake breaks off and flees.");
 });
 
 test("the multiattack line counts the swings", () => {
-  assert.equal(swingsLine(["Bite"]), "");
-  assert.equal(swingsLine(["Claw", "Claw", "Bite"]), "Multiattack: 2 Claw, 1 Bite. One card plays the whole routine.");
+  assert.equal(swingsLine(t, ["Bite"]), "");
+  assert.equal(swingsLine(t, ["Claw", "Claw", "Bite"]), "Multiattack: 2 Claw, 1 Bite. One card plays the whole routine.");
 });
 
 test("a monster's attack card shows its weapon's or its strike's painting, never a sword for a bite", () => {
-  const icons = deriveMonsterHand(drake).filter((card) => card.type === "attack").map((card) => card.icon.key);
+  const icons = deriveMonsterHand(t, drake).filter((card) => card.type === "attack").map((card) => card.icon.key);
   assert.deepEqual(icons, ["natural-attack", "natural-attack", "natural-attack"]);
   const wolf = { ...drake, name: "Wolf", actions: { ...drake.actions, attacks: [{ ...drake.actions.attacks[0], name: "Bite" }] } };
-  assert.equal(deriveMonsterHand(wolf)[0].icon.key, "strike-bite-mammal");
+  assert.equal(deriveMonsterHand(t, wolf)[0].icon.key, "strike-bite-mammal");
   assert.equal(cardArtwork(monsterAttackIcon("Goblin", "Scimitar", false)).key, "weapon-scimitar");
   assert.equal(cardArtwork(monsterAttackIcon("Bandit Captain", "Light Crossbow", false)).key, "weapon-light-crossbow");
   assert.equal(monsterAttackIcon("Giant Eagle", "Talons", false).key, "strike-talons");
@@ -265,9 +267,9 @@ test("the projection carries the movement it is given, and none without it", () 
 
 test("Dash, Disengage and Dodge cards come only from a host that offers them and counts the movement", () => {
   const withMove = { ...drake, actions: enemyActionsView(encounter(), enemy(), moving) };
-  assert.deepEqual(deriveMonsterHand(withMove).map((card) => card.name), deriveMonsterHand(drake).map((card) => card.name), "an older host's hand changed");
-  assert.equal(deriveMonsterHand(drake, { enemyActions: true }).some((card) => card.name === "Dash"), false, "a card with no movement to count");
-  const cards = deriveMonsterHand(withMove, { enemyActions: true });
+  assert.deepEqual(deriveMonsterHand(t, withMove).map((card) => card.name), deriveMonsterHand(t, drake).map((card) => card.name), "an older host's hand changed");
+  assert.equal(deriveMonsterHand(t, drake, { enemyActions: true }).some((card) => card.name === "Dash"), false, "a card with no movement to count");
+  const cards = deriveMonsterHand(t, withMove, { enemyActions: true });
   const names = cards.map((card) => card.name);
   assert.deepEqual(names.slice(-4), ["Dash", "Disengage", "Dodge", "Flee"]);
   const dash = cards.find((card) => card.name === "Dash");
@@ -276,7 +278,7 @@ test("Dash, Disengage and Dodge cards come only from a host that offers them and
   assert.match(dash.rules, /25 ft left now/);
   assert.deepEqual(dash.icon, { kind: "action", key: "dash" });
   assert.deepEqual(monsterInvoke(dash, []), { name: "take_action", args: { enemyId: "e1", action: "dash" } });
-  assert.equal(monsterSentence("Drake", dash, []), "Drake takes the Dash action.");
+  assert.equal(monsterSentence(t, "Drake", dash, []), "Drake takes the Dash action.");
   const disengage = cards.find((card) => card.name === "Disengage");
   assert.deepEqual(monsterInvoke(disengage, []), { name: "take_action", args: { enemyId: "e1", action: "disengage" } });
   assert.deepEqual(monsterInvoke(cards.find((card) => card.name === "Dodge"), []).args, { enemyId: "e1", action: "dodge" });
@@ -284,14 +286,14 @@ test("Dash, Disengage and Dodge cards come only from a host that offers them and
 
 test("a move card says why it cannot be played: the action spent, no speed, a Disengage already taken", () => {
   const spent = enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, acted: { round: 1, ids: ["e1"] } } }), enemy(), { ...moving, disengaged: true });
-  const cards = deriveMonsterHand({ ...drake, actions: spent }, { enemyActions: true });
+  const cards = deriveMonsterHand(t, { ...drake, actions: spent }, { enemyActions: true });
   assert.match(cards.find((card) => card.name === "Dash").disabled, /already taken its action/);
   assert.match(cards.find((card) => card.name === "Disengage").disabled, /already Disengaged this turn/);
   const held = enemyActionsView(encounter(), enemy(), { ...moving, speedFeet: 0, leftFeet: 0 });
-  assert.match(deriveMonsterHand({ ...drake, actions: held }, { enemyActions: true }).find((card) => card.name === "Dash").disabled, /speed is 0/);
+  assert.match(deriveMonsterHand(t, { ...drake, actions: held }, { enemyActions: true }).find((card) => card.name === "Dash").disabled, /speed is 0/);
   // Nimble Escape may still pay a Disengage with the bonus action: the server says no if not.
   const acted = enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, acted: { round: 1, ids: ["e1"] } } }), enemy(), moving);
-  assert.equal(deriveMonsterHand({ ...drake, actions: acted }, { enemyActions: true }).find((card) => card.name === "Disengage").disabled, null);
+  assert.equal(deriveMonsterHand(t, { ...drake, actions: acted }, { enemyActions: true }).find((card) => card.name === "Disengage").disabled, null);
 });
 
 // Issue 685 audit, 4.G: a legendary creature's legendary actions and the

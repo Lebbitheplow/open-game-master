@@ -11,6 +11,7 @@ import { ContextMenu, type ContextMenuItem } from "@/components/ui/ContextMenu";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Select } from "@/components/ui/Select";
 import { PageLoading, PageNotice, PageSection, PageShell } from "@/components/PageShell";
+import { useT } from "@/lib/locale";
 
 // The server's social circle: accounts are per-server, so these are the
 // people at this table's door, not a global roster. Online means their
@@ -39,10 +40,11 @@ type Note = { text: string; error: boolean };
 
 // A face in the gold ring; online lights a candle on the rim.
 function Avatar({ friend }: { friend: FriendItem }) {
+  const t = useT();
   return (
     <span className="medallion">
       <UserAvatar url={friend.avatar?.url} userId={friend.userId} size="size-10" />
-      {friend.online ? <span title="Online now" role="img" aria-label="Online now" className="online-candle" /> : null}
+      {friend.online ? <span title={t("Online now")} role="img" aria-label={t("Online now")} className="online-candle" /> : null}
     </span>
   );
 }
@@ -52,6 +54,7 @@ const ROW = "plate-row";
 const LIST = "stagger space-y-2 px-5 pb-5";
 
 export default function FriendsPage() {
+  const t = useT();
   const [data, setData] = useState<FriendsData>({ friends: [], incoming: [], outgoing: [] });
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,10 +132,10 @@ export default function FriendsPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setAddNote({ text: payload.error ?? "Something went wrong.", error: true });
+        setAddNote({ text: payload.error ?? t("Something went wrong.", { context: "friends.error.generic" }), error: true });
         return;
       }
-      setAddNote({ text: payload.message ?? "Request sent.", error: false });
+      setAddNote({ text: payload.message ?? t("Request sent."), error: false });
       setName("");
       void load();
     } finally {
@@ -148,14 +151,14 @@ export default function FriendsPage() {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      setRowNote(userId, payload.error ?? "Something went wrong.", true);
+      setRowNote(userId, payload.error ?? t("Something went wrong.", { context: "friends.error.generic" }), true);
       return;
     }
     void load();
   }
 
   async function unfriend(friend: FriendItem) {
-    if (!await appConfirm(`Remove ${friend.username} from your friends?`)) {
+    if (!await appConfirm(t("Remove {name} from your friends?", { name: friend.username }))) {
       return;
     }
     const response = await fetch("/api/friends", {
@@ -165,7 +168,7 @@ export default function FriendsPage() {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      setRowNote(friend.userId, payload.error ?? "Something went wrong.", true);
+      setRowNote(friend.userId, payload.error ?? t("Something went wrong.", { context: "friends.error.generic" }), true);
       return;
     }
     void load();
@@ -182,16 +185,16 @@ export default function FriendsPage() {
       setRowNote(userId, payload.error ?? "Something went wrong.", true);
       return;
     }
-    setRowNote(userId, "Invite sent.", false);
+    setRowNote(userId, t("Invite sent."), false);
   }
 
   if (!authed) {
     return (
       <PageNotice>
         <Link href="/" className="text-amber-200 hover:text-amber-400">
-          Log in
-        </Link>{" "}
-        to see your friends on this server.
+          {t("Log in", { context: "friends.login.link" })}
+        </Link>
+        {t(" to see your friends on this server.")}
       </PageNotice>
     );
   }
@@ -204,24 +207,24 @@ export default function FriendsPage() {
     <PageShell
       icon={PIXEL_ICONS.chats}
       glyph="tab-friends"
-      title="Friends"
-      blurb="People on this server; invite them to your campaigns."
+      title={t("Friends")}
+      blurb={t("People on this server; invite them to your campaigns.")}
     >
-      <PageSection heading="Add a friend" glyph="tab-friends">
+      <PageSection heading={t("Add a friend")} glyph="tab-friends">
         <form onSubmit={add} className="flex gap-2">
           <label className="glyph-field min-w-0 flex-1">
             <GameIcon icon={{ kind: "glyph", key: "tab-characters" }} size="size-7" className="glyph-field-icon" />
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Add by exact username"
+            placeholder={t("Add by exact username")}
             maxLength={64}
-            aria-label="Username"
+            aria-label={t("Username", { context: "friends.add.usernameAria" })}
             className={cn(ui.input, "h-10")}
           />
           </label>
           <button type="submit" disabled={sending || !name.trim()} className={ui.btnPrimary}>
-            {sending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />} Add
+            {sending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />} {t("Add")}
           </button>
         </form>
         {addNote ? (
@@ -232,7 +235,7 @@ export default function FriendsPage() {
       </PageSection>
 
       {data.incoming.length > 0 ? (
-        <PageSection heading="Requests for you" glyph="cue-bell" ribbon="Waiting on you" padded={false}>
+        <PageSection heading={t("Requests for you")} glyph="cue-bell" ribbon={t("Waiting on you", { context: "friends.requests.ribbon" })} padded={false}>
           <ul className={LIST}>
             {data.incoming.map((request) => (
               <li key={request.userId} className={ROW}>
@@ -248,14 +251,14 @@ export default function FriendsPage() {
                   onClick={() => respond(request.userId, true)}
                   className={ui.btnSmall}
                 >
-                  <Check className="size-4 text-emerald-300" /> Accept
+                  <Check className="size-4 text-emerald-300" /> {t("Accept")}
                 </button>
                 <button
                   type="button"
                   onClick={() => respond(request.userId, false)}
                   className={ui.btnSmall}
                 >
-                  <X className="size-4 text-red-400" /> Decline
+                  <X className="size-4 text-red-400" /> {t("Decline")}
                 </button>
               </li>
             ))}
@@ -264,13 +267,13 @@ export default function FriendsPage() {
       ) : null}
 
       <PageSection
-        heading="Friends"
+        heading={t("Friends")}
         glyph="tab-party"
         actions={data.friends.length ? <span className="count-pop tabular-nums">{data.friends.length}</span> : undefined}
         padded={data.friends.length === 0}
       >
         {data.friends.length === 0 ? (
-          <EmptyState art="board" title="No party outside the party yet." hint="Add someone by their exact username on this server." />
+          <EmptyState art="board" title={t("No party outside the party yet.")} hint={t("Add someone by their exact username on this server.")} />
         ) : (
           <ul className={LIST}>
             {data.friends.map((friend) => (
@@ -288,21 +291,21 @@ export default function FriendsPage() {
       </PageSection>
 
       {data.outgoing.length > 0 ? (
-        <PageSection heading="Sent requests" glyph="tab-handout" padded={false}>
+        <PageSection heading={t("Sent requests")} glyph="tab-handout" padded={false}>
           <ul className={LIST}>
             {data.outgoing.map((request) => (
               <li key={request.userId} className={ROW}>
                 <Avatar friend={request} />
                 <span className="min-w-0 flex-1 truncate text-stone-300">{request.username}</span>
                 <span className="inline-flex items-center gap-1 text-xs text-stone-500">
-                  <GameIcon icon={{ kind: "glyph", key: "rest-short" }} size="size-5" /> Waiting
+                  <GameIcon icon={{ kind: "glyph", key: "rest-short" }} size="size-5" /> {t("Waiting")}
                 </span>
                 <button
                   type="button"
                   onClick={() => respond(request.userId, false)}
                   className={ui.btnSmall}
                 >
-                  <X className="size-4" /> Cancel
+                  <X className="size-4" /> {t("Cancel")}
                 </button>
               </li>
             ))}
@@ -328,21 +331,22 @@ function FriendRow({
   onInvite: (campaignId: string) => void;
   onUnfriend: () => void;
 }) {
+  const t = useT();
   const menu: ContextMenuItem[] = [
     ...campaigns.map((campaign) => ({
       id: `invite-${campaign.id}`,
-      label: `Invite to ${campaign.title}`,
+      label: t("Invite to {name}", { name: campaign.title }),
       glyph: "tab-campaigns",
       onSelect: () => onInvite(campaign.id),
     })),
-    { id: "unfriend", label: "Unfriend", glyph: "ui-delete", tone: "danger" as const, separated: campaigns.length > 0, onSelect: onUnfriend },
+    { id: "unfriend", label: t("Unfriend"), glyph: "ui-delete", tone: "danger" as const, separated: campaigns.length > 0, onSelect: onUnfriend },
   ];
   return (
     <ContextMenu as="li" items={menu} label={friend.username} className="plate-row">
       <Avatar friend={friend} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium text-stone-100">{friend.username}</span>
-        <span className="text-[11px] text-stone-500">{friend.online ? "Online now" : "Not online"}</span>
+        <span className="text-[11px] text-stone-500">{friend.online ? t("Online now") : t("Not online")}</span>
       </span>
       {campaigns.length > 0 ? (
         // Always empty: choosing a campaign sends the invite, it does not
@@ -355,15 +359,15 @@ function FriendRow({
             label: campaign.title,
             icon: { kind: "glyph" as const, key: "tab-campaigns" },
           }))}
-          label={`Invite ${friend.username} to a campaign`}
-          placeholder="Invite to campaign..."
+          label={t("Invite {name} to a campaign", { name: friend.username })}
+          placeholder={t("Invite to campaign...")}
           size="sm"
           align="end"
           className="max-w-44"
         />
       ) : null}
       <button type="button" onClick={onUnfriend} className={ui.btnSmall}>
-        <X className="size-4 text-red-400" /> Unfriend
+        <X className="size-4 text-red-400" /> {t("Unfriend")}
       </button>
       {note ? (
         <p role={note.error ? "alert" : "status"} className={cn("w-full pl-14 text-xs", note.error ? "motion-shake text-red-400" : "live-in text-emerald-300")}>

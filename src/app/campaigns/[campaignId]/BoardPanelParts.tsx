@@ -5,6 +5,7 @@ import { Keyboard, LocateFixed, Lock, Maximize2, Unlock, Users, ZoomIn, ZoomOut 
 import { useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { TILE_FEET } from "@/lib/battlemap/types";
 import { playingSheet } from "@/lib/battlemap/hand-table";
 
@@ -20,37 +21,26 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 const CAMERA_BUTTON =
   "motion-press rounded-md border border-stone-700/80 bg-stone-950/85 p-1 text-stone-300 hover:text-stone-100";
 
-// What the board does with the keyboard and the mouse (issue 90). The keys
-// only reach the board while it has focus, so the list says that first.
-const BOARD_KEYS: Array<{ keys: string[]; does: string }> = [
-  { keys: ["←", "↑", "↓", "→"], does: "Move the view" },
-  { keys: ["+", "−"], does: "Zoom in and out" },
-  { keys: ["0"], does: "Fit the whole board" },
-  { keys: ["Esc"], does: "Cancel an aim or a drag" },
-  { keys: ["Ctrl", "Z"], does: "Take back your last move" },
-  { keys: ["Scroll"], does: "Zoom at the pointer" },
-  { keys: ["Drag"], does: "Move the view" },
-];
-
 // The short form, shown for a few seconds each time the board takes the
 // keyboard (board.css fades it), so the keys are learned by using the board
 // and not by hunting for a help page. Hidden where there is no keyboard to
 // speak of.
 export function BoardKeyStrip() {
+  const t = useT();
   return (
     <div className="board-keys-strip" aria-hidden="true">
       <span>
         <span className="kbd-key">←</span>
         <span className="kbd-key">↑</span>
         <span className="kbd-key">↓</span>
-        <span className="kbd-key">→</span> move
+        <span className="kbd-key">→</span> {t("move", { context: "board.strip.move" })}
       </span>
       <span>
         <span className="kbd-key">+</span>
-        <span className="kbd-key">−</span> zoom
+        <span className="kbd-key">−</span> {t("zoom")}
       </span>
       <span>
-        <span className="kbd-key">0</span> fit
+        <span className="kbd-key">0</span> {t("fit")}
       </span>
     </div>
   );
@@ -76,6 +66,18 @@ export function BoardCameraControls({
   onDirect?: (mode: "pull" | "lock" | "free") => void;
 }) {
   const [keysOpen, setKeysOpen] = useState(false);
+  const t = useT();
+  // What the board does with the keyboard and the mouse (issue 90). The keys
+  // only reach the board while it has focus, so the list says that first.
+  const BOARD_KEYS: Array<{ keys: string[]; does: string }> = [
+    { keys: ["←", "↑", "↓", "→"], does: t("Move the view") },
+    { keys: ["+", "−"], does: t("Zoom in and out") },
+    { keys: ["0"], does: t("Fit the whole board") },
+    { keys: ["Esc"], does: t("Cancel an aim or a drag") },
+    { keys: ["Ctrl", "Z"], does: t("Take back your last move") },
+    { keys: ["Scroll"], does: t("Zoom at the pointer") },
+    { keys: ["Drag"], does: t("Move the view") },
+  ];
   return (
     <div className={cn("board-cam absolute bottom-2 right-2 z-10 flex flex-col gap-1", onDirect && "board-cam-long")}>
       {keysOpen ? (
@@ -90,7 +92,7 @@ export function BoardCameraControls({
             }
           }}
         >
-          <p className="board-eyebrow mb-1.5">Board controls</p>
+          <p className="board-eyebrow mb-1.5">{t("Board controls")}</p>
           <dl>
             {BOARD_KEYS.map((row) => (
               <div key={row.keys.join()}>
@@ -106,28 +108,28 @@ export function BoardCameraControls({
             ))}
           </dl>
           <p className="mt-1.5 text-[10px] leading-snug text-[#8f8aab]">
-            The keys work while the board is lit: click it, or Tab to it.
+            {t("The keys work while the board is lit: click it, or Tab to it.")}
           </p>
         </div>
       ) : null}
       <button
         type="button"
         onClick={() => setKeysOpen((open) => !open)}
-        aria-label="Board keys and mouse controls"
+        aria-label={t("Board keys and mouse controls")}
         aria-expanded={keysOpen}
         aria-controls="board-keys-card"
-        title="Keys and mouse controls"
+        title={t("Keys and mouse controls")}
         className={cn(CAMERA_BUTTON, "board-keys-button", keysOpen && "border-amber-600/80 text-amber-200")}
       >
         <Keyboard className="size-4" />
       </button>
-      <button type="button" onClick={onZoomIn} aria-label="Zoom in" className={CAMERA_BUTTON}>
+      <button type="button" onClick={onZoomIn} aria-label={t("Zoom in")} className={CAMERA_BUTTON}>
         <ZoomIn className="size-4" />
       </button>
-      <button type="button" onClick={onZoomOut} aria-label="Zoom out" className={CAMERA_BUTTON}>
+      <button type="button" onClick={onZoomOut} aria-label={t("Zoom out")} className={CAMERA_BUTTON}>
         <ZoomOut className="size-4" />
       </button>
-      <button type="button" onClick={onFit} aria-label="Fit the board" className={CAMERA_BUTTON}>
+      <button type="button" onClick={onFit} aria-label={t("Fit the board")} className={CAMERA_BUTTON}>
         <Maximize2 className="size-4" />
       </button>
       {followTurn !== null ? (
@@ -135,8 +137,8 @@ export function BoardCameraControls({
           type="button"
           onClick={onFollowTurn}
           aria-pressed={followTurn}
-          aria-label="Follow the turn"
-          title="Follow the turn"
+          aria-label={t("Follow the turn")}
+          title={t("Follow the turn")}
           className={cn(
             "motion-press rounded-md border p-1",
             followTurn
@@ -151,8 +153,8 @@ export function BoardCameraControls({
         <>
           <button
             type="button"
-            title="Pull everyone here"
-            aria-label="Pull everyone to this view"
+            title={t("Pull everyone here")}
+            aria-label={t("Pull everyone to this view")}
             onClick={() => onDirect("pull")}
             className="motion-press rounded-md border border-amber-700/70 bg-stone-950/85 p-1 text-amber-200 hover:bg-amber-950/60"
           >
@@ -160,8 +162,8 @@ export function BoardCameraControls({
           </button>
           <button
             type="button"
-            title="Lock everyone to my view"
-            aria-label="Lock everyone to this view"
+            title={t("Lock everyone to my view")}
+            aria-label={t("Lock everyone to this view")}
             onClick={() => onDirect("lock")}
             className={CAMERA_BUTTON}
           >
@@ -169,8 +171,8 @@ export function BoardCameraControls({
           </button>
           <button
             type="button"
-            title="Free everyone's view"
-            aria-label="Free everyone's view"
+            title={t("Free everyone's view")}
+            aria-label={t("Free everyone's view")}
             onClick={() => onDirect("free")}
             className={CAMERA_BUTTON}
           >
@@ -201,11 +203,12 @@ export function BoardOrderDialog({
   canDirect: boolean;
   faceOf: FaceLookup;
 }) {
+  const t = useT();
   return (
     <Dialog
       open={open && Boolean(encounter)}
       onOpenChange={onOpenChange}
-      title={`Initiative, round ${round}`}
+      title={t("Initiative, round {n}", { n: round })}
       width="w-[min(94vw,26rem)]"
     >
       {encounter && canDirect ? (
@@ -231,7 +234,7 @@ export function BoardOrderDialog({
               <span className="min-w-0 flex-1 truncate">{entry.name}{entry.reflex ? <sup className="motion-pop ml-0.5 text-[9px] text-amber-300" title={extraTurnTag(entry)?.title}>{extraTurnTag(entry)?.short}</sup> : null}</span>
               <SideBadge side={offSide(encounter, entry.id, entry.kind)} />
               {litOrderRows(order, encounter.turnIndex, encounter.acting, encounter.enemiesUp).includes(index) ? (
-                <span className="text-[10px] uppercase tracking-wide text-amber-300">up now</span>
+                <span className="text-[10px] uppercase tracking-wide text-amber-300">{t("up now")}</span>
               ) : null}
             </li>
           ))}
@@ -243,59 +246,65 @@ export function BoardOrderDialog({
 
 // The line under the board saying what a tap does now, for the DM's tools
 // and for a player's turn. Split from BattleMapPanel.tsx.
-export function boardHintText(input: {
-  canDirect: boolean;
-  tool: string;
-  teleporting: boolean;
-  held: boolean;
-  liveOrigin: boolean;
-  pointing: boolean;
-  drawing: boolean;
-  targeting: boolean;
-  canMove: boolean;
-  // A first tap aimed the walk; the second makes it.
-  moveAimed: boolean;
-  scene: boolean;
-  budgetLeft: number;
-  hasToken: boolean;
-}): string {
+// Pure logic: the translator comes in as the first argument (the agoLabel
+// pattern), so the caller's locale picks the words.
+export function boardHintText(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  input: {
+    canDirect: boolean;
+    tool: string;
+    teleporting: boolean;
+    held: boolean;
+    liveOrigin: boolean;
+    pointing: boolean;
+    drawing: boolean;
+    targeting: boolean;
+    canMove: boolean;
+    // A first tap aimed the walk; the second makes it.
+    moveAimed: boolean;
+    scene: boolean;
+    budgetLeft: number;
+    hasToken: boolean;
+  },
+): string {
   const { canDirect, tool, teleporting, held, liveOrigin, pointing, drawing, targeting, canMove, scene } = input;
   return canDirect
     ? tool === "draw"
-      ? "Drag to draw. Everyone sees it; it is a plan, not a fact."
+      ? t("Drag to draw. Everyone sees it; it is a plan, not a fact.")
       : teleporting
-      ? "Tap the tile it appears on. No path, no movement spent."
+      ? t("Tap the tile it appears on. No path, no movement spent.")
       : held
-        ? "Tap where it should stand. The round's movement is not charged for this."
+        ? t("Tap where it should stand. The round's movement is not charged for this.")
         : tool === "measure"
           ? liveOrigin
-            ? "Now tap where it points."
-            : "Tap where the area starts."
+            ? t("Now tap where it points.")
+            : t("Tap where the area starts.")
           : tool === "point"
-            ? "Tap a tile and everyone looks at it."
+            ? t("Tap a tile and everyone looks at it.")
             : tool === "place"
-              ? "Name it, then tap a tile."
-              : "Tap a piece for its actions. Nothing here is charged against the round."
+              ? t("Name it, then tap a tile.")
+              : t("Tap a piece for its actions. Nothing here is charged against the round.")
     : pointing
-      ? "Tap a tile to point at it."
+      ? t("Tap a tile to point at it.")
       : drawing
-        ? "Drag to draw. The table sees it; erase it when the plan changes."
+        ? t("Drag to draw. The table sees it; erase it when the plan changes.")
       : targeting
-        ? "Tap the enemy."
+        ? t("Tap the enemy.")
         : canMove && input.moveAimed
-          ? "Tap the same tile again to move there. Tap another to change course, or press Esc."
+          ? t("Tap the same tile again to move there. Tap another to change course, or press Esc.")
         : canMove
           ? scene
-            ? "Tap anywhere you can walk, then tap it again to go. Nothing is being counted out here."
-            : `Tap a highlighted tile to see the path, then again to move (${input.budgetLeft * TILE_FEET} ft left this turn). Tap your figure for actions.`
+            ? t("Tap anywhere you can walk, then tap it again to go. Nothing is being counted out here.")
+            : t("Tap a highlighted tile to see the path, then again to move ({ft} ft left this turn). Tap your figure for actions.", { ft: input.budgetLeft * TILE_FEET })
           : input.hasToken
-            ? "You can move on your turn. The shroud shows what your character cannot see."
-            : "You have no token on this field.";
+            ? t("You can move on your turn. The shroud shows what your character cannot see.")
+            : t("You have no token on this field.");
 }
 
 // The turn order under the board, the pointer's entry lit; a thief's second
 // turn in round 1 is marked (Thief's Reflexes). Split from BattleMapPanel.tsx.
 export function BoardOrderStrip({ encounter, faceOf }: { encounter: PublicEncounter | null | undefined; faceOf: FaceLookup }) {
+  const t = useT();
   if (!encounter?.orderReady) return null;
   // Whose turn it is (initiative-rows.ts litOrderRows), not only the pointer.
   const lit = litOrderRows(encounter.order, encounter.turnIndex, encounter.acting, encounter.enemiesUp);
@@ -319,7 +328,7 @@ export function BoardOrderStrip({ encounter, faceOf }: { encounter: PublicEncoun
             )}
           />
           {entry.name}
-          {entry.hidden ? " (hidden)" : ""}
+          {entry.hidden ? ` ${t("(hidden)", { context: "board.hiddenMark" })}` : ""}
           {entry.reflex ? <sup className="motion-pop ml-0.5 text-[9px] text-amber-300" title={extraTurnTag(entry)?.title}>{extraTurnTag(entry)?.short}</sup> : null}
         </li>
       ))}
@@ -346,6 +355,7 @@ export function PlayAsStrip({
   multiCharacter: string;
 }) {
   const [switching, setSwitching] = useState("");
+  const t = useT();
   const own = sheets.filter((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
   if (!meUserId || multiCharacter === "off" || own.length < 2) {
     return null;
@@ -364,8 +374,8 @@ export function PlayAsStrip({
     }
   }
   return (
-    <div role="radiogroup" aria-label="Playing as" data-pill-group="" className="flex items-center gap-1">
-      <span className="eyebrow mr-1 text-[9px] text-stone-400">Playing as</span>
+    <div role="radiogroup" aria-label={t("Playing as")} data-pill-group="" className="flex items-center gap-1">
+      <span className="eyebrow mr-1 text-[9px] text-stone-400">{t("Playing as")}</span>
       {own.map((sheet) => {
         const current = playing?.id === sheet.id;
         return (

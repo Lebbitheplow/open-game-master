@@ -6,6 +6,8 @@ import { formatModifier, proficiencyBonus } from "@/lib/srd";
 import { formatPrice, purseCopper } from "@/lib/srd/currency";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { ui } from "@/lib/ui";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 import { HpExplainerButton } from "../AbilityExplainers";
 import { armorClassLine, hitPointsLine, purseViewFor } from "../derivedReasons";
 import type { BackgroundOption, ClassOption, RaceOption } from "../useBuilderOptions";
@@ -59,13 +61,15 @@ export function FinishStep({
   // here, at the end, because it changes nothing on the sheet.
   role?: { value: BuilderRole; onChange: (role: BuilderRole) => void };
 }) {
+  const t = useT();
+  const locale = useLocale();
   const { preview, acInfo, ac, effectiveLevel } = derived;
   const hp = hpExplainerInput(derived, klass);
   // Hit points, armor class and coin are the server's to work out, so they
   // are shown with their reasons and never typed.
   const hpLine =
     preview && klass
-      ? hitPointsLine({
+      ? hitPointsLine(t, {
           hitDie: klass.hitDie,
           level: effectiveLevel,
           maxHp: preview.maxHp,
@@ -76,8 +80,8 @@ export function FinishStep({
           ...(derived.multiclass ? { dice: [klass.hitDie, ...derived.extras.map((entry) => entry.klass.hitDie)] } : {}),
         })
       : null;
-  const acLine = armorClassLine(acInfo?.ac ?? ac, acInfo?.parts);
-  const purse = purseViewFor({
+  const acLine = armorClassLine(t, acInfo?.ac ?? ac, acInfo?.parts);
+  const purse = purseViewFor(t, {
     purse: derived.purse,
     keepsStoredGear: state.keepsStoredGear,
     backgroundName: background?.name ?? "chosen",
@@ -98,12 +102,12 @@ export function FinishStep({
       <SummaryPanel rows={summary} onEdit={(key) => onEdit?.(key)} onFix={onFix} />
 
       {preview && race ? (
-        <StepPanel title="Derived stats" ornate className="border-amber-500/30">
+        <StepPanel title={t("Derived stats")} ornate className="border-amber-500/30">
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-stone-300 sm:grid-cols-4">
             <Field
               label={
                 <span className="flex items-center gap-0.5">
-                  Max HP
+                  {t("Max HP")}
                   {hp ? <HpExplainerButton hp={hp} compact /> : null}
                 </span>
               }
@@ -113,31 +117,31 @@ export function FinishStep({
               </span>
               <span className="mt-1 block text-sm text-stone-500">{hpLine?.reason}</span>
             </Field>
-            <Field label="AC">
+            <Field label={t("AC")}>
               <span key={acLine.value} className="reveal font-mono text-base text-amber-100">
                 {acLine.value}
               </span>
               <span className="mt-1 block text-sm text-stone-500">{acLine.reason}</span>
             </Field>
-            <Field label="Gold" className="col-span-2">
+            <Field label={t("Gold")} className="col-span-2">
               <span key={`${purse.gold}-${purse.copper}`} className="reveal font-mono text-base text-amber-100">
                 {formatPrice(purseCopper(purse))}
               </span>
               <span className="mt-1 block text-sm text-stone-500">
                 {purse.wealth?.rolled
-                  ? `Rolled by the server: ${purse.wealth.rolled.gold} gp on ${purse.wealth.dice}. `
+                  ? t("Rolled by the server: {gold} gp on {dice}. ", { gold: purse.wealth.rolled.gold, dice: purse.wealth.dice })
                   : ""}
                 {purse.source}
               </span>
             </Field>
-            <span className="self-end">Speed {race.speed} ft</span>
+            <span className="self-end">{t("Speed {speed} ft", { speed: race.speed })}</span>
             {/* The level's bonus: a new character is attuned to nothing yet. */}
-            <span className="self-end">Prof {formatModifier(proficiencyBonus(effectiveLevel))}</span>
-            <span>Initiative {formatModifier(preview.derived.initiative)}</span>
-            <span>Passive Perception {preview.derived.passivePerception}</span>
-            {preview.derived.spellSaveDc ? <span>Spell DC {preview.derived.spellSaveDc}</span> : null}
+            <span className="self-end">{t("Prof {bonus}", { bonus: formatModifier(proficiencyBonus(effectiveLevel)) })}</span>
+            <span>{t("Initiative {mod}", { mod: formatModifier(preview.derived.initiative) })}</span>
+            <span>{t("Passive Perception {value}", { value: preview.derived.passivePerception })}</span>
+            {preview.derived.spellSaveDc ? <span>{t("Spell DC {value}", { value: preview.derived.spellSaveDc })}</span> : null}
             {preview.derived.spellAttack !== null ? (
-              <span>Spell attack {formatModifier(preview.derived.spellAttack)}</span>
+              <span>{t("Spell attack {mod}", { mod: formatModifier(preview.derived.spellAttack) })}</span>
             ) : null}
           </div>
         </StepPanel>
@@ -149,35 +153,33 @@ export function FinishStep({
       <BuilderLevelTable state={state} derived={derived} klass={klass} />
 
       {role ? (
-        <StepPanel title="Their place at the table" help="It changes nothing on the sheet, only how they join a campaign.">
+        <StepPanel title={t("Their place at the table")} help={t("It changes nothing on the sheet, only how they join a campaign.")}>
           <SegmentedControl
-            label="Their place at the table"
+            label={t("Their place at the table")}
             value={role.value}
             onChange={role.onChange}
             options={[
-              { value: "pc", label: "A character I play" },
-              { value: "companion", label: "An ally the GM plays" },
+              { value: "pc", label: t("A character I play") },
+              { value: "companion", label: t("An ally the GM plays") },
             ]}
             className="w-full sm:max-w-md"
           />
           <p className="mt-1.5 text-xs text-stone-500">
-            {role.value === "companion"
-              ? "Companions are offered when a party adds one, at whatever level that table plays at. Nobody has to roll them up again."
-              : "Joins a campaign as yours to control."}
+            {role.value === "companion" ? t("Companions are offered when a party adds one, at whatever level that table plays at. Nobody has to roll them up again.") : t("Joins a campaign as yours to control.")}
           </p>
         </StepPanel>
       ) : null}
 
       {!racialFeat && state.feats.length ? (
         <StepPanel
-          title="Feats"
-          help="Feats this character already holds. New feats come with an ability score improvement."
+          title={t("Feats")}
+          help={t("Feats this character already holds. New feats come with an ability score improvement.")}
         >
           <div className="mt-2 flex flex-wrap gap-1.5">
             {state.feats.map((feat) => (
               <Chip
                 key={feat}
-                label={feat}
+                label={contentName("feats", feat, locale)}
                 info={{ reference: { kind: "feats", slug: contentSlug(feat), name: feat } }}
                 onRemove={() => state.setFeats((current) => current.filter((entry) => entry !== feat))}
               />
@@ -190,7 +192,7 @@ export function FinishStep({
         <p role="alert" className="reveal flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-100">
           {table.rulesError}
           <button type="button" onClick={table.retryRules} className={ui.btnSmall}>
-            Try again
+            {t("Try again", { context: "builder.finish.tryAgain" })}
           </button>
         </p>
       ) : null}
@@ -198,7 +200,7 @@ export function FinishStep({
         // Every reason the server gave, not just the first (U:UB8).
         error.includes("\n") ? (
           <div className="motion-shake text-sm text-red-400" role="alert">
-            <p>The server did not save the character:</p>
+            <p>{t("The server did not save the character:")}</p>
             <ul className="stagger mt-1 list-disc space-y-0.5 pl-5">
               {error.split("\n").map((line) => (
                 <li key={line}>{line}</li>

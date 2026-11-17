@@ -8,6 +8,8 @@ import { ANY_SPELL_LIST, useSpellLookups, useSpellPool, useWiderSpellPool } from
 import { anyListPickRefusal, anyListTiles, builderAnyListGroup } from "@/lib/srd/any-list-picks-logic";
 import { GameTerm } from "@/components/ui/GameTerm";
 import { cn } from "@/lib/cn";
+import { useLocale, useT, useTp } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 import { OWNS_ESCAPE } from "@/lib/owned-escape";
 import { ui } from "@/lib/ui";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
@@ -55,13 +57,16 @@ export function SpellsGearStep({
   table: TableRulesState;
   pack: WorldPack | null;
 }) {
-  const purse = purseViewFor({
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
+  const purse = purseViewFor(t, {
     purse: derived.purse,
     keepsStoredGear: state.keepsStoredGear,
-    backgroundName: background?.name ?? "chosen",
+    backgroundName: background ? contentName("backgrounds", background.name, locale) : "chosen",
     backgroundPurse: background?.purse ?? 0,
     classId: klass?.id ?? "",
-    className: klass?.name ?? "character",
+    className: klass ? contentName("classes", klass.name, locale) : "character",
     table,
   });
   return (
@@ -77,7 +82,7 @@ export function SpellsGearStep({
         onRemove={actions.removeEquipmentItem}
         purse={purse}
         inputClass={inputClass}
-        itemLabel={(name) => displayName(pack, "items", name)}
+        itemLabel={(name) => contentName("items", displayName(pack, "items", name), locale)}
         kit={
           <>
             {klass && derived.classKit && derived.kitChoices ? (
@@ -85,8 +90,8 @@ export function SpellsGearStep({
                 kit={derived.classKit}
                 choices={derived.kitChoices}
                 training={derived.kitTraining}
-                className={klass.name.toLowerCase()}
-                armorClass={armorClassLine(derived.acInfo?.ac ?? derived.ac, derived.acInfo?.parts)}
+                className={contentName("classes", klass.name, locale).toLowerCase()}
+                armorClass={armorClassLine(t, derived.acInfo?.ac ?? derived.ac, derived.acInfo?.parts, locale)}
                 onOption={actions.chooseKitOption}
                 onPick={actions.pickKitSlot}
               />
@@ -94,7 +99,7 @@ export function SpellsGearStep({
             {background && !state.keepsStoredGear ? (
               <BackgroundKitSection
                 kit={derived.backgroundKit}
-                backgroundName={background.name}
+                backgroundName={contentName("backgrounds", background.name, locale)}
                 onPick={actions.pickBackgroundGear}
               />
             ) : null}
@@ -151,6 +156,8 @@ function CasterSpells({
   klass: ClassOption;
   pack: WorldPack | null;
 }) {
+  const t = useT();
+  const tp = useTp();
   const desks = (derived.casterDesks ?? []).filter((desk) => desk.casts);
   const keys = desks.map((desk) => desk.classId);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -164,7 +171,7 @@ function CasterSpells({
     <div data-caster-tabs="">
       <div
         role="tablist"
-        aria-label="Spells by class"
+        aria-label={t("Spells by class")}
         className="mb-3 flex flex-wrap gap-2"
         onKeyDown={roving.onKeyDown}
         onFocus={roving.onFocus}
@@ -227,6 +234,8 @@ export function SpellsSection({
   klass: ClassOption;
   pack: WorldPack | null;
 }) {
+  const t = useT();
+  const tp = useTp();
   const { spells, setSpells, cantrips, setCantrips, bookPrepared, setBookPrepared } = state;
   const {
     spellAdvice,
@@ -427,9 +436,7 @@ export function SpellsSection({
       if (offerSwap("cantrip", name)) {
         return;
       }
-      setLimitNote(
-        `You already know ${cantripCap} ${cantripCap === 1 ? "cantrip" : "cantrips"}. Remove one to choose ${name}.`,
-      );
+      setLimitNote(tp("You already know {count} cantrip. Remove one to choose {name}.", "You already know {count} cantrips. Remove one to choose {name}.", { count: cantripCap, name }));
       return;
     }
     setCantrips((current) => [...current, name]);
@@ -465,8 +472,8 @@ export function SpellsSection({
       }
       setLimitNote(
         wizard
-          ? `Your spellbook starts with ${cap} spells. Remove one to write in ${name}.`
-          : `You already have ${cap} ${spellAdvice?.label ?? "spells"}${limitWhy}. Remove one to choose ${name}.`,
+          ? t("Your spellbook starts with {count} spells. Remove one to write in {name}.", { count: cap, name })
+          : t("You already have {count} {label}{why}. Remove one to choose {name}.", { count: cap, label: spellAdvice?.label ?? t("spells"), why: limitWhy, name }),
       );
       return;
     }
@@ -486,7 +493,7 @@ export function SpellsSection({
       if (offerSwap("prepared", name)) {
         return;
       }
-      setLimitNote(`You can prepare ${spellCap} spells${limitWhy}. Unprepare one to prepare ${name}.`);
+      setLimitNote(t("You can prepare {count} spells{why}. Unprepare one to prepare {name}.", { count: spellCap, why: limitWhy, name }));
       return;
     }
     setBookPrepared((current) => [...current, name]);
@@ -537,7 +544,7 @@ export function SpellsSection({
   const listCap = wizard ? bookCap : spellCap;
   const listFull = listCap !== null && chosenSpells.length >= listCap;
   const preparedFull = spellCap !== null && chosenPrepared.length >= spellCap;
-  const listFullText = wizard ? "Spellbook full" : spellStyle === "known" ? "Known spells full" : "Prepared list full";
+  const listFullText = wizard ? t("Spellbook full") : spellStyle === "known" ? t("Known spells full", { context: "builder.spells.knownFull" }) : t("Prepared list full");
   // A full list with a pick of the player's in it that can make room for
   // this spell offers a swap instead (backlog F13): the tile says so and is
   // not dimmed.
@@ -553,13 +560,13 @@ export function SpellsSection({
       return undefined;
     }
     if (tileState === "inBook") {
-      return phase === "prepare" && preparedFull ? "Prepared list full" : undefined;
+      return phase === "prepare" && preparedFull ? t("Prepared list full") : undefined;
     }
     if (tileState !== "available") {
       return undefined;
     }
     if (level === 0) {
-      return cantripsFull ? "Cantrips full" : keptForNamed(name) ? `${requiredCantrip} first` : undefined;
+      return cantripsFull ? t("Cantrips full", { context: "sheet.spells.cantripsFull" }) : keptForNamed(name) ? `${requiredCantrip} first` : undefined;
     }
     if (isArcanum(level) && level !== null) {
       return arcanumAt(level, name) ? "Arcanum chosen" : undefined;
@@ -567,9 +574,9 @@ export function SpellsSection({
     if (listFull) {
       // Picks to trade, and the two schools turn every one away: the rule
       // is what stands in the way, not the count.
-      return choicesFor("spell", name).ruledOut ? "Outside your two schools" : listFullText;
+      return choicesFor("spell", name).ruledOut ? t("Outside your two schools") : listFullText;
     }
-    return offSchool(name) ? "Outside your two schools" : undefined;
+    return offSchool(name) ? t("Outside your two schools") : undefined;
   };
 
   // Every tile: the class list from the pack, plus anything chosen or
@@ -620,11 +627,11 @@ export function SpellsSection({
         slug: row?.slug,
         homebrew: row?.source === "homebrew",
         ...(level === 0 && isRacial(name)
-          ? { note: "From your race" }
+          ? { note: t("From your race") }
           : isFeat(name)
-            ? { note: "From your feat" }
+            ? { note: t("From your feat") }
             : swappable
-              ? { note: "Full: tap to swap in" }
+              ? { note: t("Full: tap to swap in") }
               : {}),
         ...(row?.document && row.documentSlug !== "wotc-srd" ? { source: row.document } : {}),
       },
@@ -635,14 +642,17 @@ export function SpellsSection({
   // its place in the counts above.
   const anyRefusal = (name: string, cantrip: boolean) =>
     anyGroup
-      ? anyListPickRefusal({
-          group: anyGroup,
-          picked: anyBuild.chosen.length,
-          cantrip,
-          cantripsOpen: (cantripCap ?? 0) - chosenCantrips.length,
-          spellsOpen: (spellCap ?? 0) - chosenSpells.length,
-          name,
-        })
+      ? anyListPickRefusal(
+          {
+            group: anyGroup,
+            picked: anyBuild.chosen.length,
+            cantrip,
+            cantripsOpen: (cantripCap ?? 0) - chosenCantrips.length,
+            spellsOpen: (spellCap ?? 0) - chosenSpells.length,
+            name,
+          },
+          t,
+        )
       : null;
   const anyTiles: SpellTile[] = anyGroup
     ? anyListTiles({
@@ -674,15 +684,15 @@ export function SpellsSection({
 
   const counters = [
     ...(cantripAdvice !== null
-      ? [{ label: "Cantrips", value: chosenCantrips.length, max: cantripAdvice }]
+      ? [{ label: t("Cantrips", { context: "sheet.spells.cantrips" }), value: chosenCantrips.length, max: cantripAdvice }]
       : []),
     ...(wizard && spellbookAdvice !== null
-      ? [{ label: "Spellbook", value: chosenSpells.length, max: spellbookAdvice }]
+      ? [{ label: t("Spellbook"), value: chosenSpells.length, max: spellbookAdvice }]
       : []),
     ...(spellAdvice
       ? [
           {
-            label: spellStyle === "known" ? "Known" : "Prepared",
+            label: spellStyle === "known" ? t("Known", { context: "sheet.spells.known" }) : t("Prepared"),
             value: wizard ? chosenPrepared.length : chosenSpells.length,
             max: spellAdvice.count,
           },
@@ -706,14 +716,14 @@ export function SpellsSection({
     spellCap: spellAdvice,
     known: spellStyle === "known",
   });
-  const listTitle = spellStyle === "known" ? "Known spells" : "Prepared";
+  const listTitle = spellStyle === "known" ? t("Known spells") : t("Prepared");
   const named = (list: string[]) => list.map((name) => displayName(pack, "spells", name));
   const chosenLists = [
     ...(cantripCap !== null
-      ? [{ id: "cantrips", title: "Cantrips", count: `${chosenCantrips.length}/${cantripCap}`, names: named(chosenCantrips) }]
+      ? [{ id: "cantrips", title: t("Cantrips", { context: "sheet.spells.cantrips" }), count: `${chosenCantrips.length}/${cantripCap}`, names: named(chosenCantrips) }]
       : []),
     ...(wizard
-      ? [{ id: "book", title: "Spellbook", count: `${chosenSpells.length}/${bookCap ?? "?"}`, names: named(chosenSpells) }]
+      ? [{ id: "book", title: t("Spellbook"), count: `${chosenSpells.length}/${bookCap ?? "?"}`, names: named(chosenSpells) }]
       : []),
     ...(spellAdvice
       ? [
@@ -726,7 +736,7 @@ export function SpellsSection({
         ]
       : []),
     ...(subclassSpells.length
-      ? [{ id: "granted", title: "Always prepared", count: String(subclassSpells.length), names: named(subclassSpells) }]
+      ? [{ id: "granted", title: t("Always prepared"), count: String(subclassSpells.length), names: named(subclassSpells) }]
       : []),
   ];
 
@@ -742,22 +752,23 @@ export function SpellsSection({
           listCap: wizard ? bookCap : spellCap,
           listVerb: wizard ? "write in your spellbook" : spellStyle === "known" ? "know" : "prepare",
           maxSpellLevel,
+          t,
         });
   return (
     <StepPanel
-      title="Spells"
+      title={t("Spells")}
       ornate
       anchor="spells"
       help={
         <>
-          <GameTerm id="cantrip">Cantrips</GameTerm> are small spells you know for good and cast as
-          often as you like.{" "}
+          <GameTerm id="cantrip">{t("Cantrips", { context: "sheet.spells.cantrips" })}</GameTerm>
+          {t(" are small spells you know for good and cast as often as you like. ")}
           {spellStyle === "known"
-            ? `A ${className} knows a fixed set of spells, always ready to cast with a spell slot. You can swap one each time you level up.`
+            ? t("A {class} knows a fixed set of spells, always ready to cast with a spell slot. You can swap one each time you level up.", { class: className })
             : wizard
-              ? "A wizard writes spells in a spellbook, then prepares some of them to cast. Fill the book first, then choose what is prepared. In play you change what is prepared after a long rest."
-              : `A ${className} can prepare any spell on the ${className} list. Choose what you start with prepared; in play you change them after a long rest.`}{" "}
-          Tap a spell to choose it; ⓘ reads it first.
+              ? t("A wizard writes spells in a spellbook, then prepares some of them to cast. Fill the book first, then choose what is prepared. In play you change what is prepared after a long rest.")
+              : t("A {class} can prepare any spell on the {class} list. Choose what you start with prepared; in play you change them after a long rest.", { class: className })}{" "}
+          {t("Tap a spell to choose it; ⓘ reads it first.")}
         </>
       }
     >
@@ -770,11 +781,11 @@ export function SpellsSection({
       {wizard ? (
         // Two toggle buttons that switch what the list below does (write or
         // prepare), the same pattern as the spell level row in SpellBook.
-        <div role="group" aria-label="Spellbook step" data-pill-group className="mb-3 grid grid-cols-2 gap-1.5">
+        <div role="group" aria-label={t("Spellbook step")} data-pill-group className="mb-3 grid grid-cols-2 gap-1.5">
           {(
             [
-              ["book", "1. Write your spellbook", `${chosenSpells.length}/${spellbookAdvice ?? "?"}`],
-              ["prepare", "2. Prepare from it", `${chosenPrepared.length}/${spellAdvice?.count ?? "?"}`],
+              ["book", t("1. Write your spellbook"), `${chosenSpells.length}/${spellbookAdvice ?? "?"}`],
+              ["prepare", t("2. Prepare from it"), `${chosenPrepared.length}/${spellAdvice?.count ?? "?"}`],
             ] as const
           ).map(([key, label, count]) => (
             <button
@@ -809,7 +820,7 @@ export function SpellsSection({
             onClick={addSuggested}
             className="text-amber-300 underline-offset-2 hover:underline"
           >
-            Fill with the suggested spells
+            {t("Fill with the suggested spells")}
           </button>
         </p>
       ) : null}
@@ -833,7 +844,7 @@ export function SpellsSection({
             <SwapPrompt
               question={swapQuestion(
                 swap,
-                swap.kind === "cantrip" ? "Cantrips full" : swap.kind === "prepared" ? "Prepared list full" : listFullText,
+                swap.kind === "cantrip" ? t("Cantrips full", { context: "sheet.spells.cantripsFull" }) : swap.kind === "prepared" ? t("Prepared list full") : listFullText,
               )}
               candidates={candidatesFor(swap.kind, swap.name)}
               into={swap.name}
@@ -845,10 +856,10 @@ export function SpellsSection({
         }
         emptyText={
           loading
-            ? "Loading the spell list..."
+            ? t("Loading the spell list...")
             : wizard && phase === "prepare"
-              ? "Nothing in your spellbook at this level."
-              : "No spells at this level."
+              ? t("Nothing in your spellbook at this level.")
+              : t("No spells at this level.")
         }
         header={
           klass.genres ? (
@@ -856,12 +867,12 @@ export function SpellsSection({
               {/* A workshop class is named by its own id (issue #833): the
                   line says which list it casts from, never the id. */}
               {customSpellsOf(spellSearchClass)
-                ? `${className} casts from a spell list of its own.`
-                : `Counts follow the ${spellListLabel(spellSearchClass)} list this class borrows.`}
+                ? t("{name} casts from a spell list of its own.", { name: className })
+                : t("Counts follow the {class} list this class borrows.", { class: spellListLabel(spellSearchClass) })}
             </span>
           ) : null
         }
-        searchLabel={anyGroup ? `Find a ${className} spell` : undefined}
+        searchLabel={anyGroup ? t("Find a {class} spell", { class: className }) : undefined}
       />
       {anyGroup ? (
         <div className="mt-3">
@@ -894,6 +905,8 @@ function SpellDeskHeader({
   caps: ReturnType<typeof capLines>;
   lists: Array<{ id: string; title: string; count: string; names: string[] }>;
 }) {
+  const t = useT();
+  const tp = useTp();
   return (
     <div data-spell-desk="" className="mb-3 space-y-2 text-xs">
       {numbers.dc || numbers.attack || numbers.slots.length ? (
@@ -908,7 +921,7 @@ function SpellDeskHeader({
           ) : null}
           {numbers.attack ? (
             <div className="flex gap-1">
-              <dt className="text-stone-400">Spell attack</dt>
+              <dt className="text-stone-400">{t("Spell attack", { context: "builder.spells.spellAttack" })}</dt>
               <dd className="font-mono text-amber-100">{numbers.attack}</dd>
             </div>
           ) : null}
@@ -947,7 +960,7 @@ function SpellDeskHeader({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-stone-500">None yet.</p>
+                <p className="mt-1 text-stone-500">{t("None yet.")}</p>
               )}
             </section>
           ))}
@@ -978,6 +991,8 @@ function SwapPrompt({
   onSwap: (out: string) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   return (
     <div
       role="group"
@@ -1001,14 +1016,14 @@ function SwapPrompt({
             key={name}
             type="button"
             onClick={() => onSwap(name)}
-            aria-label={`${label(name)}: swap out for ${label(into)}`}
+            aria-label={t("{from}: swap out for {to}", { from: label(name), to: label(into) })}
             className={cn(ui.btnSmall, "pk-tap")}
           >
             {label(name)}
           </button>
         ))}
         <button type="button" onClick={onCancel} className={cn(ui.btnSmall, "pk-tap text-stone-400")}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </div>

@@ -12,6 +12,8 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Switch } from "@/components/ui/Switch";
+import { useT } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 
 type Report = {
   id: string;
@@ -30,7 +32,8 @@ type Report = {
   resolvedAt: string | null;
 };
 
-const REASON_LABEL: Record<string, string> = {
+// The flagged reason's words, keyed by the id the report carries.
+const REASON_KEYS: Record<string, MessageKey> = {
   harassment: "Harassment",
   sexual: "Sexual content",
   hate: "Hate",
@@ -44,6 +47,7 @@ const REASON_LABEL: Record<string, string> = {
 // tab deletes accounts, the party lead mutes); this is where it is read
 // and closed.
 export function AdminReportsPanel() {
+  const t = useT();
   const [reports, setReports] = useState<Report[] | null>(null);
   // A refused or failed read is shown in the server's words with a way to
   // ask again, never as "nothing here yet" (issue 140).
@@ -54,14 +58,13 @@ export function AdminReportsPanel() {
   const [error, setError] = useState("");
 
   const refresh = useCallback(() => {
-    readLoad<{ reports?: Report[] }>(fetch(`/api/admin/reports${showAll ? "?status=all" : ""}`), "The reports").then((outcome) => {
+    readLoad<{ reports?: Report[] }>(t, fetch(`/api/admin/reports${showAll ? "?status=all" : ""}`), t("The reports")).then((outcome) => {
       settle(outcome);
       if (outcome.payload) {
         setReports(outcome.payload.reports ?? []);
       }
     });
-  }, [showAll, settle]);
-
+  }, [ showAll, settle, t ]);
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -77,7 +80,7 @@ export function AdminReportsPanel() {
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        setError(data?.error || "That didn't work.");
+        setError(data?.error || t("That didn't work."));
         return;
       }
       refresh();
@@ -94,18 +97,17 @@ export function AdminReportsPanel() {
     <section className={cn(ui.card, "texture-noise p-5")}>
       <SectionHead
         level="h2"
-        title="Moderation queue"
+        title={t("Moderation queue")}
         glyph="attitude-wary"
         aside={
           <span className="flex items-center gap-2 whitespace-nowrap">
-            Show resolved
-            <Switch on={showAll} onChange={setShowAll} label="Show resolved" />
+            {t("Show resolved")}
+            <Switch on={showAll} onChange={setShowAll} label={t("Show resolved")} />
           </span>
         }
       />
       <p className="mb-3 text-sm leading-6 text-stone-400">
-        Players flag Game Master passages, messages and other players from the table.
-        Reports come to this server only; there is no central moderation behind the app.
+        {t("Players flag Game Master passages, messages and other players from the table. Reports come to this server only; there is no central moderation behind the app.")}
       </p>
 
       {error ? <p role="alert" className="motion-shake mb-3 text-sm text-red-400">{error}</p> : null}
@@ -119,7 +121,7 @@ export function AdminReportsPanel() {
         ) : loaded ? (
           <EmptyState
             art="board"
-            title={showAll ? "No reports yet." : "Nothing waiting. Open reports show up here."}
+            title={showAll ? t("No reports yet.") : t("Nothing waiting. Open reports show up here.")}
           />
         ) : null)
       ) : (
@@ -128,20 +130,23 @@ export function AdminReportsPanel() {
             <li key={report.id} className="plate-row" data-layout="stack" data-tone={report.status === "open" ? undefined : "muted"}>
               <div className="flex flex-wrap items-center gap-2 text-sm text-stone-100">
                 <GameIcon icon={{ kind: "glyph", key: report.status === "open" ? "quest-active" : "quest-done" }} size="size-6" />
-                <span className="plate-chip">{REASON_LABEL[report.reason] ?? report.reason}</span>
+                <span className="plate-chip">{REASON_KEYS[report.reason] ? t(REASON_KEYS[report.reason]) : report.reason}</span>
                 <span>
                   {report.authorType === "dm"
-                    ? "Game Master passage"
+                    ? t("Game Master passage")
                     : report.reportedUsername
-                      ? `Player ${report.reportedUsername}`
-                      : "Player (account deleted)"}
+                      ? t("Player {name}", { name: report.reportedUsername })
+                      : t("Player (account deleted)")}
                 </span>
                 <span className="text-xs text-stone-500">
-                  in{" "}
+                  {t("in ")}
                   <Link href={`/campaigns/${report.campaignId}`} className="text-amber-200 hover:text-amber-100">
                     {report.campaignName}
                   </Link>
-                  , reported by {report.reporterUsername} on {new Date(report.createdAt).toLocaleString()}
+                  {t(", reported by {name} on {date}", {
+                    name: report.reporterUsername,
+                    date: new Date(report.createdAt).toLocaleString(),
+                  })}
                 </span>
               </div>
               {report.excerpt ? (
@@ -151,17 +156,17 @@ export function AdminReportsPanel() {
               ) : null}
               {report.details ? (
                 <p className="reveal text-sm text-stone-400">
-                  <span className="text-stone-500">Reporter says:</span> {report.details}
+                  <span className="text-stone-500">{t("Reporter says:")}</span> {report.details}
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center justify-end gap-1.5">
                 {report.status === "open" ? (
                   <button type="button" disabled={busyId === report.id} onClick={() => setStatus(report, "resolved")} className={ui.btnSmall}>
-                    <Check className="size-3.5" /> Mark resolved
+                    <Check className="size-3.5" /> {t("Mark resolved")}
                   </button>
                 ) : (
                   <button type="button" disabled={busyId === report.id} onClick={() => setStatus(report, "open")} className={ui.btnSmall}>
-                    <Undo2 className="size-3.5" /> Reopen
+                    <Undo2 className="size-3.5" /> {t("Reopen")}
                   </button>
                 )}
               </div>

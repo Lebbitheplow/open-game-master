@@ -13,6 +13,25 @@ import { owedPickSlots } from "@/lib/srd/owed-picks-logic";
 import { subclassChoicePickName, subclassChoiceSummary } from "@/lib/content/subclass-choices";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
+
+// The two refusals sendOwed writes itself (the server's own error text rides
+// through as it came): matched by identity at the render site and said in
+// the reader's language there (the engineRefusalKey pattern,
+// src/lib/battlemap/hand-core.ts). Values stay the English the route's
+// callers have always read.
+const REFUSED = "The pick was refused.";
+const UNREACHABLE = "Could not reach the server.";
+
+// A refusal as the reader reads it: the sheet's own two words in the
+// reader's language, a server error as the server said it.
+function refusalWords(t: (key: string, vars?: Record<string, string | number> & { context?: string }) => string, refusal: string): string {
+  return refusal === REFUSED
+    ? t("The pick was refused.")
+    : refusal === UNREACHABLE
+      ? t("Could not reach the server.", { context: "sheet.owed.unreachable" })
+      : refusal;
+}
 
 // The picks a character's levels earned and no level-up offered, made right
 // on the sheet (issue #833): a sorcerer saved before Dragon Ancestor was a
@@ -45,6 +64,7 @@ export function OwedPicks({ sheet, mine }: { sheet: CharacterSheet; mine: boolea
 }
 
 function OwedPickers({ sheet, owed }: { sheet: CharacterSheet; owed: ReturnType<typeof owedPickSlots> }) {
+  const t = useT();
   return (
     <div className="reveal mt-3 space-y-3">
       {owed.options.map((slot) => (
@@ -76,7 +96,7 @@ function OwedPickers({ sheet, owed }: { sheet: CharacterSheet; owed: ReturnType<
           sheet={sheet}
           slot={{
             kind: "invocation",
-            label: "Fighting style",
+            label: t("Fighting style"),
             total: owed.styles.count,
             chosen: [],
             remaining: owed.styles.count,
@@ -104,11 +124,11 @@ async function sendOwed(sheet: CharacterSheet, body: Record<string, unknown>): P
     });
     if (!response.ok) {
       const data = (await response.json().catch(() => ({}))) as { error?: string };
-      return data.error || "The pick was refused.";
+      return data.error || REFUSED;
     }
     return null;
   } catch {
-    return "Could not reach the server.";
+    return UNREACHABLE;
   }
 }
 
@@ -121,6 +141,7 @@ function SlotPicker({
   slot: OptionSlot;
   featureOf?: (name: string) => string;
 }) {
+  const t = useT();
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -205,12 +226,12 @@ function SlotPicker({
           className="motion-press inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-amber-500/60 bg-amber-500/15 px-3 text-amber-100 hover:bg-amber-500/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400 sm:min-h-[32px]"
         >
           {busy ? <Loader2 className="size-3 animate-spin" aria-hidden /> : <Check className="size-3" aria-hidden />}
-          Keep {picked.join(" and ")}
+          {t("Keep {names}", { names: picked.join(t("and")) })}
         </button>
       ) : null}
       {refusal ? (
         <p ref={refusalRef} role="alert" className="animate-fade-up text-[11px] text-amber-300">
-          {refusal}
+          {refusalWords(t, refusal)}
         </p>
       ) : null}
     </div>
@@ -220,6 +241,7 @@ function SlotPicker({
 // A language a class feature teaches and the sheet never recorded (a
 // ranger's Favored Enemy: one spoken by the favored enemy).
 function LanguagePicker({ sheet, grant }: { sheet: CharacterSheet; grant: string }) {
+  const t = useT();
   const [language, setLanguage] = useState("");
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -237,7 +259,7 @@ function LanguagePicker({ sheet, grant }: { sheet: CharacterSheet; grant: string
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <label htmlFor={selectId} className="text-stone-300">
-        {grant}: a language they speak
+        {t("{grant}: a language they speak", { grant })}
       </label>
       <select
         id={selectId}
@@ -246,7 +268,7 @@ function LanguagePicker({ sheet, grant }: { sheet: CharacterSheet; grant: string
         disabled={busy}
         className="min-h-[40px] rounded-lg border border-stone-600 bg-stone-950 px-2 text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400 sm:min-h-[32px]"
       >
-        <option value="">Choose a language</option>
+        <option value="">{t("Choose a language")}</option>
         {options.map((entry) => (
           <option key={entry} value={entry}>
             {entry}
@@ -261,12 +283,12 @@ function LanguagePicker({ sheet, grant }: { sheet: CharacterSheet; grant: string
           className="motion-press inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-amber-500/60 bg-amber-500/15 px-3 text-amber-100 hover:bg-amber-500/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400 sm:min-h-[32px]"
         >
           {busy ? <Loader2 className="size-3 animate-spin" aria-hidden /> : <Check className="size-3" aria-hidden />}
-          Keep {language}
+          {t("Keep {names}", { names: language })}
         </button>
       ) : null}
       {refusal ? (
         <p role="alert" className="w-full animate-fade-up text-[11px] text-amber-300">
-          {refusal}
+          {refusalWords(t, refusal)}
         </p>
       ) : null}
     </div>

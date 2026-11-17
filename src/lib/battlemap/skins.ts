@@ -21,6 +21,9 @@
 //   wallDensity, scatterDensity                how much dressing
 //   scatterDecalDensity                        how many loose decals on open floor
 
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 export type Skin = {
   id: string;
   name: string;
@@ -401,14 +404,21 @@ export type SkinChar = (typeof SKIN_CHARS)[number];
 // What each character is called in the picker and which catalogue categories
 // may paint it (public/assets/tiles/manifest.json `category`). Lava is a
 // hazard that paints as the liquid, which is why water takes two.
-export const SKIN_ROLES: Record<SkinChar, { label: string; categories: readonly string[] }> = {
-  ".": { label: "Floor", categories: ["floor"] },
-  "#": { label: "Wall", categories: ["wall"] },
-  "~": { label: "Water", categories: ["water", "hazard"] },
-  ",": { label: "Rough ground", categories: ["rough", "hazard"] },
-  "+": { label: "Door", categories: ["door"] },
-  "|": { label: "Low wall", categories: ["lowwall"] },
+// The picker's words are the dictionaries' (maptools.role.*); the surface
+// that shows them passes its translator. The categories stay as they are:
+// they match the tile manifest's own.
+export const SKIN_ROLES: Record<SkinChar, { labelKey: string; categories: readonly string[] }> = {
+  ".": { labelKey: "Floor", categories: ["floor"] },
+  "#": { labelKey: "Wall", categories: ["wall"] },
+  "~": { labelKey: "Water", categories: ["water", "hazard"] },
+  ",": { labelKey: "Rough ground", categories: ["rough", "hazard"] },
+  "+": { labelKey: "Door", categories: ["door"] },
+  "|": { labelKey: "Low wall", categories: ["lowwall"] },
 };
+
+export function skinRoleLabel(t: T, char: SkinChar): string {
+  return t(SKIN_ROLES[char]?.labelKey ?? "Floor");
+}
 
 export type MapSkin = {
   // A skin id from SKINS, or "" for the default the setting and theme give.
@@ -490,18 +500,28 @@ export function resolveSkin(
 }
 
 // The picker's list: the setting's own skins first, then the fantasy ones
-// (every setting can wear them), then the other settings'.
-export function skinChoices(genre: string | null | undefined): Array<{ group: string; skins: Skin[] }> {
+// (every setting can wear them), then the other settings'. The group words
+// are the dictionaries' (maptools.group.*); the surface that shows them
+// passes its translator.
+export function skinChoices(genre: string | null | undefined, t?: T): Array<{ group: string; skins: Skin[] }> {
+  // No import here: the asset scripts read this file directly under Node, so
+  // the untanslated fallback carries the English words itself.
+  const GROUP_EN: Record<string, string> = {
+    "This setting": "This setting",
+    "Fantasy": "Fantasy",
+    "Other settings": "Other settings",
+  };
+  const word = (key: string): string => (t ? t(key) : GROUP_EN[key] ?? key);
   const setting = (genre || "").toLowerCase().replace(/-/g, "_");
   const own = GENRES.includes(setting) ? setting : null;
   const groups: Array<{ group: string; skins: Skin[] }> = [];
   if (own) {
-    groups.push({ group: "This setting", skins: SKINS.filter((s) => s.genre === own) });
+    groups.push({ group: word("This setting"), skins: SKINS.filter((s) => s.genre === own) });
   }
-  groups.push({ group: own ? "Fantasy" : "This setting", skins: SKINS.filter((s) => !s.genre) });
+  groups.push({ group: word(own ? "Fantasy" : "This setting"), skins: SKINS.filter((s) => !s.genre) });
   const rest = SKINS.filter((s) => s.genre && s.genre !== own);
   if (rest.length) {
-    groups.push({ group: "Other settings", skins: rest });
+    groups.push({ group: word("Other settings"), skins: rest });
   }
   return groups;
 }

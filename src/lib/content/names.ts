@@ -13,7 +13,7 @@
 import { textKey } from "@/lib/language/text-logic";
 type Locale = "en" | "fr";
 import { srdRaceId } from "@/lib/srd/race-id";
-import { FR_NAMES_BY_TABLE } from "./names-fr";
+import { frTables } from "@/lib/i18n/fr-tables";
 
 // The tables the maps carry, as the helper's callers name them.
 export type FrNamesTable =
@@ -95,23 +95,29 @@ const ITEM_TABLES: readonly FrNamesTable[] = ["gear", "weapons", "armor", "magic
 // One table's names, by its key. A Map rather than the generated record
 // itself: the lookup stays a data read, not a site the tables' key shape
 // has to answer for.
-const TABLES = new Map<string, Record<string, string>>(Object.entries(FR_NAMES_BY_TABLE));
+// The tables arrive with the French catalog (src/lib/i18n/fr-tables.ts);
+// before they do, every name reads as its English row.
+const NONE: Record<string, Record<string, string>> = {};
+const frNames = () => frTables()?.names ?? NONE;
+const frTranslated = () => frTables()?.translated ?? NONE;
 
 function lookup(table: FrNamesTable, key: string): string | null {
   if (!key) {
     return null;
   }
-  const names = TABLES.get(table);
-  if (!names) {
-    return null;
-  }
-  if (table === "weapons") {
-    const overridden = WEAPON_KEY_OVERRIDES.get(key);
-    if (overridden && names[overridden]) {
-      return names[overridden];
+  const names = frNames()[table];
+  if (names) {
+    if (table === "weapons") {
+      const overridden = WEAPON_KEY_OVERRIDES.get(key);
+      if (overridden && names[overridden]) {
+        return names[overridden];
+      }
+    }
+    if (names[key]) {
+      return names[key];
     }
   }
-  return names[key] ?? null;
+  return frTranslated()[table]?.[key] ?? null;
 }
 
 // The keys a table tries, in order: a row's own slug first (a third-party
@@ -168,7 +174,7 @@ export function classFeatureName(classId: string, featureName: string, locale: L
     return featureName;
   }
   const key = `${classId.trim().toLowerCase()}:${canonicalKey(featureName)}`;
-  return FR_NAMES_BY_TABLE.classFeatures[key] ?? featureName;
+  return frNames().classFeatures?.[key] ?? featureName;
 }
 
 // A species trait line ("Darkvision 60 ft", "Perception proficiency (Keen
@@ -180,13 +186,33 @@ export function classFeatureName(classId: string, featureName: string, locale: L
 // "+1 HP per level"): it is the app's own shorthand, and only the official
 // name is translated. A trait the species's map does not carry (the French
 // SRD prints the subraces' own traits for some peoples only) stays English.
+function localizeTraitTail(tail: string): string {
+  return tail
+    .replace(/\badv\. vs poison\b/gi, "avant. c/ poison")
+    .replace(/\b(\d+)\s*ft\b/gi, "$1 pi")
+    .replace(/\blight and medium armor\b/gi, "armures légères et intermédiaires")
+    .replace(/\bbattleaxe\b/gi, "hache d’armes")
+    .replace(/\bhandaxe\b/gi, "hachette")
+    .replace(/\blight hammer\b/gi, "marteau léger")
+    .replace(/\bwarhammer\b/gi, "marteau de guerre")
+    .replace(/\blongsword\b/gi, "épée longue")
+    .replace(/\bshortsword\b/gi, "épée courte")
+    .replace(/\blongbow\b/gi, "arc long")
+    .replace(/\bshortbow\b/gi, "arc court")
+    .replace(/\brapier\b/gi, "rapière");
+}
+
 export function speciesTraitName(raceId: string, traitLine: string, locale: Locale): string {
   if (locale !== "fr" || !traitLine) {
     return traitLine;
   }
-  const traits = FR_NAMES_BY_TABLE.speciesTraits;
+  const traits = (frNames().speciesTraits ?? {});
+  const extraTraits = frTranslated().speciesTraits ?? {};
   const species = canonicalKey(srdRaceId(raceId));
-  const carries = (name: string) => traits[`${species}:${canonicalKey(name)}`];
+  const carries = (name: string) => {
+    const k = `${species}:${canonicalKey(name)}`;
+    return traits[k] ?? extraTraits[k];
+  };
   const whole = carries(traitLine);
   if (whole) {
     return whole;
@@ -194,7 +220,7 @@ export function speciesTraitName(raceId: string, traitLine: string, locale: Loca
   const bracketed = /\s*\(([^()]*)\)\s*$/.exec(traitLine);
   if (bracketed) {
     const head = traitLine.slice(0, bracketed.index);
-    const after = traitLine.slice(bracketed.index);
+    const after = localizeTraitTail(traitLine.slice(bracketed.index));
     const headHit = carries(head);
     if (headHit) {
       return `${headHit}${after}`;
@@ -210,10 +236,10 @@ export function speciesTraitName(raceId: string, traitLine: string, locale: Loca
   if (measured) {
     const bare = carries(traitLine.slice(0, measured.index));
     if (bare) {
-      return `${bare}${traitLine.slice(measured.index)}`;
+      return `${bare}${localizeTraitTail(traitLine.slice(measured.index))}`;
     }
   }
-  return traitLine;
+  return localizeTraitTail(traitLine);
 }
 
 // A background's granted feature as the sheet carries it ("Shelter of the
@@ -232,12 +258,28 @@ export function backgroundFeatureName(featureName: string, locale: Locale): stri
   }
   const feature = featureName.slice(0, bracketed.index);
   const background = bracketed[1];
+  const bgKey = `${canonicalKey(background)}:${canonicalKey(feature)}`;
   const hit =
-    FR_NAMES_BY_TABLE.backgroundFeatures[`${canonicalKey(background)}:${canonicalKey(feature)}`];
+    frNames().backgroundFeatures?.[bgKey] ??
+    frTranslated().backgroundFeatures?.[bgKey];
   if (!hit) {
     return featureName;
   }
   return `${hit} (${contentName("backgrounds", background, locale)})`;
+}
+
+// A background feature's translated name when the background is already known
+// from surrounding context (e.g. BackgroundPanel).
+export function backgroundFeatureLabel(backgroundName: string, feature: string, locale: Locale): string {
+  if (locale !== "fr" || !feature) {
+    return feature;
+  }
+  const bgKey = `${canonicalKey(backgroundName)}:${canonicalKey(feature)}`;
+  return (
+    frNames().backgroundFeatures?.[bgKey] ??
+    frTranslated().backgroundFeatures?.[bgKey] ??
+    feature
+  );
 }
 
 // A subclass as the sheet stores it ("Life Domain", "life", "Evocation")
@@ -249,5 +291,5 @@ export function subclassName(classId: string, subclass: string, locale: Locale):
     return subclass;
   }
   const key = `${classId.trim().toLowerCase()}:${canonicalKey(subclass)}`;
-  return FR_NAMES_BY_TABLE.subclasses[key] ?? subclass;
+  return frNames().subclasses?.[key] ?? subclass;
 }

@@ -17,6 +17,8 @@ const { racialTraitsFor } = await import("../src/lib/srd/features.ts");
 const { hpBonusPerLevel } = await import("../src/lib/srd/race-id.ts");
 const { srdRaceOptions, srdClassOptions, srdBackgroundOptions } = await import("../src/lib/characters/options.ts");
 const submit = await import("../src/app/characters/builder/submit.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 
 let failed = 0;
 async function test(name, run) {
@@ -183,30 +185,30 @@ await test("each step blocker names the block that holds the missing pick (issue
     racialCantrips: [], racialAncestry: "", repeatSkills: [], chosenSkills: [], subclass: "", stylePicks: [],
     expertisePicks: [], method: "standard", scores: {}, rollPool: [],
   };
-  assert.deepEqual(submit.identityBlocker(state, background("acolyte")), { target: "name", message: "Give your character a name." });
+  assert.deepEqual(submit.identityBlocker(t, state, background("acolyte")), { target: "name", message: "Give your character a name." });
   const named = { ...state, name: "Vex" };
-  assert.equal(submit.identityBlocker(named, background("acolyte")), null);
+  assert.equal(submit.identityBlocker(t, named, background("acolyte")), null);
   // An acolyte's two languages, picked on the ancestry step.
-  const acolyte = submit.ancestryBlocker(named, race("half_orc"), background("acolyte"));
+  const acolyte = submit.ancestryBlocker(t, named, race("half_orc"), background("acolyte"));
   assert.equal(acolyte.target, "languages");
   assert.equal(acolyte.message, "Pick 2 more languages your hero can speak.");
-  assert.equal(submit.ancestryBlocker({ ...named, bonusLanguages: ["Elvish", "Giant"] }, race("half_orc"), background("acolyte")), null);
+  assert.equal(submit.ancestryBlocker(t, { ...named, bonusLanguages: ["Elvish", "Giant"] }, race("half_orc"), background("acolyte")), null);
   // A half-elf speaks one more tongue, then raises two scores, then picks
   // two skills: each hold names the block that collects it.
-  assert.equal(submit.ancestryBlocker(named, race("half_elf"), background("soldier")).target, "languages");
-  assert.equal(submit.ancestryBlocker({ ...named, bonusLanguages: ["Giant"] }, race("half_elf"), background("soldier")).target, "racialAsi");
-  assert.equal(submit.ancestryBlocker({ ...named, bonusLanguages: ["Giant"], racialAsi: ["str", "con"] }, race("half_elf"), background("soldier")).target, "racialSkills");
-  assert.equal(submit.ancestryBlocker(named, race("dragonborn"), background("soldier")).target, "ancestry");
-  assert.equal(submit.ancestryBlocker({ ...named, bonusLanguages: ["Giant"] }, race("high_elf"), background("soldier")).target, "racialCantrip");
-  assert.equal(submit.ancestryBlocker(named, race("hill_dwarf"), background("soldier")).target, "racialTool");
-  assert.equal(submit.callingBlocker(undefined).target, "class");
-  assert.equal(submit.ancestryBlocker(named, undefined).target, "race");
-  assert.equal(submit.abilitiesBlocker({ abilities: null }).target, "scores");
-  assert.equal(submit.gearBlocker({ purse: { problems: ["Over budget by 3 gp."] } }).message, "Over budget by 3 gp.");
-  assert.equal(submit.gearBlocker({ purse: { problems: [] } }), null);
+  assert.equal(submit.ancestryBlocker(t, named, race("half_elf"), background("soldier")).target, "languages");
+  assert.equal(submit.ancestryBlocker(t, { ...named, bonusLanguages: ["Giant"] }, race("half_elf"), background("soldier")).target, "racialAsi");
+  assert.equal(submit.ancestryBlocker(t, { ...named, bonusLanguages: ["Giant"], racialAsi: ["str", "con"] }, race("half_elf"), background("soldier")).target, "racialSkills");
+  assert.equal(submit.ancestryBlocker(t, named, race("dragonborn"), background("soldier")).target, "ancestry");
+  assert.equal(submit.ancestryBlocker(t, { ...named, bonusLanguages: ["Giant"] }, race("high_elf"), background("soldier")).target, "racialCantrip");
+  assert.equal(submit.ancestryBlocker(t, named, race("hill_dwarf"), background("soldier")).target, "racialTool");
+  assert.equal(submit.callingBlocker(t, undefined).target, "class");
+  assert.equal(submit.ancestryBlocker(t, named, undefined).target, "race");
+  assert.equal(submit.abilitiesBlocker(t, { abilities: null }).target, "scores");
+  assert.equal(submit.gearBlocker(t, { purse: { problems: ["Over budget by 3 gp."] } }).message, "Over budget by 3 gp.");
+  assert.equal(submit.gearBlocker(t, { purse: { problems: [] } }), null);
   // The save's own check names what is missing and where, as the gates do:
   // it used to answer "Assign all six ability scores first." to everything.
-  const save = (input) => submit.validateBuilder({ state: named, derived: { abilities: null }, ...input });
+  const save = (input) => submit.validateBuilder(t, { state: named, derived: { abilities: null }, ...input });
   assert.deepEqual(save({}), { kind: "error", message: "Choose where your hero comes from (race).", target: "race" });
   assert.equal(save({ race: race("half_orc") }).target, "class");
   assert.equal(save({ race: race("half_orc"), klass: { id: "fighter" } }).target, "background");

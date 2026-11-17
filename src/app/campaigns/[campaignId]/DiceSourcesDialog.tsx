@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import {
   DIE_SIDES,
   type DieSides,
@@ -28,25 +29,26 @@ import {
 // physical roll: a tabletop die they type, a digital roll, or a specific
 // Pixels Bluetooth die. Opens from the party panel's physical-dice controls.
 export function DiceSourcesButton({ className }: { className?: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="Choose where each of your dice is rolled: typed, digital, or a Pixels Bluetooth die."
+        title={t("Choose where each of your dice is rolled: typed, digital, or a Pixels Bluetooth die.")}
         className={cn(
           "flex w-full items-center justify-center gap-1 rounded border border-stone-700 py-1 text-xs text-stone-400 hover:bg-stone-900",
           className,
         )}
       >
         <Bluetooth className="size-3" />
-        Dice sources
+        {t("Dice sources")}
       </button>
       <Dialog
         open={open}
         onOpenChange={setOpen}
-        title="Your dice sources"
+        title={t("Your dice sources")}
         icon={<Dices className="size-5 text-amber-300" />}
       >
         <DiceSourcesPanel />
@@ -60,6 +62,7 @@ const SOURCE_DIGITAL = "digital";
 
 // Also mounted by the apps' own Settings screen, outside any table.
 export function DiceSourcesPanel() {
+  const t = useT();
   const [sources, setSource] = useDiceSources();
   const pixels = useSyncExternalStore(
     onPixelsChanged,
@@ -112,15 +115,14 @@ export function DiceSourcesPanel() {
     <div className="space-y-4 text-sm">
       {!supported ? (
         <p className="reveal rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
-          Bluetooth dice need a Chromium browser (Chrome, Edge, or Opera). You
-          can still choose typed or digital sources below. On Linux, enable
+          {t("Bluetooth dice need a Chromium browser (Chrome, Edge, or Opera). You can still choose typed or digital sources below. On Linux, enable")}
           <span className="font-code"> chrome://flags/#enable-web-bluetooth</span>.
         </p>
       ) : (
         <div>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wide text-stone-400">
-              Bluetooth dice
+              {t("Bluetooth dice")}
             </span>
             <button
               type="button"
@@ -133,7 +135,7 @@ export function DiceSourcesPanel() {
               ) : (
                 <Bluetooth className="size-3.5" />
               )}
-              Connect a Pixels die
+              {t("Connect a Pixels die")}
             </button>
           </div>
           {pixels.length ? (
@@ -153,8 +155,8 @@ export function DiceSourcesPanel() {
                     <button
                       type="button"
                       onClick={() => identifyPixel(pixel.systemId)}
-                      aria-label={`Blink ${pixel.name} so you can spot it`}
-                      title="Blink this die so you can spot it"
+                      aria-label={t("Blink {name} so you can spot it", { name: pixel.name })}
+                      title={t("Blink this die so you can spot it")}
                       className="rounded p-1 text-stone-400 hover:bg-stone-800 hover:text-amber-200"
                     >
                       <Sparkles className="size-3.5" />
@@ -162,8 +164,8 @@ export function DiceSourcesPanel() {
                     <button
                       type="button"
                       onClick={() => disconnectPixel(pixel.systemId)}
-                      aria-label={`Forget ${pixel.name}`}
-                      title="Forget this die"
+                      aria-label={t("Forget {name}", { name: pixel.name })}
+                      title={t("Forget this die")}
                       className="rounded p-1 text-stone-400 hover:bg-stone-800 hover:text-red-300"
                     >
                       <Trash2 className="size-3.5" />
@@ -174,7 +176,7 @@ export function DiceSourcesPanel() {
             </ul>
           ) : (
             <p className="text-xs text-stone-500">
-              No dice connected. Connect one to assign it below.
+              {t("No dice connected. Connect one to assign it below.")}
             </p>
           )}
           {error ? <p className="motion-shake mt-1.5 text-xs text-red-400">{error}</p> : null}
@@ -183,7 +185,7 @@ export function DiceSourcesPanel() {
 
       <div>
         <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-stone-400">
-          Roll each die with
+          {t("Roll each die with")}
         </span>
         <div className="stagger space-y-1.5">
           {DIE_SIDES.map((sides) => (
@@ -197,8 +199,7 @@ export function DiceSourcesPanel() {
           ))}
         </div>
         <p className="mt-2 text-xs text-stone-500">
-          Assigned dice only apply while your physical-dice toggle is on. An
-          assigned Bluetooth die that is offline falls back to typing.
+          {t("Assigned dice only apply while your physical-dice toggle is on. An assigned Bluetooth die that is offline falls back to typing.")}
         </p>
       </div>
     </div>
@@ -216,6 +217,7 @@ function SourceRow({
   pixels: ConnectedPixel[];
   onChange: (source: string) => void;
 }) {
+  const t = useT();
   const assignedId = pixelSystemId(value);
   const assignedOffline = assignedId
     ? !pixels.some((pixel) => pixel.systemId === assignedId)
@@ -226,14 +228,14 @@ function SourceRow({
       <Select
         value={value}
         onChange={onChange}
-        label={`Where the d${sides} comes from`}
+        label={t("Where the d{sides} comes from", { sides })}
         size="sm"
         className="min-w-0 flex-1"
         options={[
-          { value: SOURCE_MANUAL as string, label: "Type it (tabletop die)" },
-          { value: SOURCE_DIGITAL as string, label: "Digital roll" },
+          { value: SOURCE_MANUAL as string, label: t("Type it (tabletop die)") },
+          { value: SOURCE_DIGITAL as string, label: t("Digital roll") },
           ...pixels.map((pixel) => ({ value: pixelSource(pixel.systemId) as string, label: pixel.name })),
-          ...(assignedOffline ? [{ value, label: "Assigned Pixels die (offline)" }] : []),
+          ...(assignedOffline ? [{ value, label: t("Assigned Pixels die (offline)") }] : []),
         ]}
       />
     </label>

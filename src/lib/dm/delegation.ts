@@ -14,6 +14,7 @@
 // enforces.
 
 import type { DmMode } from "@/lib/dm/viewer";
+import { pluralOf } from "@/lib/messages-logic";
 
 // The capabilities that can be handed over one at a time. Ask is deliberately
 // absent: answering a rules question in channel writes nothing to the
@@ -147,19 +148,24 @@ export function clampCoverBrief(raw: unknown): string {
     .slice(0, COVER_BRIEF_MAX);
 }
 
+// The shape of a translator, as the pure sentence builders take it: the
+// surface that shows the words passes its own.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 // The line the table reads. Deliberately plain and always shown: a player who
 // cannot tell the DM stepped out has been lied to by omission, and the whole
-// point of the mode is that the human is still the author.
-export function describeCover(cover: DmCover | null): string {
+// point of the mode is that the human is still the author. The words are the
+// dictionaries' (delegation.cover.*); the showing surface passes its
+// translator.
+export function describeCover(t: T, cover: DmCover | null): string {
+  const tp = pluralOf(t);
   if (!cover) {
     return "";
   }
   if (cover.turnsLeft <= 0) {
-    return "The GM has the table back.";
+    return t("The GM has the table back.");
   }
-  return cover.turnsLeft === 1
-    ? "The GM stepped away; the AI is answering one more time."
-    : `The GM stepped away; the AI is answering the next ${cover.turnsLeft} times.`;
+  return tp("The GM stepped away; the AI is answering one more time.", "The GM stepped away; the AI is answering the next {count} times.", { count: cover.turnsLeft });
 }
 
 // The block appended to the DM system prompt while a cover is running. It is

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
+import { useT, useTp } from "@/lib/locale";
 
 // What the server keeps and what it weighs (src/lib/ops/retention.ts). The
 // story stays forever; once a day the server clears what nothing reads back
@@ -41,9 +42,15 @@ function formatSize(bytes: number) {
   return `${Math.max(bytes > 0 ? 1 : 0, Math.round(bytes / 1024))} KB`;
 }
 
-const count = (value: number, one: string, many = `${one}s`) => `${value.toLocaleString()} ${value === 1 ? one : many}`;
+// "{value} live updates", keyed by noun so the table's language speaks:
+// count(t, 3, "admin.storage.liveUpdate"). The key is a plural base
+// (…_one/…_other), which translate() resolves at run time.
+const count = (t: (key: string, vars?: Record<string, string | number>) => string, value: number, key: string) =>
+  t(key, { count: value });
 
 export function AdminStorageSection() {
+  const t = useT();
+  const tp = useTp();
   const [stats, setStats] = useState<Stats | null>(null);
   const [orphans, setOrphans] = useState<Orphans | null>(null);
   const { loadError, settle } = useLoadStatus();
@@ -53,15 +60,14 @@ export function AdminStorageSection() {
   const [done, setDone] = useState("");
 
   useEffect(() => {
-    readLoad<{ stats?: Stats; orphans?: Orphans }>(fetch("/api/admin/storage"), "Storage").then((outcome) => {
+    readLoad<{ stats?: Stats; orphans?: Orphans }>(t, fetch("/api/admin/storage"), t("Storage", { context: "load.label.storage" })).then((outcome) => {
       settle(outcome);
       if (outcome.payload) {
         setStats(outcome.payload.stats ?? null);
         setOrphans(outcome.payload.orphans ?? null);
       }
     });
-  }, [reloads, settle]);
-
+  }, [ reloads, settle, t ]);
   async function act(action: "tidy" | "compact" | "remove-orphans") {
     setBusy(action);
     setError("");
@@ -74,38 +80,38 @@ export function AdminStorageSection() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "The server could not do that.");
+        setError(data.error || t("The server could not do that."));
         return;
       }
       if (data.stats) setStats(data.stats);
       if (data.orphans) setOrphans(data.orphans);
       if (action === "compact" && data.compacted) {
-        setDone(`Compacted: ${formatSize(data.compacted.before)} to ${formatSize(data.compacted.after)}.`);
+        setDone(t("Compacted: {before} to {after}.", { before: formatSize(data.compacted.before), after: formatSize(data.compacted.after) }));
       } else if (action === "remove-orphans" && data.removed) {
-        setDone(`Removed ${count(data.removed.removed, "file")}, ${formatSize(data.removed.bytes)}.`);
+        setDone(tp("Removed {count} file, {size}.", "Removed {count} files, {size}.", { count: data.removed.removed, size: formatSize(data.removed.bytes) }));
       } else if (action === "tidy") {
-        setDone("Tidied.");
+        setDone(t("Tidied."));
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.worlds.unreachable" }));
     } finally {
       setBusy("");
     }
   }
 
   async function compact() {
-    const sure = await appConfirm(
-      "Compact the database? It is rewritten without its free space, and play pauses while that runs: a second or two for most servers. Afterwards the daily tidy hands freed space back by itself.",
-      { title: "Compact the database?", actionLabel: "Compact" },
-    );
+    const sure = await appConfirm(t("Compact the database? It is rewritten without its free space, and play pauses while that runs: a second or two for most servers. Afterwards the daily tidy hands freed space back by itself."), {
+      title: t("Compact the database?"),
+      actionLabel: t("Compact"),
+    });
     if (sure) await act("compact");
   }
 
   async function removeOrphans() {
     if (!orphans) return;
     const sure = await appConfirm(
-      `Remove ${count(orphans.pictures + orphans.audio, "file")} (${formatSize(orphans.bytes)}) that no campaign, account or setting names? A backup taken before now still holds them.`,
-      { title: "Remove unused files?", actionLabel: "Remove", tone: "danger" },
+      t("Remove {count} ({size}) that no campaign, account or setting names? A backup taken before now still holds them.", { count: orphans.pictures + orphans.audio, size: formatSize(orphans.bytes) }),
+      { title: t("Remove unused files?"), actionLabel: t("Remove", { context: "action.remove" }), tone: "danger" },
     );
     if (sure) await act("remove-orphans");
   }
@@ -115,7 +121,7 @@ export function AdminStorageSection() {
   }
 
   if (stats === null) {
-    return <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label="Loading storage" />;
+    return <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label={t("Loading storage")} />;
   }
 
   const report = stats.report;
@@ -123,54 +129,56 @@ export function AdminStorageSection() {
   return (
     <div className="space-y-3">
       <p className="text-xs leading-5 text-stone-500">
-        The story is kept forever: every message, roll, note, sheet, chapter snapshot and GM conversation. Once a day
-        the server clears what nothing reads back (live updates older than a reconnecting page replays, prompt traces
-        past a week, usage rows past 90 days merged by month with the same totals) and hands the space to the disk.
+        {t("The story is kept forever: every message, roll, note, sheet, chapter snapshot and GM conversation. Once a day the server clears what nothing reads back (live updates older than a reconnecting page replays, prompt traces past a week, usage rows past 90 days merged by month with the same totals) and hands the space to the disk.")}
       </p>
       <ul className="stagger space-y-2">
         <li className="plate-row flex-wrap gap-2">
           <HardDrive className="size-4 text-stone-400" />
-          <span className="text-sm text-stone-300">Database</span>
+          <span className="text-sm text-stone-300">{t("Database")}</span>
           <span className="text-xs tabular-nums text-stone-500">{formatSize(stats.databaseBytes)}</span>
           {stats.freePageBytes > 0 ? (
-            <span className="text-xs tabular-nums text-stone-500">{formatSize(stats.freePageBytes)} free inside</span>
+            <span className="text-xs tabular-nums text-stone-500">{t("{size} free inside", { size: formatSize(stats.freePageBytes) })}</span>
           ) : null}
           <span className={cn("text-xs", stats.incremental ? "text-emerald-400" : "text-amber-300")}>
-            {stats.incremental ? "returns space daily" : "compact once to return space daily"}
+            {stats.incremental ? t("returns space daily") : t("compact once to return space daily")}
           </span>
           {stats.diskFreeBytes >= 0 ? (
-            <span className="ml-auto text-xs tabular-nums text-stone-500">{formatSize(stats.diskFreeBytes)} free on disk</span>
+            <span className="ml-auto text-xs tabular-nums text-stone-500">{t("{size} free on disk", { size: formatSize(stats.diskFreeBytes) })}</span>
           ) : null}
         </li>
         <li className="plate-row flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-stone-500">
-          <span>{count(stats.eventRows, "live update")}</span>
-          <span>{count(stats.usageRows, "usage row")}</span>
-          <span>{formatSize(stats.traceBytes)} of prompt traces</span>
+          <span>{count(t, stats.eventRows, "admin.storage.liveUpdate")}</span>
+          <span>{count(t, stats.usageRows, "admin.storage.usageRow")}</span>
+          <span>{t("{size} of prompt traces", { size: formatSize(stats.traceBytes) })}</span>
         </li>
         <li className="plate-row flex-wrap gap-2 text-xs text-stone-500">
           {stats.running || busy === "tidy" ? (
             <span className="live-in inline-flex items-center gap-1.5">
-              <Loader2 className="size-3.5 animate-spin" /> Tidying…
+              <Loader2 className="size-3.5 animate-spin" /> {t("Tidying…")}
             </span>
           ) : report ? (
             <span key={report.at} className="live-in">
-              Last tidy {new Date(report.at).toLocaleString()}: {count(report.eventsRemoved, "update")} cleared,{" "}
-              {count(report.tracesCleared, "trace")} dropped, {count(report.usageRowsMerged, "usage row")} merged,{" "}
-              {formatSize(report.bytesReclaimed)} returned.
+              {t("Last tidy {date}: {events} cleared, {traces} dropped, {merged} merged, {space} returned.", {
+                date: new Date(report.at).toLocaleString(),
+                events: count(t, report.eventsRemoved, "admin.storage.update"),
+                traces: count(t, report.tracesCleared, "admin.storage.trace"),
+                merged: count(t, report.usageRowsMerged, "admin.storage.usageRow"),
+                space: formatSize(report.bytesReclaimed),
+              })}
             </span>
           ) : (
-            <span>No tidy since the server started{stats.nextAt ? `; the first runs at ${new Date(stats.nextAt).toLocaleTimeString()}` : ""}.</span>
+            <span>{t("No tidy since the server started{next}.", { next: stats.nextAt ? t("; the first runs at {time}", { time: new Date(stats.nextAt).toLocaleTimeString() }) : "" })}</span>
           )}
         </li>
       </ul>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => act("tidy")} disabled={Boolean(busy) || stats.running} aria-busy={busy === "tidy"} className={ui.btnSmall}>
           {busy === "tidy" ? <Loader2 className="size-4 animate-spin" /> : <BrushCleaning className="size-4" />}
-          Tidy now
+          {t("Tidy now")}
         </button>
         <button type="button" onClick={compact} disabled={Boolean(busy) || stats.running} aria-busy={busy === "compact"} className={ui.btnSmall}>
           {busy === "compact" ? <Loader2 className="size-4 animate-spin" /> : <Minimize2 className="size-4" />}
-          Compact database
+          {t("Compact database")}
         </button>
         {done ? (
           <span key={done} role="status" className="live-in inline-flex items-center gap-1 text-xs text-emerald-400">
@@ -184,7 +192,7 @@ export function AdminStorageSection() {
           <div className="live-in space-y-2">
             <div className="plate-row flex-wrap gap-2">
               <span className="text-sm text-stone-300">
-                {count(orphanCount, "file")} no campaign, account or setting names
+                {tp("{count} file no campaign, account or setting names", "{count} files no campaign, account or setting names", { count: orphanCount })}
               </span>
               <span className="text-xs tabular-nums text-stone-500">{formatSize(orphans.bytes)}</span>
               <button
@@ -195,7 +203,7 @@ export function AdminStorageSection() {
                 className={cn(ui.btnSmall, "ml-auto hover:border-red-500/50 hover:text-red-400")}
               >
                 {busy === "remove-orphans" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                Remove
+                {t("Remove", { context: "action.remove" })}
               </button>
             </div>
             <ul className="stagger space-y-1 pl-1">
@@ -205,12 +213,12 @@ export function AdminStorageSection() {
                 </li>
               ))}
               {orphanCount > orphans.sample.length ? (
-                <li className="text-[11px] text-stone-600">and {count(orphanCount - orphans.sample.length, "more", "more")}</li>
+                <li className="text-[11px] text-stone-600">{t("{count} more", { count: orphanCount - orphans.sample.length })}</li>
               ) : null}
             </ul>
           </div>
         ) : (
-          <p className="live-in text-xs text-stone-500">Every stored picture, document and narration clip is still in use.</p>
+          <p className="live-in text-xs text-stone-500">{t("Every stored picture, document and narration clip is still in use.")}</p>
         )
       ) : null}
     </div>

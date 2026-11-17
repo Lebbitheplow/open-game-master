@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import type { AnyListGroup } from "@/lib/srd/any-list-picks-logic";
+import { useT } from "@/lib/locale";
 import { SpellBook, type SpellTile } from "./SpellBook";
 
 // The picks a feature lets come from any class's spell list (Magical
@@ -31,6 +32,7 @@ export function AnyListSpellGroup({
   loading: boolean;
 }) {
   const headingId = useId();
+  const t = useT();
   return (
     <section
       aria-labelledby={headingId}
@@ -44,11 +46,11 @@ export function AnyListSpellGroup({
       <SpellBook
         tiles={tiles}
         maxLevel={group.spells ? maxLevel : 0}
-        counters={[{ label: "From any class", value: picked, max: group.slots }]}
+        counters={[{ label: t("From any class"), value: picked, max: group.slots }]}
         onTile={onTile}
         notice={notice || undefined}
-        searchLabel={`Find a spell for ${group.feature}`}
-        emptyText={loading ? "Loading every class's spells..." : "No spell left to choose here."}
+        searchLabel={t("Find a spell for {feature}", { feature: group.feature })}
+        emptyText={loading ? t("Loading every class's spells...") : t("No spell left to choose here.")}
       />
     </section>
   );

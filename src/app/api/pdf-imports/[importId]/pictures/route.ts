@@ -5,6 +5,7 @@ import { currentUser, unauthorized } from "@/lib/auth";
 import { getPdfImportForUser, importDir, pendingImportRefusal, readPictures, savePictures } from "@/lib/db/pdf-imports";
 import { sniffImage } from "@/lib/addons/sniff";
 import { MAX_IMPORT_IMAGE_BYTES, MAX_IMPORT_IMAGES, MAX_IMPORT_PAGES, pictureSchema } from "@/lib/pdf-import/reading";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,21 +33,27 @@ const EXT = { "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg" } as
 export async function POST(request: Request, { params }: { params: Promise<{ importId: string }> }) {
   const user = await currentUser();
   if (!user) return unauthorized();
+  // The page shows these raw (send-book's call throws data.error straight
+  // into the button's error line), so they answer in the request's language.
+  const t = requestT(request);
   const { importId } = await params;
   const item = getPdfImportForUser(importId, user.id);
-  if (!item) return Response.json({ error: "That import is gone. Pick the PDF again." }, { status: 404 });
-  if (item.state !== "reading" && item.state !== "failed") return Response.json({ error: "This import has its pictures already." }, { status: 409 });
+  if (!item) return Response.json({ error: t("That import is gone. Pick the PDF again.") }, { status: 404 });
+  if (item.state !== "reading" && item.state !== "failed") return Response.json({ error: t("This import has its pictures already.") }, { status: 409 });
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) return Response.json({ error: "That picture could not be read." }, { status: 400 });
+  if (!parsed.success) return Response.json({ error: t("That picture could not be read.") }, { status: 400 });
   const { dataUrl, ...meta } = parsed.data;
-  if (meta.page > item.pageCount) return Response.json({ error: "A picture past the end of the book arrived." }, { status: 400 });
+  if (meta.page > item.pageCount) return Response.json({ error: t("A picture past the end of the book arrived.") }, { status: 400 });
   const comma = dataUrl.indexOf(",");
   const bytes = Buffer.from(comma >= 0 ? dataUrl.slice(comma + 1) : "", "base64");
-  if (!bytes.length || bytes.length > MAX_IMPORT_IMAGE_BYTES) return Response.json({ error: "That picture is empty or over 8 MB." }, { status: 413 });
+  if (!bytes.length || bytes.length > MAX_IMPORT_IMAGE_BYTES) return Response.json({ error: t("That picture is empty or over 8 MB.") }, { status: 413 });
   const type = sniffImage(bytes);
-  if (!type) return Response.json({ error: "That picture is not a PNG, JPEG or WebP." }, { status: 415 });
+  if (!type) return Response.json({ error: t("That picture is not a PNG, JPEG or WebP.") }, { status: 415 });
   const pictures = readPictures(item.id).filter((known) => known.picture.id !== meta.picture.id);
   if (pictures.length >= MAX_IMPORT_IMAGES) {
+    // English on purpose: send-book matches this sentence (/keeps up to/)
+    // to leave the rest of the book's pictures out, so it is the one
+    // refusal here the reader never sees worded.
     return Response.json({ error: `An import keeps up to ${MAX_IMPORT_IMAGES} pictures; the rest of this book's are left out.` }, { status: 413 });
   }
   const refusal = pendingImportRefusal(user.id, bytes.length);

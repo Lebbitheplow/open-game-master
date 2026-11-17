@@ -15,10 +15,11 @@ import { createPortal } from "react-dom";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { overlayRoot } from "@/lib/overlay-root";
 import { haptic } from "@/lib/effects-mode";
+import { useT } from "@/lib/locale";
 import {
   insertName,
   matchNames,
-  NAME_GROUP_LABEL,
+  nameGroupLabel,
   nameMenuAt,
   type NameChoice,
   type NameGroup,
@@ -165,6 +166,7 @@ export function NameMenu({ menu, anchor }: { menu: NameMenuState; anchor: RefObj
   const [box, setBox] = useState<{ left: number; top: number; width: number; room: number } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { open, matches, active } = menu;
+  const t = useT();
 
   useLayoutEffect(() => {
     if (!open) {
@@ -214,25 +216,25 @@ export function NameMenu({ menu, anchor }: { menu: NameMenuState; anchor: RefObj
       <div className="name-menu panel panel-smoke ctx-menu flex flex-col overflow-hidden rounded-xl p-0" style={{ maxHeight: Math.max(Math.min(box.room, 440), 120) }}>
         {/* Reachable by key when it has to scroll (above a phone's keyboard),
             though the arrows in the box already walk it. */}
-        <div ref={listRef} id={menu.listId} role="listbox" aria-label="Names at this table" tabIndex={0} className={matches.length ? "palette-list min-h-0 flex-1 overflow-y-auto p-1.5" : "hidden"}>
+        <div ref={listRef} id={menu.listId} role="listbox" aria-label={t("Names at this table")} tabIndex={0} className={matches.length ? "palette-list min-h-0 flex-1 overflow-y-auto p-1.5" : "hidden"}>
           {matches.map((choice, index) => (
             <NameRow
               key={`${choice.group}:${choice.name}`}
               id={menu.optionId(index)}
               choice={choice}
-              heading={choice.group !== matches[index - 1]?.group ? NAME_GROUP_LABEL[choice.group] : null}
+              heading={choice.group !== matches[index - 1]?.group ? nameGroupLabel(choice.group, t) : null}
               selected={index === active}
               onHover={() => menu.setActive(index)}
               onPick={() => menu.choose(choice)}
             />
           ))}
         </div>
-        {!matches.length ? <p className="reveal px-3 py-2.5 text-sm text-stone-500">No known name matches.</p> : null}
+        {!matches.length ? <p className="reveal px-3 py-2.5 text-sm text-stone-500">{t("No known name matches.")}</p> : null}
         {matches.length ? (
           <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 border-t border-amber-400/10 px-3 py-1.5 text-[11px] text-stone-500 [@media(pointer:fine)]:flex">
-            <span><span className="kbd-key">↑</span> <span className="kbd-key">↓</span> choose</span>
-            <span><span className="kbd-key">Enter</span> or <span className="kbd-key">Tab</span> write it</span>
-            <span><span className="kbd-key">Esc</span> close</span>
+            <span><span className="kbd-key">↑</span> <span className="kbd-key">↓</span> {t("choose")}</span>
+            <span><span className="kbd-key">Enter</span> {t("or")} <span className="kbd-key">Tab</span> {t("write it")}</span>
+            <span><span className="kbd-key">Esc</span> {t("close", { context: "table.name.legendClose" })}</span>
           </p>
         ) : null}
       </div>
@@ -256,6 +258,7 @@ function NameRow({
   onHover: () => void;
   onPick: () => void;
 }) {
+  const t = useT();
   return (
     <>
       {heading ? <div role="presentation" className="reveal palette-group">{heading}</div> : null}
@@ -272,7 +275,7 @@ function NameRow({
         <GameIcon icon={{ kind: "glyph", key: GROUP_GLYPH[choice.group] }} size="size-7" />
         <span className="min-w-0 flex-1">
           <span className="block truncate">{choice.name}</span>
-          {choice.unmet ? <span className="block truncate text-xs text-stone-500">Not introduced yet</span> : null}
+          {choice.unmet ? <span className="block truncate text-xs text-stone-500">{t("Not introduced yet")}</span> : null}
         </span>
       </div>
     </>

@@ -4,13 +4,14 @@ import { refusal } from "@/lib/characters/admit";
 import { seatPicksSchema } from "@/lib/characters/seat-picks";
 import { admitLibraryForSeat } from "@/lib/characters/seat-preview";
 import { announceMidGameJoin } from "@/lib/characters/mid-game-join";
-import { HERO_DOOR_SHUT, heroDoorFor } from "@/lib/characters/hero-door";
+import { heroDoorFor } from "@/lib/characters/hero-door";
 import { seatAddedSheet } from "@/lib/character-seat";
 import { createCharacter, setPregenOrigin } from "@/lib/db/characters";
 import { claimPregen, claimRefusal, offeredPregenFor } from "@/lib/db/pregen-offers";
 import { createSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { queueLibraryPortrait } from "@/lib/portrait";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,17 +40,19 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The refusals read the asker's language.
+  const t = requestT(request);
   if (!capsFor(context).needsCharacter) {
-    return Response.json({ error: "The GM seat plays no character." }, { status: 400 });
+    return Response.json({ error: t("The GM seat plays no character.") }, { status: 400 });
   }
   const door = heroDoorFor(context.campaign, context.user.id);
   if (!door.open) {
-    return Response.json({ error: HERO_DOOR_SHUT }, { status: 409 });
+    return Response.json({ error: t("You already have a character in this campaign.") }, { status: 409 });
   }
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return Response.json(
-      { error: parsed.error.issues.some((issue) => issue.path[0] === "picks") ? "Those picks could not be read." : "Pick a hero." },
+      { error: parsed.error.issues.some((issue) => issue.path[0] === "picks") ? t("Those picks could not be read.") : t("Pick a hero.") },
       { status: 400 },
     );
   }
@@ -57,9 +60,9 @@ export async function POST(
   // A DM's own pregens are in their own library, where they take them from.
   const offer = offeredPregenFor(campaignId, parsed.data.id);
   if (!offer || offer.character.userId === context.user.id) {
-    return Response.json({ error: "No such hero." }, { status: 404 });
+    return Response.json({ error: t("No such hero.") }, { status: 404 });
   }
-  const taken = claimRefusal(offer, context.user.id);
+  const taken = claimRefusal(offer, context.user.id, t);
   if (taken) {
     return Response.json({ error: taken }, { status: 409 });
   }

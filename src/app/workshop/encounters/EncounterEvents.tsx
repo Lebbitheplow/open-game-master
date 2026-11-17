@@ -12,6 +12,7 @@ import { Field, FieldLabel, addChip, chipRow, rowIcon } from "@/app/workshop/kit
 import { MonsterRosterPicker } from "@/app/campaigns/[campaignId]/MonsterRosterPicker";
 import { GroundEditor, type GroundMap } from "@/app/workshop/encounters/EncounterGround";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { useT } from "@/lib/locale";
 import { CONDITION_OPTIONS } from "@/lib/dm/catalog-vocab";
 import { formatRoster, parseRoster, type RosterSlot } from "@/lib/dm/encounter-template-logic";
 import {
@@ -33,6 +34,10 @@ import {
 type Slots = RosterSlot[];
 type ActionOf<K extends FightAction["kind"]> = Extract<FightAction, { kind: K }>;
 
+// Labels are dictionary keys here, translated where the options render
+// (the trigger words themselves live in the stored template as ids, and the
+// engine's own description of an event is built in English by
+// src/lib/dm/fight-event-logic.ts, so nothing here feeds the protocol).
 const TRIGGERS: SelectOption<FightTrigger["kind"]>[] = [
   { value: "start", label: "When the fight starts", hint: "Before anyone's first turn" },
   { value: "round", label: "When a round begins" },
@@ -101,6 +106,7 @@ export function EncounterEvents({
   value: FightEvent[];
   onChange: (next: FightEvent[]) => void;
 }) {
+  const t = useT();
   const capabilities = useCapabilities();
   if (!slots.length || !hostOffers(capabilities, "fightEvents")) {
     return null;
@@ -110,14 +116,13 @@ export function EncounterEvents({
   const setEvent = (index: number, next: FightEvent) => onChange(value.map((event, at) => (at === index ? next : event)));
   return (
     <div className="space-y-1.5 text-sm">
-      <SectionHead title="Events" glyph="cue-gong" className="mb-1" />
+      <SectionHead title={t("Events")} glyph="cue-gong" className="mb-1" />
       <p className="text-[11px] text-stone-500">
-        What happens on its own during the fight, once each: more creatures arrive, one is hurt, an ambusher appears.
-        Events change the fight; they never decide a roll.
+        {t("What happens on its own during the fight, once each: more creatures arrive, one is hurt, an ambusher appears. Events change the fight; they never decide a roll.")}
       </p>
       {groundHost && !map ? (
         <p className="text-[11px] text-stone-500">
-          An event can change the ground, such as a bridge that gives way, only on a prepared map: link one above to pick its squares.
+          {t("An event can change the ground, such as a bridge that gives way, only on a prepared map: link one above to pick its squares.")}
         </p>
       ) : null}
       {value.length ? (
@@ -145,7 +150,7 @@ export function EncounterEvents({
           onClick={() => onChange([...value, { trigger: { kind: "start" }, actions: [] }])}
           className={cn(ui.btnSmall, addChip)}
         >
-          <Plus className="size-3" aria-hidden="true" /> Add an event
+          <Plus className="size-3" aria-hidden="true" /> {t("Add an event")}
         </button>
       ) : null}
     </div>
@@ -174,8 +179,9 @@ function EventEditor({
   onChange: (next: FightEvent) => void;
   onRemove: () => void;
 }) {
-  const name = `Event ${number}`;
-  const nameInText = `event ${number}`;
+  const t = useT();
+  const name = t("Event {number}", { number });
+  const nameInText = t("event {number}", { number });
   const trigger = event.trigger;
   const slotOptions = slots.map((slot) => ({ value: String(slot.slot), label: slotName(slot.label) }));
   const setAction = (index: number, next: FightAction) =>
@@ -187,18 +193,18 @@ function EventEditor({
           its own on a phone, apart from the event it removes. */}
       <div className="flex items-end gap-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-end gap-1.5">
-          <Field label="When" className="min-w-48 flex-1">
+          <Field label={t("When")} className="min-w-48 flex-1">
             <Select
-              label={`${name}: when`}
+              label={t("{name}: when", { name })}
               value={trigger.kind}
-              options={TRIGGERS}
+              options={TRIGGERS.map((option) => ({ ...option, label: t(option.label), ...(option.hint ? { hint: t(option.hint) } : {}) }))}
               onChange={(kind) => onChange({ ...event, trigger: newTrigger(kind, slots) })}
             />
           </Field>
           {trigger.kind === "round" ? (
-            <Field label="Round">
+            <Field label={t("Round")}>
               <NumberStepper
-                label={`${name}: round`}
+                label={t("{name}: round", { name })}
                 value={trigger.round}
                 min={FIGHT_EVENT_LIMITS.roundMin}
                 max={FIGHT_EVENT_LIMITS.roundMax}
@@ -207,9 +213,9 @@ function EventEditor({
             </Field>
           ) : null}
           {trigger.kind === "bloodied" || trigger.kind === "falls" ? (
-            <Field label="Which creature" className="min-w-40 flex-1">
+            <Field label={t("Which creature")} className="min-w-40 flex-1">
               <Select
-                label={`${name}: which creature`}
+                label={t("{name}: which creature", { name })}
                 value={String(trigger.slot)}
                 options={slotOptions}
                 onChange={(slot) => onChange({ ...event, trigger: { kind: trigger.kind, slot: Number(slot) } })}
@@ -217,7 +223,7 @@ function EventEditor({
             </Field>
           ) : null}
         </div>
-        <button type="button" aria-label={`Remove ${nameInText}`} title="Remove this event" onClick={onRemove} className={removeButton}>
+        <button type="button" aria-label={t("Remove {event}", { event: nameInText })} title={t("Remove this event")} onClick={onRemove} className={removeButton}>
           <X className="size-3.5" aria-hidden="true" />
         </button>
       </div>
@@ -226,11 +232,11 @@ function EventEditor({
           {event.actions.map((action, index) => (
             <li key={index} className="flex items-start gap-1.5 border-l-2 border-amber-500/30 pl-2">
               <div className="min-w-0 flex-1 space-y-1.5">
-                <FieldLabel>{ACTIONS[action.kind].label}</FieldLabel>
+                <FieldLabel>{t(ACTIONS[action.kind].label)}</FieldLabel>
                 <ActionEditor
                   campaignId={campaignId}
                   action={action}
-                  name={`${name}, ${ACTIONS[action.kind].noun}`}
+                  name={t("{event}, {action}", { event: name, action: t(ACTIONS[action.kind].noun) })}
                   slots={slots}
                   slotOptions={slotOptions}
                   hasEntry={hasEntry}
@@ -240,8 +246,8 @@ function EventEditor({
               </div>
               <button
                 type="button"
-                aria-label={`Remove ${ACTIONS[action.kind].noun} from ${nameInText}`}
-                title="Remove this"
+                aria-label={t("Remove {action} from {event}", { action: t(ACTIONS[action.kind].noun), event: nameInText })}
+                title={t("Remove this")}
                 onClick={() => onChange({ ...event, actions: event.actions.filter((_, at) => at !== index) })}
                 className={removeButton}
               >
@@ -251,10 +257,10 @@ function EventEditor({
           ))}
         </ol>
       ) : (
-        <p className="text-[11px] text-amber-300/85">Add what happens: an event with nothing in it is not saved.</p>
+        <p className="text-[11px] text-amber-300/85">{t("Add what happens: an event with nothing in it is not saved.")}</p>
       )}
       {event.actions.length < FIGHT_EVENT_LIMITS.actions ? (
-        <div role="group" aria-label={`${name}: add what happens`} className={chipRow}>
+        <div role="group" aria-label={t("{name}: add what happens", { name })} className={chipRow}>
           {kinds.map((kind) => (
             <button
               key={kind}
@@ -262,7 +268,7 @@ function EventEditor({
               onClick={() => onChange({ ...event, actions: [...event.actions, newAction(kind, slots)] })}
               className={cn(ui.btnSmall, addChip)}
             >
-              <Plus className="size-3" aria-hidden="true" /> {ACTIONS[kind].label}
+              <Plus className="size-3" aria-hidden="true" /> {t(ACTIONS[kind].label)}
             </button>
           ))}
         </div>
@@ -290,9 +296,10 @@ function ActionEditor({
   map: GroundMap | null;
   onChange: (next: FightAction) => void;
 }) {
+  const t = useT();
   const who = (slot: number, set: (slot: number) => void) => (
-    <Field label="Who" className="min-w-40 flex-1">
-      <Select label={`${name}: who`} value={String(slot)} options={slotOptions} onChange={(next) => set(Number(next))} />
+    <Field label={t("Who")} className="min-w-40 flex-1">
+      <Select label={t("{name}: who", { name })} value={String(slot)} options={slotOptions} onChange={(next) => set(Number(next))} />
     </Field>
   );
   switch (action.kind) {
@@ -302,21 +309,21 @@ function ActionEditor({
       return (
         <div className="flex flex-wrap items-end gap-1.5">
           {who(action.slot, (slot) => onChange({ ...action, slot }))}
-          <Field label="Down to" className="min-w-48 flex-1">
+          <Field label={t("Down to")} className="min-w-48 flex-1">
             <Select<"half" | "hp">
-              label={`${name}: down to`}
+              label={t("{name}: down to", { name })}
               value={action.to}
               options={[
-                { value: "half", label: "Half its hit points (bloodied)" },
-                { value: "hp", label: "A number of hit points" },
+                { value: "half", label: t("Half its hit points (bloodied)") },
+                { value: "hp", label: t("A number of hit points") },
               ]}
               onChange={(to) => onChange(to === "hp" ? { ...action, to, hp: action.hp ?? 1 } : { kind: "hurt", slot: action.slot, to })}
             />
           </Field>
           {action.to === "hp" ? (
-            <Field label="Hit points left">
+            <Field label={t("Hit points left")}>
               <NumberStepper
-                label={`${name}: hit points left`}
+                label={t("{name}: hit points left", { name })}
                 value={action.hp ?? 1}
                 min={1}
                 max={FIGHT_EVENT_LIMITS.hp}
@@ -330,20 +337,20 @@ function ActionEditor({
       return (
         <div className="flex flex-wrap items-end gap-1.5">
           {who(action.slot, (slot) => onChange({ ...action, slot }))}
-          <Field label="Gains or loses" className="min-w-32">
+          <Field label={t("Gains or loses")} className="min-w-32">
             <Select<"gains" | "loses">
-              label={`${name}: gains or loses`}
+              label={t("{name}: gains or loses", { name })}
               value={action.remove ? "loses" : "gains"}
               options={[
-                { value: "gains", label: "Gains" },
-                { value: "loses", label: "Loses" },
+                { value: "gains", label: t("Gains") },
+                { value: "loses", label: t("Loses") },
               ]}
               onChange={(next) => onChange({ ...action, remove: next === "loses" })}
             />
           </Field>
-          <Field label="Condition" className="min-w-40 flex-1">
+          <Field label={t("Condition")} className="min-w-40 flex-1">
             <Select
-              label={`${name}: condition`}
+              label={t("{name}: condition", { name })}
               value={action.condition}
               options={CONDITION_OPTIONS}
               onChange={(condition) => onChange({ ...action, condition })}
@@ -355,13 +362,13 @@ function ActionEditor({
       return (
         <div className="flex flex-wrap items-end gap-1.5">
           {who(action.slot, (slot) => onChange({ ...action, slot }))}
-          <Field label="It" className="min-w-48 flex-1">
+          <Field label={t("It")} className="min-w-48 flex-1">
             <Select<"appears" | "hides">
-              label={`${name}: appears or hides`}
+              label={t("{name}: appears or hides", { name })}
               value={action.hidden ? "hides" : "appears"}
               options={[
-                { value: "appears", label: "Appears", hint: "The party sees it on the board" },
-                { value: "hides", label: "Hides", hint: "Off the party's board and tracker" },
+                { value: "appears", label: t("Appears"), hint: t("The party sees it on the board") },
+                { value: "hides", label: t("Hides"), hint: t("Off the party's board and tracker") },
               ]}
               onChange={(next) => onChange({ ...action, hidden: next === "hides" })}
             />
@@ -372,20 +379,20 @@ function ActionEditor({
       return map ? (
         <GroundEditor action={action} name={name} map={map} onChange={onChange} />
       ) : (
-        <p className="text-[11px] text-amber-300/85">This needs the fight&rsquo;s prepared map: link one above, or it is not saved.</p>
+        <p className="text-[11px] text-amber-300/85">{t("This needs the fight’s prepared map: link one above, or it is not saved.")}</p>
       );
     case "say":
       return (
-        <Field as="label" label="The words">
+        <Field as="label" label={t("The words")}>
           <DictateField
-            label={`${name}: the words`}
+            label={t("{name}: the words", { name })}
             onTranscript={(text) => onChange({ ...action, text: appendDictation(action.text, text, FIGHT_EVENT_LIMITS.say) })}
           >
             <textarea
               value={action.text}
               maxLength={FIGHT_EVENT_LIMITS.say}
               rows={2}
-              placeholder="The rope bridge groans, and the far end gives way."
+              placeholder={t("The rope bridge groans, and the far end gives way.")}
               onChange={(next) => onChange({ ...action, text: next.target.value })}
               className={ui.input}
             />
@@ -410,10 +417,11 @@ function ReinforceEditor({
   hasEntry: boolean;
   onChange: (next: FightAction) => void;
 }) {
+  const t = useT();
   const where: SelectOption<string>[] = [
-    { value: "any", label: "Where the fight puts them" },
-    ...(hasEntry ? [{ value: "entry", label: "Where the party came in" }] : []),
-    ...slots.map((slot) => ({ value: `slot:${slot.slot}`, label: `Beside ${slotName(slot.label)}` })),
+    { value: "any", label: t("Where the fight puts them") },
+    ...(hasEntry ? [{ value: "entry", label: t("Where the party came in") }] : []),
+    ...slots.map((slot) => ({ value: `slot:${slot.slot}`, label: t("Beside {name}", { name: slotName(slot.label) }) })),
   ];
   const whereValue = action.at === "slot" && action.slot !== undefined ? `slot:${action.slot}` : action.at === "entry" && !hasEntry ? "any" : action.at;
   const setEnemies = (enemies: ActionOf<"reinforce">["enemies"]) => onChange({ ...action, enemies: fitArrivals(enemies) });
@@ -425,12 +433,12 @@ function ReinforceEditor({
         onChange={(roster) => setEnemies(parseRoster(roster))}
       />
       {action.enemies.length ? (
-        <ul className={chipRow} aria-label={`${name}: who arrives`}>
+        <ul className={chipRow} aria-label={t("{name}: who arrives", { name })}>
           {action.enemies.map((row, index) => (
             <li key={`${row.monster}-${index}`} className="flex items-center gap-1 rounded-lg border border-stone-700/70 py-0.5 pl-2">
               <span className="text-stone-200">{row.monster}</span>
               <NumberStepper
-                label={`How many ${row.monster}`}
+                label={t("How many {name}", { name: row.monster, context: "workshop.homebrew.background.howManyNamed" })}
                 value={row.count}
                 min={1}
                 max={FIGHT_EVENT_LIMITS.arrivals}
@@ -439,7 +447,7 @@ function ReinforceEditor({
               />
               <button
                 type="button"
-                aria-label={`Remove ${row.monster}`}
+                aria-label={t("Remove {name}", { name: row.monster })}
                 onClick={() => setEnemies(action.enemies.filter((_, at) => at !== index))}
                 className={removeButton}
               >
@@ -449,11 +457,11 @@ function ReinforceEditor({
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-stone-500">Search above and pick who arrives.</p>
+        <p className="text-[11px] text-stone-500">{t("Search above and pick who arrives.")}</p>
       )}
-      <Field label="Where they come in">
+      <Field label={t("Where they come in")}>
         <Select
-          label={`${name}: where they come in`}
+          label={t("{name}: where they come in", { name })}
           value={whereValue}
           options={where}
           onChange={(next) =>

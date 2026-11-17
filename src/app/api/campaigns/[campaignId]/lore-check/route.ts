@@ -11,6 +11,7 @@ import { refreshNarrationAudio } from "@/lib/dm/renarrate";
 import { mergeLines } from "@/lib/dm/speech";
 import { personLines } from "@/lib/dm/speech-lines";
 import { refuseBetweenSessions } from "@/lib/dm/session-hold";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,9 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  // The refusals read the asker's language; the reader's alert shows them raw.
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -59,7 +62,7 @@ export async function POST(
     }
     if (!steersStory(context)) {
       return Response.json(
-        { error: "Only the party lead can accept a rewrite." },
+        { error: t("Only the party lead can accept a rewrite.") },
         { status: 403 },
       );
     }

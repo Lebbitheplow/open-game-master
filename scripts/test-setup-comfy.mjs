@@ -4,6 +4,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { test, vi } from "vitest";
 
 const { loadSetupComfyModels, PicturesStep } = await import("../src/app/setup/MediaSteps.tsx");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The wizard builds its sentences for the screen; the test reads them in English.
+const t = (key, vars) => translate("en", key, vars);
 
 test("a changed address stops showing models from the opening scan while the new address is checked", () => {
   const html = renderToStaticMarkup(React.createElement(PicturesStep, {
@@ -40,19 +43,19 @@ test("setup lists models from the entered ComfyUI address and keeps the matching
 
   try {
     const signal = new AbortController().signal;
-    assert.deepEqual(await loadSetupComfyModels("http://127.0.0.1:8188/", scan, signal), {
+    assert.deepEqual(await loadSetupComfyModels(t, "http://127.0.0.1:8188/", scan, signal), {
       ...scan, url: "http://127.0.0.1:8188/", error: null,
     });
     assert.equal(requests.length, 0, "the unchanged address keeps the opening scan");
 
-    assert.deepEqual(await loadSetupComfyModels("http://localhost:8288", scan, signal), {
+    assert.deepEqual(await loadSetupComfyModels(t, "http://localhost:8288", scan, signal), {
       url: "http://localhost:8288", checkpoints: ["new.safetensors"], models: [zTurbo], hardware: strix, error: null,
     });
     assert.deepEqual(requests.map(({ url, init }) => [url, init.method, JSON.parse(init.body).url, init.signal]), [
       ["/api/comfy", "POST", "http://localhost:8288", signal],
     ]);
 
-    assert.deepEqual(await loadSetupComfyModels("http://localhost:8388", scan, signal), {
+    assert.deepEqual(await loadSetupComfyModels(t, "http://localhost:8388", scan, signal), {
       url: "http://localhost:8388", checkpoints: [], models: [], hardware: null, error: "Could not reach ComfyUI.",
     });
   } finally {

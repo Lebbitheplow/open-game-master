@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { Select, type SelectOption } from "@/components/ui/Select";
+import { useT } from "@/lib/locale";
 import type { HandCard } from "@/lib/battlemap/hand";
 import { mixLeft, summonCount, summonKind, type SummonChoices } from "@/lib/battlemap/hand-summon";
 
@@ -72,33 +73,34 @@ export function HandSummonPick({
   onKind?: (value: string) => void;
   onStep?: (form: string, delta: 1 | -1) => void;
 }) {
+  const t = useT();
   const summon = card.summon;
   if (!summon) return null;
   const options = card.choice?.options ?? [];
   if (summon.mix) {
     const left = mixLeft(card, choices.mix);
     return (
-      <div className="hand-choice mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label={`Each target's form for ${card.name}`}>
-        <span className={LABEL}>Each target</span>
+      <div className="hand-choice mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label={t("Each target's form for {name}", { name: card.name })}>
+        <span className={LABEL}>{t("Each target")}</span>
         {options.map((option, index) => {
           const now = choices.mix?.[option.value] ?? 0;
           const cost = summon.mix!.cost[option.value] ?? 1;
           return (
             <span key={option.value} style={{ "--i": index } as CSSProperties} className="hand-option inline-flex items-center gap-1 rounded-full border border-stone-600 py-0.5 pl-3 pr-1 text-xs text-stone-300">
               <span title={option.note}>{option.label}</span>
-              <button type="button" aria-label={`One fewer ${option.label}`} disabled={now === 0} onClick={() => onStep?.(option.value, -1)} className={cn(PILL, PILL_OFF, "px-1.5 disabled:opacity-40")}>
+              <button type="button" aria-label={t("One fewer {name}", { name: option.label })} disabled={now === 0} onClick={() => onStep?.(option.value, -1)} className={cn(PILL, PILL_OFF, "px-1.5 disabled:opacity-40")}>
                 <Minus className="size-3" />
               </button>
               <span className="w-4 text-center tabular-nums text-amber-100" aria-live="polite">
                 {now}
               </span>
-              <button type="button" aria-label={`One more ${option.label}`} disabled={left < cost} onClick={() => onStep?.(option.value, 1)} className={cn(PILL, PILL_OFF, "px-1.5 disabled:opacity-40")}>
+              <button type="button" aria-label={t("One more {name}", { name: option.label })} disabled={left < cost} onClick={() => onStep?.(option.value, 1)} className={cn(PILL, PILL_OFF, "px-1.5 disabled:opacity-40")}>
                 <Plus className="size-3" />
               </button>
             </span>
           );
         })}
-        <span className="text-xs text-stone-400">{left} left</span>
+        <span className="text-xs text-stone-400">{t("{left} left", { left })}</span>
       </div>
     );
   }
@@ -117,14 +119,14 @@ export function HandSummonPick({
       {options.length > 1 ? (
         <div className="flex min-w-0 items-center gap-1.5">
           <span className={LABEL} aria-hidden="true">
-            Creature
+            {t("Creature")}
           </span>
           <Select
             value={picked}
             onChange={(value) => onForm?.(value)}
             options={selectOptions}
-            label={`Creature for ${card.name}`}
-            placeholder="Choose a creature"
+            label={t("Creature for {name}", { name: card.name })}
+            placeholder={t("Choose a creature")}
             size="sm"
             className="max-w-[16rem]"
           />
@@ -132,7 +134,7 @@ export function HandSummonPick({
       ) : null}
       {kinds.length > 1 ? (
         <PillChoice
-          label="Kind"
+          label={t("Kind")}
           values={kinds.map((kind) => kind.value)}
           chosen={summonKind(card, choices.kind)}
           show={(value) => kinds.find((kind) => kind.value === value)?.label ?? value}
@@ -140,7 +142,7 @@ export function HandSummonPick({
         />
       ) : null}
       {counts.length > 1 ? (
-        <PillChoice label="Number" values={counts} chosen={summonCount(card, picked, choices.count)} show={String} onPick={(value) => onCount?.(value)} />
+        <PillChoice label={t("Number")} values={counts} chosen={summonCount(card, picked, choices.count)} show={String} onPick={(value) => onCount?.(value)} />
       ) : null}
     </div>
   );

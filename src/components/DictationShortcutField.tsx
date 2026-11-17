@@ -4,6 +4,7 @@ import { Check, Keyboard, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { chordFromEvent, chordProblem, formatChord } from "@/lib/dictation-shortcut";
+import { useT } from "@/lib/locale";
 import {
   setListeningForShortcut,
   useDictationShortcut,
@@ -29,6 +30,7 @@ function heldModifiers(event: KeyboardEvent, mac: boolean): string {
 export function DictationShortcutField({ className }: { className?: string }) {
   const chord = useDictationShortcut();
   const mac = useMacKeyboard();
+  const t = useT();
   const [listening, setListening] = useState(false);
   const [held, setHeld] = useState("");
   const [problem, setProblem] = useState("");
@@ -61,7 +63,7 @@ export function DictationShortcutField({ className }: { className?: string }) {
       if (event.repeat) {
         return;
       }
-      const why = chordProblem(next, event.key);
+      const why = chordProblem(t, next, event.key);
       if (why) {
         setProblem(why);
         setHeld("");
@@ -86,7 +88,7 @@ export function DictationShortcutField({ className }: { className?: string }) {
       window.removeEventListener("keyup", up, true);
       window.removeEventListener("blur", stopListening);
     };
-  }, [listening, mac]);
+  }, [listening, mac, t]);
 
   useEffect(() => {
     if (!saved) {
@@ -105,7 +107,7 @@ export function DictationShortcutField({ className }: { className?: string }) {
             className="motion-pop min-w-24 rounded border border-amber-400/70 bg-amber-950/40 px-2 py-1 text-center font-code text-xs text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.25)]"
             aria-live="polite"
           >
-            {held ? `${held}+...` : "Press the keys..."}
+            {held ? t("{held}+...", { held }) : t("Press the keys...")}
           </kbd>
         ) : name ? (
           <kbd
@@ -116,11 +118,11 @@ export function DictationShortcutField({ className }: { className?: string }) {
             {name}
           </kbd>
         ) : (
-          <span className="text-xs text-stone-500">None set</span>
+          <span className="text-xs text-stone-500">{t("None set", { context: "dictation.noneSet" })}</span>
         )}
         {listening ? (
           <button type="button" onClick={() => setListening(false)} className={BUTTON}>
-            Cancel
+            {t("Cancel")}
           </button>
         ) : (
           <button
@@ -133,7 +135,7 @@ export function DictationShortcutField({ className }: { className?: string }) {
             className={BUTTON}
             data-dictation-set
           >
-            <Keyboard className="size-3.5" /> {chord ? "Change" : "Set a key"}
+            <Keyboard className="size-3.5" /> {chord ? t("Change", { context: "action.change" }) : t("Set a key")}
           </button>
         )}
         {chord && !listening ? (
@@ -147,12 +149,12 @@ export function DictationShortcutField({ className }: { className?: string }) {
             className={BUTTON}
             data-dictation-clear
           >
-            <X className="size-3.5" /> Clear
+            <X className="size-3.5" /> {t("Clear", { context: "action.clear" })}
           </button>
         ) : null}
         {saved ? (
           <span role="status" className="live-in inline-flex items-center gap-1 text-xs text-emerald-400">
-            <Check className="size-3.5" /> Saved on this device
+            <Check className="size-3.5" /> {t("Saved on this device")}
           </span>
         ) : null}
       </div>
@@ -163,8 +165,8 @@ export function DictationShortcutField({ className }: { className?: string }) {
       ) : null}
       <p className="text-xs text-stone-500">
         {listening
-          ? "Hold Ctrl or Alt with a letter, or press a key that does not type, such as F8 or F9. Escape stops listening."
-          : "Hold it at the table, in the message box or anywhere outside another field, to speak as the mic button does. Let go and the words wait in the box; only Send sends them."}
+          ? t("Hold Ctrl or Alt with a letter, or press a key that does not type, such as F8 or F9. Escape stops listening.")
+          : t("Hold it at the table, in the message box or anywhere outside another field, to speak as the mic button does. Let go and the words wait in the box; only Send sends them.")}
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-import { allocateSeq, claimRecap } from "@/lib/db/campaigns";
+import { allocateSeq, claimRecap, getCampaignById } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { dmQueuePausedFor, enqueueDmJobFirst, pauseDmQueue, resumeDmQueue } from "@/lib/dm/queue";
@@ -7,12 +7,13 @@ import {
   SESSION_REASON,
   heldWorkRefusal,
   recapOnStart,
-  sessionEndedLine,
+  sessionEndedLineT,
   sessionHoldFrom,
-  sessionStartedLine,
+  sessionStartedLineT,
   type SessionHold,
 } from "@/lib/dm/session-hold-logic";
 import { latestEventOfType, publishPersisted, publishWithSeq } from "@/lib/events";
+import { translate } from "@/lib/messages-logic";
 
 // Between sessions (src/lib/dm/session-hold-logic.ts has the rules). The DM
 // queue is held at its gate under its own reason, beside a break or a
@@ -56,6 +57,15 @@ function chronicleLine(campaignId: string, content: string): number {
   return seq;
 }
 
+// The chronicle's session lines are stored messages, so they are written in
+// the campaign's own language — the board's words do the same where they are
+// built (tableT in src/lib/battlemap/view.ts). A stored line is never
+// rewritten, so the language at write time is the one it keeps.
+function chronicleT(campaignId: string): (key: string, vars?: Record<string, string | number>) => string {
+  const language = getCampaignById(campaignId)?.gameSettings.tableLanguage ?? "english";
+  return (key, vars) => translate(language === "french" ? "fr" : "en", key, vars);
+}
+
 // Ending an ended session changes nothing: the first end stands, with its
 // name and its number, so a second press or a co-GM's at the same moment
 // never counts a session twice.
@@ -67,7 +77,7 @@ export function endSession(campaignId: string, by: { id: string; username: strin
   const hold: SessionHold = { at: Date.now(), userId: by.id, name: by.username, number: sessionsEnded(campaignId) + 1 };
   pauseDmQueue(campaignId, SESSION_REASON);
   publishPersisted(campaignId, "session_ended", hold);
-  chronicleLine(campaignId, sessionEndedLine(hold.number));
+  chronicleLine(campaignId, sessionEndedLineT(chronicleT(campaignId), hold.number));
   return { hold, already: false };
 }
 
@@ -83,7 +93,7 @@ export function startSession(campaignId: string, by: { id: string; username: str
   const number = current.number + 1;
   resumeDmQueue(campaignId, SESSION_REASON);
   publishPersisted(campaignId, "session_started", { at: Date.now(), userId: by.id, name: by.username, number });
-  const seq = chronicleLine(campaignId, sessionStartedLine(number));
+  const seq = chronicleLine(campaignId, sessionStartedLineT(chronicleT(campaignId), number));
   // The claim is the actions route's own, so the first action after the
   // start does not ask for a second recap of the same gap.
   if (recapOnStart(current.at, Date.now()) && claimRecap(campaignId, seq)) {

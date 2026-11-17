@@ -29,6 +29,8 @@ import { suite, abilityMod, proficiencyBonus } from "./lib/enforce-harness.mjs";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { openBuilder, STANDARD_ARRAY } = await import("./lib/enforce-builder.mjs");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const srd = await import("../src/lib/srd/index.ts");
 const pointBuy = await import("../src/lib/srd/point-buy.ts");
 const dice = await import("../src/app/characters/builder/abilityDice.ts");
@@ -194,7 +196,7 @@ await test("the builder asks for every improvement the level has earned, and no 
       // this one reads the slots and the improvement gate alone.
       const built = builder.build(fighter({ class: classId, level: Number(level), subclass: "Champion", stylePicks: classId === "fighter" ? ["defense"] : [] }));
       assert.equal(built.derived.asiSlotLevels.length, count, `${classId} ${level}`);
-      const gate = builder.submit.abilitiesBlocker(built.derived, built.state);
+      const gate = builder.submit.abilitiesBlocker(t, built.derived, built.state);
       assert.equal(gate === null, count === 0, `${classId} ${level} with no improvement chosen`);
     }
   }

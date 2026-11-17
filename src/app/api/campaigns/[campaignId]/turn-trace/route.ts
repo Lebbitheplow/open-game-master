@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { turnTracePage } from "@/lib/dm/turn-trace";
 import { isPlaytest } from "@/lib/workshop/kind";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,14 +29,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ camp
   if (isErrorResponse(context)) {
     return context;
   }
+  // The sheet shows these raw (its read puts data.error straight into the
+  // panel's alert), so they answer in the request's language.
+  const t = requestT(request);
   if (!isPlaytest(context.campaign)) {
     return Response.json(
-      { error: "Only a test fight shows its turn trace. At a table in play, the GM's calls stay behind the screen." },
+      { error: t("Only a test fight shows its turn trace. At a table in play, the GM's calls stay behind the screen.") },
       { status: 403 },
     );
   }
   if (context.user.id !== context.campaign.ownerUserId) {
-    return Response.json({ error: "Only the person who started this test fight can read its turn trace." }, { status: 403 });
+    return Response.json({ error: t("Only the person who started this test fight can read its turn trace.") }, { status: 403 });
   }
   const url = new URL(request.url);
   const parsed = querySchema.safeParse({
@@ -43,11 +47,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ camp
     before: url.searchParams.get("before") ?? undefined,
   });
   if (!parsed.success) {
-    return Response.json({ error: "Ask for between 1 and 30 turns, and for earlier ones by a turn's id." }, { status: 400 });
+    return Response.json({ error: t("Ask for between 1 and 30 turns, and for earlier ones by a turn's id.") }, { status: 400 });
   }
   const page = turnTracePage(campaignId, parsed.data.limit, parsed.data.before ?? null);
   if (!page) {
-    return Response.json({ error: "That turn is not one of this table's, so there is nothing before it to show." }, { status: 404 });
+    return Response.json({ error: t("That turn is not one of this table's, so there is nothing before it to show.") }, { status: 404 });
   }
   return Response.json(page);
 }

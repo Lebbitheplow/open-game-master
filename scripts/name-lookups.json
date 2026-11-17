@@ -319,7 +319,13 @@
     "app/workshop/homebrew/SubclassChoiceFields.tsx#bypass": [["authoring",1,"the subclass editor's draft read as it is typed"]],
     "app/AuthForm.tsx#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "app/ChangePasswordForm.tsx#whole-single": [["key",1,"change detection, UI keys, ids, slugs, password confirmation, a saved selection (src/app: every site read)"]],
-    "app/admin/AdminAddonsPanel.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "app/admin/AdminAddonsPanel.tsx#keyed": [
+      [
+        "key",
+        2,
+        "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"
+      ]
+    ],
     "app/admin/AdminBackupSection.tsx#keyed": [["key",6,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/admin/AdminBackupSection.tsx#whole": [["key",7,"backup and file names"]],
     "app/admin/AdminImagesSection.tsx#partial": [["key",1,"backup and file names"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
@@ -395,7 +401,6 @@
     "app/campaigns/[campaignId]/AddonBoardView.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/campaigns/[campaignId]/AddonViewSwitch.tsx#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/campaigns/[campaignId]/AddonViewSwitch.tsx#whole": [["key",2,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"],["key",1,"addon view keys"]],
-    "app/campaigns/[campaignId]/AfterRollCard.tsx#keyed": [["key",1,"the label of a roll kind the engine writes"]],
     "app/campaigns/[campaignId]/BattleMapGrid.tsx#fallback": [["key",2,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/BattleMapGrid.tsx#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/campaigns/[campaignId]/BattleMapGrid.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
@@ -446,7 +451,6 @@
     "app/campaigns/[campaignId]/FactionsPanel.tsx#whole-single": [["key",1,"a create whose answer was lost, looked for in the list read again by the name it was sent with, compared as the server stored it (WA-05)"]],
     "app/campaigns/[campaignId]/FightSummaryCard.tsx#first": [["key",1,"the fighter who dealt most"]],
     "app/campaigns/[campaignId]/GameSettingsGroups.tsx#number": [["key",5,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"],["key",2,"a setting's select value (UI)"]],
-    "app/campaigns/[campaignId]/GameSettingsPanel.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/Hand.tsx#fallback": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/Hand.tsx#first": [["key",1,"the default aim: the aimed enemy, else the first target on the board"],["key",1,"the first companion the GM seat answers for, heading its reactions (no text names it)"]],
     "app/campaigns/[campaignId]/Hand.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"a board control's value, \"id:+\" or \"id:-\" for a share (issue 570)"]],
@@ -502,7 +506,18 @@
     "app/campaigns/[campaignId]/MarketShopEditor.tsx#whole": [["identity",2,"a stock line by whole name"]],
     "app/campaigns/[campaignId]/MessageActions.tsx#whole": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/MessageContent.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
-    "app/campaigns/[campaignId]/MessageParts.tsx#partial": [["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"a system line's own marker prefix (RECAP_PREFIX, issue 668), as the lead note and the pact reveal are read"]],
+    "app/campaigns/[campaignId]/MessageParts.tsx#partial": [
+      [
+        "pattern",
+        7,
+        "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
+      ],
+      [
+        "key",
+        1,
+        "a system line's own marker prefix (RECAP_PREFIX, issue 668), as the lead note and the pact reveal are read"
+      ]
+    ],
     "app/campaigns/[campaignId]/Moments.tsx#bypass": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"],["key",2,"counting a pack's lines by their own names"]],
     "app/campaigns/[campaignId]/Moments.tsx#partial": [["key",1,"counting a pack's lines by their own names"],["key",4,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/Moments.tsx#whole": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
@@ -527,7 +542,6 @@
     "app/campaigns/[campaignId]/PartyPanel.tsx#first": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/PartyPanel.tsx#whole": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/PartyStory.tsx#whole-single": [["key",2,"the party story as saved against the draft: two copies of one stored string"]],
-    "app/campaigns/[campaignId]/PendingRollCard.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "components/dice/FaceEntry.tsx#fallback": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "components/dice/FaceEntry.tsx#first": [["parse",1,"dice: the flat bonus a pattern captured at the end of a roll"]],
     "components/dice/FaceEntry.tsx#number": [["key",4,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
@@ -572,7 +586,13 @@
     "app/campaigns/[campaignId]/regionPlaces.ts#helper": [["parse",1,"a part's short name under its place for the region map's caption (nameWithin): display, no record decided"]],
     "app/campaigns/[campaignId]/regionPlaces.ts#partial": [["key",4,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/table-layout-store.ts#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
-    "app/campaigns/[campaignId]/table-settings-groups.ts#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"],["search",2,"the settings filter box"]],
+    "app/campaigns/[campaignId]/table-settings-groups.ts#partial": [
+      [
+        "search",
+        2,
+        "the settings filter box"
+      ]
+    ],
     "app/campaigns/[campaignId]/terrainDraw.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/campaigns/[campaignId]/terrainDraw.ts#partial": [["key",2,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/useAmbienceAudio.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
@@ -597,7 +617,6 @@
     "app/characters/[characterId]/SheetSections.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/characters/[characterId]/ready/page.tsx#partial": [["parse",1,"an id turned into words for display"]],
     "app/characters/builder/AbilityEditor.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "app/characters/builder/AbilityEditor.tsx#partial": [["key",1,"UI copy"]],
     "app/characters/builder/cardFaces.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "app/characters/builder/cardFaces.ts#whole-single": [["key",1,"a class's plays-like reading against its own id, textKey on both sides, for the card's play line (\"Core class\")"]],
     "app/characters/builder/AbilityText.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
@@ -610,7 +629,18 @@
     "app/characters/builder/CatalogBrowser.tsx#whole": [["identity",2,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"],["key",7,"UI section keys"]],
     "app/characters/builder/CharacterBuilder.tsx#whole": [["identity",2,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"]],
     "app/characters/builder/CharacterBuilder.tsx#whole-single": [["key",1,"the wizard step key an undo was offered on"]],
-    "app/characters/builder/EquipmentSection.tsx#bypass": [["key",5,"builder gear picked from the catalog, keyed by its row name"],["key",2,"a gear name handed to the world pack's renamer for display (reskin-logic.ts displayName)"]],
+    "app/characters/builder/EquipmentSection.tsx#bypass": [
+      [
+        "key",
+        7,
+        "builder gear picked from the catalog, keyed by its row name"
+      ],
+      [
+        "key",
+        2,
+        "a gear name handed to the world pack's renamer for display (reskin-logic.ts displayName)"
+      ]
+    ],
     "app/characters/builder/EquipmentSection.tsx#partial": [["identity",1,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"],["key",1,"builder gear picked from the catalog, keyed by its row name"]],
     "app/characters/builder/FeatChoicesFields.tsx#bypass": [["key",1,"a picked spell's row name"]],
     "app/characters/builder/FeatChoicesFields.tsx#partial": [["identity",6,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"]],
@@ -632,7 +662,13 @@
     "app/characters/builder/RacialCantripPicker.tsx#whole": [["identity",2,"racial cantrip picks by whole name (textKey)"]],
     "app/characters/builder/RacialChoicesSection.tsx#bypass": [["key",2,"a picked row's name"]],
     "app/characters/builder/RacialChoicesSection.tsx#whole": [["identity",1,"feat picks by their row names"],["identity",1,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"],["key",2,"a weapon pick against the picks already made from the same list, as stored"]],
-    "app/characters/builder/abilityDice.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "app/characters/builder/abilityDice.ts#partial": [
+      [
+        "pattern",
+        2,
+        "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
+      ]
+    ],
     "app/characters/builder/casting.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/characters/builder/classAbilities.ts#first": [["key",1,"a class id's first prerequisite"],["key",1,"a class's first ability"]],
     "app/characters/builder/featPrereqs.ts#keyed": [["identity",2,"feat names by textKey"]],
@@ -652,7 +688,13 @@
     "app/characters/builder/playstyles.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/characters/builder/playstyles.ts#whole": [["identity",2,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"]],
     "app/characters/builder/quickBuild.ts#fallback": [["key",1,"a quick build's default pick: the best-scored or first offered option (no text names it)"]],
-    "app/characters/builder/quickBuild.ts#first": [["key",5,"a quick build's default pick: the best-scored or first offered option (no text names it)"]],
+    "app/characters/builder/quickBuild.ts#first": [
+      [
+        "key",
+        6,
+        "a quick build's default pick: the best-scored or first offered option (no text names it)"
+      ]
+    ],
     "app/characters/builder/quickBuild.ts#partial": [["identity",9,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"]],
     "app/characters/builder/quickBuild.ts#whole": [["identity",4,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"],["key",2,"builder draft field values compared as stored"],["identity",1,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"],["key",1,"a racial weapon pick against the picks already made from the same list, as stored"]],
     "app/characters/builder/quickBuild.ts#whole-single": [["key",1,"builder draft field values compared as stored"]],
@@ -672,7 +714,13 @@
     "app/characters/builder/steps/AbilitiesStep.tsx#partial": [["key",1,"an English article for a class name (UI copy)"]],
     "app/characters/builder/steps/AncestryStep.tsx#whole": [["key",1,"catalog class names on both sides"]],
     "app/characters/builder/steps/CallingStep.tsx#fallback": [["identity",1,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"]],
-    "app/characters/builder/steps/CallingStep.tsx#partial": [["identity",1,"builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"]],
+    "app/characters/builder/steps/CallingStep.tsx#partial": [
+      [
+        "identity",
+        2,
+        "builder picks, kit lines, spells, tools and skills by whole name or id; ids, steps and defaults"
+      ]
+    ],
     "app/characters/builder/steps/ClassChoices.tsx#first": [["key",2,"the one tool a single choice holds, by id"]],
     "app/characters/builder/steps/MulticlassSection.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/characters/builder/steps/MulticlassSection.tsx#partial": [["key",1,"a skill held elsewhere, by id, textKey on both sides"],["identity",1,"a subclass the bundled tables already offer, by whole name through textKey"]],
@@ -713,17 +761,40 @@
     "app/characters/page.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "app/create-campaign/NarratorFields.tsx#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/create-campaign/VoiceChatFields.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "app/create-campaign/titles.ts#fallback": [["key",1,"title banks by genre"]],
+    "app/create-campaign/titles.ts#fallback": [
+      [
+        "key",
+        2,
+        "title banks by genre"
+      ]
+    ],
     "app/create-campaign/titles.ts#whole": [["key",1,"title banks by genre"]],
     "app/generated-audio/[...path]/route.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "app/reference/CalculatorsPanel.tsx#fallback": [["key",3,"calculator ids and compare slugs"]],
     "app/reference/CalculatorsPanel.tsx#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/reference/ComparePanel.tsx#partial": [["key",1,"calculator ids and compare slugs"]],
-    "app/reference/DeskPanel.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "app/reference/DeskPanel.tsx#keyed": [
+      [
+        "key",
+        2,
+        "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"
+      ]
+    ],
     "app/reference/ResultBadges.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/reference/ResultBadges.tsx#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "app/reference/ResultBadges.tsx#partial": [["pattern",5,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "app/reference/page.tsx#partial": [["search",2,"the glossary's filter box"],["key",4,"calculator ids and compare slugs"]],
+    "app/reference/page.tsx#partial": [
+      [
+        "search",
+        3,
+        "the glossary's filter box"
+      ],
+      [
+        "key",
+        4,
+        "calculator ids and compare slugs"
+      ]
+    ],
     "app/reference/page.tsx#whole": [["key",3,"calculator ids and compare slugs"]],
     "app/reference/page.tsx#whole-single": [["key",1,"change detection, UI keys, ids, slugs, password confirmation, a saved selection (src/app: every site read)"]],
     "app/settings/AvatarCropDialog.tsx#whole": [["key",1,"MIME types"]],
@@ -760,7 +831,13 @@
     "app/workshop/encounters/EncounterEvents.tsx#partial": [["authoring",1,"workshop authoring: the arrivals' place picker's own option value (slot:<n>)"]],
     "app/workshop/encounters/EncounterRows.tsx#fallback": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "app/workshop/encounters/EncounterRows.tsx#partial": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
-    "app/workshop/homebrew/ArchetypeFields.tsx#number": [["authoring",3,"workshop authoring"]],
+    "app/workshop/homebrew/ArchetypeFields.tsx#number": [
+      [
+        "authoring",
+        4,
+        "workshop authoring"
+      ]
+    ],
     "app/workshop/homebrew/ArchetypeFields.tsx#partial": [["authoring",3,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "app/workshop/homebrew/ArchetypeFields.tsx#whole": [["authoring",2,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "app/workshop/homebrew/BackgroundFields.tsx#partial": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
@@ -868,7 +945,13 @@
     "components/DeviceSettings.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "components/DiceLookEditor.tsx#whole": [["key",2,"UI keys, file names, glyphs and markdown"]],
     "components/HelpParts.tsx#first": [["search",2,"the help filter box's first hit"]],
-    "components/HelpParts.tsx#keyed": [["key",3,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "components/HelpParts.tsx#keyed": [
+      [
+        "key",
+        2,
+        "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"
+      ]
+    ],
     "components/HelpParts.tsx#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "components/HelpParts.tsx#partial": [["search",2,"the help filter box"]],
     "components/InviteShareDialog.tsx#partial": [["key",2,"UI keys, file names, glyphs and markdown"]],
@@ -895,7 +978,13 @@
     "components/sheet/SheetSpells.tsx#whole": [["identity",1,"spells by whole name"]],
     "components/sheet/SpellBook.tsx#first": [["key",1,"the spell book's first useful level tab"]],
     "components/sheet/SpellBook.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
-    "components/sheet/SpellBook.tsx#number": [["key",4,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "components/sheet/SpellBook.tsx#number": [
+      [
+        "key",
+        3,
+        "digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"
+      ]
+    ],
     "components/sheet/SpellBook.tsx#partial": [["key",5,"spell levels and positions"],["search",1,"the spell book's filter box"]],
     "components/sheet/SpellBook.tsx#whole": [["key",1,"spell levels and positions"]],
     "components/sheet/SpellBook.tsx#whole-single": [["key",2,"UI page keys; the worn armor named by the AC breakdown (the same stored item's own name both sides)"]],
@@ -1029,7 +1118,13 @@
     "lib/battlemap/condition-glyphs.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/battlemap/condition-glyphs.ts#partial": [["key",1,"a condition's head word for its glyph"]],
     "lib/battlemap/condition-notes.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
-    "lib/battlemap/condition-rules.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "lib/battlemap/condition-rules.ts#keyed": [
+      [
+        "key",
+        2,
+        "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"
+      ]
+    ],
     "lib/battlemap/condition-notes.ts#partial": [["key",2,"canonical condition names and a spell's own name in its source note"]],
     "lib/battlemap/damage-palette.ts#fallback": [["key",1,"damage types, a neutral tone for the rest"]],
     "lib/battlemap/damage-palette.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
@@ -1046,7 +1141,13 @@
     "lib/dm/oathbow.ts#keyed": [["key",1,"a condition's own meta, by the condition name isConditionNamed found on the archer"]],
     "lib/dm/opportunity-ask-logic.ts#number": [["key",1,"a slot table's own level keys (\"1\" to \"9\") read as their numbers to find the lowest open slot: no record's name"]],
     "lib/battlemap/hand-core.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/battlemap/hand-core.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/battlemap/hand-core.ts#partial": [
+      [
+        "pattern",
+        5,
+        "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
+      ]
+    ],
     "lib/battlemap/hand-escape.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/battlemap/hand-escape.ts#whole": [["identity",1,"a hold rule by whole condition name"]],
     "lib/battlemap/hand-granted.ts#keyed": [["key",1,"a sheet's conditionMeta by the condition key it was written under"]],
@@ -1077,7 +1178,13 @@
     "lib/battlemap/hand-spells.ts#whole-single": [["identity",2,"concentration by textKey"]],
     "lib/battlemap/hand-subclass.ts#partial": [["identity",1,"spends by whole name"],["key",4,"the prefix of a once-per-turn budget key"],["parse",1,"ODM's own counter guidance read for the turn cost it names (bundled data)"]],
     "lib/battlemap/hand-summon.ts#first": [["key",1,"a spell's own level, read off the slot levels its catalogue's first form is offered at (issue 685)"]],
-    "lib/battlemap/hand-summon.ts#keyed": [["key",12,"a summoning card's creatures by the name the catalogue gave them (picked from it), their numbers and budgets by slot level, the player's counts by those names, and the catalogues and the table's fetched spell facts by textKey of the sheet's spell names (issue 685)"]],
+    "lib/battlemap/hand-summon.ts#keyed": [
+      [
+        "key",
+        13,
+        "a summoning card's creatures by the name the catalogue gave them (picked from it), their numbers and budgets by slot level, the player's counts by those names, and the catalogues and the table's fetched spell facts by textKey of the sheet's spell names (issue 685)"
+      ]
+    ],
     "lib/battlemap/hand-summon.ts#partial": [["key",1,"a board control's own value, \"Skeleton:+\", which the Hand wrote and the bridge held to its offer"]],
     "lib/battlemap/hand-summon.ts#whole": [["identity",1,"the casting held, by textKey of its spell"]],
     "lib/battlemap/hand-table.ts#fallback": [["key",1,"the active sheet id, else the player's first"]],
@@ -1086,7 +1193,13 @@
     "lib/battlemap/hand.ts#bypass": [["key",2,"an attack card's label is the item's own name (display)"],["identity",1,"a natural weapon not shown twice when a carried weapon has its whole name"],["identity",1,"a carried weapon's line keyed by its whole name"]],
     "lib/battlemap/hand.ts#fallback": [["key",1,"the off-hand card: the second weapon, else the first again"]],
     "lib/battlemap/hand.ts#first": [["key",1,"the off-hand card: the second weapon, else the first again"]],
-    "lib/battlemap/hand.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "lib/battlemap/hand.ts#keyed": [
+      [
+        "key",
+        2,
+        "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"
+      ]
+    ],
     "lib/battlemap/hand.ts#partial": [["key",2,"ODM's own \"Maneuver: \" feature names; carried-weapon dedupe"]],
     "lib/battlemap/hand.ts#whole": [["identity",1,"a natural weapon not shown twice when a carried weapon has its whole name"]],
     "lib/battlemap/initiative-rows.ts#whole": [["identity",1,"the acting row by whole name"]],
@@ -1680,7 +1793,13 @@
     "lib/dm/cure-spell.ts#first": [["key",1,"with no condition named, the first held one the cure ends (the caster's choice); a named one by its key"]],
     "lib/dm/cure-spell.ts#partial": [["key",1,"the cure list's own words (disease, a kind of madness), ODM's data"],["key",2,"a reduced-maximum drain and a drained score by the labels the engine stores them under (Greater Restoration)"]],
     "lib/dm/cure-spell.ts#whole": [["identity",2,"a cured condition by whole name"]],
-    "lib/dm/damage-logic.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
+    "lib/dm/damage-logic.ts#normalizer": [
+      [
+        "key",
+        2,
+        "slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"
+      ]
+    ],
     "lib/dm/damage-logic.ts#partial": [["key",7,"damage-type words in the SRD's English resistance lines"],["key",1,"the SRD row's English condition-immunity line against canonical condition names"],["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/damage-logic.ts#whole": [["identity",1,"condition instances by whole name or key"],["key",1,"damage types"]],
     "lib/dm/damage-parts.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
@@ -2169,9 +2288,36 @@
     "lib/dm/speech-prose.ts#first": [["parse",2,"a regex match's text"],["parse",2,"the first sentence of a text"]],
     "lib/dm/speech-prose.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/speech-prose.ts#partial": [["pattern",13,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",13,"speaker names in prose, and the quotes and paragraphs they stand in"]],
-    "lib/dm/speech.ts#first": [["search",2,"speaker names in prose"],["parse",2,"the first sentence of a text"],["parse",1,"the first word of a sentence, read for a capital"]],
+    "lib/dm/speech.ts#first": [
+      [
+        "parse",
+        3,
+        "the first sentence of a text"
+      ],
+      [
+        "parse",
+        1,
+        "a regex match's text"
+      ],
+      [
+        "parse",
+        1,
+        "the first word of a sentence, read for a capital"
+      ]
+    ],
     "lib/dm/speech.ts#keyed": [["key",1,"whether the story writes a word in lower case: the set of common words, not a record found by name"]],
-    "lib/dm/speech.ts#partial": [["pattern",11,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",11,"speakers and quotes in prose, and the paragraph a quote stands in"]],
+    "lib/dm/speech.ts#partial": [
+      [
+        "pattern",
+        12,
+        "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
+      ],
+      [
+        "search",
+        10,
+        "speakers and quotes in prose"
+      ]
+    ],
     "lib/dm/spell-attack-riders.ts#partial": [["key",2,"SRD spell names and creature types"]],
     "lib/dm/spell-attack-riders.ts#whole": [["identity",1,"condition instances by whole name or key"]],
     "lib/dm/spell-aura.ts#keyed": [["key",6,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
@@ -2512,7 +2658,13 @@
     "lib/rulebook/catalog-rows.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/rulebook/catalog-rows.ts#partial": [["pattern",11,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["search",2,"the rulebook catalog's query"],["parse",4,"page markdown"],["key",3,"the SRD race page for a race's English name forms"]],
     "lib/rulebook/catalog-rows.ts#whole": [["key",2,"the SRD race page for a race's English name forms"],["identity",1,"a page by whole title"]],
-    "lib/rulebook/crosswalk.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"],["key",1,"the French where line by its page id (WHERE_FR)"]],
+    "lib/rulebook/crosswalk.ts#keyed": [
+      [
+        "key",
+        2,
+        "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"
+      ]
+    ],
     "lib/rulebook/markdown.ts#first": [["parse",1,"a page's first block"]],
     "lib/rulebook/markdown.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/rulebook/markdown.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
@@ -2662,9 +2814,27 @@
     "lib/srd/granted-attacks.ts#whole-single": [["identity",1,"gate choices, feat twins, third-caster subclasses by textKey; dice parts"]],
     "lib/srd/granted-casts.ts#partial": [["identity",3,"invocations and spells by whole name (textKey sets)"]],
     "lib/srd/index.ts#fallback": [["key",1,"a class by id: the SRD's, else a setting or workshop class"]],
-    "lib/srd/index.ts#keyed": [["identity",3,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
-    "lib/srd/index.ts#normalizer": [["key",3,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
-    "lib/srd/index.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"ODM's own \"Size (Small)\" pick record a lineage writes"]],
+    "lib/srd/index.ts#keyed": [
+      [
+        "identity",
+        4,
+        "SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"
+      ]
+    ],
+    "lib/srd/index.ts#normalizer": [
+      [
+        "key",
+        4,
+        "slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"
+      ]
+    ],
+    "lib/srd/index.ts#partial": [
+      [
+        "pattern",
+        3,
+        "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
+      ]
+    ],
     "lib/srd/index.ts#whole": [["identity",5,"a feature or spell by its whole name"],["key",1,"the worn armor's row, by the name the armor engine itself resolved it under"]],
     "lib/dm/feature-teleport.ts#whole": [["identity",3,"a credit by its feature key"]],
     "lib/srd/item-cast-credit.ts#whole": [["identity",8,"a credit by its spell key"]],
@@ -2913,7 +3083,18 @@
     "lib/workshop/import.ts#whole": [["authoring",1,"workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"]],
     "lib/workshop/pickers.ts#partial": [["authoring",2,"workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/workshop/pickers.ts#whole": [["authoring",1,"workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"]],
-    "lib/workshop/prose-check.ts#partial": [["authoring",2,"workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/workshop/prose-check.ts#partial": [
+      [
+        "authoring",
+        4,
+        "workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"
+      ],
+      [
+        "pattern",
+        2,
+        "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
+      ]
+    ],
     "lib/workshop/species-traits.ts#partial": [["authoring",5,"workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"],["pattern",7,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/workshop/species-traits.ts#whole": [["authoring",2,"workshop authoring (boards, bundles, imports, catalogs, pickers, species traits); every site read"]],
     "lib/workshop/spell-preview.ts#whole-single": [["authoring",2,"workshop authoring; every site read"]],
@@ -3270,10 +3451,28 @@
     "lib/srd/genre-gh-warded.ts#partial": [["key",2,"an attacker's creature type cut into words, and the type a Warded condition names in its bracket (engine vocabulary)"]],
     "lib/srd/genre-gh-warded.ts#whole": [["key",1,"a creature type among the attacker's type words (engine vocabulary)"]],
     "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]],
-    "lib/srd/item-row.ts#keyed": [["key",1,"ITEM_EN_BY_FR reverse lookup for French SRD item names"]],
-    "lib/dm/item-logic.ts#keyed": [["key",1,"ITEM_EN_BY_FR reverse lookup for French SRD item names"]],
+    "lib/srd/item-row.ts#keyed": [
+      [
+        "identity",
+        1,
+        "French SRD item name reverse lookup (ITEM_EN_BY_FR)"
+      ]
+    ],
+    "lib/dm/item-logic.ts#keyed": [
+      [
+        "key",
+        1,
+        "French-to-English SRD item name reverse lookup (ITEM_EN_BY_FR)"
+      ]
+    ],
     "lib/content/names.ts#normalizer": [["key",4,"official SRD name table key normalizers (gearKey, slugKey, canonicalKey) for FR_NAMES_BY_TABLE lookup"]],
-    "lib/content/names.ts#keyed": [["key",6,"official SRD table lookups into FR_NAMES_BY_TABLE using normalized keys"]],
+    "lib/content/names.ts#keyed": [
+      [
+        "key",
+        10,
+        "official SRD table lookups into FR_NAMES_BY_TABLE using normalized keys"
+      ]
+    ],
     "lib/content/names.ts#partial": [["key",3,"parenthetical and measurement suffix stripping for speciesTraitName and backgroundFeatureName"]],
     "lib/dm/charge-logic.ts#partial": [["pattern",12,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["parse",1,"the attacks a Charge or Pounce line names, split on its \"or\""]],
     "lib/dm/charge-logic.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
@@ -3329,9 +3528,429 @@
     ],
     "lib/i18n/locale.ts#whole": [
       [
-        "parse",
+        "key",
         1,
-        "cookie name equality in cookieValue (protocol), never a record's name"
+        "cookie name comparison"
+      ]
+    ],
+    "app/characters/builder/abilityGains.ts#number": [
+      [
+        "key",
+        1,
+        "digits captured from \"at level N\" gain source"
+      ]
+    ],
+    "app/characters/builder/abilityGains.ts#partial": [
+      [
+        "pattern",
+        1,
+        "matching \"at level N\" gain source for translation"
+      ]
+    ],
+    "lib/battlemap/hand-core.ts#whole-single": [
+      [
+        "key",
+        10,
+        "engine/card kind or id equality checks"
+      ]
+    ],
+    "lib/dm/damage-logic.ts#keyed": [
+      [
+        "key",
+        2,
+        "French damage type display words (DAMAGE_TYPE_WORDS_FR)"
+      ]
+    ],
+    "lib/locale.tsx#normalizer": [
+      [
+        "key",
+        1,
+        "navigator.language tag normalization"
+      ]
+    ],
+    "lib/locale.tsx#partial": [
+      [
+        "key",
+        1,
+        "navigator.language prefix split"
+      ]
+    ],
+    "lib/characters/class-words.ts#whole-single": [
+      [
+        "identity",
+        1,
+        "checking whether contentName returned the fallback string unchanged before falling back to idAsName"
+      ]
+    ],
+    "lib/dm/faction-logic.ts#keyed": [
+      [
+        "key",
+        1,
+        "standing and attitude message key table (ATTITUDE_KEYS)"
+      ]
+    ],
+    "lib/battlemap/skins.ts#keyed": [
+      [
+        "key",
+        1,
+        "battlemap skin table lookup by id"
+      ]
+    ],
+    "lib/dm/personality-labels.ts#keyed": [
+      [
+        "key",
+        1,
+        "stock GM personality name to message key slug table (SLUGS)"
+      ]
+    ],
+    "lib/roll-labels.ts#keyed": [
+      [
+        "key",
+        1,
+        "roll label lookup by roll kind/key"
+      ]
+    ],
+    "lib/battlemap/hand-display.ts#partial": [
+      [
+        "parse",
+        12,
+        "display formatting and parsing of action/hand strings"
+      ]
+    ],
+    "lib/battlemap/hand-display.ts#keyed": [
+      [
+        "key",
+        2,
+        "hand display label/icon table lookups by key"
+      ]
+    ],
+    "lib/battlemap/hand-display.ts#whole-single": [
+      [
+        "key",
+        1,
+        "hand display kind comparison"
+      ]
+    ],
+    "lib/battlemap/hand-react.ts#fallback": [
+      [
+        "identity",
+        2,
+        "reaction target/option fallback"
+      ]
+    ],
+    "lib/dm/secret-action-request.ts#partial": [
+      [
+        "parse",
+        3,
+        "secret action request parsing"
+      ]
+    ],
+    "app/api/campaigns/[campaignId]/actions/route.ts#whole-single": [
+      [
+        "key",
+        6,
+        "action route kind/field comparisons"
+      ]
+    ],
+    "app/api/campaigns/[campaignId]/actions/route.ts#partial": [
+      [
+        "parse",
+        7,
+        "action route payload/text parsing"
+      ]
+    ],
+    "app/api/campaigns/[campaignId]/actions/route.ts#helper": [
+      [
+        "search",
+        1,
+        "action route named lookup helper"
+      ]
+    ],
+    "app/api/campaigns/[campaignId]/encounter/end-turn/route.ts#partial": [
+      [
+        "parse",
+        5,
+        "end-turn route effect/condition parsing"
+      ]
+    ],
+    "app/campaigns/[campaignId]/AfterRollCard.tsx#partial": [
+      [
+        "parse",
+        7,
+        "roll result card formatting/parsing"
+      ]
+    ],
+    "components/sheet/SheetParts.tsx#bypass": [
+      [
+        "identity",
+        1,
+        "sheet part item lookup"
+      ]
+    ],
+    "lib/battlemap/hand-play.ts#normalizer": [
+      [
+        "key",
+        1,
+        "hand-play key normalizer"
+      ]
+    ],
+    "lib/battlemap/hand-play.ts#whole-single": [
+      [
+        "key",
+        1,
+        "hand-play kind comparison"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MarketPanel.tsx#keyed": [
+      [
+        "key",
+        2,
+        "market panel category/label lookup"
+      ]
+    ],
+    "lib/battlemap/hand-gear.ts#whole-single": [
+      [
+        "identity",
+        1,
+        "carried gear item match"
+      ]
+    ],
+    "lib/battlemap/hand.ts#normalizer": [
+      [
+        "key",
+        1,
+        "hand action key normalizer"
+      ]
+    ],
+    "app/campaigns/[campaignId]/mapCatalogue.ts#keyed": [
+      [
+        "key",
+        1,
+        "map catalogue lookup by id"
+      ]
+    ],
+    "components/AttractionPicker.tsx#keyed": [
+      [
+        "key",
+        1,
+        "attraction picker lookup by key"
+      ]
+    ],
+    "components/rulebook/RulebookContents.tsx#keyed": [
+      [
+        "key",
+        2,
+        "rulebook contents lookup by slug/id"
+      ]
+    ],
+    "components/rulebook/RulebookReader.tsx#keyed": [
+      [
+        "key",
+        1,
+        "rulebook reader lookup by slug/id"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MonsterFields.tsx#keyed": [
+      [
+        "key",
+        1,
+        "monster fields lookup by key"
+      ]
+    ],
+    "app/workshop/pdf-import/send-book.ts#fallback": [
+      [
+        "authoring",
+        1,
+        "pdf-import section fallback"
+      ]
+    ],
+    "components/sheet/SheetGearRow.tsx#bypass": [
+      [
+        "identity",
+        1,
+        "sheet gear row lookup"
+      ]
+    ],
+    "app/characters/builder/CardText.tsx#partial": [
+      [
+        "parse",
+        10,
+        "character builder card text formatting/parsing"
+      ]
+    ],
+    "app/characters/builder/LineageCarousel.tsx#keyed": [
+      [
+        "key",
+        1,
+        "lineage carousel lookup by key"
+      ]
+    ],
+    "app/characters/builder/steps/AncestryStep.tsx#keyed": [
+      [
+        "key",
+        1,
+        "ancestry step lookup by key"
+      ]
+    ],
+    "app/characters/builder/PlaystylePicker.tsx#keyed": [
+      [
+        "key",
+        1,
+        "playstyle picker lookup by key"
+      ]
+    ],
+    "app/characters/builder/steps/CallingStep.tsx#whole": [
+      [
+        "key",
+        1,
+        "calling step option comparison"
+      ]
+    ],
+    "app/characters/builder/steps/CallingStep.tsx#whole-single": [
+      [
+        "key",
+        1,
+        "calling step selection comparison"
+      ]
+    ],
+    "app/characters/builder/steps/CallingStep.tsx#keyed": [
+      [
+        "key",
+        1,
+        "calling step lookup by key"
+      ]
+    ],
+    "app/characters/builder/steps/CallingSetup.tsx#partial": [
+      [
+        "parse",
+        2,
+        "calling setup option text parsing"
+      ]
+    ],
+    "app/characters/builder/EquipmentSection.tsx#keyed": [
+      [
+        "key",
+        1,
+        "equipment section lookup by key"
+      ]
+    ],
+    "app/characters/builder/levelProgression.ts#keyed": [
+      [
+        "key",
+        1,
+        "level progression lookup by key"
+      ]
+    ],
+    "app/characters/builder/QuickBuildQuiz.tsx#keyed": [
+      [
+        "key",
+        1,
+        "quick build quiz lookup by key"
+      ]
+    ],
+    "app/characters/builder/CharacterBuilder.tsx#keyed": [
+      [
+        "key",
+        2,
+        "character builder lookup by key"
+      ]
+    ],
+    "app/campaigns/[campaignId]/handTargets.ts#fallback": [
+      [
+        "identity",
+        1,
+        "hand target fallback"
+      ]
+    ],
+    "app/characters/[characterId]/ready/page.tsx#whole-single": [
+      [
+        "key",
+        1,
+        "ready page state comparison"
+      ]
+    ],
+    "app/home/types.ts#whole-single": [
+      [
+        "key",
+        1,
+        "home types comparison"
+      ]
+    ],
+    "app/workshop/homebrew/HomebrewEditor.tsx#keyed": [
+      [
+        "key",
+        2,
+        "homebrew editor lookup by key"
+      ]
+    ],
+    "app/workshop/homebrew/HomebrewPanel.tsx#keyed": [
+      [
+        "key",
+        3,
+        "homebrew panel lookup by key"
+      ]
+    ],
+    "lib/roll-labels.ts#whole-single": [
+      [
+        "key",
+        2,
+        "display-only roll label translation (skill/ability/save) in roll-labels.ts"
+      ]
+    ],
+    "lib/roll-labels.ts#partial": [
+      [
+        "pattern",
+        2,
+        "display-only roll label pattern matching in roll-labels.ts"
+      ]
+    ],
+    "components/sheet/SheetParts.tsx#normalizer": [
+      [
+        "key",
+        1,
+        "display-only ability/skill key normalization in SheetParts.tsx"
+      ]
+    ],
+    "components/sheet/SheetParts.tsx#whole-single": [
+      [
+        "key",
+        1,
+        "display-only ability/skill key lookup in SheetParts.tsx"
+      ]
+    ],
+    "app/campaigns/[campaignId]/ContextPanel.tsx#partial": [
+      [
+        "pattern",
+        13,
+        "display-only NPC/location context label matching in ContextPanel.tsx"
+      ]
+    ],
+    "app/characters/builder/steps/ClassChoices.tsx#partial": [
+      [
+        "pattern",
+        5,
+        "display-only tool grant category matching in ClassChoices.tsx"
+      ]
+    ],
+    "app/characters/builder/derivedReasons.ts#partial": [
+      [
+        "pattern",
+        1,
+        "display-only AC formula part regex in localizeAcPart in derivedReasons.ts"
+      ]
+    ],
+    "app/characters/builder/derivedReasons.ts#whole-single": [
+      [
+        "key",
+        1,
+        "display-only ability abbreviation lookup in localizeAcPart in derivedReasons.ts"
+      ]
+    ],
+    "components/sheet/paperdoll-logic.ts#bypass": [
+      [
+        "key",
+        3,
+        "display-only item name localization callback in paperdoll-logic.ts"
       ]
     ]
   }

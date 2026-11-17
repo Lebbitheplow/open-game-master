@@ -25,6 +25,11 @@ import { isLoopbackOrigin } from "@/lib/server-address";
 import { isDeviceWorld, serverEnv } from "@/lib/server-env";
 import { identifyTextServer, TEXT_SERVER_LABEL, type TextServerKind } from "@/lib/setup/discovery-logic";
 import { storyWindowVerdict } from "@/lib/story-window";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the report is a bundle for a person filing a bug, written
+// in the server's own English whatever the table speaks.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { sttStatus } from "@/lib/stt-backend";
 import { BUILTIN_STT_MODEL } from "@/lib/stt-builtin";
 import { narrationModel, ttsBackend } from "@/lib/tts-backend";
@@ -145,7 +150,7 @@ async function narratorFacts(settings: StorySettings, here: Machine | null, chec
     const model = settings.localTextModel.trim() || (await within(soleListedModel({ provider: "local", baseUrl: base }), PROBE_MS, ""));
     resolved = { ...settings, localTextModel: model };
     local = isLoopbackOrigin(base);
-    const choices = await within(modelChoices({ role: "story", provider: "local", baseUrl: base, selected: model }), LIST_MS, null);
+    const choices = await within(modelChoices(enT, { role: "story", provider: "local", baseUrl: base, selected: model }), LIST_MS, null);
     facts = modelFacts({ name: "The narrator", backend: `Ollama ${where(base)}`, model, choices, checks });
   } else {
     const base = settings.customBaseUrl.trim();
@@ -165,7 +170,7 @@ async function narratorFacts(settings: StorySettings, here: Machine | null, chec
     // Asks the server for its window, as a turn would, so the report does
     // not call a window assumed only because no turn has run since a restart.
     if (model) await within(probeCustomContextWindow(base, key, model), PROBE_MS, null);
-    const choices = await within(modelChoices({ role: "story", provider: "custom", baseUrl: base, apiKey: key, selected: model }), LIST_MS, null);
+    const choices = await within(modelChoices(enT, { role: "story", provider: "custom", baseUrl: base, apiKey: key, selected: model }), LIST_MS, null);
     facts = modelFacts({ name: "The narrator", backend: customBackend(base, engine), model, choices, checks });
     if (engine === "ollama") {
       checks.push(
@@ -186,7 +191,7 @@ async function narratorFacts(settings: StorySettings, here: Machine | null, chec
       );
     }
   } else {
-    const verdict = storyWindowVerdict(tokens);
+    const verdict = storyWindowVerdict(enT, tokens);
     if (verdict.level !== "ok") checks.push(`The narrator's window: ${verdict.text}`);
   }
   const params = storyModelParams(resolved);
@@ -216,13 +221,13 @@ async function helperFacts(settings: StorySettings, checks: string[]): Promise<R
   if (!model) return null;
   if (provider === "local") {
     const base = ollamaBaseUrl();
-    const choices = await within(modelChoices({ role: "utility", provider: "local", baseUrl: base, selected: model }), LIST_MS, null);
+    const choices = await within(modelChoices(enT, { role: "utility", provider: "local", baseUrl: base, selected: model }), LIST_MS, null);
     return modelFacts({ name: "The helper model", backend: `Ollama ${where(base)}`, model, choices, checks });
   }
   const endpoint = utilityEndpoint({ ...settings, utilityApiKey: settings.utilityApiKey ?? "" });
   if (!endpoint.baseUrl) return { backend: TEXT_SERVER_LABEL["openai-compatible"], model };
   const key = backendKeyFor(endpoint.baseUrl, endpoint.apiKey);
-  const choices = await within(modelChoices({ role: "utility", provider: "custom", baseUrl: endpoint.baseUrl, apiKey: key, selected: model }), LIST_MS, null);
+  const choices = await within(modelChoices(enT, { role: "utility", provider: "custom", baseUrl: endpoint.baseUrl, apiKey: key, selected: model }), LIST_MS, null);
   return modelFacts({ name: "The helper model", backend: customBackend(endpoint.baseUrl, ""), model, choices, checks });
 }
 
@@ -352,7 +357,7 @@ function machineLine(here: Machine | null): string {
         : fit === "recommended"
           ? "room for a recommended local narrator"
           : "graphics memory not known";
-  return `${describeMachine(here)} (${word})`;
+  return `${describeMachine(enT, here)} (${word})`;
 }
 
 export async function gatherSetup(settings: StorySettings, table?: ReportTable): Promise<ReportSetup> {

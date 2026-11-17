@@ -71,9 +71,11 @@ await test("Q4: a chip's remove cross reaches 44 px", async () => {
 await test("Q4: the lobby's Remove stands apart from Switch, every action 44 px tall", () => {
   const source = read("src/app/campaigns/[campaignId]/LobbyActions.tsx");
   const block = source.slice(source.indexOf("function CharacterActions"), source.indexOf("// Opening the adventure."));
-  const edit = block.indexOf("> Edit");
-  const swap = block.indexOf("> Switch");
-  const remove = block.indexOf("> Remove");
+  // The three labels are translated (table.lobby.edit, table.lobby.switch,
+  // action.remove), so the test reads the t() calls' keys in source order.
+  const edit = block.indexOf('t("Edit")');
+  const swap = block.indexOf('t("Switch")');
+  const remove = block.indexOf('t("Remove", { context: "action.remove" })');
   assert.ok(edit !== -1 && swap > edit && remove > swap, "Edit, Switch, then Remove last");
   assert.equal((block.match(/min-h-11/g) ?? []).length, 3, "each of the three is 44 px tall");
   const removeButton = block.slice(block.lastIndexOf("<button", remove), remove);
@@ -107,7 +109,7 @@ await test("Q5: a prepared caster's limit carries its working", async () => {
   assert.equal(preparedFormula("cha", 1, "paladin", 5), "Charisma modifier (+1) + half your level, rounded down (2)");
   assert.equal(preparedFormula("int", -1, "wizard", 1), "Intelligence modifier (-1) + level (1), and never fewer than 1");
   const step = read("src/app/characters/builder/steps/SpellsGearStep.tsx");
-  assert.equal((step.match(/\$\{limitWhy\}/g) ?? []).length, 2, "both prepared-count notes say the working");
+  assert.equal((step.match(/why: limitWhy/g) ?? []).length, 2, "both prepared-count notes say the working");
 });
 
 await test("Q7: a throw's name says which die was set aside", async () => {

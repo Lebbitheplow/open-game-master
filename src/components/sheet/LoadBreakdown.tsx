@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { CountPop } from "@/components/ui/Reveal";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useT, useTp } from "@/lib/locale";
 import { formatPrice, purseCoins, purseCopper, type Purse } from "@/lib/srd/currency";
 import {
   coinWeightLb,
@@ -25,7 +26,8 @@ import {
 // loadLines), so they add up to the tile by construction, and both redraw
 // from the same sheet when it changes.
 
-// A weight the line does not carry itself says where it came from.
+// A weight the line does not carry itself says where it came from,
+// as a message key (sheet.load.*) read with the caller's translator.
 const SOURCE_NOTE: Record<WeightSource, string | null> = {
   item: null,
   ammunition: "per round",
@@ -55,6 +57,8 @@ export function LoadBreakdown({
   purse: Purse;
   load: Encumbrance;
 }) {
+  const t = useT();
+  const tp = useTp();
   const [key, setKey] = useState<LoadSort>("total");
   const [order, setOrder] = useState<LoadOrder>("desc");
   const lines = sortLoadLines(loadLines(equipment), key, order);
@@ -65,7 +69,7 @@ export function LoadBreakdown({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title={`What ${name} carries`}
+      title={t("What {name} carries", { name })}
       icon={<GameIcon icon={{ kind: "glyph", key: "coin-purse" }} size="size-6" />}
       width="w-[min(94vw,38rem)]"
     >
@@ -74,48 +78,50 @@ export function LoadBreakdown({
           <CountPop value={total} className="font-display text-sm text-amber-100">
             {total}
           </CountPop>{" "}
-          of a {load.capacityLb} lb carrying capacity.{" "}
-          {floor
-            ? `${load.unweighed} line${load.unweighed === 1 ? " has" : "s have"} no known weight and ${load.unweighed === 1 ? "is" : "are"} not counted, so the load is at least this.`
-            : "Every line has a known weight."}
+          {t("of a {capacity} lb carrying capacity.", { capacity: load.capacityLb })}{" "}
+          {floor ? tp("{count} line has no known weight and is not counted, so the load is at least this.", "{count} lines have no known weight and are not counted, so the load is at least this.", { count: load.unweighed }) : t("Every line has a known weight.")}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl
             size="sm"
-            label="Sort by"
+            label={t("Sort by")}
             value={key}
             onChange={setKey}
             options={[
-              { value: "total", label: "Line total" },
-              { value: "each", label: "Weight each" },
+              { value: "total", label: t("Line total") },
+              { value: "each", label: t("Each") },
             ]}
           />
           <SegmentedControl
             size="sm"
-            label="Order"
+            label={t("Order")}
             value={order}
             onChange={setOrder}
             options={[
-              { value: "desc", label: "Heaviest first", icon: ArrowDownWideNarrow },
-              { value: "asc", label: "Lightest first", icon: ArrowUpNarrowWide },
+              { value: "desc", label: t("Heaviest first"), icon: ArrowDownWideNarrow },
+              { value: "asc", label: t("Lightest first"), icon: ArrowUpNarrowWide },
             ]}
           />
         </div>
         <table className="load-table">
           <caption className="sr-only">
-            {`${name}'s carried load by line, sorted by ${key === "total" ? "line total" : "weight each"}, ${order === "desc" ? "heaviest" : "lightest"} first. Lines of unknown weight are listed last.`}
+            {t("{name}'s carried load by line, sorted by {by}, {order} first. Lines of unknown weight are listed last.", {
+              name,
+              by: key === "total" ? t("line total") : t("weight each"),
+              order: order === "desc" ? t("heaviest") : t("lightest"),
+            })}
           </caption>
           <thead>
             <tr>
-              <th scope="col">Item</th>
+              <th scope="col">{t("Item")}</th>
               <th scope="col" className="load-num">
-                Qty
+                {t("Qty")}
               </th>
               <th scope="col" className="load-num" aria-sort={key === "each" ? (order === "desc" ? "descending" : "ascending") : undefined}>
-                Each
+                {t("Each")}
               </th>
               <th scope="col" className="load-num" aria-sort={key === "total" ? (order === "desc" ? "descending" : "ascending") : undefined}>
-                Total
+                {t("Total")}
               </th>
             </tr>
           </thead>
@@ -129,12 +135,12 @@ export function LoadBreakdown({
                   <th scope="row">
                     <span className="block text-stone-200">{line.name}</span>
                     {worn || note ? (
-                      <span className="block text-[11px] text-stone-500">{[worn ? "worn" : null, note].filter(Boolean).join(", ")}</span>
+                      <span className="block text-[11px] text-stone-500">{[worn ? t("worn") : null, note ? t(note) : null].filter(Boolean).join(", ")}</span>
                     ) : null}
                   </th>
                   <td className="load-num">{line.qty}</td>
-                  <td className="load-num">{line.eachLb === null ? <span className="load-unknown">unknown</span> : pounds(line.eachLb, 3)}</td>
-                  <td className="load-num">{line.totalLb === null ? <span className="load-unknown">unknown</span> : pounds(line.totalLb, 2)}</td>
+                  <td className="load-num">{line.eachLb === null ? <span className="load-unknown">{t("unknown")}</span> : pounds(line.eachLb, 3)}</td>
+                  <td className="load-num">{line.totalLb === null ? <span className="load-unknown">{t("unknown")}</span> : pounds(line.totalLb, 2)}</td>
                 </tr>
               );
             })}
@@ -142,9 +148,9 @@ export function LoadBreakdown({
           <tfoot>
             <tr>
               <th scope="row">
-                <span className="block text-stone-200">Coins</span>
+                <span className="block text-stone-200">{t("Coins")}</span>
                 <span className="block text-[11px] text-stone-500">
-                  {formatPrice(purseCopper(purse))}, {COINS_PER_POUND} to the pound
+                  {t("{coins} gp, {perPound} to the pound", { price: formatPrice(purseCopper(purse)), perPound: COINS_PER_POUND })}
                 </span>
               </th>
               <td className="load-num">{coins}</td>
@@ -152,12 +158,12 @@ export function LoadBreakdown({
               <td className="load-num">{pounds(coinWeightLb(coins), 2)}</td>
             </tr>
             <tr className="load-sum">
-              <th scope="row">Carried</th>
+              <th scope="row">{t("Carried", { context: "sheet.load.carried" })}</th>
               <td className="load-num" colSpan={3}>
                 <CountPop value={total}>{total}</CountPop>
                 {floor ? (
                   <span className="block text-[11px] font-normal text-amber-300/90">
-                    plus {load.unweighed} line{load.unweighed === 1 ? "" : "s"} of unknown weight
+                    {tp("plus {count} line of unknown weight", "plus {count} lines of unknown weight", { count: load.unweighed })}
                   </span>
                 ) : null}
               </td>

@@ -4,6 +4,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, EyeOff, GripVertical, Maximize2, Minimize2, PanelBottom, PictureInPicture2, Plus, Undo2, type LucideIcon } from "lucide-react";
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { HeaderGlyph } from "@/app/campaigns/[campaignId]/SessionGlyph";
@@ -155,6 +156,7 @@ export function Splitter({
 // the scroll the width that reads best. Kept with the rest of the
 // arrangement; the board beside it always keeps 320px (TableLayout.tsx).
 export function ChronicleSplitter() {
+  const t = useT();
   const api = useTableLayoutApi();
   const [bounds, setBounds] = useState({ value: 0, max: CHRONICLE_MAX });
   if (!api?.active || api.locked) return null;
@@ -170,7 +172,7 @@ export function ChronicleSplitter() {
   return (
     <Splitter
       orientation="vertical"
-      label="Resize the chronicle"
+      label={t("Resize the chronicle")}
       value={bounds.value || api.chronicle || CHRONICLE_MIN}
       min={CHRONICLE_MIN}
       max={bounds.max}
@@ -203,12 +205,13 @@ export function FloatCorner({
   onPointerCancel: () => void;
   onStep: (dir: "left" | "right" | "up" | "down", large: boolean) => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       className="tlay-corner"
-      aria-label={`Resize ${label}`}
-      title="Drag to resize it, or use the arrow keys"
+      aria-label={t("Resize {name}", { name: label })}
+      title={t("Drag to resize it, or use the arrow keys")}
       onPointerDown={(event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
         event.preventDefault();
@@ -275,6 +278,7 @@ export function PaneBar({
   grip: GripHandlers | null;
   actions: PaneActions;
 }) {
+  const t = useT();
   const title = (
     <>
       {grip ? <GripVertical className="size-3.5 shrink-0 opacity-70" /> : null}
@@ -288,9 +292,9 @@ export function PaneBar({
         <button
           type="button"
           className="tlay-grip"
-          aria-label={`Move ${label}`}
-          aria-roledescription="movable panel"
-          title="Drag to move it, or use the arrow keys"
+          aria-label={t("Move {name}", { name: label })}
+          aria-roledescription={t("movable panel")}
+          title={t("Drag to move it, or use the arrow keys")}
           {...grip}
         >
           {title}
@@ -300,15 +304,15 @@ export function PaneBar({
           {title}
         </span>
       )}
-      {actions.onFloat ? <BarButton label={`Float ${label}`} icon={PictureInPicture2} onClick={actions.onFloat} /> : null}
-      {actions.onDock ? <BarButton label={`Dock ${label}`} icon={PanelBottom} onClick={actions.onDock} /> : null}
+      {actions.onFloat ? <BarButton label={t("Float {name}", { name: label })} icon={PictureInPicture2} onClick={actions.onFloat} /> : null}
+      {actions.onDock ? <BarButton label={t("Dock {name}", { name: label })} icon={PanelBottom} onClick={actions.onDock} /> : null}
       <BarButton
-        label={actions.maximized ? `Restore the layout` : `Maximize ${label}`}
+        label={actions.maximized ? t("Restore the layout") : t("Maximize {name}", { name: label })}
         icon={actions.maximized ? Minimize2 : Maximize2}
         onClick={actions.onMaximize}
       />
-      {actions.onReturn ? <BarButton label={`Put ${label} back in the side panel`} icon={Undo2} onClick={actions.onReturn} /> : null}
-      {actions.onHide ? <BarButton label={`Hide ${label}`} icon={EyeOff} onClick={actions.onHide} /> : null}
+      {actions.onReturn ? <BarButton label={t("Put {name} back in the side panel", { name: label })} icon={Undo2} onClick={actions.onReturn} /> : null}
+      {actions.onHide ? <BarButton label={t("Hide {name}", { name: label })} icon={EyeOff} onClick={actions.onHide} /> : null}
     </div>
   );
 }
@@ -330,15 +334,15 @@ export function ArrangeBar({
   onReset: () => void;
   onDone: () => void;
 }) {
+  const t = useT();
   return (
-    <div className="tlay-arrange" role="region" aria-label="Arrange the table">
+    <div className="tlay-arrange" role="region" aria-label={t("Arrange the table", { context: "table.layout.arrange" })}>
       <p className="tlay-arrange-hint">
-        Drag a panel by its bar: onto another panel&apos;s edge to sit beside it, onto its middle to swap the two, or to
-        either end of the row. Drag the lines between panels to resize them. Everything keeps running while you do.
+        {t("Drag a panel by its bar: onto another panel's edge to sit beside it, onto its middle to swap the two, or to either end of the row. Drag the lines between panels to resize them. Everything keeps running while you do.")}
       </p>
       {tabs.length ? (
         <div className="tlay-arrange-group">
-          <span className="tlay-arrange-label">Give a tab its own pane</span>
+          <span className="tlay-arrange-label">{t("Give a tab its own pane")}</span>
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" className="tlay-chip motion-press" onClick={() => onAdd(id)}>
               <Plus className="size-3" />
@@ -350,21 +354,21 @@ export function ArrangeBar({
       ) : null}
       {setAside.length ? (
         <div className="tlay-arrange-group">
-          <span className="tlay-arrange-label">Set aside</span>
+          <span className="tlay-arrange-label">{t("Set aside")}</span>
           {setAside.map(({ id, label }) => (
             <button key={id} type="button" className="tlay-chip motion-press" onClick={() => onShow(id)}>
-              Show {label}
+              {t("Show {name}", { name: label })}
             </button>
           ))}
         </div>
       ) : null}
       <div className="tlay-arrange-end">
         <button type="button" className="tlay-chip motion-press" onClick={onReset}>
-          Reset
+          {t("Reset")}
         </button>
         <button type="button" className="tlay-chip tlay-chip-gold motion-press" onClick={onDone}>
           <Check className="size-3.5" />
-          Done
+          {t("Done", { context: "action.done" })}
         </button>
       </div>
     </div>
@@ -374,6 +378,7 @@ export function ArrangeBar({
 // The header's layout menu: arrange, lock, reset. A wide window only; a
 // phone keeps its bottom bar and has nothing to arrange.
 export function LayoutMenu({ seat }: { seat: LayoutSeat }) {
+  const t = useT();
   const layout = useTableLayout(seat);
   const { editing } = useLayoutSession();
   const row = "session-menu-row";
@@ -381,11 +386,11 @@ export function LayoutMenu({ seat }: { seat: LayoutSeat }) {
   return (
     <div className="hidden lg:flex">
       <DropdownMenu.Root>
-        <Tooltip content="Arrange the table: move, resize and lock its panels" side="bottom">
+        <Tooltip content={t("Arrange the table: move, resize and lock its panels")} side="bottom">
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              aria-label="Table layout"
+              aria-label={t("Table layout")}
               data-tour="header-layout"
               className={headerButtonClass(editing)}
             >
@@ -399,8 +404,8 @@ export function LayoutMenu({ seat }: { seat: LayoutSeat }) {
               <DropdownMenu.Item className={row} onSelect={() => setArranging(!editing)}>
                 <GameIcon icon={{ kind: "glyph", key: "ui-edit" }} size="size-6" />
                 <span>
-                  {editing ? "Done arranging" : "Arrange the table"}
-                  {hint("Move, resize, hide and add panels")}
+                  {editing ? t("Done arranging") : t("Arrange the table", { context: "table.layout.arrange" })}
+                  {hint(t("Move, resize, hide and add panels"))}
                 </span>
               </DropdownMenu.Item>
             )}
@@ -418,16 +423,16 @@ export function LayoutMenu({ seat }: { seat: LayoutSeat }) {
                 </DropdownMenu.ItemIndicator>
               </span>
               <span>
-                Lock layout
-                {hint("Nothing moves or resizes until it is unlocked")}
+                {t("Lock layout")}
+                {hint(t("Nothing moves or resizes until it is unlocked"))}
               </span>
             </DropdownMenu.CheckboxItem>
             <DropdownMenu.Separator className="my-1 h-px bg-stone-700/60" />
             <DropdownMenu.Item className={row} onSelect={() => resetTableLayout(seat)}>
               <GameIcon icon={{ kind: "glyph", key: "ui-restore" }} size="size-6" />
               <span>
-                Reset layout
-                {hint("Back to the table's own arrangement")}
+                {t("Reset layout")}
+                {hint(t("Back to the table's own arrangement"))}
               </span>
             </DropdownMenu.Item>
           </DropdownMenu.Content>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { odmLocaleHeaders } from "@/lib/locale";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { JoinConfirmDialog, type JoinHero } from "@/app/campaigns/[campaignId]/JoinConfirmDialog";
@@ -28,7 +29,7 @@ export function PregenPicker({
   const [picked, setPicked] = useState<JoinHero | null>(null);
 
   useEffect(() => {
-    fetch("/api/starter")
+    fetch("/api/starter", { headers: odmLocaleHeaders() })
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { pregens?: Hero[] } | null) => setHeroes(data?.pregens ?? []))
       .catch(() => setHeroes([]));

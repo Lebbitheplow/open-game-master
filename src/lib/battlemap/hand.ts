@@ -7,6 +7,10 @@
 // Pure and database-free: scripts/test-hand.mjs drives every branch. What a
 // card says once it is played lives next door in hand-play.ts.
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
+import { translate, type Locale } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 import { optionCards } from "@/lib/battlemap/hand-options";
 import { maneuverDieFor, maneuverUse, type ManeuverUse } from "@/lib/dm/maneuver-rules";
 import { weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
@@ -21,9 +25,11 @@ import { beastAttackIcon } from "@/lib/battlemap/attack-art";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
 import { ammoChoice } from "@/lib/battlemap/hand-ammo";
-import { AMMO_LABELS, ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
+import { ammoKindForWeapon, findAmmo, type AmmoKind } from "@/lib/srd/ammunition";
 import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { grappleHandsProblem } from "@/lib/dm/cast-rules";
+import type { AttackProfile } from "@/lib/dm/attack-logic";
+import { longRangeTilesOf } from "@/lib/dm/attack-rules";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { matchWeapon, type SrdWeapon } from "@/lib/srd/weapons";
 
@@ -32,7 +38,9 @@ import {
   attackGate,
   costGate,
   gated,
+  handsRulingReason,
   lowestSlot,
+  offHandProblemReason,
   signed,
   slotLine,
   standingGate,
@@ -53,6 +61,7 @@ import { DOOR_COUNTERS, featureDoorCards } from "@/lib/battlemap/hand-feature-do
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
 import { slipFeatureOf, squeezeSlips } from "@/lib/dm/ar-ws-revelation";
 import { gearCards, guessDrawNote, undrawnGate, wieldOf } from "@/lib/battlemap/hand-gear";
+import { pluralOf } from "@/lib/messages-logic";
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
 import { magicItemRiders } from "@/lib/srd/magic-items";
@@ -63,6 +72,17 @@ export * from "@/lib/battlemap/hand-core";
 // ---- attacks ----
 
 type Carried = { name: string; srd: SrdWeapon; qty: number; gear: WeaponGear | null };
+
+// The ammunition words, keyed so the card's resource line reads in the
+// table's language (AMMO_LABELS in src/lib/srd/ammunition.ts keeps the
+// engine's own English labels for its own sentences).
+const AMMO_KEY: Record<AmmoKind, string> = {
+  arrows: "arrows",
+  bolts: "bolts",
+  bullets: "bullets",
+  needles: "needles",
+};
+
 
 // Every carried row the engine would swing, resolved as resolveAttackWeapon
 // resolves a named weapon: a homebrew block first, then a magic weapon's base
@@ -83,7 +103,21 @@ export function carriedWeapons(sheet: Pick<CharacterSheet, "equipment">): Carrie
   return out;
 }
 
-function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
+// The card's range line in the reader's words, from the same reading
+// attackReach makes (hand-attack-lines.ts): melee feet, a bow's span out to
+// its long range, a thrown weapon's reach then its span. The shot data the
+// preview reads rides on the card from attackReach itself.
+function weaponRange(profile: AttackProfile, t: T = enT): string {
+  const reachFt = profile.reachTiles * 5;
+  if (!profile.ranged && !profile.thrown) return t("{feet} ft", { feet: reachFt });
+  const normalFt = profile.rangeTiles * 5;
+  const longFt = longRangeTilesOf(profile) * 5;
+  const span = longFt > normalFt ? t("{range}/{long} ft", { range: normalFt, long: longFt }) : t("{feet} ft", { feet: normalFt });
+  return profile.ranged ? span : t("{reach} ft / {span}", { reach: reachFt, span });
+}
+
+function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions, t: T = enT): HandCard[] {
+  const tp = pluralOf(t);
   const derived = computeSheetDerived(sheet);
   const profs = sheet.proficiencies.weapons;
   const allowed = Math.max(1 + riders.extraAttacks, turn.attacksAllowed ?? 0);
@@ -121,10 +155,14 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
             ...base,
             id: `attack:${textKey(attack.name)}`,
             name: attack.name,
-            range: attack.range ? `${ranged ? "" : `${attack.reach ?? 5} ft / `}${attack.range}/${attack.longRange ?? attack.range} ft` : `${attack.reach ?? 5} ft`,
+            range: attack.range
+              ? ranged
+                ? t("{range}/{long} ft", { range: attack.range, long: attack.longRange ?? attack.range })
+                : t("{reach} ft / {range}/{long} ft", { reach: attack.reach ?? 5, range: attack.range, long: attack.longRange ?? attack.range })
+              : t("{feet} ft", { feet: attack.reach ?? 5 }),
             dice: `${attack.damage} ${attack.type}${(attack.riders ?? []).map((rider) => ` + ${rider.dice} ${rider.type}`).join("")}`.trim(),
-            roll: `${signed(attack.toHit)} to hit`,
-            rules: `${sheet.wildShape.form} form.`,
+            roll: t("{bonus} to hit", { bonus: signed(attack.toHit) }),
+            rules: t("{form} form.", { form: sheet.wildShape.form }),
             icon: beastAttackIcon(sheet.wildShape.form, attack.name),
             toHit: attack.toHit,
             damage: attack.damage,
@@ -134,7 +172,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
           },
           standing,
           // The form's Multiattack, as the server counts it (turn-budget.ts).
-          attackGate(turn, Math.max(allowed, sheet.wildShape.attacksPerTurn ?? 1), sheet),
+          attackGate(turn, Math.max(allowed, sheet.wildShape.attacksPerTurn ?? 1), sheet, {}, t),
         ),
       );
     }
@@ -142,6 +180,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   }
 
   const carried = carriedWeapons(sheet);
+  const dualWielder = dualWields(sheet.feats, sheet.campaignId);
   const build = (name: string, srd: SrdWeapon | null, offHand: boolean, gear: WeaponGear | null = null, natural = false): HandCard => {
     const resolved = { displayName: name, srd, unarmed: srd === null, ...(gear ? { gear } : {}) };
     // Shillelagh, as pc_attack swings it: a club or quarterstaff deals a d8
@@ -171,9 +210,9 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     // could not tell, and asked for one they thought was drawn.
     const wield = natural ? undefined : wieldOf(sheet, name);
     if (wield === "stowed") notes.push(guessDrawNote(sheet, name) ?? "Packed away: the attack draws it with your free object interaction.");
-    if (!offHand && allowed > 1) notes.push(`Extra Attack: ${allowed} swings on this action.`);
+    if (!offHand && allowed > 1) notes.push(tp("Extra Attack: {count} swings on this action.", "Extra Attack: {count} swings on this action.", { count: allowed }));
     if (riders.sneakAttackDice > 0 && profile.sneakEligible) {
-      notes.push(`Sneak Attack +${riders.sneakAttackDice}d6 once a turn when it applies.`);
+      notes.push(t("Sneak Attack +{dice}d6 once a turn when it applies.", { dice: riders.sneakAttackDice }));
     }
     notes.push(...line.notes, ...rolled.notes);
     // A melee weapon thrown past its reach makes a ranged attack, which
@@ -186,27 +225,29 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     if (thrownDamage) notes.push(`Thrown at range: ${thrownDamage}, without the melee bonuses.`);
     if (shillelagh) notes.push(`${shillelagh.note}.`);
     notes.push(...profile.riderNotes.map((note) => `${note}.`));
-    if (!profile.proficient) notes.push("Not proficient.");
+    if (!profile.proficient) notes.push(t("Not proficient."));
     // The bigger die is for a melee attack (SRD 5.1), so a weapon that can
     // also be thrown says where it counts.
     if (held?.properties?.includes("versatile") && !profile.twoHanded && !shieldName && !offHand) {
-      notes.push(profile.thrown ? "Versatile: say two hands in melee for the bigger die." : "Versatile: say two hands for the bigger die.");
+      notes.push(profile.thrown ? t("Versatile: say two hands in melee for the bigger die.") : t("Versatile: say two hands for the bigger die."));
     }
     const ammoKind = srd?.properties?.includes("ammunition") ? ammoKindForWeapon(srd.name) : null;
     const ammoPick = ammoKind && !offHand && options.magicAmmo !== false ? ammoChoice(sheet.equipment, srd?.name) : null;
     const ammo = ammoKind ? findAmmo(sheet.equipment, ammoKind) : null;
     const empty = ammoKind !== null && ammo === null;
+    const ammoLabel = ammoKind ? t(AMMO_KEY[ammoKind]) : "";
     const card: HandCard = {
       ...base,
       id: `${offHand ? "offhand" : "attack"}:${textKey(name)}`,
-      name: offHand ? `Off-hand ${name}` : name,
+      name: offHand ? t("Off-hand {name}", { name }) : name,
       cost: offHand ? "bonus" : "action",
       ...attackReach(profile),
-      dice: `${damage} ${profile.damageType}`.trim(),
-      roll: toHitWords(rolled),
+      range: weaponRange(profile, t),
+      dice: dmgWithType(damage, profile.damageType, t),
+      roll: t("{bonus} to hit", { bonus: `${(rolled.toHit ?? 0) >= 0 ? "+" : ""}${rolled.toHit ?? 0}${rolled.toHitDice ?? ""}` }),
       rules: notes.slice(0, 2).join(" "),
       description: notes.join(" "),
-      resource: ammoKind ? (ammo ? `${AMMO_LABELS[ammoKind]} ${ammo.count}` : `No ${AMMO_LABELS[ammoKind]}`) : "",
+      resource: ammoKind ? (ammo ? t("{ammo} {count}", { ammo: ammoLabel, count: ammo.count }) : t("No {ammo}", { ammo: ammoLabel })) : "",
       icon: natural
         ? beastAttackIcon("", name)
         : srd ? { kind: "item", key: srd.name, family: "item-weapon" } : { kind: "action", key: "unarmed-strike" },
@@ -219,20 +260,20 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       melee: !profile.ranged,
       ...(wield ? { wield } : {}),
       intent: { card: "attack", weapon: name, ...(offHand ? { offHand: true } : {}) },
-      ...(offHand ? {} : { options: attackOptionsFor(sheet, turn, profile, derived, { allowed }) }),
+      ...(offHand ? {} : { options: attackOptionsFor(sheet, turn, profile, derived, { allowed }, t) }),
       // Magic ammunition the weapon can fire, picked per shot (hand-ammo.ts),
       // from a host that reads the pick (capabilities.ts magicAmmo).
       ...(ammoPick ? { choice: ammoPick } : {}),
     };
     const ammoGate: Gate =
-      empty && options.trackAmmo ? { reason: `Out of ${AMMO_LABELS[ammoKind!]}.`, spent: true } : null;
+      empty && options.trackAmmo ? { reason: t("Out of {ammo}.", { ammo: ammoLabel }), spent: true } : null;
     // A two-handed weapon is not swung at all with a shield on the arm, in
     // handsRuling's own words. A lance is left to the engine: the Hand does
     // not know whether its rider is mounted.
     const hands = held
       ? handsRuling({ who: sheet.name, weapon: name, properties: held.properties ?? [], lance: false, mounted: false, twoHandedAsked: false, shieldName })
       : null;
-    const handsGate: Gate = hands && "error" in hands ? { reason: hands.error, spent: false } : null;
+    const handsGate: Gate = hands && "error" in hands ? { reason: handsRulingReason(hands.error, name, sheet.name, shieldName, t), spent: false } : null;
     if (offHand) {
       // The engine's own rule (attack-rules.ts offHandProblem): the swing is
       // earned by the Attack action's weapon, not by any attack, so a rapier
@@ -252,12 +293,14 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
         campaignId: sheet.campaignId,
         shieldName,
       });
-      const opened: Gate = rule ? { reason: rule.error, spent: false } : null;
-      return gated(card, standing, costGate("bonus", turn, sheet, `an off-hand attack with ${name}`), opened, undrawnGate(sheet, turn, name));
+      const opened: Gate = rule
+        ? { reason: offHandProblemReason(rule.error, name, sheet.name, shieldName, dualWielder, t), spent: false }
+        : null;
+      return gated(card, standing, costGate("bonus", turn, sheet, `an off-hand attack with ${name}`, t), opened, undrawnGate(sheet, turn, name, t));
     }
     // The Auto-Loader Harness's extra firearm attack keeps its card open
     // (src/lib/srd/genre-b-steampunk-attacks.ts, as pc_attack spends it).
-    return gated(card, standing, handsGate, attackGate(turn, allowed + autoLoaderOpen(sheet, profile, turn.marks ?? []), sheet, { unarmed: srd === null }), ammoGate, undrawnGate(sheet, turn, name));
+    return gated(card, standing, handsGate, attackGate(turn, allowed + autoLoaderOpen(sheet, profile, turn.marks ?? []), sheet, { unarmed: srd === null }, t), ammoGate, undrawnGate(sheet, turn, name, t));
   };
 
   for (const weapon of carried) cards.push(build(weapon.name, weapon.srd, false, weapon.gear));
@@ -270,13 +313,12 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   }
   cards.push(build("Unarmed strike", null, false));
   // The bonus-action strikes a feature grants (Martial Arts, Frenzy).
-  cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd })), options.board?.attackAura));
+  cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd })), options.board?.attackAura, t));
   // The attacks a held condition grants (Spiritual Weapon's weapon).
-  cards.push(...grantedAttackCards(sheet, turn, allowed));
+  cards.push(...grantedAttackCards(sheet, turn, allowed, t));
 
   // Two-weapon fighting: two light melee weapons in hand buy a bonus swing,
   // and with Dual Wielder any two melee weapons held in one hand do.
-  const dualWielder = dualWields(sheet.feats, sheet.campaignId);
   const paired = carried.filter(
     (weapon) =>
       weapon.srd.kind === "melee" &&
@@ -304,14 +346,14 @@ const SWING_RULES: Partial<Record<ManeuverUse, string>> = {
   ally_move: "On a hit, an ally may move half its speed with its reaction, drawing no opportunity attack from the target.",
 };
 
-function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders): HandCard[] {
-  const standing = standingGate(sheet, turn, "attack");
+function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, t: T = enT): HandCard[] {
+  const standing = standingGate(sheet, turn, "attack", t);
   const cards: HandCard[] = [];
   const base = {
     type: "rider" as const,
     cost: "rider" as const,
-    range: "Self",
-    roll: "on a hit",
+    range: t("Self", { context: "table.hand.range.self" }),
+    roll: t("on a hit"),
     condition: "",
     target: "none" as const,
     toHit: null,
@@ -333,15 +375,15 @@ function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
           id: "rider:divine smite",
           name: "Divine Smite",
           dice: `+${dice} radiant`,
-          rules: "Spend a slot as the blade lands. One more d8 against undead and fiends.",
-          resource: slot ? slotLine(slot) : "No slots",
+          rules: t("Spend a slot as the blade lands. One more d8 against undead and fiends."),
+          resource: slot ? slotLine(slot, t) : t("No slots"),
           icon: { kind: "feature", key: "Divine Smite", family: "class-paladin" },
           damage: dice,
           damageType: "radiant",
           intent: { card: "rider", rider: "Divine Smite", ...(slot ? { slotLevel: slot.level } : {}) },
         },
         standing,
-        slot ? null : { reason: "No spell slot left to smite with.", spent: true },
+        slot ? null : { reason: t("No spell slot left to smite with."), spent: true },
       ),
     );
   }
@@ -365,9 +407,9 @@ function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
             ...base,
             id: `rider:${textKey(name)}`,
             name,
-            dice: use === "grapple" ? `+${die} Athletics` : `+${die}`,
-            rules,
-            resource: `Dice ${left}/${pool.max}`,
+            dice: use === "grapple" ? t("+{die} Athletics", { die }) : `+${die}`,
+            rules: t(rules),
+            resource: t("Dice {left}/{max}", { left, max: pool.max }),
             icon: { kind: "feature", key: name, family: "class-fighter" },
             damage: use === "grapple" ? null : die,
             damageType: "",
@@ -375,8 +417,8 @@ function riderCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders)
             intent: { card: "rider", rider: name },
           },
           standing,
-          left > 0 ? null : { reason: "No superiority dice left until a rest.", spent: true },
-          bonus ? costGate("bonus", turn, sheet, name) : null,
+          left > 0 ? null : { reason: t("No superiority dice left until a rest."), spent: true },
+          bonus ? costGate("bonus", turn, sheet, name, t) : null,
         ),
       );
     }
@@ -406,7 +448,74 @@ const BASICS: Array<{ id: BasicActionId; name: string; rules: string; target: Ha
 // engine's own reading of the sheet (bonus-routes.ts, which take_action asks).
 const BONUS_MOVES: MoveAction[] = ["dash", "disengage", "hide", "dodge"];
 
-function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, board: HandOptions["board"]): HandCard[] {
+// The damage types a swing names, keyed to the reader's word (the same
+// words the FR book prints: Tranchants, Perforants, Contondants).
+const DTYPE_KEY: Record<string, string> = {
+  acid: "acid",
+  bludgeoning: "bludgeoning",
+  cold: "cold",
+  fire: "fire",
+  force: "force",
+  lightning: "lightning",
+  necrotic: "necrotic",
+  piercing: "piercing",
+  poison: "poison",
+  psychic: "psychic",
+  radiant: "radiant",
+  slashing: "slashing",
+  thunder: "thunder",
+  healing: "healing",
+};
+
+export function dmgWithType(damage: string, type: string, t: T): string {
+  if (!type) return damage.trim();
+  const key = DTYPE_KEY[type.trim().toLowerCase()];
+  return key ? `${damage} ${t(key)}` : `${damage} ${type}`.trim();
+}
+
+const BASIC_RULE_KEY: Record<BasicActionId, string> = {
+  dodge: "Attacks against you roll at disadvantage until your next turn.",
+  dash: "Double your movement this turn.",
+  disengage: "Your movement provokes no opportunity attacks this turn.",
+  help: "An ally gets advantage on their next attack against the creature you name, or on a check.",
+  hide: "A Stealth check to slip out of sight.",
+  search: "Perception or Investigation to find what is hidden.",
+  escape: "Athletics or Acrobatics against the grappler's Athletics.",
+  "stand-up": "Getting up costs half your speed.",
+  ready: "Name a trigger and what you will do when it happens; your reaction does it then.",
+  grapple: "Athletics against their Athletics or Acrobatics. Takes the place of one attack.",
+  shove: "Knock them prone or push them 5 ft. Takes the place of one attack.",
+  "use-object": "Drink, pull, light, throw: say what.",
+  "end-turn": "Done with your action, movement and bonus action.",
+  stabilize: "An action: a DC 10 Medicine check, or a healer's kit with no roll, and they stop dying.",
+  dismount: "Off {mount}: half your speed.",
+  wake: "An action: shake an ally within 5 ft out of Sleep or Hypnotic Pattern. They wake still prone.",
+};
+
+// The basics' own words, keyed so a French reader's cards read like the
+// tutorial that promises them (SRD 5.1 FR print: Esquiver, Foncer,
+// Se désengager, Empoigner, Bousculer).
+const BASIC_NAME_KEYS: Record<BasicActionId, string> = {
+  dodge: "Dodge",
+  dash: "Dash",
+  disengage: "Disengage",
+  help: "Help",
+  hide: "Hide",
+  search: "Search",
+  escape: "Escape",
+  "stand-up": "Stand up",
+  ready: "Ready",
+  grapple: "Grapple",
+  shove: "Shove",
+  "use-object": "Use an object",
+  "end-turn": "End turn",
+  stabilize: "Stabilize",
+  dismount: "Dismount",
+  wake: "Wake",
+};
+
+function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, board: HandOptions["board"], t: T = enT): HandCard[] {
+  const tp = pluralOf(t);
   const derived = computeSheetDerived(sheet);
   const allowed = Math.max(1 + riders.extraAttacks, turn.attacksAllowed ?? 0);
   // The engine's own refusals of a basic action on the rules (take_action's
@@ -435,26 +544,47 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     return {
       id: route ? `basic:${basic.id}:bonus` : `basic:${basic.id}`,
       type: "basic",
-      name: route ? `${route.feature}: ${basic.name}` : basic.name,
+      name: route
+        ? t("{feature}: {name}", { feature: route.feature, name: t(BASIC_NAME_KEYS[basic.id]) })
+        : t(BASIC_NAME_KEYS[basic.id]),
       cost,
       // Help aims at the ally, who may stand anywhere (SRD 5.1 gives helping
       // with a task no range); its 5 feet are the foe's, named in its words.
-      range: contest ? "5 ft" : basic.id === "help" ? "" : "Self",
+      range: contest ? t("5 ft") : basic.id === "help" ? "" : t("Self", { context: "table.hand.range.self" }),
       dice: contest || escape
-        ? `Athletics ${signed(athletics)}`
+        ? t("Athletics {mod}", { mod: signed(athletics) })
         : basic.id === "hide"
-          ? `Stealth ${signed(derived.skills.stealth ?? derived.abilityMods.dex)}`
+          ? t("Stealth {mod}", { mod: signed(derived.skills.stealth ?? derived.abilityMods.dex) })
           : basic.id === "search"
-            ? `Perception ${signed(derived.skills.perception ?? derived.abilityMods.wis)}`
+            ? t("Perception {mod}", { mod: signed(derived.skills.perception ?? derived.abilityMods.wis) })
             : "",
-      roll: contest || escape ? "contested check" : basic.id === "hide" || basic.id === "search" ? "skill check" : "no roll",
-      rules: route ? `${basic.rules} ${route.feature}: a bonus action${route.ki ? ` for ${route.ki} ki` : route.counter ? " and one use" : ""}.` : basic.rules,
+      roll: contest || escape
+        ? t("contested check")
+        : basic.id === "hide" || basic.id === "search"
+          ? t("skill check")
+          : t("no roll", { context: "table.hand.roll.none" }),
+      rules: route
+        ? t("{rules} {feature}: a bonus action{tail}.", {
+            rules: t(BASIC_RULE_KEY[basic.id]),
+            feature: route.feature,
+            tail: route.ki ? tp(" for {count} ki", " for {count} ki", { count: route.ki }) : route.counter ? t(" and one use") : "",
+          })
+        : t(BASIC_RULE_KEY[basic.id]),
       resource: route?.ki && sheet.resources.ki
         ? `Ki ${ki ?? 0}/${sheet.resources.ki.max}`
         : route?.counter
           ? `${route.feature} ${usesLeft(sheet, route.counter) ?? 0}/${sheet.resources[route.counter].max}`
           : "",
-      condition: basic.id === "dodge" ? "Dodging" : basic.id === "grapple" ? "Grappled" : basic.id === "shove" ? "Prone" : basic.id === "ready" ? "Readied" : "",
+      condition:
+        basic.id === "dodge"
+          ? t("Dodging")
+          : basic.id === "grapple"
+            ? t("Grappled")
+            : basic.id === "shove"
+              ? t("Prone")
+              : basic.id === "ready"
+                ? t("Readied", { context: "table.hand.cond.readied" })
+                : "",
       icon: { kind: "action", key: basic.id },
       target: basic.target,
       toHit: null,
@@ -489,33 +619,42 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     const plain = make(basic, null);
     const card: HandCard =
       basic.id === "escape" && hold
-        ? { ...plain, name: `Escape: ${hold.spell}`, rules: hold.rules, dice: hold.dice, roll: hold.roll, condition: "" }
+        ? {
+            ...plain,
+            name: t("Escape: {spell}", { spell: hold.spell }),
+            rules: hold.rules,
+            dice: hold.dice,
+            roll: hold.roll,
+            condition: "",
+          }
         : plain;
     if (basic.id === "stand-up") {
       // Movement, not an action (SRD 5.1, Being Prone): no standing at speed
       // 0, whether a condition or exhaustion stops them.
       const still: Gate =
         slowedSpeed(sheet) === 0
-          ? { reason: "Your speed is 0, so you cannot stand up.", spent: false }
+          ? { reason: t("Your speed is 0, so you cannot stand up."), spent: false }
           : null;
-      cards.push(gated(card, standingGate(sheet, turn, "move"), still));
+      cards.push(gated(card, standingGate(sheet, turn, "move", t), still));
       continue;
     }
     if (basic.id === "end-turn") {
       // Ending the turn is always open to whoever holds it, down or not.
-      cards.push(turn.myTurn ? card : gated(card, standingGate(sheet, turn, "free")));
+      cards.push(turn.myTurn ? card : gated(card, standingGate(sheet, turn, "free", t)));
       continue;
     }
     const contest = basic.id === "grapple" || basic.id === "shove";
     const still: Gate =
       basic.id === "dash" && slowedSpeed(sheet) === 0
-        ? { reason: "Your speed is 0, so a Dash goes nowhere.", spent: false }
+        ? { reason: t("Your speed is 0, so a Dash goes nowhere."), spent: false }
         : null;
     cards.push(
       gated(
         card,
-        standingGate(sheet, turn, contest ? "attack" : "action"),
-        contest ? attackGate(turn, allowed, sheet, { hasteOk: false }) : costGate("action", turn, sheet, basic.name),
+        standingGate(sheet, turn, contest ? "attack" : "action", t),
+        contest
+          ? attackGate(turn, allowed, sheet, { hasteOk: false }, t)
+          : costGate("action", turn, sheet, t(BASIC_NAME_KEYS[basic.id]), t),
         still,
         ruled(basic.id),
       ),
@@ -527,14 +666,14 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     if (route) {
       const kiGate: Gate =
         route.ki > 0 && (kiLeft(sheet) ?? 0) < route.ki
-          ? { reason: `${sheet.name} has no ki point left for ${route.feature}. It comes back after a rest.`, spent: true }
+          ? { reason: t("{name} has no ki point left for {feature}. It comes back after a rest.", { name: sheet.name, feature: route.feature }), spent: true }
           : null;
       const usesGate: Gate =
         route.counter && !usesLeft(sheet, route.counter)
-          ? { reason: `${sheet.name} has no use of ${route.feature} left. It comes back after a rest.`, spent: true }
+          ? { reason: t("{name} has no use of {feature} left. It comes back after a rest.", { name: sheet.name, feature: route.feature }), spent: true }
           : null;
       cards.push(
-        gated(make(basic, route), standingGate(sheet, turn, "bonus"), costGate("bonus", turn, sheet, `${route.feature} (${basic.name})`), kiGate, usesGate, still, ruled(basic.id)),
+        gated(make(basic, route), standingGate(sheet, turn, "bonus", t), costGate("bonus", turn, sheet, `${route.feature} (${basic.name})`, t), kiGate, usesGate, still, ruled(basic.id)),
       );
     }
   }
@@ -555,29 +694,31 @@ function darkBound(card: HandCard, board: HandOptions["board"]): HandCard {
 
 // Attacks, the riders that ride them, spells by level, class features, then
 // the basics every character has, so a level 1 commoner still holds a hand.
-export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, options: HandOptions = {}): HandCard[] {
+// `locale` rides beside `t` for the data prose a builder does not key (the
+// feature resources' names and guidance, class-resources-fr.ts).
+export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, options: HandOptions = {}, t: T = enT, locale: Locale = "en"): HandCard[] {
   const riders = combatRiders(sheet);
-  const spells = spellCards(sheet, turn, riders, options);
+  const spells = spellCards(sheet, turn, riders, options, t);
   // Arcane Abeyance's and Master Scrivener's counters are the door cards'
   // (hand-feature-doors.ts), which name the spell their engines need.
-  const features = featureCards(sheet, turn).filter((card) => !card.pool || !DOOR_COUNTERS.includes(card.pool)).map((card) => darkBound(card, options.board));
+  const features = featureCards(sheet, turn, t, locale).filter((card) => !card.pool || !DOOR_COUNTERS.includes(card.pool)).map((card) => darkBound(card, options.board));
   // By name, and by the spend a card plays (Arcane Jolt's two cards are one spend, and so are Cauterizing Flames' two reactions).
   const taken = new Set(features.flatMap((card) => [textKey(card.name), ...(card.intent.card === "reaction" ? [textKey(card.intent.feature)] : []), ...(card.intent.card === "feature" && card.intent.resourceId ? [textKey(card.intent.resourceId)] : [])]));
   return [
-    ...attackCards(sheet, turn, riders, options),
-    ...riderCards(sheet, turn, riders),
+    ...attackCards(sheet, turn, riders, options, t),
+    ...riderCards(sheet, turn, riders, t),
     ...spells,
     ...ringSpellCards(sheet, turn, riders, options),
-    ...(options.items === false ? [] : itemSpellCards(sheet, turn, riders, options)),
+    ...(options.items === false ? [] : itemSpellCards(sheet, turn, riders, options, t)),
     ...features,
-    ...optionCards(sheet, turn),
-    ...intimidatingPresenceCards(sheet, turn),
-    ...subclassSpendCards(sheet, turn, taken, options.board),
+    ...optionCards(sheet, turn, t),
+    ...intimidatingPresenceCards(sheet, turn, t),
+    ...subclassSpendCards(sheet, turn, taken, options.board, t),
     ...featureDoorCards(sheet, turn, spells),
-    ...kiCards(sheet, turn),
-    ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
-    ...gearCards(sheet, turn, options.gear, options.board?.walled),
-    ...fastHandsCards(sheet, turn),
+    ...kiCards(sheet, turn, t),
+    ...basicCards(sheet, turn, riders, options.board, t).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells, t) : card)),
+    ...gearCards(sheet, turn, options.gear, options.board?.walled, t),
+    ...fastHandsCards(sheet, turn, t),
   ];
 }
 
@@ -588,30 +729,30 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
 // and releases it with the reaction when the trigger comes. The spells
 // offered are the hand's own one-action spell cards the cast guard would
 // take now.
-const READY_PICKS: NonNullable<HandCard["choice"]>["options"] = [
-  { value: "", label: "An attack" },
-  { value: "@move", label: "A move" },
-  { value: "@help", label: "Help" },
-  { value: "@hide", label: "Hide" },
-  { value: "@search", label: "Search" },
-  { value: "@use_object", label: "Use an object" },
-  { value: "@item", label: "Use an item" },
-  { value: "@grapple", label: "Grapple" },
-  { value: "@shove", label: "Shove" },
+const READY_PICKS: Array<{ value: string; labelKey: string }> = [
+  { value: "", labelKey: "An attack" },
+  { value: "@move", labelKey: "A move" },
+  { value: "@help", labelKey: "Help" },
+  { value: "@hide", labelKey: "Hide" },
+  { value: "@search", labelKey: "Search" },
+  { value: "@use_object", labelKey: "Use an object" },
+  { value: "@item", labelKey: "Use an item" },
+  { value: "@grapple", labelKey: "Grapple" },
+  { value: "@shove", labelKey: "Shove" },
 ];
 
-function withReadySpells(card: HandCard, spells: HandCard[]): HandCard {
+function withReadySpells(card: HandCard, spells: HandCard[], t: T = enT): HandCard {
   const ready = spells.filter(
     (spell) => spell.intent.card === "spell" && spell.cost === "action" && !spell.disabled,
   );
   const levels: Record<string, number> = {};
-  const options: NonNullable<HandCard["choice"]>["options"] = [...READY_PICKS];
+  const options: NonNullable<HandCard["choice"]>["options"] = READY_PICKS.map((pick) => ({ value: pick.value, label: t(pick.labelKey) }));
   for (const spell of ready) {
     if (spell.intent.card !== "spell") continue;
     options.push({ value: spell.name, label: spell.name, note: spell.resource });
     if (spell.intent.slotLevel) levels[spell.name] = spell.intent.slotLevel;
   }
-  return { ...card, choice: { arg: "readySpell", label: "Ready", options, fallback: "", levels } };
+  return { ...card, choice: { arg: "readySpell", label: t("Ready", { context: "table.hand.basic.ready" }), options, fallback: "", levels } };
 }
 
 // The spells the component has to look up before the hand is complete.

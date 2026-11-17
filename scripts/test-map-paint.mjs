@@ -5,7 +5,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { paintTerrain, nearestOpenTile, BRUSHES, BRUSH_LABELS, MAX_STROKES } = await import(
+const { paintTerrain, nearestOpenTile, BRUSHES, BRUSH_LABEL_KEYS, MAX_STROKES } = await import(
   "../src/lib/battlemap/paint.ts"
 );
 
@@ -32,7 +32,7 @@ const at = (terrain, x, y) => terrain[y * WIDTH + x];
 test("every brush has a label", () => {
   assert.ok(BRUSHES.length >= 5);
   for (const brush of BRUSHES) {
-    assert.ok(BRUSH_LABELS[brush], `${brush} has no label`);
+    assert.ok(BRUSH_LABEL_KEYS[brush], `${brush} has no label`);
   }
 });
 

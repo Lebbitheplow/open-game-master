@@ -14,6 +14,9 @@ const world = await openWorld({ campaign: { maxPlayers: 30 } });
 const kit = await combatKit(world);
 const { describeSheet } = await import("../src/lib/dm/prompt.ts");
 const sheetState = await import("../src/components/sheet/sheet-state.ts");
+// The sheet speaks the reader's language; these checks read it in English, the source.
+const { translate } = await import("../src/lib/messages-logic.ts");
+const enT = (key, vars) => translate("en", key, vars);
 
 // V01. SRD 5.1, Find Familiar: "As an action, you can temporarily dismiss
 // your familiar into a pocket dimension." The engine and GAME STATE treat a
@@ -222,7 +225,7 @@ await test("V09: exhaustion 6 reads as death in GAME STATE and on the sheet's ta
   assert.doesNotMatch(describeExhaustion(5), /death/i, "level 5 is not death");
   const hero = world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
   world.patch(hero.id, { exhaustion: 6 });
-  const tag = sheetState.stateTags(world.sheet(hero.id)).find((entry) => entry.id === "exhaustion");
+  const tag = sheetState.stateTags(enT, world.sheet(hero.id)).find((entry) => entry.id === "exhaustion");
   assert.match(tag?.note ?? "", /death/i, `the tag: ${tag?.note}`);
   world.patch(hero.id, { exhaustion: 0 });
 });

@@ -4,6 +4,11 @@ import { BREAK_REASON, breakRefusal, type TableBreak } from "@/lib/dm/table-brea
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { sessionRefusal } from "@/lib/dm/session-hold-logic";
 import { latestEventOfType, publishPersisted } from "@/lib/events";
+import { translate } from "@/lib/messages-logic";
+import { requestT } from "@/lib/request-locale";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // The table break (src/lib/dm/table-break-logic.ts has the rules). It holds
 // the DM queue at its gate under its own reason, beside any raised X-card:
@@ -47,18 +52,23 @@ export function tableBreakOn(campaignId: string): TableBreak | null {
 export function refuseDuringBreak(
   campaignId: string,
   finishing?: (hold: { at: number }) => boolean,
+  // The request, when the route answers in the asker's language (requestT):
+  // panels and alerts show the refusal raw. English without it, so the other
+  // gates keep their bytes.
+  request?: Request,
 ): Response | null {
+  const t = request ? requestT(request) : enT;
   const sessionHold = sessionHoldOn(campaignId);
   if (sessionHold) {
     return finishing?.(sessionHold)
       ? null
-      : Response.json({ error: sessionRefusal(sessionHold), sessionHold }, { status: 409 });
+      : Response.json({ error: sessionRefusal(sessionHold, t), sessionHold }, { status: 409 });
   }
   const tableBreak = tableBreakOn(campaignId);
   if (!tableBreak || finishing?.(tableBreak)) {
     return null;
   }
-  return Response.json({ error: breakRefusal(tableBreak), tableBreak }, { status: 409 });
+  return Response.json({ error: breakRefusal(tableBreak, t), tableBreak }, { status: 409 });
 }
 
 function breakFrom(payload: unknown): TableBreak | null {

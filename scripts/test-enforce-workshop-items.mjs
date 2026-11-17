@@ -157,6 +157,10 @@ const { MoreEffectFields } = await import("../src/app/workshop/homebrew/ItemEffe
 const { ItemFields } = await import("../src/app/workshop/homebrew/ItemFields.tsx");
 const { ItemSpellsBlock } = await import("../src/app/workshop/homebrew/ItemMagicFields.tsx");
 const { itemSpellsOf } = await import("../src/lib/srd/item-spells.ts");
+// The steppers' captions are keyed (R4 retrofit): the pin reads the same
+// translate() call the component does, so it matches before and after the
+// fragment merge lands the values in the dictionary.
+const { translate } = await import("../src/lib/messages-logic.ts");
 
 // A stepper the form shows with its caption beside it and the same words as
 // its name for a screen reader.
@@ -166,12 +170,12 @@ await test("Every stepper in a standing effect's row says what it sets, in words
   // AGENTS.md, settings and controls, point 7: a visible label in plain words.
   const effect = (value) => renderToStaticMarkup(createElement(MoreEffectFields, { effect: value, update() {} }));
   const raised = effect({ kind: "increase_ability", ability: "con", amount: 2, max: 20 });
-  assert.ok(captioned(raised, "Raised by"), "the raised score's amount has no caption");
-  assert.ok(captioned(raised, "To at most"), "the raised score's ceiling has no caption");
-  assert.ok(captioned(effect({ kind: "speed", mode: "fly", feet: 30 }), "Feet"), "the speed's feet have no caption");
+  assert.ok(captioned(raised, translate("en", "Raised by", { context: "workshop.homebrew.itemEffect.raisedBy" })), "the raised score's amount has no caption");
+  assert.ok(captioned(raised, translate("en", "To at most")), "the raised score's ceiling has no caption");
+  assert.ok(captioned(effect({ kind: "speed", mode: "fly", feet: 30 }), translate("en", "Feet")), "the speed's feet have no caption");
   const rider = effect({ kind: "weapon_rider", weapons: ["longbow"], damage: 2 });
-  assert.ok(captioned(rider, "Extra damage"), "the weapon's extra damage has no caption");
-  assert.ok(captioned(rider, "Bonus to hit"), "the weapon's bonus to hit has no caption");
+  assert.ok(captioned(rider, translate("en", "Extra damage")), "the weapon's extra damage has no caption");
+  assert.ok(captioned(rider, translate("en", "Bonus to hit")), "the weapon's bonus to hit has no caption");
   assert.ok(rider.includes("Unarmed strike"), "the unarmed strike cannot be picked");
   const form = renderToStaticMarkup(
     createElement(ItemFields, {

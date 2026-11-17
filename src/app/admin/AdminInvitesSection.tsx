@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SectionHead } from "@/components/ui/SectionHead";
+import { useT } from "@/lib/locale";
 
 type AccountInvite = {
   code: string;
@@ -25,6 +26,7 @@ type AccountInvite = {
 // while the signup mode is invite-only. Codes gate account creation, not
 // campaign membership; the campaign room code is a different thing.
 export function AdminInvitesSection() {
+  const t = useT();
   const [invites, setInvites] = useState<AccountInvite[] | null>(null);
   // A refused or failed read is shown in the server's words with a way to
   // ask again, never as "nothing here yet" (issue 140).
@@ -37,14 +39,13 @@ export function AdminInvitesSection() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    readLoad<{ invites?: AccountInvite[] }>(fetch("/api/admin/invites"), "The invite codes").then((outcome) => {
+    readLoad<{ invites?: AccountInvite[] }>(t, fetch("/api/admin/invites"), t("The invite codes")).then((outcome) => {
       settle(outcome);
       if (outcome.payload) {
         setInvites(outcome.payload.invites ?? []);
       }
     });
-  }, [reloads, settle]);
-
+  }, [ reloads, settle, t ]);
   async function create() {
     setCreating(true);
     setError("");
@@ -56,13 +57,13 @@ export function AdminInvitesSection() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not create the invite.");
+        setError(data.error || t("Could not create the invite."));
         return;
       }
       setInvites([data.invite, ...(invites ?? [])]);
       setNote("");
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.worlds.unreachable" }));
     } finally {
       setCreating(false);
     }
@@ -70,9 +71,9 @@ export function AdminInvitesSection() {
 
   async function remove(code: string) {
     // A revoked code cannot be brought back, and somebody may be holding it.
-    const sure = await appConfirm(`Revoke the invite ${code}? Anyone still holding it will not be able to register with it.`, {
-      title: "Revoke this invite?",
-      actionLabel: "Revoke",
+    const sure = await appConfirm(t("Revoke the invite {code}? Anyone still holding it will not be able to register with it.", { code }), {
+      title: t("Revoke this invite?"),
+      actionLabel: t("Revoke"),
       tone: "danger",
     });
     if (!sure) return;
@@ -91,28 +92,28 @@ export function AdminInvitesSection() {
 
   if (invites === null) {
     return (
-      <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label="Loading invites" />
+      <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label={t("Loading invites")} />
     );
   }
 
   return (
     <div className="mt-4 space-y-3">
-      <SectionHead title="Invite codes" glyph="tab-handout" level="h3" aside={<span className="tabular-nums">{invites.length}</span>} />
+      <SectionHead title={t("Invite codes")} glyph="tab-handout" level="h3" aside={<span className="tabular-nums">{invites.length}</span>} />
       <div className="flex flex-wrap items-end gap-2">
         <label className="min-w-40 flex-1 text-sm">
-          <span className="mb-1 block text-xs font-medium text-stone-400">Note (optional)</span>
+          <span className="mb-1 block text-xs font-medium text-stone-400">{t("Note (optional)")}</span>
           <input
             className={ui.input}
             value={note}
             maxLength={200}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Who this invite is for"
+            placeholder={t("Who this invite is for")}
           />
         </label>
         <div className="text-sm">
-          <span className="mb-1 block text-xs font-medium text-stone-400">Uses</span>
+          <span className="mb-1 block text-xs font-medium text-stone-400">{t("Uses", { context: "admin.invites.uses" })}</span>
           <NumberStepper
-            label="Uses"
+            label={t("Uses", { context: "admin.invites.uses" })}
             min={1}
             max={1000}
             value={maxUses}
@@ -121,7 +122,7 @@ export function AdminInvitesSection() {
         </div>
         <button type="button" onClick={create} disabled={creating} aria-busy={creating} className={ui.btnSmall}>
           {creating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-          New invite
+          {t("New invite")}
         </button>
       </div>
       {error ? <p role="alert" className="motion-shake text-sm text-red-400">{error}</p> : null}
@@ -135,7 +136,7 @@ export function AdminInvitesSection() {
           <EmptyState
             size="sm"
             art="scrolls"
-            title="No invite codes yet. Nobody can register until you create one."
+            title={t("No invite codes yet. Nobody can register until you create one.")}
           />
         ) : null)
       ) : (
@@ -151,7 +152,7 @@ export function AdminInvitesSection() {
                 <button
                   type="button"
                   onClick={() => copy(invite.code)}
-                  title="Copy the invite code"
+                  title={t("Copy the invite code")}
                   className={cn(ui.btnSmall, "font-code text-amber-200")}
                 >
                   {copiedCode === invite.code ? (
@@ -162,7 +163,7 @@ export function AdminInvitesSection() {
                   {invite.code}
                 </button>
                 <span className={exhausted ? "text-xs text-red-400" : "text-xs text-stone-500"}>
-                  {invite.usedCount}/{invite.maxUses} used
+                  {t("{used}/{max} used", { used: invite.usedCount, max: invite.maxUses })}
                 </span>
                 {invite.note ? (
                   <span className="truncate text-xs text-stone-500">{invite.note}</span>
@@ -170,8 +171,8 @@ export function AdminInvitesSection() {
                 <button
                   type="button"
                   onClick={() => remove(invite.code)}
-                  title="Revoke this invite"
-                  aria-label={`Revoke the invite ${invite.code}`}
+                  title={t("Revoke this invite")}
+                  aria-label={t("Revoke the invite {code}", { code: invite.code })}
                   className={cn(ui.btnSmall, "ml-auto px-2 hover:border-red-500/50 hover:text-red-400")}
                 >
                   <Trash2 className="size-3.5" />

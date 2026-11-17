@@ -29,6 +29,9 @@ const blanks = await import("../src/app/admin/model-blanks.ts");
 const { modelChoices } = await import("../src/lib/model-registry/registry.ts");
 const { forgetOllamaInfoForTests, forgetSoleModelsForTests, soleListedModel } = await import("../src/lib/model-registry/discovery.ts");
 const hardware = await import("../src/lib/model-registry/hardware.ts");
+// The registry speaks the reader's language; these checks read it in English, the source.
+const { translate } = await import("../src/lib/messages-logic.ts");
+const enT = (key, vars) => translate("en", key, vars);
 const textModels = await import("../src/lib/text-models.ts");
 const { normalizeSettings } = await import("../src/lib/db/settings.ts");
 const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
@@ -149,7 +152,7 @@ try {
   });
 
   await test("the table's needs: text out and tool calls for the story, pictures out for images", () => {
-    const story = (id, hint) => logic.assessModel({ role: "story", id, catalog: logic.findCatalogModel(providers, id, hint), listed: true });
+    const story = (id, hint) => logic.assessModel(enT, { role: "story", id, catalog: logic.findCatalogModel(providers, id, hint), listed: true });
     assert.equal(story("gpt-5.6", "openai").fit, "ok");
     assert.match(story("gpt-5.6", "openai").summary, /1\.1M context · tool calls · reasoning · sees pictures · \$4 in \/ \$20 out per M tokens/);
     const old = story("gpt-4", "openai");
@@ -163,34 +166,34 @@ try {
     const noTools = story("sao10k/l3-lunaris-8b", "openrouter");
     assert.equal(noTools.fit, "unfit");
     assert.match(noTools.warnings[0], /Takes no tool calls/);
-    const utility = logic.assessModel({ role: "utility", id: "sao10k/l3-lunaris-8b", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true });
+    const utility = logic.assessModel(enT, { role: "utility", id: "sao10k/l3-lunaris-8b", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true });
     assert.equal(utility.fit, "warn", "the utility role only warns about tools");
     // Issue 943's report: the catalog's one exact row for a helper said 32K,
     // the helper's own server listed 262K, and the warning read the catalog.
     const narrow = { ...providers.openrouter.models["sao10k/l3-lunaris-8b"], toolCall: true, contextTokens: 32_768 };
-    const helper = (contextTokens) => logic.assessModel({ role: "utility", id: "qwen3.5-4b", catalog: narrow, listed: true, ...(contextTokens ? { contextTokens } : {}) });
+    const helper = (contextTokens) => logic.assessModel(enT, { role: "utility", id: "qwen3.5-4b", catalog: narrow, listed: true, ...(contextTokens ? { contextTokens } : {}) });
     assert.deepEqual(helper(262_144).warnings, [], "the server's own window outranks the catalog's");
     assert.match(helper().warnings.join(" "), /small for the helper; its longer jobs .* go to the storyteller/, "a helper's small window costs the storyteller time");
     assert.doesNotMatch(helper().warnings.join(" "), /forget recent turns/, "the helper never holds the story");
-    const tight = logic.assessModel({ role: "story", id: "x", catalog: { ...narrow, contextTokens: 262_144 }, listed: true, contextTokens: 8_192 });
+    const tight = logic.assessModel(enT, { role: "story", id: "x", catalog: { ...narrow, contextTokens: 262_144 }, listed: true, contextTokens: 8_192 });
     assert.equal(tight.fit, "unfit", "a storyteller served narrower than its catalog row is judged by what it is served at");
-    const local = logic.assessModel({ role: "story", id: "gpt-4", catalog: providers.openai.models["gpt-4"], listed: true, local: true });
+    const local = logic.assessModel(enT, { role: "story", id: "gpt-4", catalog: providers.openai.models["gpt-4"], listed: true, local: true });
     assert.equal(local.fit, "warn", "a local row is a loose match for the weights, so a short window only warns");
     assert.equal(local.warnings.length, 1, "weights on the admin's disk are nobody's to retire");
     assert.match(local.warnings[0], /^An 8K window is too small to narrate/);
     assert.equal(local.summary, "8K context · tool calls", "and carry no hosting price");
-    const doubt = logic.assessModel({ role: "story", id: "x", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true, local: true });
+    const doubt = logic.assessModel(enT, { role: "story", id: "x", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true, local: true });
     assert.equal(doubt.fit, "warn", "a loosely matched row without tools is a doubt for local weights");
-    const said = logic.assessModel({ role: "story", id: "x", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true, local: true, tools: true });
+    const said = logic.assessModel(enT, { role: "story", id: "x", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true, local: true, tools: true });
     assert.equal(said.warnings.some((line) => /tool calls/.test(line)), false, "unless the server says it does (the 8K window still warns)");
-    assert.equal(logic.assessModel({ role: "story", id: "x", catalog: providers.openai.models["gpt-5.6"], listed: true, tools: false }).fit, "unfit", "and the server's no outranks the catalog's yes");
-    const unknown = logic.assessModel({ role: "story", id: "my-own-finetune", catalog: null, listed: true });
+    assert.equal(logic.assessModel(enT, { role: "story", id: "x", catalog: providers.openai.models["gpt-5.6"], listed: true, tools: false }).fit, "unfit", "and the server's no outranks the catalog's yes");
+    const unknown = logic.assessModel(enT, { role: "story", id: "my-own-finetune", catalog: null, listed: true });
     assert.equal(unknown.fit, "unknown");
     assert.deepEqual(unknown.warnings, []);
-    const unlisted = logic.assessModel({ role: "story", id: "gpt-5.6", catalog: providers.openai.models["gpt-5.6"], listed: false });
+    const unlisted = logic.assessModel(enT, { role: "story", id: "gpt-5.6", catalog: providers.openai.models["gpt-5.6"], listed: false });
     assert.equal(unlisted.fit, "warn");
     assert.match(unlisted.warnings[0], /Not listed by the server/);
-    const image = (id) => logic.assessModel({ role: "image", id, catalog: logic.findCatalogModel(providers, id, "openai"), listed: null });
+    const image = (id) => logic.assessModel(enT, { role: "image", id, catalog: logic.findCatalogModel(providers, id, "openai"), listed: null });
     assert.equal(image("gpt-image-2").fit, "ok");
     assert.equal(image("gpt-5.6").fit, "unfit");
     assert.equal(image("gpt-image-1").fit, "warn", "deprecated, but it paints");
@@ -404,7 +407,7 @@ try {
     // A 64 GB machine with no GPU, whatever runs the test: a 16 GB CI runner
     // would find the 19 GB gemma too big, and a local ComfyUI would add a GPU.
     globalThis.__odmMachine = { ramGb: 64, gpu: null, unified: false, checkedAt: Date.now() };
-    const choices = await modelChoices({ role: "story", provider: "local", baseUrl: ollamaUrl, selected: "gemma4:31b-it-qat" });
+    const choices = await modelChoices(enT, { role: "story", provider: "local", baseUrl: ollamaUrl, selected: "gemma4:31b-it-qat" });
     assert.equal(choices.reachable, true);
     assert.deepEqual(choices.models.map((model) => model.id), ["gemma4:31b-it-qat", "qwen3.6:35b-a3b-q8_0", "titan:999b"]);
     assert.ok(choices.hardware && /GB memory/.test(choices.hardware.summary), "the machine is described");
@@ -429,14 +432,14 @@ try {
   });
 
   await test("Ollama tags match without regard to case, as Ollama itself resolves them", async () => {
-    const choices = await modelChoices({ role: "story", provider: "local", baseUrl: ollamaUrl, selected: "Gemma4:31B-IT-QAT" });
+    const choices = await modelChoices(enT, { role: "story", provider: "local", baseUrl: ollamaUrl, selected: "Gemma4:31B-IT-QAT" });
     assert.equal(choices.models.length, 3, "nothing was added for the chosen model");
     assert.equal(choices.models[0].selected, true);
     assert.equal(choices.models[0].listed, true);
   });
 
   await test("a chosen model Ollama no longer lists stays chosen, flagged, never swapped", async () => {
-    const choices = await modelChoices({ role: "story", provider: "local", baseUrl: ollamaUrl, selected: "llama9:70b" });
+    const choices = await modelChoices(enT, { role: "story", provider: "local", baseUrl: ollamaUrl, selected: "llama9:70b" });
     assert.equal(choices.models[0].id, "llama9:70b");
     assert.equal(choices.models[0].selected, true);
     assert.equal(choices.models[0].listed, false);
@@ -445,7 +448,7 @@ try {
   });
 
   await test("an unreachable Ollama still answers with the chosen model, unflagged, and says what is wrong", async () => {
-    const choices = await modelChoices({ role: "story", provider: "local", baseUrl: "http://127.0.0.1:9", selected: "gemma4:31b-it-qat" });
+    const choices = await modelChoices(enT, { role: "story", provider: "local", baseUrl: "http://127.0.0.1:9", selected: "gemma4:31b-it-qat" });
     assert.equal(choices.reachable, false);
     assert.match(choices.error, /Nothing answered/);
     assert.equal(choices.models.length, 1);
@@ -455,11 +458,11 @@ try {
   });
 
   await test("a custom server's list is merged with the catalog, and a key is needed where it is needed", async () => {
-    const refused = await modelChoices({ role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "", selected: "gpt-5.6" });
+    const refused = await modelChoices(enT, { role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "", selected: "gpt-5.6" });
     assert.equal(refused.reachable, false);
     assert.equal(refused.needsKey, true);
     assert.equal(refused.models[0].id, "gpt-5.6");
-    const choices = await modelChoices({ role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "sk-test", selected: "gpt-4" });
+    const choices = await modelChoices(enT, { role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "sk-test", selected: "gpt-4" });
     assert.equal(choices.reachable, true);
     assert.deepEqual(choices.models.map((model) => model.id), ["gpt-5.6", "gpt-4"], "the images and speech rows were left out");
     const old = choices.models[1];
@@ -470,37 +473,37 @@ try {
   });
 
   await test("the images role lists the picture models of an OpenAI-compatible images API", async () => {
-    const choices = await modelChoices({ role: "image", provider: "images", baseUrl: compatUrl, apiKey: "sk-test", selected: "gpt-image-1" });
+    const choices = await modelChoices(enT, { role: "image", provider: "images", baseUrl: compatUrl, apiKey: "sk-test", selected: "gpt-image-1" });
     assert.equal(choices.reachable, true);
     assert.deepEqual(choices.models.map((model) => model.id), ["gpt-image-1", "gpt-image-2"]);
     assert.equal(choices.models[0].listed, false);
     assert.equal(choices.models[0].verdict.fit, "warn");
     assert.equal(choices.models[1].verdict.fit, "ok");
     assert.equal(choices.recommended, "gpt-image-2", "the form preselects the current picture model, not the deprecated one saved");
-    const story = await modelChoices({ role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "sk-test", selected: "" });
+    const story = await modelChoices(enT, { role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "sk-test", selected: "" });
     assert.equal(story.recommended, "", "the storyteller's fields preselect nothing");
   });
 
   await test("every picker's blank entry says what it runs, or None with what that means", () => {
     const listing = (ids) => ({ reachable: true, models: ids.map((id) => ({ id, label: id, listed: true })) });
-    assert.equal(blanks.BLANK.whisper(listing(["large-v3"])), "large-v3 (the server's only model)");
-    assert.equal(blanks.BLANK.whisper(listing(["large-v3", "small"])), "None (no Whisper dictation)");
-    assert.equal(blanks.BLANK.story(null), "Not chosen (the server's only model, once it answers)", "before the server answers, nobody knows");
-    assert.equal(blanks.BLANK.story({ reachable: false, models: [] }), "Not chosen (the server's only model, once it answers)");
-    assert.equal(blanks.BLANK.story({ reachable: true, models: [{ id: "saved", label: "saved", listed: false }, { id: "only", label: "only", listed: true }] }), "only (the server's only model)", "a saved model the server dropped is not counted");
-    assert.equal(blanks.fromEnv("large-v3", "STT_MODEL"), "large-v3 (from STT_MODEL)");
-    for (const [field, label] of Object.entries(blanks.BLANK)) {
+    assert.equal(blanks.blanks(enT).whisper(listing(["large-v3"])), "large-v3 (the server's only model)");
+    assert.equal(blanks.blanks(enT).whisper(listing(["large-v3", "small"])), "None (no Whisper dictation)");
+    assert.equal(blanks.blanks(enT).story(null), "Not chosen (the server's only model, once it answers)", "before the server answers, nobody knows");
+    assert.equal(blanks.blanks(enT).story({ reachable: false, models: [] }), "Not chosen (the server's only model, once it answers)");
+    assert.equal(blanks.blanks(enT).story({ reachable: true, models: [{ id: "saved", label: "saved", listed: false }, { id: "only", label: "only", listed: true }] }), "only (the server's only model)", "a saved model the server dropped is not counted");
+    assert.equal(blanks.fromEnv(enT, "large-v3", "STT_MODEL"), "large-v3 (from STT_MODEL)");
+    for (const [field, label] of Object.entries(blanks.blanks(enT))) {
       const text = typeof label === "function" ? label(listing(["a", "b"])) : label;
       assert.match(text, /^(None \(no [^()]+\)|Not chosen \([^()]+\))$/, `${field}: "${text}"`);
     }
   });
 
   await test("the speech roles list every model a speech server serves, and preselect only an obvious one", async () => {
-    const dictation = await modelChoices({ role: "dictation", provider: "speech", baseUrl: compatUrl, apiKey: "sk-test", selected: "" });
+    const dictation = await modelChoices(enT, { role: "dictation", provider: "speech", baseUrl: compatUrl, apiKey: "sk-test", selected: "" });
     assert.equal(dictation.reachable, true);
     assert.deepEqual(dictation.models.map((model) => model.id), ["gpt-5.6", "gpt-4", "gpt-image-2", "whisper-1"], "nothing is left out of the list");
     assert.equal(dictation.recommended, "whisper-1");
-    const narration = await modelChoices({ role: "narration", provider: "speech", baseUrl: compatUrl, apiKey: "sk-test", selected: "" });
+    const narration = await modelChoices(enT, { role: "narration", provider: "speech", baseUrl: compatUrl, apiKey: "sk-test", selected: "" });
     assert.equal(narration.recommended, "", "no model there reads as a narration model");
     assert.equal(narration.models.find((model) => model.id === "gpt-5.6")?.verdict.fit, "ok", "a speech pick is never judged as a storyteller");
     const speaches = http.createServer((request, response) => {
@@ -509,19 +512,19 @@ try {
     });
     await new Promise((resolve) => speaches.listen(0, "127.0.0.1", resolve));
     const speachesUrl = `http://127.0.0.1:${speaches.address().port}/v1`;
-    const whisper = await modelChoices({ role: "dictation", provider: "speech", baseUrl: speachesUrl, selected: "" });
+    const whisper = await modelChoices(enT, { role: "dictation", provider: "speech", baseUrl: speachesUrl, selected: "" });
     assert.equal(whisper.recommended, "Systran/faster-distil-whisper-large-v3");
-    const voices = await modelChoices({ role: "narration", provider: "speech", baseUrl: speachesUrl, selected: "" });
+    const voices = await modelChoices(enT, { role: "narration", provider: "speech", baseUrl: speachesUrl, selected: "" });
     assert.equal(voices.recommended, "", "two narration models: the admin chooses");
     const loaded = http.createServer((request, response) => {
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify({ data: [{ id: "large-v3" }] }));
     });
     await new Promise((resolve) => loaded.listen(0, "127.0.0.1", resolve));
-    const one = await modelChoices({ role: "dictation", provider: "speech", baseUrl: `http://127.0.0.1:${loaded.address().port}/v1`, selected: "" });
+    const one = await modelChoices(enT, { role: "dictation", provider: "speech", baseUrl: `http://127.0.0.1:${loaded.address().port}/v1`, selected: "" });
     assert.equal(one.recommended, "large-v3", "a server's only model is the pick, whatever its name");
     loaded.close();
-    const down = await modelChoices({ role: "dictation", provider: "speech", baseUrl: "http://127.0.0.1:9/v1", selected: "large-v3" });
+    const down = await modelChoices(enT, { role: "dictation", provider: "speech", baseUrl: "http://127.0.0.1:9/v1", selected: "large-v3" });
     assert.equal(down.reachable, false);
     assert.deepEqual(down.models.map((model) => model.id), ["large-v3"], "the saved model stays on the list");
     speaches.close();
@@ -561,12 +564,12 @@ try {
     });
     await new Promise((resolve) => wide.listen(0, "127.0.0.1", resolve));
     try {
-      const choices = await modelChoices({ role: "utility", provider: "custom", baseUrl: `http://127.0.0.1:${wide.address().port}/v1`, selected: "gpt-4" });
+      const choices = await modelChoices(enT, { role: "utility", provider: "custom", baseUrl: `http://127.0.0.1:${wide.address().port}/v1`, selected: "gpt-4" });
       const helper = choices.models.find((model) => model.id === "gpt-4");
       assert.equal(helper.contextTokens, 262_144);
       assert.equal(helper.catalog?.contextTokens, 8192, "the catalog row itself is unchanged");
       assert.ok(!helper.verdict.warnings.some((warning) => /window is small/.test(warning)), helper.verdict.warnings.join(" | "));
-      const plain = logic.assessModel({ role: "utility", id: "gpt-4", catalog: helper.catalog, listed: true });
+      const plain = logic.assessModel(enT, { role: "utility", id: "gpt-4", catalog: helper.catalog, listed: true });
       assert.ok(plain.warnings.some((warning) => /8K window is small for the helper/.test(warning)), "the catalog's own size still warns where the server says nothing");
     } finally {
       wide.close();
@@ -603,10 +606,10 @@ try {
     assert.equal(hardware.fitsMachine(60, card), false);
     assert.equal(hardware.fitsMachine(0, card), null);
     assert.equal(hardware.fitsMachine(10, { ramGb: 0, gpu: null, unified: false }), null, "unknown memory judges nothing");
-    assert.match(hardware.describeMachine(halo), /AMD Radeon 8060S Graphics, 125 GB memory shared/);
-    assert.match(hardware.describeMachine({ ramGb: 16, gpu: null, unified: false }), /^16 GB memory, no graphics card found$/);
+    assert.match(hardware.describeMachine(enT, halo), /AMD Radeon 8060S Graphics, 125 GB memory shared/);
+    assert.match(hardware.describeMachine(enT, { ramGb: 16, gpu: null, unified: false }), /^16 GB memory, no graphics card found$/);
     assert.equal(hardware.memoryBudgetGb({ ramGb: 64, gpu: null, unified: false }), 64, "no card known: only weights beyond the memory are too big");
-    const verdict = logic.assessModel({ role: "story", id: "x", catalog: null, listed: true, local: true, memory: { sizeGb: 60, budgetGb: 40 } });
+    const verdict = logic.assessModel(enT, { role: "story", id: "x", catalog: null, listed: true, local: true, memory: { sizeGb: 60, budgetGb: 40 } });
     assert.equal(verdict.fit, "unfit");
   });
 
@@ -641,7 +644,7 @@ try {
   });
 
   await test("the agent program's own list is the harness answer; its vendor's rows say the rest", async () => {
-    const none = await modelChoices({ role: "story", provider: "harness", selected: "opus" });
+    const none = await modelChoices(enT, { role: "story", provider: "harness", selected: "opus" });
     assert.equal(none.reachable, null);
     assert.equal(none.models[0].id, "opus");
     const enriched = store.enrichHarnessModels("claude", [{ id: "claude-opus-4-5", label: "Claude Opus 4.5" }, { id: "opus", label: "Opus (latest)", contextTokens: 1_000_000 }, { id: "claude-sonnet-5", label: "Sonnet 5" }]);
@@ -675,7 +678,7 @@ try {
     const again = probes.recordModelProbe(compatUrl, "gpt-5.6", { ok: false, stages: { streaming: { ok: true } } });
     assert.equal(probes.modelProbes().length, 1, "the newest result per host and model wins");
     assert.equal(again.stages.toolCall, false);
-    const choices = await modelChoices({ role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "sk-test", selected: "gpt-5.6" });
+    const choices = await modelChoices(enT, { role: "story", provider: "custom", baseUrl: compatUrl, apiKey: "sk-test", selected: "gpt-5.6" });
     assert.equal(choices.models[0].tested?.ok, false);
     const many = Array.from({ length: 70 }, (_, i) => probes.probeRecord("http://h:1/v1", `m${i}`, { ok: true }));
     assert.equal(probes.mergeProbeRecords(many, probes.probeRecord("http://h:1/v1", "last", { ok: true })).length, probes.MAX_PROBE_RECORDS);

@@ -17,6 +17,10 @@ import { currentScene } from "@/lib/dm/sky";
 import { bringBackTakenRows, takeBackTurnChanges, turnChangeWarnings, turnRevertRefusal } from "@/lib/dm/turn-revert";
 import { publishPersisted } from "@/lib/events";
 import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
+import { translate } from "@/lib/i18n/translate";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // "Revert this turn" (the event log, src/app/api/campaigns/[campaignId]/audit/revert-turn/route.ts)
 // and "Take back and rewrite" (a player's newest move, src/lib/dm/take-back.ts)
@@ -36,18 +40,21 @@ export function runTurnRevert(
   campaign: Campaign,
   userId: string,
   turnId: string,
-  options: { confirm?: boolean; seesSecrets: boolean },
+  // `t`: the asker's language for the refusals the event log shows raw
+  // (revert-turn/route.ts); English when no route passes one.
+  options: { confirm?: boolean; seesSecrets: boolean; t?: T },
 ): TurnRevertResult {
   const campaignId = campaign.id;
+  const t = options.t ?? enT;
   // Only a turn this table played. Rows once filed under a made-up turn
   // ("clock", issue #622) gathered changes from the whole campaign, and a
   // revert of it undid them all at once.
   const turn = getDmTurn(turnId);
   if (!turn || turn.campaignId !== campaignId) {
-    return { ok: false, status: 400, error: "That is not a GM turn of this table." };
+    return { ok: false, status: 400, error: t("That is not a GM turn of this table.") };
   }
   if (turnStillPlaying(campaignId, turn)) {
-    return { ok: false, status: 409, error: "That turn is still being played. Revert it once it is done, or stop it first." };
+    return { ok: false, status: 409, error: t("That turn is still being played. Revert it once it is done, or stop it first.") };
   }
   // Past the window the rows a revert puts the fight back from are gone
   // (src/lib/db/turn-rows.ts REVERT_WINDOW_TURNS): half a revert is refused.
@@ -56,7 +63,7 @@ export function runTurnRevert(
     return {
       ok: false,
       status: 400,
-      error: `That turn is too far back to revert: a table's last ${REVERT_WINDOW_TURNS} GM turns can be. Rewinding the chapter takes older ones back.`,
+      error: t("That turn is too far back to revert: a table's last {count} GM turns can be. Rewinding the chapter takes older ones back.", { count: REVERT_WINDOW_TURNS }),
     };
   }
 
@@ -67,7 +74,7 @@ export function runTurnRevert(
   const changes = liveTurnChanges(campaignId, turnId);
   const rows = turnHasKeptRows(turnId);
   if (!entries.length && !clock && !changes.length && !rows) {
-    return { ok: false, status: 400, error: "Nothing left to revert for that turn.", nothingToRevert: true };
+    return { ok: false, status: 400, error: t("Nothing left to revert for that turn."), nothingToRevert: true };
   }
   const refusal = rows ? turnRevertRefusal(turnId) : null;
   if (refusal) {

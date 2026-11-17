@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FILL_ROUNDS, fillRound, undoFill, type BuildSeed, type FilledPick, type QuizAnswers } from "./quickBuild";
+import { useLocale, useT } from "@/lib/locale";
+import { FILL_ROUNDS, fillRound, undoFill, type BuildSeed, type FilledPick, type QuizAnswers, } from "./quickBuild";
+import { TARGET_WORDS } from "./owed";
 import type { BlockerTarget } from "./submit";
 import type { BuilderDerived } from "./useBuilderDerived";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
@@ -56,6 +58,8 @@ export function useQuickFill({
   // Called once a fill has finished, with what it read back.
   onDone?: (readback: FillReadback) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [run, setRun] = useState<Run | null>(null);
   const [readback, setReadback] = useState<FillReadback | null>(null);
   // Whether the panel shows: "Keep them" closes it and keeps it to reopen.
@@ -84,9 +88,9 @@ export function useQuickFill({
           ...run,
           round: 1,
           filled: [
-            { target: "class", label: "Class", value: named(offered.classes, seed.classId) },
-            { target: "race", label: "Race", value: named(offered.races, seed.raceId) },
-            { target: "background", label: "Background", value: named(offered.backgrounds, seed.backgroundId) },
+            { target: "class", label: t(TARGET_WORDS.class), value: named(offered.classes, seed.classId) },
+            { target: "race", label: t(TARGET_WORDS.race), value: named(offered.races, seed.raceId) },
+            { target: "background", label: t(TARGET_WORDS.background), value: named(offered.backgrounds, seed.backgroundId) },
           ],
         });
         return;
@@ -94,6 +98,8 @@ export function useQuickFill({
       const step =
         run.round < FILL_ROUNDS + 1
           ? fillRound({
+              t,
+              locale,
               fields,
               derived,
               race,

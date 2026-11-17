@@ -5,7 +5,8 @@ import { useState } from "react";
 import { ui } from "@/lib/ui";
 import { Switch } from "@/components/ui/Switch";
 import { AgentConnectLines } from "@/components/AgentConnectLines";
-import { AGENT_SCOPE_CHOICES } from "@/app/settings/ConnectedAgentsSection";
+import { AGENT_SCOPE_CHOICES, agentScopeHint, agentScopeLabel } from "@/app/settings/ConnectedAgentsSection";
+import { useT } from "@/lib/locale";
 
 export type MadeConnection = { id: string; token: string; mcpUrl: string };
 
@@ -21,6 +22,7 @@ export function YourAgentStep({
   made: MadeConnection | null;
   onMade: (connection: MadeConnection) => void;
 }) {
+  const t = useT();
   const [name, setName] = useState("My agent");
   const [scopes, setScopes] = useState<string[]>(["read", "play", "dm"]);
   const [busy, setBusy] = useState(false);
@@ -37,12 +39,12 @@ export function YourAgentStep({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error ?? "Could not make the connection.");
+        setError(data.error ?? t("Could not make the connection."));
         return;
       }
       onMade({ id: data.grant.id, token: data.token, mcpUrl: data.mcpUrl });
     } catch {
-      setError("Could not reach this server.");
+      setError(t("Could not reach this server."));
     } finally {
       setBusy(false);
     }
@@ -52,10 +54,10 @@ export function YourAgentStep({
     return (
       <div className="hx-token space-y-3">
         <p className="text-sm text-amber-100">
-          The connection is made. Its token is shown only here; copy the line for your program now.
+          {t("The connection is made. Its token is shown only here; copy the line for your program now.")}
         </p>
         <AgentConnectLines grantId={made.id} token={made.token} mcpUrl={made.mcpUrl} />
-        <p className="text-[11px] text-stone-500">Revoke it, or make more, under Settings, Connected agents.</p>
+        <p className="text-[11px] text-stone-500">{t("Revoke it, or make more, under Settings, Connected agents.")}</p>
       </div>
     );
   }
@@ -63,28 +65,26 @@ export function YourAgentStep({
   return (
     <div className="space-y-4">
       <p className="text-sm text-stone-300">
-        If you use Claude Code, Codex, opencode or another MCP client, it can work here as you: read your campaigns, play your
-        character, or run a table from the GM seat. It gets only what you tick, never your password or this server&apos;s
-        settings. Skip this if you do not use one.
+        {t("If you use Claude Code, Codex, opencode or another MCP client, it can work here as you: read your campaigns, play your character, or run a table from the GM seat. It gets only what you tick, never your password or this server's settings. Skip this if you do not use one.")}
       </p>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-stone-400">Name</span>
+        <span className="mb-1 block text-xs font-medium text-stone-400">{t("Name")}</span>
         <input className={ui.input} value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
       </label>
       <div className="space-y-2">
-        <span className="block text-xs font-medium text-stone-400">What it may do</span>
+        <span className="block text-xs font-medium text-stone-400">{t("What it may do")}</span>
         {AGENT_SCOPE_CHOICES.map((scope) => {
           const on = scopes.includes(scope.id);
           return (
             <label key={scope.id} className="flex items-start gap-3 text-sm text-stone-300">
               <Switch
-                label={scope.label}
+                label={agentScopeLabel(t, scope.id)}
                 on={on}
                 onChange={(next) => setScopes((current) => (next ? [...current, scope.id] : current.filter((entry) => entry !== scope.id)))}
               />
               <span>
-                {scope.label}
-                <span className="block text-xs text-stone-500">{scope.hint}</span>
+                {agentScopeLabel(t, scope.id)}
+                <span className="block text-xs text-stone-500">{agentScopeHint(t, scope.id)}</span>
               </span>
             </label>
           );
@@ -96,7 +96,7 @@ export function YourAgentStep({
         </p>
       ) : null}
       <button type="button" className={ui.btnSecondary} onClick={connect} disabled={busy || scopes.length === 0} aria-busy={busy}>
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />} Make the connection
+        {busy ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />} {t("Make the connection")}
       </button>
     </div>
   );

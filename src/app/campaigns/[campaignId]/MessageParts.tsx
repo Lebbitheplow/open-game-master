@@ -10,7 +10,15 @@ import { useFaceChain } from "@/app/campaigns/[campaignId]/useFaceChain";
 import { useFaceSize } from "@/app/campaigns/[campaignId]/useFaceSize";
 import { cn } from "@/lib/cn";
 import { playerFaces } from "@/lib/speaker-faces";
-import { JOIN_NOTE_PREFIX, LEAD_NOTE_PREFIX, RECAP_PREFIX, systemNoteWords, type CampaignMember } from "@/lib/campaign-types";
+import {
+  ADVENTURE_BEGINS_NOTE,
+  JOIN_NOTE_PREFIX,
+  LEAD_NOTE_PREFIX,
+  RECAP_PREFIX,
+  systemNoteWords,
+  type CampaignMember,
+} from "@/lib/campaign-types";
+import { useT } from "@/lib/locale";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { TranscriptSheet } from "@/app/campaigns/[campaignId]/departing";
@@ -28,12 +36,14 @@ import { variantUrl } from "@/lib/image-variant-url";
 // The transcript's smaller voices: the table's own notices and what the
 // players say. The DM's passage, the hero of the screen, is MessageItem.tsx.
 
-export function copyAction(message: CampaignMessage): MessageAction {
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function copyAction(t: T, message: CampaignMessage): MessageAction {
   return {
     id: "copy",
-    name: "Copy text",
-    label: "Copy this message's text",
-    hint: "Copy: put this message's words on the clipboard",
+    name: t("Copy text"),
+    label: t("Copy this message's text"),
+    hint: t("Copy: put this message's words on the clipboard"),
     glyph: "ui-duplicate",
     icon: <Copy className="size-3.5" />,
     onSelect: () => {
@@ -44,26 +54,26 @@ export function copyAction(message: CampaignMessage): MessageAction {
 
 // A player's objection to a narrated ruling (DisputeDialog.tsx): the
 // steerer upholds or overrules it, or the table votes.
-export function disputeAction(message: CampaignMessage, onDispute: (message: CampaignMessage) => void): MessageAction {
+export function disputeAction(t: T, message: CampaignMessage, onDispute: (message: CampaignMessage) => void): MessageAction {
   return {
     id: "dispute",
-    name: "Dispute",
-    label: "Dispute this ruling",
-    hint: "Dispute: object to what the narrator ruled here; whoever steers the story settles it, or the table votes",
+    name: t("Dispute"),
+    label: t("Dispute this ruling"),
+    hint: t("Dispute: object to what the narrator ruled here; whoever steers the story settles it, or the table votes"),
     glyph: "system-rules",
     icon: <Scale className="size-3.5" />,
     onSelect: () => onDispute(message),
   };
 }
 
-export function reportAction(message: CampaignMessage, onReport: (message: CampaignMessage) => void, dm: boolean): MessageAction {
+export function reportAction(t: T, message: CampaignMessage, onReport: (message: CampaignMessage) => void, dm: boolean): MessageAction {
   return {
     id: "report",
-    name: "Report",
-    label: dm ? "Report this passage" : "Report this message",
+    name: t("Report"),
+    label: dm ? t("Report this passage") : t("Report this message"),
     hint: dm
-      ? "Report: flag this passage to the admins of this server"
-      : "Report: flag this message to the admins of this server, or block the player",
+      ? t("Report: flag this passage to the admins of this server")
+      : t("Report: flag this message to the admins of this server, or block the player"),
     glyph: "system-rules",
     icon: <Flag className="size-3.5" />,
     tone: "danger",
@@ -74,11 +84,84 @@ export function reportAction(message: CampaignMessage, onReport: (message: Campa
 // A notice that is not a halted turn: the lead's public direction as a card,
 // a joiner, or a plain line with the painting its writer stored (a line
 // written before the icon was stored draws the neutral bell).
+//
+// Begin's own note is DB-stored in English (ADVENTURE_BEGINS_NOTE and its
+// human-DM variant, built in the campaign route); the constant and its
+// comparison in the DM prompt must stay byte-identical, so the line is
+// translated here, at display, only when the content is exactly the note.
+const ADVENTURE_BEGINS_DM_LINE = `${ADVENTURE_BEGINS_NOTE} The Game Master opens the scene.`;
+
+function translateSystemNote(t: (key: string, vars?: Record<string, string | number>) => string, raw: string): string {
+  if (raw === "The fight is over.") return t("The fight is over.");
+  let m = /^Chapter (\d+)(?:, "([^"]+)",)? comes to a close\.(.*)$/.exec(raw);
+  if (m) {
+    const head = m[2]
+      ? t("Chapter {n}, \"{title}\", comes to a close.", { n: m[1], title: m[2] })
+      : t("Chapter {n} comes to a close.", { n: m[1] });
+    return `${head}${m[3]}`;
+  }
+  m = /^Act ([IVXLCDM\d]+)(?:, "([^"]+)",)? comes to a close\.(.*)$/.exec(raw);
+  if (m) {
+    const head = m[2]
+      ? t("Act {n}, \"{title}\", comes to a close.", { n: m[1], title: m[2] })
+      : t("Act {n} comes to a close.", { n: m[1] });
+    return `${head}${m[3]}`;
+  }
+  m = /^Act ([IVXLCDM\d]+)(?:, "([^"]+)",)? begins\.(.*)$/.exec(raw);
+  if (m) {
+    const head = m[2]
+      ? t("Act {n}, \"{title}\", begins.", { n: m[1], title: m[2] })
+      : t("Act {n} begins.", { n: m[1] });
+    return `${head}${m[3]}`;
+  }
+  let out = raw;
+  out = out.replace(/It is now ([^']+)'s turn \(round (\d+)\)\./g, (_, ch, r) =>
+    t("It is now {character}'s turn (round {n}).", { character: ch, n: r }),
+  );
+  out = out.replace(/It is now ([^']+)'s turn\./g, (_, ch) =>
+    t("It is now {character}'s turn.", { character: ch }),
+  );
+  out = out.replace(/([A-Z][^.\n]+?) acts before ([^.]+)\./g, (_, enemy, ch) =>
+    t("{enemy} acts before {character}.", { enemy, character: ch }),
+  );
+  out = out.replace(/Skipped enemy turns resolve automatically:/g, () =>
+    t("Skipped enemy turns resolve automatically:"),
+  );
+  out = out.replace(
+    /([^:;]+) attacks ([^:]+?) with ([^(:]+) \(([^)]+) vs AC (\d+): (HIT|CRIT|MISS)(?: for ([^)]+))?\)\./g,
+    (_, enemy, target, weapon, roll, ac, outcome, dmg) => {
+      const outcomeFr =
+        outcome === "HIT" ? t("HIT") : outcome === "CRIT" ? t("CRIT") : t("MISS");
+      return dmg
+        ? t("{enemy} attacks {target} with {weapon} ({roll} vs AC {ac}: {outcome} for {dmg}).", {
+            enemy: enemy.trim(),
+            target: target.trim(),
+            weapon: weapon.trim(),
+            roll,
+            ac,
+            outcome: outcomeFr,
+            dmg,
+          })
+        : t("{enemy} attacks {target} with {weapon} ({roll} vs AC {ac}: {outcome}).", {
+            enemy: enemy.trim(),
+            target: target.trim(),
+            weapon: weapon.trim(),
+            roll,
+            ac,
+            outcome: outcomeFr,
+          });
+    },
+  );
+  out = out.replace(/^Combat begins\. Initiative order: /, () => `${t("Combat begins. Initiative order:")} `);
+  return out;
+}
+
 export function SystemMessage({ content, glyph }: { content: string; glyph?: SystemGlyph }) {
+  const t = useT();
   if (content.startsWith(LEAD_NOTE_PREFIX)) {
     return (
       <div data-tone="ember" className="panel session-banner-card rounded-xl border-ember-500/40">
-        <SectionHead title="Party Lead" glyph="tab-lead" level="h4" className="mb-1" />
+        <SectionHead title={t("Party lead")} glyph="tab-lead" level="h4" className="mb-1" />
         <p className="text-sm text-amber-100/90">{content.slice(LEAD_NOTE_PREFIX.length)}</p>
       </div>
     );
@@ -90,7 +173,7 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
       <div className="pact-reveal panel rounded-xl border-violet-500/45 px-3 py-2" data-pact-reveal="">
         <p className="eyebrow flex items-center gap-1.5 text-[10px] text-violet-300">
           <VenetianMask className="size-3.5" aria-hidden="true" />
-          Revealed
+          {t("Revealed")}
         </p>
         <p className="mt-0.5 text-sm leading-snug text-violet-50">{content.slice(PACT_REVEAL_PREFIX.length)}</p>
       </div>
@@ -101,15 +184,21 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
   // (issue 668).
   if (content.startsWith(RECAP_PREFIX)) {
     return (
-      <section aria-label="Previously" className="panel session-banner-card session-recap rounded-xl">
-        <SectionHead title="Previously" glyph="cue-bell" level="h4" className="mb-1" />
+      <section aria-label={t("Previously")} className="panel session-banner-card session-recap rounded-xl">
+        <SectionHead title={t("Previously")} glyph="cue-bell" level="h4" className="mb-1" />
         <p className="session-recap-text">{content.slice(RECAP_PREFIX.length)}</p>
       </section>
     );
   }
   const join = content.startsWith(JOIN_NOTE_PREFIX);
-  // The markers the DM reads (a joiner, a settled offer) come off.
-  const text = systemNoteWords(content);
+  // The markers the DM reads (a joiner, a settled offer) come off. Begin's
+  // note reads in the interface's language instead of its stored English.
+  const text =
+    content === ADVENTURE_BEGINS_NOTE
+      ? t("The party is assembled and the adventure begins.")
+      : content === ADVENTURE_BEGINS_DM_LINE
+        ? t("The party is assembled and the adventure begins. The Game Master opens the scene.")
+        : translateSystemNote(t, systemNoteWords(content));
   return (
     <p className="session-sysline">
       <GameIcon icon={{ kind: "glyph", key: join ? "system-party" : (glyph ?? "cue-bell") }} size="size-6" />
@@ -123,6 +212,7 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
 // prices live in the Market, never in the narration. Every seat sees it.
 export function ShopOpenLine({ content, onBrowse }: { content: string; onBrowse?: () => void }) {
   const lineId = useId();
+  const t = useT();
   return (
     <p className="session-sysline">
       <GameIcon icon={{ kind: "glyph", key: "cue-coin" }} size="size-6" />
@@ -130,7 +220,7 @@ export function ShopOpenLine({ content, onBrowse }: { content: string; onBrowse?
       {onBrowse ? (
         <button type="button" onClick={onBrowse} aria-describedby={lineId} data-browse-wares="" className={kitButtonClass("small", "shrink-0 not-italic text-amber-100")}>
           <GameIcon icon={{ kind: "glyph", key: "tab-market" }} size="size-5" />
-          Browse wares
+          {t("Browse wares")}
         </button>
       ) : null}
     </p>
@@ -138,10 +228,11 @@ export function ShopOpenLine({ content, onBrowse }: { content: string; onBrowse?
 }
 
 export function BlockedMessage() {
+  const t = useT();
   return (
     <p className="ml-auto flex max-w-[92%] items-center justify-end gap-1.5 text-right text-xs italic text-stone-600 sm:max-w-2xl">
       <EyeOff className="size-3.5 shrink-0" />
-      A message from a player you blocked
+      {t("A message from a player you blocked")}
     </p>
   );
 }
@@ -169,6 +260,10 @@ export function PlayerMessage({
   // that names its character never borrows the author's: a card the player
   // played for a companion who has since left read as the player's own
   // (0.31.1 playtest).
+  // A message without a character to its name still has its actions and its
+  // speaker line: "Player" is the stand-in, read in the interface's language.
+  const t = useT();
+  const fallbackName = t("Player");
   const sheet: TranscriptSheet | undefined = message.characterId
     ? sheetsById.get(message.characterId)
     : message.userId
@@ -179,16 +274,16 @@ export function PlayerMessage({
   const [portraitUrl, onFaceError] = useFaceChain(
     playerFaces({ sheet, avatarUrl: message.userId ? membersById.get(message.userId)?.avatar?.url : undefined, userId: message.userId }),
   );
-  const actions: MessageAction[] = [copyAction(message)];
+  const actions: MessageAction[] = [copyAction(t, message)];
   if (onReport && !mine && message.userId) {
-    actions.push(reportAction(message, onReport, false));
+    actions.push(reportAction(t, message, onReport, false));
   }
   if (onTakeBack) {
     actions.push({
       id: "take-back",
-      name: "Take back",
-      label: "Take back this move and rewrite it",
-      hint: "Take back: remove this move and the GM's answer to it, and get its words back to correct",
+      name: t("Take back"),
+      label: t("Take back this move and rewrite it"),
+      hint: t("Take back: remove this move and the GM's answer to it, and get its words back to correct"),
       glyph: "tab-log",
       icon: <Undo2 className="size-3.5" />,
       onSelect: () => onTakeBack(message),
@@ -206,7 +301,7 @@ export function PlayerMessage({
   return (
     <ContextMenu
       items={toContextItems(actions)}
-      label={sheet?.name ?? "Player"}
+      label={sheet?.name ?? fallbackName}
       className="session-player group ml-auto max-w-[92%] animate-fade-up sm:max-w-2xl"
     >
       {face ? (
@@ -222,13 +317,13 @@ export function PlayerMessage({
       ) : null}
       <div ref={textColumn} className="min-w-0">
         <p className="mb-1 flex items-center justify-end gap-1.5 text-right">
-          <MessageActions actions={actions} menuLabel={`${sheet?.name ?? "Player"}: message actions`} quiet />
-          <span className="session-speaker truncate">{sheet?.name ?? "Player"}</span>
+          <MessageActions actions={actions} menuLabel={t("{name}: message actions", { name: sheet?.name ?? fallbackName })} quiet />
+          <span className="session-speaker truncate">{sheet?.name ?? fallbackName}</span>
         </p>
         <div className={cn("session-bubble", ooc && "session-bubble-ooc")}>
           <p className="whitespace-pre-wrap text-pretty">{message.content}</p>
         </div>
-        {message.cardReturned ? <CardReturnedNote message={message} mine={mine} name={sheet?.name ?? "the player"} /> : null}
+        {message.cardReturned ? <CardReturnedNote message={message} mine={mine} name={sheet?.name ?? t("the player")} /> : null}
       </div>
     </ContextMenu>
   );

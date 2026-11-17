@@ -1,7 +1,7 @@
 import { STAGES, isStageEnabled } from "@/lib/dm/stages";
 import type { GameSettings } from "@/lib/schemas/game-settings";
 import { DELEGATIONS } from "@/lib/dm/delegation";
-import { CAMPAIGN_LENGTH_LABELS, TABLE_LANGUAGE_LABELS } from "@/lib/schemas/game-settings-options";
+import { TABLE_LANGUAGE_LABELS } from "@/lib/schemas/game-settings-options";
 import { bondsSummary, boardSummary, safetySummary, voiceSummary } from "@/app/create-campaign/summaries";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -9,8 +9,14 @@ import { textKey } from "@/lib/language/text-logic";
 // (src/app/create-campaign/groups.ts): a lead who met "Bonds and romance"
 // while making the table finds it under the same name in the lobby and in
 // play. Which groups a table shows, what each says on its closed face, and
-// which group holds a row another panel links to. Pure, for
+// which group holds a row another panel links to. The words are the
+// dictionaries': every function takes the translator from the surface that
+// draws it (agoLabel's pattern), and the group titles reuse the creator's own
+// keys so the two surfaces never disagree about a group's name. Pure, for
 // scripts/test-table-settings-groups.mjs.
+
+// The translator a component hands over (`const t = useT()`).
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 export type TableGroupId =
   | "world"
@@ -76,8 +82,6 @@ const GLYPHS: Record<TableGroupId, string> = {
 };
 
 const onOff = (on: boolean) => (on ? "on" : "off");
-const HP_WORDS = { average: "average hit points", rolled: "rolled hit points", max: "maximum hit points" } as const;
-const ALLY_WORDS = { auto: "automatic", full: "party members and guests", guests: "guests only", off: "off" } as const;
 
 // The allies row lives in this group at a table a person runs too, where
 // it shows only once an Off or guests-only setting shuts companions out.
@@ -91,11 +95,11 @@ export function conscienceShown(settings: GameSettings, lastingCompanions: boole
   return settings.relationships !== "off" && lastingCompanions;
 }
 
-const CONSCIENCE_WORDS = { off: "off", talk: "talk only", leave: "may leave", turn: "may turn" } as const;
-
-function title(id: TableGroupId, settings: GameSettings): string {
+function titleKey(id: TableGroupId, settings: GameSettings): string {
   const aiNarrates = settings.dmMode !== "human";
   switch (id) {
+    // The creator's own names for the groups it taught (creator.group.*):
+    // the same words in both dictionaries.
     case "world":
       return "World and story";
     case "character":
@@ -117,10 +121,14 @@ function title(id: TableGroupId, settings: GameSettings): string {
     case "console":
       return "GM reminders";
     case "board":
-      return "Battle board";
+      return "The battle board";
     case "voiceChat":
       return "Live voice chat";
   }
+}
+
+function title(t: Translate, id: TableGroupId, settings: GameSettings): string {
+  return t(titleKey(id, settings));
 }
 
 function shown(id: TableGroupId, settings: GameSettings): boolean {
@@ -134,90 +142,111 @@ function shown(id: TableGroupId, settings: GameSettings): boolean {
 }
 
 // The groups this table shows, in the creator's order.
-export function tableGroups(settings: GameSettings): TableGroup[] {
-  return ORDER.filter((id) => shown(id, settings)).map((id) => ({ id, title: title(id, settings), glyph: GLYPHS[id] }));
+export function tableGroups(t: Translate, settings: GameSettings): TableGroup[] {
+  return ORDER.filter((id) => shown(id, settings)).map((id) => ({ id, title: title(t, id, settings), glyph: GLYPHS[id] }));
 }
 
-const ASSIST_WORDS = { monsters: "the monsters", narration: "reading beats aloud", cover: "covering for you" } as const;
-
-function assistWords(settings: GameSettings): string {
-  const helps = DELEGATIONS.filter((which) => settings.dmAssist[which]).map((which) => ASSIST_WORDS[which]);
-  return helps.length ? `AI helps with ${helps.join(", ")}` : "AI helps with nothing";
+function assistWords(t: Translate, settings: GameSettings): string {
+  const helps = DELEGATIONS.filter((which) => settings.dmAssist[which]).map((which) => ({ "monsters": t("the monsters"), "narration": t("reading beats aloud"), "cover": t("covering for you") } as Record<string, string>)[which] ?? String(which));
+  return helps.length ? t("AI helps with {helps}", { helps: helps.join(", ") }) : t("AI helps with nothing");
 }
 
 // The line on a closed group's face: what is set inside, never a count to
 // fill up.
-export function tableGroupSummary(id: TableGroupId, settings: GameSettings, context: TableGroupContext): string {
+export function tableGroupSummary(t: Translate, id: TableGroupId, settings: GameSettings, context: TableGroupContext): string {
   const aiNarrates = settings.dmMode !== "human";
   switch (id) {
     case "world":
       return [
         context.packName ?? context.genreName,
         TABLE_LANGUAGE_LABELS[settings.tableLanguage],
-        aiNarrates ? `${CAMPAIGN_LENGTH_LABELS[settings.campaignLength].split(" (")[0]} length` : null,
+        aiNarrates ? ({ "short": t("short length"), "standard": t("standard length"), "epic": t("epic length") } as Record<string, string>)[settings.campaignLength] ?? String(settings.campaignLength) : null,
       ]
         .filter(Boolean)
         .join(" · ");
     case "character":
       return [
-        HP_WORDS[settings.hpMethod ?? "average"],
-        settings.startingWealth === "rolled" ? "rolled gold" : "starting kit",
-        settings.dicePolicy === "real_allowed" ? "real dice allowed" : "digital dice",
-        `stats: ${context.statsRule}`,
-        `multiclassing ${onOff(settings.multiclassingEnabled)}`,
+        ({ "average": t("average hit points"), "rolled": t("rolled hit points"), "max": t("maximum hit points") } as Record<string, string>)[settings.hpMethod ?? "average"] ?? String(settings.hpMethod ?? "average"),
+        settings.startingWealth === "rolled" ? t("rolled gold") : t("starting kit"),
+        settings.dicePolicy === "real_allowed" ? t("real dice allowed") : t("digital dice"),
+        t("stats: {rule}", { rule: context.statsRule }),
+        ({ "on": t("multiclassing on"), "off": t("multiclassing off") } as Record<string, string>)[onOff(settings.multiclassingEnabled)] ?? String(onOff(settings.multiclassingEnabled)),
       ].join(" · ");
     case "narration":
-      if (context.narrationOff) return "Off on this server: nothing is read aloud";
+      if (context.narrationOff) return t("Off on this server: nothing is read aloud");
       return settings.ttsEnabled
-        ? `Read aloud · ${context.voiceName}`
-        : "Off: nothing is read aloud";
+        ? t("Read aloud · {voice}", { voice: context.voiceName })
+        : t("Off: nothing is read aloud");
     case "atmosphere":
       return [
-        `maps ${onOff(settings.mapsEnabled)}`,
-        settings.ambienceEnabled ? `ambience on${settings.ambienceAuto ? ", follows the scene" : ""}` : "ambience off",
-        `theatre inserts ${onOff(settings.presentation === "theatre")}`,
+        settings.mapsEnabled ? t("maps on") : t("maps off"),
+        settings.ambienceEnabled
+          ? settings.ambienceAuto
+            ? t("ambience on, follows the scene")
+            : t("ambience on")
+          : t("ambience off"),
+        settings.presentation === "theatre"
+          ? t("theatre inserts on")
+          : t("theatre inserts off"),
       ].join(" · ");
     case "safety":
-      return safetySummary(settings);
+      return safetySummary(t, settings);
     case "ai":
       return [
-        settings.dmMode === "assisted" ? assistWords(settings) : null,
-        aiNarrates ? `story setup ${onOff(settings.aiStorySetup)}` : null,
-        aiNarrates ? `outcome check ${onOff(settings.narrationGuard)}` : null,
-        aiNarrates && settings.narrationLength !== "standard" ? `${settings.narrationLength} narration` : null,
-        aiNarrates && settings.styleNotes ? "style notes set" : null,
-        aiNarrates && (settings.combatPace ?? "balanced") !== "balanced" ? (settings.combatPace === "rare" ? "fewer fights" : "more fights") : null,
-        aiNarrates ? `living world ${onOff(settings.worldSimulation)}` : null,
-        alliesShown(settings) ? `allies: ${ALLY_WORDS[settings.companions]}` : null,
+        settings.dmMode === "assisted" ? assistWords(t, settings) : null,
+        aiNarrates ? ({ "on": t("story setup on"), "off": t("story setup off") } as Record<string, string>)[onOff(settings.aiStorySetup)] ?? String(onOff(settings.aiStorySetup)) : null,
+        aiNarrates ? ({ "on": t("outcome check on"), "off": t("outcome check off") } as Record<string, string>)[onOff(settings.narrationGuard)] ?? String(onOff(settings.narrationGuard)) : null,
+        aiNarrates && settings.narrationLength !== "standard"
+          ? ({ "short": t("short narration"), "standard": t("standard narration"), "rich": t("rich narration") } as Record<string, string>)[settings.narrationLength] ?? String(settings.narrationLength)
+          : null,
+        aiNarrates && settings.styleNotes ? t("style notes set") : null,
+        aiNarrates && (settings.combatPace ?? "balanced") !== "balanced"
+          ? settings.combatPace === "rare"
+            ? t("fewer fights")
+            : t("more fights")
+          : null,
+        aiNarrates ? ({ "on": t("living world on"), "off": t("living world off") } as Record<string, string>)[onOff(settings.worldSimulation)] ?? String(onOff(settings.worldSimulation)) : null,
+        alliesShown(settings) ? t("allies: {allies}", { allies: ({ "auto": t("automatic"), "full": t("party members and guests"), "guests": t("guests only"), "off": t("off") } as Record<string, string>)[settings.companions] ?? String(settings.companions) }) : null,
       ]
         .filter(Boolean)
         .join(" · ");
     case "memory": {
       const off = STAGES.filter((stage) => !isStageEnabled(settings.stages, stage.id));
-      return off.length ? `Off: ${off.map((stage) => stage.label.toLowerCase()).join(", ")}` : "Everything on, as most tables keep it";
+      return off.length
+        ? t("Off: {stages}", { stages: off.map((stage) => t(stage.label).toLowerCase()).join(", ") })
+        : t("Everything on, as most tables keep it");
     }
-    case "bonds":
+    case "bonds": {
+      const summary = bondsSummary(t, settings);
       return conscienceShown(settings, context.lastingCompanions ?? false)
-        ? `${bondsSummary(settings)} · companions ${CONSCIENCE_WORDS[settings.companionConscience ?? "leave"]}`
-        : bondsSummary(settings);
+        ? `${summary} · ${({ "off": t("companions off"), "talk": t("companions talk only"), "leave": t("companions may leave"), "turn": t("companions may turn") } as Record<string, string>)[settings.companionConscience ?? "leave"] ?? String(settings.companionConscience ?? "leave")}`
+        : summary;
+    }
     case "players":
       return [
-        `joining mid-game ${settings.midGameJoinOpen ? "open" : "closed"}`,
-        settings.holdSubmissions ? "held responses" : null,
-        settings.waitForTable ? "GM waits for the table" : null,
-        settings.inventoryApprovals || settings.vitalsApprovals ? "players confirm changes" : "changes apply at once",
+        ({ "open": t("joining mid-game open"), "closed": t("joining mid-game closed") } as Record<string, string>)[settings.midGameJoinOpen ? "open" : "closed"] ?? String(settings.midGameJoinOpen ? "open" : "closed"),
+        settings.holdSubmissions ? t("held responses") : null,
+        settings.waitForTable ? t("GM waits for the table") : null,
+        settings.inventoryApprovals || settings.vitalsApprovals
+          ? t("players confirm changes")
+          : t("changes apply at once"),
       ]
         .filter(Boolean)
         .join(" · ");
     case "console": {
       const { messages, rolls } = settings.beatReminder;
-      if (!messages && !rolls) return "Never reminded";
-      return [messages ? `after ${messages} actions` : null, rolls ? `after ${rolls} rolls` : null].filter(Boolean).join(" or ");
+      if (!messages && !rolls) return t("Never reminded");
+      return [
+        messages ? t("after {count} actions", { count: messages }) : null,
+        rolls ? t("after {count} rolls", { count: rolls }) : null,
+      ]
+        .filter(Boolean)
+        .join(t(" or "));
     }
     case "board":
-      return boardSummary(settings);
+      return boardSummary(t, settings);
     case "voiceChat":
-      return voiceSummary(settings.voice);
+      return voiceSummary(t, settings.voice);
   }
 }
 

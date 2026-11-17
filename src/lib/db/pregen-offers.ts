@@ -4,6 +4,14 @@ import { drawsFrom } from "@/lib/db/campaign-workshops";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { byName } from "@/lib/language/text-logic";
+import type { Locale } from "@/lib/messages-logic";
+import { translate } from "@/lib/messages-logic";
+
+// The shape of a translator, as the pure builders take it
+// (src/lib/story-window.ts): the route passes its request's, so the
+// refusals read the asker's language.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // A DM's pregens offered to the players of a table (option B of "sharing a
 // DM's own pregens with the table"): the DM ticks "Offer to players" on a
@@ -123,13 +131,13 @@ export function offeredPregenFor(campaignId: string, characterId: string): Offer
 }
 
 // Why this player cannot take the pregen, or null when they can.
-export function claimRefusal(offer: OfferedPregen, userId: string): string | null {
+export function claimRefusal(offer: OfferedPregen, userId: string, t: T = enT): string | null {
   if (!offer.claim) {
     return null;
   }
   return offer.claim.userId === userId
-    ? `You already play ${offer.character.name} at this table.`
-    : `${offer.character.name} is already taken at this table.`;
+    ? t("You already play {name} at this table.", { name: offer.character.name })
+    : t("{name} is already taken at this table.", { name: offer.character.name });
 }
 
 // Why a library character may not sit at this table because the pregen it
@@ -143,6 +151,7 @@ export function pregenSeatRefusal(
   character: LibraryCharacter,
   userId: string,
   replacing = "",
+  t: T = enT,
 ): string | null {
   const pregenId = pregenOf(character);
   const claim = pregenId ? liveClaim(campaignId, pregenId, replacing) : null;
@@ -150,8 +159,8 @@ export function pregenSeatRefusal(
     return null;
   }
   return claim.userId === userId
-    ? `You already play ${character.name} at this table, from another copy of the same pregen.`
-    : `${character.name} is a pregen another player already plays at this table. The GM offers each pregen to one player.`;
+    ? t("You already play {name} at this table, from another copy of the same pregen.", { name: character.name })
+    : t("{name} is a pregen another player already plays at this table. The GM offers each pregen to one player.", { name: character.name });
 }
 
 // Records the seat a player took with the pregen. Called once the sheet is

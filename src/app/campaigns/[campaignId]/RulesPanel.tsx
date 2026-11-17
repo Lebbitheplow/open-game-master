@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Pin, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -76,23 +77,27 @@ export const REST_LABELS: Record<GameSettings["variantRules"]["restVariant"], st
 
 // The variant-rule controls on their own, so the campaign-creation dialog can
 // offer the same choices this panel does without the lead having to open the
-// lobby afterwards to find them.
+// lobby afterwards to find them. The const above and the tips in
+// VARIANT_TOGGLES stay the English source the creator's read-back builds its
+// list from; the controls read the keyed words (table.rules.*) so both
+// surfaces answer in the interface's language.
 type RestVariant = GameSettings["variantRules"]["restVariant"];
 const REST_OPTIONS = (Object.keys(REST_LABELS) as RestVariant[]).map((variant) => ({
   value: variant,
-  label: REST_LABELS[variant],
+  labelKey: REST_LABELS[variant],
   icon: { kind: "glyph" as const, key: variant === "standard" ? "rest-short" : "rest-long" },
 }));
 
 // One variant rule: the kit switch, its name, and the word that says which
 // way it is set (a player reads "on" or "off", not the knob's position).
 function VariantSwitch({ label, tip, on, onChange }: { label: string; tip: string; on: boolean; onChange: (next: boolean) => void }) {
+  const t = useT();
   return (
     <Tooltip content={tip}>
       <span className="flex min-h-9 items-center gap-2 text-xs text-stone-300">
         <Switch on={on} onChange={onChange} label={label} />
         <span className="min-w-0 flex-1">{label}</span>
-        <span className={on ? "text-amber-200" : "text-stone-500"}>{on ? "on" : "off"}</span>
+        <span className={on ? "text-amber-200" : "text-stone-500"}>{on ? t("on", { context: "table.settings.word.on" }) : t("off", { context: "table.settings.word.off" })}</span>
       </span>
     </Tooltip>
   );
@@ -105,19 +110,26 @@ export function VariantRulesFields({
   value: GameSettings["variantRules"];
   onChange: (next: GameSettings["variantRules"]) => void;
 }) {
+  const t = useT();
   return (
     <div>
-      <SectionHead title="Variant rules" glyph="system-rules" level="h4" />
+      <SectionHead title={t("Variant rules")} glyph="system-rules" level="h4" />
       <div className="stagger-pop grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
         {VARIANT_TOGGLES.map((toggle) => (
-          <VariantSwitch key={toggle.key} label={toggle.label} tip={toggle.tip} on={Boolean(value[toggle.key])} onChange={(next) => onChange({ ...value, [toggle.key]: next })} />
+          <VariantSwitch
+            key={toggle.key}
+            label={({ "flanking": t("Flanking", { context: "table.rules.variant.flanking.label" }), "criticalFumbles": t("Critical fumbles (narrated)"), "encumbrance": t("Encumbrance"), "lingeringInjuries": t("Lingering injuries (narrated)"), "powerfulCritical": t("Powerful critical"), "criticalDamageMods": t("Crit damage mods"), "ammunition": t("Ammunition"), "supplies": t("Food and water") } as Record<string, string>)[toggle.key] ?? String(toggle.key)}
+            tip={({ "flanking": t("Two allies on opposite sides of a creature give each other advantage on melee attacks against it."), "criticalFumbles": t("A natural 1 on an attack roll comes with a minor mishap the GM describes. Narration only: the server changes no numbers."), "encumbrance": t("Carrying more than 5 times Strength in pounds slows a character by 10 feet."), "lingeringInjuries": t("A critical hit or dropping to 0 HP can leave a lasting injury the GM describes. Narration only: the server tracks no injury and changes no numbers."), "powerfulCritical": t("On a critical hit the extra weapon dice are dealt as their maximum instead of being rolled."), "criticalDamageMods": t("On a critical hit the flat damage modifiers double along with the dice."), "ammunition": t("Arrows, bolts and bullets are spent when they are fired and half are recovered after the fight."), "supplies": t("Each dawn every character eats a ration from their pack and drinks; going without costs exhaustion on the SRD's schedule, and that exhaustion stays until they eat. Off: the party is assumed supplied.") } as Record<string, string>)[toggle.key] ?? String(toggle.key)}
+            on={Boolean(value[toggle.key])}
+            onChange={(next) => onChange({ ...value, [toggle.key]: next })}
+          />
         ))}
       </div>
       <Select<RestVariant>
         value={value.restVariant}
         onChange={(restVariant) => onChange({ ...value, restVariant })}
-        options={REST_OPTIONS}
-        label="Rest lengths"
+        options={REST_OPTIONS.map((option) => ({ ...option, label: t(option.labelKey) }))}
+        label={t("Rest lengths")}
         className="mt-2 w-full"
       />
     </div>
@@ -141,6 +153,7 @@ export function RulesPanel({
   // campaign's lead steers the story but does not get the almanac.
   isDm: boolean;
 }) {
+  const t = useT();
   const [loading, setLoading] = useState(true);
   // A refused or failed read is shown in the server's words with a way to
   // ask again, never as "nothing here yet" (issue 140).
@@ -156,7 +169,7 @@ export function RulesPanel({
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<{ text?: unknown; chunks?: unknown }>(fetch(`/api/campaigns/${campaignId}/rules`), "The house rules").then((outcome) => {
+    readLoad<{ text?: unknown; chunks?: unknown }>(t, fetch(`/api/campaigns/${campaignId}/rules`), t("The house rules")).then((outcome) => {
       if (cancelled) {
         return;
       }
@@ -172,8 +185,7 @@ export function RulesPanel({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, reloads, settle]);
-
+  }, [ campaignId, reloads, settle, t ]);
   async function saveText() {
     setSaving(true);
     try {
@@ -217,10 +229,10 @@ export function RulesPanel({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setSettingsError(data.error ?? "That rule could not be changed.");
+        setSettingsError(data.error ?? t("That rule could not be changed."));
       }
     } catch {
-      setSettingsError("Could not reach the server.");
+      setSettingsError(t("Could not reach the server.", { context: "table.errors.unreachable" }));
     } finally {
       setSettingsBusy(false);
     }
@@ -231,20 +243,26 @@ export function RulesPanel({
   return (
     <div className="space-y-3">
       <div className="panel rounded-lg p-3" data-tour="rules-variants">
-        <SectionHead title="Variant rules" glyph="system-rules" />
+        <SectionHead title={t("Variant rules")} glyph="system-rules" />
         {steersStory ? (
           <div className={cn("reveal space-y-0.5", settingsBusy && "opacity-70")}>
             {VARIANT_TOGGLES.map((toggle) => (
-              <VariantSwitch key={toggle.key} label={toggle.label} tip={toggle.tip} on={Boolean(variant[toggle.key])} onChange={(next) => patchVariant({ [toggle.key]: next })} />
+              <VariantSwitch
+                key={toggle.key}
+                label={({ "flanking": t("Flanking", { context: "table.rules.variant.flanking.label" }), "criticalFumbles": t("Critical fumbles (narrated)"), "encumbrance": t("Encumbrance"), "lingeringInjuries": t("Lingering injuries (narrated)"), "powerfulCritical": t("Powerful critical"), "criticalDamageMods": t("Crit damage mods"), "ammunition": t("Ammunition"), "supplies": t("Food and water") } as Record<string, string>)[toggle.key] ?? String(toggle.key)}
+                tip={({ "flanking": t("Two allies on opposite sides of a creature give each other advantage on melee attacks against it."), "criticalFumbles": t("A natural 1 on an attack roll comes with a minor mishap the GM describes. Narration only: the server changes no numbers."), "encumbrance": t("Carrying more than 5 times Strength in pounds slows a character by 10 feet."), "lingeringInjuries": t("A critical hit or dropping to 0 HP can leave a lasting injury the GM describes. Narration only: the server tracks no injury and changes no numbers."), "powerfulCritical": t("On a critical hit the extra weapon dice are dealt as their maximum instead of being rolled."), "criticalDamageMods": t("On a critical hit the flat damage modifiers double along with the dice."), "ammunition": t("Arrows, bolts and bullets are spent when they are fired and half are recovered after the fight."), "supplies": t("Each dawn every character eats a ration from their pack and drinks; going without costs exhaustion on the SRD's schedule, and that exhaustion stays until they eat. Off: the party is assumed supplied.") } as Record<string, string>)[toggle.key] ?? String(toggle.key)}
+                on={Boolean(variant[toggle.key])}
+                onChange={(next) => patchVariant({ [toggle.key]: next })}
+              />
             ))}
-            <Tooltip content="How long short and long rests take at this table. The GM's rest tool follows it.">
+            <Tooltip content={t("How long short and long rests take at this table. The GM's rest tool follows it.")}>
               <span className="block pt-1.5">
                 <Select<RestVariant>
                   size="sm"
                   value={variant.restVariant}
                   onChange={(restVariant) => patchVariant({ restVariant })}
-                  options={REST_OPTIONS}
-                  label="Rest lengths"
+                  options={REST_OPTIONS.map((option) => ({ ...option, label: t(option.labelKey) }))}
+                  label={t("Rest lengths")}
                   className="w-full"
                 />
               </span>
@@ -259,18 +277,18 @@ export function RulesPanel({
           <p className="text-xs leading-5 text-stone-400">
             {[
               ...VARIANT_TOGGLES.filter((toggle) => variant[toggle.key]).map(
-                (toggle) => toggle.label,
+                (toggle) => ({ "flanking": t("Flanking", { context: "table.rules.variant.flanking.label" }), "criticalFumbles": t("Critical fumbles (narrated)"), "encumbrance": t("Encumbrance"), "lingeringInjuries": t("Lingering injuries (narrated)"), "powerfulCritical": t("Powerful critical"), "criticalDamageMods": t("Crit damage mods"), "ammunition": t("Ammunition"), "supplies": t("Food and water") } as Record<string, string>)[toggle.key] ?? String(toggle.key),
               ),
-              ...(variant.restVariant !== "standard" ? [REST_LABELS[variant.restVariant]] : []),
-            ].join(" · ") || "No variant rules in effect."}
+              ...(variant.restVariant !== "standard" ? [({ "standard": t("Standard rests (1h short, 8h long)"), "gritty": t("Gritty realism (8h short, 7-day long)"), "heroic": t("Heroic (5min short, 1h long)"), "tip": t("How long short and long rests take at this table. The GM's rest tool follows it.") } as Record<string, string>)[variant.restVariant] ?? String(variant.restVariant)] : []),
+            ].join(" · ") || t("No variant rules in effect.")}
           </p>
         )}
       </div>
 
       <div className="panel rounded-lg p-3" data-tour="rules-house">
-        <SectionHead title="House rules" glyph="system-homebrew" />
+        <SectionHead title={t("House rules", { context: "table.rules.house" })} glyph="system-homebrew" />
         {loading ? (
-          <PanelLoading label="Loading..." rows={2} />
+          <PanelLoading label={t("Loading...")} rows={2} />
         ) : steersStory ? (
           <>
             <textarea
@@ -278,19 +296,17 @@ export function RulesPanel({
               onChange={(event) => setText(event.target.value)}
               rows={8}
               maxLength={20_000}
-              placeholder={
-                "Write your table's house rules. Use headings to group them, e.g.\n\nDrinking potions:\nDrinking a potion is a bonus action at this table.\n\nThe GM retrieves only the relevant rules each turn."
-              }
-              aria-label="House rules"
+              placeholder={t("Write your table's house rules. Use headings to group them, e.g.\n\nDrinking potions:\nDrinking a potion is a bonus action at this table.\n\nThe GM retrieves only the relevant rules each turn.")}
+              aria-label={t("House rules", { context: "table.rules.house" })}
               className={cn(panelField, "leading-5")}
             />
             <div className="mt-1.5 flex items-center gap-2">
               <KitButton tone="primary" onClick={saveText} disabled={saving || text === savedText} busy={saving}>
                 {saving ? null : <Save className="size-3.5" />}
-                Save rules
+                {t("Save rules")}
               </KitButton>
               {text !== savedText ? (
-                <span className="live-in text-xs text-amber-300/80">Unsaved changes</span>
+                <span className="live-in text-xs text-amber-300/80">{t("Unsaved changes")}</span>
               ) : null}
             </div>
           </>
@@ -306,7 +322,7 @@ export function RulesPanel({
             <EmptyState
               size="sm"
               art="board"
-              title="No house rules set."
+              title={t("No house rules set.")}
             />
           ) : null)
         )}
@@ -314,27 +330,24 @@ export function RulesPanel({
 
       {steersStory && chunks.length ? (
         <div className="panel reveal rounded-lg p-3">
-          <SectionHead title="Rule sections" glyph="system-rulesets" aside={chunks.length} />
-          <p className="mb-2 text-xs leading-5 text-stone-500">
-            The GM sees only the sections relevant to each turn. Pin one to include it every turn;
-            switch one off to silence it without deleting the text.
-          </p>
+          <SectionHead title={t("Rule sections")} glyph="system-rulesets" aside={chunks.length} />
+          <p className="mb-2 text-xs leading-5 text-stone-500">{t("The GM sees only the sections relevant to each turn. Pin one to include it every turn; switch one off to silence it without deleting the text.")}</p>
           <ul className="stagger space-y-1.5">
             {chunks.map((chunk) => (
               <li
                 key={chunk.id}
                 className={cn("flex items-start gap-2 rounded-md border border-stone-700/50 bg-stone-950/40 p-2", !chunk.enabled && "opacity-60")}
               >
-                <span className="mt-0.5 shrink-0" title={chunk.enabled ? "Switch this section off" : "Switch this section on"}>
-                  <Switch on={chunk.enabled} onChange={(enabled) => patchChunk(chunk.id, { enabled })} label={chunk.enabled ? "Switch this section off" : "Switch this section on"} />
+                <span className="mt-0.5 shrink-0" title={chunk.enabled ? t("Switch this section off") : t("Switch this section on")}>
+                  <Switch on={chunk.enabled} onChange={(enabled) => patchChunk(chunk.id, { enabled })} label={chunk.enabled ? t("Switch this section off") : t("Switch this section on")} />
                 </span>
                 <KitButton
                   tone="icon"
                   always
                   onClick={() => patchChunk(chunk.id, { pinned: !chunk.pinned })}
                   aria-pressed={chunk.pinned}
-                  aria-label={chunk.pinned ? "Unpin: retrieved only when relevant" : "Pin: included in every GM turn"}
-                  title={chunk.pinned ? "Unpin: retrieved only when relevant" : "Pin: included in every GM turn"}
+                  aria-label={chunk.pinned ? t("Unpin: retrieved only when relevant") : t("Pin: included in every GM turn")}
+                  title={chunk.pinned ? t("Unpin: retrieved only when relevant") : t("Pin: included in every GM turn")}
                   className={cn("shrink-0", chunk.pinned && "text-amber-300")}
                 >
                   <Pin className={cn("size-3.5", chunk.pinned && "fill-current")} />

@@ -27,6 +27,11 @@ const { rollExpression } = await import("../src/lib/dice.ts");
 const { runInUsageScope } = await import("../src/lib/usage/scope.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const campaigns = await import("../src/lib/db/campaigns.ts");
+// The route's refusals are keyed (refusal.diceScript.*): the pin reads the
+// dictionary through the same keyed call, so it holds before and after the
+// fragment merge (i18n-work sweep 4, batch R2).
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 
 const testTable = await openWorld({ campaign: { kind: "playtest" } });
 const live = await openWorld();
@@ -240,7 +245,7 @@ await test("the route refuses a live table in plain words, even to its owner", a
   for (const method of ["GET", "PUT", "DELETE"]) {
     const out = await call(method, live.campaignId, method === "PUT" ? { seed: 1, queue: [] } : undefined);
     assert.equal(out.status, 403, `${method}: ${JSON.stringify(out.json)}`);
-    assert.equal(out.json.error, "Only a test fight's table can script its dice. Every other table rolls them honestly.");
+    assert.equal(out.json.error, t("Only a test fight's table can script its dice. Every other table rolls them honestly."));
   }
   assert.equal(scripts.getDiceScript(live.campaignId), null);
 });

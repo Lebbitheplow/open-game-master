@@ -41,6 +41,8 @@ const { withoutOldVariant } = await import("../src/lib/srd/legality/species-vari
 const { normalizeHomebrewForSave } = await import("../src/lib/homebrew/species-choice-server.ts");
 const { ancestryBlocks } = await import("../src/app/characters/builder/submit.ts");
 const { owedPicks } = await import("../src/app/characters/builder/owed.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { normalizeHomebrewData } = await import("../src/lib/homebrew/gear.ts");
 const { speciesFindings } = await import("../src/lib/rulesets/validate-options.ts");
 const { packRaceOptions } = await import("../src/lib/content/race-options.ts");
@@ -353,7 +355,7 @@ test("the line of choices left names the species' own choice: its Draconic ances
   const state = { racialVariant: "", racialAsi: [], racialSkills: [], racialTool: "", racialCantrips: [], bonusLanguages: [], feats: [], repeatSkills: [] };
   for (const label of ["Draconic ancestry", "Bloodline"]) {
     const race = raceOf(species(choice([ASHEN, MIRRORSCALE], label)));
-    const owed = owedPicks(ancestryBlocks(state, race)).find((pick) => pick.target === "variant");
+    const owed = owedPicks(t, ancestryBlocks(t, state, race)).find((pick) => pick.target === "variant");
     assert.equal(owed?.label, label);
   }
 });

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { BRUSH_EFFECTS, BRUSH_LABELS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { BRUSH_EFFECT_KEYS, BRUSH_LABEL_KEYS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { useT } from "@/lib/locale";
 import { listObjects, objectAt, refKey, sameRef, type MapObjects, type ObjectRef } from "@/lib/battlemap/objects";
 import { TERRAIN, TILE_FEET, tileAt, type XY } from "@/lib/battlemap/types";
 import { PanelHead } from "@/app/campaigns/[campaignId]/mapUi";
@@ -73,6 +74,7 @@ export function MapInspector({
   selectionBar: ReactNode;
 }) {
   const hover = useHover(store);
+  const t = useT();
   const rows = useMemo(() => listObjects(objects), [objects]);
   const first = refs[0] ?? null;
   const selected = first ? rows.find((row) => sameRef(row.ref, first)) : undefined;
@@ -101,9 +103,9 @@ export function MapInspector({
         <Fact name="Tile">
           {hover.x}, {hover.y}
         </Fact>
-        <Fact name="Ground">{brush ? BRUSH_LABELS[brush] : "Unknown"}</Fact>
+        <Fact name={t("Ground")}>{brush ? t(BRUSH_LABEL_KEYS[brush]) : t("Unknown")}</Fact>
         <Fact name="On it">{thing ? thing.name : "Nothing placed"}</Fact>
-        {brush ? <p className="pt-1 font-mono text-[9px] leading-snug text-stone-500">{BRUSH_EFFECTS[brush]}</p> : null}
+        {brush ? <p className="pt-1 font-mono text-[9px] leading-snug text-stone-500">{t(BRUSH_EFFECT_KEYS[brush])}</p> : null}
       </dl>
     );
   } else {
@@ -140,6 +142,7 @@ export function MapStatusLine({
   extra?: ReactNode;
 }) {
   const hover = useHover(store);
+  const t = useT();
   const brush = hover && hover.x < width && hover.y < height ? CHAR_TO_BRUSH[tileAt(terrain, width, hover.x, hover.y)] : undefined;
   const cell = (name: string, value: ReactNode) => (
     <span className="flex shrink-0 items-baseline gap-1.5">
@@ -150,7 +153,7 @@ export function MapStatusLine({
   return (
     <div className="flex shrink-0 items-center gap-4 overflow-x-auto border-t border-stone-800 bg-stone-950/60 px-3 py-1.5 [scrollbar-width:none]">
       {cell("Tile", hover ? `${hover.x}, ${hover.y}` : "·")}
-      {cell("Under", brush ? BRUSH_LABELS[brush] : "·")}
+      {cell(t("Under"), brush ? t(BRUSH_LABEL_KEYS[brush]) : "·")}
       {cell("Size", `${width} × ${height} · ${width * TILE_FEET} × ${height * TILE_FEET} ft`)}
       {cell("Holding", <span className="text-amber-200">{holding}</span>)}
       {extra}

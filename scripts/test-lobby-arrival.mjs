@@ -11,6 +11,10 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The arrival line's words come from the dictionaries; this suite reads the
+// English ones.
+const en = (key, vars) => translate("en", key, vars);
 const arrival = await import("../src/app/campaigns/[campaignId]/arrival.ts");
 const { ArrivalBanner, ArrivalCard } = await import("../src/app/campaigns/[campaignId]/ArrivalBanner.tsx");
 
@@ -50,7 +54,7 @@ await test("a player seating a character triggers one arrival", () => {
   const seated = arrival.seeSheets(start, [mara, thornwick]);
   assert.equal(seated.queue.length, 1);
   assert.equal(seated.queue[0].id, "s2");
-  assert.equal(arrival.arrivalLine(seated.queue[0]), "Thornwick takes a seat");
+  assert.equal(arrival.arrivalLine(en, seated.queue[0]), "Thornwick takes a seat");
   assert.equal(arrival.arrivalDetail(seated.queue[0]), "Hill dwarf · Fighter", "ancestry and class");
   assert.equal(arrival.arrivalDetail(sheet("x", "Ash", { race: "half_elf", class: "Rogue" })), "Half Elf · Rogue", "no label: the id as a name");
   // The next stream update to the same sheet (an edit, a ready) is not news.

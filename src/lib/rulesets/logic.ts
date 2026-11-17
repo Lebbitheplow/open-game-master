@@ -73,8 +73,48 @@ export const VARIANT_RULE_KEYS = Object.keys(VARIANT_RULE_LABELS) as Array<
   keyof typeof VARIANT_RULE_LABELS
 >;
 
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+// The switch words are the dictionaries' (ruleset.rule.*, ruleset.rest.*);
+// the surface that shows them passes its translator.
+export const VARIANT_RULE_LABEL_KEYS: Record<keyof Omit<VariantRules, "restVariant">, string> = {
+  flanking: "Flanking grants advantage",
+  criticalFumbles: "Natural 1 fumbles (narrated, no mechanical effect)",
+  encumbrance: "Encumbrance is weighed",
+  lingeringInjuries: "Lingering injuries (narrated, no mechanical effect)",
+  powerfulCritical: "Powerful Critical (extra crit dice are maximized)",
+  criticalDamageMods: "Critical Damage Mods (modifiers double on a crit)",
+  ammunition: "Ammunition is counted",
+  supplies: "Food and water are eaten each day",
+};
+
+export const REST_VARIANT_LABEL_KEYS: Record<VariantRules["restVariant"], string> = {
+  standard: "Standard rests",
+  gritty: "Gritty realism (long rest is a week)",
+  heroic: "Heroic (short rest is a breather)",
+};
+
+// What this ruleset turns on, as keys, for a surface that translates.
+export function activeVariantRuleKeys(rules: VariantRules): string[] {
+  const active = VARIANT_RULE_KEYS.filter((key) => rules[key]).map(
+    (key) => VARIANT_RULE_LABEL_KEYS[key],
+  );
+  if (rules.restVariant !== "standard") {
+    active.push(REST_VARIANT_LABEL_KEYS[rules.restVariant]);
+  }
+  return active;
+}
+
+// What this ruleset turns on, in the reader's words.
+export function activeVariantRulesT(t: T, rules: VariantRules): string[] {
+  return activeVariantRuleKeys(rules).map((key) => t(key));
+}
+
 // What this ruleset turns on, in words. An empty list means the plain rules,
 // which is worth saying out loud rather than rendering as blank space.
+// English-pinned: the rule context (src/lib/reference/rulings.ts) and the
+// pack omissions quote it, and both read the model's and the file's English.
 export function activeVariantRules(rules: VariantRules): string[] {
   const active = VARIANT_RULE_KEYS.filter((key) => rules[key]).map(
     (key) => VARIANT_RULE_LABELS[key],
@@ -83,6 +123,18 @@ export function activeVariantRules(rules: VariantRules): string[] {
     active.push(REST_VARIANT_LABELS[rules.restVariant]);
   }
   return active;
+}
+
+// The row's subtitle, in the reader's words.
+export function describeRulesetT(t: T, ruleset: Pick<Ruleset, "variantRules" | "houseRulesText">): string {
+  const active = activeVariantRuleKeys(ruleset.variantRules);
+  const parts: string[] = [];
+  parts.push(active.length ? t("{count} variant rules", { count: active.length, context: "ruleset.summary.rules" }) : t("the plain rules"));
+  const rulings = countHouseRulings(ruleset.houseRulesText);
+  if (rulings) {
+    parts.push(t("{count} house rulings", { count: rulings }));
+  }
+  return parts.join(", ");
 }
 
 export function describeRuleset(ruleset: Pick<Ruleset, "variantRules" | "houseRulesText">): string {

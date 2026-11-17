@@ -18,7 +18,9 @@ import { hasLineOfSight } from "@/lib/battlemap/los";
 export const TEMPLATE_SHAPES = ["sphere", "cone", "line", "cube"] as const;
 export type TemplateShape = (typeof TEMPLATE_SHAPES)[number];
 
-export const SHAPE_LABELS: Record<TemplateShape, string> = {
+// The picker's words are the dictionaries' (board.shape.*, board.measure.*);
+// the surface that shows them passes its translator.
+export const SHAPE_LABEL_KEYS: Record<TemplateShape, string> = {
   sphere: "Sphere",
   cone: "Cone",
   line: "Line",
@@ -27,12 +29,19 @@ export const SHAPE_LABELS: Record<TemplateShape, string> = {
 
 // What the number beside the shape means, because "20" is a radius for one
 // shape and a full length for the next.
-export const SHAPE_MEASURES: Record<TemplateShape, string> = {
+export const SHAPE_MEASURE_KEYS: Record<TemplateShape, string> = {
   sphere: "radius",
   cone: "length",
   line: "length",
   cube: "side",
 };
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function shapeLabel(t: T, shape: TemplateShape): string {
+  return t(SHAPE_LABEL_KEYS[shape] ?? "Sphere");
+}
 
 // Bigger than any SRD area, and small enough that the tile sweep below stays
 // trivial on a 24x18 board.
@@ -206,8 +215,8 @@ export function tokensInTemplate<T extends { x: number; y: number }>(
 }
 
 // One line a DM can read back before they commit: "Cone, 15 ft, 6 tiles".
-export function describeTemplate(spec: TemplateSpec, tileCount: number): string {
-  return `${SHAPE_LABELS[spec.shape]}, ${spec.sizeFeet} ft ${SHAPE_MEASURES[spec.shape]}, ${tileCount} ${
-    tileCount === 1 ? "tile" : "tiles"
+export function describeTemplate(t: T, spec: TemplateSpec, tileCount: number): string {
+  return `${shapeLabel(t, spec.shape)}, ${spec.sizeFeet} ft ${t(SHAPE_MEASURE_KEYS[spec.shape])}, ${tileCount} ${
+    tileCount === 1 ? t("tile") : t("tiles")
   }`;
 }

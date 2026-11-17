@@ -20,6 +20,8 @@ import { srdRaceFor } from "@/lib/content/race-options";
 import { normalizeRulesText } from "@/lib/help/rules-text";
 import { textKey } from "@/lib/language/text-logic";
 import { matchResource } from "@/lib/srd/class-resources";
+import { resourceGuidance } from "@/lib/srd/class-resources-fr";
+import type { Locale } from "@/lib/messages-logic";
 import { guidanceFor } from "@/lib/srd/feature-effects";
 import { subclassFeatureDescription } from "@/lib/srd/features";
 import { findOptionByFeatureName } from "@/lib/srd/options";
@@ -29,8 +31,16 @@ import { choiceDamageTypeOf } from "@/lib/srd/chosen-element";
 export type GlossaryTerm = {
   id: string;
   term: string;
+  // The official French name, from Wizards of the Coast's own French SRD 5.1
+  // (CC-BY-4.0); present on every entry. The explanation bodies below are
+  // this fork's own translations written with that vocabulary, not WotC text.
+  fr?: string;
   short: string;
+  // The French of `short`, present on every entry.
+  shortFr?: string;
   long?: string;
+  // The French of `long`, present wherever `long` is.
+  longFr?: string;
 };
 
 const TERMS = (glossaryJson as { terms: GlossaryTerm[] }).terms;
@@ -86,8 +96,10 @@ function stripLeadingLabel(text: string | null, name: string): string | null {
 // One line explaining a feature on a sheet. Resolution runs most specific
 // first: a Life Domain cleric's Divine Strike says "radiant", a Nature
 // Domain one says "cold", and only a feature with no subclass-specific
-// meaning falls through to the shared SRD text.
-export function describeFeature(classId: string, subclass: string, name: string): string | null {
+// meaning falls through to the shared SRD text. `locale` reads a matched
+// resource's line in the reader's words (class-resources-fr.ts); the stored
+// English def stays what the engine and the DM's tools read.
+export function describeFeature(classId: string, subclass: string, name: string, locale: Locale = "en"): string | null {
   // An option pick ("Invocation: Agonizing Blast") explains itself from the
   // option list, before any of the feature tables are consulted.
   const option = findOptionByFeatureName(name);
@@ -100,11 +112,14 @@ export function describeFeature(classId: string, subclass: string, name: string)
   if (pick) {
     return pick;
   }
-  // Written beside such a pick: the element its option deals in.
+  // Written beside such a pick: the element its option deals in. The
+  // element's sentence stays the engine's English: it quotes the subclass's
+  // own rules text (rulebook prose, not a table word).
   const element = choiceDamageTypeOf(name);
   if (element) {
     return `The element of the ${element.label} chosen: ${element.type}. Elemental Affinity, where the subclass has it, adds to spells of this damage type and resists it.`;
   }
+  const resource = matchResource(name);
   const found =
     subclassFeatureDescription(classId, subclass, name) ??
     classFeatureDescription(classId, name) ??
@@ -112,7 +127,7 @@ export function describeFeature(classId: string, subclass: string, name: string)
     // The background's feature sits on the sheet as "Shelter of the
     // Faithful (Acolyte)"; the bare name finds its text.
     describeBackgroundFeature(baseName(name)) ??
-    matchResource(name)?.guidance ??
+    (resource ? resourceGuidance(resource.id, locale) ?? resource.guidance : null) ??
     guidanceFor({ class: classId, features: [], feature: name }) ??
     looseSrdText(classId, name);
   return stripLeadingLabel(found, name);
@@ -145,18 +160,28 @@ export function describeRace(raceId: string): string | null {
   return race ? race.traits.join(". ") + "." : null;
 }
 
-const SKILLS = (skillsJson as { skills: Array<{ id: string; name: string; ability: string }> })
+const SKILLS = (skillsJson as { skills: Array<{ id: string; name: string; fr?: string; ability: string }> })
   .skills;
 
 // A skill's line: which ability it uses, plus the glossary note on skills.
-export function describeSkill(skillId: string): string | null {
+// The translator comes from the caller (home/types.ts agoLabel pattern), so
+// the sentence and the names it weaves follow the reader's language; the
+// glossary note itself stays English this pass.
+export function describeSkill(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  skillId: string,
+  locale: "en" | "fr" = "en",
+): string | null {
   const skill = SKILLS.find((entry) => entry.id === skillId.trim().toLowerCase());
   if (!skill) {
     return null;
   }
   const ability = glossaryTerm(skill.ability);
-  return `${skill.name} uses ${ability?.term ?? skill.ability.toUpperCase()}. ${
-    ability?.short ?? ""
+  const skillName = locale === "fr" && skill.fr ? skill.fr : skill.name;
+  const abilityName =
+    locale === "fr" && ability?.fr ? ability.fr : ability?.term ?? skill.ability.toUpperCase();
+  return `${t("{skill} uses {ability}.", { skill: skillName, ability: abilityName })} ${
+    (locale === "fr" && ability?.shortFr ? ability.shortFr : ability?.short) ?? ""
   }`.trim();
 }
 

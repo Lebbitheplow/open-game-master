@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
 
@@ -17,6 +18,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 // them: with no width asked for, the words gave way to nothing before the
 // row would wrap, and stood nine lines tall in a column 70px wide.
 export function SetupNudge({ className }: { className?: string }) {
+  const t = useT();
   const [show, setShow] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -59,17 +61,17 @@ export function SetupNudge({ className }: { className?: string }) {
     >
       <GameIcon icon={{ kind: "glyph", key: "tab-settings" }} size="size-8" />
       <span className="min-w-0 flex-1 basis-56 text-sm text-stone-200">
-        <span className="block font-medium text-amber-100">Finish setting up your server</span>
+        <span className="block font-medium text-amber-100">{t("Finish setting up your server")}</span>
         <span className="block text-xs text-stone-400">
-          No storyteller is answering yet. The guided setup finds what runs on this computer and takes a few minutes.
+          {t("No storyteller is answering yet. The guided setup finds what runs on this computer and takes a few minutes.")}
         </span>
       </span>
       <span className="flex gap-2">
         <Link href="/setup" className={ui.btnPrimary}>
-          Set it up
+          {t("Set it up")}
         </Link>
         <button type="button" onClick={dismiss} className={ui.btnSecondary}>
-          Not now
+          {t("Not now")}
         </button>
       </span>
     </div>
