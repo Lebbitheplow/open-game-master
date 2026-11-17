@@ -116,6 +116,7 @@ export function MessageList({
   onLoreCheck,
   onRenarrate,
   onContinueScene,
+  onTakeBack,
   onSelectVariant,
   onBrowseShop,
   meUserId = "",
@@ -163,6 +164,8 @@ export function MessageList({
   onLoreCheck?: (message: CampaignMessage) => void;
   onRenarrate?: (message: CampaignMessage) => void;
   onContinueScene?: (message: CampaignMessage) => void;
+  // Take back and rewrite: offered on the newest player move only.
+  onTakeBack?: (message: CampaignMessage) => void;
   onSelectVariant?: (message: CampaignMessage, index: number) => void;
   // A shop's "is open" line opens the Market on that shop.
   onBrowseShop?: (shopId: string) => void;
@@ -270,6 +273,23 @@ export function MessageList({
     () => (hasBrowseShop ? (shopId: string) => browseShopRef.current?.(shopId) : undefined),
     [hasBrowseShop],
   );
+  const takeBackRef = useRef(onTakeBack);
+  useEffect(() => {
+    takeBackRef.current = onTakeBack;
+  });
+  const hasTakeBack = Boolean(onTakeBack);
+  const stableTakeBack = useMemo(
+    () => (hasTakeBack ? (message: CampaignMessage) => takeBackRef.current?.(message) : undefined),
+    [hasTakeBack],
+  );
+  const newestMoveId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].authorType === "player") {
+        return messages[index].id;
+      }
+    }
+    return null;
+  }, [messages]);
   const reportRef = useRef(onReport);
   useEffect(() => {
     reportRef.current = onReport;
@@ -397,6 +417,7 @@ export function MessageList({
           mine={Boolean(message.userId) && message.userId === meUserId}
           blocked={Boolean(message.userId && blockedSet.has(message.userId))}
           onReport={stableReport}
+          onTakeBack={message.id === newestMoveId ? stableTakeBack : undefined}
           onDispute={stableDispute}
           message={message}
           campaignId={campaignId}

@@ -1518,6 +1518,7 @@ export function SessionView({
                 onBrowseShop={browseShop}
                 onPinned={bumpPins}
                 onConfirm={confirm}
+                onTakenBack={setInput}
               >
                 {needsCharacter ? (
                   <Suspense fallback={<PanelLoading />}>

@@ -368,6 +368,10 @@ export const SERVER_FEATURES = {
   // (issue #984): GET /api/embeddings/language, which an older host answers
   // with a 404, so the screens ask nothing there.
   embeddingLanguage: true,
+  // Take back and rewrite the newest move: POST
+  // /api/campaigns/[id]/messages/[messageId]/take-back, which an older host
+  // answers with a 404, so the screens offer nothing there.
+  takeBackMove: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
