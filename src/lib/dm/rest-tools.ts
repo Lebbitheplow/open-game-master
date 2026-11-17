@@ -417,7 +417,7 @@ export function handleTakeRest(
     );
     // A night passing is a timeskip: the off-screen world moves too (world
     // arcs, NPC goals), with results landing as DM-only facts and sparks.
-    tickWorldTimeskip(campaign.id, 3);
+    const disturbed = tickWorldTimeskip(campaign.id, 3, "rest");
     // A new day: the sky rolls again and the dawn card wipes the screen.
     refreshSky(campaign.id, { minutes: "error" in clockAfter ? 0 : clockAfter.minutes });
     publishTitleCard(campaign.id, {
@@ -440,6 +440,8 @@ export function handleTakeRest(
       ...(deathSaves.length ? { deathSaves } : {}),
       restedFor,
       ...(nowReads ? { now: nowReads } : {}),
+      // Something found the party in the night (world-tick-logic.ts).
+      ...(disturbed ? { disturbed } : {}),
       note: rested.length
         ? `For those who rested, HP and spell slots are fully restored, half the hit dice returned, one level of exhaustion is gone, and any spells a caster chose to prepare are now prepared. ${restedFor} passed. Narrate it.`
         : `${restedFor} passed, but nobody gained the rest's benefits (a character needs at least 1 hit point when it begins, and gains from one long rest in 24 hours). Narrate the time passing.`,

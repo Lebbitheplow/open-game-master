@@ -13,6 +13,8 @@ import {
   surpriseChance,
   tickWorld,
   tickWorldQuietly,
+  timeskipDisturbance,
+  TIMESKIP_ENCOUNTER_PERMILLE,
   worldArcChance,
 } from "../src/lib/dm/world-tick-logic.ts";
 import { normalizeWorldArcs } from "../src/lib/dm/world-arc-logic.ts";
@@ -263,6 +265,36 @@ test("combat pace: the spark asks for a fight at a frequent table and for a way 
   const tuned = { ...DEFAULT_TICK_CONFIG, encounter: { grace: 30, slope: 4, cap: 200 } };
   assert.deepEqual(pacedTickConfig(tuned, "frequent").encounter, { grace: 15, slope: 8, cap: 400 });
   assert.deepEqual(pacedTickConfig(tuned, "rare").encounter, { grace: 60, slope: 2, cap: 100 });
+});
+
+test("a rest, a journey or a wait rolls each four-hour stretch for something finding the party, at the table's pace", () => {
+  const always = () => 0;
+  const never = () => 0.999;
+  assert.equal(timeskipDisturbance("rest", 3, "balanced", never), null, "a quiet night stays quiet");
+  assert.equal(timeskipDisturbance("rest", 0, "balanced", always), null, "no stretch, no roll");
+  const night = timeskipDisturbance("rest", 3, "balanced", always);
+  assert.match(night, /While the party rested/);
+  assert.match(night, /first of 3/);
+  assert.match(night, /kept watch/);
+  assert.match(night, /start_encounter only if violence/);
+  assert.match(night, /benefits stand/);
+  const road = timeskipDisturbance("journey", 2, "balanced", always);
+  assert.match(road, /On the road/);
+  assert.doesNotMatch(road, /benefits stand/, "only a rest talks of the rest");
+  // The roll is d1000 under the pace's permille, per stretch.
+  const just = (value) => () => value / 1000;
+  assert.ok(timeskipDisturbance("wait", 1, "balanced", just(TIMESKIP_ENCOUNTER_PERMILLE.balanced - 1)));
+  assert.equal(timeskipDisturbance("wait", 1, "balanced", just(TIMESKIP_ENCOUNTER_PERMILLE.balanced)), null);
+  assert.ok(timeskipDisturbance("wait", 1, "frequent", just(100)), "frequent fights: likelier");
+  assert.equal(timeskipDisturbance("wait", 1, "rare", just(50)), null, "rare fights: less likely");
+  // Seeded over many nights: about 1 - (1 - 0.08)^3, roughly 22%.
+  let seed = 7;
+  const rng = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  let hit = 0;
+  for (let index = 0; index < 4000; index += 1) {
+    hit += timeskipDisturbance("rest", 3, "balanced", rng) ? 1 : 0;
+  }
+  assert.ok(hit / 4000 > 0.17 && hit / 4000 < 0.27, `about a fifth of nights: ${hit / 4000}`);
 });
 
 console.log(`${passed} world tick tests passed`);

@@ -19,10 +19,12 @@ import {
   parseTickState,
   tickWorld,
   tickWorldQuietly,
+  timeskipDisturbance,
   type Spark,
   type StoryMark,
   type TickConfig,
   type TickResult,
+  type TimeskipKind,
 } from "@/lib/dm/world-tick-logic";
 
 // The impure rim around world-tick-logic.ts: reads/writes the per-campaign
@@ -130,11 +132,18 @@ export function tickWorldState(campaignId: string, options: { moved?: boolean } 
 
 // Timeskips (long rest, travel): several quiet world ticks at once plus a
 // round of NPC goal advancement, so time passing means the world moved.
-export function tickWorldTimeskip(campaignId: string, ticks: number) {
+// `kind` names a stretch the party lives through (a rest, a journey, a
+// wait): its hours also roll for something finding the party, returned as
+// the note the narrator plays out (timeskipDisturbance). Null otherwise.
+export function tickWorldTimeskip(campaignId: string, ticks: number, kind?: TimeskipKind): string | null {
+  let disturbed: string | null = null;
   try {
     const campaign = getCampaignById(campaignId);
     if (!campaign?.gameSettings.worldSimulation) {
-      return;
+      return null;
+    }
+    if (kind && !getActiveEncounter(campaignId)) {
+      disturbed = timeskipDisturbance(kind, ticks, campaign.gameSettings.combatPace, Math.random);
     }
     const result = tickWorldQuietly(
       parseTickState(getWorldTickJson(campaignId)),
@@ -148,6 +157,7 @@ export function tickWorldTimeskip(campaignId: string, ticks: number) {
   } catch (error) {
     console.error("[world-tick] timeskip failed", error);
   }
+  return disturbed;
 }
 
 // Pending sparks are consumed on read: the caller is about to put them in a
