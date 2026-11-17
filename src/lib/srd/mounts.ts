@@ -169,6 +169,10 @@ export type MountState = {
   ac?: number;
   hp?: number;
   maxHp?: number;
+  // The rider made the DC 10 save to stay mounted for the prone they lie in
+  // now (src/lib/dm/mount-thrown.ts): that prone asks no second save, from
+  // the engine or a dismount sent for it, until they have stood up.
+  keptSaddle?: boolean;
 };
 
 // A controlled mount "has only three action options: Dash, Disengage, and
@@ -286,10 +290,12 @@ export function dismountSave(cause: DismountCause): { dc: number; ability: "dex"
 // "If you're knocked prone while mounted, you must make the same saving
 // throw" (SRD 5.1, Mounting and Dismounting). The save is owed for being laid
 // prone, once: a rider prone before an engine call and prone after it was
-// not knocked prone by it (one who kept the saddle and has not stood yet, or
-// a table set down that way), and owes nothing.
-export function riderKnockedProne(wasProne: boolean, isProne: boolean): boolean {
-  return isProne && !wasProne;
+// not knocked prone by it (a table set down that way), and one who already
+// made the save for this prone (keptSaddle) owes nothing, however many
+// settles look at the same call (a person's hand-on plays the backstop's
+// enemies inside its own call, and both settle).
+export function riderKnockedProne(wasProne: boolean, isProne: boolean, keptSaddle = false): boolean {
+  return isProne && !wasProne && !keptSaddle;
 }
 
 // PHB p.198: mounting or dismounting costs half the rider's movement.

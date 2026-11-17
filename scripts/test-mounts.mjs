@@ -136,6 +136,8 @@ test("a rider owes the save for being laid prone, not for lying prone", () => {
   assert.equal(riderKnockedProne(true, true), false);
   assert.equal(riderKnockedProne(true, false), false);
   assert.equal(riderKnockedProne(false, false), false);
+  // The save already made for this prone is not asked again.
+  assert.equal(riderKnockedProne(false, true, true), false);
 });
 
 test("a mount describes itself with what matters at the table", () => {

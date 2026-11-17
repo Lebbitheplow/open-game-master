@@ -222,7 +222,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     name: "dismount",
     label: "Get off a mount",
     category: "world",
-    summary: "Deliberately, or thrown: then it calls for the DC 10 Dexterity save.",
+    summary: "Deliberately, or because the mount was moved: then the DC 10 Dexterity save decides whether they come off. A rider knocked prone makes that save by itself.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", required: true },
       {
