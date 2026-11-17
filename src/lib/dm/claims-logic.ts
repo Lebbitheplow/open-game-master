@@ -559,13 +559,53 @@ const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 
 // a roll asked in words (rolls.ts rollAsksFromClaims) and the narrator's
 // asides leave the narration. A sentence runs to its end mark or the end of
 // its line; a quote that runs over several sentences cuts each of them.
+//
+// A line of speech keeps its marks whole (fork PR 1019, 2026-11-17): the
+// closing mark right after a sentence's end belongs to that sentence, so
+// cutting «Tienila tu.» or “Keep it.” no longer leaves a lone » or ” on the
+// page, and cutting the sentence after a quote no longer takes its closing
+// mark with it. A cut sentence that opens or closes a speech whose other
+// sentences stay leaves its mark behind for them.
+const CUT_SENTENCE = /[^.!?\n]+[.!?]*(?:"|[ \t\u00a0\u202f]?[”»])?/g;
+
+// +1 when the sentence opens a speech it does not close, -1 when it closes
+// one an earlier sentence opened, 0 otherwise. A straight quote cannot say
+// which it is, so an odd one at the sentence's end closes and any other opens.
+function speechBalance(sentence: string): number {
+  const curly = count(sentence, /[«“]/g) - count(sentence, /[»”]/g);
+  if (curly) {
+    return Math.sign(curly);
+  }
+  if (count(sentence, /"/g) % 2) {
+    return /"\s*$/.test(sentence) ? -1 : 1;
+  }
+  return 0;
+}
+
+// What a cut sentence leaves of the speech marks it held: the opening mark
+// (with the sentence's leading space and a French no-break space after it)
+// or the closing one (with the no-break space before it).
+function speechMarkLeft(sentence: string): { open?: string; close?: string } {
+  const balance = speechBalance(sentence);
+  if (balance > 0) {
+    const mark = /([«“"])([\u00a0\u202f]?)/.exec(sentence);
+    return mark ? { open: `${/^\s*/.exec(sentence)?.[0] ?? ""}${mark[1]}${mark[2]}` } : {};
+  }
+  if (balance < 0) {
+    const mark = /([\u00a0\u202f]?)([»”"])[^»”"]*$/.exec(sentence);
+    return mark ? { close: `${mark[1]}${mark[2]}` } : {};
+  }
+  return {};
+}
+
 export function withoutSentences(text: string, quotes: readonly string[]): string {
   if (!text || !quotes.length) {
     return text;
   }
-  // Where each cut sentence starts, and where it ends.
-  const removals = new Map<number, number>();
-  const sentences = [...text.matchAll(/[^.!?\n]+[.!?]*/g)];
+  // Where each cut sentence starts, where it ends, and the speech mark it
+  // leaves for the sentences of its speech that stay.
+  const removals = new Map<number, { end: number; open?: string; close?: string }>();
+  const sentences = [...text.matchAll(CUT_SENTENCE)];
   const cut = (quote: string) => {
     const sentence = sentences.find((match) => squash(match[0]).includes(quote));
     if (sentence?.index === undefined) {
@@ -583,7 +623,7 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
     if (count(sentence[0], /[([]/g) > count(sentence[0], /[)\]]/g)) {
       end += /^[)\]]+[*_]*/.exec(text.slice(end))?.[0].length ?? 0;
     }
-    removals.set(sentence.index, end);
+    removals.set(sentence.index, { end, ...speechMarkLeft(sentence[0]) });
     return true;
   };
   for (const quote of quotes) {
@@ -597,11 +637,35 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
   }
   let cleaned = "";
   let cursor = 0;
-  for (const [start, end] of [...removals].sort((a, b) => a[0] - b[0])) {
-    cleaned += text.slice(cursor, start);
-    cursor = end;
+  // Where a kept opening mark starts in `cleaned`, while nothing but space
+  // has followed it: a closing mark left next to it means the whole speech
+  // went, and both marks go.
+  let openAt = -1;
+  for (const [start, removal] of [...removals].sort((a, b) => a[0] - b[0])) {
+    let kept = text.slice(cursor, start);
+    if (openAt >= 0) {
+      kept = kept.replace(/^[ \t]+/, "");
+    }
+    cleaned += kept;
+    if (kept.trim()) {
+      openAt = -1;
+    }
+    if (removal.close !== undefined) {
+      if (openAt >= 0) {
+        cleaned = cleaned.slice(0, openAt);
+        openAt = -1;
+      } else {
+        cleaned += removal.close;
+      }
+    }
+    if (removal.open !== undefined) {
+      openAt = cleaned.length;
+      cleaned += removal.open;
+    }
+    cursor = removal.end;
   }
-  cleaned += text.slice(cursor);
+  const rest = text.slice(cursor);
+  cleaned += openAt >= 0 ? rest.replace(/^[ \t]+/, "") : rest;
   return cleaned
     .replace(/(^|\s)\*\*(\s|$)/g, "$1$2")
     .replace(/[ \t]{2,}/g, " ")
