@@ -8,6 +8,8 @@ import { listDroppedItems } from "@/lib/db/dropped-items";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { getNpcById, setNpcState, type Npc } from "@/lib/db/npcs";
 import { listSheets } from "@/lib/db/sheets";
+import { addMoodlets } from "@/lib/db/npc-moods";
+import { bodyMoods } from "@/lib/dm/mood-logic";
 import { adsWords, bodyRefereeWords, bodyWords, isCovering, moodles, tickBody, type Visible } from "@/lib/dm/body-logic";
 import { zoneOf } from "@/lib/dm/scene-place";
 import { currentScene } from "@/lib/dm/sky";
@@ -39,6 +41,14 @@ export function weatherOnBodies(campaign: Campaign, npcs: readonly Npc[]) {
       covered: isCovering(npcThings(npc)),
     });
     setNpcState(npc.id, { ...npc.state, ...next, bodyAt: since + hours * 60 });
+  }
+  // The body's weight on the mood, renewed each time it is counted (§9.2.2).
+  const stormy = weather?.sky === "storm" || weather?.wind === "gale";
+  for (const npc of npcs) {
+    const fresh = getNpcById(npc.id);
+    if (fresh && fresh.state.condition !== "dead") {
+      addMoodlets(campaign.id, npc.id, bodyMoods(moodles(fresh.state, now), stormy, now));
+    }
   }
 }
 

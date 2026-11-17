@@ -982,6 +982,19 @@ function ensureSchema(db: SqliteDatabase) {
       reasons_json TEXT NOT NULL DEFAULT '[]',
       PRIMARY KEY (campaign_id, npc_id, toward_key)
     );
+    -- Each first-tier mind's feelings (docs/specs/ogm-npc-perception.md §9):
+    -- one row per emotion, cause and person, fading to its end.
+    CREATE TABLE IF NOT EXISTS npc_moodlets (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      npc_id TEXT NOT NULL,
+      emotion TEXT NOT NULL,
+      toward TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT '',
+      weight INTEGER NOT NULL,
+      started_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      PRIMARY KEY (campaign_id, npc_id, emotion, toward, source)
+    );
     CREATE TABLE IF NOT EXISTS scene_positions (
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
       name_key TEXT NOT NULL,

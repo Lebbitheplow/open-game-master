@@ -14,6 +14,8 @@ import { perceive, type Observer } from "@/lib/dm/senses-logic";
 import { senseScene, whereEveryoneIs, zoneOf } from "@/lib/dm/scene-place";
 import { bodyFrame } from "@/lib/dm/body";
 import { listBonds } from "@/lib/db/npc-bonds";
+import { listMoodlets } from "@/lib/db/npc-moods";
+import { moodPresses, moodWords } from "@/lib/dm/mood-logic";
 import { bondWords } from "@/lib/dm/bonds-logic";
 import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
@@ -309,6 +311,9 @@ function scoresFor(campaign: Campaign, npc: Npc) {
 // world, only the person.
 function identityOf(campaign: Campaign, npc: Npc): string[] {
   const sheet = npc.companionSheetId ? getSheetById(npc.companionSheetId) : null;
+  const now = nowInstant(campaign.id);
+  const feelings = listMoodlets(campaign.id, npc.id, now);
+  const mood = moodWords(feelings, now);
   return [
     [npc.race, npc.role].filter(Boolean).length ? `You are ${[npc.race, npc.role].filter(Boolean).join(", ")}.` : "",
     sheet ? `You are a ${sheet.race} ${sheet.class}. ${clipText(sheet.personality ?? "", 300)}` : "",
@@ -323,6 +328,8 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     lyingHere(campaign, npc),
     needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
     bodyFrame(campaign, npc, listNpcs(campaign.id).filter((other) => (other.id === npc.id || other.state.withParty) && !other.archived)),
+    mood ? `How you feel right now: ${mood} You may hold it back, but it is there.` : "",
+    moodPresses(feelings, now) ? "The feeling is too strong to sit still with: this turn you act on it, one way or another." : "",
     (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
     // A companion knows all of itself, as a player reads their own sheet.

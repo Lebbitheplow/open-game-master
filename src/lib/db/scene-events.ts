@@ -3,6 +3,7 @@
 // each perceiver one memory line of it, as they took it in: the memory is of
 // the event, never of the narrator's prose.
 import { bondsFromEvent } from "@/lib/db/npc-bonds";
+import { moodsFromEvent } from "@/lib/db/npc-moods";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { addNpcMemories } from "@/lib/db/npc-minds";
 import { ON_STAGE_SOURCE } from "@/lib/dm/npc-mind-logic";
@@ -89,6 +90,8 @@ export function recordSceneEvent(
   for (const perception of perceptions) {
     insert.run(seq, campaignId, perception.observerId, JSON.stringify(perception.channels));
     // An attempt counts as the deed: a failed theft still shows the hand.
+    // Feelings first, so they read the bond as it stood before this deed.
+    moodsFromEvent(campaignId, perception.observerId, names.get(perception.observerId) ?? "", event, perception.channels);
     bondsFromEvent(campaignId, perception.observerId, names.get(perception.observerId) ?? "", event, perception.channels);
     const line = perceivedLine(event, names.get(perception.observerId) ?? "", perception.channels);
     if (line) {
@@ -138,4 +141,16 @@ export function lastSceneEventSeq(campaignId: string): number {
 export function speechHeardInTurn(campaignId: string, turnId: string): string[] {
   const rows = getDatabase().prepare(`SELECT speech FROM scene_events WHERE campaign_id = ? AND turn_id = ? AND speech <> ''`).all(campaignId, turnId) as Array<{ speech: string }>;
   return rows.map((row) => row.speech);
+}
+
+// The words each mind heard this turn, said by someone else: what the words
+// reader reads for its feelings (docs/specs/ogm-npc-perception.md §9.2.3).
+export function wordsHeardInTurn(campaignId: string, turnId: string): Array<{ npcId: string; event: SceneEvent }> {
+  const rows = getDatabase()
+    .prepare(
+      `SELECT e.*, p.npc_id AS npc_id, p.channels_json AS channels FROM scene_perceptions p JOIN scene_events e ON e.seq = p.event_seq
+       WHERE p.campaign_id = ? AND e.turn_id = ? AND (e.speech <> '' OR e.own_words = 1) ORDER BY e.seq`,
+    )
+    .all(campaignId, turnId) as Array<EventRow & { npc_id: string; channels: string }>;
+  return rows.filter((row) => parseJson<SenseChannel[]>(row.channels, []).includes("hearing")).map((row) => ({ npcId: row.npc_id, event: eventOf(row) }));
 }

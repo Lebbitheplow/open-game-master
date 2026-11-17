@@ -328,5 +328,20 @@ await test("bonds: after a theft it saw, the robbed mind distrusts the thief wit
   assert.ok(asked.some((text) => /- Ottone: you are wary of them \(they stole from you \(Ciotola\)\)/.test(text)), "the robbed mind reads its distrust and why");
 });
 
+await test("mood: the robbed is furious in its frame; an insult said to it, read by the words reader, angers it (perception slice 6)", async () => {
+  const { listMoodlets } = await import("../src/lib/db/npc-moods.ts");
+  const kaku = getNpcByName(world.campaignId, "Kaku");
+  const now = getClock(world.campaignId).instant;
+  assert.ok(listMoodlets(world.campaignId, kaku.id, now).some((entry) => entry.emotion === "anger" && entry.toward === "Ottone"), "the theft seen earlier left anger at the thief");
+  model.words([json({ readings: [{ n: 1, kind: "insult", intensity: 3 }] })]);
+  model.script([reply({ text: "Brakk sputa verso Kaku." }), ego("Stringo i pugni.")]);
+  // Brakk at the bow, Kaku at the stern since the shove: only a shout carries.
+  await model.turn(world, "Grido: Kaku, sei un verme senza onore.", brakk.id);
+  assert.equal(model.wordsRequests.length >= 1, true, "the words said to Kaku were read");
+  assert.match(String(model.wordsRequests[0].messages.at(-1).content), /The character: Kaku\.[^]*Brakk: «Grido: Kaku, sei un verme/);
+  const after = listMoodlets(world.campaignId, kaku.id, getClock(world.campaignId).instant);
+  assert.ok(after.some((entry) => entry.emotion === "anger" && entry.toward === "Brakk" && entry.weight === 45), JSON.stringify(after));
+});
+
 model.close();
 finish();

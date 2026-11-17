@@ -109,6 +109,10 @@ export async function fakeModel({ slots = 0 } = {}) {
   // queue, so its end-of-turn read never takes a reply meant for the story.
   let itemsScript = [];
   const itemsRequests = [];
+  // The words reader (src/lib/dm/mood.ts) answers apart too: nothing read
+  // unless a test scripts what the words were to whom.
+  let wordsScript = [];
+  const wordsRequests = [];
   const fallback = reply({ text: "The moment settles, and the table waits on the next move." });
 
   function sse(res, entry) {
@@ -230,6 +234,16 @@ export async function fakeModel({ slots = 0 } = {}) {
         answerReader(res, readerScript.shift() ?? []);
         return;
       }
+      if (String(body.messages?.[0]?.content ?? "").startsWith("You read words said in a scene")) {
+        wordsRequests.push(body);
+        const entry = wordsScript.shift() ?? reply({ text: '{"readings":[]}' });
+        if (body.stream) {
+          sse(res, entry);
+        } else {
+          completion(res, entry);
+        }
+        return;
+      }
       if (String(body.messages?.[0]?.content ?? "").startsWith("You keep the record of who holds which thing")) {
         itemsRequests.push(body);
         const entry = itemsScript.shift() ?? reply({ text: '{"moves":[]}' });
@@ -302,6 +316,12 @@ export async function fakeModel({ slots = 0 } = {}) {
     items: (entries) => {
       itemsScript = [...entries];
       itemsRequests.length = 0;
+    },
+    // What the words reader answers, one reply per mind addressed.
+    wordsRequests,
+    words: (entries) => {
+      wordsScript = [...entries];
+      wordsRequests.length = 0;
     },
     // What the voice-knowledge reader answers, one list of leaks per call.
     knowledgeRequests,

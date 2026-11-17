@@ -153,4 +153,31 @@ await test("bonds: a theft seen by the robbed leaves distrust with the reason; a
   assert.equal(bonds.bondDeltas({ actor: "Ottone", verb: "threaten", targets: ["Kaku"], object: "" }, "Kaku", ["hearing"], () => 0)[0].fear, 10, "a threat is heard");
 });
 
+const mood = await import("../src/lib/dm/mood-logic.ts");
+
+await test("mood: the robbed is furious with the thief for hours, then it fades; the same cause renews, never piles up; temperament shapes it", () => {
+  const at = 1000;
+  const body = { thirst: 0, hunger: 0, sleep: 0, cold: 0, wet: 0, pain: 0 };
+  const born = mood.appraise({ actor: "Ottone", verb: "steal", targets: ["Kaku"], object: "Ciotola", instant: at }, "Kaku", ["sight"], { careToward: () => 0, body });
+  assert.deepEqual(born.map((entry) => [entry.emotion, entry.weight, entry.toward, entry.expiresAt - at]), [["anger", 35, "Ottone", 360]]);
+  assert.equal(mood.moodWords(born, at), "You are angry with Ottone (Ottone stole from you (Ciotola)).");
+  assert.equal(mood.weightNow(born[0], at + 180), 18, "half way, half the weight");
+  assert.equal(mood.moodWords(born, at + 300), "", "after five hours it no longer colours the mind");
+  assert.equal(mood.renew(born[0], { ...born[0], weight: 20, expiresAt: at + 999 }).weight, 35, "renewed, not summed");
+  const volatile = mood.shapeByTemperament(born, { boldness: -3, warmth: 0, composure: -2 });
+  assert.deepEqual(volatile.map((entry) => [entry.emotion, entry.weight]).sort(), [["anger", 26], ["fear", 26]], "the volatile feel more; the timid turn half their anger to fear");
+  assert.equal(mood.shapeByTemperament(born, { boldness: 0, warmth: 0, composure: 3 })[0].weight, 18, "the unflappable feel half");
+  const starving = mood.appraise({ actor: "Mairon", verb: "eat", targets: [], object: "Pesce", instant: at }, "Kaku", ["sight"], { careToward: () => 0, body: { ...body, hunger: 3 } });
+  assert.deepEqual(starving.map((entry) => [entry.emotion, entry.weight]), [["jealousy", 30]]);
+  assert.deepEqual(mood.bodyMoods({ ...body, cold: 3 }, true, at).map((entry) => entry.emotion), ["panic", "fear"]);
+  assert.ok(mood.moodPresses([{ ...born[0], weight: 70 }], at));
+});
+
+await test("words read by the closed list: an insult angers, a threat frightens; anything unreadable is nothing", () => {
+  const insult = mood.appraiseWords(mood.parseWordReading({ kind: "insult", intensity: 2 }), "Ottone", "Sei un verme", 0);
+  assert.deepEqual(insult.map((entry) => [entry.emotion, entry.weight, entry.toward]), [["anger", 30, "Ottone"]]);
+  assert.deepEqual(mood.parseWordReading({ kind: "love letter", intensity: 9 }), { kind: "nothing", intensity: 1 });
+  assert.deepEqual(mood.appraiseWords(mood.parseWordReading(null), "Ottone", "ciao", 0), []);
+});
+
 finish();

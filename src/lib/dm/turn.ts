@@ -312,6 +312,7 @@ import { withCastSheets } from "@/lib/dm/cast-sheet-refs";
 import { grantRefusal } from "@/lib/owners/items";
 import { itemsReaderOn, masterItemRefusal, recordStoryItems } from "@/lib/dm/items-reader";
 import { npcStageOn, runStage } from "@/lib/dm/npc-stage";
+import { readWords } from "@/lib/dm/mood";
 import type { HeroLine } from "@/lib/dm/npc-stage-logic";
 import { awayArrivalNote, everyoneHears, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
 import { sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
@@ -3197,6 +3198,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)).map((words) => ({ speaker: "someone nearby", words })),
       ...mindLines(turn.conversation),
     ]);
+    // What was said to or about each mind stirs its feelings (§9.2.3).
+    await readWords(campaign, turn.id).catch((caught) => console.warn(`[words-reader] ${caught instanceof Error ? caught.message : String(caught)}`));
   }
 
   // A private exchange (whispers only) is allowed to end without narration
