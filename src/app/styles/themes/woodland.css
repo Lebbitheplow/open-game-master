@@ -53,6 +53,33 @@
 }
 
 [data-appearance="woodland"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #0a1410;
+  --theme-night-foreground: #e1ece3;
+  --theme-night-stone-950: #0c1711;
+  --theme-night-stone-900: #14241a;
+  --theme-night-stone-800: #203528;
+  --theme-night-stone-700: #354d3c;
+  --theme-night-stone-600: #607664;
+  --theme-night-stone-500: #a7b9a6;
+  --theme-night-stone-400: #acbfb0;
+  --theme-night-stone-300: #c6d6c9;
+  --theme-night-stone-200: #dce8de;
+  --theme-night-stone-100: #eaf2ec;
+  --theme-night-stone-50: #f5f9f5;
+  --theme-night-amber-950: #12251c;
+  --theme-night-amber-900: #223e2e;
+  --theme-night-amber-800: #385c43;
+  --theme-night-amber-700: #52785a;
+  --theme-night-amber-600: #73977a;
+  --theme-night-amber-500: #9bbb9e;
+  --theme-night-amber-400: #bdd5ba;
+  --theme-night-amber-300: #cee0cb;
+  --theme-night-amber-200: #dfeadb;
+  --theme-night-amber-100: #edf3e8;
+  --theme-night-amber-50: #f8faf4;
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='240' viewBox='0 0 180 240'%3E%3Cg fill='none' stroke='%23879773' stroke-width='1'%3E%3Cpath d='M90 240C45 180 135 120 90 0M90 180Q20 170 45 110Q95 115 90 180ZM90 100Q155 90 135 35Q85 40 90 100Z'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 180px 240px;
   --appearance-corner: 1.25rem 0.4rem 1.25rem 0.4rem;

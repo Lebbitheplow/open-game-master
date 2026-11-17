@@ -16,14 +16,31 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   background: var(--theme-art-corner, none) var(--theme-corner-background-position, center) / var(--theme-corner-background-size, contain) no-repeat;
 }
 .theme-ornaments > :nth-child(1) { top: 0; left: 0; }
-.theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: rotate(90deg); }
-.theme-ornaments > :nth-child(3) { bottom: 0; right: 0; transform: rotate(180deg); }
-.theme-ornaments > :nth-child(4) { bottom: 0; left: 0; transform: rotate(270deg); }
+/* A separate corner piece turns to each corner; a corner cropped from the
+   frame shows that corner of the frame, unturned (themeArtStyle sets both). */
+.theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: rotate(calc(90deg * var(--theme-corner-turn, 1))); background-position: var(--theme-corner-2-position, center); }
+.theme-ornaments > :nth-child(3) { bottom: 0; right: 0; transform: rotate(calc(180deg * var(--theme-corner-turn, 1))); background-position: var(--theme-corner-3-position, center); }
+.theme-ornaments > :nth-child(4) { bottom: 0; left: 0; transform: rotate(calc(270deg * var(--theme-corner-turn, 1))); background-position: var(--theme-corner-4-position, center); }
 .theme-ornaments[data-surface="lobby"] {
   inset: var(--theme-lobby-ornament-inset, -34px);
   z-index: 2;
+  /* The lobby card's rail is its transparent border band (theme-materials
+     .theme-lobby-shell, --theme-lobby-frame-width wide), which starts this
+     far inside the ornaments box. */
+  --theme-lobby-rail-offset: calc(-1 * var(--theme-lobby-ornament-inset, -34px) - var(--theme-lobby-frame-width, 26px));
+}
+.theme-ornaments[data-surface="lobby"]::before {
+  visibility: visible;
+  content: "";
+  position: absolute;
+  inset: var(--theme-lobby-rail-offset);
+  border: 12px solid transparent;
+  border-image: var(--theme-art-frame, none) var(--theme-frame-slice, 22%) / var(--theme-lobby-frame-width, 26px) / 0 round;
 }
 .theme-ornaments[data-surface="lobby"] > span {
+  /* A corner cropped from the frame sits on the rail's corner at the rail's
+     scale (themeArtStyle sizes it); a separate corner piece keeps its place. */
+  margin: calc(var(--theme-lobby-rail-offset) * var(--theme-corner-crop, 0));
   width: var(--theme-lobby-corner-size, 196px);
   height: var(--theme-lobby-corner-size, 196px);
   filter: drop-shadow(0 3px 3px #0006);
@@ -38,27 +55,34 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   position: absolute;
   inset: 2px;
   border: 12px solid transparent;
-  border-image: var(--theme-art-frame, none) var(--theme-frame-slice, 22%) / var(--theme-table-frame-width, 40px) / 0 round;
+  border-image: var(--theme-art-frame, none) var(--theme-frame-slice, 22%) / var(--theme-table-frame-width, 24px) / 0 round;
 }
 .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) > span {
-  width: var(--theme-table-corner-size, 128px);
-  height: var(--theme-table-corner-size, 128px);
+  /* The rail sits 2px inside this box (::before); the corners sit with it. */
+  margin: 2px;
+  width: var(--theme-table-corner-size, 80px);
+  height: var(--theme-table-corner-size, 80px);
   filter: drop-shadow(0 2px 3px #0005);
 }
-/* Below 1024px the table's text and controls sit 8 to 17px from the screen's
-   edge (the bottom bar's first label, the session title), and a 28px rail
-   with 84px corners painted over them on a 390px phone. These sizes keep the
-   art clear of them; scenario phone-frame reads every painted theme. */
+/* The table and the enlarged map pad their content past the rail's inner
+   edge (theme-session.css), so the rail is a margin, not a cover: these
+   widths are what that margin costs: 24px on desktop and 12px on a phone,
+   where 40px and 20px left the table cramped once it had to clear them. */
 @media (max-width: 1023px) {
   .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) { inset: var(--theme-table-ornament-inset-small, -4px); }
-  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 20px); }
+  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 12px); }
   .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) > span {
-    width: var(--theme-table-corner-size-small, 56px);
-    height: var(--theme-table-corner-size-small, 56px);
+    margin: 1px;
+    width: var(--theme-table-corner-size-small, 36px);
+    height: var(--theme-table-corner-size-small, 36px);
   }
 }
 @media (max-width: 540px) {
-  .theme-ornaments[data-surface="lobby"] { inset: var(--theme-lobby-ornament-inset-small, -16px); }
+  .theme-ornaments[data-surface="lobby"] {
+    inset: var(--theme-lobby-ornament-inset-small, -16px);
+    --theme-lobby-rail-offset: calc(-1 * var(--theme-lobby-ornament-inset-small, -16px) - var(--theme-lobby-frame-width-small, 12px));
+  }
+  .theme-ornaments[data-surface="lobby"]::before { border-image-width: var(--theme-lobby-frame-width-small, 12px); }
   .theme-ornaments[data-surface="lobby"] > span {
     width: var(--theme-lobby-corner-size-small, 112px);
     height: var(--theme-lobby-corner-size-small, 112px);

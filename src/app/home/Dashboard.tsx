@@ -234,7 +234,7 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
           <header className="ts-header animate-fade-up">
             <AppBrand className="ts-brand">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/ui/book-closed.webp" alt="" className="ts-brand-book" />
+              <img src="/assets/ui/d20-mark.svg" alt="" className="ts-brand-book" />
               <span className="ts-wordmark">Open Game Master</span>
             </AppBrand>
             <div className="ts-cluster">

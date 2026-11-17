@@ -24,7 +24,7 @@ written story theme. A player can use Woodland in either day or night mode.
 | Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
-| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four rotated corners, table/overlay border, phone sizing and forced-colors behavior |
+| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece turns), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
 | Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
 | Symbols | `src/components/ThemeIcon.tsx`, `ThemeEmblem.tsx` | One checked icon map serves the picker and lobby fitting |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |

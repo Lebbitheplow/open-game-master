@@ -1,9 +1,32 @@
 /* Small joinery fittings leave the dense table and map controls unobstructed. */
 [data-appearance="hearth"] {
-  --theme-table-corner-size: 48px;
-  --theme-table-corner-size-small: 23px;
-  --theme-lobby-corner-size: 144px;
-  --theme-lobby-corner-size-small: 88px;
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #1d140e;
+  --theme-night-foreground: #f3e4cc;
+  --theme-night-stone-950: #21170f;
+  --theme-night-stone-900: #302117;
+  --theme-night-stone-800: #443023;
+  --theme-night-stone-700: #5e4531;
+  --theme-night-stone-600: #917456;
+  --theme-night-stone-500: #b69a7a;
+  --theme-night-stone-400: #ccb394;
+  --theme-night-stone-300: #dfc9ac;
+  --theme-night-stone-200: #eddbc0;
+  --theme-night-stone-100: #f7ead4;
+  --theme-night-stone-50: #fff6e8;
+  --theme-night-amber-950: #392008;
+  --theme-night-amber-900: #51300f;
+  --theme-night-amber-800: #704518;
+  --theme-night-amber-700: #936324;
+  --theme-night-amber-600: #b58136;
+  --theme-night-amber-500: #d7a34e;
+  --theme-night-amber-400: #e6ba6e;
+  --theme-night-amber-300: #f0cd8d;
+  --theme-night-amber-200: #f7dfae;
+  --theme-night-amber-100: #fbeccc;
+  --theme-night-amber-50: #fff7e6;
   --material-fitting-radius: 30% 30% 12% 12%;
   --material-control-radius: 5px;
   --material-panel-radius: 8px;

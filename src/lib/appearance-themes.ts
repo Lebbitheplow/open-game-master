@@ -119,7 +119,44 @@ export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, 
     ...artSlotStyle(definition.art),
     "--theme-frame-slice": `${definition.frameSlice ?? 22}%`,
     "--theme-corner-background-size": definition.cornerScale ? `${definition.cornerScale * 100}%` : "contain",
-    "--theme-corner-background-position": definition.cornerScale ? "top left" : "center",
+    ...cornerStyle(definition),
+  };
+}
+
+// A corner cropped from the frame (cornerScale) shows the frame's own corner
+// at each of the four, upright as painted: rotating the top-left crop turned
+// High Kingdoms' shields on their sides and upside down. It is sized from
+// the rail so the crop meets the border at the border's own scale. A
+// separate corner piece is one painting turned to each corner.
+function cornerStyle(definition: AppearanceDefinition): Record<`--theme-${string}`, string> {
+  if (!definition.cornerScale) {
+    return {
+      "--theme-corner-turn": "1",
+      "--theme-corner-crop": "0",
+      "--theme-corner-background-position": "center",
+      "--theme-corner-2-position": "center",
+      "--theme-corner-3-position": "center",
+      "--theme-corner-4-position": "center",
+      // Empty clears a cropped theme's sizes left on <html> by the last pick;
+      // the piece's own stylesheet (or the shared default) sizes it.
+      "--theme-table-corner-size": "",
+      "--theme-table-corner-size-small": "",
+      "--theme-lobby-corner-size": "",
+      "--theme-lobby-corner-size-small": "",
+    };
+  }
+  const ratio = (1 / definition.cornerScale / ((definition.frameSlice ?? 22) / 100)).toFixed(4);
+  return {
+    "--theme-corner-turn": "0",
+    "--theme-corner-crop": "1",
+    "--theme-corner-background-position": "top left",
+    "--theme-corner-2-position": "top right",
+    "--theme-corner-3-position": "bottom right",
+    "--theme-corner-4-position": "bottom left",
+    "--theme-table-corner-size": `calc(var(--theme-table-frame-width, 24px) * ${ratio})`,
+    "--theme-table-corner-size-small": `calc(var(--theme-table-frame-width-small, 12px) * ${ratio})`,
+    "--theme-lobby-corner-size": `calc(var(--theme-lobby-frame-width, 26px) * ${ratio})`,
+    "--theme-lobby-corner-size-small": `calc(var(--theme-lobby-frame-width-small, 12px) * ${ratio})`,
   };
 }
 
