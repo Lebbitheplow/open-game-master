@@ -1,3 +1,5 @@
+import { getClock } from "@/lib/db/clock";
+import { carryDroppedItems } from "@/lib/db/dropped-items";
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
@@ -188,6 +190,7 @@ import { conscienceSecretLines, souredLeaving } from "@/lib/dm/conscience";
 import { companionMomentBlock, settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { intentLinesForPrompt } from "@/lib/dm/departure";
 import { partySplit, splitsParty } from "@/lib/dm/party-split";
+import { ridingAboard } from "@/lib/dm/march-state";
 import { agendaLinesForPrompt } from "@/lib/dm/companion-agenda";
 import { pactLinesForPrompt } from "@/lib/dm/pacts";
 import { returnDirectorNotes } from "@/lib/dm/companion-revenge";
@@ -4031,6 +4034,7 @@ export function handleLocationCall(
     direction?: unknown;
     distance?: unknown;
     characterIds?: unknown;
+    aboard?: unknown;
   };
   try {
     args = JSON.parse(rawArguments || "{}");
@@ -4081,6 +4085,8 @@ export function handleLocationCall(
   // them to a place with no kind of its own (#929).
   let leftBed: string | null = null;
   let split = "";
+  // Things lying aboard what the party travels on, carried along.
+  let carried = 0;
   if (toolName === "move_party") {
     const name = typeof args.name === "string" ? args.name.trim() : "";
     if (!name) {
@@ -4101,6 +4107,12 @@ export function handleLocationCall(
     }
     setOutFrom = previous?.id ?? null;
     movedToNewLocation = !previous || previous.id !== location.id;
+    // Aboard a raft, a boat or a cart, what lies on its deck comes along: the
+    // model says so, or the last leg was ridden aboard (travel's aboard) and
+    // no time has passed since. Not on a split: who took the boat is unsaid.
+    if (movedToNewLocation && previous && !splitsParty(campaign, args.characterIds) && (args.aboard === true || ridingAboard(getClock(campaign.id)))) {
+      carried = carryDroppedItems(campaign.id, previous.name, location.name);
+    }
     leftBed = movedToNewLocation ? previous?.ambience?.bed || null : null;
     returnedTo =
       movedToNewLocation &&
@@ -4214,6 +4226,7 @@ export function handleLocationCall(
           ? `Recorded. ${peopled} Continue the scene.`
           : "Recorded. Continue the scene.") +
       filedNote +
+      (carried ? ` ${carried} thing(s) lying aboard came along and lie here now.` : "") +
       (split ? ` ${split}` : "") +
       sceneNote,
     // Consumed by advance() as the chapter-break and inline-map signals,

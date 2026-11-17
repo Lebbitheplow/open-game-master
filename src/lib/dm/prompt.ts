@@ -1795,14 +1795,18 @@ export const movePartyTool = {
           items: { type: "string" },
           description: "Only when the party splits up: exact characterIds (GAME STATE) of who goes; the rest stay behind.",
         },
+        aboard: {
+          type: "boolean",
+          description: "On a boat or cart: its deck comes too.",
+        },
       },
       required: ["name", "visionClear"],
     },
   },
 } as const;
 
-// move_party without partOf, direction, distance (issue 548) and
-// characterIds, where there is no room to spare for them: the compact set
+// move_party without partOf, direction, distance (issue 548), characterIds
+// and aboard, where there is no room to spare for them: the compact set
 // before the table has any place (a direction reads from where the party set
 // out, partOf files the next room of where they are, and a party that has
 // not set out has not split; scripts/test-tool-profiles.mjs holds a 16K
@@ -1810,7 +1814,7 @@ export const movePartyTool = {
 // dmTurnTools).
 const firstMoveProperties = Object.fromEntries(
   Object.entries(movePartyTool.function.parameters.properties).filter(
-    ([key]) => !["partOf", "direction", "distance", "characterIds"].includes(key),
+    ([key]) => !["partOf", "direction", "distance", "characterIds", "aboard"].includes(key),
   ),
 );
 export const firstMovePartyTool = {

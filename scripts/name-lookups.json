@@ -1449,6 +1449,7 @@
     "lib/dm/chronal-shift.ts#whole": [["identity",1,"who an armed Chronal Shift is aimed at, by the whole name through textKey, as a foretold number is (dice-scripts.ts)"]],
     "lib/dm/command-undead.ts#whole-single": [["key",1,"a stat block's normalized creature type (creature-type.ts) against the engine's own type word"]],
     "lib/db/driver.ts#partial": [["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",5,"SQL"]],
+    "lib/db/dropped-items.ts#whole": [["identity",1,"what lies at a place, by the place's whole name through textKey"]],
     "lib/db/encounter-intents.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/db/encounter-intents.ts#partial": [["key",1,"intent kinds"]],
     "lib/db/encounter-view.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
