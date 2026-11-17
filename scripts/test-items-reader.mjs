@@ -109,5 +109,36 @@ await test("a few biscuits eaten never take the sack, and a drink never takes th
   assert.ok(brakkHas().includes("il sacco delle gallette"), "the sack is still Brakk's");
 });
 
+await test("only what the turn names moves: no fish for water, no sack for its biscuits, one biscuit of a count", async () => {
+  assert.equal(logic.storyNamesThing("Quarto di pesce crudo", "Mairon beve un sorso d'acqua.", italian), false, "water is not the fish");
+  assert.equal(logic.storyNamesThing("il sacco delle gallette", "Brakk passa due gallette a Kaku.", italian), false, "the biscuits are not the sack");
+  assert.equal(logic.storyNamesThing("il sacco delle gallette", "Brakk consegna il sacco a Kaku.", italian), true, "the sack named is the sack");
+  assert.equal(logic.storyNamesThing("Waterskin", "Gruoch passa l'otre a Brakk.", italian, "Otre"), true, "the Italian name counts");
+  writeItems(brakk.id, { equipment: [...sheets.getSheetById(brakk.id).equipment, { name: "Quarto di pesce crudo", qty: 1 }, { name: "Galletta", qty: 6 }] });
+  const swapped = await endOfTurn([{ thing: "Quarto di pesce crudo", from: "Brakk", to: "Kaku" }], "Brakk dà da bere a Kaku dalla sua acqua.");
+  assert.equal(swapped.applied.length, 0);
+  assert.match(swapped.refused[0], /never names/);
+  const sack = await endOfTurn([{ thing: "il sacco delle gallette", from: "Brakk", to: "Kaku" }], "Brakk prende due gallette e le dà a Kaku.");
+  assert.equal(sack.applied.length, 0, "the sack stays");
+  assert.ok(brakkHas().includes("il sacco delle gallette"));
+  const one = await endOfTurn([{ thing: "Galletta", from: "Brakk", to: "Kaku" }], "Brakk dà una galletta a Kaku.");
+  assert.equal(one.applied.length, 1);
+  assert.ok(brakkHas().includes("Galletta x5"), "one of six handed");
+  assert.ok(kakuHas().some((thing) => /galletta/i.test(thing)));
+});
+
+await test("things lying aboard travel with the raft; walking away leaves them", async () => {
+  const { handleLocationCall } = await import("../src/lib/dm/turn.ts");
+  const { insertDroppedItem } = await import("../src/lib/db/dropped-items.ts");
+  const campaign = getCampaignById(world.campaignId);
+  handleLocationCall(campaign, "move_party", JSON.stringify({ name: "Banco delle Croci", visionClear: true }), false);
+  insertDroppedItem({ campaignId: world.campaignId, mapId: null, x: null, y: null, place: "Banco delle Croci", item: { name: "una bussola d'ottone", qty: 1 }, droppedBy: "Mairon", heldByEnemy: null });
+  const moved = handleLocationCall(campaign, "move_party", JSON.stringify({ name: "Spiaggia delle Secche", visionClear: true, aboard: true }), false);
+  assert.match(moved.note, /1 thing\(s\) lying aboard came along/);
+  assert.equal(listDroppedItems(world.campaignId).find((item) => item.item.name === "una bussola d'ottone")?.place, "Spiaggia delle Secche");
+  handleLocationCall(campaign, "move_party", JSON.stringify({ name: "La duna", visionClear: true }), false);
+  assert.equal(listDroppedItems(world.campaignId).find((item) => item.item.name === "una bussola d'ottone")?.place, "Spiaggia delle Secche", "on foot it stays");
+});
+
 model.close();
 finish();

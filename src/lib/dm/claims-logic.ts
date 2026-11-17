@@ -555,6 +555,30 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
 
 const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
 
+// A closing guillemet no opening one stands before, once sentences around it
+// were cut (the opening line of a speech gone, its "»" left on its own line).
+// Only after a cut: the model's own prose keeps its marks as written.
+export function withoutOrphanGuillemets(text: string): string {
+  let open = 0;
+  let out = "";
+  for (let at = 0; at < text.length; at += 1) {
+    const char = text[at];
+    if (char === "«") {
+      open += 1;
+    } else if (char === "»") {
+      if (!open) {
+        while (text[at + 1] === " " || text[at + 1] === "\t") {
+          at += 1;
+        }
+        continue;
+      }
+      open -= 1;
+    }
+    out += char;
+  }
+  return out.replace(/^[ \t]+$/gm, "");
+}
+
 // The passage with every sentence that holds one of the quotes cut out: how
 // a roll asked in words (rolls.ts rollAsksFromClaims) and the narrator's
 // asides leave the narration. A sentence runs to its end mark or the end of
@@ -583,6 +607,11 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
     if (count(sentence[0], /[([]/g) > count(sentence[0], /[)\]]/g)) {
       end += /^[)\]]+[*_]*/.exec(text.slice(end))?.[0].length ?? 0;
     }
+    // So with the closing guillemet of a line of speech whose last sentence
+    // went: "«Tienila.» Kaku" cut left a lone "»" on the page (2026-11-17).
+    if (count(sentence[0], /«/g) > count(sentence[0], /»/g)) {
+      end += /^[ \t]*»/.exec(text.slice(end))?.[0].length ?? 0;
+    }
     removals.set(sentence.index, end);
     return true;
   };
@@ -602,7 +631,7 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
     cursor = end;
   }
   cleaned += text.slice(cursor);
-  return cleaned
+  return (removals.size ? withoutOrphanGuillemets(cleaned) : cleaned)
     .replace(/(^|\s)\*\*(\s|$)/g, "$1$2")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")

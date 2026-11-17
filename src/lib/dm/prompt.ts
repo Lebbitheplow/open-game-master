@@ -1791,6 +1791,10 @@ export const movePartyTool = {
           items: { type: "string" },
           description: "Only when the party splits up: exact characterIds (GAME STATE) of who goes; the rest stay behind.",
         },
+        aboard: {
+          type: "boolean",
+          description: "On a raft, boat or cart: what lies on it comes too.",
+        },
       },
       required: ["name", "visionClear"],
     },
@@ -1806,7 +1810,7 @@ export const movePartyTool = {
 // dmTurnTools).
 const firstMoveProperties = Object.fromEntries(
   Object.entries(movePartyTool.function.parameters.properties).filter(
-    ([key]) => !["partOf", "direction", "distance", "characterIds"].includes(key),
+    ([key]) => !["partOf", "direction", "distance", "characterIds", "aboard"].includes(key),
   ),
 );
 export const firstMovePartyTool = {

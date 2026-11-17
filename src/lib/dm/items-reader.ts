@@ -19,8 +19,9 @@ import { egoChoice } from "@/lib/dm/npc-mind";
 import { npcStageOn, onStage, sheetOf } from "@/lib/dm/npc-stage";
 import { thingNamed } from "@/lib/dm/npc-stage-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
-import { ITEMS_READER_SYSTEM, parseItemMoves, planItemMove, renderItemsReaderPrompt, wholeThingNamed, type ItemMove, type ItemPerson } from "@/lib/dm/items-reader-logic";
+import { ITEMS_READER_SYSTEM, parseItemMoves, planItemMove, renderItemsReaderPrompt, storyNamesThing, wholeThingNamed, type ItemMove, type ItemPerson } from "@/lib/dm/items-reader-logic";
 import { withoutLeadingStopWords } from "@/lib/language/language";
+import { italianName } from "@/lib/language/srd-names-it";
 import { textKey } from "@/lib/language/text-logic";
 import { resolveTextTimeoutMs } from "@/lib/model-client";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -133,9 +134,10 @@ export async function recordStoryItems(
     return null;
   }
   const out: StoryItems = { applied: [], refused: [] };
+  const story = [...heroLines.map((line) => line.text), stage, narration].join("\n");
   for (const move of moves) {
     const said = `${move.thing}: ${move.from || "?"} → ${move.to || "gone"}`;
-    const done = makeMove(campaign, turn, move, people, keyOf);
+    const done = makeMove(campaign, turn, move, people, keyOf, story);
     (done.ok ? out.applied : out.refused).push(done.ok ? said : `${said} (${done.why})`);
   }
   if (out.applied.length || out.refused.length) {
@@ -144,7 +146,7 @@ export async function recordStoryItems(
   return out;
 }
 
-function makeMove(campaign: Campaign, turn: DmTurn, move: ItemMove, people: readonly ItemPerson[], keyOf: (word: string) => string): { ok: true } | { ok: false; why: string } {
+function makeMove(campaign: Campaign, turn: DmTurn, move: ItemMove, people: readonly ItemPerson[], keyOf: (word: string) => string, story: string): { ok: true } | { ok: false; why: string } {
   const plan = planItemMove(move, people, keyOf);
   if (plan.kind === "refused") {
     return { ok: false, why: plan.why };
@@ -169,6 +171,9 @@ function makeMove(campaign: Campaign, turn: DmTurn, move: ItemMove, people: read
         : thingNamed(holder.equipment.map((item) => item.name), plan.thing, keyOf);
   if (!line) {
     return { ok: false, why: `${holder.name} has no ${plan.thing}` };
+  }
+  if (!storyNamesThing(line, story, keyOf, italianName(line))) {
+    return { ok: false, why: `the turn never names ${line}` };
   }
   const table = listSheets(campaign.id);
   const all = [...table, ...[holder, taker].filter((sheet): sheet is CharacterSheet => Boolean(sheet) && !table.some((entry) => entry.id === sheet!.id))];

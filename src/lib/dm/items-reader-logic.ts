@@ -21,8 +21,8 @@ export const ITEMS_READER_SYSTEM = [
   "A move is {thing, from, to}. from is the person who held it, or \"ground\" for a thing picked up from where it lay. to is the person who now holds it, \"ground\" for a thing put down, dropped or left lying here, or \"\" for a thing gone for good (eaten, drunk up, thrown into the sea, burnt, broken beyond use).",
   "Use the people's names exactly as listed and the thing's words as listed with its holder. One move per thing; a thing split or shared among several people is one move for each piece that changed hands.",
   "Only what happened: a thing offered and refused, held out and kept, promised, asked for or merely shown did not move. A theft or a grab that failed did not move. A thing handed over and given back in the same turn is two moves.",
-  "Drinking from a skin, bottle or barrel, or taking some out of a sack or a box, moves nothing: the container stays with its holder. Only the whole thing gone (the last of it eaten or drunk, the thing itself thrown away, burnt or broken) is a loss; when unsure whether all of it is gone, it is not.",
-  "Never a thing that was not held by someone listed or lying on the ground listed: a thing caught, found or made for the first time is not yours to record.",
+  "Drinking from a skin, bottle or barrel, or taking some out of a sack or a box, moves nothing: the container stays with its holder, and what came out of it is not a listed thing. To give or eat a few of a counted thing (\"Galletta x12\"), name the thing and the move moves one. Only the whole thing gone (the last of it eaten or drunk, the thing itself thrown away, burnt or broken) is a loss; when unsure whether all of it is gone, it is not.",
+  "Never a thing that was not held by someone listed or lying on the ground listed: a thing caught, found or made for the first time is not yours to record. Never put a listed thing in place of one the story names that is not listed (water drunk is not the fish someone holds): a thing the turn does not name did not move.",
   "Already recorded this turn means already done: do not repeat it.",
   'Answer with ONE JSON object and nothing else: {"moves": [{"thing": "...", "from": "...", "to": "..."}]}. No move: {"moves": []}.',
 ].join("\n");
@@ -40,6 +40,35 @@ export function wholeThingNamed(things: readonly string[], words: string, keyOf:
     return Boolean(held) && (held === key || key.includes(held));
   });
   return fits.length === 1 ? fits[0] : (fits.find((thing) => keyOf(thing) === key) ?? null);
+}
+
+// A container's own noun: a move of the bag is only read when the turn says
+// the bag, never when it says only what was in it (the biscuits handed out of
+// a sack of biscuits moved the sack, 2026-11-17).
+const CONTAINER_WORD = /^(?:sacc|sacch|borsa|bors|scato|cassa|cass|caset|baril|botti|fiasc|otr|otre|zaino|zain|sacca|bisac|cesto|cest|giara|vaso|sack|bag|box|barre|bottl|flask|pouch|chest|crate|backp|skin|jar)$/;
+
+function stemOf(word: string): string {
+  return word.length > 5 ? word.slice(0, 5) : word.length > 3 ? word.replace(/[aeiouy]$/, "") : word;
+}
+
+function contentWords(text: string, keyOf: (text: string) => string): string[] {
+  return keyOf(text)
+    .split(/[^\p{L}]+/u)
+    .filter((word) => word.length >= 4 && !/^(?:della|delle|dello|degli|nella|nelle|with|from|feet|metri|giorno|giornata)$/.test(word));
+}
+
+// Whether the turn's own words name a held line: a word of it (or of its
+// Italian name) is in the text, and a container's noun is there itself. The
+// reader once moved a fish where the story told only of water (2026-11-17).
+export function storyNamesThing(line: string, story: string, keyOf: (text: string) => string, alias?: string): boolean {
+  const told = new Set(contentWords(story, keyOf).map(stemOf));
+  return [line, alias].filter((name): name is string => Boolean(name)).some((name) => {
+    const words = contentWords(name, keyOf).map(stemOf);
+    if (!words.length || !words.some((word) => told.has(word))) {
+      return false;
+    }
+    return words.filter((word) => CONTAINER_WORD.test(word)).every((word) => told.has(word));
+  });
 }
 
 export function renderItemsReaderPrompt(input: {
