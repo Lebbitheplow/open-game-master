@@ -58,6 +58,11 @@ async function table({ gameSettings = {}, thorne = {}, kael = {}, brin = {} } = 
   const axes = (name, values) => npcs.patchNpcAgency(row(name).id, { personality: { drive: 0, diligence: 0, boldness: 0, warmth: 0, empathy: 0, composure: 0, ...values } });
   axes("Seren", {});
   axes("Thorne", {});
+  // A clear, mild sky: a road's cold or storm rolled at random would spend
+  // the dice a case scripts for its own contest (a cold march's hourly
+  // Constitution saves took the guide's 20 and the party's 1).
+  const sky = await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
+  assert.equal(sky.ok, true, sky.error);
   const rung = (name, held) => conscienceDb.saveConscience(row(name).id, { ...CONTENT, held, shown: held });
   const companion = (name) => world.sheets().find((sheet) => sheet.name === name);
   const pacts = () => pactsDb.listPacts(world.campaignId);
