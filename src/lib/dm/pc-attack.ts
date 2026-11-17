@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { distantStrikeSquare, distantStrikeTeleport } from "@/lib/dm/distant-strike";
@@ -574,13 +575,13 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
   }
   // The weapon drawn for this attack is in hand from now on (issue #424).
   if (plan.drawn) {
-    patchSheet(sheet.id, { equipment: plan.drawn.equipment });
+    writeItems(sheet.id, { equipment: plan.drawn.equipment });
     context.notes.push(plan.drawn.note);
   }
   if (ammo && ammo.ok) {
     const carried = plan.drawn?.equipment ?? sheet.equipment;
     const equipment = withAmmoCount(carried, ammo.index, ammo.remaining);
-    patchSheet(sheet.id, { equipment });
+    writeItems(sheet.id, { equipment });
     // Tallied under the line's name as it reads NOW: a quiver written
     // "Arrows (20)" is renamed by every shot, and the tally follows it so the
     // end of the fight finds the line it has to refill. The last one spent
@@ -603,7 +604,7 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     const now = getSheetById(sheet.id) ?? sheet;
     const index = lineNamed(now.equipment, plan.profile.weapon);
     if (index >= 0) {
-      patchSheet(sheet.id, { equipment: withAmmoCount(now.equipment, index, (now.equipment[index].qty ?? 1) - 1) });
+      writeItems(sheet.id, { equipment: withAmmoCount(now.equipment, index, (now.equipment[index].qty ?? 1) - 1) });
       context.notes.push(`one ${plan.profile.weapon} spent`);
     }
   }

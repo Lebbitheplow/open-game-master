@@ -14,10 +14,11 @@
 // "repair <device>" spends an hour and starts its 24 hours again;
 // "dismantle <device>" takes it apart (an action in a fight) and gives the
 // 10 gp back. Reached through mt-species-spends.ts speciesTraitSpend.
+import { writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
 import { advanceClock, getClock } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { priceTheAction, publishSheet } from "@/lib/dm/combat-features";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -79,7 +80,7 @@ export function tinker(campaign: Campaign, stale: CharacterSheet, variant: strin
     const price = fight ? priceTheAction(sheet, fight, "Tinker") : null;
     if (price && "error" in price) return toolError(price);
     const left = fromCopper(purseCopper({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }) + COST_COPPER);
-    patchSheet(sheet.id, { equipment: sheet.equipment.filter((_, index) => index !== row.index), gold: left.gold, copper: left.copper });
+    writeItems(sheet.id, { equipment: sheet.equipment.filter((_, index) => index !== row.index), gold: left.gold, copper: left.copper });
     publishSheet(campaign, sheet.id);
     price?.commit();
     return { ok: true, resource: "Tinker", applied: `${sheet.name} dismantles the ${device} and reclaims its 10 gp of materials.` };
@@ -102,7 +103,7 @@ export function tinker(campaign: Campaign, stale: CharacterSheet, variant: strin
     }
     const hour = advanceClock(campaign.id, 1, "hours");
     if ("error" in hour) return toolError(hour);
-    patchSheet(sheet.id, { equipment: sheet.equipment.map((item, index) => (index === row.index ? { ...item, madeAt: hour.clock.instant } : item)) });
+    writeItems(sheet.id, { equipment: sheet.equipment.map((item, index) => (index === row.index ? { ...item, madeAt: hour.clock.instant } : item)) });
     publishSheet(campaign, sheet.id);
     return { ok: true, resource: "Tinker", applied: `After an hour's repair ${sheet.name}'s ${device} works for another 24 hours.` };
   }
@@ -117,7 +118,7 @@ export function tinker(campaign: Campaign, stale: CharacterSheet, variant: strin
   if ("error" in hour) return toolError(hour);
   const left = fromCopper(purse - COST_COPPER);
   const made: EquipmentItem = { name: device, qty: 1, madeAt: hour.clock.instant } as EquipmentItem;
-  patchSheet(sheet.id, { equipment: [...sheet.equipment, made], gold: left.gold, copper: left.copper });
+  writeItems(sheet.id, { equipment: [...sheet.equipment, made], gold: left.gold, copper: left.copper });
   publishSheet(campaign, sheet.id);
   return {
     ok: true,

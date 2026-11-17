@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { studiedRecords } from "@/lib/srd/studied-books";
 import { ABILITIES } from "@/lib/schemas/abilities";
 import { markPaidOption } from "@/lib/dm/mt-srd-metamagic";
@@ -1138,7 +1139,7 @@ function dmMutation(
         };
       }
       const change = addCopper({ gold: sheet.gold, copper: sheet.copper }, moved);
-      patchSheet(sheet.id, { gold: change.purse.gold, copper: change.purse.copper });
+      writeItems(sheet.id, { gold: change.purse.gold, copper: change.purse.copper });
       audit(
         campaign,
         turnId,
@@ -1186,7 +1187,7 @@ function dmMutation(
       if (noRoom) {
         return { result: noRoom };
       }
-      patchSheet(sheet.id, { equipment: math.equipment });
+      writeItems(sheet.id, { equipment: math.equipment });
       audit(campaign, turnId, sheet, "grant_item", { name, qty: args.qty ?? 1 }, reason, {
         equipment: math.equipment,
       });
@@ -1229,7 +1230,7 @@ function dmMutation(
           },
         };
       }
-      patchSheet(sheet.id, { equipment: math.equipment });
+      writeItems(sheet.id, { equipment: math.equipment });
       audit(campaign, turnId, sheet, "reveal_item", { from: math.from, to: math.to }, reason, {
         equipment: math.equipment,
       });
@@ -1257,7 +1258,7 @@ function dmMutation(
       if (!math) {
         return { result: notCarried(sheet.name, sheet.equipment.map((item) => item.name), name, isTableGearName(campaign.id, name)) };
       }
-      patchSheet(sheet.id, { equipment: math.equipment });
+      writeItems(sheet.id, { equipment: math.equipment });
       audit(campaign, turnId, sheet, "remove_item", { name: math.item.name, removed: math.removed }, reason, {
         equipment: math.equipment,
       });
@@ -1336,7 +1337,7 @@ function dmMutation(
       if ("error" in outcome) {
         return { result: outcome };
       }
-      patchSheet(sheet.id, outcome.patch);
+      writeItems(sheet.id, outcome.patch);
       Object.assign(outcome.result, objectCharge.commit());
       // What the potion or scroll does, applied by the engine.
       const used = String(outcome.result.used ?? itemName);
@@ -1399,7 +1400,7 @@ function dmMutation(
       if (noRoom) {
         return { result: noRoom };
       }
-      patchSheet(sheet.id, outcome.patch);
+      writeItems(sheet.id, outcome.patch);
       audit(
         campaign,
         turnId,
@@ -2041,7 +2042,7 @@ function dmMutation(
             ...(cost.gold ? { gold: left.gold, copper: left.copper } : {}),
             ...(fromScroll ? { equipment: withoutOneScroll(sheet.equipment, fromScroll) } : {}),
           };
-          patchSheet(sheet.id, bookPatch);
+          writeItems(sheet.id, bookPatch);
           audit(campaign, turnId, sheet, "learn_spell", { action, spell, ...(cost.gold ? { cost } : {}), ...(check ? { from: "scroll", check } : {}) }, reason, bookPatch);
           publishSheet(campaign, sheet.id);
           if (cost.hours) {
@@ -2320,7 +2321,7 @@ function dmMutation(
       // moves the maximum for every level held, and a level the GM sets
       // brings its hit points by the table's method (update-sheet-hp-logic.ts).
       Object.assign(patch, storyEditHp(sheet, patch, { hpMethod: campaign.gameSettings.hpMethod, rollDie: defaultRng }) ?? {});
-      patchSheet(sheet.id, patch);
+      writeItems(sheet.id, patch);
       audit(
         campaign,
         turnId,

@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
 import {
@@ -7,7 +8,7 @@ import {
   markReverted,
   type SheetAuditEntry,
 } from "@/lib/db/sheet-audit";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { undoConflictLine } from "@/lib/sheet-audit-logic";
 import { forgetLongRest } from "@/lib/db/clock";
 import { forgetDeath } from "@/lib/dm/revival";
@@ -81,7 +82,7 @@ export function revertAuditEntry(campaign: Campaign, entry: SheetAuditEntry, by?
   let compensating: SheetAuditEntry | null = null;
   let correctionId: string | null = null;
   getDatabase().transaction(() => {
-    patchSheet(entry.characterId, restore, { restoring: true });
+    writeItems(entry.characterId, restore, { restoring: true });
     compensating = insertSheetAudit({
       campaignId: campaign.id,
       characterId: entry.characterId,

@@ -8,6 +8,7 @@
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path. Must not import mutations.ts (which imports it).
 
+import { writeItems } from "@/lib/owners/items";
 import { improvedQuarryFree } from "@/lib/dm/genre-gh-quarry";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
@@ -463,7 +464,7 @@ export function authoredFeatureSpend(
     Object.assign(patch, takenBack.patch);
   }
   if (Object.keys(patch).length) {
-    patchSheet(sheet.id, patch);
+    writeItems(sheet.id, patch);
     audit(campaign, turnId, now, { resource: spend.name, spent: units || undefined, variant: args.variant }, reason, patch);
     const updated = patchSheet(sheet.id, {});
     if (updated) {

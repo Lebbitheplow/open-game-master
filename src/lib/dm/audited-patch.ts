@@ -1,6 +1,7 @@
+import { writeItems } from "@/lib/owners/items";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 
@@ -31,7 +32,7 @@ export function patchSheetAudited(
   if (!before) {
     return null;
   }
-  const updated = patchSheet(sheetId, patch);
+  const updated = writeItems(sheetId, patch);
   if (!updated) {
     return null;
   }

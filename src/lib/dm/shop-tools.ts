@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { z } from "zod";
 import { sellsAtFullValue } from "@/lib/dm/genre-cc-a-fixer";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -464,7 +465,7 @@ export function handleBuyItem(campaign: Campaign, rawArguments: string, at: Trad
     return { ...tooHeavy, error: `${tooHeavy.error} Nothing was bought.` };
   }
   const patch = { gold: paid.purse.gold, copper: paid.purse.copper, equipment: items.equipment };
-  patchSheet(sheet.id, patch);
+  writeItems(sheet.id, patch);
   updateShop(shop.id, { stock: takeStock(shop.stock, line.itemName, args.qty) ?? shop.stock });
   ledger(campaign, sheet, "purchase", { item: line.itemName, qty: args.qty, action: "buy", priceCp: each, shop: shop.name }, `Bought at ${shop.name}`, patch, `Bought ${line.itemName}${args.qty > 1 ? ` x${args.qty}` : ""} for ${formatPrice(total)} at ${shop.name}.`);
   publishSheet(campaign, sheet.id);
@@ -526,7 +527,7 @@ export function handleSellItem(campaign: Campaign, rawArguments: string, at: Tra
   const total = each * removal.removed;
   const paid = addCopper({ gold: sheet.gold, copper: sheet.copper }, total);
   const patch = { gold: paid.purse.gold, copper: paid.purse.copper, equipment: removal.equipment };
-  patchSheet(sheet.id, patch);
+  writeItems(sheet.id, patch);
   updateShop(shop.id, { stock: addStock(shop.stock, carried, removal.removed, listCp ?? each * 2, line.srdName) });
   ledger(campaign, sheet, "purchase", { item: carried, qty: removal.removed, action: "sell", priceCp: each, shop: shop.name }, `Sold at ${shop.name}`, patch, `Sold ${carried}${removal.removed > 1 ? ` x${removal.removed}` : ""} for ${formatPrice(total)} at ${shop.name}.`);
   publishSheet(campaign, sheet.id);

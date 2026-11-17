@@ -1,9 +1,10 @@
+import { writeItems } from "@/lib/owners/items";
 import { z } from "zod";
 import { capsFor, isErrorResponse, isLead, requireMember } from "@/lib/campaign-api";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { allocateSeq, campaignSeats, getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById, getSheetForUser, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, getSheetForUser } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { publishPersisted } from "@/lib/events";
@@ -352,7 +353,7 @@ export async function POST(
     );
   }
 
-  const updated = patchSheet(sheet.id, patch);
+  const updated = writeItems(sheet.id, patch);
   if (!updated) {
     return Response.json({ error: "Character not found." }, { status: 404 });
   }

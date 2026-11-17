@@ -38,7 +38,7 @@ import { passiveScore } from "@/lib/dm/check-tools";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { findCarriedItem } from "@/lib/dm/item-logic";
-import { saveEquipment } from "@/lib/dm/gear-store";
+import { saveEquipment } from "@/lib/owners/items";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 

@@ -13,9 +13,10 @@
 // it is cast the same way, with use_item and the spell, by whoever holds the
 // item, and each casting counts down there (ring-store.ts takeFromRing).
 // Called by srd-feature-spends.ts srdFeatureSpend, the counter's door.
+import { writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { spellFactsFor } from "@/lib/content";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
@@ -91,7 +92,7 @@ export function spellStoringItemSpend(campaign: Campaign, stale: CharacterSheet,
     const holder = getSheetById(stale.id) ?? stale;
     const cleared = holder.equipment.map((row) => (isStoringItem(row) ? { ...row, storedSpells: (row.storedSpells ?? []).filter((one) => !(typeof one.uses === "number" && one.by === sheet.name)) } : row));
     if (holder.id !== sheet.id && cleared.some((row, at) => row !== holder.equipment[at])) {
-      patchSheet(holder.id, { equipment: cleared.map((row) => (row.storedSpells?.length ? row : { ...row, storedSpells: undefined })) });
+      writeItems(holder.id, { equipment: cleared.map((row) => (row.storedSpells?.length ? row : { ...row, storedSpells: undefined })) });
       publishSheet(campaign, holder.id);
     }
   }
@@ -100,7 +101,7 @@ export function spellStoringItemSpend(campaign: Campaign, stale: CharacterSheet,
   const equipment = now.equipment
     .map((row) => (isStoringItem(row) ? { ...row, storedSpells: (row.storedSpells ?? []).filter((one) => !(typeof one.uses === "number" && one.by === sheet.name)) } : row))
     .map((row) => (row.name === item.name ? { ...row, storedSpells: [entry] } : row.storedSpells?.length === 0 ? { ...row, storedSpells: undefined } : row));
-  patchSheet(sheet.id, { equipment });
+  writeItems(sheet.id, { equipment });
   publishSheet(campaign, sheet.id);
   return {
     ok: true,

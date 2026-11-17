@@ -25,6 +25,7 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
+import { writeItems } from "@/lib/owners/items";
 import { READING_THOUGHTS, isSuggestion, readsThoughts } from "@/lib/dm/read-thoughts";
 import { clearCastMarks, factsAsCast, settleTwin } from "@/lib/dm/mt-srd-metamagic";
 import { boonAtCast } from "@/lib/dm/ar-ws-lunar-boons";
@@ -848,7 +849,7 @@ export function castSpell(
     dropCastRunning(sheet.id, name);
   }
   if (Object.keys(patch).length) {
-    patchSheet(sheet.id, patch);
+    writeItems(sheet.id, patch);
     hooks.record(
       {
         spell: name,

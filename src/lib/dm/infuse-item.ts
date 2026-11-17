@@ -14,10 +14,11 @@
 // wherever it is carried, and every item engine reads it through the magic
 // item finders. Called by srd-feature-spends.ts srdFeatureSpend, the
 // counter's door; settleInfusions by the clock (src/lib/db/clock.ts).
+import { writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { usesLeft } from "@/lib/dm/bonus-routes";
 import { publishSheet } from "@/lib/dm/combat-features";
@@ -77,7 +78,7 @@ function rewriteRows(campaign: Campaign, change: (row: EquipmentItem, sheet: Cha
     const sheet = getSheetById(stale.id) ?? stale;
     const equipment = sheet.equipment.map((row, index) => change(row, sheet, index));
     if (equipment.some((row, at) => row !== sheet.equipment[at])) {
-      patchSheet(sheet.id, { equipment });
+      writeItems(sheet.id, { equipment });
       publishSheet(campaign, sheet.id);
     }
   }
@@ -171,7 +172,7 @@ export function infuseItemSpend(campaign: Campaign, stale: CharacterSheet, resou
       const holder = getSheetById(stale.id) ?? stale;
       const equipment = holder.equipment.map((entry, index) => (goneKeys.has(`${holder.id}:${index}`) ? withoutInfusion(entry) : entry));
       if (equipment.some((entry, at) => entry !== holder.equipment[at])) {
-        patchSheet(holder.id, { equipment });
+        writeItems(holder.id, { equipment });
         publishSheet(campaign, holder.id);
       }
     }
@@ -188,7 +189,7 @@ export function infuseItemSpend(campaign: Campaign, stale: CharacterSheet, resou
     }
     return [entry.infusion?.by === sheet.id ? { ...entry, infusion: { ...entry.infusion, level } } : entry];
   });
-  patchSheet(sheet.id, { equipment });
+  writeItems(sheet.id, { equipment });
   publishSheet(campaign, sheet.id);
   // A homunculus forms around its gem, and one whose gem lost the infusion goes.
   const servant = def.name === HOMUNCULUS ? formHomunculus(campaign, sheet.id) : null;

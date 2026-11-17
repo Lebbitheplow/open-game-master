@@ -5,7 +5,7 @@
 // the facts.
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
-import { listRecentDmTurns } from "@/lib/db/dm-turns";
+import { getDmTurn, listRecentDmTurns } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { addNpcMemories, getNpcAway } from "@/lib/db/npc-minds";
@@ -15,6 +15,7 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { withCastSheets } from "@/lib/dm/cast-sheet-refs";
 import { handleItemCall } from "@/lib/dm/gear-tool";
+import { handedThisTurn } from "@/lib/owners/items";
 import { rollExpression } from "@/lib/dice";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { requestDmMessage } from "@/lib/dm/model";
@@ -31,7 +32,6 @@ import {
   stageNote,
   stageOrder,
   stageSenses,
-  takeRecorded,
   thingNamed,
   type HeroLine,
   type StageMove,
@@ -108,10 +108,22 @@ function moveThing(
   people: readonly StagePerson[],
   offered: readonly HeroLine[],
   keyOf: (thing: string) => string,
-): { done: StageMove } | { error: string } {
+): { done: StageMove } | { already: true } | { error: string } {
   const plan = planMove(move, actor, people, offered, keyOf);
   if (plan.kind === "refused") {
     return { error: `${move.thing}: ${plan.why}` };
+  }
+  const turn = getDmTurn(turnId);
+  // The master already made this hand-over this turn (the Zattera, 2026-11-16:
+  // Brakk put a quarter of fish in Amleth's hand, then Amleth "accepted it" on
+  // the stage): the items owner has it on record, and the stage's telling is
+  // that one.
+  if (plan.kind === "hand") {
+    const giver = sheetOf(campaign, plan.from);
+    const taker = sheetOf(campaign, plan.to);
+    if (giver && taker && handedThisTurn(campaign.id, turn, giver, plan.thing, taker.name, keyOf)) {
+      return { already: true };
+    }
   }
   const reason = `${actor}, on the stage.`;
   let name: string;
@@ -146,7 +158,7 @@ function moveThing(
   const context = withCastSheets({ campaign, sheets: table, sheetsById: new Map(table.map((sheet) => [sheet.id, sheet])) }, name, raw);
   const result =
     name === "handle_item"
-      ? handleItemCall(campaign, raw, context.sheets, context.sheetsById, null)
+      ? handleItemCall(campaign, raw, context.sheets, context.sheetsById, turn)
       : (applyDmMutation(campaign, turnId, name, raw, context.sheets, context.sheetsById) as { result: Record<string, unknown> }).result;
   if (result && typeof result === "object" && "error" in result && result.error) {
     console.warn(`[npc-stage] ${actor}: "${move.thing}" ${move.from || "found"} → ${move.to || "lost"} refused: ${String(result.error)}`);
@@ -189,16 +201,6 @@ export async function runStage(
   const silent: string[] = [];
   const handed: StageMove[] = [];
   const thingKey = (thing: string) => withoutLeadingStopWords(textKey(thing), campaign.gameSettings.tableLanguage);
-  // What the master already handed over this turn, by the names the stage uses.
-  const nameOf = (ref: unknown) => {
-    const word = typeof ref === "string" ? ref.trim() : "";
-    const sheet = getSheetById(word);
-    const npc = listNpcs(campaign.id).find((entry) => entry.castSheetId === word || entry.companionSheetId === word);
-    return npc?.name ?? sheet?.name ?? word;
-  };
-  const recorded: StageMove[] = calls
-    .filter((call) => call.name === "handle_item" && call.args.action === "hand" && typeof call.args.item === "string" && call.result?.ok === true)
-    .map((call) => ({ thing: String(call.args.item), from: nameOf(call.args.characterId), to: nameOf(call.args.toCharacterId) }));
   const waiting = new Set(order.map((npc) => npc.id));
   // Every mind reacts to the same moment at once (a local model serves them
   // side by side); only the referee goes in order, so each outcome stands on
@@ -245,10 +247,10 @@ export async function runStage(
       // refuses did not happen, and the narrator is told so.
       const undone: string[] = [];
       for (const move of settled.branch.moves) {
-        if (takeRecorded(move, recorded, thingKey)) {
+        const moved = moveThing(campaign, turnId, move, actor.name, people, heroLines, thingKey);
+        if ("already" in moved) {
           continue;
         }
-        const moved = moveThing(campaign, turnId, move, actor.name, people, heroLines, thingKey);
         if ("done" in moved) {
           handed.push(moved.done);
         } else {

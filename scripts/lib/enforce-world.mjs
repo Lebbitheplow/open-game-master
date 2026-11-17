@@ -216,6 +216,7 @@ export async function openWorld(options = {}) {
   const { createUser } = await import("../../src/lib/db/users.ts");
   const campaigns = await import("../../src/lib/db/campaigns.ts");
   const sheets = await import("../../src/lib/db/sheets.ts");
+  const items = await import("../../src/lib/owners/items.ts");
   const { getDatabase } = await import("../../src/lib/db/core.ts");
   const encounters = await import("../../src/lib/db/encounters.ts");
   const messages = await import("../../src/lib/db/messages.ts");
@@ -395,7 +396,8 @@ export async function openWorld(options = {}) {
     diceLog,
     sheet: (id) => sheets.getSheetById(id),
     sheets: () => sheets.listSheets(campaignId),
-    patch: (id, patch) => sheets.patchSheet(id, patch),
+    // A fixture sets a sheet as the table's console would: items through their owner.
+    patch: (id, patch) => items.writeItems(id, patch),
     encounter: () => encounters.getActiveEncounter(campaignId),
     enemies: () => {
       const active = encounters.getActiveEncounter(campaignId);

@@ -29,6 +29,7 @@
 // Which weapon is the pact weapon is read in src/lib/srd/pact-weapon.ts; the
 // minute apart and a death are watched in mt-srd-pact.ts.
 
+import { saveEquipment, writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
 import { advanceClock } from "@/lib/db/clock";
 import { getDmTurn } from "@/lib/db/dm-turns";
@@ -39,7 +40,6 @@ import { publishPersisted } from "@/lib/events";
 import { priceTheAction } from "@/lib/dm/combat-features";
 import { placeName, standing } from "@/lib/dm/gear-ground";
 import { holdIfFree, inHand, weaponRowOf } from "@/lib/dm/gear-hands";
-import { saveEquipment } from "@/lib/dm/gear-store";
 import { asPactWrite, BOOK_OF_SHADOWS, conjuredMark, isBookOfShadows, PACT_APART, tomeMark, vanishStrays } from "@/lib/dm/mt-srd-pact";
 import { handedOverRow } from "@/lib/dm/mutation-math";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -250,7 +250,7 @@ export function bookOfShadows(campaign: Campaign, turnId: string, stale: Charact
   for (const other of listSheets(campaign.id)) {
     const taken = other.id !== sheet.id && (other.equipment.find((item) => item.pact === tome) ?? null);
     if (taken) {
-      const updated = patchSheet(other.id, { equipment: other.equipment.filter((item) => item !== taken) });
+      const updated = writeItems(other.id, { equipment: other.equipment.filter((item) => item !== taken) });
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
       }

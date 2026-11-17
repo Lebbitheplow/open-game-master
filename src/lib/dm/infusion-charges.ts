@@ -12,6 +12,7 @@
 //     when the bonus turns a failure into a success.
 //
 // Must not import forced-save.ts or concentration.ts, which import this.
+import { writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -42,7 +43,7 @@ export function spendInfusionCharge(campaign: Campaign, sheetId: string, row: Eq
   if (at < 0) {
     return;
   }
-  patchSheet(sheet.id, { equipment: sheet.equipment.map((entry, index) => (index === at ? { ...entry, charges: left - 1 } : entry)) });
+  writeItems(sheet.id, { equipment: sheet.equipment.map((entry, index) => (index === at ? { ...entry, charges: left - 1 } : entry)) });
   publishSheet(campaign, sheet.id);
 }
 

@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { allocateSeq, getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { advanceClock } from "@/lib/db/clock";
 import { companionNpcFor } from "@/lib/db/companion-npcs";
@@ -7,7 +8,7 @@ import { listOpenItemProposals, resolveItemProposal } from "@/lib/db/item-propos
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { getPact, savePact } from "@/lib/db/pacts";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { d20Expression } from "@/lib/dice";
 import { computeSheetDerived } from "@/lib/srd";
 import { addCopper, formatPrice, purseCopper } from "@/lib/srd/currency";
@@ -70,7 +71,7 @@ export function takeItem(campaign: Campaign, from: CharacterSheet, name: string,
     return null;
   }
   const patch = { equipment: taken.equipment };
-  patchSheet(from.id, patch);
+  writeItems(from.id, patch);
   insertSheetAudit({ campaignId: campaign.id, characterId: from.id, turnId: turnId || null, kind: "item", delta: { removed: taken.item.name }, reason: why, seq: allocateSeq(campaign.id), before: from, patch });
   const updated = getSheetById(from.id);
   if (updated) {
@@ -82,7 +83,7 @@ export function takeItem(campaign: Campaign, from: CharacterSheet, name: string,
 export function giveItem(campaign: Campaign, to: CharacterSheet, row: EquipmentItem, why: string) {
   const fresh = getSheetById(to.id) ?? to;
   const patch = { equipment: addRowMath(fresh.equipment, row) };
-  patchSheet(fresh.id, patch);
+  writeItems(fresh.id, patch);
   insertSheetAudit({ campaignId: campaign.id, characterId: fresh.id, turnId: null, kind: "item", delta: { added: row.name }, reason: why, seq: allocateSeq(campaign.id), before: fresh, patch });
   const updated = getSheetById(fresh.id);
   if (updated) {
@@ -242,9 +243,9 @@ function theft(campaign: Campaign, turnId: string, thief: CharacterSheet, party:
   const purse = [...party].sort((a, b) => purseCopper(b) - purseCopper(a))[0];
   const taken = purse ? purseCopper(purse) : 0;
   if (purse && taken > 0) {
-    patchSheet(purse.id, { gold: 0, copper: 0 });
+    writeItems(purse.id, { gold: 0, copper: 0 });
     const fresh = getSheetById(thief.id) ?? thief;
-    patchSheet(fresh.id, addCopper(fresh, taken).purse);
+    writeItems(fresh.id, addCopper(fresh, taken).purse);
     for (const id of [purse.id, thief.id]) {
       const updated = getSheetById(id);
       if (updated) {

@@ -27,15 +27,15 @@ import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
+import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed } from "@/lib/srd/item-row";
 import { srdNameFor } from "@/lib/dm/item-logic";
 import { ITEM_TAGS, listedItemTags } from "@/lib/schemas/item-tags";
 import { drop, enemyHandles, pickUp, standing } from "@/lib/dm/gear-ground";
-import { ownBudget, refuse, retry, saveEquipment } from "@/lib/dm/gear-store";
+import { ownBudget, refuse, retry } from "@/lib/dm/gear-store";
+import { give, saveEquipment } from "@/lib/owners/items";
 import { footprintDistance } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
-import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { handsFullAsked } from "@/lib/dm/hands-full-ask";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -340,20 +340,19 @@ function handOver(
     budget = spent.budget;
     cost = spent.note ?? "";
   }
-  const removal = removeItemMath(sheet.equipment, row.name, qty);
-  if (!removal) {
-    return retry(`${sheet.name} carries no "${row.name}".`);
+  const given = give(campaign, turn, sheet, to, row, qty, reason);
+  if (!given.ok) {
+    return retry(given.error);
   }
-  const receiver = getSheetById(to.id) ?? to;
-  const received = holdIfFree(addRowMath(receiver.equipment, handedOverRow(row, removal.removed)), row.name);
-  saveEquipment(campaign, turn, sheet, removal.equipment, "hand_item", { name: row.name, to: to.name, qty: removal.removed }, reason || `Handed ${row.name} to ${to.name}`);
-  saveEquipment(campaign, turn, receiver, received.equipment, "hand_item", { name: row.name, from: sheet.name, qty: removal.removed }, reason || `Received ${row.name} from ${sheet.name}`);
+  if (given.already) {
+    return { ok: true, applied: `${sheet.name} already handed ${row.name} to ${to.name} this turn; nothing moves twice.` };
+  }
   if (encounter && budget) {
     storeBudget(encounter, budget);
   }
   return {
     ok: true,
-    applied: `${sheet.name} hands ${removal.removed > 1 ? `${removal.removed} ` : ""}${row.name} to ${to.name}.`,
+    applied: `${sheet.name} hands ${given.qty > 1 ? `${given.qty} ` : ""}${row.name} to ${to.name}.`,
     ...(cost ? { cost } : {}),
   };
 }
