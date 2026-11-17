@@ -15,7 +15,8 @@
 // Only Dexterity saves are rolled: a mount on record keeps Armor Class and hit
 // points (srd/mounts.ts MountState) and no ability scores, and the SRD mounts'
 // Dexterity is written here. An area that asks another save leaves the mount
-// to the GM, as before.
+// to the GM, as before. A mount that is a creature's sheet (mount-link.ts)
+// saves with its sheet's Dexterity and takes the blast on its sheet.
 
 import { saveAuraBeside } from "@/lib/dm/aura";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -23,7 +24,9 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getMounts, setMount } from "@/lib/db/mounts";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
-import { handleDismount } from "@/lib/dm/mount-tools";
+import { getSheetById } from "@/lib/db/sheets";
+import { hurtSteed, riderOfDownedMount } from "@/lib/dm/mount-combat";
+import { mountVitals } from "@/lib/dm/mount-link";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -48,14 +51,16 @@ export function areaOnMount(input: {
 }): Record<string, unknown> | null {
   const { campaign, turn, rider } = input;
   const mount = getMounts(campaign.id)[rider.id];
-  if (input.ability !== "dex" || input.total <= 0 || !mount || mount.hp === undefined || mount.hp <= 0) {
+  const vitals = mount ? mountVitals(mount) : null;
+  if (input.ability !== "dex" || input.total <= 0 || !mount || !vitals || vitals.hp <= 0) {
     return null;
   }
+  const steed = mount.sheetId ? getSheetById(mount.sheetId) : null;
   // Aura of Protection covers "a friendly creature within 10 feet" (SRD
   // 5.1, Paladin), and the mount shares its rider's square (aura.ts
   // saveAuraBeside). The steed's save took only its Dexterity before.
   const aura = saveAuraBeside(campaign.id, rider)?.bonus ?? 0;
-  const bonus = (MOUNT_DEX[mount.ref] ?? 0) + aura;
+  const bonus = (steed ? Math.floor((steed.abilities.dex - 10) / 2) : (MOUNT_DEX[mount.ref] ?? 0)) + aura;
   const outcome = rollExpression(`1d20${bonus < 0 ? bonus : `+${bonus}`}`);
   const roll = insertRoll({
     campaignId: campaign.id,
@@ -72,7 +77,6 @@ export function areaOnMount(input: {
   const feat = input.halfOnSave && holdsFeat(rider, "Mounted Combatant");
   const share = feat ? (success ? 0 : 0.5) : success ? (input.halfOnSave ? 0.5 : 0) : 1;
   const damage = Math.floor(input.total * share);
-  const hp = Math.max(0, mount.hp - damage);
   const row = {
     mount: mount.name,
     save: outcome.total,
@@ -84,11 +88,14 @@ export function areaOnMount(input: {
   if (damage <= 0) {
     return row;
   }
-  setMount(campaign.id, rider.id, { ...mount, hp });
+  const hp = mount.sheetId ? hurtSteed(campaign, turn.id, mount.sheetId, { amount: damage, reason: input.reason }) : Math.max(0, vitals.hp - damage);
+  if (!mount.sheetId) {
+    setMount(campaign.id, rider.id, { ...mount, hp });
+  }
   if (hp > 0) {
     publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
-    return { ...row, mountHp: `${hp}/${mount.maxHp ?? mount.hp}` };
+    return { ...row, mountHp: `${hp}/${vitals.maxHp}` };
   }
-  const fall = handleDismount(campaign, JSON.stringify({ characterId: rider.id, cause: "mount-prone" }), input.sheets, input.sheetsById, turn);
+  const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheets: input.sheets, sheetsById: input.sheetsById });
   return { ...row, mountDown: `${mount.name} drops to 0 hit points.`, fall };
 }

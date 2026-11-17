@@ -10,6 +10,7 @@ import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import {
+  checkCreatureMount,
   checkMount,
   describeMount,
   DISMOUNT_SAVE_DC,
@@ -39,6 +40,9 @@ import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { rowName } from "@/lib/srd/item-row";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { summonedSteed } from "@/lib/dm/mount-link";
+import { leaveFightAsMount, standBesideRider } from "@/lib/dm/summon-store";
+import { tilesApart } from "@/lib/dm/board-reach";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
@@ -69,7 +73,7 @@ export const mountTools: ToolDef[] = [
         additionalProperties: false,
         properties: {
           characterId: { type: "string", description: "Exact characterId from GAME STATE." },
-          mount: { type: "string", description: "A known mount by its listed name, whatever the table calls it ('cavallo' is 'Riding horse')." },
+          mount: { type: "string", description: "A known mount by its listed name, whatever the table calls it ('cavallo' is 'Riding horse'). Or a creature they called up, by its own name (Find Steed's steed): that creature is then the mount." },
           customName: { type: "string", description: "Only for an animal no list has, by its name, with a speed and a size." },
           speed: { type: "integer", minimum: 0, maximum: 200, description: "For a custom mount." },
           size: { type: "string", enum: [...MOUNT_SIZES], description: "For a custom mount." },
@@ -160,8 +164,17 @@ export function handleMountUp(
   if (drake && "error" in drake) {
     return drake;
   }
+  // The creature they called up, by its name (mount-link.ts): Find Steed's
+  // steed is the mount, not a second horse of the same name.
+  const steed = drake || args.customName ? null : summonedSteed(campaign.id, sheet, args.mount ?? "");
+  const apart = steed ? steedOutOfReach(campaign.id, sheet, steed) : null;
+  if (apart) {
+    return apart;
+  }
   const checked = drake
     ? { ok: true as const, state: drake }
+    : steed
+    ? checkCreatureMount({ sheetId: steed.id, name: steed.name, speed: steed.speed, size: steed.summon?.size ?? "Medium", riderSize: riderSize(sheet) })
     : args.customName
     ? checkMount({
         ref: args.customName,
@@ -186,17 +199,41 @@ export function handleMountUp(
   const block = SRD_CREATURES.find((creature) => creature.slug === checked.state.ref);
   const state = block ? { ...checked.state, ac: block.ac, hp: block.hp, maxHp: block.hp } : checked.state;
   setMount(campaign.id, sheet.id, state);
+  if (steed) {
+    leaveFightAsMount(campaign, steed.id);
+  }
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
   tableNote(campaign, `${sheet.name} mounts up: ${describeMount(checked.state)}.`);
   return {
     ok: true,
     mounted: checked.state.name,
     speed: checked.state.speed,
+    ...(steed
+      ? { creature: `${steed.name} is the creature ${sheet.name} called up, at ${steed.currentHp}/${steed.maxHp} hit points: a blow aimed at the mount and healing sent to ${steed.name} reach that one sheet. It has no token or turn of its own while it carries them, and stands beside them again when they get down.` }
+      : {}),
     // Only what was taken is reported as spent: the console's mount off the
     // rider's turn, or one with no board, charged nothing (ruling R9), and
     // the result said it had.
     ...(spent.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
     note: `${sheet.name} now moves at ${checked.state.speed} ft. ${spent.charged ? `Mounting cost ${holdsFeature(sheet, SADDLE) ? `them only 5 feet of movement, as Born to the Saddle gives (${mountingFeet(sheet)} ft)` : `half their movement (${mountCost(sheet.speed)} ft)`}, taken from this turn's movement on the board.` : "No movement was charged: no turn of theirs is running on the board."}`,
+  };
+}
+
+// "You can mount a creature that is within 5 feet of you" (SRD 5.1, Mounting
+// and Dismounting). A creature with a sheet stands on the board, so the
+// distance can be read; off the board, or with either one not on it, nothing
+// is measured and the GM judges it.
+function steedOutOfReach(campaignId: string, rider: CharacterSheet, steed: CharacterSheet): ToolError | null {
+  const encounter = getActiveEncounter(campaignId);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const from = map ? getTokenByRef(map.id, rider.id) : null;
+  const to = map ? getTokenByRef(map.id, steed.id) : null;
+  if (!from || !to || tilesApart(from, to) <= 1) {
+    return null;
+  }
+  return {
+    error: `${steed.name} is ${tilesApart(from, to) * 5} feet from ${rider.name}: a creature is mounted from within 5 feet of it (SRD 5.1, Mounting and Dismounting). ${rider.name} moves beside it first. Nothing was spent.`,
+    refused: "rules",
   };
 }
 
@@ -321,6 +358,11 @@ export function handleDismount(
   }
   setMount(campaign.id, sheet.id, null);
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
+  // A mount that is a creature's sheet has its own square and turn again.
+  const steed = current.sheetId ? getSheetById(current.sheetId) : null;
+  if (steed) {
+    standBesideRider(campaign, sheet, steed);
+  }
   if (cause === "mount-prone") {
     return mountFalls(campaign, sheet, current.name, sheets, sheetsById, turn);
   }
@@ -397,7 +439,7 @@ function thrownRider(
 // fall prone in a space within 5 feet it" (SRD 5.1, Mounting and
 // Dismounting). The reaction is spent when the rider has it; out of a fight
 // there is no reaction to keep track of, so they land standing.
-function mountFalls(
+export function mountFalls(
   campaign: Campaign,
   sheet: CharacterSheet,
   mountName: string,

@@ -153,6 +153,7 @@ import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, typ
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { proneRiders, settleProneRiders } from "@/lib/dm/mount-thrown";
+import { onFoot } from "@/lib/dm/mount-link";
 import { rollDeathSave } from "@/lib/dm/death";
 import { risesWithVengeance } from "@/lib/dm/searing-vengeance";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
@@ -396,7 +397,8 @@ function handleStartEncounter(
   }
   const awayIds = withFollowers(away.ids, sheets);
   const awaySheets = sheets.filter((sheet) => awayIds.includes(sheet.id));
-  sheets = sheets.filter((sheet) => !awayIds.includes(sheet.id));
+  // A creature carrying a rider fights under them (mount-link.ts onFoot).
+  sheets = onFoot(campaign.id, sheets.filter((sheet) => !awayIds.includes(sheet.id)));
   // Nobody left would roll, so the order would never close.
   if (awayIds.length && !fightingParty(campaign, sheets).length) {
     return {
@@ -801,6 +803,10 @@ function placeInitiativeRoll(
   if (!sheet || encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === characterId)) {
     return null;
   }
+  // A creature carrying a rider has its rider's initiative, not a roll of its own (mount-link.ts).
+  if (!onFoot(campaignId, [sheet]).length) {
+    return `${sheet.name} is carrying a rider and acts on their turn: it takes no place of its own in the order.`;
+  }
   if (encounter.orderReady) {
     // A character joining a fight in progress takes a place in the order by
     // their roll. The pointer stays on whoever is acting; the newcomer's
@@ -833,7 +839,7 @@ function placeInitiativeRoll(
   const campaignForRoster = getCampaignById(campaignId);
   // The dead roll nothing (request_roll refuses them), so the order is not
   // held open waiting on them.
-  const sheets = atTheFight(encounter, campaignForRoster ? fieldedSheets(campaignForRoster) : listSheets(campaignId)).filter(
+  const sheets = onFoot(campaignId, atTheFight(encounter, campaignForRoster ? fieldedSheets(campaignForRoster) : listSheets(campaignId))).filter(
     (entry) => !entry.deathSaves?.dead,
   );
   const staged = encounter.order.filter(
@@ -979,7 +985,7 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
   );
   // Rolling for one who is away would bring them to the fight.
   const held = heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaign.id));
-  const missing = atTheFight(encounter, fieldedSheets(campaign)).filter(
+  const missing = onFoot(campaign.id, atTheFight(encounter, fieldedSheets(campaign))).filter(
     (sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead && !held.has(sheet.userId),
   );
   if (!missing.length) {

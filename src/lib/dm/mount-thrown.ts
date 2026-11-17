@@ -25,6 +25,7 @@ import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { standBesideRider } from "@/lib/dm/summon-store";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { DISMOUNT_SAVE_DC, riderKnockedProne, type MountState } from "@/lib/srd/mounts";
 
@@ -94,6 +95,12 @@ export function saddleSave(
     };
   }
   setMount(campaign.id, sheet.id, null);
+  // A mount that is a creature's sheet has its own square and turn again
+  // (mount-link.ts), whichever of the two threw its rider.
+  const steed = mount.sheetId ? getSheetById(mount.sheetId) : null;
+  if (steed) {
+    standBesideRider(campaign, sheet, steed);
+  }
   const seq = tableNoteSeq(campaign.id);
   const message = insertCampaignMessage({
     campaignId: campaign.id,

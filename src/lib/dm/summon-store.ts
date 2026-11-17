@@ -23,7 +23,7 @@ import {
   setSheetSummon,
 } from "@/lib/db/sheets";
 import { createCompanionUser, deleteCompanionUser } from "@/lib/db/users";
-import { getActiveEncounter, saveEncounter, setEncounterAway, type OrderEntry } from "@/lib/db/encounters";
+import { getActiveEncounter, saveEncounter, setEncounterAway, type Encounter, type OrderEntry } from "@/lib/db/encounters";
 import {
   getBattleMapForEncounter,
   insertToken,
@@ -46,6 +46,7 @@ import { SUMMONED } from "@/lib/dm/summon-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { moveToSide } from "@/lib/dm/combat-sides";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { unseatRidersOf } from "@/lib/dm/mount-link";
 
 const mod = (score: number) => Math.floor((score - 10) / 2);
 
@@ -158,7 +159,7 @@ function placeInFight(
   campaign: Campaign,
   caster: CharacterSheet,
   created: CharacterSheet[],
-  form: SummonForm,
+  form: Pick<SummonForm, "name" | "abilities">,
   mode: "group" | "caster" | "before",
 ) {
   const encounter = getActiveEncounter(campaign.id);
@@ -261,6 +262,8 @@ export function removeSummon(
   // its bot user and every row the user's delete takes with it (its sheet),
   // so the turn's revert brings it back as it was (src/lib/db/turn-rows.ts).
   keepWithCascade("users", sheet.userId, campaign.id);
+  // Whoever rode it rides nothing (mount-link.ts).
+  unseatRidersOf(campaign.id, sheet.id);
   const encounter = getActiveEncounter(campaign.id);
   if (encounter) {
     const index = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === sheet.id);
@@ -269,14 +272,7 @@ export function removeSummon(
       saveEncounter(encounter);
       publishEncounterState(campaign.id);
     } else if (index !== -1) {
-      encounter.order.splice(index, 1);
-      if (index < encounter.turnIndex) {
-        encounter.turnIndex -= 1;
-      } else if (index === encounter.turnIndex) {
-        encounter.turnIndex = Math.max(0, Math.min(encounter.turnIndex, encounter.order.length - 1));
-      }
-      saveEncounter(encounter);
-      publishEncounterState(campaign.id);
+      dropFromOrder(campaign.id, encounter, index);
     }
     const map = getBattleMapForEncounter(encounter.id);
     if (map) {
@@ -286,6 +282,47 @@ export function removeSummon(
   }
   publishPersisted(campaign.id, "sheet_deleted", { sheetId: sheet.id, userId: sheet.userId });
   deleteCompanionUser(sheet.userId);
+}
+
+// One entry out of the order, the pointer kept on whoever is acting.
+function dropFromOrder(campaignId: string, encounter: Encounter, index: number) {
+  encounter.order.splice(index, 1);
+  if (index < encounter.turnIndex) {
+    encounter.turnIndex -= 1;
+  } else if (index === encounter.turnIndex) {
+    encounter.turnIndex = Math.max(0, Math.min(encounter.turnIndex, encounter.order.length - 1));
+  }
+  saveEncounter(encounter);
+  publishEncounterState(campaignId);
+}
+
+// A creature takes a rider (mount-link.ts): it shares its rider's square and
+// initiative, so its own token and its own slot in the order go. Its sheet
+// stays, with its hit points and whatever is on it.
+export function leaveFightAsMount(campaign: Campaign, sheetId: string) {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter) {
+    return;
+  }
+  const index = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === sheetId);
+  if (index !== -1) {
+    dropFromOrder(campaign.id, encounter, index);
+  }
+  const map = getBattleMapForEncounter(encounter.id);
+  if (map) {
+    removeTokenByRef(map.id, sheetId);
+    publishEphemeral(campaign.id, "battle_map_updated", {});
+  }
+}
+
+// Its rider got down: the creature stands on the board again, in a free
+// square beside them, and acts right after them, as it did when it was made.
+export function standBesideRider(campaign: Campaign, rider: CharacterSheet, steed: CharacterSheet) {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter || encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === steed.id)) {
+    return;
+  }
+  placeInFight(campaign, rider, [steed], { name: steed.name, abilities: steed.abilities }, "caster");
 }
 
 // A conjured creature that turns on the party when its maker's concentration
