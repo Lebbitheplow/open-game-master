@@ -338,8 +338,20 @@ const scenario = {
       await bring(0, -1);
       await page.waitForTimeout(1_500);
       check(!(await wakeDealt()), "an older host is dealt Wake");
+      // The page was opened again behind the older host's capabilities, which
+      // land after the first deal: a press made before they settle can be
+      // taken by the deal they redraw. Press again while no aim bar shows, and
+      // say what the Hand shows if it never does.
+      const olderAim = page.locator(`${root}.hand-aim`).locator("visible=true");
+      await untilStill(page);
       await pickCard(t, "Hand Crossbow");
-      await eventually(() => page.locator(`${root}.hand-aim`).locator("visible=true").count(), { label: "the Hand Crossbow card's aim bar on an older host" });
+      for (let tries = 0; tries < 2 && !(await upTo(() => olderAim.count(), 5_000)); tries += 1) {
+        await page.keyboard.press("Escape");
+        await untilStill(page);
+        await pickCard(t, "Hand Crossbow");
+      }
+      const shown = async () => ((await page.locator(`${root}.hand-read-panel, ${root}.hand-read-seat`).locator("visible=true").allTextContents()).join(" ") || "no read panel").slice(0, 300);
+      if (!(await upTo(() => olderAim.count(), 15_000))) check(false, `the Hand Crossbow card's aim bar on an older host (the Hand shows: ${await shown()})`);
       check(!(await page.getByRole("radiogroup", { name: "Ammunition", exact: true }).count()), "an older host's Hand Crossbow card offers magic ammunition");
       await page.keyboard.press("Escape");
       await walk(-1);
