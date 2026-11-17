@@ -2,21 +2,16 @@
 // Wizards of the Coast (CC-BY-4.0), extraits de SRD_CC_v5.1_FR.pdf : la
 // traduction française officielle des noms du SRD 5.1 (sorts, monstres,
 // espèces, Historiques, classes et leurs aptitudes, conditions, dons, armes,
-// armures, objets magiques et équipement d'aventurier). Les dons font
-// exception : le SRD 5.1 français n'imprime qu'un don (« Empoigneur »), les
-// autres noms viennent du SRD 5.2.1 français officiel (« Dons », pp. 92-94)
-// et des éditions françaises officielles des livres, documentées par
-// aidedd.org et recoupées avec le « Glossaire D&D 5 » (gdfl.be). Les dons du
-// paquet de contenu (Level Up A5E et autres éditeurs tiers) font une seconde
-// exception : il n'existe aucune traduction française officielle de
-// Level Up: Advanced 5th Edition (EN Publishing), ils reçoivent donc une
-// traduction adaptée pour la table francophone, le nom anglais restant
-// recherchable sur a5e.tools ; ceux qui adaptent un don du SRD portent le
-// nom officiel français de celui-ci (Athletic est Athlète, Battle Caster est
-// Mage de guerre…). Dans le dépôt, ce fichier est la source : corriger un
-// nom ici, puis lancer node scripts/build-names-fr.mjs, qui régénère
-// src/lib/srd/item-names-fr.ts (--from <dossier> le réécrit depuis les
-// tables d'extraction).
+// armures, objets magiques et équipement d'aventurier), et elle seule : le
+// SRD 5.1 français n'imprime qu'un don (« Empoigneur »), la table des dons
+// n'en porte donc qu'un. Un don qu'elle ne porte pas (ceux des autres livres,
+// ceux du paquet de contenu) s'affiche sous son nom anglais à une table
+// francophone tant qu'aucune traduction ne lui est donnée. Une traduction
+// n'est pas un nom officiel : elle va dans une table à part, jamais ici.
+// Dans le dépôt, ce fichier est la source : corriger un nom ici, puis lancer
+// node scripts/build-names-fr.mjs, qui régénère src/lib/srd/item-names-fr.ts
+// (--from <dossier> le réécrit depuis les tables d'extraction) ; --check
+// vérifie que chaque nom, dons compris, est imprimé dans le livre français.
 //
 // Les clés suivent la convention de chaque table (voir le script) : le slug
 // de la ligne, ou le gearKey du nom anglais, ou "<classe>:<aptitude>" pour
@@ -823,135 +818,7 @@ export const CONDITION_NAMES_FR: Record<string, string> = {
 };
 
 export const FEAT_NAMES_FR: Record<string, string> = {
-  "ace-driver": "Meneur d’attelage",
-  "actor": "Comédien",
-  "alert": "Vigilant",
-  "athlete": "Athlète",
-  "athletic": "Athlète",
-  "attentive": "Vigilant",
-  "battle-caster": "Mage de guerre",
-  "boundless-reserves": "Réserves inépuisables",
-  "brutal-attack": "Sauvagerie martiale",
-  "bull-rush": "Coup de bélier",
-  "charger": "Expert de la charge",
-  "chef": "Chef cuisinier",
-  "combat-thievery": "Filouterie martiale",
-  "covert-training": "Entraînement clandestin",
-  "crafting-expert": "Expert en artisanat",
-  "crossbow-expert": "Maître-arbalétrier",
-  "crossbow-expertise": "Maître-arbalétrier",
-  "crusher": "Broyeur",
-  "deadeye": "Tireur d’élite",
-  "defensive-duelist": "Duelliste défensif",
-  "deflector": "Parade habile",
-  "destiny-s-call": "Appel du destin",
-  "diehard": "Difficile à tuer",
-  "dual-wielder": "Combattant à deux armes",
-  "dual-wielding-expert": "Combattant à deux armes",
-  "dungeon-delver": "Explorateur de donjons",
-  "dungeoneer": "Explorateur de donjons",
-  "durable": "Endurant",
-  "eldritch-adept": "Adepte occulte",
-  "elemental-adept": "Adepte élémentaire",
-  "elven-accuracy": "Précision elfique",
-  "empathic": "Empathique",
-  "fear-breaker": "Briseur de peur",
-  "fey-touched": "Faveur des fées",
-  "floriographer": "Langage des fleurs",
-  "forest-denizen": "Enfant des bois",
-  "fortunate": "Chanceux",
-  "friend-of-the-forest": "Ami de la forêt",
-  "giant-foe": "Ennemi des géants",
   "grappler": "Empoigneur",
-  "great-weapon-master": "Maître des armes à deux mains",
-  "guarded-warrior": "Sentinelle",
-  "gunner": "Amateur d’armes à feu",
-  "hardy-adventurer": "Robuste",
-  "harrier": "Frappe fulgurante",
-  "healer": "Soigneur",
-  "heavily-armored": "Protection lourde",
-  "heavily-outfitted": "Protection lourde",
-  "heavy-armor-expertise": "Maître des armures lourdes",
-  "heavy-armor-master": "Maître des armures lourdes",
-  "heraldic-training": "Entraînement de héraut",
-  "idealistic-leader": "Meneur idéaliste",
-  "inner-resilience": "Discipline intérieure",
-  "inspiring-leader": "Meneur exaltant",
-  "intuitive": "Observateur",
-  "keen-intellect": "Esprit affûté",
-  "keen-mind": "Esprit affûté",
-  "lightly-armored": "Protection légère",
-  "lightly-outfitted": "Protection légère",
-  "linguist": "Linguiste",
-  "linguistics-expert": "Linguiste",
-  "lucky": "Chanceux",
-  "mage-slayer": "Tueur de mages",
-  "magic-initiate": "Initié à la magie",
-  "martial-adept": "Adepte martial",
-  "martial-scholar": "Érudit martial",
-  "medium-armor-expert": "Maître des armures intermédiaires",
-  "medium-armor-master": "Maître des armures intermédiaires",
-  "metamagic-adept": "Adepte de métamagie",
-  "mobile": "Mobile",
-  "moderately-armored": "Protection intermédiaire",
-  "moderately-outfitted": "Protection intermédiaire",
-  "monster-hunter": "Chasseur de monstres",
-  "mounted-combatant": "Combattant monté",
-  "mounted-warrior": "Combattant monté",
-  "mystical-talent": "Initié à la magie",
-  "natural-warrior": "Instinct de combat",
-  "observant": "Observateur",
-  "part-of-the-pack": "Frère de la meute",
-  "physician": "Soigneur",
-  "piercer": "Empaleur",
-  "poisoner": "Empoisonneur",
-  "polearm-master": "Maître d’hast",
-  "polearm-savant": "Maître d’hast",
-  "power-caster": "Mage offensif",
-  "powerful-attacker": "Maître des armes à deux mains",
-  "primordial-caster": "Adepte élémentaire",
-  "rallying-speaker": "Meneur exaltant",
-  "rapid-drinker": "Buveur rapide",
-  "resilient": "Résilient",
-  "resonant-bond": "Lien résonant",
-  "rimecaster": "Mage du givre",
-  "rite-master": "Magie rituelle",
-  "ritual-caster": "Magie rituelle",
-  "savage-attacker": "Sauvagerie martiale",
-  "sentinel": "Sentinelle",
-  "shadow-touched": "Faveur des ombres",
-  "sharpshooter": "Tireur d’élite",
-  "shield-focus": "Maître des boucliers",
-  "shield-master": "Maître des boucliers",
-  "skill-expert": "Expert",
-  "skilled": "Doué",
-  "skillful": "Doué",
-  "skirmisher": "Mobile",
-  "skulker": "Discret",
-  "slasher": "Pourfendeur",
-  "sorcerous-vigor": "Vigueur sorcière",
-  "spell-sniper": "Mage offensif",
-  "spellbreaker": "Tueur de mages",
-  "stalker": "Traqueur",
-  "stalwart": "Endurant",
-  "stealth-expert": "Discret",
-  "street-fighter": "Bagarreur de tavernes",
-  "stunning-sniper": "Tir étourdissant",
-  "surgical-combatant": "Chirurgien de combat",
-  "survivor": "Survivant",
-  "swift-combatant": "Combattant véloce",
-  "tactical-support": "Appui tactique",
-  "tavern-brawler": "Bagarreur de tavernes",
-  "telekinetic": "Télékinésiste",
-  "telepathic": "Télépathe",
-  "tenacious": "Résilient",
-  "thespian": "Comédien",
-  "tough": "Robuste",
-  "war-caster": "Mage de guerre",
-  "weapon-master": "Maître d’armes",
-  "weapons-specialist": "Maître d’armes",
-  "well-heeled": "Bien en cour",
-  "woodcraft-training": "Entraînement des bois",
 };
 
 export const SPECIES_NAMES_FR: Record<string, string> = {
@@ -1680,4 +1547,4 @@ export const FR_NAMES_BY_TABLE: Record<string, Record<string, string>> = {
 };
 
 // 1,591 official pairs in total, by table.
-export const FR_NAME_COUNTS: Record<string, number> = {"spells":319,"weapons":38,"armor":17,"gear":154,"magicitems":239,"conditions":15,"feats":129,"species":9,"backgrounds":1,"monsters":317,"classes":12,"classFeatures":270,"speciesTraits":50,"backgroundFeatures":1,"subclasses":20};
+export const FR_NAME_COUNTS: Record<string, number> = {"spells":319,"weapons":38,"armor":17,"gear":154,"magicitems":239,"conditions":15,"feats":1,"species":9,"backgrounds":1,"monsters":317,"classes":12,"classFeatures":270,"speciesTraits":50,"backgroundFeatures":1,"subclasses":20};
