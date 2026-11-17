@@ -45,12 +45,16 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   height: var(--theme-table-corner-size, 128px);
   filter: drop-shadow(0 2px 3px #0005);
 }
+/* Below 1024px the table's text and controls sit 8 to 17px from the screen's
+   edge (the bottom bar's first label, the session title), and a 28px rail
+   with 84px corners painted over them on a 390px phone. These sizes keep the
+   art clear of them; scenario phone-frame reads every painted theme. */
 @media (max-width: 1023px) {
   .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) { inset: var(--theme-table-ornament-inset-small, -4px); }
-  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 28px); }
+  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 20px); }
   .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) > span {
-    width: var(--theme-table-corner-size-small, 84px);
-    height: var(--theme-table-corner-size-small, 84px);
+    width: var(--theme-table-corner-size-small, 56px);
+    height: var(--theme-table-corner-size-small, 56px);
   }
 }
 @media (max-width: 540px) {

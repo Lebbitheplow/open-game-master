@@ -1,7 +1,7 @@
 /* Small joinery fittings leave the dense table and map controls unobstructed. */
 [data-appearance="hearth"] {
   --theme-table-corner-size: 48px;
-  --theme-table-corner-size-small: 32px;
+  --theme-table-corner-size-small: 23px;
   --theme-lobby-corner-size: 144px;
   --theme-lobby-corner-size-small: 88px;
   --material-fitting-radius: 30% 30% 12% 12%;

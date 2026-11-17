@@ -103,6 +103,7 @@ html[data-appearance="forge"] .ornate::after { width: 18px; height: 18px; border
   --theme-table-frame-width: 30px;
   --theme-table-frame-width-small: 18px;
   /* A solid plate, unlike an open leaf, hides the bottom bar's end labels
-     at the shared phone size. The desktop corner keeps the shared size. */
-  --theme-table-corner-size-small: 60px;
+     at the shared phone size; at 60px it still reached the first label on a
+     360px phone. The desktop corner keeps the shared size. */
+  --theme-table-corner-size-small: 48px;
 }

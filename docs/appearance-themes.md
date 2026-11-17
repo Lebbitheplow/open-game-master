@@ -219,16 +219,20 @@ Shared ornament measurements can be overridden in the theme selector:
 | Variable | Default |
 | --- | --- |
 | `--theme-table-ornament-inset` / `-small` | `-10px` / `-4px` |
-| `--theme-table-frame-width` / `-small` | `40px` / `28px` |
-| `--theme-table-corner-size` / `-small` | `128px` / `84px` |
+| `--theme-table-frame-width` / `-small` | `40px` / `20px` |
+| `--theme-table-corner-size` / `-small` | `128px` / `56px` |
 | `--theme-lobby-ornament-inset` / `-small` | `-34px` / `-16px` |
 | `--theme-lobby-corner-size` / `-small` | `196px` / `112px` |
 
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane and Gothic override table corners to 48px on desktop and 32px on phones:
-their opaque metal fittings need less space than Woodland's open leaves. Inspect
+Arcane, Gothic, Hearth and High Kingdoms override table corners to 48px on
+desktop and 23px on phones: their corner is a crop of their frame, so it keeps
+the frame's rail width, and their opaque fittings need less space than
+Woodland's open leaves. The phone sizes keep the art off the bottom bar's end
+labels and the session title, which sit 8 to 17px from the screen's edge; the
+browser scenario `phone-frame` reads every painted theme at 360 to 430px wide. Inspect
 the actual artwork over headings and close buttons; geometry checks alone cannot
 detect a painted corner covering text.
 
