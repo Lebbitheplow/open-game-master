@@ -7,6 +7,7 @@
 import { hookReachTiles } from "@/lib/dm/genre-gb-hook";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { isPactWeapon } from "@/lib/srd/pact-weapon";
+import { namedAmmo } from "@/lib/srd/ammunition";
 import { genreStrike } from "@/lib/srd/genre-b-combat";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
@@ -45,6 +46,7 @@ import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { GrantedAttack } from "@/lib/srd/condition-effect-types";
 import { summonAttackProfile } from "@/lib/dm/summon-rules";
+import { drainedNaturalAttack } from "@/lib/srd/creature-drain-logic";
 import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack";
 import { findBeastForm } from "@/lib/srd/beast-forms";
 import type { CreatureAttack } from "@/lib/srd/creature-attacks";
@@ -98,6 +100,8 @@ export function buildAttackProfile(
     twoHanded?: boolean;
     offHand?: boolean;
     improvised?: boolean;
+    // The ammunition line the shot names (ammunition.ts namedAmmo).
+    ammo?: string;
   },
   // How many tiles lie between the attacker and the target, when the board
   // knows (a thrown weapon past its reach is a ranged attack).
@@ -319,7 +323,9 @@ export function buildAttackProfile(
     if (!summoned || "error" in summoned) {
       return summoned ?? { error: `${sheet.name}'s stat block has no attack.`, refused: "rules" };
     }
-    profile = summoned;
+    // A drain on its sheet (a shadow's touch) moves the printed bonus of the
+    // attacks built on that score (creature-drain-logic.ts).
+    profile = drainedNaturalAttack(summoned, sheet.abilities, sheet.conditions, sheet.summon.cr);
     kind = "natural";
   } else if (shapedAttacks && !shapedAttacks.length) {
     // A form whose stat block has no attack (a frog, a sea horse): the
@@ -368,7 +374,14 @@ export function buildAttackProfile(
         ? noneNamed(`${sheet.name}'s ${form} form has no attack called`, args.weapon.trim(), names)
         : { error: `${sheet.name}'s ${form} form has several attacks; name one in weapon: ${names.join(", ")}.`, retry: true };
     }
-    profile = naturalAttackProfile(natural, { weapon: `${form} ${natural.name}`, note: `natural attack while transformed (${form})` });
+    // The form's scores carry a drain laid while it is worn (a shadow's
+    // touch), as a summoned creature's do (creature-drain-logic.ts).
+    profile = drainedNaturalAttack(
+      naturalAttackProfile(natural, { weapon: `${form} ${natural.name}`, note: `natural attack while transformed (${form})` }),
+      { ...sheet.abilities, ...sheet.wildShape.abilities },
+      sheet.conditions,
+      sheet.wildShape.cr ?? 0,
+    );
     kind = "natural";
   } else {
     // Hands: a shield on the arm leaves one free, and the off-hand swing
@@ -417,6 +430,14 @@ export function buildAttackProfile(
     if ("error" in hands) {
       return hands;
     }
+    // The ammunition the shot names, a +1 arrow most often: refused when the
+    // weapon cannot fire it, before anything is rolled or spent.
+    const ammoLine = args.ammo && used.srd ? namedAmmo(sheet.equipment, { base: used.srd.name, name: used.displayName }, args.ammo) : null;
+    if (ammoLine && !ammoLine.ok) {
+      const { ok: _ok, ...refusal } = ammoLine;
+      void _ok;
+      return refusal;
+    }
     // Shillelagh: a club or quarterstaff swings with the spellcasting
     // ability and a d8, and is magical (src/lib/dm/attack-features.ts).
     const shillelagh = shillelaghSwing(sheet, used, derived);
@@ -438,6 +459,7 @@ export function buildAttackProfile(
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
         twoHanded,
         offHand: args.offHand,
+        ...(ammoLine?.ok && ammoLine.bonus > 0 ? { ammo: { name: ammoLine.name, bonus: ammoLine.bonus } } : {}),
         otherWeaponInHand: otherHandArmed({
           equipment: sheet.equipment,
           weapon: used.displayName,

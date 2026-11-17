@@ -4,13 +4,14 @@
 
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
 import type { Outcome } from "@/lib/dm/resource-tools";
-import { keepsFullValue, listPriceCp, saleValueCp } from "@/lib/dm/trade-value";
+import { keepsFullValue, listPriceCp, saleValueCp, tradeTotalCp } from "@/lib/dm/trade-value";
 import { addCopper, formatCopper, formatPrice, purseCopper } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { alreadyInPack, notCarried } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { lineNamed } from "@/lib/srd/item-row";
+import { cursedHold } from "@/lib/srd/cursed-items";
 
 // A purchase or a sale outside a shop. The table prices it, not the model:
 // the content pack's list price (or the worth the item was given) is what a
@@ -24,7 +25,13 @@ export function computePurchase(
   args: { item: string; price?: number; qty: number; action: "buy" | "sell"; srdName?: string },
 ): Outcome | ToolError {
   // What is sold is the carried line, with what it is (item-tags.ts).
-  const item = (args.action === "sell" ? sheet.equipment[lineNamed(sheet.equipment, args.item)] : undefined) ?? { name: args.item, srdName: args.srdName };
+  const carried = args.action === "sell" ? sheet.equipment[lineNamed(sheet.equipment, args.item)] : undefined;
+  // An attuned cursed item is not sold away (src/lib/srd/cursed-items.ts).
+  const cursed = cursedHold(sheet, carried);
+  if (cursed) {
+    return { error: cursed, refused: "rules" };
+  }
+  const item = carried ?? { name: args.item, srdName: args.srdName };
   const listCp = listPriceCp(item);
   if (listCp === null && args.price === undefined) {
     return { error: `Nothing prices "${args.item}": send price, the gold one is worth. Nothing changed.`, retry: true };
@@ -39,7 +46,7 @@ export function computePurchase(
   const priced = listCp === null ? "the price given" : args.action === "buy" ? "list price" : keepsFullValue(item) ? "full value" : "half the list price";
   const purse = { gold: sheet.gold, copper: sheet.copper ?? 0 };
   if (args.action === "buy") {
-    const totalCp = eachCp * args.qty;
+    const totalCp = listCp === null ? eachCp * args.qty : tradeTotalCp(item, listCp, args.qty, "buy");
     if (purseCopper(purse) < totalCp) {
       return {
         error: `${sheet.name} has ${formatCopper(purseCopper(purse))}; ${args.qty > 1 ? `${args.qty}x ` : ""}${args.item} costs ${formatPrice(totalCp)}. They cannot afford it.`,
@@ -73,7 +80,7 @@ export function computePurchase(
       retry: true,
     };
   }
-  const totalCp = eachCp * removal.removed;
+  const totalCp = listCp === null ? eachCp * removal.removed : tradeTotalCp(item, listCp, removal.removed, "sell");
   const received = addCopper(purse, totalCp).purse;
   return {
     patch: { gold: received.gold, copper: received.copper, equipment: removal.equipment },

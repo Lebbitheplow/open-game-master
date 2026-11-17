@@ -12,6 +12,11 @@
 //   already running finishes, and prep and corrections to the record stay
 //   open, since they move no turn, roll no die and change no floor.
 
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
 export type TableBreak = {
   // When the break began (ms since the epoch); the banner counts from it.
   at: number;
@@ -28,9 +33,12 @@ export function mayResumeBreak(
 }
 
 // What any refused play reads: an in-character move, a trade, a roll
-// resolved, an adjudication, a turn end (refuseDuringBreak).
-export function breakRefusal(tableBreak: Pick<TableBreak, "name">): string {
-  return `The table is paused: ${tableBreak.name} called a break. Use OOC for table talk until it resumes.`;
+// resolved, an adjudication, a turn end (refuseDuringBreak). The words
+// follow the asker (t, threaded from the request by refuseDuringBreak);
+// the enT default keeps every other reader — and the English line — as
+// they are (session-hold-logic.ts sessionEndedLineT is the precedent).
+export function breakRefusal(tableBreak: Pick<TableBreak, "name">, t: T = enT): string {
+  return t("The table is paused: {name} called a break. Use OOC for table talk until it resumes.", { name: tableBreak.name });
 }
 
 // "4 min", "1 h 05 min": how long the table has been waiting, for the banner.

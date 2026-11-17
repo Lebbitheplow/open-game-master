@@ -8,6 +8,9 @@ import { chip, chipOn, chipRow } from "@/app/workshop/kit";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { BUNDLE_KIND_LABELS, type BundleDependency } from "@/lib/workshop/bundle";
+import { useT, useTp } from "@/lib/locale";
+import type { MessageVars } from "@/lib/messages-logic";
+import { pluralOf } from "@/lib/messages-logic";
 
 // What a bundle holds, shown before it becomes a workshop: the card both a
 // bundle file (ImportBundleButton) and an addon's import (AddonImportButton)
@@ -50,15 +53,24 @@ export function kindsOf(preview: BundlePreviewData): string[] {
 
 // What the current ticks drop: every link from a ticked kind into an
 // unticked one.
-function droppedLinks(preview: BundlePreviewData, kinds: string[]): string[] {
+function droppedLinks(preview: BundlePreviewData, kinds: string[], t: (key: string, vars?: MessageVars) => string): string[] {
+  const tp = pluralOf(t);
   return (preview.dependencies ?? [])
     .filter((dependency) => kinds.includes(dependency.from) && !kinds.includes(dependency.to))
     .map((dependency) =>
       // A name leans on a monster or a Homebrew entry: left behind, it names
       // the importer's own of that name, or nothing (workshop/bundle.ts).
       dependency.to === "monsters" || dependency.to === "homebrew"
-        ? `${BUNDLE_KIND_LABELS[dependency.from] ?? dependency.from}: ${dependency.count} name ${BUNDLE_KIND_LABELS[dependency.to] ?? dependency.to} from this bundle. Left behind, they name your own of that name, or nothing.`
-        : `${dependency.count} link${dependency.count === 1 ? "" : "s"} from ${BUNDLE_KIND_LABELS[dependency.from] ?? dependency.from} to ${BUNDLE_KIND_LABELS[dependency.to] ?? dependency.to} ${dependency.count === 1 ? "is" : "are"} dropped while those stay behind.`,
+        ? t("{from}: {count} name {to} from this bundle. Left behind, they name your own of that name, or nothing.", {
+            from: BUNDLE_KIND_LABELS[dependency.from] ?? dependency.from,
+            count: dependency.count,
+            to: BUNDLE_KIND_LABELS[dependency.to] ?? dependency.to,
+          })
+        : tp("{count} link from {from} to {to} is dropped while those stay behind.", "{count} links from {from} to {to} are dropped while those stay behind.", {
+            count: dependency.count,
+            from: BUNDLE_KIND_LABELS[dependency.from] ?? dependency.from,
+            to: BUNDLE_KIND_LABELS[dependency.to] ?? dependency.to,
+          }),
     );
 }
 
@@ -85,12 +97,14 @@ export function BundlePreview({
   notes?: string[];
 }) {
   const offered = kindsOf(preview);
-  const dropped = droppedLinks(preview, kinds);
+  const t = useT();
+  const tp = useTp();
+  const dropped = droppedLinks(preview, kinds, t);
   return (
     <div className={`${ui.card} reveal mt-3 p-4`}>
       <SectionHead title={preview.manifest.name} glyph="system-share" />
       <p className="text-sm text-stone-400">{preview.manifest.blurb}</p>
-      {preview.manifest.author ? <p className="reveal mt-0.5 text-xs text-stone-500">by {preview.manifest.author}</p> : null}
+      {preview.manifest.author ? <p className="reveal mt-0.5 text-xs text-stone-500">{t("by {name}", { name: preview.manifest.author, context: "workshop.bundle.by" })}</p> : null}
 
       {/* Each kind is a tick: a DM who only wants the monsters takes the
           monsters. Unticking every one leaves an empty workshop, which the
@@ -130,25 +144,24 @@ export function BundlePreview({
         <div className="reveal mt-3">
           {preview.sharedHomes?.length ? (
             <>
-              <p className="mb-1 text-xs text-stone-400">The records its cards pick from &quot;{preview.dependsOn.name}&quot;:</p>
+              <p className="mb-1 text-xs text-stone-400">{t("The records its cards pick from \"{name}\":", { name: preview.dependsOn.name })}</p>
               <Select
-                label="Shared records"
+                label={t("Shared records")}
                 value={sharedWorkshopId}
                 onChange={onSharedWorkshopId}
                 options={[
                   ...preview.sharedHomes.map((home) => ({
                     value: home.id,
-                    label: `Link to my "${home.title}"`,
-                    hint: `${home.found} of ${home.total} found there; the rest land here.`,
+                    label: t("Link to my \"{title}\"", { title: home.title }),
+                    hint: t("{found} of {total} found there; the rest land here.", { found: home.found, total: home.total }),
                   })),
-                  { value: "", label: "Bring them in as this workshop's own" },
+                  { value: "", label: t("Bring them in as this workshop's own") },
                 ]}
               />
             </>
           ) : (
             <p className="text-xs text-stone-400">
-              Its records from &quot;{preview.dependsOn.name}&quot; land as this workshop&apos;s own. Import that
-              workshop&apos;s bundle first to link them to it instead.
+              {t("Its records from \"{name}\" land as this workshop's own. Import that workshop's bundle first to link them to it instead.", { name: preview.dependsOn.name })}
             </p>
           )}
         </div>
@@ -167,20 +180,20 @@ export function BundlePreview({
       ) : null}
 
       <p className="mt-3 text-xs text-stone-500">
-        This creates a new workshop of your own. Nothing is written into any campaign you already have.
+        {t("This creates a new workshop of your own. Nothing is written into any campaign you already have.")}
       </p>
 
       <div className="mt-3 flex gap-2">
         <button type="button" onClick={onConfirm} disabled={busy} className={ui.btnPrimary}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}{" "}
           {kinds.length === 0
-            ? "Import an empty workshop"
+            ? t("Import an empty workshop")
             : kinds.length === offered.length
-              ? "Import it"
-              : `Import ${kinds.length} of ${offered.length} kinds`}
+              ? t("Import it")
+              : t("Import {count} of {total} kinds", { count: kinds.length, total: offered.length })}
         </button>
         <button type="button" onClick={onCancel} className={ui.btnSecondary}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </div>

@@ -23,6 +23,8 @@ import { afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { ABILITY_DRAIN } from "@/lib/srd/ability-drain-logic";
+import { breakCursedAttunements } from "@/lib/srd/cursed-items";
 
 type Cast = (args: Record<string, unknown>) => ToolResult;
 
@@ -31,6 +33,9 @@ const isCurse = (name: string) => isConditionNamed(name, "cursed");
 // Life Drain, Harm): ending it gives the points back to the maximum through
 // patchSheet's riders, and heals nothing.
 const DRAINED = "max hp reduced";
+// And "one reduction to one of the target's ability scores", held as
+// "strength reduced (-N)" (a shadow's touch): ending it gives the score back.
+const SCORE_DRAINED = "ability reduced";
 
 // What the spell would end on this sheet: the conditions, and whether a
 // level of exhaustion goes. Empty when there is nothing it can end.
@@ -50,7 +55,7 @@ export function curePlan(
       ? (sheet.exhaustion ?? 0) > 0
         ? ["exhaustion"]
         : []
-      : sheet.conditions.filter((name) => (entry === "cursed" ? isCurse(name) : entry === DRAINED ? MAX_HP_DRAIN.test(name.trim()) : name.toLowerCase() === entry));
+      : sheet.conditions.filter((name) => (entry === "cursed" ? isCurse(name) : entry === DRAINED ? MAX_HP_DRAIN.test(name.trim()) : entry === SCORE_DRAINED ? ABILITY_DRAIN.test(name.trim()) : name.toLowerCase() === entry));
   const offered = cures.conditions.filter((entry) => !word || entry === word || (entry === "cursed" && isCurse(word)));
   const held = offered.map(heldFor).filter((found) => found.length);
   const chosen = cures.all ? held.flat() : (held[0] ?? []).slice(0, 1);
@@ -103,13 +108,24 @@ export function castCure(
     return { ok: true, spell: resolved.name, target: target.name, ended: [], ...(paid.slot ? { slot: paid.slot } : {}), ...castToNoEffect(ward) };
   }
   const fresh = getSheetById(target.id) ?? target;
-  const ended = [...plan.conditions, ...(plan.exhaustion ? ["one level of exhaustion"] : [])];
+  // SRD 5.1, Remove Curse: "If the object is a cursed magic item, its curse
+  // remains, but the spell breaks its owner's attunement to the object so it
+  // can be removed or discarded"; Greater Restoration ends "any curse,
+  // including the target's attunement to a cursed magic item" as its one
+  // effect, when the curse is the one named or nothing else is there to end.
+  // Narrated only, the attunement held and the axe could never be set down
+  // (src/lib/srd/cursed-items.ts).
+  const word = (input.variant ?? "").trim();
+  const curse = cures.conditions.includes("cursed") && (cures.all || (!plan.conditions.length && !plan.exhaustion && (!word || isCurse(word))));
+  const unbound = curse ? breakCursedAttunements(fresh.equipment) : { equipment: fresh.equipment, broken: [] as string[] };
+  const ended = [...plan.conditions, ...(plan.exhaustion ? ["one level of exhaustion"] : []), ...unbound.broken.map((name) => `the attunement to ${name} (its curse stays with the item)`)];
   if (ended.length) {
     const cleared = removeConditions(fresh.conditions, fresh.conditionMeta, plan.conditions);
     const patch: FullPatchSheetInput = {
       conditions: cleared.conditions,
       conditionMeta: cleared.meta,
       ...(plan.exhaustion ? exhaustionPatch(fresh, (fresh.exhaustion ?? 0) - 1) : {}),
+      ...(unbound.broken.length ? { equipment: unbound.equipment } : {}),
     };
     const updated = patchSheet(fresh.id, patch);
     const entry = insertSheetAudit({
@@ -117,7 +133,7 @@ export function castCure(
       characterId: fresh.id,
       turnId: turn.id,
       kind: "clear_condition",
-      delta: { spell: resolved.name, ended: plan.conditions, exhaustion: plan.exhaustion },
+      delta: { spell: resolved.name, ended: plan.conditions, exhaustion: plan.exhaustion, ...(unbound.broken.length ? { attunementBroken: unbound.broken } : {}) },
       reason: `${resolved.name} cast by ${caster.name}`,
       seq: allocateSeq(campaign.id),
       before: fresh,

@@ -11,6 +11,7 @@ import { AccountMenu, AppHomeButton, type AccountMenuUser } from "@/components/A
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { headerButtonClass } from "@/app/campaigns/[campaignId]/headerButton";
 import { VoiceDock } from "@/app/campaigns/[campaignId]/VoiceDock";
 import { useCapabilities } from "@/lib/use-capabilities";
@@ -58,9 +59,16 @@ function HeaderAudioControl({
   // the icon as well as said above the composer (AudioWaitingBanner.tsx).
   held?: number;
 }) {
+  const t = useT();
   const quiet = muted || !unlocked;
   const waiting = !muted && held > 0;
-  const toggleLabel = waiting ? `${enableLabel} (${held} waiting)` : !unlocked ? enableLabel : muted ? offLabel : onLabel;
+  const toggleLabel = waiting
+    ? t("{label} ({count} waiting)", { label: enableLabel, count: held })
+    : !unlocked
+      ? enableLabel
+      : muted
+        ? offLabel
+        : onLabel;
   const buttonClass = headerButtonClass(!quiet);
   const enablingRef = useRef(false);
   const notePress = () => {
@@ -199,7 +207,11 @@ export const SessionHeader = memo(function SessionHeader({
   // 553), which no campaign list shows: its way out is its workshop.
   exit?: HeaderExit;
 }) {
+  const t = useT();
   const out = exit ?? ALL_CAMPAIGNS;
+  // The way out's label: the caller's own, or the shared "All campaigns" for
+  // the default door (ALL_CAMPAIGNS, whose English label lives in the menu).
+  const exitLabel = out === ALL_CAMPAIGNS ? t("All campaigns") : out.label;
   // Narration switched off server-wide: no passage is read aloud, so the
   // narration volume would steer nothing (issue 275; the lobby's own row
   // reads Off for the same reason).
@@ -215,18 +227,18 @@ export const SessionHeader = memo(function SessionHeader({
       <Link
         href={out.href}
         aria-label={out.label}
-        className="-ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-md text-stone-400 transition-colors hover:text-amber-200 sm:hidden"
+        className="session-back -ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-md text-stone-400 transition-colors hover:text-amber-200 sm:hidden"
       >
         <ArrowLeft className="size-5" />
       </Link>
-      <div className="min-w-0 flex-1">
+      <div className="session-heading min-w-0 flex-1">
         <h1 className="gold-title session-title font-display">{title}</h1>
         <p key={scene} className="live-in truncate font-serif text-xs italic text-stone-400">
-          {scene || "The adventure unfolds"}
+          {scene || t("The adventure unfolds")}
         </p>
       </div>
       {ribbon ? <div className="cine-ribbon-slot hidden lg:flex">{ribbon}</div> : null}
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+      <div className="session-controls flex shrink-0 items-center gap-1.5 sm:gap-2.5">
         {/* Every table-wide control on one brass plate; the way out and the
             account menu stay beside it as the app's own furniture. */}
         <div className="session-cluster">
@@ -235,11 +247,11 @@ export const SessionHeader = memo(function SessionHeader({
             the 3D animation switch, the player's own dice, and shake to
             roll on a phone. */}
         <DropdownMenu.Root>
-          <Tooltip content="Dice" side="bottom">
+          <Tooltip content={t("Dice")} side="bottom">
             <DropdownMenu.Trigger asChild>
               <button
                 type="button"
-                aria-label="Dice"
+                aria-label={t("Dice")}
                 data-tour="header-dice"
                 className={headerButtonClass(dice3d)}
               >
@@ -252,8 +264,8 @@ export const SessionHeader = memo(function SessionHeader({
               <DropdownMenu.Item className={diceItem} onSelect={onRollDice}>
                 <GameIcon icon={{ kind: "glyph", key: "die-d20" }} size="size-6" />
                 <span>
-                  Roll dice
-                  <span className="session-menu-hint">For the table, or in secret</span>
+                  {t("Roll dice", { context: "table.header.rollDice" })}
+                  <span className="session-menu-hint">{t("For the table, or in secret")}</span>
                 </span>
               </DropdownMenu.Item>
               <DropdownMenu.Separator className="my-1 h-px bg-stone-700/60" />
@@ -267,7 +279,7 @@ export const SessionHeader = memo(function SessionHeader({
                     <Check className="size-3.5 text-amber-300" />
                   </DropdownMenu.ItemIndicator>
                 </span>
-                3D dice animation
+                {t("3D dice animation")}
               </DropdownMenu.CheckboxItem>
               {shake.supported ? (
                 <DropdownMenu.CheckboxItem
@@ -280,23 +292,23 @@ export const SessionHeader = memo(function SessionHeader({
                       <Check className="size-3.5 text-amber-300" />
                     </DropdownMenu.ItemIndicator>
                   </span>
-                  Shake to roll
+                  {t("Shake to roll")}
                 </DropdownMenu.CheckboxItem>
               ) : null}
               <DropdownMenu.Separator className="my-1 h-px bg-stone-700/60" />
               <DropdownMenu.Item className={diceItem} onSelect={onCustomizeDice}>
                 <GameIcon icon={{ kind: "glyph", key: "die-d20" }} size="size-6" />
-                Customise my dice
+                {t("Customise my dice")}
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
         {narrates ? (
           <HeaderAudioControl
-            onLabel="Mute narration"
-            offLabel="Unmute narration"
-            enableLabel="Enable narration audio"
-            volumeLabel="Narration volume"
+            onLabel={t("Mute narration")}
+            offLabel={t("Unmute narration")}
+            enableLabel={t("Enable narration audio")}
+            volumeLabel={t("Narration volume")}
             unlocked={narration.unlocked}
             muted={narration.muted}
             volume={narration.volume}
@@ -320,11 +332,11 @@ export const SessionHeader = memo(function SessionHeader({
           </div>
         ) : null}
         {stage ? (
-          <Tooltip content={stage.on ? "Show the story here, with the board in its tab" : "Show the board here, with the story beside it"} side="bottom">
+          <Tooltip content={stage.on ? t("Show the story here, with the board in its tab") : t("Show the board here, with the story beside it")} side="bottom">
             <button
               type="button"
               onClick={stage.onToggle}
-              aria-label={stage.on ? "Show the story" : "Show the board"}
+              aria-label={stage.on ? t("Show the story") : t("Show the board")}
               aria-pressed={stage.on}
               data-tour="header-stage"
               className={headerButtonClass(stage.on)}
@@ -343,11 +355,11 @@ export const SessionHeader = memo(function SessionHeader({
           <RulebookButton />
         </div>
         <div className="hidden sm:flex">
-          <Tooltip content="How everything works, the guided tours and Report a problem" side="bottom">
+          <Tooltip content={t("How everything works, the guided tours and Report a problem")} side="bottom">
             <button
               type="button"
               onClick={onHelp}
-              aria-label="Help"
+              aria-label={t("Help", { context: "menu.help" })}
               data-tour="header-help"
               className={headerButtonClass(false)}
             >
@@ -369,14 +381,14 @@ export const SessionHeader = memo(function SessionHeader({
         </div>
         {session ? <SessionButton control={session} /> : null}
         {prep ? <PrepButton control={prep} /> : null}
-        <Tooltip content={out.label} side="bottom">
+        <Tooltip content={exitLabel} side="bottom">
           <Link
             href={out.href}
-            aria-label={out.label}
+            aria-label={exitLabel}
             className={cn(ui.btnSmall, "hidden h-9 gap-1.5 py-0 pl-1 sm:inline-flex")}
           >
             <HeaderGlyph glyph={out.glyph} />
-            <span className="hidden md:inline">{out.label}</span>
+            <span className="hidden md:inline">{exitLabel}</span>
           </Link>
         </Tooltip>
         <AppHomeButton className="hidden sm:block" />
@@ -395,14 +407,11 @@ const ALL_CAMPAIGNS: HeaderExit = { href: "/", label: "All campaigns", glyph: "t
 // Campaign prep, or the way back from it. Beside All campaigns from sm up,
 // because both are places to go; a phone has it in its table menu.
 function PrepButton({ control }: { control: PrepControl }) {
-  const label = control.open ? "Back to the table" : "Campaign prep";
+  const t = useT();
+  const label = control.open ? t("Back to the table") : t("Campaign prep", { context: "table.header.prep" });
   return (
     <Tooltip
-      content={
-        control.open
-          ? "Back to the table, as you left it"
-          : "The party, rules, lore and Bring in prep, without ending play. The table waits as it is."
-      }
+      content={control.open ? t("Back to the table, as you left it") : t("The party, rules, lore and Bring in prep, without ending play. The table waits as it is.")}
       side="bottom"
     >
       <button
@@ -426,14 +435,11 @@ function PrepButton({ control }: { control: PrepControl }) {
 // next one is readied; a phone has it in its table menu. Lit between
 // sessions, when starting is the thing to do.
 function SessionButton({ control }: { control: SessionControl }) {
-  const label = control.held ? `Start session ${control.next}` : "End the session";
+  const t = useT();
+  const label = control.held ? t("Start session {n}", { n: control.next }) : t("End the session", { context: "table.header.endSession" });
   return (
     <Tooltip
-      content={
-        control.held
-          ? "Pick the story up where it stopped. Everyone at the table is back in play."
-          : "Stop for tonight: play waits where it stands until you start the next session. Nothing is lost."
-      }
+      content={control.held ? t("Pick the story up where it stopped. Everyone at the table is back in play.") : t("Stop for tonight: play waits where it stands until you start the next session. Nothing is lost.")}
       side="bottom"
     >
       <button
@@ -453,11 +459,12 @@ function SessionButton({ control }: { control: SessionControl }) {
 // Pause for a break, or, while one is on, Resume for those who may lift it.
 // Lit while the table is paused; for anyone else it only says so.
 function TableBreakButton({ control }: { control: TableBreakControl }) {
+  const t = useT();
   const label = !control.paused
-    ? "Pause the table for a break"
+    ? t("Pause the table for a break")
     : control.mayResume
-      ? "Resume the table"
-      : "The table is paused";
+      ? t("Resume the table", { context: "table.header.resume" })
+      : t("The table is paused");
   return (
     <Tooltip content={label} side="bottom">
       <button
@@ -478,14 +485,15 @@ function TableBreakButton({ control }: { control: TableBreakControl }) {
 // The rulebook, laid open over the table so a rule can be checked without
 // leaving the session.
 function RulebookButton() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Tooltip content="The rulebook: every rule, spell and monster" side="bottom">
+      <Tooltip content={t("The rulebook: every rule, spell and monster")} side="bottom">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Rulebook"
+          aria-label={t("Rulebook")}
           data-tour="header-rulebook"
           className={headerButtonClass(open)}
         >

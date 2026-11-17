@@ -23,6 +23,12 @@
 // tool handling, and there is no second copy of the rules to drift.
 
 import { agentSpeedEligibility } from "@/lib/speed-tier";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the eligibility check asks yes/no; its reason is the admin
+// panel's to word (SpeedField, which asks the same question with its own
+// translator).
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { acceptsCall } from "@/lib/dm/tool-merge-logic";
 import { randomBytes, createHash } from "node:crypto";
 import os from "node:os";
@@ -661,7 +667,7 @@ async function prepareRun(context: HarnessRequestContext) {
       ? ((await probeHarness(config.id).catch(() => null))?.models ?? [])
       : [];
   const speed =
-    wantsFast && agentSpeedEligibility({ harnessId: config.id, model, models: fastModels }).ok ? ({ role } as const) : undefined;
+    wantsFast && agentSpeedEligibility(enT, { harnessId: config.id, model, models: fastModels }).ok ? ({ role } as const) : undefined;
   return { config, binary, cwd, env, model, speed, adapter: adapterFor(config.id) } as const;
 }
 

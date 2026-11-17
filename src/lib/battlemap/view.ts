@@ -1,4 +1,5 @@
 import { formSenses } from "@/lib/srd/mt-srd-form-senses";
+import { visibleWalk } from "@/lib/battlemap/confirmed-walk";
 import { speedCannotBeReduced } from "@/lib/srd/genre-b-post-apocalyptic";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { ambushRound } from "@/lib/dm/turn-extra-attacks-logic";
@@ -68,12 +69,20 @@ import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { translate } from "@/lib/messages-logic";
 import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logic";
 import { castLookup, npcFace } from "@/lib/db/npc-faces";
 import { enemiesAhead, ownTurnOf } from "@/lib/dm/held-turn";
 import { soleSurvivorSpeed } from "@/lib/dm/genre-a-horror-party";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
+
+// The board's words follow the table's language: the projection's rows and
+// notes ride to every seat, so they are written where they are built.
+function tableT(campaignId: string): (key: string, vars?: Record<string, string | number>) => string {
+  const language = getCampaignById(campaignId)?.gameSettings.tableLanguage ?? "english";
+  return (key, vars) => translate(language === "french" ? "fr" : "en", key, vars);
+}
 
 // A token's side when it is not its kind's: the rim the board draws.
 function offSide(token: { kind: string }, side: string): { side?: "party" | "foe" } {
@@ -181,10 +190,13 @@ export function pcMoveBudget(
   // condition or by exhaustion (src/lib/srd/genre-b-post-apocalyptic.ts), nor
   // is the speed of a character a singing dirgesinger's Funeral March covers
   // (src/lib/dm/genre-cc-a-march.ts).
+  // A rider's exhaustion is their own speed's, not the mount's: a tired
+  // knight's warhorse still walks its 60 feet (SRD 5.1, Exhaustion, "Speed
+  // halved"; Mounted Combat, the mount's speed).
   const speed = soleSurvivorSpeed(
     campaignId,
     sheet,
-    speedCannotBeReduced(sheet) || funeralMarchCovers(encounter, sheet.id) ? effectiveSpeed(sheet.conditions, moved + ambush, true) : exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush)),
+    speedCannotBeReduced(sheet) || funeralMarchCovers(encounter, sheet.id) ? effectiveSpeed(sheet.conditions, moved + ambush, true) : exhaustionSpeed(mount ? 0 : (sheet.exhaustion ?? 0), effectiveSpeed(sheet.conditions, moved + ambush)),
   );
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.
@@ -202,8 +214,12 @@ export function pcMoveBudget(
   // the mount spent its action on a Disengage or a Dodge (take_action mount).
   const mountActed = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? mountActionTaken(encounter.turnBudget.oncePerTurn) : null;
   const mountDash = mount?.controlled && (mountActed === null || mountActed === "dash") ? 1 : 0;
+  // Speed 0 is no square at all (speedToTiles keeps one for a speed it cannot
+  // read): a grappled or hypnotized character's board lit a square, and
+  // GAME STATE gave them 5 feet of movement at speed 0.
+  const speedTiles = speed > 0 ? speedToTiles(speed) : 0;
   // Drunken Technique's 10 feet ride the turn's marks (dm/mt-mr-turn.ts).
-  const fullTiles = Math.max(0, speedToTiles(speed) * (1 + dashes + mountDash) + turnBonusTiles(encounter.turnBudget, sheet.id, encounter.round) - token.movedThisRound);
+  const fullTiles = Math.max(0, speedTiles * (1 + dashes + mountDash) + turnBonusTiles(encounter.turnBudget, sheet.id, encounter.round) - token.movedThisRound);
   // Prone: the character stands for half their speed and walks on what is
   // left, or crawls at double cost, whichever reaches farther. `tiles` is
   // what the board lights; `fullTiles` is the movement actually in hand,
@@ -211,7 +227,7 @@ export function pcMoveBudget(
   const prone = sheet.conditions.some((entry) => entry.trim().toLowerCase() === "prone");
   // Tipsy Sway stands for 5 feet (src/lib/srd/authored-effects-more.ts).
   const tiles = prone
-    ? Math.max(fullTiles - standUpTiles(sheet, speedToTiles(speed)), Math.floor(fullTiles / 2))
+    ? Math.max(fullTiles - standUpTiles(sheet, speedTiles), Math.floor(fullTiles / 2))
     : fullTiles;
   return { speed, tiles: Math.max(0, tiles), fullTiles };
 }
@@ -423,6 +439,7 @@ export function buildPlayerMapView(
       x: token.x,
       y: token.y,
       mine: myToken !== null && token.id === myToken.id,
+      walkPath: visibleWalk(token, map.width, map.height, visible, fullVision),
       down:
         token.kind === "pc" && (sheetsById.get(token.refId)?.currentHp ?? 1) <= 0,
       hidden: token.hidden,
@@ -522,7 +539,7 @@ export function buildPlayerMapView(
       if (!enemy) {
         continue;
       }
-      const rows = enemyStageRows(enemy, nameOf);
+      const rows = enemyStageRows(enemy, nameOf, tableT(campaignId));
       if (rows.length) {
         tokenConditions[shown.id] = rows;
       }
@@ -538,7 +555,7 @@ export function buildPlayerMapView(
       if (!pcSheet) {
         continue;
       }
-      const rows = characterStageRows(pcSheet, nameOf);
+      const rows = characterStageRows(pcSheet, nameOf, tableT(campaignId));
       if (rows.length) {
         tokenConditions[shown.id] = rows;
       }

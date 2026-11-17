@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { localeOfServerLanguage } from "@/lib/i18n/locale";
+import { setServerLocale } from "@/lib/locale";
 
 // What this server can do, as the UI sees it. One fetch per page load is
 // shared by every panel that asks (the campaign creator, the character
@@ -12,6 +14,9 @@ import { useEffect, useState } from "react";
 // hide a working feature. Only a positive "not configured" hides a control.
 
 export type ClientCapabilities = {
+  // The server's own language (global config serverLanguage), from hosts
+  // newer than 0.36.0.
+  language?: string;
   story: { configured: boolean; reachable: boolean; model?: string };
   utility: { configured: boolean };
   // needsModel (images and tts) arrives from servers newer than 0.26.4.
@@ -24,7 +29,7 @@ export type ClientCapabilities = {
   voice: { enabled: boolean; mode: string; transcribes?: boolean };
   // features arrives from servers newer than 0.31.0 (src/lib/capabilities.ts
   // SERVER_FEATURES); an older host sends none.
-  features?: { levelUpChanges?: boolean; originSpellSwap?: boolean; companionPortrait?: boolean; keepCompanion?: boolean; companionTraining?: boolean; unknownGear?: boolean; moreExpertise?: boolean; storyHopes?: boolean; builderMulticlass?: boolean; sessions?: boolean; fallenHeroes?: boolean; enemyActions?: boolean; handBlasts?: boolean; handShares?: boolean; handItemCasts?: boolean; agentLinks?: boolean; moveWithAction?: boolean; gmCompanionTurns?: boolean; openRelationships?: boolean; npcRace?: boolean; fightAbsent?: boolean; fightInBuilding?: boolean; improvisedActions?: boolean; actionParts?: boolean; fightSetups?: boolean; turnTrace?: boolean; diceScripts?: boolean; testFightAllies?: boolean; resolveAsPlayed?: boolean; fightEvents?: boolean; fightGround?: boolean; legendaryCards?: boolean; gmDominatedTurns?: boolean; reactionHits?: boolean; companionReactions?: boolean; typedReactions?: boolean; summonPicker?: boolean; suppliesMeal?: boolean; afterRollChoice?: boolean; opportunityAsk?: boolean; portentWatch?: boolean; beforeRollWatch?: boolean; chronalWatch?: boolean; saveWatch?: boolean; turnHold?: boolean; owedPicks?: boolean; subclassChoices?: boolean; speciesSpells?: boolean; customSpellLists?: boolean; pdfImport?: boolean; deployOpening?: boolean; handSquareLight?: boolean; ownZoneFeet?: boolean; carriedTravel?: boolean; mysticArcanum?: boolean; multiclassTools?: boolean; persona?: boolean };
+  features?: { appearanceThemes?: boolean; levelUpChanges?: boolean; originSpellSwap?: boolean; companionPortrait?: boolean; keepCompanion?: boolean; companionTraining?: boolean; unknownGear?: boolean; moreExpertise?: boolean; storyHopes?: boolean; builderMulticlass?: boolean; sessions?: boolean; fallenHeroes?: boolean; enemyActions?: boolean; handBlasts?: boolean; handShares?: boolean; handItemCasts?: boolean; agentLinks?: boolean; moveWithAction?: boolean; shakeAwake?: boolean; opportunitySmite?: boolean; magicAmmo?: boolean; gmCompanionTurns?: boolean; openRelationships?: boolean; npcRace?: boolean; fightAbsent?: boolean; fightInBuilding?: boolean; improvisedActions?: boolean; actionParts?: boolean; manaclesBound?: boolean; chargeRuns?: boolean; petStrikes?: boolean; setTraps?: boolean; scrollCopy?: boolean; petSaves?: boolean; enemyHazards?: boolean; frigidWater?: boolean; itemLockBonus?: boolean; fightSetups?: boolean; turnTrace?: boolean; diceScripts?: boolean; testFightAllies?: boolean; resolveAsPlayed?: boolean; fightEvents?: boolean; fightGround?: boolean; legendaryCards?: boolean; gmDominatedTurns?: boolean; reactionHits?: boolean; companionReactions?: boolean; typedReactions?: boolean; summonPicker?: boolean; suppliesMeal?: boolean; afterRollChoice?: boolean; opportunityAsk?: boolean; portentWatch?: boolean; beforeRollWatch?: boolean; chronalWatch?: boolean; saveWatch?: boolean; turnHold?: boolean; owedPicks?: boolean; subclassChoices?: boolean; speciesSpells?: boolean; customSpellLists?: boolean; pdfImport?: boolean; deployOpening?: boolean; handSquareLight?: boolean; ownZoneFeet?: boolean; carriedTravel?: boolean; mysticArcanum?: boolean; multiclassTools?: boolean; persona?: boolean; embeddingLanguage?: boolean; petHealing?: boolean; familiarHelp?: boolean; takeBackMove?: boolean };
 };
 
 let cached: ClientCapabilities | null = null;
@@ -49,6 +54,9 @@ function load(force = false): Promise<ClientCapabilities | null> {
       if (data && typeof data === "object" && data.story && data.images) {
         cached = data;
         fetchedAt = Date.now();
+        // The host's language is the menus' default for a reader who chose
+        // none: the apps have no root layout to hand it over (locale.tsx).
+        setServerLocale(localeOfServerLanguage(data.language));
         for (const listener of listeners) {
           listener(cached);
         }

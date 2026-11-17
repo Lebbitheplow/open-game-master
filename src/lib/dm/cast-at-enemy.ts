@@ -8,8 +8,10 @@
 // of cast-tools.ts, which re-exports it; this module imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
-import { isConditionNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { shieldAgainstMagicMissile } from "@/lib/dm/enemy-reactions";
 import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
 import { spendRealityRend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
@@ -348,7 +350,12 @@ export function handleCastAtEnemy(
   }
   // Hold Monster and Command on the undead, Blight on a construct: cast, and
   // spent, to no effect (SRD 5.1).
-  const spared = creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null;
+  // Hideous Laughter on a creature of Intelligence 4 or less: "isn't
+  // affected" (SRD 5.1), cast and spent the same way. It laughed a wolf to
+  // the ground.
+  const spared =
+    (creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null) ??
+    sparedByIntelligence(spellName, mech?.sparesIntAtMost, { name: enemy.displayName, int: enemy.stats.abilities?.int });
   if (args.overchannel) {
     const problem = overchannelProblem(sheet, facts, Boolean(named?.dice ?? callerDice));
     if (problem) {
@@ -468,7 +475,10 @@ export function handleCastAtEnemy(
   // A ward around the target, an immunity to the spell's condition or
   // creature type, or Limited Magic Immunity (the rakshasa, src/lib/dm/monster-traits.ts): the
   // spell is cast, and spent, and does nothing to it (SRD 5.1).
-  const noEffect = ward ?? immune ?? spared ?? magicImmunityNote(enemy, spellName, slotLevel ?? facts?.level ?? 0);
+  // Shield takes every Magic Missile dart, raised now if it is not up yet
+  // (enemy-reactions.ts), read on the live fight so its reaction counts.
+  const live = getActiveEncounter(campaign.id);
+  const noEffect = ward ?? immune ?? spared ?? magicImmunityNote(enemy, spellName, slotLevel ?? facts?.level ?? 0) ?? (isNamed(spellName, "magic missile") && live && !isSheetFoe(enemy) ? shieldAgainstMagicMissile(live, enemy) : null);
   if (noEffect) {
     return { ok: true, ...base, ...castToNoEffect(noEffect) };
   }

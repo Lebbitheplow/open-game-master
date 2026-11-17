@@ -9,6 +9,7 @@ import { newId, type Secret } from "@/lib/worldforge/model";
 import type { WorldEntity } from "@/lib/db/world-forge";
 import type { WorldApi, WorldState } from "./useWorld";
 import { EntityAvatar, EntityPicker, typeOf } from "./world-ui";
+import { useT } from "@/lib/locale";
 
 // Secrets, after WorldForge's knowledge tracker, turned to the table: what
 // the secret is, whom it is about, who in the world keeps it, and whether
@@ -40,6 +41,7 @@ export function SecretsView({
   canShowHandouts?: boolean;
 }) {
   const { doc, entities } = world;
+  const t = useT();
   const [editing, setEditing] = useState<Secret | null>(null);
   const [revealing, setRevealing] = useState<string | null>(null);
   const [told, setTold] = useState("");
@@ -74,7 +76,7 @@ export function SecretsView({
               squeezing it to a word a line. */}
           <div className="min-w-0 flex-1 basis-[12rem]">
             <p className="text-sm text-stone-100">{secret.title}</p>
-            {secret.subject && byRef.get(secret.subject) ? <p className="text-[11px] text-stone-500">About {byRef.get(secret.subject)!.name}</p> : null}
+            {secret.subject && byRef.get(secret.subject) ? <p className="text-[11px] text-stone-500">{t("About {name}", { name: byRef.get(secret.subject)!.name })}</p> : null}
           </div>
           <button
             type="button"
@@ -82,39 +84,39 @@ export function SecretsView({
             aria-checked={secret.partyKnows}
             onClick={() => save({ ...secret, partyKnows: !secret.partyKnows })}
             className={cn(ui.btnSmall, "px-2 py-1 text-xs", secret.partyKnows && "border-emerald-600/50 text-emerald-200")}
-            title={secret.partyKnows ? "The party has learned it" : "The party does not know it yet"}
+            title={secret.partyKnows ? t("The party has learned it") : t("The party does not know it yet")}
           >
             {secret.partyKnows ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-            {secret.partyKnows ? "The party knows" : "The party does not know"}
+            {secret.partyKnows ? t("The party knows") : t("The party does not know")}
           </button>
           {atTable && !secret.revealedAs ? (
-            <KitButton tone="small" onClick={() => { setTold(""); setRevealing(revealing === secret.id ? null : secret.id); }} aria-expanded={revealing === secret.id} data-testid="secret-reveal" title="Tell the party: write what they learn, and it goes into the lore every player reads">
-              <Megaphone className="size-3.5" /> Reveal to the party
+            <KitButton tone="small" onClick={() => { setTold(""); setRevealing(revealing === secret.id ? null : secret.id); }} aria-expanded={revealing === secret.id} data-testid="secret-reveal" title={t("Tell the party: write what they learn, and it goes into the lore every player reads")}>
+              <Megaphone className="size-3.5" /> {t("Reveal to the party")}
             </KitButton>
           ) : null}
-          <KitButton tone="icon" aria-label={`Edit ${secret.title}`} onClick={() => setEditing(secret)}>
+          <KitButton tone="icon" aria-label={t("Duplicate {name}", { name: secret.title })} onClick={() => setEditing(secret)}>
             <Pencil className="size-3.5" />
           </KitButton>
-          <KitButton tone="iconDanger" aria-label={`Delete ${secret.title}`} onClick={() => api.patch({ secrets: doc.secrets.filter((entry) => entry.id !== secret.id) })}>
+          <KitButton tone="iconDanger" aria-label={t("Delete {name}", { name: secret.title })} onClick={() => api.patch({ secrets: doc.secrets.filter((entry) => entry.id !== secret.id) })}>
             <Trash2 className="size-3.5" />
           </KitButton>
         </div>
         {secret.notes ? <p className="mt-1.5 whitespace-pre-wrap text-sm text-stone-300">{secret.notes}</p> : null}
         {secret.knownBy.length ? (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            <span className="text-[11px] text-stone-500">Kept by</span>
+            <span className="text-[11px] text-stone-500">{t("Kept by")}</span>
             {secret.knownBy.map(person)}
           </div>
         ) : null}
         {secret.revealedAt ? (
           <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-emerald-300/90" data-testid="secret-revealed">
-            <span>Told to the party {new Date(secret.revealedAt).toLocaleDateString()}</span>
+            <span>{t("Told to the party {date}", { date: new Date(secret.revealedAt).toLocaleDateString() })}</span>
             {secret.revealedAs && byRef.get(secret.revealedAs) ? (
-              <button type="button" onClick={() => onOpen(secret.revealedAs!)} className="pk-chip motion-press text-[11px]" title="The lore entry the players read">
+              <button type="button" onClick={() => onOpen(secret.revealedAs!)} className="pk-chip motion-press text-[11px]" title={t("The lore entry the players read")}>
                 <BookOpenText className="size-3" /> {byRef.get(secret.revealedAs)!.name}
               </button>
             ) : (
-              <span className="text-stone-500">(its lore entry is gone)</span>
+              <span className="text-stone-500">{t("(its lore entry is gone)")}</span>
             )}
           </div>
         ) : null}
@@ -128,7 +130,7 @@ export function SecretsView({
               const entry = await api.reveal(secret.id, words);
               if (!entry) return;
               setRevealing(null);
-              setTold(`The party can read "${entry.title}" in their lore now${words.show ? ", and it is on every screen" : ""}.`);
+              setTold(t("The party can read \"{title}\" in their lore now{onScreens}.", { title: entry.title, onScreens: words.show ? t(", and it is on every screen") : "" }));
             }}
           />
         ) : null}
@@ -139,10 +141,10 @@ export function SecretsView({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 flex-1 basis-[14rem] text-sm text-stone-400">
-          {open.length} secret{open.length === 1 ? "" : "s"} the party does not know{learned.length ? `, ${learned.length} learned` : ""}. The AI GM is told the ones not yet learned, and who keeps each.
+          {t("{count} secrets the party does not know, {learned} learned. The AI GM is told the ones not yet learned, and who keeps each.", { count: open.length, learned: learned.length })}
         </p>
         <KitButton tone="primary" onClick={() => setEditing(blank())} data-tour="world-new-secret">
-          <Plus className="size-3.5" /> New secret
+          <Plus className="size-3.5" /> {t("New secret")}
         </KitButton>
       </div>
       {told ? (
@@ -154,49 +156,50 @@ export function SecretsView({
       <ul className="flex flex-col gap-2">{open.map(card)}</ul>
       {learned.length ? (
         <>
-          <h3 className="eyebrow mt-2 text-[10px] text-stone-500">Learned by the party</h3>
+          <h3 className="eyebrow mt-2 text-[10px] text-stone-500">{t("Learned by the party")}</h3>
           <ul className="flex flex-col gap-2">{learned.map(card)}</ul>
         </>
       ) : null}
-      {doc.secrets.length === 0 && !editing ? <p className="text-sm text-stone-500">No secrets yet. Every world has some.</p> : null}
+      {doc.secrets.length === 0 && !editing ? <p className="text-sm text-stone-500">{t("No secrets yet. Every world has some.")}</p> : null}
     </div>
   );
 }
 
 function SecretForm({ secret, world, onSave, onCancel }: { secret: Secret; world: WorldState; onSave: (secret: Secret) => void; onCancel: () => void }) {
+  const t = useT();
   const { doc, entities } = world;
   const [draft, setDraft] = useState(secret);
   const [picking, setPicking] = useState<"subject" | "keepers" | null>(null);
   const subject = entities.find((entity) => entity.ref === draft.subject);
   const chip = (entity: WorldEntity, onRemove: () => void) => (
-    <button key={entity.ref} type="button" onClick={onRemove} className="pk-chip motion-pop text-[11px]" aria-label={`Take ${entity.name} off`}>
+    <button key={entity.ref} type="button" onClick={onRemove} className="pk-chip motion-pop text-[11px]" aria-label={t("Take {name} off", { name: entity.name })}>
       <EntityAvatar entity={entity} type={typeOf(doc, entity)} size="size-4" /> {entity.name} <X className="size-3" />
     </button>
   );
   return (
     <form className="panel motion-pop flex flex-col gap-2 rounded-lg p-3" onSubmit={(event) => { event.preventDefault(); if (draft.title.trim()) onSave(draft); }}>
-      <input className={ui.input} placeholder="The warden sold the codes" aria-label="The secret" maxLength={120} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} autoFocus />
-      <textarea className={cn(ui.input, "min-h-16")} placeholder="What it means, and how it might come out" aria-label="More about it" maxLength={4_000} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} />
+      <input className={ui.input} placeholder={t("The warden sold the codes")} aria-label={t("The secret")} maxLength={120} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} autoFocus />
+      <textarea className={cn(ui.input, "min-h-16")} placeholder={t("What it means, and how it might come out")} aria-label={t("More about it")} maxLength={4_000} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} />
       <div className="flex flex-wrap items-center gap-1">
-        <span className="eyebrow w-16 text-[10px] text-stone-500">About</span>
+        <span className="eyebrow w-16 text-[10px] text-stone-500">{t("About", { context: "workshop.world.secrets.aboutLabel" })}</span>
         {subject ? chip(subject, () => setDraft({ ...draft, subject: "" })) : null}
-        <KitButton tone="link" onClick={() => setPicking(picking === "subject" ? null : "subject")}>{subject ? "Change" : "Pick"}</KitButton>
+        <KitButton tone="link" onClick={() => setPicking(picking === "subject" ? null : "subject")}>{subject ? t("Change", { context: "workshop.world.atlasCard.change" }) : t("Pick an entry")}</KitButton>
       </div>
-      {picking === "subject" ? <EntityPicker doc={doc} entities={entities} chosen={[draft.subject]} label="whom it is about" onPick={(entity) => { setDraft({ ...draft, subject: entity.ref }); setPicking(null); }} /> : null}
+      {picking === "subject" ? <EntityPicker doc={doc} entities={entities} chosen={[draft.subject]} label={t("whom it is about")} onPick={(entity) => { setDraft({ ...draft, subject: entity.ref }); setPicking(null); }} /> : null}
       <div className="flex flex-wrap items-center gap-1">
-        <span className="eyebrow w-16 text-[10px] text-stone-500">Kept by</span>
+        <span className="eyebrow w-16 text-[10px] text-stone-500">{t("Kept by")}</span>
         {draft.knownBy.map((ref) => {
           const entity = entities.find((entry) => entry.ref === ref);
           return entity ? chip(entity, () => setDraft({ ...draft, knownBy: draft.knownBy.filter((entry) => entry !== ref) })) : null;
         })}
-        <KitButton tone="link" onClick={() => setPicking(picking === "keepers" ? null : "keepers")}><Plus className="size-3.5" /> Add</KitButton>
+        <KitButton tone="link" onClick={() => setPicking(picking === "keepers" ? null : "keepers")}><Plus className="size-3.5" /> {t("Add")}</KitButton>
       </div>
       {picking === "keepers" ? (
-        <EntityPicker doc={doc} entities={entities} chosen={draft.knownBy} label="who keeps it" onPick={(entity) => setDraft({ ...draft, knownBy: draft.knownBy.includes(entity.ref) ? draft.knownBy.filter((entry) => entry !== entity.ref) : [...draft.knownBy, entity.ref] })} />
+        <EntityPicker doc={doc} entities={entities} chosen={draft.knownBy} label={t("who keeps it")} onPick={(entity) => setDraft({ ...draft, knownBy: draft.knownBy.includes(entity.ref) ? draft.knownBy.filter((entry) => entry !== entity.ref) : [...draft.knownBy, entity.ref] })} />
       ) : null}
       <div className="flex justify-end gap-1.5">
-        <KitButton tone="small" onClick={onCancel}><X className="size-3.5" /> Cancel</KitButton>
-        <KitButton tone="primary" type="submit" disabled={!draft.title.trim()}><Check className="size-3.5" /> Save secret</KitButton>
+        <KitButton tone="small" onClick={onCancel}><X className="size-3.5" /> {t("Cancel")}</KitButton>
+        <KitButton tone="primary" type="submit" disabled={!draft.title.trim()}><Check className="size-3.5" /> {t("Save secret")}</KitButton>
       </div>
     </form>
   );
@@ -218,6 +221,7 @@ function RevealForm({
   onCancel: () => void;
   onReveal: (words: { title: string; body: string; show: boolean }) => void;
 }) {
+  const t = useT();
   const [title, setTitle] = useState(secret.title);
   const [body, setBody] = useState(secret.notes || secret.title);
   const [show, setShow] = useState(false);
@@ -231,21 +235,21 @@ function RevealForm({
         if (ready && !busy) onReveal({ title: title.trim(), body: body.trim(), show });
       }}
     >
-      <p className="text-xs text-amber-100/90">Every player will read this in their lore. Write it as they learn it; the notes above stay yours.</p>
-      <input className={ui.input} aria-label="What the party learns, as a title" maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
-      <textarea className={cn(ui.input, "min-h-20")} aria-label="What the party reads" maxLength={4_000} value={body} onChange={(event) => setBody(event.target.value)} />
+      <p className="text-xs text-amber-100/90">{t("Every player will read this in their lore. Write it as they learn it; the notes above stay yours.")}</p>
+      <input className={ui.input} aria-label={t("What the party learns, as a title")} maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
+      <textarea className={cn(ui.input, "min-h-20")} aria-label={t("What the party reads")} maxLength={4_000} value={body} onChange={(event) => setBody(event.target.value)} />
       {canShowHandouts ? (
         <label className="flex items-center gap-2 text-xs text-stone-300">
           <input type="checkbox" checked={show} onChange={(event) => setShow(event.target.checked)} />
-          Show it on every screen now, as a handout
+          {t("Show it on every screen now, as a handout")}
         </label>
       ) : null}
       <div className="flex justify-end gap-1.5">
         <KitButton tone="small" onClick={onCancel}>
-          <X className="size-3.5" /> Cancel
+          <X className="size-3.5" /> {t("Cancel")}
         </KitButton>
         <KitButton tone="primary" type="submit" busy={busy} disabled={!ready || busy} data-testid="secret-reveal-confirm">
-          <Megaphone className="size-3.5" /> Reveal
+          <Megaphone className="size-3.5" /> {t("Reveal to the party")}
         </KitButton>
       </div>
     </form>

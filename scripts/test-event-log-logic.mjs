@@ -17,6 +17,10 @@ const { BOOKKEEPING_KINDS, buildFeed, describeAuditEntry, describeKnownEntry, re
   "../src/app/campaigns/[campaignId]/event-log-logic.ts"
 );
 const { changesWindow, quietTick, undoConflictLine, fieldWords } = await import("../src/lib/sheet-audit-logic.ts");
+// The sentences live in the dictionaries (table.log.*); the readings are
+// pinned against the English source, the way the table reads it by default.
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 
 let passed = 0;
 function test(name, fn) {
@@ -317,7 +321,7 @@ test("every kind the server writes reads as words, whatever its row holds", () =
   const raw = [];
   for (const [kind, sites] of scanned.kinds) {
     for (const delta of [{}, { amount: null, name: 3, item: null, qty: "two", deathSaves: "x" }]) {
-      const text = describeKnownEntry({ kind, delta }, "Kara");
+      const text = describeKnownEntry(t, { kind, delta }, "Kara");
       if (text === null) {
         raw.push(`${kind} (${sites[0]})`);
         break;
@@ -330,7 +334,7 @@ test("every kind the server writes reads as words, whatever its row holds", () =
 });
 
 test("a death save's result, a pact's price, a trade and the gear moves read from what their rows store", () => {
-  const say = (kind, delta) => describeAuditEntry({ kind, delta }, "Corra Venn");
+  const say = (kind, delta) => describeAuditEntry(t, { kind, delta }, "Corra Venn");
   // src/lib/dm/death.ts writeDeathState and heal-spell.ts's revival.
   assert.equal(say("death_state", { deathSaves: { successes: 0, failures: 0, stable: false, dead: false } }), "Corra Venn is dying");
   assert.equal(say("death_state", { deathSaves: { successes: 2, failures: 1, stable: false, dead: false } }), "Corra Venn's death saves: 2 successes, 1 failure");

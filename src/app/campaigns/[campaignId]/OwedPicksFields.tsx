@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { cn } from "@/lib/cn";
 import { describeSkill } from "@/lib/help";
-import { findSkill } from "@/lib/srd";
 import { subclassBlurb } from "@/lib/srd/features";
 import { authoredFeatDesc, featAbilityIncrease } from "@/lib/srd/feat-effects";
 import { featGrantSpec, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
@@ -12,6 +11,8 @@ import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-traini
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice, type AsiChoice } from "@/lib/schemas/sheet";
 import type { OwedPicks, SeatPicks } from "@/lib/characters/seat-picks";
+import { useLocale, useT } from "@/lib/locale";
+import { skillLabel } from "@/lib/srd";
 import { expertiseOptionsAfter } from "@/lib/srd/owed-picks-logic";
 import AsiFeatEditor from "@/app/characters/builder/AsiFeatEditor";
 import FeatChoicesFields from "@/app/characters/builder/FeatChoicesFields";
@@ -35,7 +36,6 @@ export type PicksDraft = {
 
 export const EMPTY_DRAFT: PicksDraft = { subclasses: {}, asiChoices: [], featChoices: {}, skills: [], expertise: [] };
 
-const skillName = (id: string) => findSkill(id)?.name ?? id.replace(/_/g, " ");
 
 // The pressable itself is the whole chip, a finger-sized target with a focus
 // ring of its own; a skill's ⓘ sits beside it, never inside it.
@@ -113,6 +113,8 @@ export function OwedPicksFields({
   onChange: (draft: PicksDraft) => void;
   featDescOf: (name: string) => string;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const training = useMemo(() => trainingFor(owed, draft), [owed, draft]);
   const setFeatPicks = (feat: string, picks: FeatPicks) =>
     onChange({ ...draft, featChoices: withFeatChoice(draft.featChoices, feat, picks) });
@@ -193,9 +195,9 @@ export function OwedPicksFields({
               return (
                 <span key={id} className="inline-flex items-center">
                   <button type="button" aria-pressed={picked} className={chip(picked)} onClick={() => onChange({ ...draft, skills: toggle(draft.skills, id, owed.skills.count) })}>
-                    {skillName(id)}
+                    {skillLabel(id, locale)}
                   </button>
-                  <InfoButton label={skillName(id)} text={describeSkill(id) ?? undefined} />
+                  <InfoButton label={skillLabel(id, locale)} text={describeSkill(t, id, locale) ?? undefined} />
                 </span>
               );
             })}
@@ -238,7 +240,7 @@ export function OwedPicksFields({
                   className={chip(picked)}
                   onClick={() => onChange({ ...draft, expertise: toggle(draft.expertise, id, owed.expertise.count) })}
                 >
-                  {skillName(id)}
+                  {skillLabel(id, locale)}
                 </button>
               );
             })}

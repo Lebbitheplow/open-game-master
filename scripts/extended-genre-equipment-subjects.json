@@ -1,0 +1,785 @@
+[
+  {
+    "id": "cyberpunk-backpack",
+    "cardId": "cyberpunk-gear-backpack",
+    "itemId": "backpack",
+    "label": "Backpack",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one sturdy backpack with two shoulder straps and closed storage pockets, full silhouette including straps"
+  },
+  {
+    "id": "dark-fantasy-backpack",
+    "cardId": "dark-fantasy-gear-backpack",
+    "itemId": "backpack",
+    "label": "Backpack",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one sturdy backpack with two shoulder straps and closed storage pockets, full silhouette including straps"
+  },
+  {
+    "id": "horror-backpack",
+    "cardId": "horror-gear-backpack",
+    "itemId": "backpack",
+    "label": "Backpack",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one sturdy backpack with two shoulder straps and closed storage pockets, full silhouette including straps"
+  },
+  {
+    "id": "mystery-backpack",
+    "cardId": "mystery-gear-backpack",
+    "itemId": "backpack",
+    "label": "Backpack",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one sturdy backpack with two shoulder straps and closed storage pockets, full silhouette including straps"
+  },
+  {
+    "id": "post-apocalyptic-backpack",
+    "cardId": "post-apocalyptic-gear-backpack",
+    "itemId": "backpack",
+    "label": "Backpack",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one sturdy backpack with two shoulder straps and closed storage pockets, full silhouette including straps"
+  },
+  {
+    "id": "steampunk-backpack",
+    "cardId": "steampunk-gear-backpack",
+    "itemId": "backpack",
+    "label": "Backpack",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one sturdy backpack with two shoulder straps and closed storage pockets, full silhouette including straps"
+  },
+  {
+    "id": "cyberpunk-pouch",
+    "cardId": "cyberpunk-gear-pouch",
+    "itemId": "pouch",
+    "label": "Pouch",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one compact closed belt pouch with a flap and belt attachment, no coins or loose contents"
+  },
+  {
+    "id": "dark-fantasy-pouch",
+    "cardId": "dark-fantasy-gear-pouch",
+    "itemId": "pouch",
+    "label": "Pouch",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one compact closed belt pouch with a flap and belt attachment, no coins or loose contents"
+  },
+  {
+    "id": "horror-pouch",
+    "cardId": "horror-gear-pouch",
+    "itemId": "pouch",
+    "label": "Pouch",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one compact closed belt pouch with a flap and belt attachment, no coins or loose contents"
+  },
+  {
+    "id": "mystery-pouch",
+    "cardId": "mystery-gear-pouch",
+    "itemId": "pouch",
+    "label": "Pouch",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one compact closed belt pouch with a flap and belt attachment, no coins or loose contents"
+  },
+  {
+    "id": "post-apocalyptic-pouch",
+    "cardId": "post-apocalyptic-gear-pouch",
+    "itemId": "pouch",
+    "label": "Pouch",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one compact closed belt pouch with a flap and belt attachment, no coins or loose contents"
+  },
+  {
+    "id": "steampunk-pouch",
+    "cardId": "steampunk-gear-pouch",
+    "itemId": "pouch",
+    "label": "Pouch",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one compact closed belt pouch with a flap and belt attachment, no coins or loose contents"
+  },
+  {
+    "id": "cyberpunk-rations-1-day",
+    "cardId": "cyberpunk-gear-rations-1-day",
+    "itemId": "rations-1-day",
+    "label": "Rations (1 day)",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "a compact coherent one-day food ration arrangement, two or three clearly edible provisions with era-appropriate plain wrapping; future: sealed food sachets and a nutrition bar; medieval: bread, dried fruit and wrapped dried meat; period settings: biscuit packet and plain food tin; wasteland: dented food tin and carefully wrapped preserved food; no text"
+  },
+  {
+    "id": "dark-fantasy-rations-1-day",
+    "cardId": "dark-fantasy-gear-rations-1-day",
+    "itemId": "rations-1-day",
+    "label": "Rations (1 day)",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "a compact coherent one-day food ration arrangement, two or three clearly edible provisions with era-appropriate plain wrapping; future: sealed food sachets and a nutrition bar; medieval: bread, dried fruit and wrapped dried meat; period settings: biscuit packet and plain food tin; wasteland: dented food tin and carefully wrapped preserved food; no text"
+  },
+  {
+    "id": "horror-rations-1-day",
+    "cardId": "horror-gear-rations-1-day",
+    "itemId": "rations-1-day",
+    "label": "Rations (1 day)",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "a compact coherent one-day food ration arrangement, two or three clearly edible provisions with era-appropriate plain wrapping; future: sealed food sachets and a nutrition bar; medieval: bread, dried fruit and wrapped dried meat; period settings: biscuit packet and plain food tin; wasteland: dented food tin and carefully wrapped preserved food; no text"
+  },
+  {
+    "id": "mystery-rations-1-day",
+    "cardId": "mystery-gear-rations-1-day",
+    "itemId": "rations-1-day",
+    "label": "Rations (1 day)",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "a compact coherent one-day food ration arrangement, two or three clearly edible provisions with era-appropriate plain wrapping; future: sealed food sachets and a nutrition bar; medieval: bread, dried fruit and wrapped dried meat; period settings: biscuit packet and plain food tin; wasteland: dented food tin and carefully wrapped preserved food; no text"
+  },
+  {
+    "id": "post-apocalyptic-rations-1-day",
+    "cardId": "post-apocalyptic-gear-rations-1-day",
+    "itemId": "rations-1-day",
+    "label": "Rations (1 day)",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "a compact coherent one-day food ration arrangement, two or three clearly edible provisions with era-appropriate plain wrapping; future: sealed food sachets and a nutrition bar; medieval: bread, dried fruit and wrapped dried meat; period settings: biscuit packet and plain food tin; wasteland: dented food tin and carefully wrapped preserved food; no text"
+  },
+  {
+    "id": "steampunk-rations-1-day",
+    "cardId": "steampunk-gear-rations-1-day",
+    "itemId": "rations-1-day",
+    "label": "Rations (1 day)",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "a compact coherent one-day food ration arrangement, two or three clearly edible provisions with era-appropriate plain wrapping; future: sealed food sachets and a nutrition bar; medieval: bread, dried fruit and wrapped dried meat; period settings: biscuit packet and plain food tin; wasteland: dented food tin and carefully wrapped preserved food; no text"
+  },
+  {
+    "id": "cyberpunk-thieves-tools",
+    "cardId": "cyberpunk-gear-thieves-tools",
+    "itemId": "thieves-tools",
+    "label": "Thieves' Tools",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "One CLOSED compact professional tool case, all contents completely concealed, black and slate polymer shell with small cyan seam accents and two silver latches."
+  },
+  {
+    "id": "dark-fantasy-thieves-tools",
+    "cardId": "dark-fantasy-gear-thieves-tools",
+    "itemId": "thieves-tools",
+    "label": "Thieves' Tools",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "One CLOSED rolled medieval tool pouch, all contents completely concealed, weathered dark brown leather with two simple aged bronze buckles and a carrying loop."
+  },
+  {
+    "id": "horror-thieves-tools",
+    "cardId": "horror-gear-thieves-tools",
+    "itemId": "thieves-tools",
+    "label": "Thieves' Tools",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "One CLOSED early twentieth century compact tool case, all contents completely concealed, burgundy leather exterior and tarnished nickel latches."
+  },
+  {
+    "id": "mystery-thieves-tools",
+    "cardId": "mystery-gear-thieves-tools",
+    "itemId": "thieves-tools",
+    "label": "Thieves' Tools",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one open compact roll or case holding several recognizable fine metal mechanical lock picks and tension tools, simple readable arrangement; no instructions, diagrams, electronic hacking tablet or weapon"
+  },
+  {
+    "id": "post-apocalyptic-thieves-tools",
+    "cardId": "post-apocalyptic-gear-thieves-tools",
+    "itemId": "thieves-tools",
+    "label": "Thieves' Tools",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "One CLOSED salvaged compact tool case, all contents completely concealed, battered olive metal, a repaired handle and a restrained faded orange patch."
+  },
+  {
+    "id": "steampunk-thieves-tools",
+    "cardId": "steampunk-gear-thieves-tools",
+    "itemId": "thieves-tools",
+    "label": "Thieves' Tools",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "One CLOSED Victorian compact tool case, all contents completely concealed, brown leather exterior, teal inset panels and restrained brass latches."
+  },
+  {
+    "id": "cyberpunk-clothes-common",
+    "cardId": "cyberpunk-gear-clothes-common",
+    "itemId": "clothes-common",
+    "label": "Clothes, Common",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one complete practical everyday outfit: a plain jacket or tunic, trousers and boots, neatly arranged together as empty garments; cyberpunk: streetwear; medieval: peasant work clothes; horror: worn field-worker clothes; mystery: modest civilian daywear; wasteland: repaired workwear; steampunk: Victorian worker clothes. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "dark-fantasy-clothes-common",
+    "cardId": "dark-fantasy-gear-clothes-common",
+    "itemId": "clothes-common",
+    "label": "Clothes, Common",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one complete practical everyday outfit: a plain jacket or tunic, trousers and boots, neatly arranged together as empty garments; cyberpunk: streetwear; medieval: peasant work clothes; horror: worn field-worker clothes; mystery: modest civilian daywear; wasteland: repaired workwear; steampunk: Victorian worker clothes. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "horror-clothes-common",
+    "cardId": "horror-gear-clothes-common",
+    "itemId": "clothes-common",
+    "label": "Clothes, Common",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one complete practical everyday outfit: a plain jacket or tunic, trousers and boots, neatly arranged together as empty garments; cyberpunk: streetwear; medieval: peasant work clothes; horror: worn field-worker clothes; mystery: modest civilian daywear; wasteland: repaired workwear; steampunk: Victorian worker clothes. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "mystery-clothes-common",
+    "cardId": "mystery-gear-clothes-common",
+    "itemId": "clothes-common",
+    "label": "Clothes, Common",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one complete practical everyday outfit: a plain jacket or tunic, trousers and boots, neatly arranged together as empty garments; cyberpunk: streetwear; medieval: peasant work clothes; horror: worn field-worker clothes; mystery: modest civilian daywear; wasteland: repaired workwear; steampunk: Victorian worker clothes. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "post-apocalyptic-clothes-common",
+    "cardId": "post-apocalyptic-gear-clothes-common",
+    "itemId": "clothes-common",
+    "label": "Clothes, Common",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one complete practical everyday outfit: a plain jacket or tunic, trousers and boots, neatly arranged together as empty garments; cyberpunk: streetwear; medieval: peasant work clothes; horror: worn field-worker clothes; mystery: modest civilian daywear; wasteland: repaired workwear; steampunk: Victorian worker clothes. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "steampunk-clothes-common",
+    "cardId": "steampunk-gear-clothes-common",
+    "itemId": "clothes-common",
+    "label": "Clothes, Common",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one complete practical everyday outfit: a plain jacket or tunic, trousers and boots, neatly arranged together as empty garments; cyberpunk: streetwear; medieval: peasant work clothes; horror: worn field-worker clothes; mystery: modest civilian daywear; wasteland: repaired workwear; steampunk: Victorian worker clothes. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "cyberpunk-clothes-fine",
+    "cardId": "cyberpunk-gear-clothes-fine",
+    "itemId": "clothes-fine",
+    "label": "Clothes, Fine",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one complete elegant civilian outfit: a tailored coat or long formal jacket, trousers and shoes, neatly arranged together as empty garments; cyberpunk: sleek formal citywear; medieval: noble court clothes; horror: faded aristocratic eveningwear; mystery: refined period evening suit; wasteland: carefully restored pre-collapse formalwear; steampunk: Victorian formal attire. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "dark-fantasy-clothes-fine",
+    "cardId": "dark-fantasy-gear-clothes-fine",
+    "itemId": "clothes-fine",
+    "label": "Clothes, Fine",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "A neatly arranged EMPTY set of medieval noble clothing: richly embroidered burgundy brocade belted tunic with simple round neck, separate folded dark wool chausses, soft brown leather boots. Medieval silhouette, no Victorian tailcoat, lapels, waistcoat, tie, zipper, modern suit or person."
+  },
+  {
+    "id": "horror-clothes-fine",
+    "cardId": "horror-gear-clothes-fine",
+    "itemId": "clothes-fine",
+    "label": "Clothes, Fine",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one complete elegant civilian outfit: a tailored coat or long formal jacket, trousers and shoes, neatly arranged together as empty garments; cyberpunk: sleek formal citywear; medieval: noble court clothes; horror: faded aristocratic eveningwear; mystery: refined period evening suit; wasteland: carefully restored pre-collapse formalwear; steampunk: Victorian formal attire. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "mystery-clothes-fine",
+    "cardId": "mystery-gear-clothes-fine",
+    "itemId": "clothes-fine",
+    "label": "Clothes, Fine",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one complete elegant civilian outfit: a tailored coat or long formal jacket, trousers and shoes, neatly arranged together as empty garments; cyberpunk: sleek formal citywear; medieval: noble court clothes; horror: faded aristocratic eveningwear; mystery: refined period evening suit; wasteland: carefully restored pre-collapse formalwear; steampunk: Victorian formal attire. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "post-apocalyptic-clothes-fine",
+    "cardId": "post-apocalyptic-gear-clothes-fine",
+    "itemId": "clothes-fine",
+    "label": "Clothes, Fine",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one complete elegant civilian outfit: a tailored coat or long formal jacket, trousers and shoes, neatly arranged together as empty garments; cyberpunk: sleek formal citywear; medieval: noble court clothes; horror: faded aristocratic eveningwear; mystery: refined period evening suit; wasteland: carefully restored pre-collapse formalwear; steampunk: Victorian formal attire. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "steampunk-clothes-fine",
+    "cardId": "steampunk-gear-clothes-fine",
+    "itemId": "clothes-fine",
+    "label": "Clothes, Fine",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one complete elegant civilian outfit: a tailored coat or long formal jacket, trousers and shoes, neatly arranged together as empty garments; cyberpunk: sleek formal citywear; medieval: noble court clothes; horror: faded aristocratic eveningwear; mystery: refined period evening suit; wasteland: carefully restored pre-collapse formalwear; steampunk: Victorian formal attire. No armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "cyberpunk-clothes-travelers",
+    "cardId": "cyberpunk-gear-clothes-travelers",
+    "itemId": "clothes-travelers",
+    "label": "Clothes, Traveler's",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one complete practical traveling outfit: a weather-resistant outer coat or cloak, trousers and sturdy boots, neatly arranged together as empty garments and visibly distinct from fine formal clothing; no armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "dark-fantasy-clothes-travelers",
+    "cardId": "dark-fantasy-gear-clothes-travelers",
+    "itemId": "clothes-travelers",
+    "label": "Clothes, Traveler's",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one complete practical traveling outfit: a weather-resistant outer coat or cloak, trousers and sturdy boots, neatly arranged together as empty garments and visibly distinct from fine formal clothing; no armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "horror-clothes-travelers",
+    "cardId": "horror-gear-clothes-travelers",
+    "itemId": "clothes-travelers",
+    "label": "Clothes, Traveler's",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one complete practical traveling outfit: a weather-resistant outer coat or cloak, trousers and sturdy boots, neatly arranged together as empty garments and visibly distinct from fine formal clothing; no armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "mystery-clothes-travelers",
+    "cardId": "mystery-gear-clothes-travelers",
+    "itemId": "clothes-travelers",
+    "label": "Clothes, Traveler's",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one complete practical traveling outfit: a weather-resistant outer coat or cloak, trousers and sturdy boots, neatly arranged together as empty garments and visibly distinct from fine formal clothing; no armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "post-apocalyptic-clothes-travelers",
+    "cardId": "post-apocalyptic-gear-clothes-travelers",
+    "itemId": "clothes-travelers",
+    "label": "Clothes, Traveler's",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one complete practical traveling outfit: a weather-resistant outer coat or cloak, trousers and sturdy boots, neatly arranged together as empty garments and visibly distinct from fine formal clothing; no armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "steampunk-clothes-travelers",
+    "cardId": "steampunk-gear-clothes-travelers",
+    "itemId": "clothes-travelers",
+    "label": "Clothes, Traveler's",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one complete practical traveling outfit: a weather-resistant outer coat or cloak, trousers and sturdy boots, neatly arranged together as empty garments and visibly distinct from fine formal clothing; no armor, weapons, body, head, mannequin or visible wearer"
+  },
+  {
+    "id": "cyberpunk-lock",
+    "cardId": "cyberpunk-gear-lock",
+    "itemId": "lock",
+    "label": "Lock",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one robust mechanical padlock with closed metal shackle and a visible keyhole; full object, no electronic interface or fictional new function"
+  },
+  {
+    "id": "dark-fantasy-lock",
+    "cardId": "dark-fantasy-gear-lock",
+    "itemId": "lock",
+    "label": "Lock",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one robust mechanical padlock with closed metal shackle and a visible keyhole; full object, no electronic interface or fictional new function"
+  },
+  {
+    "id": "horror-lock",
+    "cardId": "horror-gear-lock",
+    "itemId": "lock",
+    "label": "Lock",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "One heavy early twentieth century padlock with a SOLID tarnished nickel metal rectangular body and thick steel curved shackle, small keyhole. Clearly a metal lock, no fabric, leather, seams, stitching, bag or pouch."
+  },
+  {
+    "id": "mystery-lock",
+    "cardId": "mystery-gear-lock",
+    "itemId": "lock",
+    "label": "Lock",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one robust mechanical padlock with closed metal shackle and a visible keyhole; full object, no electronic interface or fictional new function"
+  },
+  {
+    "id": "post-apocalyptic-lock",
+    "cardId": "post-apocalyptic-gear-lock",
+    "itemId": "lock",
+    "label": "Lock",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "One salvaged heavy padlock with a SOLID dented steel rectangular body, rusty edges, worn olive paint and a small orange painted stripe, thick steel curved shackle and small keyhole. Clearly a metal lock, no fabric, leather, seams, stitching, bag or pouch."
+  },
+  {
+    "id": "steampunk-lock",
+    "cardId": "steampunk-gear-lock",
+    "itemId": "lock",
+    "label": "Lock",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "One Victorian padlock with a SOLID polished aged brass rectangular body, engraved scroll detail, thick iron curved shackle and small keyhole. Clearly a metal lock, no fabric, leather, seams, stitching, bag or pouch."
+  },
+  {
+    "id": "cyberpunk-chest",
+    "cardId": "cyberpunk-gear-chest",
+    "itemId": "chest",
+    "label": "Chest",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one closed portable storage chest with a lid, visible hinges and clasp; unmistakably a chest, not a backpack; future: reinforced molded storage case; medieval: iron-bound wooden chest; horror: aged expedition trunk; mystery: fine leather travel trunk; wasteland: repaired metal supply chest; steampunk: brass-bound wooden trunk"
+  },
+  {
+    "id": "dark-fantasy-chest",
+    "cardId": "dark-fantasy-gear-chest",
+    "itemId": "chest",
+    "label": "Chest",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one closed portable storage chest with a lid, visible hinges and clasp; unmistakably a chest, not a backpack; future: reinforced molded storage case; medieval: iron-bound wooden chest; horror: aged expedition trunk; mystery: fine leather travel trunk; wasteland: repaired metal supply chest; steampunk: brass-bound wooden trunk"
+  },
+  {
+    "id": "horror-chest",
+    "cardId": "horror-gear-chest",
+    "itemId": "chest",
+    "label": "Chest",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one closed portable storage chest with a lid, visible hinges and clasp; unmistakably a chest, not a backpack; future: reinforced molded storage case; medieval: iron-bound wooden chest; horror: aged expedition trunk; mystery: fine leather travel trunk; wasteland: repaired metal supply chest; steampunk: brass-bound wooden trunk"
+  },
+  {
+    "id": "mystery-chest",
+    "cardId": "mystery-gear-chest",
+    "itemId": "chest",
+    "label": "Chest",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one closed portable storage chest with a lid, visible hinges and clasp; unmistakably a chest, not a backpack; future: reinforced molded storage case; medieval: iron-bound wooden chest; horror: aged expedition trunk; mystery: fine leather travel trunk; wasteland: repaired metal supply chest; steampunk: brass-bound wooden trunk"
+  },
+  {
+    "id": "post-apocalyptic-chest",
+    "cardId": "post-apocalyptic-gear-chest",
+    "itemId": "chest",
+    "label": "Chest",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one closed portable storage chest with a lid, visible hinges and clasp; unmistakably a chest, not a backpack; future: reinforced molded storage case; medieval: iron-bound wooden chest; horror: aged expedition trunk; mystery: fine leather travel trunk; wasteland: repaired metal supply chest; steampunk: brass-bound wooden trunk"
+  },
+  {
+    "id": "steampunk-chest",
+    "cardId": "steampunk-gear-chest",
+    "itemId": "chest",
+    "label": "Chest",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one closed portable storage chest with a lid, visible hinges and clasp; unmistakably a chest, not a backpack; future: reinforced molded storage case; medieval: iron-bound wooden chest; horror: aged expedition trunk; mystery: fine leather travel trunk; wasteland: repaired metal supply chest; steampunk: brass-bound wooden trunk"
+  },
+  {
+    "id": "post-apocalyptic-bedroll",
+    "cardId": "post-apocalyptic-gear-bedroll",
+    "itemId": "bedroll",
+    "label": "Bedroll",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one rolled sleeping mat with a folded bedding layer secured by two straps, simple complete silhouette"
+  },
+  {
+    "id": "horror-bedroll",
+    "cardId": "horror-gear-bedroll",
+    "itemId": "bedroll",
+    "label": "Bedroll",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one rolled sleeping mat with a folded bedding layer secured by two straps, simple complete silhouette"
+  },
+  {
+    "id": "dark-fantasy-bedroll",
+    "cardId": "dark-fantasy-gear-bedroll",
+    "itemId": "bedroll",
+    "label": "Bedroll",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one rolled sleeping mat with a folded bedding layer secured by two straps, simple complete silhouette"
+  },
+  {
+    "id": "post-apocalyptic-blanket",
+    "cardId": "post-apocalyptic-gear-blanket",
+    "itemId": "blanket",
+    "label": "Blanket",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one folded thick practical blanket, corner turned back to reveal the material, no bed or other props"
+  },
+  {
+    "id": "horror-blanket",
+    "cardId": "horror-gear-blanket",
+    "itemId": "blanket",
+    "label": "Blanket",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one folded thick practical blanket, corner turned back to reveal the material, no bed or other props"
+  },
+  {
+    "id": "dark-fantasy-blanket",
+    "cardId": "dark-fantasy-gear-blanket",
+    "itemId": "blanket",
+    "label": "Blanket",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one folded thick practical blanket, corner turned back to reveal the material, no bed or other props"
+  },
+  {
+    "id": "post-apocalyptic-tent-two-person",
+    "cardId": "post-apocalyptic-gear-tent-two-person",
+    "itemId": "tent-two-person",
+    "label": "Tent, Two-Person",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one small fully pitched two-person expedition tent, open doorway showing an empty interior, complete poles and guy-lines contained in frame; no landscape or floor plane"
+  },
+  {
+    "id": "horror-tent-two-person",
+    "cardId": "horror-gear-tent-two-person",
+    "itemId": "tent-two-person",
+    "label": "Tent, Two-Person",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one small fully pitched two-person expedition tent, open doorway showing an empty interior, complete poles and guy-lines contained in frame; no landscape or floor plane"
+  },
+  {
+    "id": "dark-fantasy-tent-two-person",
+    "cardId": "dark-fantasy-gear-tent-two-person",
+    "itemId": "tent-two-person",
+    "label": "Tent, Two-Person",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one small fully pitched two-person expedition tent, open doorway showing an empty interior, complete poles and guy-lines contained in frame; no landscape or floor plane"
+  },
+  {
+    "id": "cyberpunk-climbers-kit",
+    "cardId": "cyberpunk-gear-climbers-kit",
+    "itemId": "climbers-kit",
+    "label": "Climber's Kit",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one compact coherent set of climbing harness, coiled safety line, two carabiners and a pair of climbing gloves; clear readable arrangement, no person or extra weapons"
+  },
+  {
+    "id": "steampunk-climbers-kit",
+    "cardId": "steampunk-gear-climbers-kit",
+    "itemId": "climbers-kit",
+    "label": "Climber's Kit",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one compact coherent set of climbing harness, coiled safety line, two carabiners and a pair of climbing gloves; clear readable arrangement, no person or extra weapons"
+  },
+  {
+    "id": "post-apocalyptic-climbers-kit",
+    "cardId": "post-apocalyptic-gear-climbers-kit",
+    "itemId": "climbers-kit",
+    "label": "Climber's Kit",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one compact coherent set of climbing harness, coiled safety line, two carabiners and a pair of climbing gloves; clear readable arrangement, no person or extra weapons"
+  },
+  {
+    "id": "cyberpunk-grappling-hook",
+    "cardId": "cyberpunk-gear-grappling-hook",
+    "itemId": "grappling-hook",
+    "label": "Grappling Hook",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "One compact futuristic climbing grappling hook with four fully visible curved steel prongs, black central shaft, restrained cyan accent and short loop of dark cord. Arrange diagonally inside the central 65 percent of the canvas. Every prong tip has generous transparent clearance from all frame edges. No clipping."
+  },
+  {
+    "id": "steampunk-grappling-hook",
+    "cardId": "steampunk-gear-grappling-hook",
+    "itemId": "grappling-hook",
+    "label": "Grappling Hook",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one sturdy four-pronged grappling hook attached to a short neatly coiled rope, all prongs visible, no launcher"
+  },
+  {
+    "id": "post-apocalyptic-grappling-hook",
+    "cardId": "post-apocalyptic-gear-grappling-hook",
+    "itemId": "grappling-hook",
+    "label": "Grappling Hook",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one sturdy four-pronged grappling hook attached to a short neatly coiled rope, all prongs visible, no launcher"
+  },
+  {
+    "id": "mystery-playing-card-set",
+    "cardId": "mystery-gear-playing-card-set",
+    "itemId": "playing-card-set",
+    "label": "Playing Card Set",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one small deck of playing cards with three cards fanned across the top, simple fictional abstract suit symbols and decorative backs, no words, numbers, brands or familiar franchise imagery"
+  },
+  {
+    "id": "steampunk-playing-card-set",
+    "cardId": "steampunk-gear-playing-card-set",
+    "itemId": "playing-card-set",
+    "label": "Playing Card Set",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one small deck of playing cards with three cards fanned across the top, simple fictional abstract suit symbols and decorative backs, no words, numbers, brands or familiar franchise imagery"
+  },
+  {
+    "id": "post-apocalyptic-playing-card-set",
+    "cardId": "post-apocalyptic-gear-playing-card-set",
+    "itemId": "playing-card-set",
+    "label": "Playing Card Set",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one small deck of playing cards with three cards fanned across the top, simple fictional abstract suit symbols and decorative backs, no words, numbers, brands or familiar franchise imagery"
+  },
+  {
+    "id": "mystery-dice-set",
+    "cardId": "mystery-gear-dice-set",
+    "itemId": "dice-set",
+    "label": "Dice Set",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "three clearly recognizable six-sided gaming dice with inset pips, one small plain dice pouch behind them, no text or numerical labels"
+  },
+  {
+    "id": "steampunk-dice-set",
+    "cardId": "steampunk-gear-dice-set",
+    "itemId": "dice-set",
+    "label": "Dice Set",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "three clearly recognizable six-sided gaming dice with inset pips, one small plain dice pouch behind them, no text or numerical labels"
+  },
+  {
+    "id": "post-apocalyptic-dice-set",
+    "cardId": "post-apocalyptic-gear-dice-set",
+    "itemId": "dice-set",
+    "label": "Dice Set",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "three clearly recognizable six-sided gaming dice with inset pips, one small plain dice pouch behind them, no text or numerical labels"
+  },
+  {
+    "id": "cyberpunk-manacles",
+    "cardId": "cyberpunk-gear-manacles",
+    "itemId": "manacles",
+    "label": "Manacles",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one pair of open mechanical wrist restraints joined by a short chain; cyberpunk and mystery: recognizable metal handcuffs; steampunk: brass-and-steel wrist restraints; no wrists, person or extra devices"
+  },
+  {
+    "id": "mystery-manacles",
+    "cardId": "mystery-gear-manacles",
+    "itemId": "manacles",
+    "label": "Manacles",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one pair of open mechanical wrist restraints joined by a short chain; cyberpunk and mystery: recognizable metal handcuffs; steampunk: brass-and-steel wrist restraints; no wrists, person or extra devices"
+  },
+  {
+    "id": "steampunk-manacles",
+    "cardId": "steampunk-gear-manacles",
+    "itemId": "manacles",
+    "label": "Manacles",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one pair of open mechanical wrist restraints joined by a short chain; cyberpunk and mystery: recognizable metal handcuffs; steampunk: brass-and-steel wrist restraints; no wrists, person or extra devices"
+  },
+  {
+    "id": "cyberpunk-disguise-kit",
+    "cardId": "cyberpunk-gear-disguise-kit",
+    "itemId": "disguise-kit",
+    "label": "Disguise Kit",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one open compact makeup case with a small mirror, makeup pans, brush and neatly folded false moustache; no face, mannequin, head or instructions"
+  },
+  {
+    "id": "horror-disguise-kit",
+    "cardId": "horror-gear-disguise-kit",
+    "itemId": "disguise-kit",
+    "label": "Disguise Kit",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one open compact makeup case with a small mirror, makeup pans, brush and neatly folded false moustache; no face, mannequin, head or instructions"
+  },
+  {
+    "id": "steampunk-disguise-kit",
+    "cardId": "steampunk-gear-disguise-kit",
+    "itemId": "disguise-kit",
+    "label": "Disguise Kit",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one open compact makeup case with a small mirror, makeup pans, brush and neatly folded false moustache; no face, mannequin, head or instructions"
+  },
+  {
+    "id": "mystery-forgery-kit",
+    "cardId": "mystery-gear-forgery-kit",
+    "itemId": "forgery-kit",
+    "label": "Forgery Kit",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "one open compact document-work case with blank paper, a pen, plain sealing supplies and small unmarked stamp; no readable writing, real seals, currency, identification documents or instructions"
+  },
+  {
+    "id": "steampunk-forgery-kit",
+    "cardId": "steampunk-gear-forgery-kit",
+    "itemId": "forgery-kit",
+    "label": "Forgery Kit",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "one open compact document-work case with blank paper, a pen, plain sealing supplies and small unmarked stamp; no readable writing, real seals, currency, identification documents or instructions"
+  },
+  {
+    "id": "cyberpunk-tinkers-tools",
+    "cardId": "cyberpunk-gear-tinkers-tools",
+    "itemId": "tinkers-tools",
+    "label": "Tinker's Tools",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "one open compact repair case containing precision screwdrivers, pliers, small wrench and a few plain spare fasteners; functional repair tools only, no screens or weapons"
+  },
+  {
+    "id": "dark-fantasy-alchemists-supplies",
+    "cardId": "dark-fantasy-gear-alchemists-supplies",
+    "itemId": "alchemists-supplies",
+    "label": "Alchemist's Supplies",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one compact coherent portable chemistry arrangement with two stoppered glass vessels, a small mortar and pestle and a simple metal stand, plain unlabeled liquids, no smoke, glowing magic, formulae or instructions"
+  },
+  {
+    "id": "horror-alchemists-supplies",
+    "cardId": "horror-gear-alchemists-supplies",
+    "itemId": "alchemists-supplies",
+    "label": "Alchemist's Supplies",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one compact coherent portable chemistry arrangement with two stoppered glass vessels, a small mortar and pestle and a simple metal stand, plain unlabeled liquids, no smoke, glowing magic, formulae or instructions"
+  },
+  {
+    "id": "dark-fantasy-holy-symbol",
+    "cardId": "dark-fantasy-gear-holy-symbol",
+    "itemId": "holy-symbol",
+    "label": "Holy Symbol",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one original solemn bronze devotional amulet on a short chain, an abstract radiant-star relief with a central polished stone, aged sacred craftsmanship; no real-world religious emblem or franchise symbol"
+  }
+]

@@ -222,7 +222,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     name: "dismount",
     label: "Get off a mount",
     category: "world",
-    summary: "Deliberately, or thrown: then it calls for the DC 10 Dexterity save.",
+    summary: "Deliberately, or because the mount was moved: then the DC 10 Dexterity save decides whether they come off. A rider knocked prone makes that save by itself.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", required: true },
       {
@@ -335,6 +335,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     fields: [
       { name: "name", label: "The object", kind: "text", placeholder: "the oak door", help: "Named, it keeps its damage between blows." },
       { name: "section", label: "Section", kind: "number", min: 1, max: 99, help: "A Wall of Ice is struck a section at a time: the numbers on the board." },
+      { name: "bound", label: "Manacles on", kind: "combatant", help: "Manacles, with several creatures in them: whose set is struck.", host: { feature: "manaclesBound" } },
       { name: "material", label: "Material", kind: "select", options: OBJECT_MATERIAL_OPTIONS },
       { name: "size", label: "Size", kind: "select", options: OBJECT_SIZE_OPTIONS },
       { name: "characterId", label: "Struck by", kind: "character", help: "The server rolls their weapon attack against its AC and their damage." },
@@ -404,7 +405,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
         ],
         help: "Off the board; left empty, the current location and the hour decide.",
       },
-      { name: "againstEnemyId", label: "Hiding (enemy)", kind: "enemy", help: "The server rolls its Stealth (or Deception for Insight) as the DC." },
+      { name: "againstEnemyId", label: "Hiding (enemy)", kind: "enemy", help: "The server rolls its Stealth (or Deception for Insight) to set the DC; a Stealth that ties a passive score stays hidden." },
       { name: "againstMonster", label: "Hiding or lying (stat block or NPC)", kind: "text", placeholder: "goblin", help: "Out of a fight: the creature's stat block by name, or for Insight a tracked NPC's name. Whoever beats an NPC's act is told privately." },
       { name: "characterIds", label: "Who might notice", kind: "characters" },
       {
@@ -443,6 +444,51 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
       DRAWN_TO_FIELD,
       { name: "goal", label: "Wants", kind: "text" },
       { name: "ambition", label: "Long game", kind: "text" },
+    ],
+  },
+  {
+    name: "npc_state",
+    label: "An NPC's state",
+    category: "social",
+    summary: "Records a tracked NPC taken prisoner, tied, freed, wounded, knocked out or killed, or setting out with the party; the roster shows it every turn.",
+    fields: [
+      { name: "name", label: "NPC", kind: "text", required: true },
+      {
+        name: "custody",
+        label: "Custody",
+        kind: "select",
+        options: [
+          { value: "free", label: "Not held" },
+          { value: "captive", label: "Prisoner" },
+        ],
+      },
+      { name: "heldBy", label: "Held by", kind: "text", help: "With Prisoner: who holds them." },
+      {
+        name: "restraint",
+        label: "Held with",
+        kind: "select",
+        options: [
+          { value: "none", label: "Nothing" },
+          { value: "bound", label: "Bound" },
+          { value: "chained", label: "Chained" },
+          { value: "locked_up", label: "Locked up" },
+        ],
+      },
+      {
+        name: "condition",
+        label: "Condition",
+        kind: "select",
+        options: [
+          { value: "up", label: "On their feet" },
+          { value: "wounded", label: "Wounded" },
+          { value: "unconscious", label: "Unconscious" },
+          { value: "dead", label: "Dead" },
+        ],
+      },
+      { name: "withParty", label: "Travels with the party", kind: "boolean", help: "Their place follows the party's." },
+      { name: "revealedName", label: "Real name", kind: "text", help: "The name the story revealed; the old one is kept as another name." },
+      { name: "disarmed", label: "Disarmed", kind: "boolean" },
+      { name: "carries", label: "Carries", kind: "list", help: "Only what matters to the story: proof, a key, a seal." },
     ],
   },
   {

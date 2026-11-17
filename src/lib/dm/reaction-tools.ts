@@ -189,7 +189,10 @@ function deflectMissiles(ctx: Ctx): ToolResult {
   if (monk < 3 && !holdsFeature(sheet, "deflect missiles")) {
     return { error: `${sheet.name} does not have Deflect Missiles (a monk's feature from 3rd level). Nothing was spent.`, refused: "rules" };
   }
-  const ranged = (hit: LastHit) => (swing: SwingRecord) => swing.ranged ?? hit.ranged;
+  // "When you are hit by a ranged weapon attack" (SRD 5.1, Deflect Missiles):
+  // a spell's ranged attack (a flameskull's Fire Ray, a mage's Fire Bolt)
+  // throws no missile, and its damage was turned away all the same.
+  const ranged = (hit: LastHit) => (swing: SwingRecord) => (swing.ranged ?? hit.ranged) && !swing.flags?.spell;
   const record = freshLastHit(
     campaign.id,
     sheet.id,
@@ -342,6 +345,9 @@ function cuttingWords(ctx: Ctx): ToolResult {
     applied: missed
       ? `${record.attacker.name}'s roll falls from ${swing.total} to ${swing.total - die} against AC ${swing.vsAc}: the hit on ${target.name} becomes a miss, and ${settled.given} hit points come back. HP ${settled.hp}.`
       : `The roll still hits, so the die comes off the damage: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.`,
+    // What the correction undid beyond hit points: the flame or frost a miss
+    // never set off, concentration kept (reaction-refund.ts).
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
   };
 }
 

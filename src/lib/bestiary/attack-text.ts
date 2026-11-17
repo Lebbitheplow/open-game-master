@@ -2,6 +2,11 @@ import { CONDITION_WORDS, conditionName, parseSaveEffect, SAVE_DC } from "@/lib/
 import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import type { TurnTie } from "@/lib/dm/save-effect";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
+import { textKey } from "@/lib/language/text-logic";
+import { readScoreDrain, SCORE_DRAIN_SENTENCE, type ScoreDrain } from "@/lib/bestiary/score-drain-text";
+import { HOLD_SENTENCE, readHold, type CreatureHold } from "@/lib/bestiary/hold-text";
+import { HIT_DISEASE_SENTENCE, readHitDisease, readsRestlessCurse, RESTLESS_CURSE_SENTENCE, type HitDisease } from "@/lib/bestiary/affliction-text";
+import { NIGHTMARE_CURSE } from "@/lib/dm/nightmare-curse-logic";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
 // Monsters: Actions): melee or ranged, its reach and range, the typed dice
@@ -39,6 +44,10 @@ export type OnHitRider = {
   repeatSave?: boolean;
   // "If the target is Medium or smaller": the largest size it works on.
   maxSize?: string;
+  // "If the target is a creature other than an elf or undead" (SRD 5.1
+  // ghoul, ghast): the kinds it passes over, a species or a creature type,
+  // as keys (riderSpares).
+  spares?: string[];
   // "Its hit point maximum is reduced by an amount equal to the (necrotic)
   // damage taken" until a long rest (a wight, a wraith, a specter, a
   // vampire's bite); `drainHeals` when the creature regains that much.
@@ -46,6 +55,15 @@ export type OnHitRider = {
   drainHeals?: boolean;
   // Swallowed whole (a purple worm, a kraken): blinded and restrained.
   swallow?: boolean;
+  // A disease with a save every 24 hours (an otyugh's bite): poisoned until
+  // cured, the dice a failure takes off the maximum (affliction-text.ts).
+  disease?: HitDisease;
+  // "The target's Strength score is reduced by 1d4" (a shadow): the score,
+  // the dice, death at 0, the rest that ends it (score-drain-text.ts).
+  scoreDrain?: ScoreDrain;
+  // What holds a target it restrains, the check that breaks it and the thing
+  // as an object (a giant spider's webbing, hold-text.ts).
+  hold?: CreatureHold;
   // A poison's sleep on a bad enough save: failed by this much (a drow's
   // hand crossbow, a pseudodragon's sting) or rolled this or lower (a
   // sprite's shortbow). A couatl's bite sleeps on any failure, as its
@@ -125,6 +143,14 @@ export function asleepOnFailure(rider: Pick<OnHitRider, "dc" | "unconsciousFailB
     return total === null || (rider.dc ?? 0) - total >= rider.unconsciousFailBy;
   }
   return rider.unconsciousAtMost !== undefined && (total === null || total <= rider.unconsciousAtMost);
+}
+
+// The kind of the target a rider passes over ("a creature other than an elf
+// or undead"), of the target's own kinds (its species, its creature type),
+// or null when the rider reaches it.
+export function riderSpares(rider: Pick<OnHitRider, "spares">, kinds: string[]): string | null {
+  const keys = kinds.map(textKey);
+  return rider.spares?.find((kind) => keys.includes(kind)) ?? null;
 }
 
 export function readAttackText(desc: string): AttackText {
@@ -430,6 +456,22 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   if (rot) {
     rider.condition = MUMMY_ROT;
   }
+  // A disease with a save every 24 hours (SRD 5.1 Otyugh, Bite): its
+  // poisoning, its days and the maximum they eat are the server's
+  // (src/lib/dm/hit-disease.ts). Read as a repeat save, the poisoning ended
+  // at a turn's end and the GM was left the rest.
+  const disease = readHitDisease(hit);
+  if (disease) {
+    rider.disease = disease;
+    delete rider.repeatSave;
+  }
+  // A curse that takes every rest's benefit (SRD 5.1 Rakshasa, Claw), held
+  // as a condition the rests read (nightmare-curse-logic.ts). Left in
+  // `manual`, the cursed hero woke whole.
+  const restless = !rider.condition && readsRestlessCurse(hit);
+  if (restless) {
+    rider.condition = NIGHTMARE_CURSE;
+  }
   // The sleep a poisoned hit can bring. Read here, not left in `manual`:
   // the text was dropped unread, so a drow's bolt or a couatl's bite poisoned
   // and never put anyone to sleep.
@@ -482,6 +524,12 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
     }
     manual = [...new Set([...manual, ...sentences.slice(laid ? 1 : 0)])];
   }
+  // A web's escape and its numbers are the engine's (creature-hold.ts).
+  const hold = rider.condition === "restrained" ? readHold(hit) : null;
+  if (hold) {
+    rider.hold = hold;
+    manual = manual.filter((sentence) => !HOLD_SENTENCE.test(sentence));
+  }
   // A swallow is the engine's to play (src/lib/dm/swallow.ts): its acid,
   // cover, regurgitation and corpse are not left to the GM.
   if (rider.swallow) {
@@ -489,6 +537,18 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   }
   if (rot) {
     manual = manual.filter((sentence) => !/\b(?:mummy rot|cursed target|the curse (?:reduces|lasts))\b/i.test(sentence));
+  }
+  if (disease) {
+    manual = manual.filter((sentence) => !HIT_DISEASE_SENTENCE.test(sentence));
+  }
+  if (restless) {
+    manual = manual.filter((sentence) => !RESTLESS_CURSE_SENTENCE.test(sentence));
+  }
+  // A drained score is the engine's (src/lib/srd/ability-drain-logic.ts).
+  const drained = readScoreDrain(hit);
+  if (drained) {
+    rider.scoreDrain = drained;
+    manual = manual.filter((sentence) => !SCORE_DRAIN_SENTENCE.test(sentence));
   }
   manual = manual.slice(0, 3);
   if (manual.length) {
@@ -498,5 +558,9 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   if (size && (rider.condition || rider.damage || rider.swallow)) {
     rider.maxSize = size[1].toLowerCase();
   }
-  return rider.condition || rider.damage || rider.drainMaxHp || rider.swallow || rider.manual ? rider : null;
+  const other = /\bif the target is a creature other than ((?:an? )?[a-z-]+(?:,? (?:or|and) (?:an? )?[a-z-]+)*)/i.exec(hit);
+  if (other && (rider.condition || rider.damage)) {
+    rider.spares = other[1].split(/,?\s+(?:or|and)\s+/i).map((word) => textKey(word.replace(/^an?\s+/i, ""))).filter(Boolean);
+  }
+  return rider.condition || rider.damage || rider.drainMaxHp || rider.swallow || rider.manual || rider.scoreDrain || rider.disease ? rider : null;
 }

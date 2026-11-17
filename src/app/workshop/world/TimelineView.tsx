@@ -11,6 +11,7 @@ import { CANON_STATES, newId, type Calendar, type WorldEvent } from "@/lib/world
 import { absoluteYear, formatYear, lifespan, lifespanIssue, sortEvents } from "@/lib/worldforge/time";
 import type { WorldApi, WorldState } from "./useWorld";
 import { EntityAvatar, EntityPicker, typeOf } from "./world-ui";
+import { useT, useTp } from "@/lib/locale";
 
 // The timeline, after WorldForge's: calendars are reckonings, each with an
 // offset that places its year 0 on one shared line, so an event dated in one
@@ -20,6 +21,8 @@ import { EntityAvatar, EntityPicker, typeOf } from "./world-ui";
 const blankEvent = (calendarId: string): WorldEvent => ({ id: "", title: "", body: "", era: "", when: { calendarId, yearNum: null, year: "" }, refs: [], canon: "canon" });
 
 export function TimelineView({ api, world, onOpen }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void }) {
+  const t = useT();
+  const tp = useTp();
   const { doc, entities } = world;
   const [editing, setEditing] = useState<WorldEvent | null>(null);
   const [calendar, setCalendar] = useState<Calendar | null>(null);
@@ -50,40 +53,39 @@ export function TimelineView({ api, world, onOpen }: { api: WorldApi; world: Wor
   });
   return (
     <div className="flex flex-col gap-4">
-      <section className="flex flex-wrap items-center gap-2" aria-label="Calendars">
-        <span className="eyebrow text-[10px] text-stone-500">Calendars</span>
+      <section className="flex flex-wrap items-center gap-2" aria-label={t("Calendars")}>
+        <span className="eyebrow text-[10px] text-stone-500">{t("Calendars")}</span>
         {doc.calendars.map((entry) => (
           <span key={entry.id} className="pk-chip motion-pop group text-[11px]">
             <span className="text-amber-100">{entry.abbrev || entry.name}</span>
-            <span className="text-stone-500">{entry.name}{entry.epochOffset ? `, year 0 at ${entry.epochOffset}` : ""}</span>
-            <button type="button" aria-label={`Edit ${entry.name}`} onClick={() => setCalendar(entry)} className="reveal-on-hover text-stone-500 hover:text-amber-200">
+            <span className="text-stone-500">{entry.name}{entry.epochOffset ? t(", year 0 at {offset}", { offset: entry.epochOffset }) : ""}</span>
+            <button type="button" aria-label={t("Edit {name}", { name: entry.name })} onClick={() => setCalendar(entry)} className="reveal-on-hover text-stone-500 hover:text-amber-200">
               <Pencil className="size-3" />
             </button>
-            <button type="button" aria-label={`Remove ${entry.name}`} onClick={() => dropCalendar(entry)} className="reveal-on-hover text-stone-500 hover:text-red-300">
+            <button type="button" aria-label={t("Remove {name}", { name: entry.name })} onClick={() => dropCalendar(entry)} className="reveal-on-hover text-stone-500 hover:text-red-300">
               <X className="size-3" />
             </button>
           </span>
         ))}
         <KitButton tone="link" onClick={() => setCalendar({ id: "", name: "", abbrev: "", epochOffset: 0, notes: "" })}>
-          <CalendarPlus className="size-3.5" /> Add a calendar
+          <CalendarPlus className="size-3.5" /> {t("Add a calendar")}
         </KitButton>
       </section>
       {calendar ? <CalendarForm calendar={calendar} onSave={saveCalendar} onCancel={() => setCalendar(null)} /> : null}
       <p className="text-[11px] text-stone-500">
-        These calendars date the world&apos;s history. The table&apos;s own clock (the day and hour in play) runs on its own and is set from the
-        session; nothing here moves it. The GM reads an event when the people or places it names are in play.
+        {t("These calendars date the world's history. The table's own clock (the day and hour in play) runs on its own and is set from the session; nothing here moves it. The GM reads an event when the people or places it names are in play.")}
       </p>
 
-      <div className="flex justify-between">
-        <h3 className="eyebrow text-[10px] text-amber-400/80">{events.length} event{events.length === 1 ? "" : "s"}</h3>
-        <KitButton tone="primary" onClick={() => setEditing(blankEvent(doc.calendars[0]?.id ?? ""))} data-tour="world-new-event">
-          <Plus className="size-3.5" /> New event
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="eyebrow text-[10px] text-amber-400/80">{tp("{count} event", "{count} events", { count: events.length })}</h3>
+        <KitButton tone="primary" className="shrink-0" onClick={() => setEditing(blankEvent(doc.calendars[0]?.id ?? ""))} data-tour="world-new-event">
+          <Plus className="size-3.5" /> {t("New event")}
         </KitButton>
       </div>
       {editing && !editing.id ? <EventForm event={editing} world={world} eras={eras} onSave={saveEvent} onCancel={() => setEditing(null)} /> : null}
 
-      <ol className="relative flex flex-col gap-2 border-l border-amber-500/25 pl-5 motion-rule" aria-label="Timeline">
-        {events.length === 0 ? <li className="text-sm text-stone-500">Nothing has happened yet.</li> : null}
+      <ol className="relative flex flex-col gap-2 border-l border-amber-500/25 pl-5 motion-rule" aria-label={t("Timeline")}>
+        {events.length === 0 ? <li className="text-sm text-stone-500">{t("Nothing has happened yet.")}</li> : null}
         {events.map((event, index) => {
           const header = headers[index];
           const year = formatYear(event.when, doc.calendars);

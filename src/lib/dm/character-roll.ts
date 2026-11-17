@@ -24,8 +24,8 @@ import { beforeRollWords, ownBeforeRollChoices } from "@/lib/dm/before-roll-logi
 import { entryDice, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { heroRollTag, type RollTag } from "@/lib/dice-script-logic";
 import { dicePreferencesOf, type DecidedRoll, type DmTurn } from "@/lib/db/dm-turns";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { insertRoll, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import type { Campaign } from "@/lib/db/campaigns";
+import type { RollKind, RollVisibility, StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { afterAttackOptions, afterRollOptions, type AfterRollOption } from "@/lib/dm/after-roll-logic";
@@ -34,12 +34,12 @@ import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-ro
 import { afterRollDeadline } from "@/lib/dm/after-roll-timer";
 import { heldDieWaits, settleHeldDie } from "@/lib/dm/forced-save";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
-import { heldCallTurn, inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
+import { inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
 import { noteShift, shiftArmedFor, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
 import { takeLineage } from "@/lib/dm/lineage-watch";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
-import { publishWithSeq } from "@/lib/events";
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export type CharacterRoll = {
@@ -250,16 +250,18 @@ export function rollOwnDiceStored(
   if (!options.flatCard && !outcome.terms.some((term) => term.kind === "dice")) {
     return { outcome, roll: null };
   }
-  const roll = insertRoll({
+  // Stored, sent as it landed and added to the turn by the one door for a
+  // roll's record (roll-record.ts).
+  const roll = recordRoll({
     campaignId: campaign.id,
     characterId: roller.id,
     requestedBy: "dm",
     kind: "custom",
-    detail: landing?.physical ? `${said} (physical)` : said,
+    detail: said,
     result: outcome,
+    turn: options.turn ?? null,
+    landing,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: landing?.source ?? "digital" });
-  (options.turn ?? heldCallTurn())?.rollIds.push(roll.id);
   return { outcome, roll };
 }
 

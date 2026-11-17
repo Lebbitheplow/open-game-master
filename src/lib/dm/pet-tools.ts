@@ -14,6 +14,8 @@ import { textKey } from "@/lib/language/text-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
+import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { petAttackCost } from "@/lib/dm/pet-attack-cost";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
@@ -21,16 +23,26 @@ import { attackDamage, attackSummary } from "@/lib/srd/creature-attacks";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
+import { partyChargeAfterHit, partyChargeFor, petPounceCost } from "@/lib/dm/party-charge";
+import { petBlock, petPounceKey, pounceOpen, withChargeAttack } from "@/lib/dm/party-charge-logic";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
-import { attackContext } from "@/lib/dm/condition-logic";
+import { attackContext, incapacitatedBy, mergeAdvantage, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { charmedBy } from "@/lib/dm/enemy-profile";
+import { rollPetSave } from "@/lib/dm/pet-save-roll";
+import { settleOnDamage } from "@/lib/dm/spell-effects";
+import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { resolveMonster } from "@/lib/bestiary";
 import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
+import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
+import { petAttackBoard, spendMarksAgainst } from "@/lib/dm/pet-attack-board";
+import { fallFromPet, ridesPet } from "@/lib/dm/pet-mount";
+import { dismissFamiliar, pocketed } from "@/lib/dm/pet-pocket";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -88,7 +100,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "pet_attack",
       description:
-        "Resolve a character's pet attacking an enemy; in a fight it happens on the owner's own turn, and the server rolls and applies it with the pet's real numbers. The server checks the pet may attack at all (plain familiars cannot) and, in a fight, that the owner can act, and charges the owner's action, bonus action or attack the pet's kind costs. A refusal spends nothing.",
+        "Resolve a character's pet attacking an enemy, on the owner's turn in a fight; the server rolls it with the pet's real numbers. It checks the pet may attack (plain familiars cannot) and charges the owner what the pet's kind costs; a refusal spends nothing.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -97,6 +109,7 @@ export const petTools: ToolDef[] = [
           petName: { type: "string", description: "Which pet, when they have several." },
           targetEnemyId: { type: "string", description: "The enemy being attacked: exact enemyId from GAME STATE." },
           attack: { type: "string", description: "Named attack when the pet has several." },
+          charged: { type: "boolean", description: "No board: it ran straight at the target first (Charge, Pounce)." },
           reason: { type: "string", description: "Short in-fiction cause." },
         },
         required: ["characterId", "targetEnemyId"],
@@ -108,7 +121,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "dismiss_pet",
       description:
-        "Remove a pet from its owner's sheet when it is dismissed, sent away, or dies in the fiction. Call it when the story ends the bond.",
+        "Remove a pet when it is dismissed, sent away or dies in the fiction. A familiar goes to its pocket dimension first (an action); dismissed again, it is gone.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -142,6 +155,9 @@ const petAttackSchema = z.object({
   petName: z.string().trim().max(60).optional(),
   targetEnemyId: z.string(),
   attack: z.string().trim().max(40).optional(),
+  // A fight with no board: the pet ran straight at the target first, for its
+  // Charge or Pounce (party-charge.ts). On a board the squares decide.
+  charged: z.coerce.boolean().optional(),
   reason: z.string().optional(),
 });
 
@@ -164,8 +180,9 @@ const dismissSchema = z.object({
 
 // A creature the call names that the sheet does not hold: the call's to fix,
 // from the creatures they have.
-function noPet(sheet: CharacterSheet, petName?: string): ToolError {
-  const held = sheet.pets.map((pet) => `${pet.name} (${pet.form})`);
+export function noPet(sheet: CharacterSheet, petName?: string): ToolError {
+  // A familiar in its pocket dimension is out of reach (pet-pocket.ts).
+  const held = sheet.pets.map((pet) => `${pet.name} (${pet.form}${pocketed(pet) ? ", in its pocket dimension until summon_pet calls it back" : ""})`);
   if (!petName && held.length > 1) {
     return { error: `${sheet.name} has several bound creatures; name one: ${held.join(", ")}.`, retry: true };
   }
@@ -179,13 +196,16 @@ function noPet(sheet: CharacterSheet, petName?: string): ToolError {
 
 // The creature a call names, by its whole name or form; with no name, the
 // only one there is. Never the nearest name, nor the first of several.
-// A watch stop names the pet the same way (foresight-saves.ts).
-export function findPet(sheet: CharacterSheet, petName?: string): SheetPet | null {
+// A watch stop names the pet the same way (foresight-saves.ts). A familiar
+// in its pocket dimension is found only by the calls that dismiss or recall
+// it (`withPocketed`): no attack, save, damage or heal reaches it there.
+export function findPet(sheet: CharacterSheet, petName?: string, withPocketed = false): SheetPet | null {
+  const pets = withPocketed ? sheet.pets : sheet.pets.filter((pet) => !pocketed(pet));
   const wanted = textKey(petName ?? "");
   if (!wanted) {
-    return sheet.pets.length === 1 ? sheet.pets[0] : null;
+    return pets.length === 1 ? pets[0] : null;
   }
-  return sheet.pets.find((pet) => textKey(pet.name) === wanted || textKey(pet.form) === wanted) ?? null;
+  return pets.find((pet) => textKey(pet.name) === wanted || textKey(pet.form) === wanted) ?? null;
 }
 
 function publishSheet(campaign: Campaign, sheetId: string) {
@@ -283,6 +303,18 @@ export function handlePetAttack(
   if (pet.hp <= 0) {
     return { error: `${pet.name} is down; it cannot attack.`, refused: "rules" };
   }
+  // SRD 5.1, Conditions: an incapacitated creature "can't take actions or
+  // reactions" (paralyzed, stunned, unconscious, petrified are incapacitated
+  // too). A familiar held by Hold Monster went on biting.
+  const stopped = incapacitatedBy(pet.conditions ?? []);
+  if (stopped) {
+    return { error: `${pet.name} is ${stopped} and cannot attack. Nothing was spent.`, refused: "rules" };
+  }
+  // A turn's action lost (Stinking Cloud's retching, pet-zones.ts).
+  const lost = spellTurnHold(pet.conditions ?? [], "attack");
+  if (lost) {
+    return { error: `${pet.name} is ${lost} and takes no action this turn. Nothing was spent.`, refused: "rules" };
+  }
   if (!pet.attacks.length) {
     return {
       error:
@@ -310,8 +342,13 @@ export function handlePetAttack(
     return inside;
   }
   // Commanding the pet is the owner's to do, on the owner's turn, and costs
-  // what the feature says (src/lib/dm/pet-attack-cost.ts).
-  const charge = petAttackCost(sheet, pet, encounter);
+  // what the feature says (src/lib/dm/pet-attack-cost.ts). A Pounce's bite at
+  // the creature the pet's own charge left prone this turn is the pet's bonus
+  // action instead, once (party-charge.ts).
+  const turnNow = encounter.turnBudget?.ownerId === sheet.id ? encounter.turnBudget : null;
+  const named = pickNaturalAttack(pet.attacks, args.attack);
+  const pounce = named && !turnNow?.oncePerTurn.includes(petPounceKey(pet.name)) ? pounceOpen(turnNow, petBlock(pet), named.name, pet.name, enemy) : null;
+  const charge = pounce ? petPounceCost(encounter, sheet.id, pet.name, pounce) : petAttackCost(sheet, pet, encounter);
   if ("error" in charge) {
     return toolError(charge);
   }
@@ -328,9 +365,18 @@ export function handlePetAttack(
   if (tooFar) {
     return tooFar;
   }
+  // SRD 5.1, Charmed: "can't attack the charmer".
+  if (charmedBy(pet.conditions ?? [], (pet.conditionMeta ?? {}) as ConditionMetaMap, enemy.id)) {
+    return { error: `${pet.name} is charmed by ${enemy.displayName} and cannot attack it. Nothing was spent.`, refused: "rules" };
+  }
   if (attack.proneTargetsOnly && !enemy.conditions.includes("prone")) {
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };
   }
+  // The pet's Charge, Pounce or Trampling Charge after a run straight at the
+  // target, its owner's walk (the pet stands with its owner): the extra dice
+  // on the blow, the save once it lands (party-charge.ts).
+  const run = pounce ? null : partyChargeFor({ encounter, budget: turnNow, block: petBlock(pet), attack: attack.name, who: pet.name, walkerId: sheet.id, enemyId: enemy.id, claimed: args.charged === true });
+  const swung = run ? withChargeAttack(attack, run) : attack;
 
   // Both sides' conditions as they meet this attacker (SRD 5.1, Conditions),
   // read as every other attack reads them (condition-logic.ts
@@ -342,6 +388,9 @@ export function handlePetAttack(
   // made it (pet-build.ts petCreatureType). Only the warding spells counted.
   const feetTo = petFeetTo(encounter.id, sheet, enemy.id);
   const ranged = Boolean(attack.range) && !(attack.thrown && feetTo !== null && feetTo <= (attack.reach ?? 5));
+  // The light, its senses, the target's cover and the bow's range, read from
+  // its owner's square as the hero's attack reads them (pet-attack-board.ts).
+  const board = petAttackBoard({ campaign, encounterId: encounter.id, ownerId: sheet.id, pet, enemy, attack, ranged, feetTo });
   const incoming = attackContext({
     attackerConditions: pet.conditions ?? [],
     targetConditions: enemy.conditions,
@@ -349,8 +398,22 @@ export function handlePetAttack(
     adjacent: feetTo === null ? !ranged : feetTo <= 5,
     requested: "none",
     attackerType: petCreatureType(pet),
+    attackerSenses: board.attackerSenses,
+    targetSeesAttacker: board.targetSeesAttacker,
   });
-  const advantage = incoming.advantage;
+  incoming.notes.push(...board.notes);
+  // Its owner's water is its own (pet-underwater.ts): a bite without a
+  // swimming speed at disadvantage, a shot past normal range a miss.
+  const water = petUnderwaterSwing(campaign, sheet.id, pet, { attack: attack.name, ranged, beyondNormal: ranged && feetTo !== null && feetTo > (attack.range ?? feetTo) });
+  if (water?.note) {
+    incoming.notes.push(water.note);
+  }
+  if (water?.misses) {
+    const economy = charge.commit();
+    commandPet(campaign, sheet.id, pet.name);
+    return { ok: true, attack: `${pet.name}: ${attack.name}`, hit: false, missed: water.note, economy };
+  }
+  const advantage = mergeAdvantage([...incoming.sources, ...board.sources, ...(water?.disadvantage ? ["disadvantage" as const] : [])]);
   // Tagged as an ally's attack, so a foretold number a watch stop armed for
   // the pet lands on its d20 (foresight-saves.ts).
   const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
@@ -372,10 +435,19 @@ export function handlePetAttack(
   const economy = charge.commit();
   // Commanded, the creature is not dodging this turn (pet-command.ts).
   commandPet(campaign, sheet.id, pet.name);
+  // What the roll used up on the target (pet-attack-board.ts).
+  spendMarksAgainst(enemy);
 
-  // The enemy's real AC today: a spell or an effect on it counts.
-  const vsAc = enemyAcWithEffects(campaign.id, enemy);
-  const hit = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
+  // The enemy's real AC today: a spell or an effect on it counts, and its cover.
+  const vsAc = enemyAcWithEffects(campaign.id, enemy) + board.cover;
+  const struck = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
+  // The creature's Parry or Shield, as a character's own swing meets it
+  // (attack-swing.ts): a mage's Shield let a wolf's bite through.
+  const live = getActiveEncounter(campaign.id);
+  const parry = struck && hitOutcome.crit !== "nat20" && live && !isSheetFoe(enemy)
+    ? tryParry({ encounter: live, enemy, total: hitOutcome.total, natural20: false, ac: vsAc, melee: !ranged, attackerUnseen: attackerUnseen(pet.conditions ?? [], enemy.conditions, null) })
+    : null;
+  const hit = struck && !parry;
   const crit = hit && (hitOutcome.crit === "nat20" || incoming.autoCrit);
   if (!hit) {
     return {
@@ -384,13 +456,14 @@ export function handlePetAttack(
       rolled: hitOutcome.total,
       vsAc,
       hit: false,
+      ...(parry ? { reaction: parry.note } : {}),
       ...(incoming.notes.length ? { situation: incoming.notes.join("; ") } : {}),
       economy,
     };
   }
   // The hit's dice and any rider dice of another type; a critical doubles
   // the dice, never the flat bonus (SRD 5.1).
-  const { expression } = attackDamage(attack);
+  const { expression } = attackDamage(swung);
   const variant = campaign.gameSettings.variantRules;
   const damageOutcome = rollExpression(
     crit ? critDamageExpression(expression, 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods }) : expression,
@@ -414,7 +487,7 @@ export function handlePetAttack(
   const magical = activeAuthored(sheet, "pet_magical").some(({ effect }) => effect.pets.includes(pet.kind));
   // Each damage type of the blow meets the creature's resistances on its own
   // (a flying snake's bite: 1 piercing and 3d4 poison).
-  const profile = naturalAttackProfile(attack, { weapon: `${pet.name} ${attack.name}`, note: `${pet.name}'s own attack` });
+  const profile = naturalAttackProfile(swung, { weapon: `${pet.name} ${attack.name}`, note: `${pet.name}'s own attack` });
   const applied = landBlow({
     campaign,
     turn,
@@ -442,6 +515,10 @@ export function handlePetAttack(
         onHit: attack.onHit,
       })
     : [];
+  // The charge is spent on this hit (a kill too); its save, push and pounce.
+  const charged = run
+    ? partyChargeAfterHit(campaign, turn, { attacker: { kind: "pet", sheetId: sheet.id, name: pet.name }, ownerId: sheet.id, pusherId: sheet.id, who: pet.name, enemyId: enemy.id, trait: run, bonusCall: "pet_attack attack" })
+    : [];
   return {
     ok: true,
     attack: `${pet.name}: ${attack.name}`,
@@ -451,6 +528,7 @@ export function handlePetAttack(
     ...(crit ? { crit: true } : {}),
     ...applied,
     ...(onHit.length ? { onHit } : {}),
+    ...(charged.length ? { charge: charged } : {}),
     economy,
   };
 }
@@ -476,52 +554,84 @@ export function handleDamagePet(
   if (!pet) {
     return noPet(sheet, args.petName);
   }
+  return hurtPet(campaign, sheet, pet, { parts: [{ amount: args.amount, type: args.type }], magical: args.magical === true });
+}
+
+// Damage landing on a pet, by type: apply_damage with a petName, and what a
+// pet's own save leaves of an area or a spell (src/lib/dm/pet-save.ts), so
+// both meet the same defenses and the same end at 0 hit points.
+export function hurtPet(
+  campaign: Campaign,
+  owner: CharacterSheet,
+  pet: SheetPet,
+  input: { parts: Array<{ amount: number; type?: string }>; magical: boolean },
+): Record<string, unknown> & { ok: true } {
+  // The record as it stands now: an area lands on several pets of one owner,
+  // and each write must keep the others.
+  const sheet = getSheetById(owner.id) ?? owner;
+  const at = sheet.pets.findIndex((entry) => entry.name === pet.name && entry.kind === pet.kind);
+  const current = at >= 0 ? sheet.pets[at] : pet;
   // The damage meets the pet's own defenses, as a character's meets theirs:
-  // an imp takes no fire, a drake none of its essence.
-  const adjusted = damageAdjust(args.amount, args.type, pet.resist ?? "", pet.immune ?? "", pet.vulnerable ?? "", {
-    magical: args.magical === true,
-  });
-  const dealt = adjusted.amount;
-  const typed = args.type?.trim() ? { type: args.type.trim() } : {};
-  const defended = adjusted.note ? { defenses: `${pet.name} is ${adjusted.note}.` } : {};
-  const hp = Math.max(0, pet.hp - dealt);
+  // an imp takes no fire, a drake none of its essence. Two types are two
+  // shares, each meeting its own (Flame Strike's fire and radiant).
+  const adjusted = input.parts.map((part) =>
+    damageAdjust(part.amount, part.type, petResistLine(campaign.id, sheet.id, current), current.immune ?? "", current.vulnerable ?? "", { magical: input.magical }),
+  );
+  const dealt = adjusted.reduce((sum, entry) => sum + entry.amount, 0);
+  const types = input.parts.map((part) => part.type?.trim() ?? "").filter(Boolean);
+  const typed = types.length ? { type: types.join(" and ") } : {};
+  const notes = adjusted.map((entry) => entry.note).filter(Boolean);
+  const defended = notes.length ? { defenses: `${current.name} is ${notes.join("; ")}.` } : {};
+  const hp = Math.max(0, current.hp - dealt);
+  const others = sheet.pets.filter((_, index) => index !== at);
   // Drake Companion: it lasts "until it drops to 0 hit points": then it is
   // gone, until the ranger summons it again.
-  if (hp <= 0 && pet.kind === "drake") {
-    patchSheet(sheet.id, { pets: sheet.pets.filter((entry) => entry !== pet) });
+  if (hp <= 0 && current.kind === "drake") {
+    // Its rider comes down with it (pet-mount.ts).
+    const ridden = ridesPet(campaign.id, sheet.id, current);
+    patchSheet(sheet.id, { pets: others });
     publishSheet(campaign, sheet.id);
-    return { ok: true, pet: pet.name, damage: dealt, ...typed, ...defended, vanished: `${pet.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
+    const fall = ridden ? fallFromPet(campaign, sheet.id) : null;
+    return { ok: true, pet: current.name, damage: dealt, ...typed, ...defended, vanished: `${current.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).`, ...(fall ? { fall } : {}) };
   }
-  if (hp <= 0 && pet.kind === "familiar") {
+  if (hp <= 0 && current.kind === "familiar") {
     // A familiar at 0 HP vanishes; the spell brings it back later.
-    const pets = sheet.pets.filter((entry) => entry !== pet);
-    patchSheet(sheet.id, { pets });
+    patchSheet(sheet.id, { pets: others });
     publishSheet(campaign, sheet.id);
     return {
       ok: true,
-      pet: pet.name,
+      pet: current.name,
       damage: dealt,
       ...typed,
       ...defended,
-      vanished: `${pet.name} drops and dissolves into shimmering mist. ${sheet.name} can resummon it by casting Find Familiar again (10 gp of incense, one hour).`,
+      vanished: `${current.name} drops and dissolves into shimmering mist. ${sheet.name} can resummon it by casting Find Familiar again (10 gp of incense, one hour).`,
     };
   }
-  const pets = sheet.pets.map((entry) => (entry === pet ? { ...entry, hp } : entry));
+  // A hurt creature wakes from Sleep, and gets the save Hideous Laughter
+  // gives when it takes damage: what the effect's instance says, read as a
+  // character's is (spell-effects.ts settleOnDamage), the save its own.
+  const settled = dealt > 0 && current.conditions?.length
+    ? settleOnDamage(current.conditions, (current.conditionMeta ?? {}) as ConditionMetaMap, (entry, name) =>
+        Boolean(entry.saveOnDamage) && rollPetSave(campaign, null, sheet, current, { ability: entry.saveOnDamage!.ability, dc: entry.saveOnDamage!.dc, magical: Boolean(entry.spell), source: name, advantage: entry.saveOnDamage!.advantage, detail: `${current.name}: ${entry.saveOnDamage!.ability.toUpperCase()} save to end ${name}, hurt` }).success)
+    : null;
+  const ended = settled?.changed ? (current.conditions ?? []).filter((name) => !settled.conditions.includes(name)) : [];
+  const pets = sheet.pets.map((entry, index) => (index === at ? { ...entry, hp, ...(settled?.changed ? { conditions: settled.conditions, conditionMeta: settled.meta } : {}) } : entry));
   patchSheet(sheet.id, { pets });
   publishSheet(campaign, sheet.id);
   // Damage to a pet is the trigger its owner's reaction answers (a drake's
   // resistance, src/lib/dm/last-save.ts).
   if (dealt > 0) {
-    recordTrigger(campaign.id, { kind: "pet_damage", characterId: sheet.id, forcer: { id: sheet.id, name: sheet.name }, petName: pet.name, damage: { amount: dealt, type: args.type?.trim() ?? "" } });
+    recordTrigger(campaign.id, { kind: "pet_damage", characterId: sheet.id, forcer: { id: sheet.id, name: sheet.name }, petName: current.name, damage: { amount: dealt, type: types.join(" and ") } });
   }
   return {
     ok: true,
-    pet: pet.name,
+    pet: current.name,
     damage: dealt,
     ...typed,
     ...defended,
-    hp: `${hp}/${pet.maxHp}`,
-    ...(hp <= 0 ? { down: `${pet.name} falls unconscious at 0 HP.` } : {}),
+    hp: `${hp}/${current.maxHp}`,
+    ...(hp <= 0 ? { down: `${current.name} falls unconscious at 0 HP.` } : {}),
+    ...(ended.length ? { conditionEnded: `${current.name} is no longer ${ended.join(" or ")}.` } : {}),
   };
 }
 
@@ -542,9 +652,13 @@ export function handleDismissPet(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
-  const pet = findPet(sheet, args.petName);
+  const pet = findPet(sheet, args.petName, true);
   if (!pet) {
     return noPet(sheet, args.petName);
+  }
+  // A familiar goes to its pocket dimension first (pet-pocket.ts).
+  if (pet.kind === "familiar") {
+    return dismissFamiliar(campaign, sheet, pet);
   }
   patchSheet(sheet.id, { pets: sheet.pets.filter((entry) => entry !== pet) });
   publishSheet(campaign, sheet.id);

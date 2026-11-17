@@ -5,6 +5,7 @@ import { listSheets } from "@/lib/db/sheets";
 import { handleRequestRoll } from "@/lib/dm/invoke-roll";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { atTheFight } from "@/lib/dm/fight-away-logic";
+import { onFoot } from "@/lib/dm/mount-link";
 
 // Asking the table for initiative when a person runs it (issue 63), and for
 // the real-dice seats of a fight the AI opens.
@@ -70,7 +71,7 @@ export function askForInitiative(
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const ask: InitiativeAsk = { rolled: [], waiting: [], waitingIds: [], combat: null };
   // Asking one who is away would bring them to the fight.
-  for (const sheet of atTheFight(encounter, fieldedSheets(campaign, sheets))) {
+  for (const sheet of onFoot(campaign.id, atTheFight(encounter, fieldedSheets(campaign, sheets)))) {
     if (placed.has(sheet.id) || asked.has(sheet.id) || sheet.deathSaves?.dead) {
       continue;
     }

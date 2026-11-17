@@ -14,6 +14,8 @@ import { obviousComfyChoice } from "@/lib/image-models/curate";
 import type { ScanResult } from "@/lib/setup/discovery";
 import type { MaskedConfig } from "@/app/admin/AdminSettingsFields";
 import type { HarnessChoiceId } from "@/lib/setup/patches";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
+import { languageFromLocale } from "@/lib/language/server-language";
 
 export type StoryKind = "local" | "key" | "agent" | "none";
 
@@ -31,6 +33,8 @@ export type ModelField = "pictures" | "narration" | "whisper" | "transcription";
 
 export type Draft = {
   serverName: string;
+  // The server's language; null on a host older than the language picker.
+  serverLanguage: TableLanguage | null;
   story: StoryKind | "";
   local: { baseUrl: string; model: string; apiKey: string; list: ModelList; typed: boolean };
   key: { provider: KeyProviderId; baseUrl: string; apiKey: string; model: string; list: ModelList };
@@ -78,6 +82,13 @@ export function draftFromConfig(config: MaskedConfig, firstRun: boolean): Draft 
   const images = config.images;
   return {
     serverName: config.serverName,
+    // A fresh server guesses the admin's own browser language; a server
+    // already set up starts from what it plays in now.
+    serverLanguage: config.serverLanguage
+      ? firstRun && config.serverLanguage === "english" && typeof navigator !== "undefined"
+        ? (languageFromLocale(navigator.language) ?? config.serverLanguage)
+        : config.serverLanguage
+      : null,
     story,
     local: {
       baseUrl:
@@ -156,21 +167,22 @@ export function comfyFromScan(current: Draft["comfy"], found: NonNullable<ScanRe
 // pick (`comfyOffers`, from PicturesStep); one that offers nothing, or has
 // not answered, is left to the admin panel later.
 export function picturesBlocker(
+  t: (key: string) => string,
   draft: Draft,
   input: { agentVerified: boolean; storyIsOpenAi: boolean; openaiKeySaved: boolean; envImageModel: string; comfyOffers: boolean },
 ): string | null {
   if (draft.pictures === "agent" && !input.agentVerified) {
-    return "Paint a test map first: the tables only get a painter that works.";
+    return t("Paint a test map first: the tables only get a painter that works.");
   }
   if (draft.pictures === "comfyui") {
-    if (!draft.comfy.url.trim()) return "Type where ComfyUI runs, or choose another answer.";
+    if (!draft.comfy.url.trim()) return t("Type where ComfyUI runs, or choose another answer.");
     if (draft.comfy.preset === CHECKPOINT_PRESET && !draft.comfy.checkpoint.trim() && input.comfyOffers) {
-      return "Pick the image model, or choose another answer.";
+      return t("Pick the image model, or choose another answer.");
     }
   }
   if (draft.pictures === "openai") {
-    if (!input.storyIsOpenAi && !draft.picturesKey.trim() && !input.openaiKeySaved) return "Paste an OpenAI key, or choose another answer.";
-    if (!draft.picturesModel.trim() && !input.envImageModel) return "Pick the picture model, or choose another answer.";
+    if (!input.storyIsOpenAi && !draft.picturesKey.trim() && !input.openaiKeySaved) return t("Paste an OpenAI key, or choose another answer.");
+    if (!draft.picturesModel.trim() && !input.envImageModel) return t("Pick the picture model, or choose another answer.");
   }
   return null;
 }

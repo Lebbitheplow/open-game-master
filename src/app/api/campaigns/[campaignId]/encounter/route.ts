@@ -5,6 +5,7 @@ import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { afterTheFight, sayFightOver, settleFightState } from "@/lib/dm/enemy-damage";
 import { getClock } from "@/lib/db/clock";
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { landWaits } from "@/lib/dm/retort-wait";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,10 @@ export async function DELETE(
   if (isErrorResponse(context)) {
     return context;
   }
+  // An answer still waiting on the reaction to a hit lands before the fight
+  // is called off (retort-wait.ts): the creature dies as the hit stood, not
+  // scattering below as a survivor.
+  landWaits(context.campaign, null, { holdVictory: true, tell: true });
   const encounter = getActiveEncounter(campaignId);
   if (!encounter) {
     return Response.json({ error: "No active encounter." }, { status: 404 });

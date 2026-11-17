@@ -6,6 +6,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { cardArtwork } from "@/lib/battlemap/card-art";
 import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
 import { cn } from "@/lib/cn";
+import { useLocale, useT, useTp } from "@/lib/locale";
 import type { HandCard } from "@/lib/battlemap/hand";
 import {
   END_TURN_ID,
@@ -17,6 +18,7 @@ import {
   type HandLayout,
 } from "@/lib/battlemap/hand-layout";
 import { costLabel } from "@/lib/battlemap/hand-play";
+import { cardDisplayName } from "@/lib/battlemap/hand-display";
 import { groupSummary, isGroup, type HandGroup, type HandUnit } from "@/lib/battlemap/hand-groups";
 import { replayAnimation } from "@/lib/motion/replay";
 
@@ -61,6 +63,9 @@ export function HandArrange({
   onDone: () => void;
 }) {
   const [notice, setNotice] = useState("");
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const [moved, setMoved] = useState<{ id: string; seq: number } | null>(null);
   // The groups whose cards are listed for seating one on its own.
   const [openGroups, setOpenGroups] = useState<string[]>([]);
@@ -98,7 +103,7 @@ export function HandArrange({
         void apply(next.layout, card.id);
       }}
     >
-      To Hand
+      {t("To Hand")}
     </button>
   );
 
@@ -109,10 +114,10 @@ export function HandArrange({
         const seat = working.fan.indexOf(card.id);
         return (
           <li key={card.id} className="hand-arrange-member">
-            <span className="min-w-0 flex-1 truncate text-sm text-stone-200">{card.name}</span>
-            <span className="hand-cost shrink-0" data-cost={card.cost}>{costLabel(card.cost)}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-stone-200">{cardDisplayName(card, locale)}</span>
+            <span className="hand-cost shrink-0" data-cost={card.cost}>{costLabel(card.cost, t)}</span>
             {seat >= 0 ? (
-              <span className="shrink-0 text-[10px] uppercase tracking-wider text-amber-200">In Hand · seat {seat + 1}</span>
+              <span className="shrink-0 text-[10px] uppercase tracking-wider text-amber-200">{t("In Hand · seat {seat}", { seat: seat + 1 })}</span>
             ) : (
               seatButton(card)
             )}
@@ -140,7 +145,7 @@ export function HandArrange({
           <GameIcon icon={artwork} size={artwork.kind === "action" ? "h-9 w-[72px]" : "size-9"} />
           <span className="min-w-[120px] flex-1">
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="truncate font-display text-sm font-semibold text-stone-100">{card.name}</span>
+              <span className="truncate font-display text-sm font-semibold text-stone-100">{group ? card.name : cardDisplayName(card as HandCard, locale)}</span>
               <span
                 className={cn(
                   "hand-arrange-badge shrink-0 rounded-full border px-1.5 py-px text-[10px] uppercase tracking-wider",
@@ -149,18 +154,18 @@ export function HandArrange({
                     : "border-stone-600/70 bg-stone-800/60 text-stone-400",
                 )}
               >
-                {place === "hand" ? `In Hand · seat ${seat + 1}` : "In More"}
+                {place === "hand" ? t("In Hand · seat {seat}", { seat: seat + 1 }) : t("In More")}
               </span>
               {isFresh(card) ? (
                 <span className="shrink-0 rounded-full border border-emerald-400/50 bg-emerald-400/10 px-1.5 py-px text-[10px] uppercase tracking-wider text-emerald-200">
-                  New
+                  {t("New", { context: "table.hand.card.new" })}
                 </span>
               ) : null}
             </span>
             {group ? (
               <span className="block text-[11px] text-stone-400">{groupSummary(group)}</span>
             ) : (
-              <span className="hand-cost mt-0.5" data-cost={(card as HandCard).cost}>{costLabel((card as HandCard).cost)}</span>
+              <span className="hand-cost mt-0.5" data-cost={(card as HandCard).cost}>{costLabel((card as HandCard).cost, t)}</span>
             )}
           </span>
           {place === "hand" ? (
@@ -168,7 +173,7 @@ export function HandArrange({
               <button
                 type="button"
                 className="hand-arrange-step motion-press"
-                aria-label={`Move ${card.name} one seat left`}
+                aria-label={t("Move {name} one seat left", { name: group ? card.name : cardDisplayName(card as HandCard, locale) })}
                 disabled={seat <= 0}
                 onClick={() => void apply(moveInHand(working, card.id, -1), card.id)}
               >
@@ -177,7 +182,7 @@ export function HandArrange({
               <button
                 type="button"
                 className="hand-arrange-step motion-press"
-                aria-label={`Move ${card.name} one seat right`}
+                aria-label={t("Move {name} one seat right", { name: group ? card.name : cardDisplayName(card as HandCard, locale) })}
                 disabled={seat >= working.fan.length - 1}
                 onClick={() => void apply(moveInHand(working, card.id, 1), card.id)}
               >
@@ -188,7 +193,7 @@ export function HandArrange({
                 className="hand-arrange-move motion-press"
                 onClick={() => void apply(removeFromHand(working, card.id), card.id)}
               >
-                To More
+                {t("To More")}
               </button>
             </span>
           ) : (
@@ -205,7 +210,7 @@ export function HandArrange({
               }
             >
               <ChevronDown aria-hidden="true" className={cn("chevron-turn size-3.5", listed && "rotate-180")} />
-              Seat one of its {group.noun[1]} on its own
+              {t("Seat one of its {noun} on its own", { noun: group.noun[1] })}
             </button>
           ) : null}
           {group && listed ? members(group) : null}
@@ -217,29 +222,31 @@ export function HandArrange({
   return (
     <div className="flex min-h-0 flex-col">
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="hand-arrange-seats" aria-label={`${used} of ${HAND_SEATS} seats chosen`}>
+        <span className="hand-arrange-seats" aria-label={t("{used} of {total} seats chosen", { used, total: HAND_SEATS })}>
           {Array.from({ length: HAND_SEATS }, (_, index) => (
             <span key={index} className="hand-arrange-seat" data-filled={index < used ? "true" : undefined} />
           ))}
         </span>
         <span className="text-xs text-stone-300">
-          {used} of {HAND_SEATS} seats chosen. End turn keeps the ninth.
+          {t("{used} of {total} seats chosen. End turn keeps the ninth.", { used, total: HAND_SEATS })}
         </span>
       </div>
       {urgent.length ? (
         <p className="reveal mb-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-100/90">
-          {urgent.map((card) => card.name).join(" and ")} {urgent.length === 1 ? "takes" : "take"} a seat first while{" "}
-          {urgent.length === 1 ? "it matters" : "they matter"}
+          {tp("{names} takes a seat first while it matters", "{names} take a seat first while they matter", { count: urgent.length,
+            names: urgent.map((card) => cardDisplayName(card, locale)).join(t(" and ", { context: "table.hand.join.and" })),
+          })}
           {displaced.length
-            ? `; ${displaced.map((card) => card.name).join(", ")} ${displaced.length === 1 ? "waits" : "wait"} in More until then`
+            ? tp("; {names} waits in More until then", "; {names} wait in More until then", { count: displaced.length,
+                names: displaced.map((unit) => (isGroup(unit) ? unit.name : cardDisplayName(unit, locale))).join(", "),
+              })
             : ""}
-          . Your arrangement stays as you set it.
+          {t(". Your arrangement stays as you set it.")}
         </p>
       ) : null}
       {missing ? (
         <p className="mb-2 text-xs text-stone-400">
-          {missing === 1 ? "One card you chose is" : `${missing} cards you chose are`} not in this hand now (no longer
-          prepared or carried), so {missing === 1 ? "its seat is" : "their seats are"} free.
+          {tp("One card you chose is not in this hand now (no longer prepared or carried), so its seat is free.", "{count} cards you chose are not in this hand now (no longer prepared or carried), so their seats are free.", { count: missing })}
         </p>
       ) : null}
       <p
@@ -250,22 +257,22 @@ export function HandArrange({
         {notice}
       </p>
       <div className="-mx-1 min-h-0 overflow-y-auto px-1 pb-1">
-        <h3 className="mb-1.5 font-display text-[11px] uppercase tracking-[0.14em] text-amber-200/90">In your hand</h3>
+        <h3 className="mb-1.5 font-display text-[11px] uppercase tracking-[0.14em] text-amber-200/90">{t("In your hand")}</h3>
         {inHand.length ? (
           <ul className="flex flex-col gap-1.5">{inHand.map((card, index) => row(card, index, "hand"))}</ul>
         ) : (
-          <p className="text-xs text-stone-500">No cards chosen: only End turn sits in the hand. Add some below.</p>
+          <p className="text-xs text-stone-500">{t("No cards chosen: only End turn sits in the hand. Add some below.")}</p>
         )}
-        <h3 className="mb-1.5 mt-4 font-display text-[11px] uppercase tracking-[0.14em] text-stone-400">In More</h3>
+        <h3 className="mb-1.5 mt-4 font-display text-[11px] uppercase tracking-[0.14em] text-stone-400">{t("In More")}</h3>
         {inMore.length ? (
           <ul className="flex flex-col gap-1.5">{inMore.map((card, index) => row(card, index + inHand.length, "more"))}</ul>
         ) : (
-          <p className="text-xs text-stone-500">Every card has a seat.</p>
+          <p className="text-xs text-stone-500">{t("Every card has a seat.")}</p>
         )}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone-700/50 pt-3">
         <button type="button" onClick={onDone} className="hand-arrange-done motion-press">
-          Done
+          {t("Done", { context: "action.done" })}
         </button>
         {arranged ? (
           <button
@@ -277,10 +284,10 @@ export function HandArrange({
               if (error) refuse(error);
             }}
           >
-            Back to automatic
+            {t("Back to automatic")}
           </button>
         ) : (
-          <span className="text-xs text-stone-500">Automatic until you change a card.</span>
+          <span className="text-xs text-stone-500">{t("Automatic until you change a card.")}</span>
         )}
       </div>
     </div>

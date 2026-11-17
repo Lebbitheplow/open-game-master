@@ -1,4 +1,6 @@
+import { noteMarkFell } from "@/lib/dm/attack-marks";
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
+import { gatherFallenGear } from "@/lib/dm/fallen-gear";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { darkFantasyOnDeath } from "@/lib/dm/genre-a-dark-fantasy-deaths";
@@ -9,9 +11,9 @@ import { endFightEffects, endFoeEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
-import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
+import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, saveEncounter, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { settleDying } from "@/lib/dm/death";
 import { dyingLeftAlone, isDying, MOST_SAVES_TO_SETTLE } from "@/lib/dm/death-logic";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -22,7 +24,8 @@ import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
 import { healthState } from "@/lib/bestiary/health";
-import { ammoCount, recoveredAmmo, searchesTheField, withAmmoCount } from "@/lib/srd/ammunition";
+import { searchesTheField } from "@/lib/srd/ammunition";
+import { recoverAmmo } from "@/lib/dm/ammo-tally";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
 import { enemyDamageMath, fightOverLine } from "@/lib/dm/encounter-logic";
@@ -34,8 +37,8 @@ import { enemyDefenseLines, meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
 import { endConditionsHeldBy, endVowsOn } from "@/lib/dm/enemy-conditions";
-import { enemyHpCap, hasTrait, REGENERATION_STOPPED, regenerationOf } from "@/lib/dm/monster-abilities";
-import { absorbs } from "@/lib/dm/monster-traits";
+import { abilityRefusal, enemyHpCap, findMonsterAbility, hasTrait, REGENERATION_STOPPED, regenerationOf, spendAbility } from "@/lib/dm/monster-abilities";
+import { absorbs, relentlessThreshold } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { settleFrenzies } from "@/lib/dm/frenzy";
@@ -61,7 +64,9 @@ import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
 import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
 import { freeFromCorpse, noteBlowFromInside, swallowFightEnd } from "@/lib/dm/swallow";
+import { landWaits } from "@/lib/dm/retort-wait";
 import { projectionDreadHeal } from "@/lib/dm/spirit-projection";
+import { partyNpcRows, settlePartyNpcs } from "@/lib/dm/party-npcs-fight";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -121,6 +126,10 @@ export function finishEncounter(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): Record<string, unknown> {
+  // An answer still waiting on the reaction to a hit lands before the fight
+  // ends (retort-wait.ts): the creature dies as the hit stood. Ended first,
+  // the answer was dropped and the creature left the fight alive.
+  landWaits(campaign, turn, { holdVictory: true, tell: true });
   const enemies = listEnemies(encounter.id);
   // Survivors scatter when the fight ends without their deaths. One lying
   // knocked out goes nowhere (issue #667): it stays where it fell, and a
@@ -139,7 +148,7 @@ export function finishEncounter(
   if (outcome !== "party_defeated") {
     sayFightOver(campaign, encounter, true);
   }
-  const { itemsLeft, swallowedOut } = settleFightState(campaign, encounter.id);
+  const { itemsLeft, gearBack, swallowedOut } = settleFightState(campaign, encounter.id);
   // A spell of a minute or more still being cast takes effect as the fight
   // ends, its slot spent then (long-casting.ts finishCastingsAtFightEnd).
   const castingsFinished = finishCastingsAtFightEnd(campaign);
@@ -147,29 +156,7 @@ export function finishEncounter(
   // Half the ammunition spent in the fight is recovered from the field
   // (PHB). Only ever non-empty when the `ammunition` variant rule is on, so
   // a table that never asked for it pays nothing here.
-  const ammoRecovered: Record<string, number> = {};
-  for (const [key, entry] of searchesTheField(outcome) ? Object.entries(encounter.ammoSpent) : []) {
-    const back = recoveredAmmo(typeof entry === "object" ? entry.spent : entry);
-    if (back <= 0) {
-      continue;
-    }
-    const separator = key.indexOf("|");
-    const sheetId = key.slice(0, separator);
-    const itemName = key.slice(separator + 1);
-    const owner = getSheetById(sheetId);
-    if (!owner) {
-      continue;
-    }
-    const index = owner.equipment.findIndex((item) => item.name === itemName);
-    // A spent-out quiver comes back as the line it was (an Italian "Frecce"
-    // listed as Arrows stays arrows).
-    const equipment =
-      index >= 0
-        ? withAmmoCount(owner.equipment, index, ammoCount(owner.equipment[index]) + back)
-        : withAmmoCount([...owner.equipment, typeof entry === "object" ? entry.line : { name: itemName, qty: back }], owner.equipment.length, back);
-    patchSheet(sheetId, { equipment });
-    ammoRecovered[`${owner.name}: ${itemName}`] = back;
-  }
+  const ammoRecovered = searchesTheField(outcome) ? recoverAmmo(encounter) : {};
 
   // What the fight was worth: every enemy row (a creature the party turned
   // with a Dominate spell was overcome all the same), and every character
@@ -205,7 +192,7 @@ export function finishEncounter(
   // Read again: the survivors scattered above are fled now, and the card
   // counts them so.
   recordEncounterSummary(campaign.id, encounter, outcome, listEnemies(encounter.id), sheets);
-  const { guestsGone, turncoats, foesMourned, answersOwed } = afterTheFight(campaign, encounter, enemies);
+  const { guestsGone, turncoats, foesMourned, answersOwed, npcsHurt } = afterTheFight(campaign, encounter, enemies);
   // The end of initiative is not the end of dying. With nobody on the
   // party's side left conscious, no one can stabilize the fallen, so their
   // saves are rolled out now, in order, as the pointer would have rolled
@@ -216,7 +203,8 @@ export function finishEncounter(
   // The foes left lying knocked out: the GM is told who, with the id that
   // brings one into a later fight as they are (issue #667: nothing said so,
   // and the next fight made them fresh).
-  const spared = listEnemies(encounter.id).filter((enemy) => isKnockedOut(enemy));
+  const allies = new Set(partyNpcRows(encounter, listEnemies(encounter.id)).map((row) => row.id));
+  const spared = listEnemies(encounter.id).filter((enemy) => isKnockedOut(enemy) && !allies.has(enemy.id));
 
   return {
     encounterOver: true,
@@ -230,6 +218,7 @@ export function finishEncounter(
     ...(itemsLeft.length
       ? { itemsLeft: `On the ground after the fight: ${itemsLeft.join("; ")}. The party can collect them (handle_item pick_up).` }
       : {}),
+    ...(gearBack.length ? { gearBack: `Let go of as they fell, now ${gearBack.join("; ")}.` } : {}),
     ...(swallowedOut ? { swallowedOut } : {}),
     outcome,
     ...(guestsGone.length
@@ -242,6 +231,7 @@ export function finishEncounter(
       ? { bondsClosed: `Every bond with ${foesMourned.join(" and ")} is closed: they died in the fight.` }
       : {}),
     ...(answersOwed.length ? { answerOwed: answersOwed.join(" ") } : {}),
+    ...(npcsHurt?.length ? { alliesFallen: `Their record now says: ${npcsHurt.join("; ")}. Narrate it.` } : {}),
     ...(spared.length
       ? {
           spared: `Left lying knocked out, unconscious and stable: ${spared
@@ -262,7 +252,7 @@ export function finishEncounter(
 
 // What ends with a fight's state, however the fight ends: right after the
 // encounter row closes, before the experience is shared out.
-export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; swallowedOut: string | null } {
+export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; gearBack: string[]; swallowedOut: string | null } {
   // An effect set "until the fight ends" ends now (active-effects.ts).
   endFightEffects(campaign.id);
   // And what was laid on its foes (active-effects.ts endFoeEffects).
@@ -276,9 +266,12 @@ export function settleFightState(campaign: Campaign, encounterId: string): { ite
   // Whoever is still inside a creature that swallowed them comes out, prone
   // (swallow.ts swallowFightEnd).
   const swallowedOut = swallowFightEnd(campaign, encounterId);
+  // What a hero let go of as they fell unconscious and still lies there goes
+  // back into their pack (fallen-gear.ts), before the rest is settled.
+  const gearBack = gatherFallenGear(campaign);
   // What was dropped stays where it fell; what a fallen enemy held lies with
   // it (src/lib/db/dropped-items.ts, issue #424). Returns what lies there.
-  return { itemsLeft: settleDroppedOnFightEnd(campaign.id, encounterId), swallowedOut };
+  return { itemsLeft: settleDroppedOnFightEnd(campaign.id, encounterId), gearBack, swallowedOut };
 }
 
 // What follows any fight's end, the lead's force-end included (issue 657):
@@ -291,7 +284,7 @@ export function afterTheFight(
   campaign: Campaign,
   encounter: Encounter,
   enemies: readonly EncounterEnemy[],
-): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[] } {
+): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[]; npcsHurt?: string[] } {
   // What the fight's plan still held can no longer happen (fight-events.ts).
   disarmFightEvents(encounter.id);
   const floor = getFloor(campaign.id);
@@ -316,7 +309,12 @@ export function afterTheFight(
   // A foe the party knew who died in it is dead to every hero (issue 657).
   // An ephemeral like the companion tools send, so this module imports no
   // conscience.
-  const foesMourned = closeFallenFoes(campaign, enemies);
+  // The NPCs who fought beside the party are allies, not foes: their
+  // record takes what the fight did to them (src/lib/dm/party-npcs-fight.ts).
+  const fought = listEnemies(encounter.id);
+  const allies = new Set(partyNpcRows(encounter, fought).map((row) => row.id));
+  const npcsHurt = settlePartyNpcs(encounter, fought);
+  const foesMourned = closeFallenFoes(campaign, enemies.filter((enemy) => !allies.has(enemy.id)));
   if (foesMourned.length) {
     publishEphemeral(campaign.id, "relationships_updated", {});
   }
@@ -324,7 +322,7 @@ export function afterTheFight(
   // romance-held.ts): the GM is told here, on the turns after, and on a
   // person's console.
   const answersOwed = releaseHeldSteps(campaign);
-  return { guestsGone, turncoats, foesMourned, answersOwed };
+  return { guestsGone, turncoats, foesMourned, answersOwed, ...(npcsHurt.length ? { npcsHurt } : {}) };
 }
 
 // Ends the encounter with victory XP once nobody on the foes' side is left
@@ -544,6 +542,24 @@ export function applyEnemyDamage(
       fortitude = `${enemy.displayName}'s Undead Fortitude fails (CON save ${save.total ?? "failed"} vs DC ${dc}).`;
     }
   }
+  // Relentless (SRD 5.1 boar, giant boar, wereboar): "If the boar takes 7
+  // damage or less that would reduce it to 0 hit points, it is reduced to 1
+  // hit point instead", once between rests (once a fight here: the block's
+  // "Recharges after a Short or Long Rest" use, kept on the ability ledger).
+  // Before this the boar fell to the blow its text says it shrugs off.
+  let relentless: string | null = null;
+  const most = math.dropped && !knockedOut && options?.death !== true && options?.nonlethal !== true ? relentlessThreshold(enemy.stats) : null;
+  const holdsOn = most !== null && adjusted.amount <= most ? findMonsterAbility(enemy.stats, "Relentless") : null;
+  if (holdsOn) {
+    const live = getActiveEncounter(campaign.id) ?? encounter;
+    const ledger = live.legendary.abilities?.[enemy.id];
+    if (!abilityRefusal(enemy.displayName, holdsOn, ledger)) {
+      live.legendary.abilities = { ...(live.legendary.abilities ?? {}), [enemy.id]: spendAbility(holdsOn, ledger) };
+      saveEncounter(live);
+      math = { currentHp: 1, dropped: false };
+      relentless = `${enemy.displayName}'s Relentless holds: ${adjusted.amount} damage would have dropped it, and it stays up at 1 hit point (once until it rests).`;
+    }
+  }
   const knockout = options?.nonlethal === true && math.dropped && !knockedOut;
   // A troll dies only at its turn start (src/lib/dm/regeneration.ts): 0 hit
   // points leaves it down.
@@ -573,6 +589,7 @@ export function applyEnemyDamage(
     ...(damageType?.trim() ? { damageType: damageType.trim().toLowerCase() } : {}),
     ...(adjusted.note ? { damageApplied: adjusted.amount, damageNote: adjusted.note } : {}),
     ...(fortitude ? { undeadFortitude: fortitude } : {}),
+    ...(relentless ? { relentless } : {}),
   };
   // The damage that stops Regeneration (a troll's acid or fire) holds it off
   // at the creature's next turn start (legendary-tools.ts). Kept as a
@@ -591,6 +608,8 @@ export function applyEnemyDamage(
   // A creature that falls lets go: its grapples, charms and fears on others
   // end with it (src/lib/dm/enemy-conditions.ts).
   if (math.dropped) {
+    // A mark on it moves only on a later turn of its holder's (attack-marks.ts).
+    noteMarkFell(campaign.id, enemy.id);
     const freed = endConditionsHeldBy(campaign, enemy.id);
     if (freed.length) {
       base.released = `${freed.join("; ")}: no longer held by ${updated.displayName}.`;

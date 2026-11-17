@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { Campaign } from "@/lib/db/campaigns";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
 import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, turnCounterFor } from "@/lib/db/encounters";
@@ -34,6 +35,7 @@ import { canEnemyAct } from "@/lib/dm/can-act";
 import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { standingOn } from "@/lib/dm/combatant";
 import { leftBehind, swallowCoverError } from "@/lib/dm/swallow";
+import { allyCreatureConditionAura } from "@/lib/dm/aura";
 
 // Encounter tools beyond the core start/damage/attack/end set:
 // reinforcements, enemy flight, enemy conditions, and multi-target AoE.
@@ -286,6 +288,19 @@ function handleEnemyCondition(
     if (stone) {
       return { error: `${enemy.displayName} cannot be ${named}: ${stone}.`, refused: "rules" };
     }
+    // What a spell on it makes it immune to (Heroism, Mind Blank, Freedom of
+    // Movement against magic), as on a character (set-condition.ts): magical
+    // unless the call says it is not.
+    const warded = conditionGrantedImmunity(enemy.conditions, named, undefined, args.magical !== false);
+    if (warded) {
+      return { error: `${enemy.displayName} cannot be ${named}: ${warded} protects it. Nothing was set.`, refused: "rules" };
+    }
+    // Aura of Courage or Devotion over a creature fighting for the party
+    // (aura.ts), as over a character.
+    const shielded = allyCreatureConditionAura(campaign.id, enemy, named);
+    if (shielded) {
+      return { error: `${enemy.displayName} cannot be ${named}: ${shielded} protects it.`, refused: "rules" };
+    }
     // Laid by a creature on the other side of a swallower's wall: it does
     // not land (swallow.ts).
     const layer = (args.sourceCharacterId ?? args.sourceEnemyId ?? "").trim();
@@ -331,7 +346,7 @@ function handleEnemyCondition(
             ...(args.rounds ? { rounds: args.rounds } : {}),
             ...(countsOn ? { countsOn } : {}),
             ...(args.saveAbility && args.saveDc
-              ? { saveEnds: { ability: args.saveAbility, dc: args.saveDc } }
+              ? { saveEnds: { ability: args.saveAbility, dc: args.saveDc }, ...(args.magical === true ? { magical: true } : {}) }
               : {}),
             ...(wakes ? { endsOnDamage: true } : {}),
           }

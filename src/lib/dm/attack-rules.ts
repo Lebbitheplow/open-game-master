@@ -167,6 +167,49 @@ export function offHandProblem(input: {
   return null;
 }
 
+// The bonus-action swing the turn's Attack action has earned and nothing has
+// spent: two-weapon fighting's off-hand attack (offHandProblem passes for a
+// weapon the character carries), or Martial Arts' unarmed strike. Like the
+// unmade swings of Extra Attack, it is the player's to make or give up, so a
+// narration that tells the turn over does not end it (issue 966: a scimitar
+// swing was narrated as the whole turn, and the shortsword's attack was lost
+// with the fighter's life). Null when none is open. Pure.
+export function earnedBonusSwing(input: {
+  who: string;
+  budget: TurnBudget;
+  equipment: Carried[];
+  feats?: string[];
+  campaignId?: string;
+  shieldName: string | null;
+  // The budget's Martial Arts mark (pc-attack-options.ts MARTIAL_ARTS_READY).
+  martialArtsReady: boolean;
+}): string | null {
+  const { budget } = input;
+  if (budget.bonusUsed || budget.slowed || budget.attacksMade < 1 || budget.castThisAction) {
+    return null;
+  }
+  const offHands = input.equipment.filter((item) => {
+    const weapon = matchWeapon(item);
+    return weapon?.kind === "melee" && !offHandProblem({
+      who: input.who,
+      profile: { weapon: item.name, properties: weapon.properties ?? [], ranged: false },
+      budget,
+      inFight: true,
+      equipment: input.equipment,
+      feats: input.feats,
+      campaignId: input.campaignId,
+      shieldName: input.shieldName,
+    });
+  });
+  // The second of a pair is the one in the other hand, as the Hand's card
+  // draws it (hand.ts).
+  const offHand = offHands[1] ?? offHands[0];
+  if (offHand) {
+    return `an off-hand attack with ${offHand.name} (two-weapon fighting, a bonus action)`;
+  }
+  return input.martialArtsReady ? "a Martial Arts unarmed strike (a bonus action)" : null;
+}
+
 // Whether the other hand holds a weapon, which is what the Dueling style
 // refuses. Read from what the sheet marks as equipped: a second one-handed
 // melee weapon in hand beside the one being swung (or a pair of the same).

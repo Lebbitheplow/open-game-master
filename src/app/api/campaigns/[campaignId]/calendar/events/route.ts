@@ -22,9 +22,9 @@ const createSchema = z.object({
   repeat: z.enum(["none", "yearly", "monthly"]).default("none"),
 });
 
-export async function GET(_request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cam
 
 export async function POST(request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
-  const context = await requireDm(campaignId);
+  const context = await requireDm(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

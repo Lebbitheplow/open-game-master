@@ -9,6 +9,7 @@ import { AGENT_MARK } from "@/lib/dm/agent-mark";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { handleCompleteBeat } from "@/lib/dm/arc";
 import { handleCastBuff } from "@/lib/dm/cast-tools";
+import { summonFamiliar } from "@/lib/dm/familiar-cast";
 import { handleCheckNotice, handleGroupCheck } from "@/lib/dm/check-tools";
 import { handleAddCompanion } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/dm/relationship-tools";
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { handleNpcReaction, handleSetNpc, handleSocialCheck } from "@/lib/dm/social-tools";
+import { handleNpcState } from "@/lib/dm/npc-state-tools";
 import { handlePartyStash } from "@/lib/dm/party-tools";
 import { handleClearEffect, handleSetEffect } from "@/lib/dm/effect-tools";
 import { handleEndScene, handleSceneCheck, handleStartScene } from "@/lib/dm/scene-tools";
@@ -86,6 +88,7 @@ import { deedRefusal } from "@/lib/dm/deed-guard";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { listMembers } from "@/lib/db/campaigns";
 import { listSheets } from "@/lib/db/sheets";
+import { landWaits } from "@/lib/dm/retort-wait";
 
 const MUTATIONS = new Set<string>(MUTATION_TOOL_NAMES);
 const ENCOUNTERS = new Set<string>(ENCOUNTER_TOOL_NAMES);
@@ -111,9 +114,20 @@ export async function dispatchAdjudication(
   sentArguments: string,
   context: DispatchContext,
 ): Promise<ToolResult> {
+  // An answer that would slay its attacker waits only on the reaction
+  // decision right after the hit (retort-wait.ts): any other call lands it
+  // first, at this one door, in the same GM turn as in a later one. Waiting
+  // out the rest of the turn, the goblin it slays swung again in the same
+  // reply, and a reply that ended the fight dropped it.
+  const landed = name === "use_reaction" || !context.turn ? [] : landWaits(context.campaign, context.turn);
+  // The call reads the sheets as the landing left them (Grim Harvest heals
+  // the one whose spell slew).
+  const sheets = landed.length ? listSheets(context.campaign.id) : context.sheets;
+  const ready = landed.length ? { ...context, sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])) } : context;
   // A romance rung the call moves, up or down, is told to the table here,
   // at the one door the AI's turn and a person's console share (issue 640).
-  return watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, context));
+  const result = await watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, ready));
+  return landed.length ? { ...result, answersLanded: landed } : result;
 }
 
 async function dispatchCall(
@@ -241,7 +255,11 @@ function engineCall(
     case "apply_hazard":
       return handleApplyHazard(campaign, turn, rawArguments, sheets, sheetsById);
     case "summon_pet":
-      return handleSummonPet(campaign, rawArguments, sheets, sheetsById);
+      // A familiar is Find Familiar cast (familiar-cast.ts); the other pets bind.
+      return (
+        summonFamiliar(campaign, rawArguments, sheets, sheetsById, (cast) => applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result) ??
+        handleSummonPet(campaign, rawArguments, sheets, sheetsById)
+      );
     case "pet_attack": {
       const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");
       return unasked ? unasked : handlePetAttack(campaign, turn, rawArguments, sheets, sheetsById);
@@ -252,6 +270,8 @@ function engineCall(
       return handleDismissPet(campaign, rawArguments, sheets, sheetsById);
     case "set_npc":
       return handleSetNpc(campaign, rawArguments);
+    case "npc_state":
+      return handleNpcState(campaign, rawArguments);
     case "npc_reaction":
       return handleNpcReaction(campaign, turn, rawArguments);
     case "social_check":
@@ -269,7 +289,7 @@ function engineCall(
     case "travel":
       return handleTravel(campaign, turn, rawArguments, sheets, sheetsById);
     case "pass_time":
-      return handlePassTime(campaign, rawArguments);
+      return handlePassTime(campaign, turn.id, rawArguments, sheets);
     case "set_weather":
       return handleSetWeather(campaign, rawArguments);
     case "show_title":
@@ -331,7 +351,7 @@ function engineCall(
           campaign.gameSettings.mapsEnabled &&
           imageProducerReady(campaign.settings) &&
           (await imagesAvailable(campaign.settings));
-        const result = handleLocationCall(campaign, name, rawArguments, pictures);
+        const result = handleLocationCall(campaign, name, rawArguments, pictures, turn.actor !== "ai");
         // Bookkeeping the model's turn uses to link its narration to a map;
         // a person's narration is a separate message, so it goes no further.
         delete result.movedToNewLocation;

@@ -145,7 +145,7 @@ export function ReportDialog({
               type="button"
               onClick={submit}
               disabled={busy} aria-busy={busy}
-              className={cn(ui.btnPrimary, "from-red-200 via-red-300 to-red-500 text-red-950")}
+              className={cn(ui.btnPrimary, "theme-key-danger from-red-200 via-red-300 to-red-500 text-red-950")}
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <ShieldBan className="size-4" />}
               Block

@@ -13,7 +13,10 @@
 //       addon there, for scripts/check-addon.mjs; --summary appends what a
 //       reviewer reads (the source, what changed, permissions, downloads).
 //   node scripts/addon-catalog.mjs check
-//       The file's shape, offline: every entry reads, ids unique and sorted.
+//       The file's shape, offline: every entry reads, ids unique and sorted,
+//       and the README's table of addon creators says what the list says.
+//   node scripts/addon-catalog.mjs credits
+//       Writes that table from the list (add does it too).
 //
 // Common options: --catalog <file> (default addons/catalog.json), and
 // --local owner/repo=<clone> to read a repository from a local clone instead
@@ -31,6 +34,8 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const { addonManifestSchema, describeManifestError } = await import("../src/lib/addons/manifest.ts");
 const { fetchAddonFolder, githubReader } = await import("../src/lib/addons/repo-fetch.ts");
+const { withCredits } = await import("../src/lib/addons/credits.ts");
+const { registryAddonSchema } = await import("../src/lib/addons/registry-index.ts");
 const { parseGitHubLink } = await import("../src/lib/addons/github-link.ts");
 const { CATALOG_CATEGORIES, catalogEntry, catalogProblems, emptyCatalog, entryDifferences, withEntry } = await import(
   "../src/lib/addons/catalog-entry.ts"
@@ -67,6 +72,29 @@ function readCatalog(file = catalogFile) {
 function writeCatalog(catalog) {
   fs.mkdirSync(path.dirname(catalogFile), { recursive: true });
   fs.writeFileSync(catalogFile, `${JSON.stringify({ ...catalog, generated: "" }, null, 2)}\n`);
+}
+
+// The README's creators table, from the shipped list only: a scratch
+// catalog (--catalog) never rewrites the README.
+const README = path.join(ROOT, "README.md");
+const shippedCatalog = path.join(ROOT, "addons", "catalog.json");
+
+function creditedReadme() {
+  const entries = (readCatalog(shippedCatalog).addons ?? []).map((entry) => registryAddonSchema.safeParse(entry)).filter((read) => read.success).map((read) => read.data);
+  // A Windows checkout reads the README with CRLF line ends; the table is
+  // compared by its text, not its line ends.
+  const current = fs.readFileSync(README, "utf8").replace(/\r\n/g, "\n");
+  return { current, next: withCredits(current, entries) };
+}
+
+function writeCredits() {
+  if (catalogFile !== shippedCatalog) return;
+  const { current, next } = creditedReadme();
+  if (next === null) fail("README.md has no addon creators table to write (the addon-creators markers).");
+  else if (next !== current) {
+    fs.writeFileSync(README, next);
+    console.log("Updated the addon creators table in README.md.");
+  }
 }
 
 async function githubJson(apiPath) {
@@ -146,9 +174,29 @@ async function deriveEntry(source, category, into) {
     }
     const parsed = addonManifestSchema.safeParse(raw);
     if (!parsed.success) throw new Error(`addon.json does not read: ${describeManifestError(parsed.error)}`);
+    await checkFolderDownloads(parsed.data, source);
     return catalogEntry(parsed.data, source, { contentSha256: fetched.contentSha256, bytes: fetched.bytes }, category);
   } finally {
     if (!into) fs.rmSync(target, { recursive: true, force: true });
+  }
+}
+
+// A setup download that is a repository folder (a part's models, kept in
+// the addon's repository or one of its own) holds exactly the bytes its
+// manifest says, at the commit a server will fetch it at: the server
+// refuses it otherwise, so the list refuses it first.
+async function checkFolderDownloads(manifest, source) {
+  for (const download of manifest.setup?.downloads ?? []) {
+    if (!download.github) continue;
+    const folder = download.github.repo
+      ? { repo: download.github.repo, commit: download.github.commit, path: download.github.path }
+      : { repo: source.repo, commit: source.commit, path: download.github.path };
+    const files = await readerFor(folder).list();
+    if (!files.length) throw new Error(`setup download ${download.id}: there are no files in ${folder.repo}/${folder.path} at ${folder.commit.slice(0, 7)}.`);
+    const bytes = files.reduce((sum, file) => sum + file.size, 0);
+    if (bytes !== download.bytes) {
+      throw new Error(`setup download ${download.id}: ${folder.repo}/${folder.path} holds ${bytes} bytes at ${folder.commit.slice(0, 7)}, not the ${download.bytes} addon.json says.`);
+    }
   }
 }
 
@@ -171,6 +219,7 @@ async function add() {
   const previous = catalog.addons.find((existing) => existing.id === entry.id);
   const final = category || !previous ? entry : { ...entry, category: previous.category };
   writeCatalog(withEntry(catalog, final));
+  writeCredits();
   console.log(`${previous ? "Updated" : "Added"} ${final.name} ${final.version} (${final.id}) from ${repo}${link.path ? `/${link.path}` : ""} at ${commit.slice(0, 7)}.`);
   if (previous && previous.version === final.version && previous.source.commit !== final.source.commit) {
     console.log("Note: the commit changed but the version did not. Servers offer an update when the version changes; bump it in addon.json.");
@@ -209,6 +258,10 @@ function summarize(entry, previous) {
   if (entry.setupMB) lines.push(`- Setup: about ${entry.setupMB} MB (check its downloads in addon.json)`);
   if (entry.conflicts.length) lines.push(`- Conflicts with: ${entry.conflicts.map((conflict) => `${conflict.id} (${conflict.reason})`).join("; ")}`);
   if (entry.exclusive.length) lines.push(`- Takes turns for: ${entry.exclusive.join(", ")}`);
+  if (entry.modifies?.length) lines.push(`- Modifies: ${entry.modifies.map((entry) => `${entry.what} (${entry.how})`).join(", ")}`);
+  if (entry.parts?.length) {
+    lines.push(`- Parts: ${entry.parts.map((part) => `${part.title} (${Math.max(1, Math.round(part.bytes / 1024 ** 2))} MB${part.repos.length ? ` from ${part.repos.join(", ")}` : ""})`).join("; ")}`);
+  }
   return `${lines.join("\n")}\n\n`;
 }
 
@@ -249,6 +302,11 @@ async function verify() {
 
 function check() {
   const problems = catalogProblems(readCatalog());
+  if (catalogFile === shippedCatalog && !problems.length) {
+    const { current, next } = creditedReadme();
+    if (next === null) problems.push("README.md has no addon creators table (the addon-creators markers).");
+    else if (next !== current) problems.push("README.md's addon creators table does not match the list; run node scripts/addon-catalog.mjs credits.");
+  }
   for (const problem of problems) fail(problem);
   if (!problems.length) console.log(`OK ${readCatalog().addons.length} addon(s) on the list`);
 }
@@ -257,8 +315,9 @@ try {
   if (command === "add") await add();
   else if (command === "verify") await verify();
   else if (command === "check") check();
+  else if (command === "credits") writeCredits();
   else {
-    console.error("Usage: addon-catalog.mjs add <github link> [--category c] | verify [--changed ref] [--out-dir dir] [--summary file] | check");
+    console.error("Usage: addon-catalog.mjs add <github link> [--category c] | verify [--changed ref] [--out-dir dir] [--summary file] | check | credits");
     process.exitCode = 2;
   }
 } catch (error) {

@@ -408,13 +408,15 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
     // SRD 5.1: "One effect reducing the target's hit point maximum" is one
     // of its five. Narrated back alone, the sheet kept a wight's drain until
     // the next long rest while the story said it was lifted.
-    cures: { conditions: ["exhaustion", "charmed", "petrified", "cursed", "indefinite madness", "max hp reduced"] },
-    note: "Ends one: a level of exhaustion, charmed, petrified, a curse, an indefinite madness, or a reduced hit point maximum (name it in variant: max hp reduced). Reduced ability scores are narrated back.",
+    // So is "one reduction to one of the target's ability scores": a
+    // shadow's drained Strength (src/lib/srd/ability-drain-logic.ts).
+    cures: { conditions: ["exhaustion", "charmed", "petrified", "cursed", "indefinite madness", "max hp reduced", "ability reduced"] },
+    note: "Ends one: a level of exhaustion, charmed, petrified, a curse, an indefinite madness, a reduced hit point maximum or a reduced ability score (name it in variant: max hp reduced, ability reduced).",
   },
   "remove curse": {
     resolution: "buff",
     cures: { conditions: ["cursed"], all: true },
-    note: "Ends every curse on the target; a cursed magic item's attunement is broken (narrated).",
+    note: "Ends every curse on the target and breaks its attunement to a cursed magic item, which can then be set down.",
   },
 
   // ---- words of power and wards of the mind ----

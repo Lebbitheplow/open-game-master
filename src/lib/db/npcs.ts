@@ -9,6 +9,7 @@ import { isUploadedImagePath } from "@/lib/uploads";
 import { storedGender, type Gender } from "@/lib/gender";
 import { storedRace } from "@/lib/npc-race";
 import { attractionJson, keptAttraction, normalizeAttraction, type Attraction } from "@/lib/attraction";
+import { parseNpcState, serializeNpcState, type NpcState } from "@/lib/dm/npc-state-logic";
 import { knownBeforeColumn, parseKnownBefore, type KnownBefore } from "@/lib/dm/known-before-logic";
 import {
   parseBonds,
@@ -107,6 +108,9 @@ export type Npc = {
   // src/lib/dm/known-before-logic.ts): an author's mark, opened into every
   // hero's bond as the table begins. Null for everyone else.
   knownBefore: KnownBefore | null;
+  // Free or a prisoner, bound or not, standing or down, with the party or
+  // not (npc_state, src/lib/dm/npc-state-logic.ts).
+  state: NpcState;
   createdAt: string;
   updatedAt: string;
 };
@@ -139,6 +143,7 @@ type NpcRow = {
   met_at?: string | null;
   heard_at?: string | null;
   known_before_json?: string | null;
+  state_json?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -176,6 +181,7 @@ function mapNpc(row: NpcRow): Npc {
     metAt: row.met_at ?? "",
     heardAt: row.heard_at ?? "",
     knownBefore: parseKnownBefore(row.known_before_json ?? ""),
+    state: parseNpcState(row.state_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -479,6 +485,12 @@ export function setNpcPlace(npcId: string, patch: { factionId: string } | { loca
   } else {
     db.prepare(`UPDATE npcs SET location = ?, updated_at = ? WHERE id = ?`).run(patch.location, nowIso(), npcId);
   }
+  return getNpcById(npcId);
+}
+
+// The NPC's body (npc_state, src/lib/dm/npc-state-logic.ts), already checked.
+export function setNpcState(npcId: string, state: NpcState): Npc | null {
+  getDatabase().prepare(`UPDATE npcs SET state_json = ?, updated_at = ? WHERE id = ?`).run(serializeNpcState(state), nowIso(), npcId);
   return getNpcById(npcId);
 }
 

@@ -113,6 +113,27 @@ test("spliceIntoOrder appends the lowest initiative without moving the pointer",
   assert.equal(spliced.turnIndex, 1);
 });
 
+// The opening order puts a character ahead of a creature on the same count
+// (buildOrder); a hero who joins later on that count went after the creature,
+// so the same tie fell two ways in one fight (rules audit 2026-11-16, tactics).
+test("spliceIntoOrder puts a joining hero ahead of a creature on the same count, as the opening order does", () => {
+  const order = buildOrder(
+    [{ characterId: "c1", userId: "u1", name: "Kara", initiative: 18 }],
+    [{ enemyId: "e1", name: "Goblin", initiative: 12 }, { enemyId: "e2", name: "Wolf", initiative: 5 }],
+  );
+  const spliced = spliceIntoOrder(order, 0, [{ kind: "pc", characterId: "c2", userId: "u2", name: "Bryn", initiative: 12 }]);
+  assert.deepEqual(spliced.order.map((entry) => entry.name), ["Kara", "Bryn", "Goblin", "Wolf"]);
+  assert.equal(spliced.turnIndex, 0);
+  const rebuilt = buildOrder(
+    [{ characterId: "c1", userId: "u1", name: "Kara", initiative: 18 }, { characterId: "c2", userId: "u2", name: "Bryn", initiative: 12 }],
+    [{ enemyId: "e1", name: "Goblin", initiative: 12 }, { enemyId: "e2", name: "Wolf", initiative: 5 }],
+  );
+  assert.deepEqual(spliced.order.map((entry) => entry.name), rebuilt.map((entry) => entry.name));
+  // A creature joining on a hero's count still goes after the hero.
+  const late = spliceIntoOrder(order, 0, [{ kind: "enemy", enemyId: "e3", name: "Orc", initiative: 18 }]);
+  assert.deepEqual(late.order.map((entry) => entry.name), ["Kara", "Orc", "Goblin", "Wolf"]);
+});
+
 test("enemyDamageMath clamps and flags the drop", () => {
   assert.deepEqual(enemyDamageMath(10, 4), { currentHp: 6, dropped: false });
   assert.deepEqual(enemyDamageMath(10, 15), { currentHp: 0, dropped: true });

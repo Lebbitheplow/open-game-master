@@ -214,6 +214,12 @@ export const equipmentItemSchema = z.object({
   // against the three attunements while it waits. Absent on every row
   // written before it.
   attuning: z.boolean().optional(),
+  // The sheet id of the creature still attuned to this item while it is in
+  // someone else's pack or on the ground: lending it, trading it or setting
+  // it down ends no attunement (SRD 5.1, Attunement), so it is attuned again
+  // the moment it comes back to them (src/lib/dm/mutation-math.ts
+  // handedOverRow). Absent on every other row.
+  attunedBy: z.string().trim().max(80).optional(),
   // A warlock's pact weapon (SRD 5.1, Pact of the Blade): "conjured:<the
   // warlock's sheet id>" for the weapon the pact made, which exists only
   // while the pact holds it there; "bonded" for a magic weapon the ritual
@@ -288,6 +294,22 @@ export const equipmentItemSchema = z.object({
   // ("curing"): each casts once a day (src/lib/srd/prayer-beads.ts). Absent
   // on every other row.
   beadsSpent: z.array(z.string().trim().min(1).max(20)).max(12).optional(),
+  // The campaign clock's minute this item's last charge was spent, for one
+  // whose charges come back days after it empties (ChargeRule.regainDays, a
+  // Horn of Valhalla's 7). Absent on every other row.
+  emptiedAt: z.number().int().min(0).optional(),
+  // What is left of each property with a count of its own (GearDef.powers),
+  // by the property's name: a Staff of Thunder and Lightning's "Thunderclap"
+  // at 0 until dawn. A property not listed is whole.
+  powerCharges: z.record(z.string().trim().min(1).max(40), z.number().int().min(0).max(50)).optional(),
+  // The clock's minute each property waiting hours was spent (an Orb of
+  // Dragonkind's Call Dragons, ChargeRule.regainHours), by its name.
+  powersEmptiedAt: z.record(z.string().trim().min(1).max(40), z.number().int().min(0)).optional(),
+  // A carried light's burn (src/lib/dm/carried-light-logic.ts): the clock's
+  // minute one of these was lit, and the minutes of burn it had then (or has
+  // left, put out). Absent on every other row, and on a light never lit.
+  litAt: z.number().int().min(0).optional(),
+  burnLeft: z.number().int().min(0).max(100000).optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed
@@ -839,7 +861,14 @@ export const petSchema = z.object({
   fly: z.number().int().min(0).max(120).optional(),
   saves: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
   skills: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
-  conditions: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+  // Beside what the bond lays, the conditions a failed save laid (Hold
+  // Monster's paralysis, a net's restraint), timed and ended as a
+  // character's are (src/lib/dm/pet-conditions.ts), with the same metadata.
+  conditions: z.array(z.string().trim().min(1).max(60)).max(15).optional(),
+  conditionMeta: conditionMetaSchema.optional(),
+  // A familiar its owner dismissed into its pocket dimension (Find
+  // Familiar): kept, out of reach, until called back (src/lib/dm/pet-pocket.ts).
+  pocketed: z.boolean().optional(),
 });
 export type SheetPet = z.infer<typeof petSchema>;
 

@@ -17,7 +17,8 @@ import {
   type LucideIcon,
   Image as ImageIcon,
 } from "lucide-react";
-import { BRUSH_LABELS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { BRUSH_LABEL_KEYS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { translate } from "@/lib/messages-logic";
 import type { ZoneKind } from "@/lib/battlemap/scene";
 import type { StampKind } from "@/lib/battlemap/stamp";
 import { SHAPE_EFFECTS, type ShapeTool } from "@/lib/battlemap/tools";
@@ -171,7 +172,7 @@ export function mapHotkeyGroups(caps: SurfaceCaps) {
     { title: "Tools", rows: chips.map((entry) => ({ keys: [entry.key], does: entry.label })) },
     {
       title: "Brushes",
-      rows: Object.entries(BRUSH_KEYS).map(([key, brush]) => ({ keys: [key], does: BRUSH_LABELS[brush] })),
+      rows: Object.entries(BRUSH_KEYS).map(([key, brush]) => ({ keys: [key], does: translate("en", BRUSH_LABEL_KEYS[brush]) })),
     },
     {
       title: "Editing",

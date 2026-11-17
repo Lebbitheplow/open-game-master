@@ -5,16 +5,18 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
-import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, proneAsItFalls, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
+import { itemProficiencyBonus, proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
 import { defaultHeld, keepHeldGuess, unguessed, wearGained } from "@/lib/dm/held-default";
 import { guessStands } from "@/lib/dm/gear-hands";
 import { lastAttackDetail } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { endedByDonning } from "@/lib/dm/armor-donned-logic";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
 import { normalizeSpellcasting } from "@/lib/srd/spell-lists";
 import { settleAttunement, type Wearer } from "@/lib/srd/magic-items";
@@ -38,7 +40,7 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
-import { noteIncapacity } from "@/lib/db/incapacity-watch";
+import { noteFallUnconscious, noteIncapacity } from "@/lib/db/incapacity-watch";
 import { repairedPets } from "@/lib/srd/familiar-forms";
 import { rowName } from "@/lib/srd/item-row";
 
@@ -529,6 +531,8 @@ export function createSheet(
     campaignId,
     // The race's spells' counters (issue #833).
     { race: input.race, variant: input.racialChoices?.variant },
+    // An Ioun Stone of Mastery among the gear (src/lib/srd/proficiency.ts).
+    proficiencyBonusOf({ ...input, level, equipment: capAttunement(input.equipment ?? [], { ...input, level }) }),
   );
   // Unless the AC is pinned, it comes from the gear they are actually
   // carrying rather than the builder's suggestion. An absent flag means a
@@ -876,6 +880,12 @@ export function patchSheet(
     );
   }
 
+  // The proficiency bonus the counters sized by it read, with an attuned
+  // Ioun Stone of Mastery's +1 (src/lib/srd/proficiency.ts); a stone put on,
+  // set down or attuned re-sizes them as a level would.
+  const levelAfter = usingClasses ? summedLevel : (patch.level ?? existing.level);
+  const stoneMoved = patch.equipment !== undefined && itemProficiencyBonus(patch.equipment, existing) !== itemProficiencyBonus(existing.equipment, existing);
+
   const next = {
     name: patch.name ?? existing.name,
     race: patch.race ?? existing.race,
@@ -921,7 +931,8 @@ export function patchSheet(
       (patch.level !== undefined ||
       patch.features !== undefined ||
       patch.abilities !== undefined ||
-      patch.classes !== undefined
+      patch.classes !== undefined ||
+      stoneMoved
         ? populateResources(
             patch.features ?? existing.features,
             usingClasses ? summedLevel : (patch.level ?? existing.level),
@@ -936,6 +947,7 @@ export function patchSheet(
             patch.feats ?? existing.feats,
             existing.campaignId,
             { race: patch.race ?? existing.race },
+            proficiencyBonusOf({ ...existing, level: levelAfter, equipment: patch.equipment ?? existing.equipment }),
           )
         : existing.resources),
     equipment: patch.equipment ?? existing.equipment,
@@ -1018,6 +1030,7 @@ export function patchSheet(
       next.feats,
       existing.campaignId,
       { race: next.race },
+      proficiencyBonusOf(next),
     );
   }
 
@@ -1048,6 +1061,8 @@ export function patchSheet(
   }
   // A fall unconscious ends a rage and a sacred weapon, whichever route laid
   // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  // And the one who falls unconscious falls prone, whichever route laid it.
+  next.conditions = proneAsItFalls(existing.conditions, next.conditions) ?? next.conditions;
   const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
   if (asleep.length) {
     const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
@@ -1072,6 +1087,11 @@ export function patchSheet(
   noteGrounding(existing.campaignId, existing, next);
   // Falling incapacitated is answered by Faithful Summons (incapacity-watch.ts).
   noteIncapacity(existing.campaignId, sheetId, existing, next);
+  // And falling unconscious lets go of what is in hand (fallen-gear.ts); an
+  // undo putting the fall back is no new fall.
+  if (!options.restoring) {
+    noteFallUnconscious({ kind: "sheet", campaignId: existing.campaignId, id: sheetId }, existing, next);
+  }
 
   // Temporary hit points a spell granted for its duration go when it ends
   // (False Life, Heroism): the instance that granted them carries the claim.
@@ -1100,6 +1120,13 @@ export function patchSheet(
     ? next.equipment
     : wearGained(existing.equipment, next.equipment, hydrateHomebrewGear(existing.userId, next.equipment, { campaignId: existing.campaignId }));
   next.equipment = capAttunement(keepHeldGuess(existing.equipment, gained, options.guessing || options.restoring), next);
+  // Mage Armor ends when its creature dons armor (armor-donned-logic.ts); an
+  // undo puts back the sheet as it was.
+  const doffed = options.restoring ? null : endedByDonning(existing, { ...next, conditionMeta: next.conditionMeta as ConditionMetaMap });
+  if (doffed) {
+    next.conditions = doffed.conditions;
+    next.conditionMeta = doffed.conditionMeta as typeof next.conditionMeta;
+  }
   if (!next.acOverride) {
     next.ac = deriveAc({
       class: next.class,

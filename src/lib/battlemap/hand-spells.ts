@@ -8,6 +8,10 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { pointsForCard } from "@/lib/dm/ar-ws-points-offer";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
+import { translate, type Locale } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
@@ -16,11 +20,15 @@ import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { authoredSpendFor, gateHolds } from "@/lib/srd/authored-effects";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { affinityCastType } from "@/lib/srd/dragon-ancestor";
-import { heldAtWill, resourceDef, resourceLevel, type ResourceDef, resourceName } from "@/lib/srd/class-resources";
+import { heldAtWill, rechargeOf, resourceDef, resourceLevel, type ResourceDef, resourceName } from "@/lib/srd/class-resources";
+import { resourceDisplayName, resourceGuidance } from "@/lib/srd/class-resources-fr";
+import { conditionWord } from "@/lib/battlemap/hand-display";
+import { damageTypeWord } from "@/lib/dm/damage-logic";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
@@ -119,8 +127,9 @@ export function factFor(name: string, options: HandOptions): SpellFact | null {
 
 const title = (word: string) => word.replace(/^./, (c) => c.toUpperCase());
 
-// Bestow Curse's nine curses, in the words a player picks from.
-const CURSE_LABELS: Record<string, string> = {
+// Bestow Curse's nine curses, in the words a player picks from. The values
+// sent stay the engine's own ids; the labels are keyed.
+const CURSE_KEYS: Record<string, string> = {
   str: "Strength",
   dex: "Dexterity",
   con: "Constitution",
@@ -145,16 +154,16 @@ export function namedSpellGlyph(name: string): SpellGlyph {
 // on worn armor, the condition a restoration ends, a buff's form
 // (Enlarge/Reduce). The value is what cast_at_enemy's `condition` or
 // cast_buff's `variant` reads (src/lib/dm/spell-riders.ts chosenCondition).
-export function spellChoice(mech: SpellMech): HandChoice | undefined {
+export function spellChoice(mech: SpellMech, t: T = enT): HandChoice | undefined {
   const condition = mech.condition;
   if (condition?.variants && condition.variants.length > 1) {
     return {
       arg: "condition",
-      label: "Choose",
+      label: t("Choose"),
       options: condition.variants.map((variant) => {
         const inner = /\(([^)]+)\)$/.exec(variant)?.[1];
         return inner
-          ? { value: inner, label: CURSE_LABELS[inner] ?? title(inner) }
+          ? { value: inner, label: (CURSE_KEYS[inner] ? t(CURSE_KEYS[inner]) : title(inner)) }
           : { value: variant, label: title(variant) };
       }),
     };
@@ -162,17 +171,17 @@ export function spellChoice(mech: SpellMech): HandChoice | undefined {
   if (condition?.choices && Object.keys(condition.choices).length) {
     return {
       arg: "condition",
-      label: "The word",
+      label: t("The word"),
       options: Object.entries(condition.choices).map(([word, adds]) => ({ value: word, label: title(word), note: adds.join(", ") })),
     };
   }
   if (mech.riders?.gripSave) {
     return {
       arg: "condition",
-      label: "The metal",
+      label: t("The metal"),
       options: [
-        { value: "", label: "A held object" },
-        { value: "armor", label: "Worn armor" },
+        { value: "", label: t("A held object") },
+        { value: "armor", label: t("Worn armor") },
       ],
       fallback: "",
     };
@@ -180,12 +189,12 @@ export function spellChoice(mech: SpellMech): HandChoice | undefined {
   if (mech.cures && !mech.cures.all && mech.cures.conditions.length > 1) {
     return {
       arg: "variant",
-      label: "Ends",
-      options: mech.cures.conditions.map((entry) => ({ value: entry, label: entry === "cursed" ? "A curse" : title(entry) })),
+      label: t("Ends"),
+      options: mech.cures.conditions.map((entry) => ({ value: entry, label: entry === "cursed" ? t("A curse") : title(entry) })),
     };
   }
   if (mech.buff?.variants && mech.buff.variants.length > 1) {
-    return { arg: "variant", label: "Choose", options: mech.buff.variants.map((variant) => ({ value: variant, label: title(variant) })) };
+    return { arg: "variant", label: t("Choose"), options: mech.buff.variants.map((variant) => ({ value: variant, label: title(variant) })) };
   }
   return undefined;
 }
@@ -233,20 +242,23 @@ export type StoredCard = {
 // would not split (a flat bonus on the end) name both types after the sum.
 // The caster's own additions sit beside the type they deal (Elemental
 // Affinity's Charisma beside Ice Storm's cold), as the cast tools land them.
+// The type words are the reader's (damageTypeWord), the join the table's.
 type CardBonus = Pick<SpellDamageRiders, "flat" | "flatSecond" | "dice" | "diceSecond">;
-function typedDice(dice: string, mech: SpellMech, bonus?: CardBonus | null): string {
+function typedDice(dice: string, mech: SpellMech, bonus: CardBonus | null | undefined, t: T, locale: Locale): string {
   const plus = (part: string, extra: string[], flat: number) => addFlat([part, ...extra].join("+"), flat);
+  const word = (type: string) => damageTypeWord(type, locale);
   if (!mech.damageType) return dice;
-  const parts = mech.secondType ? splitDamageExpression(dice, mech.secondType) : null;
-  if (!parts) {
+  const second = mech.secondType;
+  const parts = second ? splitDamageExpression(dice, second) : null;
+  if (!parts || !second) {
     const all = plus(dice, [...(bonus?.dice ?? []), ...(bonus?.diceSecond ?? [])], (bonus?.flat ?? 0) + (bonus?.flatSecond ?? 0));
-    return mech.secondType ? `${all} ${mech.damageType} and ${mech.secondType}` : `${all} ${mech.damageType}`;
+    return second ? `${all} ${word(mech.damageType)}${t(" and ", { context: "table.hand.join.and" })}${word(second)}` : `${all} ${word(mech.damageType)}`;
   }
   const [firstDice, secondDice] = parts;
-  return `${plus(firstDice, bonus?.dice ?? [], bonus?.flat ?? 0)} ${mech.damageType} + ${plus(secondDice, bonus?.diceSecond ?? [], bonus?.flatSecond ?? 0)} ${mech.secondType}`;
+  return `${plus(firstDice, bonus?.dice ?? [], bonus?.flat ?? 0)} ${word(mech.damageType)} + ${plus(secondDice, bonus?.diceSecond ?? [], bonus?.flatSecond ?? 0)} ${word(second)}`;
 }
 
-export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}, stored?: StoredCard): HandCard | null {
+export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}, stored?: StoredCard, t: T = enT, locale: Locale = "en"): HandCard | null {
   const blasts = options.blasts !== false;
   const cost = stored?.item?.cost ?? castingCost(fact.castingTime) ?? (stored ? "action" : null);
   if (!cost) return null;
@@ -270,7 +282,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // while a use is left, as the cast guard spends it (issue #833): the card
   // shows those uses rather than a slot it would not spend. A ring's spell
   // spends neither.
-  const free = stored || beam || fact.level === 0 ? null : freeUseOf(sheet, name, fact.facts ?? bundledSpellFacts(name));
+  const free = stored || beam || fact.level === 0 ? null : freeUseOf(sheet, name, fact.facts ?? bundledSpellFacts(name), t);
   const slot = !stored && fact.level > 0 && !beam && !free?.free ? lowestSlot(sheet, fact.level) : null;
   const slotLevel = stored?.entry.level ?? slot?.level;
   // The level the dice are rolled at: the ring's, the slot's, or the free
@@ -304,7 +316,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // The modifier and what the caster's features add, as the heal tool
     // rolls them (heal-bonus.ts): an item's spell heals with the modifier its
     // own DC implies, a ring's with its first caster's.
-    const added = healAdditions(sheet, castLevel ?? fact.level, derived.abilityMods);
+    const added = healAdditions(sheet, castLevel ?? fact.level, formulaMods(derived));
     const modifier = healModifier({
       dc: stored ? stored.entry.saveDc ?? null : spellSaveDcFor(sheet, name),
       proficiencyBonus: derived.proficiencyBonus,
@@ -344,7 +356,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const bonus = damage && !heals && !beam && mech.damageType
     ? spellDamageRiders(sheet, { school: fact.school || bundledSpellSchool(name), damageType: mech.damageType, secondType: mech.secondType, level: fact.level, classes: facts?.classes?.map((entry) => textKey(entry)) })
     : null;
-  const typed = damage ? typedDice(damage, mech, bonus) : "";
+  const typed = damage ? typedDice(damage, mech, bonus, t, locale) : "";
   if (damage && bonus) {
     damage = addFlat([damage, ...bonus.dice, ...bonus.diceSecond].join("+"), bonus.flat + bonus.flatSecond);
   }
@@ -353,33 +365,40 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const struck = toHit !== null ? spellAttackLines(sheet, toHit, isMeleeSpellAttack(engine, facts?.range.kind), options.board?.attackAura) : null;
   if (struck?.onHit && damage) damage = `${damage}${struck.onHit}`;
   const dice = heals
-    ? damage ? `heals ${damage}` : "heals"
+    ? damage ? t("heals {dice}", { dice: damage }) : t("heals")
     : save
-      ? typed ? `${typed}, ${save.ability} save` : `${save.ability} save DC ${save.dc}`
-      : (typed && struck?.onHit ? `${typed} ${struck.onHit.replace(/^\+/, "+ ")}` : typed) ||
+      ? typed ? t("{dice}, {ability} save", { dice: typed, ability: save.ability }) : t("{ability} save DC {dc}", { ability: save.ability, dc: save.dc, context: "table.hand.spell.saveDc" })
+      : (typed && struck?.onHit ? t("{dice} {onHit}", { dice: typed, onHit: struck.onHit.replace(/^\+/, "+ ") }) : typed) ||
         (mech.buff
           ? // A buff with an aura that hurts (Spirit Guardians) names the
             // engine's dice beside it; the card itself aims at no enemy.
-            `${mech.buff.condition}${mech.resolution === "buff" && rolled ? `, ${typedDice(rolled.dice, mech)}` : ""}`
+            `${mech.buff.condition}${mech.resolution === "buff" && rolled ? `, ${typedDice(rolled.dice, mech, null, t, locale)}` : ""}`
           : "");
   const roll =
-    struck ? toHitWords(struck) : save ? (typed ? `DC ${save.dc}${mech.halfOnSave ? ", half on a save" : ""}` : "no attack") : "no roll";
+    struck
+      ? t("{bonus} to hit", { bonus: `${(struck.toHit ?? 0) >= 0 ? "+" : ""}${struck.toHit ?? 0}${struck.toHitDice ?? ""}` })
+      : save
+        ? typed ? t("DC {dc}{tail}", { dc: save.dc, tail: mech.halfOnSave ? t(", half on a save") : "" }) : t("no attack")
+        : t("no roll", { context: "table.hand.roll.none" });
   const notes: string[] = [...(struck?.notes ?? [])];
   if (beam) {
-    notes.push("Beam connected: free at its target. Others: new casting, beam ends.");
+    notes.push(t("Beam connected: free at its target. Others: new casting, beam ends."));
   }
   if (fact.concentration && sheet.concentratingOn && textKey(sheet.concentratingOn) !== textKey(name)) {
-    notes.push(`Ends your concentration on ${sheet.concentratingOn}.`);
+    notes.push(t("Ends your concentration on {spell}.", { spell: sheet.concentratingOn }));
   }
   // A note the model reads too: its tool directions are not the player's
   // (src/lib/language/player-text.ts).
   const note = mech.note ? forPlayers(mech.note) : "";
   if (note) notes.push(note);
-  if (slot && slot.level > fact.level) notes.push(`Cast with a level ${slot.level} slot.`);
+  if (slot && slot.level > fact.level) notes.push(t("Cast with a level {level} slot.", { level: slot.level }));
   if (free?.free && free.note) notes.push(free.note);
   // Mechanics the app read from the spell's text that nobody checked
-  // (issue #570): the card's details say so.
-  if (fact.bestEffort) notes.push(BEST_EFFORT_SHORT);
+  // (issue #570): the card's details say so. Keyed words, the English ones
+  // byte-identical to reading-logic's constants (test-best-effort.mjs pins
+  // the English line; the equality anchor below maps the short form to the
+  // whole note in either language).
+  if (fact.bestEffort) notes.push(t("Best effort: read from its text, not yet checked."));
   // Every refusal below is the cast guard's own (src/lib/dm/cast-rules.ts),
   // asked of the same sheet: raging, a beast form without Beast Spells,
   // untrained armor, a verbal component while silenced, no free hand, a
@@ -421,10 +440,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const byPoints = stored || beam ? null : pointsForCard(sheet, engine, facts, slotLevel, { components: Boolean(components.problem) || hushed || "error" in material, slot: Boolean(slotRefusal && "error" in slotRefusal) });
   const bare = Boolean(byPoints?.bare);
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
-  if (melee) notes.unshift("Melee spell attack: a creature beside you.");
-  // The Metamagic paid for the next spell, as the cast will apply it: the
-  // same reader the cast paths ask (src/lib/dm/mt-srd-metamagic-logic.ts, pure:
-  // the Hand reads no database, so the duration is the SRD's baked one).
+  if (melee) notes.unshift(t("Melee spell attack: a creature beside you."));
   const metamagic = stored
     ? null
     : cardMetamagic(sheet, facts, {
@@ -436,28 +452,33 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
       });
   if (metamagic?.notes.length) notes.unshift(...metamagic.notes);
   if (stored) {
-    notes.unshift(stored.item?.note ?? (stored.holds ? `Out of ${stored.ring}, with no slot. It takes turns to cast: this begins it and holds your action each turn.` : `Out of ${stored.ring}, with no slot.`));
+    notes.unshift(stored.item?.note ?? (stored.holds ? t("Out of {ring}, with no slot. It takes turns to cast: this begins it and holds your action each turn.", { ring: stored.ring }) : t("Out of {ring}, with no slot.", { ring: stored.ring })));
   }
   // A feature that moves the spell to the bonus action shows it there.
   const shownCost: HandCost = stored?.free ? "free" : !stored && !("error" in charge) && charge.kind === "budget" && charge.cost === "bonus action" ? "bonus" : cost;
   const fromRing = stored ? { item: stored.ring } : {};
   const featureReach = featureSpellReachFeet(sheet, { name, runsAs: fact.runsAs });
+  const shownRange = (() => {
+    if (metamagic?.range) return feet(rangeText(metamagic.range), t);
+    if (featureReach) return feet(`${featureReach} feet`, t);
+    if (facts?.range.kind === "self") return t("Self", { context: "table.hand.range.self" });
+    if (facts?.range.kind === "touch") return t("Touch");
+    if (facts?.range.kind === "feet") return t("{feet} ft", { feet: facts.range.feet });
+    return feet(fact.range, t);
+  })();
   const card: HandCard = {
     id: stored?.item?.id ?? (stored ? `spell:ring:${textKey(stored.ring)}:${textKey(name)}` : `spell:${textKey(name)}`),
     type,
     name: stored?.item?.name ?? (stored ? ringCardName(name) : name),
     cost: shownCost,
-    // The reach a feature gives this caster's casting (a Spirits bard's
-    // Guidance at 60 feet) is the one cast-reach.ts measures; a Metamagic
-    // paid for the spell (Distant Spell) changes it for this cast.
-    range: metamagic?.range ? feet(rangeText(metamagic.range)) : feet(featureReach ? `${featureReach} feet` : fact.range),
+    range: shownRange,
     dice,
     roll,
     rules: notes.slice(0, 2).join(" "),
-    description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: beam ? "No slot" : (stored?.item?.resource ?? (stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : byPoints ? `Sorcery points ${byPoints.points}` : slot ? slotLine(slot) : `Level ${fact.level} · no slots`)),
+    description: [fact.desc, fact.higherLevel ? t("At higher levels: {text}", { text: fact.higherLevel }) : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? t(BEST_EFFORT_NOTE) : note))].filter(Boolean).join("\n\n"),
+    resource: beam ? t("No slot") : (stored?.item?.resource ?? (stored ? t("Level {level}", { level: stored.entry.level }) : fact.level === 0 ? t("Cantrip", { context: "table.hand.spell.cantrip" }) : free?.free ? free.line : byPoints ? t("Sorcery points {points}", { points: byPoints.points }) : slot ? slotLine(slot, t) : t("Level {level} · no slots", { level: fact.level }))),
     ...(stored ? { fromItem: stored.fromItem } : {}),
-    condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
+    condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? t("Concentration") : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     // What the spell mainly does, drawn in the card's art well (issue 845).
     // A ring's card wears it too: it is the spell.
@@ -476,7 +497,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // A touch spell is a melee spell attack with touch reach (the engine's
     // isMeleeSpellAttack): it previews and aims like a swing.
     melee,
-    ...(melee && !metamagic?.range ? { range: "Touch" } : {}),
+    ...(melee && !metamagic?.range ? { range: t("Touch") } : {}),
     disabled: null,
     spent: false,
     compose: false,
@@ -492,19 +513,19 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   };
   // The beam asks only what its cost does: no slot, components or material.
   if (beam) {
-    return gated(card, standingGate(sheet, turn), chargeGate);
+    return gated(card, standingGate(sheet, turn, "action", t), chargeGate);
   }
   // Nothing to pick for a reaction, or for a casting that is only begun.
   const plain = cost === "reaction" || stored?.holds === true;
   if (stored?.holds) card.target = "none";
-  const choice = plain ? undefined : spellChoice(mech);
+  const choice = plain ? undefined : spellChoice(mech, t);
   if (choice) card.choice = choice;
   // Polymorph's beast, which cast_buff and cast_at_enemy read from variant
   // (enemy-polymorph.ts): the card sent none and was sent back every time.
-  if (!plain && textKey(fact.runsAs ?? name) === "polymorph") card.choice = polymorphChoice();
+  if (!plain && textKey(fact.runsAs ?? name) === "polymorph") card.choice = polymorphChoice(t);
   // A summoning spell that calls more than one creature from this slot asks
   // which, and how many where the spell lets its caster choose (issue 685).
-  const summoning = plain ? null : summonPick(options.summons?.[textKey(name)], slotLevel ?? fact.level);
+  const summoning = plain ? null : summonPick(options.summons?.[textKey(name)], slotLevel ?? fact.level, t);
   if (summoning) {
     card.choice = summoning.choice;
     card.summon = summoning.summon;
@@ -541,11 +562,11 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   // deals it then (hand-react.ts), in this card's place (withReactions): open
   // here it was refused in every state, out of a fight too. A ring's own gates
   // already say so (hand-ring.ts waitsForTrigger).
-  const waits: Gate = cost === "reaction" ? waitsForTrigger(name, false) : null;
+  const waits: Gate = cost === "reaction" ? waitsForTrigger(name, false, t) : null;
   if (stored) return gated(card, ...stored.gates, noNumbers ? { reason: `${stored.ring} casts ${name} with its user's own spell numbers, and ${sheet.name} has none.`, spent: false } : null);
   return gated(
     card,
-    standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast"),
+    standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast", t),
     problem(casterStateProblem(sheet)),
     // Arcane Deflection's price, as the cast door asks it (ar-ws-deflection-mark.ts).
     problem(deflectionCastProblem(sheet, facts?.name ?? name, fact.level)),
@@ -554,7 +575,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // stand in, as the cast guard asks them (cast-rules.ts castComponents).
     bare ? null : problem(components.problem ?? (hushed ? silenceRefusal(sheet.name, options.board!.silence!.by || null, components.facts!.name) : null)),
     // A reaction spell needs a reaction to spend (slowed takes it away).
-    cost === "reaction" ? costGate("reaction", turn, sheet, name) : null,
+    cost === "reaction" ? costGate("reaction", turn, sheet, name, t) : null,
     !bare && "error" in material ? { reason: material.error, spent: false } : null,
     !byPoints && slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
     chargeGate,
@@ -569,7 +590,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
 // spell cards and its reaction cards (hand-react.ts) both read it, as the
 // cast guard spends it.
 export type FreeUse = { free: boolean; line: string; note?: string; spent?: string; castAt?: number };
-export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType<typeof bundledSpellFacts>): FreeUse | null {
+export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType<typeof bundledSpellFacts>, t: T = enT): FreeUse | null {
   const grant = grantedCastOf(sheet, name, facts);
   if (grant?.slot === "free") {
     if (grantCastsFree(sheet, grant, facts, undefined)) {
@@ -582,12 +603,12 @@ export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType
         return { free: true, castAt, line: `${grant.cost} ${resourceName(grant.counter)}`, note: `No slot: ${grant.cost} ${resourceName(grant.counter)} a cast, ${uses.left} more until a ${grant.rest ?? "long"} rest.` };
       }
       return uses
-        ? { free: true, castAt, line: `Free ${uses.left}/${uses.max}`, note: `No slot: ${uses.left} of ${uses.max} free uses left until a ${grant.rest ?? "long"} rest.` }
-        : { free: true, castAt, line: "Free · at will" };
+        ? { free: true, castAt, line: t("Free {left}/{max}", { left: uses.left, max: uses.max }), note: t("No slot: {left} of {max} free uses left until a {rest} rest.", { left: uses.left, max: uses.max, rest: t(grant.rest === "short" ? "short" : "long") }) }
+        : { free: true, castAt, line: t("Free · at will") };
     }
     return grant.slotsToo
       ? { free: false, line: "" }
-      : { free: false, line: "", spent: `${name} is spent until a ${grant.rest ?? "long"} rest.` };
+      : { free: false, line: "", spent: t("{name} is spent until a {recharge} rest.", { name, recharge: t(grant.rest === "short" ? "short" : "long") }) };
   }
   // A feat's free cast: at will (no counter), or a short or long rest's.
   const held = heldFreeCastId(sheet.features, facts?.name ?? name);
@@ -597,11 +618,11 @@ export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType
   const id = held ?? freeCastResourceId(facts?.name ?? name);
   const state = sheet.resources?.[id];
   return state && state.used < state.max
-    ? { free: true, castAt: facts?.level, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a ${freeCastRestOf(id)} rest.` }
+    ? { free: true, castAt: facts?.level, line: t("Free {left}/{max}", { left: state.max - state.used, max: state.max }), note: t("No slot: {left} of {max} free uses left until a {rest} rest.", { left: state.max - state.used, max: state.max, rest: t(freeCastRestOf(id)) }) }
     : null;
 }
 
-export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
+export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions, t: T = enT, locale: Locale = "en"): HandCard[] {
   const rows: Array<{ level: number; card: HandCard }> = [];
   const names = spellNames(sheet);
   // A beam held from a scroll or an item, its spell on no list of theirs.
@@ -612,7 +633,7 @@ export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: Combat
   for (const name of names) {
     const fact = factFor(name, options);
     if (!fact) continue;
-    const card = spellCard(sheet, turn, riders, name, fact, options);
+    const card = spellCard(sheet, turn, riders, name, fact, options, undefined, t, locale);
     if (card) rows.push({ level: fact.level, card });
   }
   // Attacks first inside a level, so the cantrip that hurts leads the hand.
@@ -648,23 +669,22 @@ function featureCost(def: ResourceDef, sheet: CharacterSheet): HandCost {
   return !action || action === "none" ? "free" : action;
 }
 
-// A counter whose use names what it takes, listed on its authored row (a
-// Spell-Storing Item's spell, authored-effects-w2-arcane.ts): the card offers
-// that list as the variant use_resource reads. It sent none, and every play
-// was asked for the spell.
-function counterPick(def: ResourceDef, sheet: CharacterSheet): HandChoice | null {
+function counterPick(def: ResourceDef, sheet: CharacterSheet, t: T = enT): HandChoice | null {
   // Infuse Item offers the infusions the artificer knows (infuse-item.ts).
   if (def.id === INFUSE_COUNTER) {
-    return { arg: "variant", label: "Infusion", options: infusionPicks(sheet).map((value) => ({ value, label: value })) };
+    return { arg: "variant", label: t("Infusion"), options: infusionPicks(sheet).map((value) => ({ value, label: value })) };
   }
   const found = authoredSpendFor(sheet, def.displayName);
   const does = found?.spend.does;
   if (!does || does.kind !== "choose" || found?.spend.pool?.id !== def.id) return null;
-  return { arg: "variant", label: "Choose", options: does.options.map((value) => ({ value, label: pickLabel(value) })) };
+  return { arg: "variant", label: t("Choose"), options: does.options.map((value) => ({ value, label: pickLabel(value) })) };
 }
 
-export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
+export function featureCards(sheet: CharacterSheet, turn: HandTurn, t: T = enT, locale: Locale = "en"): HandCard[] {
   const derived = computeSheetDerived(sheet);
+  // The card's dice read the character's proficiency bonus as the spend
+  // does (resource-tools.ts): Healing Hands' d4s, a Chef's treat.
+  const fxMods = formulaMods(derived);
   const cards: HandCard[] = [];
   // An at-will feature (One with Shadows) has no counter on the sheet: its
   // card comes from the feature held, and reads no uses.
@@ -688,7 +708,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     // A spend the server resolves is its own card, dealt here in its
     // counter's place (hand-subclass.ts counterSpendCards).
     if (playedAsSpendCard(sheet, def.displayName)) {
-      cards.push(...counterSpendCards(sheet, turn, def.displayName));
+      cards.push(...counterSpendCards(sheet, turn, def.displayName, t));
       continue;
     }
     // A spend of the counter's own name whose option is not chosen (an
@@ -715,32 +735,35 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     let condition = "";
     let damageType = "";
     if (effect.kind === "heal_self" || effect.kind === "heal_target") {
-      damage = effect.dice(level, derived.abilityMods);
-      dice = `heals ${damage}`;
+      damage = effect.dice(level, fxMods);
+      dice = t("heals {dice}", { dice: damage });
       type = "mend";
       heals = true;
       target = effect.kind === "heal_self" ? "self" : "ally";
     } else if (effect.kind === "heal_pool" || effect.kind === "heal_dice_pool") {
-      dice = effect.kind === "heal_pool" ? `heals up to ${left}` : `heals ${effect.die} a die`;
+      dice = effect.kind === "heal_pool" ? t("heals up to {count}", { count: left }) : t("heals {die} a die", { die: effect.die });
       type = "mend";
       heals = true;
       target = "ally";
       // How much of the pool to spend is the player's call, so they finish the line.
       compose = true;
     } else if (effect.kind === "temp_hp") {
-      damage = effect.dice(level, derived.abilityMods);
-      dice = `${damage} temp hp`;
+      damage = effect.dice(level, fxMods);
+      dice = t("{dice} temp hp", { dice: damage });
       type = "ward";
       target = "self";
     } else if (effect.kind === "condition" || effect.kind === "buff") {
       // A feature with variants names none on its face: the player picks.
       const variants = effect.kind === "buff" && Boolean(effect.variants?.length);
-      dice = variants ? "" : effect.condition;
+      // The condition rides the dice line too (the Rage card's "raging"), so
+      // it reads the reader's word there the way the card's condition slot
+      // does at render; the card's own field stays the engine word.
+      dice = variants ? "" : conditionWord(effect.condition, t, locale);
       condition = variants ? "" : effect.condition;
       type = "ward";
       target = effect.kind === "buff" && effect.target === "ally" ? "ally" : "self";
     } else if (effect.kind === "inspire") {
-      dice = `+1${effect.die(level)} to a roll`;
+      dice = t("+1{die} to a roll", { die: effect.die(level) });
       type = "ward";
       target = "ally";
     } else if (effect.kind === "aoe") {
@@ -750,39 +773,41 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       damage = spend.dice;
       damageType = spend.damageType ?? effect.typeFromVariant?.[0] ?? "";
       save = { ability: SAVE_LABEL[spend.saveAbility] ?? spend.saveAbility, dc: spend.dc };
-      dice = `${damage}${damageType ? ` ${damageType}` : ""}, ${save.ability} save`;
+      dice = t("{dice}, {ability} save", { dice: `${damage}${damageType ? ` ${damageType}` : ""}`, ability: save.ability });
       type = "spell";
       target = "enemy";
     } else if (effect.kind === "enemy_save") {
-      damage = effect.dice ? effect.dice(level, derived.abilityMods) : null;
+      damage = effect.dice ? effect.dice(level, fxMods) : null;
       damageType = effect.type ?? "";
       save = { ability: SAVE_LABEL[effect.save] ?? effect.save, dc: counterSaveDc(effect.dcAbility, derived, Math.max(...Object.values(derived.abilityMods))) };
-      dice = damage ? `${damage}${damageType ? ` ${damageType}` : ""}, ${save.ability} save` : `${save.ability} save`;
+      dice = damage ? t("{dice}, {ability} save", { dice: `${damage}${damageType ? ` ${damageType}` : ""}`, ability: save.ability }) : t("{ability} save", { ability: save.ability, context: "table.hand.spell.saveOnly" });
       condition = effect.condition ?? "";
       type = condition ? "control" : "spell";
       target = "enemy";
     } else if (effect.kind === "teleport") {
-      dice = `${effect.feet} ft`;
+      dice = t("{feet} ft", { feet: effect.feet });
     } else if (effect.kind === "hit_damage") {
       // Fury of the Small: onto the creature the hit landed on.
-      damage = effect.dice(level, derived.abilityMods);
+      damage = effect.dice(level, fxMods);
       dice = `+${damage}`;
       target = "enemy";
     }
-    const picked = counterPick(def, sheet);
+    const guidance = resourceGuidance(id, locale) ?? def.guidance;
+    const name = resourceDisplayName(id, locale) ?? def.displayName;
+    const picked = counterPick(def, sheet, t);
     const card: HandCard = {
       id: `feature:${id}`,
       type,
-      name: def.displayName,
+      name,
       cost,
       // The reach the spend holds a save to (counter-saves.ts), printed so
       // the card says how near a creature must be.
-      range: (effect.kind === "aoe" || effect.kind === "enemy_save") && effect.rangeFt ? `${effect.rangeFt} ft` : target === "self" || target === "none" ? "Self" : "",
+      range: (effect.kind === "aoe" || effect.kind === "enemy_save") && effect.rangeFt ? t("{feet} ft", { feet: effect.rangeFt }) : target === "self" || target === "none" ? t("Self", { context: "table.hand.range.self" }) : "",
       dice,
-      roll: save ? "no attack" : "no roll",
-      rules: def.guidance.split(". ")[0].replace(/\.?$/, "."),
-      description: def.guidance,
-      resource: def.atWill ? "" : `Uses ${left}/${state.max}`,
+      roll: save ? t("no attack") : t("no roll", { context: "table.hand.roll.none" }),
+      rules: guidance.split(". ")[0].replace(/\.?$/, "."),
+      description: guidance,
+      resource: def.atWill ? "" : t("Uses {left}/{max}", { left, max: state.max }),
       condition,
       icon: { kind: "feature", key: def.displayName, family: `class-${primaryClass(sheet)}` },
       target,
@@ -803,7 +828,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
         ? {
             choice: {
               arg: "variant",
-              label: "Choose",
+              label: t("Choose"),
               options: effect.variants.map((value) => ({ value, label: pickLabel(nameChoice(value) ?? value) })),
             },
           }
@@ -811,9 +836,9 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       // A damage type the holder picks (Drake's Breath), and the beast a Wild
       // Shape becomes, sent as use_resource reads them.
       ...((effect.kind === "aoe" || effect.kind === "enemy_save") && effect.typeFromVariant?.length
-        ? { choice: { arg: "variant" as const, label: "Type", options: breathChoices(sheet, def.id, effect.typeFromVariant).map((value) => ({ value, label: pickLabel(value) })) } }
+        ? { choice: { arg: "variant" as const, label: t("Type", { context: "table.hand.preview.type" }), options: breathChoices(sheet, def.id, effect.typeFromVariant).map((value) => ({ value, label: pickLabel(value) })) } }
         : {}),
-      ...(effect.kind === "wild_shape" && !sheet.wildShape ? { choice: wildShapeChoice(sheet) } : {}),
+      ...(effect.kind === "wild_shape" && !sheet.wildShape ? { choice: wildShapeChoice(sheet, t) } : {}),
       ...(picked ? { choice: picked } : {}),
       // "one creature other than yourself" (Bardic Inspiration): no "(you)" chip.
       ...(effect.kind === "inspire" && effect.othersOnly ? { othersOnly: true } : {}),
@@ -829,27 +854,27 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
         card,
         // A use that replaces one attack is open while a swing of the Attack
         // action is (class-resources.ts replacesAttack).
-        standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : def.replacesAttack ? "attack" : "action"),
+        standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : def.replacesAttack ? "attack" : "action", t),
         // With no use left, the other price its text names still pays
         // (counter-rules.ts otherPrice): sorcery points, or a spell slot.
-        left > 0 || otherPrice(def, sheet) ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
+        left > 0 || otherPrice(def, sheet) ? null : { reason: t("{name} is spent until a {recharge} rest.", { name, recharge: t(rechargeOf(def, sheet) === "long" ? "long" : "short") }), spent: true },
         // SRD 5.1 fighter, Action Surge: "only once on the same turn".
         id === "action_surge" && (turn.marks ?? []).includes(ACTION_SURGED)
-          ? { reason: "Action Surge is used once a turn; the other use waits for a later turn.", spent: true }
+          ? { reason: t("Action Surge is used once a turn; the other use waits for a later turn."), spent: true }
           : null,
-        costGate(cost, turn, sheet, def.displayName),
+        costGate(cost, turn, sheet, name, t),
         id === "indomitable" ? failedSaveGate(def.displayName, turn) : null,
         // What the counter's own row asks first (counter-rules.ts): Rage while
         // raging, Unearthly Recovery above half, a minute's work in a fight.
         gateOf(counterGate(def, sheet, inFightOf(turn))),
         // A counter that rides a weapon hit waits for one this turn.
         effect.kind === "hit_damage" && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
-          ? { reason: `${def.displayName} rides a weapon hit: land one this turn first.`, spent: false }
+          ? { reason: t("{name} rides a weapon hit: land one this turn first.", { name }), spent: false }
           : null,
         // SRD 5.1: Elemental Affinity's resistance comes with a spell of the
         // dragon's damage type, as it is cast (src/lib/dm/affinity-cast.ts).
         id === "elemental_affinity" && !affinityCastType(sheet)
-          ? { reason: "Elemental Affinity's resistance comes with a spell of your dragon's damage type: cast one first.", spent: false }
+          ? { reason: t("Elemental Affinity's resistance comes with a spell of your dragon's damage type: cast one first."), spent: false }
           : null,
       ),
     );

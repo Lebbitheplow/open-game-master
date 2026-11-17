@@ -19,7 +19,7 @@ import { attackerFoeId, freshLastHit, plainOfReroll, type LastHit, type SwingRec
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { settle, spendReaction, SPENT, type Ctx } from "@/lib/dm/reaction-tools";
-import { proficiencyBonus } from "@/lib/srd";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { spendRollCarriers } from "@/lib/dm/forced-save";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
@@ -34,7 +34,7 @@ import { isNamed } from "@/lib/srd/feature-names";
 
 export function defensiveDuelist(ctx: Ctx): ToolResult {
   const { campaign, sheet } = ctx;
-  const bonus = defensiveDuelistBonus(sheet, proficiencyBonus(sheet.level));
+  const bonus = defensiveDuelistBonus(sheet, proficiencyBonusOf(sheet));
   if (bonus === null) {
     return {
       error: `${sheet.name} cannot use Defensive Duelist: it takes the feat and a finesse weapon in hand (equipped on the sheet). Nothing was spent.`,
@@ -71,6 +71,7 @@ export function defensiveDuelist(ctx: Ctx): ToolResult {
     applied: turned
       ? `Defensive Duelist: +${bonus} AC against ${record.attacker.name}'s ${record.attack}; ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.`
       : `Defensive Duelist: +${bonus} AC, but ${record.attacker.name}'s ${record.attack} still hits.`,
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
   };
 }
 

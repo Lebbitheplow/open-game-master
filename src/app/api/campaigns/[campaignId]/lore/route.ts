@@ -26,11 +26,11 @@ export const dynamic = "force-dynamic";
 // left out of a player's list here, so it never crosses the wire to a
 // browser that should not hold it.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -47,7 +47,7 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireStoryAuthority(campaignId);
+  const context = await requireStoryAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

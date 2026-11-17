@@ -3,6 +3,9 @@
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
 import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
 import { useThemePrefs } from "@/lib/theme-mode";
+import { EquipmentArtProvider } from "@/components/ui/EquipmentArtProvider";
+import { ThemeOrnaments } from "@/components/ThemeOrnaments";
+
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
 import { CorrectionReasonChips } from "@/components/CorrectionReasonChips";
@@ -47,6 +50,7 @@ import {
 } from "react";
 import { JOIN_NOTE_PREFIX, latestUnintroducedJoin } from "@/lib/campaign-types";
 import { composerLimit, textLength } from "@/lib/text-limits";
+import { useT } from "@/lib/locale";
 import type { TourEnd } from "@/lib/tours/account-logic";
 import { DM_TOUR, DM_TOUR_ID, FIRST_TURN_TOUR, PLAYER_TOUR, PLAYER_TOUR_ID } from "@/lib/tours/table";
 import { finishTour, useTourFinished } from "@/lib/tours/tour-store";
@@ -97,6 +101,10 @@ import {
   useNarrationStatus,
 } from "@/app/campaigns/[campaignId]/NarrationFailureBanner";
 import { AudioWaitingBanner } from "@/app/campaigns/[campaignId]/AudioWaitingBanner";
+import { EmbeddingLanguageBanner } from "@/app/campaigns/[campaignId]/EmbeddingLanguageBanner";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
+import { seesEmbeddingWarning } from "@/lib/embedding-language-logic";
+import { useEmbeddingWarning } from "@/lib/use-embedding-warning";
 import { turnCharacterId, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 
 import { TabPane } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -296,6 +304,17 @@ export function SessionView({
   const [askOpen, setAskOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  // A pin or a fact saves into a panel that may be closed: a few seconds'
+  // word above the composer says it took.
+  const [confirmation, setConfirmation] = useState<{ glyph: string; text: string; at: number } | null>(null);
+  const confirm = useCallback((next: { glyph: string; text: string }) => setConfirmation({ ...next, at: Date.now() }), []);
+  useEffect(() => {
+    if (!confirmation) {
+      return;
+    }
+    const timer = window.setTimeout(() => setConfirmation(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmation]);
   const [dismissedLevelUp, setDismissedLevelUp] = useState("");
   // The party card's Level up button opened the dialog by hand.
   const [levelUpByHand, setLevelUpByHand] = useState(false);
@@ -418,19 +437,28 @@ export function SessionView({
       <>
         {audioWaiting}
         <NarrationFailureBanner messageIds={messageIds} status={narrationStatus} onRetry={replayNarration} />
+        {confirmation ? (
+          <SessionBanner key={confirmation.at} glyph={confirmation.glyph} tone="quiet">
+            <span role="status" className="block">
+              {confirmation.text}
+            </span>
+          </SessionBanner>
+        ) : null}
       </>
     ),
-    [audioWaiting, messageIds, narrationStatus, replayNarration],
+    [audioWaiting, messageIds, narrationStatus, replayNarration, confirmation],
   );
   // A test fight is in no campaign list (issue 553): the header's way out,
   // the phone's back arrow included, leads to the workshop it tests.
   const testWorkshopId = state.testFight?.workshopId ?? "";
+  // The screen's own sentences speak the interface's language.
+  const t = useT();
   const headerExit = useMemo(
     () =>
       testWorkshopId
-        ? { href: workshopHref(`/workshop/${testWorkshopId}`, { system: "encounters" }), label: "Back to the workshop", glyph: "system-encounters" }
+        ? { href: workshopHref(`/workshop/${testWorkshopId}`, { system: "encounters" }), label: t("Back to the workshop"), glyph: "system-encounters" }
         : undefined,
-    [testWorkshopId],
+    [t, testWorkshopId],
   );
   // Chime on new private messages (side chats + DM whispers). The loaded
   // flags keep the page-load backlog silent.
@@ -611,10 +639,10 @@ export function SessionView({
       const response = await fetch(`/api/campaigns/${breakCampaignId}/table-break`, { method }).catch(() => null);
       if (!response?.ok) {
         const body = (await response?.json().catch(() => null)) as { error?: string } | null;
-        setError(body?.error || (method === "POST" ? "Could not pause the table." : "Could not resume the table."));
+        setError(body?.error || (method === "POST" ? t("Could not pause the table.") : t("Could not resume the table.")));
       }
     },
-    [breakCampaignId],
+    [breakCampaignId, t],
   );
   const resumeTable = useCallback(() => sendBreak("DELETE"), [sendBreak]);
   // A break is for a table with someone else at it (another person or an
@@ -678,7 +706,7 @@ export function SessionView({
     Boolean(firstDmMessageId) &&
     narration.playingMessageId === firstDmMessageId &&
     messages.filter((message) => message.authorType === "dm").length === 1;
-  const myName = actingSheet?.name ?? "your character";
+  const myName = actingSheet?.name ?? t("your character");
   const meId = me?.id ?? "";
   // Muted by the party lead: the server refuses the send, so the box says
   // so instead of letting the player type into a wall.
@@ -687,14 +715,12 @@ export function SessionView({
   // box says so the same way, and the story above it stays to be read.
   const ended = campaign?.status === "ended";
   const silenced = muted || ended;
-  const silencedPlaceholder = ended
-    ? "This campaign has ended. The story stays here to read."
-    : "The party lead has muted you at this table.";
+  const silencedPlaceholder = ended ? t("This campaign has ended. The story stays here to read.") : t("The party lead has muted you at this table.");
   const enemyTurns = state.encounter?.enemyTurns === true;
   const gate = useMemo(
     () =>
-      composerGate({ floor, sheets, meUserId: meId, kind, myName, leadPrivate, openingNarrationPlaying, enemyTurns, playsTurn: gmPlaysTurn }),
-    [floor, sheets, meId, kind, myName, leadPrivate, openingNarrationPlaying, enemyTurns, gmPlaysTurn],
+      composerGate(t, { floor, sheets, meUserId: meId, kind, myName, leadPrivate, openingNarrationPlaying, enemyTurns, playsTurn: gmPlaysTurn }),
+    [t, floor, sheets, meId, kind, myName, leadPrivate, openingNarrationPlaying, enemyTurns, gmPlaysTurn],
   );
   // A mid-game joiner without a character is gated to creation first. The DM
   // runs no character, so the gate must never catch them.
@@ -704,7 +730,7 @@ export function SessionView({
   const showJoinBanner = steersStory && joinNotice !== null && dismissedJoinNotice !== joinNotice.id;
   const panelTabs = useMemo(
     () =>
-      buildPanelTabs({
+      buildPanelTabs(t, {
         hasBattleMap: Boolean(state.battleMap),
         mapsEnabled: campaign?.gameSettings?.mapsEnabled ?? true,
         hasSettings: Boolean(campaign),
@@ -712,7 +738,7 @@ export function SessionView({
         adjudicates: caps.adjudicates,
         isLead,
       }),
-    [state.battleMap, campaign, caps.secretStory, caps.adjudicates, isLead],
+    [t, state.battleMap, campaign, caps.secretStory, caps.adjudicates, isLead],
   );
   const panelTabIds = useMemo(() => panelTabs.map(([id]) => id), [panelTabs]);
   usePreloadTable(panelTabIds);
@@ -787,21 +813,21 @@ export function SessionView({
       }).catch(() => null);
       if (!response?.ok) {
         const body = (await response?.json().catch(() => null)) as { error?: string } | null;
-        setError(body?.error || (action === "end" ? "Could not end the session." : "Could not start the session."));
+        setError(body?.error || (action === "end" ? t("Could not end the session.") : t("Could not start the session.")));
       }
     },
-    [sessionCampaignId],
+    [sessionCampaignId, t],
   );
   const endSession = useCallback(async () => {
     const ok = await appConfirm(
-      "Play stops for everyone where it stands, and waits for the next session. Nothing is lost: the story, every sheet, the board and any fight under way stay exactly as they are, and table talk stays open. To finish the campaign for good, use End the campaign in the settings instead.",
+      t("Play stops for everyone where it stands, and waits for the next session. Nothing is lost: the story, every sheet, the board and any fight under way stay exactly as they are, and table talk stays open. To finish the campaign for good, use End the campaign in the settings instead."),
       // Nothing is lost, so the action is gold, not the ember of End the campaign.
-      { title: "End the session", actionLabel: "End the session", tone: "plain" },
+      { title: t("End the session", { context: "table.session.endTitle" }), actionLabel: t("End the session", { context: "table.session.endTitle" }), tone: "plain" },
     );
     if (ok) {
       await sendSession("end");
     }
-  }, [sendSession]);
+  }, [sendSession, t]);
   const startSession = useCallback(() => sendSession("start"), [sendSession]);
   const maySteerSession = maySteerSessions({ steersStory, isLead });
   const offersSessions =
@@ -825,7 +851,7 @@ export function SessionView({
   );
   // What a move reads between sessions: only table talk goes through.
   const heldPlaceholder =
-    sessionHold && kind !== "ooc" ? `Session ${sessionHold.number} is over: use OOC for table talk until the next one starts.` : null;
+    sessionHold && kind !== "ooc" ? t("Session {number} is over: use OOC for table talk until the next one starts.", { number: sessionHold.number }) : null;
   // A player whose heroes have all fallen keeps the table and is offered a
   // new hero above the composer (src/lib/characters/fallen-logic.ts), once
   // the host has said its seat doors let them in; an older one refuses the seat.
@@ -840,7 +866,7 @@ export function SessionView({
     return hero ? { name: hero.name, level: heroJoinLevel(own, tableStartLevel) } : null;
   }, [offersFallen, sheets, meId, tableStartLevel]);
   // The fallen hero cannot act: the box says what it is for until the new one joins.
-  const fallenPlaceholder = fallen && kind !== "ooc" ? `${fallen.name} has fallen. Use OOC for table talk until your new hero joins.` : null;
+  const fallenPlaceholder = fallen && kind !== "ooc" ? t("{name} has fallen. Use OOC for table talk until your new hero joins.", { name: fallen.name }) : null;
   const floorUserIds =
     floor.mode === "spotlight" || floor.mode === "initiative" ? floor.userIds : EMPTY_IDS;
   const voice = useMemo(
@@ -928,11 +954,11 @@ export function SessionView({
             response = await send({ concentrationAck });
             if (!response.ok) {
               const again = await response.json().catch(() => ({}));
-              setError(again.error || "Could not send your action.");
+              setError(again.error || t("Could not send your action."));
               return;
             }
           } else {
-            setError(data.error || "Could not send your action.");
+            setError(data.error || t("Could not send your action."));
             return;
           }
         }
@@ -942,12 +968,12 @@ export function SessionView({
         if (kind === "do" && speakingAs) markReactionSent(speakingAs.id);
         setReactAs(null);
       } catch {
-        setError("Could not reach the server.");
+        setError(t("Could not reach the server.", { context: "table.unreachable" }));
       } finally {
         setSending(false);
       }
     },
-    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet, speakingAs, setReactAs, markReactionSent],
+    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet, speakingAs, setReactAs, markReactionSent, t],
   );
 
   const clearChatTarget = useCallback(() => setChatTarget(null), []);
@@ -1013,6 +1039,38 @@ export function SessionView({
       setMobileView("panel");
     },
     [openTab, setMobileView],
+  );
+  // A table in a language this server's embedding model cannot read, said
+  // above the composer to whoever can fix it (EmbeddingLanguageBanner), and
+  // on a phone's other views as the sound banner is.
+  const embeddingWarning = useEmbeddingWarning(
+    campaign && seesEmbeddingWarning({ steersStory, isAdmin }) ? [campaign.gameSettings.tableLanguage] : [],
+  );
+  const embeddingBanner = useMemo(
+    () =>
+      embeddingWarning ? (
+        <EmbeddingLanguageBanner
+          warning={embeddingWarning}
+          onChangeLanguage={
+            steersStory
+              ? () => {
+                  selectPanelView("settings");
+                  revealSettingsRow("table-language");
+                }
+              : undefined
+          }
+        />
+      ) : null,
+    [embeddingWarning, steersStory, selectPanelView],
+  );
+  const tableNotice = useMemo(
+    () => (
+      <>
+        {embeddingBanner}
+        {narrationNotice}
+      </>
+    ),
+    [embeddingBanner, narrationNotice],
   );
   // A shop's Browse wares in the chat: the Market on that shop, in the side
   // panel at a desk and in place of the table on a phone.
@@ -1316,10 +1374,12 @@ export function SessionView({
   } satisfies Omit<SidePanelRouterProps, "tab" | "visible" | "onOpenTab">;
 
   return (
-    <main className="cine-stage flex h-dvh flex-col" data-session-view={sessionLayout ? shownStageView : undefined} data-side-board={boardInPanel ? "" : undefined}
+    <EquipmentArtProvider genre={campaign.genre}>
+    <main className="theme-table cine-stage flex h-dvh flex-col" data-session-view={sessionLayout ? shownStageView : undefined} data-side-board={boardInPanel ? "" : undefined}
       data-prep={prepOpen ? "" : undefined}
       data-addon-theme={sessionTheme ? "" : undefined}
       style={sessionTheme ? { "--session-surface": sessionTheme.surface, "--session-accent": sessionTheme.accent } as CSSProperties : undefined}>
+      <ThemeOrnaments surface="table" />
       {/* The cinematic frame ("ODM World Concepts" 3b): the scene's painting
           behind everything, the party down the left, the turn order along
           the top, the last roll as a pill. CinematicParts.tsx. */}
@@ -1458,6 +1518,8 @@ export function SessionView({
                 onRenarrate={setRenarrate}
                 onBrowseShop={browseShop}
                 onPinned={bumpPins}
+                onConfirm={confirm}
+                onTakenBack={setInput}
               >
                 {needsCharacter ? (
                   <Suspense fallback={<PanelLoading />}>
@@ -1477,15 +1539,14 @@ export function SessionView({
                       glyph="tab-campaigns"
                       tone="quiet"
                       className="campaign-ended-banner"
-                      title="The campaign has ended"
+                      title={t("The campaign has ended")}
                       actions={
                         <Link href="/" className={bannerButtonClass(true)}>
-                          All campaigns
+                          {t("All campaigns")}
                         </Link>
                       }
                     >
-                      Characters from a library took their progress home with them. The story stays
-                      here to read.
+                      {t("Characters from a library took their progress home with them. The story stays here to read.", { context: "table.session.endedBody" })}
                     </SessionBanner>
                   ) : null}
                   {fallen ? (
@@ -1538,7 +1599,7 @@ export function SessionView({
                     encounter={state.encounter}
                     onReleaseFloor={releaseFloor}
                     joinBanner={joinBanner}
-                    notice={narrationNotice}
+                    notice={tableNotice}
                     composerRef={composerRef}
                     highlight={composerPulse}
                     directorArm={state.directorArm}
@@ -1591,8 +1652,11 @@ export function SessionView({
 
       <RollToast staged={stagedRoll} sheets={sheets} />
 
-      {mobileView !== "chat" && (narrationHeld > 0 || ambienceWaiting) ? (
-        <div className="px-2 pb-1 lg:hidden">{audioWaiting}</div>
+      {mobileView !== "chat" && (embeddingBanner || narrationHeld > 0 || ambienceWaiting) ? (
+        <div className="px-2 pb-1 lg:hidden">
+          {embeddingBanner}
+          {audioWaiting}
+        </div>
       ) : null}
       <BottomTabBar
         tabs={panelTabs}
@@ -1656,15 +1720,15 @@ export function SessionView({
         report={helpReport}
         tours={[
           {
-            label: "Tour the table",
-            detail: "How a player takes a turn, asks the GM, and finds the party, the story and the maps.",
+            label: t("Tour the table"),
+            detail: t("How a player takes a turn, asks the GM, and finds the party, the story and the maps."),
             onStart: () => startTour("player"),
           },
           ...(caps.adjudicates
             ? [
                 {
-                  label: "Tour the GM console",
-                  detail: "The floor, story beats, hand-over switches, the queue and the tools.",
+                  label: t("Tour the GM console"),
+                  detail: t("The floor, story beats, hand-over switches, the queue and the tools."),
                   onStart: () => startTour("dm"),
                 },
               ]
@@ -1739,5 +1803,6 @@ export function SessionView({
         )
       ) : null}
     </main>
+    </EquipmentArtProvider>
   );
 }

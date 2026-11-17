@@ -17,6 +17,10 @@ import { openBuilder } from "./lib/enforce-builder.mjs";
 const { test, finish } = suite("test-racial-cantrip-count");
 const creation = await openCreation();
 const builder = await openBuilder();
+// The English-bound translator the fill's labels are read with
+// (home/types.ts agoLabel pattern).
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { legalizeSheet } = await import("../src/lib/srd/sheet-legality.ts");
 const { bundledPrices } = await import("../src/lib/srd/starting-wealth.ts");
 const { checklistSpell } = await import("../src/lib/srd/spell-lists.ts");
@@ -204,7 +208,7 @@ await test("reconcile keeps as many different picks as the race offers, and a ne
 
 await test("the ancestry step asks until every cantrip is picked", () => {
   const owed = (picks, race = elf(3)) =>
-    ancestryBlocks(builder.stateOf({ racialCantrips: picks, bonusLanguages: ["Dwarvish"] }), race, backgroundOf("soldier"))
+    ancestryBlocks(t, builder.stateOf({ racialCantrips: picks, bonusLanguages: ["Dwarvish"] }), race, backgroundOf("soldier"))
       .filter((block) => block.target === "racialCantrip")
       .map((block) => block.message);
   const name = highElf.name;
@@ -224,7 +228,7 @@ await test("Choose for me fills every cantrip the race offers, each different an
     const fields = builder.stateOf({ raceId: "high_elf", classId: "wizard", backgroundId: "sage", cantrips: CLASS_CANTRIPS, racialCantrips, toolPicks: [] });
     const { derived } = builder.build({ ...fields, race: elf(3), class: "wizard", background: "sage" });
     return fillRound({
-      fields, derived, race: elf(3), klass: classOf("wizard"), background: backgroundOf("sage"),
+      t, fields, derived, race: elf(3), klass: classOf("wizard"), background: backgroundOf("sage"),
       offered, only: ["racialCantrip"], rng: () => 0.5,
     });
   };

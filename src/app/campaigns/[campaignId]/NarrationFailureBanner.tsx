@@ -5,6 +5,7 @@ import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/S
 import { appNotice } from "@/components/ui/ConfirmDialog";
 import type { NarrationAudio } from "@/app/campaigns/[campaignId]/useNarrationAudio";
 import type { NarrationStatus } from "@/app/campaigns/[campaignId]/useCampaignStream";
+import { useT } from "@/lib/locale";
 
 // Narration that did not happen, said out loud (issue 88). A passage can go
 // unread because the server could not render it (no speech server, a bad
@@ -20,6 +21,7 @@ export function useNarrationStatus(
   narration: Pick<NarrationAudio, "muted" | "playbackFailure">,
   status: Record<string, NarrationStatus>,
 ): Record<string, NarrationStatus> | undefined {
+  const t = useT();
   const { muted, playbackFailure } = narration;
   return useMemo(() => {
     if (muted) {
@@ -28,10 +30,10 @@ export function useNarrationStatus(
     return playbackFailure
       ? {
           ...status,
-          [playbackFailure]: { state: "failed" as const, reason: "The audio was made, but this device could not play it." },
+          [playbackFailure]: { state: "failed" as const, reason: t("The audio was made, but this device could not play it.") },
         }
       : status;
-  }, [muted, playbackFailure, status]);
+  }, [muted, playbackFailure, status, t]);
 }
 
 // Plays the stored narration, rendering it first when this passage has never
@@ -42,6 +44,7 @@ export function useNarrationReplay(
   known: Record<string, string>,
 ) {
   const { unlock, play } = narration;
+  const t = useT();
   return useCallback(
     async (messageId: string): Promise<string | null> => {
       // The click doubles as the gesture that gets us past the browser's
@@ -58,13 +61,13 @@ export function useNarrationReplay(
       const response = await fetch(`/api/campaigns/${campaignId}/messages/${messageId}/narrate`, { method: "POST" });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        return data.error || "Could not read that passage aloud.";
+        return data.error || t("Could not read that passage aloud.");
       }
       const data = await response.json();
       play(messageId, data.url);
       return null;
     },
-    [campaignId, unlock, play, known],
+    [campaignId, unlock, play, known, t],
   );
 }
 
@@ -80,6 +83,7 @@ export function NarrationFailureBanner({
 }) {
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const t = useT();
   const failedId = useMemo(() => {
     if (!status) {
       return null;
@@ -98,7 +102,7 @@ export function NarrationFailureBanner({
     <SessionBanner
       glyph="cue-horn"
       tone="quiet"
-      title="Not read aloud"
+      title={t("Not read aloud")}
       actions={
         <>
           <button
@@ -115,16 +119,16 @@ export function NarrationFailureBanner({
               }
             }}
           >
-            {busy ? "Trying…" : "Try again"}
+            {busy ? t("Trying…") : t("Try again", { context: "transcript.tryAgain" })}
           </button>
           <button type="button" className={bannerButtonClass()} onClick={() => setDismissed(failedId)}>
-            Dismiss
+            {t("Dismiss")}
           </button>
         </>
       }
     >
       <span role="status" className="block">
-        {status[failedId].reason || "The speech server did not return any audio."}
+        {status[failedId].reason || t("The speech server did not return any audio.")}
       </span>
     </SessionBanner>
   );

@@ -12,8 +12,9 @@ import { transcriptSheets, type DepartingSheet } from "@/app/campaigns/[campaign
 import { useGoneCompanions } from "@/app/campaigns/[campaignId]/useGoneCompanions";
 import { MessageItem } from "@/app/campaigns/[campaignId]/MessageItem";
 import { Prose } from "@/app/campaigns/[campaignId]/Prose";
-import { DM_STATUS_PHRASES } from "@/app/campaigns/[campaignId]/dmStatusPhrases";
+import { dmStatusPhrase } from "@/app/campaigns/[campaignId]/dmStatusPhrases";
 import { useDmDraft, useDmDraftSeq } from "@/app/campaigns/[campaignId]/liveStore";
+import { useLocale, useT } from "@/lib/locale";
 import { isNarration, voicedByServer } from "@/lib/dm/ooc-question";
 import type {
   CampaignLocation,
@@ -23,36 +24,6 @@ import type {
 
 const NO_NARRATION_STATUS: Record<string, NarrationStatus> = {};
 const NO_DEPARTING: readonly DepartingSheet[] = [];
-
-// FNV-1a plus a murmur-style finalizer. The avalanche matters: a weaker mix
-// leaves the six-entry pools reachable only at half their entries.
-function hashString(value: string): number {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < value.length; i += 1) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  h ^= h >>> 16;
-  h = Math.imul(h, 2246822507);
-  h ^= h >>> 13;
-  h = Math.imul(h, 3266489909);
-  h ^= h >>> 16;
-  return h >>> 0;
-}
-
-// Flavor line shown while the DM works. Picked deterministically from the
-// latest message id rather than with Math.random, so it stays put through the
-// animate-pulse re-renders and survives hydration, while still varying from
-// one turn to the next. Keyed on the id (not the message count, which the
-// 200-message cap pins in long sessions) and salted with the status, so the
-// beats within a single turn read differently too.
-function dmStatusPhrase(status: DmStatus, turnKey: string): string {
-  if (status === "idle") {
-    return "";
-  }
-  const pool = DM_STATUS_PHRASES[status];
-  return pool[hashString(turnKey + status) % pool.length];
-}
 
 // The DM's passage as it streams in, or the flavour line while the DM
 // works. The only part of the transcript that subscribes to the draft
@@ -69,6 +40,7 @@ const DmDraftBubble = memo(function DmDraftBubble({
   statusPhrase: string;
   follow: (behavior: ScrollBehavior) => void;
 }) {
+  const t = useT();
   const dmDraft = useDmDraft();
   useEffect(() => {
     follow(dmDraft ? "auto" : "smooth");
@@ -77,7 +49,7 @@ const DmDraftBubble = memo(function DmDraftBubble({
   if (dmDraft) {
     return (
       <div className="session-dm animate-fade-up">
-        <SectionHead title="Game Master" glyph="tab-dm" level="h4" />
+        <SectionHead title={t("Game Master")} glyph="tab-dm" level="h4" />
         <p className="session-dm-body whitespace-pre-wrap text-pretty font-serif text-base leading-relaxed text-stone-100">
           <Prose text={dmDraft} />
           <span className="stream-caret" aria-hidden="true" />
@@ -116,6 +88,7 @@ export function MessageList({
   onLoreCheck,
   onRenarrate,
   onContinueScene,
+  onTakeBack,
   onSelectVariant,
   onBrowseShop,
   meUserId = "",
@@ -163,6 +136,8 @@ export function MessageList({
   onLoreCheck?: (message: CampaignMessage) => void;
   onRenarrate?: (message: CampaignMessage) => void;
   onContinueScene?: (message: CampaignMessage) => void;
+  // Take back and rewrite: offered on the newest player move only.
+  onTakeBack?: (message: CampaignMessage) => void;
   onSelectVariant?: (message: CampaignMessage, index: number) => void;
   // A shop's "is open" line opens the Market on that shop.
   onBrowseShop?: (shopId: string) => void;
@@ -171,7 +146,9 @@ export function MessageList({
   const nearBottomRef = useRef(true);
   const lastTopRef = useRef(0);
   const scrollPendingRef = useRef(false);
-  const statusPhrase = dmStatusPhrase(dmStatus, messages[messages.length - 1]?.id ?? "");
+  // The flavor line follows the interface's language, pool and all.
+  const locale = useLocale();
+  const statusPhrase = dmStatusPhrase(locale, dmStatus, messages[messages.length - 1]?.id ?? "");
   const rollsById = useMemo(() => new Map(rolls.map((roll) => [roll.id, roll])), [rolls]);
   const gone = useGoneCompanions(campaignId, `${goneRefreshKey}:${departing.length}`);
   const sheetsById = useMemo(() => transcriptSheets(sheets, departing, gone), [sheets, departing, gone]);
@@ -270,6 +247,23 @@ export function MessageList({
     () => (hasBrowseShop ? (shopId: string) => browseShopRef.current?.(shopId) : undefined),
     [hasBrowseShop],
   );
+  const takeBackRef = useRef(onTakeBack);
+  useEffect(() => {
+    takeBackRef.current = onTakeBack;
+  });
+  const hasTakeBack = Boolean(onTakeBack);
+  const stableTakeBack = useMemo(
+    () => (hasTakeBack ? (message: CampaignMessage) => takeBackRef.current?.(message) : undefined),
+    [hasTakeBack],
+  );
+  const newestMoveId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].authorType === "player") {
+        return messages[index].id;
+      }
+    }
+    return null;
+  }, [messages]);
   const reportRef = useRef(onReport);
   useEffect(() => {
     reportRef.current = onReport;
@@ -397,6 +391,7 @@ export function MessageList({
           mine={Boolean(message.userId) && message.userId === meUserId}
           blocked={Boolean(message.userId && blockedSet.has(message.userId))}
           onReport={stableReport}
+          onTakeBack={message.id === newestMoveId ? stableTakeBack : undefined}
           onDispute={stableDispute}
           message={message}
           campaignId={campaignId}

@@ -20,6 +20,7 @@ const world = await openWorld();
 const kit = await combatKit(world);
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+const { getLatestEndedEncounter } = await import("../src/lib/db/encounters.ts");
 
 const hero = world.addHero({ class: "fighter", level: 5, maxHp: 40, abilities: { wis: 10 }, proficiencies: TRAINED });
 
@@ -70,6 +71,86 @@ await test("A damage total the server rolled this turn is accepted once, and onl
   const again = await call("apply_damage", { characterId: hero.id, amount: 5, type: "poison" });
   assert.equal(again.ok, false, "one roll paid for two hits");
   assert.equal(hp(), 35);
+});
+
+await test("Dice the AI sent for damage pay once: the same total sent bare afterwards is refused.", async () => {
+  await stage();
+  const call = aiTurn();
+  world.dice(3, 4);
+  const first = await call("apply_damage", { characterId: hero.id, dice: "2d6", type: "bludgeoning", reason: "falling rubble" });
+  world.clearDice();
+  assert.equal(first.ok, true, first.error);
+  assert.equal(hp(), 33);
+  const again = await call("apply_damage", { characterId: hero.id, amount: 7, type: "bludgeoning" });
+  assert.equal(again.ok, false, "the rubble's 7 landed a second time");
+  assert.equal(hp(), 33);
+});
+
+await test("Dice the AI sent for healing pay once: the same total sent bare afterwards is refused.", async () => {
+  await stage();
+  world.patch(hero.id, { currentHp: 20 });
+  const call = aiTurn();
+  world.dice(2, 3);
+  const first = await call("heal", { characterId: hero.id, dice: "2d4+2" });
+  world.clearDice();
+  assert.equal(first.ok, true, first.error);
+  assert.equal(hp(), 27);
+  const again = await call("heal", { characterId: hero.id, amount: 7 });
+  assert.equal(again.ok, false, "one roll healed twice");
+  assert.equal(hp(), 27);
+});
+
+await test("A total the engine rolled and landed inside its own call pays for no bare number: a fall's damage is not dealt again.", async () => {
+  await stage();
+  const call = aiTurn();
+  world.dice(2, 3, 4);
+  const fall = await call("apply_hazard", { type: "falling", feet: 30, characterIds: [hero.id] });
+  world.clearDice();
+  assert.equal(fall.ok, true, fall.error);
+  assert.equal(hp(), 31, "30 feet is 3d6: 2, 3 and 4");
+  const again = await call("apply_damage", { characterId: hero.id, amount: 9, type: "bludgeoning" });
+  assert.equal(again.ok, false, "the fall's 9 landed a second time");
+  assert.equal(hp(), 31);
+});
+
+await test("A total the AI asked for still pays after another call's dice came up the same.", async () => {
+  await stage();
+  const call = aiTurn();
+  world.dice(4);
+  const asked = await call("request_roll", { characterId: hero.id, kind: "damage", expression: "1d8", reason: "acid" });
+  world.clearDice();
+  assert.equal(asked.ok, true, asked.error);
+  world.dice(1, 1, 2);
+  const fall = await call("apply_hazard", { type: "falling", feet: 30, characterIds: [hero.id] });
+  world.clearDice();
+  assert.equal(fall.ok, true, fall.error);
+  assert.equal(hp(), 36);
+  const acid = await call("apply_damage", { characterId: hero.id, amount: 4, type: "acid" });
+  assert.equal(acid.ok, true, acid.error);
+  assert.equal(hp(), 32);
+  const again = await call("apply_damage", { characterId: hero.id, amount: 4, type: "acid" });
+  assert.equal(again.ok, false, "the fall's 4 paid for a second splash");
+  assert.equal(hp(), 32);
+});
+
+await test("A total spent inside the engine's own call is no blow the character dealt: the fight's card counts nothing for a fall or rubble that hurt them.", async () => {
+  await stage();
+  const call = aiTurn();
+  world.dice(2, 3, 4);
+  const fall = await call("apply_hazard", { type: "falling", feet: 30, characterIds: [hero.id] });
+  world.clearDice();
+  assert.equal(fall.ok, true, fall.error);
+  world.dice(3, 4);
+  const rubble = await call("apply_damage", { characterId: hero.id, dice: "2d6", type: "bludgeoning", reason: "falling rubble" });
+  world.clearDice();
+  assert.equal(rubble.ok, true, rubble.error);
+  assert.equal(hp(), 24);
+  const ended = await world.invoke("end_encounter", { outcome: "victory" });
+  assert.equal(ended.ok, true, ended.error);
+  const card = getLatestEndedEncounter(world.campaignId).summaryCard;
+  const line = card.fighters.find((fighter) => fighter.characterId === hero.id);
+  assert.ok(line, JSON.stringify(card.fighters));
+  assert.equal(line.dealt, 0, "the fall's 9 and the rubble's 7 read as damage the hero dealt");
 });
 
 await test("The AI's bare healing number is refused; healing dice are rolled by the server.", async () => {

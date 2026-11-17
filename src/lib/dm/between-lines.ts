@@ -30,6 +30,10 @@ export function afflictionLines(campaignId: string, sheet: Pick<CharacterSheet, 
       if (entry.id === "sight_rot") {
         return `Sight Rot (-${entry.penalty ?? 1}, ${entry.doses ?? 0} of 3 Eyebright doses)`;
       }
+      // A bite's disease (hit-disease.ts): the server rolls its daily save.
+      if (entry.dice) {
+        return `${entry.conditions[0] ?? "a disease"}: poisoned until cured, ${(entry.saveAbility ?? "con").toUpperCase()} DC ${entry.dc ?? 10} every 24 hours${entry.nextAt !== undefined ? ` (next in ${hoursUntil(entry.nextAt, now)} h)` : ""}, ${entry.dice} off the hit point maximum on a failure`;
+      }
       return disease?.name ?? entry.id;
     }
     if (entry.kind === "madness") {

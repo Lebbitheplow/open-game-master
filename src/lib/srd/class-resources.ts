@@ -18,6 +18,7 @@ import { LATE_RESOURCE_DEFS } from "@/lib/srd/class-resources-late";
 import { UNLIMITED_USES } from "@/lib/srd/resource-limits";
 import { tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
+import { levelProficiencyBonus } from "@/lib/srd/proficiency";
 import { choiceIn, familyOf, isNamed } from "@/lib/srd/feature-names";
 
 export { isUnlimited, UNLIMITED_USES } from "@/lib/srd/resource-limits";
@@ -76,7 +77,7 @@ export type ResourceEffect =
   | { kind: "inspire"; die: (level: number) => string; othersOnly?: boolean }
   // A save-for-half area: the spend rolls each creature it names
   // (src/lib/dm/counter-saves.ts).
-  | ({ kind: "aoe"; dice: (level: number) => string; save: SaveAbilityId } & SaveTerms)
+  | ({ kind: "aoe"; dice: (level: number, abilityMods?: Record<string, number>) => string; save: SaveAbilityId } & SaveTerms)
   // A save-or-suffer: the spend rolls each creature it names, the dice and
   // the condition landing on a failure (src/lib/dm/counter-saves.ts).
   | ({
@@ -168,11 +169,17 @@ export type ResourceFx =
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
 // Negative modifiers fold into the sign so the dice grammar stays valid.
+// "level" is the level the counter is held at (resourceLevel: the owning
+// class's); "prof" and "profd4" read the character's proficiency bonus,
+// `abilityMods.prof` (srd/proficiency.ts formulaMods), since SRD 5.1 takes
+// it from the total level and an Ioun Stone of Mastery adds to it. Only a
+// caller with no sheet falls back to the level's own bonus.
 export function resolveDiceFormula(
   formula: DiceFormula,
   level: number,
   abilityMods: Record<string, number>,
 ): string {
+  const prof = abilityMods.prof ?? levelProficiencyBonus(level);
   let text = typeof formula === "string" ? formula : (formula[0]?.[1] ?? "0");
   if (Array.isArray(formula)) {
     for (const [atLevel, value] of formula) {
@@ -184,13 +191,13 @@ export function resolveDiceFormula(
   return text
     // A number of dice equal to the proficiency bonus ("profd4": Healing
     // Hands, MotM).
-    .replace(/\bprofd(\d+)\b/g, (_, die) => `${proficiencyBonus(level)}d${die}`)
+    .replace(/\bprofd(\d+)\b/g, (_, die) => `${prof}d${die}`)
     .replace(/\b(level|prof|str|dex|con|int|wis|cha)\b/g, (token) => {
       if (token === "level") {
         return String(Math.max(1, level));
       }
       if (token === "prof") {
-        return String(proficiencyBonus(level));
+        return String(prof);
       }
       return String(abilityMods[token] ?? 0);
     })
@@ -255,7 +262,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
       return {
         ...saveTermsOf(fx),
         kind: "aoe",
-        dice: (level) => resolveDiceFormula(fx.dice, level, {}),
+        dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods ?? {}),
         save: fx.save,
       };
     case "enemy_save":
@@ -305,8 +312,13 @@ export type ResourceDef = {
   // Vanish is counted, the ranger's is not.
   grantedBy?: string[];
   displayName: string;
-  // classId is the class whose level sized the counter, when one did.
-  maxFor: (level: number, abilityMods: Record<string, number>, classId?: string) => number;
+  // classId is the class whose level sized the counter, when one did, and
+  // characterLevel the whole character's: a count of the proficiency bonus
+  // reads it, since the bonus follows the total level, not one class's.
+  // `proficiency`: the character's proficiency bonus where the caller has the
+  // sheet (an Ioun Stone of Mastery's +1 in it, src/lib/srd/proficiency.ts);
+  // else the one the total level gives.
+  maxFor: (level: number, abilityMods: Record<string, number>, classId?: string, characterLevel?: number, proficiency?: number) => number;
   recharge: Recharge;
   effect: ResourceEffect;
   action?: ResourceAction;
@@ -544,10 +556,11 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     // "a number of treats equal to your proficiency bonus", made as a long
     // rest ends; what the 8 hours and the eater's bonus action ask is
     // src/lib/dm/ar-wbf-feat-treats.ts.
-    maxFor: (level) => 2 + Math.floor((Math.max(1, level) - 1) / 4),
+    maxFor: (level, _mods, _classId, characterLevel, proficiency) => proficiency ?? levelProficiencyBonus(characterLevel ?? level),
     recharge: "long",
     action: "bonus",
-    effect: { kind: "temp_hp", dice: (level) => `${2 + Math.floor((Math.max(1, level) - 1) / 4)}` },
+    // The cook's own proficiency bonus (the spend passes it as mods.prof).
+    effect: { kind: "temp_hp", dice: (level, mods) => `${mods.prof ?? levelProficiencyBonus(level)}` },
     guidance:
       "Chef: the treats made as a long rest ends, as many as the cook's proficiency bonus, keeping 8 hours. The creature that eats one (targetCharacterId, else the cook) gains temporary hit points equal to the cook's proficiency bonus, for the eater's own bonus action in a fight.",
   },
@@ -848,22 +861,21 @@ type SubclassResourceRow = {
   castRefill?: { school: string; minLevel: number };
 };
 
-function proficiencyBonus(level: number): number {
-  return 2 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4);
-}
-
 const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   authoredResourcesJson as { resources: SubclassResourceRow[] }
 ).resources.map((row) => ({
   id: row.id,
   match: row.match,
   displayName: row.displayName,
-  maxFor: (level: number, mods: Record<string, number>) => {
+  maxFor: (level: number, mods: Record<string, number>, _classId?: string, characterLevel?: number, proficiency?: number) => {
     if (row.byLevel) {
       return Math.max(1, level * (row.levelTimes ?? 1) + (row.levelPlus ?? 0) + (row.plusAbility ? (mods[row.plusAbility] ?? 0) : 0));
     }
     if (row.proficiency) {
-      return proficiencyBonus(level) * row.proficiency;
+      // SRD 5.1, Multiclassing: the proficiency bonus is always the total
+      // level's. Read from the class level, a wizard 2 / fighter 5 had two
+      // Bladesongs where proficiency +3 gives three.
+      return (proficiency ?? levelProficiencyBonus(characterLevel ?? level)) * row.proficiency;
     }
     if (row.scale) {
       const step = row.scale.find(([atLevel]) => level >= atLevel);
@@ -1276,6 +1288,21 @@ export function resourceLevel(
   return resourceLevelFor(def, matched?.classId, sheet.level, sheet.classes).level;
 }
 
+// The rest a counter comes back on as this sheet holds it: Bardic
+// Inspiration's long rest is any rest from bard 5 (Font of Inspiration).
+// Read from `recharge` alone, GAME STATE, a spend's result and the Hand told
+// a 5th-level bard their uses waited for a long rest.
+export function rechargeOf(
+  def: ResourceDef,
+  sheet?: {
+    level: number;
+    classes?: Array<{ id: string; level: number }>;
+    features?: Array<{ name: string; classId?: string }>;
+  },
+): Recharge {
+  return def.rechargeFor && sheet ? def.rechargeFor(resourceLevel(def, sheet)) : def.recharge;
+}
+
 // Builds the resources map from the features list: features that map to a
 // known resource get a counter sized for the level; existing used counts
 // are preserved (clamped to the new max) so level-ups never refund spent
@@ -1295,6 +1322,10 @@ export function populateResources(
   // The race, and the option its player picked: the counters of the spells
   // they cast without a slot (issue #833), sized by the race's own rows.
   species?: { race: string; variant?: string | null },
+  // The character's proficiency bonus with worn magic in it (an Ioun Stone
+  // of Mastery, src/lib/srd/proficiency.ts proficiencyBonusOf), for the
+  // counters sized by it; absent, the total level's.
+  proficiency?: number,
 ): ResourceMap {
   const out: ResourceMap = {};
   const held_all: Array<{ name: string; classId?: string; source?: string }> = [
@@ -1317,7 +1348,7 @@ export function populateResources(
       // rebuke before 3rd level) is no counter at all.
       continue;
     }
-    let max = def.maxFor(scaled.level, abilityMods, scaled.classId);
+    let max = def.maxFor(scaled.level, abilityMods, scaled.classId, level, proficiency);
     // A feature that upgrades this one raises the ceiling: by the row the
     // catalog wrote for it, or by the count its own name states.
     for (const feature of held) {

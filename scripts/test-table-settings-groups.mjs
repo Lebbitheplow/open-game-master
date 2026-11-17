@@ -18,9 +18,15 @@ const { tableGroups, tableGroupSummary, groupMatches, alliesShown, conscienceSho
 );
 const { normalizeGameSettings } = await import("../src/lib/schemas/game-settings.ts");
 const { phoneBarSplit, visiblePanelTabs, PHONE_BAR_SLOTS } = await import("../src/lib/dm/table-tabs.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The groups' words are the dictionaries'; the assertions read the English
+// lines through the English-bound translator, the same way the panel's
+// English fallback does.
+const tEn = (key, vars) => translate("en", key, vars);
 
 const context = { packName: null, genreName: "High fantasy", voiceName: "Heart", narrationOff: false, statsRule: "the server's reroll rule" };
-const ids = (settings) => tableGroups(settings).map((group) => group.id);
+const ids = (settings) => tableGroups(tEn, settings).map((group) => group.id);
 
 await test("an AI table shows the AI and memory groups and no DM reminders", () => {
   const groups = ids(normalizeGameSettings({ dmMode: "ai" }));
@@ -39,36 +45,36 @@ await test("a human table drops the narrator's pipeline and keeps the DM's remin
   assert.ok(!groups.includes("ai"));
   const shut = normalizeGameSettings({ dmMode: "human", companions: "off" });
   assert.ok(ids(shut).includes("ai"), "an Off carried over from an AI table shows the allies row");
-  assert.equal(tableGroups(shut).find((group) => group.id === "ai").title, "Allies");
+  assert.equal(tableGroups(tEn, shut).find((group) => group.id === "ai").title, "Allies");
 });
 
 await test("an assisted table shows both the AI helps and the reminders", () => {
   const settings = normalizeGameSettings({ dmMode: "assisted" });
   assert.ok(ids(settings).includes("ai") && ids(settings).includes("console"));
-  assert.match(tableGroupSummary("ai", settings, context), /AI helps with the monsters/);
+  assert.match(tableGroupSummary(tEn, "ai", settings, context), /AI helps with the monsters/);
 });
 
 await test("every group says what is set inside on its closed face", () => {
   for (const mode of ["ai", "steered", "assisted", "human"]) {
     const settings = normalizeGameSettings({ dmMode: mode, companions: "off" });
-    for (const group of tableGroups(settings)) {
-      const summary = tableGroupSummary(group.id, settings, context);
+    for (const group of tableGroups(tEn, settings)) {
+      const summary = tableGroupSummary(tEn, group.id, settings, context);
       assert.ok(summary.length > 3, `${mode}/${group.id}`);
       assert.doesNotMatch(summary, /undefined|NaN|\d+ of \d+ features/, `${mode}/${group.id}: ${summary}`);
     }
   }
   const off = normalizeGameSettings({ ttsEnabled: false });
-  assert.equal(tableGroupSummary("narration", off, context), "Off: nothing is read aloud");
-  assert.match(tableGroupSummary("narration", off, { ...context, narrationOff: true }), /Off on this server/);
+  assert.equal(tableGroupSummary(tEn, "narration", off, context), "Off: nothing is read aloud");
+  assert.match(tableGroupSummary(tEn, "narration", off, { ...context, narrationOff: true }), /Off on this server/);
   const memory = normalizeGameSettings({ stages: { recall: false } });
-  assert.match(tableGroupSummary("memory", memory, context), /semantic recall/i);
+  assert.match(tableGroupSummary(tEn, "memory", memory, context), /semantic recall/i);
 });
 
 await test("the search finds a setting by an everyday word", () => {
   const settings = normalizeGameSettings({});
   const find = (query) =>
-    tableGroups(settings)
-      .filter((group) => groupMatches(group, tableGroupSummary(group.id, settings, context), query))
+    tableGroups(tEn, settings)
+      .filter((group) => groupMatches(group, tableGroupSummary(tEn, group.id, settings, context), query))
       .map((group) => group.id);
   assert.ok(find("microphone").includes("voiceChat"));
   assert.ok(find("x-card").includes("safety"));
@@ -77,17 +83,21 @@ await test("the search finds a setting by an everyday word", () => {
   assert.ok(find("companions").includes("ai"));
   assert.ok(find("compaction").includes("memory"));
   assert.deepEqual(find("zzzz"), []);
-  assert.equal(find("").length, tableGroups(settings).length);
+  assert.equal(find("").length, tableGroups(tEn, settings).length);
 });
 
 await test("a row another panel links to names the group that holds it", () => {
   const groups = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/GameSettingsGroups.tsx", import.meta.url), "utf8");
   for (const [row, group] of Object.entries(ROW_GROUP)) {
-    assert.match(groups, new RegExp(`data-settings-row="${row}"`));
-    assert.equal(group, "ai");
+    // The group's own component, up to the next one, holds the row.
+    const component = `export function ${group[0].toUpperCase()}${group.slice(1)}Group(`;
+    const start = groups.indexOf(component);
+    assert.ok(start >= 0, component);
+    const end = groups.indexOf("\nexport ", start + component.length);
+    assert.match(groups.slice(start, end < 0 ? undefined : end), new RegExp(`data-settings-row="${row}"`), row);
   }
-  const party = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/PartyPanel.tsx", import.meta.url), "utf8");
-  assert.match(party, /closest<HTMLElement>\("\.cc-group:not\(\[data-open\]\)"\)/, "a link opens the closed group first");
+  const reveal = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/reveal-settings-row.ts", import.meta.url), "utf8");
+  assert.match(reveal, /closest<HTMLElement>\("\.cc-group:not\(\[data-open\]\)"\)/, "a link opens the closed group first");
 });
 
 // Every setting the single long panel offered is still offered: the patched
@@ -106,8 +116,20 @@ await test("no control was lost in the regrouping", () => {
   for (const key of keys) {
     assert.match(now, new RegExp(`patch\\(\\{[^}]*\\b${key}\\b`), `${key} is still patched from the panel`);
   }
-  for (const label of ["Transcription", "Proximity", "Whisper/shout", "Walls muffle", "Downed go deaf", "Living world", "Outcome check", "Theatre inserts"]) {
-    assert.ok(now.includes(label), label);
+  // The switches keep their names: the source reads them by key, and the
+  // English line still says what it always said.
+  for (const [label, key] of [
+    ["Transcription", "Transcription on"],
+    ["Proximity", "Proximity on"],
+    ["Whisper/shout", "Whisper/shout on"],
+    ["Walls muffle", "Walls muffle on"],
+    ["Downed go deaf", "Downed go deaf on"],
+    ["Living world", "Living world on"],
+    ["Outcome check", "Outcome check on"],
+    ["Theatre inserts", "Theatre inserts on"],
+  ]) {
+    assert.ok(now.includes(`t("${key}")`), `${label}: the switch reads its key`);
+    assert.ok(translate("en", key).includes(label), `${label}: the English line keeps its name`);
   }
 });
 
@@ -117,16 +139,18 @@ await test("Companion conscience shows only with bonds on and a lasting companio
   assert.equal(conscienceShown(on, true), true);
   assert.equal(conscienceShown(on, false), false, "no lasting companion can travel with this party");
   assert.equal(conscienceShown(normalizeGameSettings({ relationships: "off" }), true), false, "bonds off");
-  assert.match(tableGroupSummary("bonds", on, { ...context, lastingCompanions: true }), /companions may leave/);
-  assert.doesNotMatch(tableGroupSummary("bonds", on, context), /companions/);
-  assert.match(tableGroupSummary("bonds", normalizeGameSettings({ companionConscience: "turn" }), { ...context, lastingCompanions: true }), /companions may turn/);
+  assert.match(tableGroupSummary(tEn, "bonds", on, { ...context, lastingCompanions: true }), /companions may leave/);
+  assert.doesNotMatch(tableGroupSummary(tEn, "bonds", on, context), /companions/);
+  assert.match(tableGroupSummary(tEn, "bonds", normalizeGameSettings({ companionConscience: "turn" }), { ...context, lastingCompanions: true }), /companions may turn/);
   const groups = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/GameSettingsGroups.tsx", import.meta.url), "utf8");
   assert.match(groups, /data-settings-row="conscience"/);
-  assert.match(groups, /label="Companion conscience"/, "the picker is named for screen readers");
-  assert.match(groups, /InfoButton label="What does Companion conscience do\?"/, "an info button explains it");
+  assert.match(groups, /label=\{t\("Companion conscience"\)\}/, "the picker is named for screen readers");
+  assert.equal(translate("en", "Companion conscience"), "Companion conscience");
+  assert.match(groups, /InfoButton label=\{t\("What does Companion conscience do\?"\)\}/, "an info button explains it");
+  assert.equal(translate("en", "What does Companion conscience do?"), "What does Companion conscience do?");
   const find = (query) =>
-    tableGroups(on)
-      .filter((group) => groupMatches(group, tableGroupSummary(group.id, on, context), query))
+    tableGroups(tEn, on)
+      .filter((group) => groupMatches(group, tableGroupSummary(tEn, group.id, on, context), query))
       .map((group) => group.id);
   assert.ok(find("conscience").includes("bonds"));
 });

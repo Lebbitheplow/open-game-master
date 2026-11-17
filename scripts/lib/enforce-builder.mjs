@@ -38,6 +38,8 @@ export function standardScores(order = ["str", "dex", "con", "int", "wis", "cha"
 
 export async function openBuilder() {
   const src = (file) => import(new URL(`../../src/${file}`, import.meta.url).href);
+  const { translate } = await src("lib/messages-logic.ts");
+  const enT = (key, vars) => translate("en", key, vars);
   const options = await src("app/characters/builder/useBuilderOptions.ts");
   const { useBuilderDerived, extraClassRows } = await src("app/characters/builder/useBuilderDerived.ts");
   const submit = await src("app/characters/builder/submit.ts");
@@ -162,7 +164,9 @@ export async function openBuilder() {
       useBuilderDerived({ state, race: shaped, klass, background: backgroundRow, extras, featDescs }),
     );
     const input = { state, derived, race: shaped, klass, background: backgroundRow };
-    const blocker = submit.validateBuilder(input);
+    // The save check reads in English, the source (submit.ts takes the
+    // reader's translator first since the French interface).
+    const blocker = submit.validateBuilder(enT, input);
     const result = derived.preview && raceRow && klass && backgroundRow ? submit.buildBuilderResult(input) : null;
     return { state, derived, blocker, result, sheet: result?.sheet ?? null, level: result?.level ?? null };
   }

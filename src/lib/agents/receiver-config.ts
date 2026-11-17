@@ -24,20 +24,31 @@ export type ReceiverConfig = {
   effort: string;
 };
 
+// A refused receiver setting. It carries its message key, so the settings
+// panel can ask in the reader's language; the message stays the pinned
+// English the server's own refusals carry.
+export class ReceiverConfigError extends Error {
+  key: string;
+  constructor(key: string, message: string) {
+    super(message);
+    this.key = key;
+  }
+}
+
 // The address the server will send to, from what the player typed: their
 // HTTPS tunnel's address, with the receiver's path added when they gave only
 // the host. Anything else is refused here as the server would refuse it.
 export function receiverUrl(value: string): string {
   const invalid = "Give your receiver's HTTPS address, such as https://my-pc.example.ts.net:8443.";
   let url: URL;
-  try { url = new URL(value.trim()); } catch { throw new Error(invalid); }
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error(invalid);
+  try { url = new URL(value.trim()); } catch { throw new ReceiverConfigError("Give your receiver's HTTPS address, such as https://my-pc.example.ts.net:8443.", invalid); }
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new ReceiverConfigError("Give your receiver's HTTPS address, such as https://my-pc.example.ts.net:8443.", invalid);
   if (url.pathname === "/" || url.pathname === "") url.pathname = RECEIVER_PATH;
   return url.href;
 }
 
 export function receiverPort(value: number): number {
-  if (!Number.isInteger(value) || value < 1024 || value > 65535) throw new Error("Pick a local port from 1024 to 65535.");
+  if (!Number.isInteger(value) || value < 1024 || value > 65535) throw new ReceiverConfigError("Pick a local port from 1024 to 65535.", "Pick a local port from 1024 to 65535.");
   return value;
 }
 

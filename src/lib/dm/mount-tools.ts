@@ -2,10 +2,15 @@ import { z } from "zod";
 import { landsOnFeet } from "@/lib/dm/fall-landing";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getMounts, setMount } from "@/lib/db/mounts";
+import { getSheetById } from "@/lib/db/sheets";
+import { getDmTurn } from "@/lib/db/dm-turns";
+import { currentTurnId } from "@/lib/dm/job-control";
+import { isProne, saddleSave } from "@/lib/dm/mount-thrown";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import {
+  checkCreatureMount,
   checkMount,
   describeMount,
   DISMOUNT_SAVE_DC,
@@ -13,6 +18,7 @@ import {
   MOUNT_SIZES,
   mountCost,
   type MountSize,
+  type MountState,
 } from "@/lib/srd/mounts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -20,7 +26,6 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, moveToken } from "@/lib/db/battle-maps";
 import { speedToTiles } from "@/lib/battlemap/movement";
 import { publishEphemeral } from "@/lib/events";
-import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { claimOncePerTurn } from "@/lib/dm/action-budget";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
@@ -35,6 +40,9 @@ import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { rowName } from "@/lib/srd/item-row";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { summonedSteed } from "@/lib/dm/mount-link";
+import { leaveFightAsMount, standBesideRider } from "@/lib/dm/summon-store";
+import { tilesApart } from "@/lib/dm/board-reach";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
@@ -65,7 +73,7 @@ export const mountTools: ToolDef[] = [
         additionalProperties: false,
         properties: {
           characterId: { type: "string", description: "Exact characterId from GAME STATE." },
-          mount: { type: "string", description: "A known mount by its listed name, whatever the table calls it ('cavallo' is 'Riding horse')." },
+          mount: { type: "string", description: "A known mount by its listed name, whatever the table calls it ('cavallo' is 'Riding horse'). Or a creature they called up, by its own name (Find Steed's steed): that creature is then the mount." },
           customName: { type: "string", description: "Only for an animal no list has, by its name, with a speed and a size." },
           speed: { type: "integer", minimum: 0, maximum: 200, description: "For a custom mount." },
           size: { type: "string", enum: [...MOUNT_SIZES], description: "For a custom mount." },
@@ -79,7 +87,7 @@ export const mountTools: ToolDef[] = [
     type: "function",
     function: {
       name: "dismount",
-      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. When something threw them, send cause: the server rolls their DC ${DISMOUNT_SAVE_DC} DEX save and lays them prone on a failure, and a mount that goes down costs their reaction to land standing (prone without one); do not roll it or set the condition yourself.`,
+      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. When their mount was moved against its will, send cause forced-move: the server rolls their DC ${DISMOUNT_SAVE_DC} DEX save, and they come off, landing prone, only on a failure. A rider knocked prone is asked the same save by the server as the call that knocked them down finishes, so send nothing for it; cause rider-prone is only for a rider the table says was knocked prone that no call laid prone (it lays the prone and asks the save once). A mount that goes down (mount-prone) costs their reaction to land standing (prone without one). Do not roll the save or set the condition yourself.`,
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -156,8 +164,17 @@ export function handleMountUp(
   if (drake && "error" in drake) {
     return drake;
   }
+  // The creature they called up, by its name (mount-link.ts): Find Steed's
+  // steed is the mount, not a second horse of the same name.
+  const steed = drake || args.customName ? null : summonedSteed(campaign.id, sheet, args.mount ?? "");
+  const apart = steed ? steedOutOfReach(campaign.id, sheet, steed) : null;
+  if (apart) {
+    return apart;
+  }
   const checked = drake
     ? { ok: true as const, state: drake }
+    : steed
+    ? checkCreatureMount({ sheetId: steed.id, name: steed.name, speed: steed.speed, size: steed.summon?.size ?? "Medium", riderSize: riderSize(sheet) })
     : args.customName
     ? checkMount({
         ref: args.customName,
@@ -182,17 +199,41 @@ export function handleMountUp(
   const block = SRD_CREATURES.find((creature) => creature.slug === checked.state.ref);
   const state = block ? { ...checked.state, ac: block.ac, hp: block.hp, maxHp: block.hp } : checked.state;
   setMount(campaign.id, sheet.id, state);
+  if (steed) {
+    leaveFightAsMount(campaign, steed.id);
+  }
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
   tableNote(campaign, `${sheet.name} mounts up: ${describeMount(checked.state)}.`);
   return {
     ok: true,
     mounted: checked.state.name,
     speed: checked.state.speed,
+    ...(steed
+      ? { creature: `${steed.name} is the creature ${sheet.name} called up, at ${steed.currentHp}/${steed.maxHp} hit points: a blow aimed at the mount and healing sent to ${steed.name} reach that one sheet. It has no token or turn of its own while it carries them, and stands beside them again when they get down.` }
+      : {}),
     // Only what was taken is reported as spent: the console's mount off the
     // rider's turn, or one with no board, charged nothing (ruling R9), and
     // the result said it had.
     ...(spent.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
     note: `${sheet.name} now moves at ${checked.state.speed} ft. ${spent.charged ? `Mounting cost ${holdsFeature(sheet, SADDLE) ? `them only 5 feet of movement, as Born to the Saddle gives (${mountingFeet(sheet)} ft)` : `half their movement (${mountCost(sheet.speed)} ft)`}, taken from this turn's movement on the board.` : "No movement was charged: no turn of theirs is running on the board."}`,
+  };
+}
+
+// "You can mount a creature that is within 5 feet of you" (SRD 5.1, Mounting
+// and Dismounting). A creature with a sheet stands on the board, so the
+// distance can be read; off the board, or with either one not on it, nothing
+// is measured and the GM judges it.
+function steedOutOfReach(campaignId: string, rider: CharacterSheet, steed: CharacterSheet): ToolError | null {
+  const encounter = getActiveEncounter(campaignId);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const from = map ? getTokenByRef(map.id, rider.id) : null;
+  const to = map ? getTokenByRef(map.id, steed.id) : null;
+  if (!from || !to || tilesApart(from, to) <= 1) {
+    return null;
+  }
+  return {
+    error: `${steed.name} is ${tilesApart(from, to) * 5} feet from ${rider.name}: a creature is mounted from within 5 feet of it (SRD 5.1, Mounting and Dismounting). ${rider.name} moves beside it first. Nothing was spent.`,
+    refused: "rules",
   };
 }
 
@@ -308,55 +349,88 @@ export function handleDismount(
     return { error: `${sheet.name} is not mounted.`, refused: "rules" };
   }
   const cause = args.cause ?? "voluntary";
+  if (cause === "forced-move" || cause === "rider-prone") {
+    return thrownRider(campaign, sheet, current, cause, sheets, sheetsById, turn);
+  }
   const spent = cause === "voluntary" ? spendMountingMovement(campaign, sheet, turn) : null;
   if (spent && "error" in spent) {
     return spent;
   }
   setMount(campaign.id, sheet.id, null);
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
+  // A mount that is a creature's sheet has its own square and turn again.
+  const steed = current.sheetId ? getSheetById(current.sheetId) : null;
+  if (steed) {
+    standBesideRider(campaign, sheet, steed);
+  }
   if (cause === "mount-prone") {
     return mountFalls(campaign, sheet, current.name, sheets, sheetsById, turn);
   }
-
-  if (cause === "voluntary") {
-    tableNote(campaign, `${sheet.name} dismounts.`);
-    return {
-      ok: true,
-      dismounted: current.name,
-      ...(spent?.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
-      note: spent?.charged
-        ? holdsFeature(sheet, SADDLE)
-          ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle), taken from this turn's movement on the board, and needs no roll."
-          : "A deliberate dismount costs half their movement, taken from this turn's movement on the board, and needs no roll."
-        : "A deliberate dismount needs no roll. No movement was charged: no turn of theirs is running on the board.",
-    };
-  }
-  // Thrown: the server rolls the DC 10 Dexterity save from the rider's sheet
-  // and lays them prone on a failure (SRD 5.1, Mounted Combat).
-  tableNote(campaign, `${sheet.name} is thrown from ${current.name}.`);
-  const save = turn
-    ? rollCharacterSave(campaign, turn, sheet, "dex", DISMOUNT_SAVE_DC, `${sheet.name}: DEX save to land on their feet`)
-    : null;
-  // Born to the Saddle: off a mount on the ground, on their feet (fall-landing.ts).
-  const standing = landsOnFeet(sheet, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
-  const failed = !standing && (!save || !save.success);
-  if (failed && turn) {
-    applyDmMutation(
-      campaign,
-      turn.id,
-      "set_condition",
-      JSON.stringify({ characterId: sheet.id, condition: "prone", reason: `thrown from ${current.name}` }),
-      sheets,
-      sheetsById,
-    );
-  }
+  tableNote(campaign, `${sheet.name} dismounts.`);
   return {
     ok: true,
     dismounted: current.name,
-    save: save?.total ?? "failed automatically",
+    ...(spent?.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
+    note: spent?.charged
+      ? holdsFeature(sheet, SADDLE)
+        ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle), taken from this turn's movement on the board, and needs no roll."
+        : "A deliberate dismount costs half their movement, taken from this turn's movement on the board, and needs no roll."
+      : "A deliberate dismount needs no roll. No movement was charged: no turn of theirs is running on the board.",
+  };
+}
+
+// The mount moved against its will, or the rider knocked prone: the DC 10
+// Dexterity save, and they come off only on a failure (SRD 5.1, Mounting and
+// Dismounting; mount-thrown.ts). A rider already knocked prone was asked as
+// the call that laid them down finished: a dismount sent for the same prone
+// rolls nothing again. Without a running turn the save is rolled all the
+// same, on the call's turn when the engine knows one.
+function thrownRider(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  mount: MountState,
+  cause: "forced-move" | "rider-prone",
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+): ToolResult {
+  const live = getSheetById(sheet.id) ?? sheet;
+  const turnId = currentTurnId();
+  const on = turn ?? (turnId ? getDmTurn(turnId) : null);
+  if (cause === "rider-prone") {
+    if (mount.keptSaddle && isProne(live.conditions)) {
+      return {
+        error: `${sheet.name} already made the DC ${DISMOUNT_SAVE_DC} DEX save to stay mounted when they were knocked prone, and kept the saddle: still on ${mount.name}, still prone. That prone asks no second save. To take them off, they dismount on their own turn (no cause), or something else throws them.`,
+        refused: "rules",
+      };
+    }
+    // Knocked prone by the table's word, not by a call: the prone is laid
+    // here, after the save marks it kept or the rider is off, so the settle
+    // at the end of this call finds nothing left to ask.
+    const save = saddleSave(campaign, live, mount, on, "knocked prone");
+    if (!isProne(live.conditions) && on) {
+      applyDmMutation(campaign, on.id, "set_condition", JSON.stringify({ characterId: sheet.id, condition: "prone", reason: save.kept ? `knocked prone on ${mount.name}` : `fell from ${mount.name}` }), sheets, sheetsById);
+    }
+    return save.kept
+      ? { ok: true, kept: mount.name, save: save.total, dc: DISMOUNT_SAVE_DC, note: save.line }
+      : { ok: true, dismounted: mount.name, save: save.total, dc: DISMOUNT_SAVE_DC, landed: "prone, within 5 feet of the mount", note: save.line };
+  }
+  const save = saddleSave(campaign, live, mount, on, "mount moved");
+  if (save.kept) {
+    return { ok: true, kept: mount.name, save: save.total, dc: DISMOUNT_SAVE_DC, note: save.line };
+  }
+  // Born to the Saddle: off a mount on the ground, on their feet (fall-landing.ts).
+  const standing = landsOnFeet(live, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
+  if (!standing && on && !isProne(live.conditions)) {
+    applyDmMutation(campaign, on.id, "set_condition", JSON.stringify({ characterId: sheet.id, condition: "prone", reason: `thrown from ${mount.name}` }), sheets, sheetsById);
+  }
+  return {
+    ok: true,
+    dismounted: mount.name,
+    save: save.total,
     dc: DISMOUNT_SAVE_DC,
-    ...(failed ? { landed: "prone, within 5 feet of the mount" } : { landed: "on their feet" }),
-    ...(standing ? { note: `${standing}: they land on their feet.` } : {}),
+    landed: standing ? "on their feet" : "prone, within 5 feet of the mount",
+    note: standing ? `${save.line} ${standing}: they land on their feet.` : save.line,
   };
 }
 
@@ -365,7 +439,7 @@ export function handleDismount(
 // fall prone in a space within 5 feet it" (SRD 5.1, Mounting and
 // Dismounting). The reaction is spent when the rider has it; out of a fight
 // there is no reaction to keep track of, so they land standing.
-function mountFalls(
+export function mountFalls(
   campaign: Campaign,
   sheet: CharacterSheet,
   mountName: string,

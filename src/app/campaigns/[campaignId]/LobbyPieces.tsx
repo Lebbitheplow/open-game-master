@@ -1,14 +1,17 @@
 "use client";
 
 import { Dices, Pencil } from "lucide-react";
+import { ThemeEmblem } from "@/components/ThemeEmblem";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { CampaignCover } from "@/components/CampaignCover";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { GoldTitle } from "@/components/ui/GoldTitle";
 import { Switch } from "@/components/ui/Switch";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import type { CampaignCover as CampaignCoverRef } from "@/lib/campaign-types";
 import { REAL_DICE_SCOPE } from "@/lib/dice/held-rolls";
 
@@ -36,7 +39,7 @@ export function LobbyGroupHead({
 }) {
   return (
     <div className={cn("lobby-head mb-3", className)} style={style}>
-      <GameIcon icon={{ kind: "glyph", key: glyph }} size="size-7" />
+      <LobbyIcon glyph={glyph} />
       <h2 className="lobby-head-title">{title}</h2>
       <span className="lobby-head-rule motion-rule" aria-hidden="true" />
     </div>
@@ -51,7 +54,7 @@ export function LobbyHero({
   onEdit,
   className,
   style,
-  eyebrow = "Waiting in the lobby",
+  eyebrow,
 }: {
   campaign: {
     id: string;
@@ -70,9 +73,11 @@ export function LobbyHero({
   // Where the campaign stands: a running one's prep says so (issue 530).
   eyebrow?: string;
 }) {
+  const t = useT();
+  const shown = eyebrow ?? t("Waiting in the lobby");
   return (
     <div className={cn(ui.card, "lobby-hero ornate texture-noise mb-6", className)} style={style}>
-      <div className="lobby-hero-art">
+      <div className={cn("lobby-hero-art", !campaign.cover && "theme-default-cover")}>
         <CampaignCover
           cover={campaign.cover}
           title={campaign.title}
@@ -81,16 +86,17 @@ export function LobbyHero({
           className="aspect-[16/7] rounded-b-none border-0 shadow-none"
         />
       </div>
-      <div className="relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
-        <p className={ui.sectionEyebrow}>{eyebrow}</p>
+      <div className="lobby-hero-caption relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
+        <ThemeEmblem />
+        <p className={ui.sectionEyebrow}>{shown}</p>
         <div className="mt-1 flex items-start gap-2">
           <GoldTitle className="min-w-0 text-balance break-words leading-tight">{campaign.title}</GoldTitle>
           {canEdit ? (
-            <Tooltip content="Edit campaign settings">
+            <Tooltip content={t("Edit campaign settings")}>
               <button
                 type="button"
                 onClick={onEdit}
-                aria-label="Edit campaign settings"
+                aria-label={t("Edit campaign settings")}
                 className="motion-nudge mt-1 shrink-0 rounded-md border border-stone-700/70 p-2 text-stone-400 hover:border-amber-500/40 hover:text-amber-100"
               >
                 <Pencil className="size-3.5" />
@@ -103,7 +109,7 @@ export function LobbyHero({
           aria-hidden="true"
         />
         <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-stone-300">
-          <HeroChip>Level {campaign.startingLevel} start</HeroChip>
+          <HeroChip>{t("Level {level} start", { level: campaign.startingLevel })}</HeroChip>
           <HeroChip>{campaign.difficulty}</HeroChip>
           {campaign.theme ? <HeroChip>{campaign.theme}</HeroChip> : null}
         </p>
@@ -117,7 +123,7 @@ export function LobbyHero({
 
 function HeroChip({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-0.5 text-amber-100">
+    <span className="lobby-hero-chip rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-0.5 text-amber-100">
       {children}
     </span>
   );
@@ -136,20 +142,19 @@ export function LobbyRealDice({
   className?: string;
   style?: CSSProperties;
 }) {
+  const t = useT();
   return (
     <section className={cn(ui.card, "mb-6 flex items-center gap-3 px-4 py-3", className)} style={style}>
       <GameIcon icon={{ kind: "glyph", key: "die-d20" }} size="size-9" />
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-stone-200">I roll physical dice</p>
-        <p className="text-xs text-stone-500">
-          The game pauses for you to enter your real rolls. {REAL_DICE_SCOPE}
-        </p>
+        <p className="text-sm text-stone-200">{t("I roll physical dice")}</p>
+        <p className="text-xs text-stone-500">{t("The game pauses for you to enter your real rolls. {scope}", { scope: REAL_DICE_SCOPE })}</p>
       </div>
       <span className="flex shrink-0 flex-col items-center gap-1">
-        <Switch on={on} onChange={onToggle} label="I roll physical dice" />
+        <Switch on={on} onChange={onToggle} label={t("I roll physical dice")} />
         <span className={cn("inline-flex items-center gap-1 text-[11px]", on ? "text-amber-200" : "text-stone-500")}>
           <Dices className="size-3" />
-          {on ? "Real dice" : "Digital"}
+          {on ? t("Real dice") : t("Digital")}
         </span>
       </span>
     </section>

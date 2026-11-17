@@ -3,7 +3,9 @@
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { Select, type SelectOption } from "@/components/ui/Select";
+import { useT } from "@/lib/locale";
 import type { HarnessConfig } from "@/lib/harness/types";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 
 // The shapes and the field furniture the admin settings sections share.
 
@@ -11,6 +13,8 @@ export type MaskedConfig = {
   signupsEnabled: boolean;
   signupMode: "open" | "invite" | "closed";
   serverName: string;
+  // Absent from a host older than the language picker.
+  serverLanguage?: TableLanguage;
   accountDeletionGraceDays: number;
   abilityRerollBelow: number;
   publicUrl: string;
@@ -95,14 +99,19 @@ export type EnvDefaults = {
 // a placeholder: "In use: http://127.0.0.1:8188, the server's start-up
 // setting (.env.server or its built-in default)." A typed value says what it
 // replaces and how to go back. `extra` follows either line.
-export function inheritedHint(value: string, startup: string | undefined, extra?: string): string | undefined {
+export function inheritedHint(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  value: string,
+  startup: string | undefined,
+  extra?: string,
+): string | undefined {
   const fallback = (startup ?? "").trim();
   const own = value.trim();
   const line = !fallback
     ? ""
     : own
-      ? `Replaces the start-up setting (${fallback}) on this server. Clear it to use that again.`
-      : `In use: ${fallback}, the server's start-up setting (.env.server or its built-in default). Type here to replace it.`;
+      ? t("Replaces the start-up setting ({fallback}) on this server. Clear it to use that again.", { fallback })
+      : t("In use: {fallback}, the server's start-up setting (.env.server or its built-in default). Type here to replace it.", { fallback });
   return [line, extra ?? ""].filter(Boolean).join(" ") || undefined;
 }
 
@@ -174,6 +183,7 @@ export function SecretField({
   onChange: (value: string) => void;
   hint?: string;
 }) {
+  const t = useT();
   const kept = value === SECRET_KEPT;
   return (
     <Field label={label} hint={hint}>
@@ -181,7 +191,7 @@ export function SecretField({
         <input
           type="password"
           className={ui.input}
-          placeholder={isSet && kept ? "•••••••• (set)" : "Not set"}
+          placeholder={isSet && kept ? t("•••••••• (set)", { context: "admin.secret.set" }) : t("Not set", { context: "admin.secret.notSet" })}
           value={kept ? "" : value}
           onChange={(event) => onChange(event.target.value)}
         />
@@ -191,7 +201,7 @@ export function SecretField({
             onClick={() => onChange("")}
             className={cn(ui.btnSmall, "shrink-0 hover:text-red-400")}
           >
-            Clear
+            {t("Clear", { context: "admin.secret.clear" })}
           </button>
         ) : null}
       </div>

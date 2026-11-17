@@ -110,6 +110,16 @@ const ONE_SHOT_DIRECTIVES: Record<
   },
 };
 
+// The labels and one-line blurbs the lead reads; the directive itself stays
+// English (the model reads it). The keys mirror ONE_SHOT_DIRECTIVES.
+export function oneShotBlurbT(t: (key: string, vars?: Record<string, string | number>) => string, id: OneShotEventId): string {
+  return ({ "combat": t("An immediate physical threat, here and now."), "location": t("A place to delve: layered, guarded, holding a prize."), "social": t("A predicament that cannot be solved by force."), "romance": t("Chemistry with a complication."), "mystery": t("Something inexplicable, with a hidden true answer."), "weird": t("An absurd little obligation. Played straight."), "windfall": t("A gift with a string attached, not visible yet.") } as Record<string, string>)[id] ?? String(id);
+}
+
+export function oneShotLabelT(t: (key: string, vars?: Record<string, string | number>) => string, id: OneShotEventId): string {
+  return ({ "combat": t("Combat"), "combatBlurb": t("An immediate physical threat, here and now."), "location": t("Place"), "locationBlurb": t("A place to delve: layered, guarded, holding a prize."), "social": t("Social"), "socialBlurb": t("A predicament that cannot be solved by force."), "romance": t("Romance"), "romanceBlurb": t("Chemistry with a complication."), "mystery": t("Mystery"), "mysteryBlurb": t("Something inexplicable, with a hidden true answer."), "weird": t("Weird"), "weirdBlurb": t("An absurd little obligation. Played straight."), "windfall": t("Windfall"), "windfallBlurb": t("A gift with a string attached, not visible yet."), "event": t("Event"), "armed": t("{name} armed for the next turn"), "armedCommand": t("Direction armed: \"{command}\"") } as Record<string, string>)[id] ?? String(id);
+}
+
 export function oneShotBlurb(id: OneShotEventId): string {
   return ONE_SHOT_DIRECTIVES[id].blurb;
 }

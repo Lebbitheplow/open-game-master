@@ -12,11 +12,11 @@ export const dynamic = "force-dynamic";
 
 // Story so far: every chapter plus how far the open one has progressed.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -38,11 +38,11 @@ export async function GET(
 // Party lead: close the current chapter now. Runs on the DM queue so the
 // summarizing model call never interleaves with a turn in flight.
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireStoryAuthority(campaignId);
+  const context = await requireStoryAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

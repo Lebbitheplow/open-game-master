@@ -3,16 +3,23 @@
 // module, importing only the roll store and the event stream, so the clock
 // paths (a spell's tick at a turn's start or end, src/lib/dm/spell-aura.ts)
 // can card their dice without the import cycles action-common.ts would bring.
+//
+// Each helper here puts its roll on record through the one door for that
+// (src/lib/dm/roll-record.ts recordRoll): inside a GM call the card joins the
+// call's own turn, so a caller that holds a copy of the turn, or none, no
+// longer leaves its card out of the chronicle (issue #915).
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll, revealRollRow, type RollAttacker, type RollKind } from "@/lib/db/rolls";
+import { revealRollRow, type RollAttacker, type RollKind } from "@/lib/db/rolls";
 import { rollExpression, type RollOptions } from "@/lib/dice";
 import type { RollTag } from "@/lib/dice-script-logic";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { publishWithSeq } from "@/lib/events";
 
-// `turn` is the DM turn the card belongs to, when one is running; a roll at a
-// turn's start or end (no DM turn) stands alone in the chronicle. `attacker`
+// `turn` is the DM turn the card belongs to, when the site holds one; inside
+// a GM call the card joins the call's own turn whatever is handed in, and a roll
+// outside one with no turn (the clock's) stands alone. `attacker`
 // is who made an attack or damage roll (null: nobody, or not a combat roll).
 // A flat amount (Aura of Conquest's half a level) rolls no dice and gets no
 // card.
@@ -31,7 +38,7 @@ export function rollCard(
   if (!outcome.terms.some((term) => term.kind === "dice")) {
     return outcome;
   }
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId,
     requestedBy: "dm",
@@ -39,9 +46,10 @@ export function rollCard(
     detail: detail.slice(0, 120),
     result: outcome,
     attacker,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn?.rollIds.push(roll.id);
   return outcome;
 }
 
@@ -65,7 +73,7 @@ export function dmRoll(
   purpose?: RollTag,
 ) {
   const outcome = rollExpression(expression, undefined, { purpose });
-  const roll = insertRoll({
+  recordRoll({
     campaignId,
     characterId: null,
     requestedBy: "dm",
@@ -73,8 +81,11 @@ export function dmRoll(
     detail: detail.slice(0, 200),
     result: outcome,
     visibility: "dm",
+    turn,
+    landing: null,
+    // Read on the turn's cards by the seats that may; no seat is sent it.
+    send: false,
   });
-  turn?.rollIds.push(roll.id);
   return outcome;
 }
 
@@ -94,7 +105,7 @@ export function secretRoll(
   dc: number | null = null,
 ) {
   const outcome = rollExpression(expression);
-  const roll = insertRoll({
+  const roll = recordRoll({
     campaignId,
     characterId,
     requestedBy: "dm",
@@ -103,11 +114,14 @@ export function secretRoll(
     result: outcome,
     dc,
     visibility: "secret",
+    turn,
+    // Handed no turn, it joins none, a GM call's own included: the turn's
+    // cards are named in the message every seat is sent.
+    home: turn ? "turn" : "apart",
+    landing: null,
+    // Only the player whose character it is for is sent it.
+    send: Boolean(characterId),
   });
-  turn?.rollIds.push(roll.id);
-  if (characterId) {
-    publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
-  }
   return { ...outcome, rollId: roll.id };
 }
 

@@ -3,8 +3,9 @@
 // anything the admin panel could not, and the panel shows exactly what the
 // wizard chose. Pure, so scripts/test-setup-wizard.mjs checks each one.
 import { keyForListing, keyProvider, normalizeBaseUrl, type KeyProviderId } from "./discovery-logic.ts";
+import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
-export type HarnessChoiceId = "claude" | "codex" | "opencode" | "grok";
+export type HarnessChoiceId = "claude" | "codex" | "opencode" | "grok" | "pi";
 
 // The agent programs with an image tool of their own (src/lib/harness
 // adapters' `paints`), for the wizard, which cannot import the adapters.
@@ -155,6 +156,18 @@ export function joiningPatch(choice: JoiningChoice): Patch {
 
 export function namePatch(serverName: string): Patch {
   return { serverName: serverName.trim().slice(0, 100) };
+}
+
+// The welcome step's answers: the name and the language, each only when it
+// changed, so a wizard run again writes nothing the admin did not touch.
+export function welcomePatch(
+  draft: { serverName: string; serverLanguage: TableLanguage | null },
+  saved: { serverName: string; serverLanguage?: TableLanguage },
+): Patch | null {
+  const patch: Patch = {};
+  if (draft.serverName.trim() !== saved.serverName.trim()) Object.assign(patch, namePatch(draft.serverName));
+  if (draft.serverLanguage && draft.serverLanguage !== saved.serverLanguage) patch.serverLanguage = draft.serverLanguage;
+  return Object.keys(patch).length ? patch : null;
 }
 
 // Two patches into one body: the sections are disjoint objects, so a

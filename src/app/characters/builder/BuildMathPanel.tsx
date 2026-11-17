@@ -1,6 +1,8 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Ability } from "@/lib/schemas/sheet";
 import { useLowEffects } from "@/lib/effects-mode";
@@ -49,13 +51,14 @@ export function BuildMathPanel({
   raceGroups: PickerGroup[];
   gender: BuilderState["gender"];
 }) {
+  const t = useT();
   const headingId = useId();
   const bodyId = useId();
   const [open, setOpen] = useState(false);
   const low = useLowEffects();
   const sections = useMemo(
-    () => buildMathSections({ derived, scores, klass, atTable }),
-    [derived, scores, klass, atTable],
+    () => buildMathSections({ t, derived, scores, klass, atTable }),
+    [t, derived, scores, klass, atTable],
   );
 
   // One short polite line per burst of changes (buildMath.ts).
@@ -92,7 +95,7 @@ export function BuildMathPanel({
     >
       <div className="flex shrink-0 items-center gap-2 px-3 py-1">
         <h2 id={headingId} className="min-w-0 flex-1 font-display text-base tracking-wide text-amber-100">
-          Character details
+          {t("Character details")}
         </h2>
         <button
           type="button"
@@ -100,11 +103,11 @@ export function BuildMathPanel({
           aria-controls={bodyId}
           // The heading beside it says what; the word on its face fits a
           // phone's row, and the name read aloud starts with that word.
-          aria-label={open ? "Hide character details" : "Show character details"}
+          aria-label={open ? t("Hide character details") : t("Show character details")}
           onClick={() => setOpen((was) => !was)}
           className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-base text-sky-300 transition-colors hover:bg-stone-800 @4xl:hidden"
         >
-          {open ? "Hide" : "Show"}
+          {open ? t("Hide", { context: "builder.math.panel.hideWord" }) : t("Show", { context: "builder.math.panel.showWord" })}
           <ChevronDown aria-hidden="true" className={cn("size-4 transition-transform", open && "rotate-180")} />
         </button>
       </div>
@@ -125,7 +128,7 @@ export function BuildMathPanel({
       >
         {sections.length ? (
           <table className="w-full table-fixed border-collapse text-left">
-            <caption className="sr-only">Every number on the sheet and how it is made</caption>
+            <caption className="sr-only">{t("Every number on the sheet and how it is made")}</caption>
             <colgroup>
               <col className="w-[34%]" />
               <col className="w-[26%]" />
@@ -134,13 +137,13 @@ export function BuildMathPanel({
             <thead>
               <tr>
                 <th scope="col" className="px-2 pb-1 text-sm font-semibold text-stone-400">
-                  Number
+                  {t("Number")}
                 </th>
                 <th scope="col" className="px-2 pb-1 text-sm font-semibold text-stone-400">
-                  Value
+                  {t("Value")}
                 </th>
                 <th scope="col" className="px-2 pb-1 text-sm font-semibold text-stone-400">
-                  How it is made
+                  {t("How it is made")}
                 </th>
               </tr>
             </thead>
@@ -179,6 +182,7 @@ export function BuildMathPanel({
               race,
               racialBonus: derived.racialBonus,
               proficientSkills: derived.proficientSkills,
+              t,
             })}
             klass={klass}
             race={race}
@@ -213,6 +217,8 @@ function PicksSoFar({
   raceGroups: PickerGroup[];
   gender: BuilderState["gender"];
 }) {
+  const t = useT();
+  const locale = useLocale();
   const headingId = useId();
   const slide = useMemo(
     () => (race ? lineageSlidesFor(raceGroups, races, gender).find((entry) => entry.id === race.id) : undefined),
@@ -223,14 +229,13 @@ function PicksSoFar({
   return (
     <section aria-labelledby={headingId} data-picks-so-far="">
       <h3 id={headingId} className="mb-1 font-display text-base font-semibold text-amber-200/90">
-        Your picks so far
+        {t("Your picks so far")}
       </h3>
       <p className="mb-2 text-base text-stone-400">
-        Every number and how it is made appears here once your hero has a class, an ancestry, a background and six
-        scores.
+        {t("Every number and how it is made appears here once your hero has a class, an ancestry, a background and six scores.")}
       </p>
       <table className="w-full table-fixed border-collapse text-left">
-        <caption className="sr-only">What is already settled</caption>
+        <caption className="sr-only">{t("What is already settled")}</caption>
         <colgroup>
           <col className="w-[38%]" />
           <col className="w-[34%]" />
@@ -239,13 +244,13 @@ function PicksSoFar({
         <thead>
           <tr>
             <th scope="col" className="px-2 pb-1 text-sm font-semibold text-stone-400">
-              Number
+              {t("Number")}
             </th>
             <th scope="col" className="px-2 pb-1 text-sm font-semibold text-stone-400">
-              Value
+              {t("Value")}
             </th>
             <th scope="col" className="px-2 pb-1 text-sm font-semibold text-stone-400">
-              From
+              {t("From")}
             </th>
           </tr>
         </thead>
@@ -263,11 +268,11 @@ function PicksSoFar({
       </table>
       {klass ? (
         <div data-picked="class">
-          <h3 className={title}>{klass.name}</h3>
+          <h3 className={title}>{contentName("classes", klass.name, locale)}</h3>
           <InfoBody
             large
-            meta={classDetailsMeta({ id: klass.id, saves: klass.saves, reading: classRoles(klass) }).join(" · ")}
-            text={classInfoText(klass)}
+            meta={classDetailsMeta(t, { id: klass.id, saves: klass.saves, reading: classRoles(klass), locale }).join(" · ")}
+            text={classInfoText(klass, t)}
             reference={{ kind: "classes", slug: klass.id, name: klass.name }}
           />
         </div>

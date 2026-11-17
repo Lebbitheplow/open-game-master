@@ -1,5 +1,6 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { pluralOf } from "@/lib/messages-logic";
 // After the fight (docs/vtt-parity-implementation-plan.md 4.2): what the
 // dice and the sheets recorded over the encounter's span, folded into
 // one card. Pure; enemy-damage.ts gathers the rows and stores the result.
@@ -90,8 +91,13 @@ export function computeEncounterSummary(input: {
       continue;
     }
     // Damage that landed on an enemy counts as dealt; a hit that was
-    // never applied (a miss, a spell resisted) does not.
-    if (roll.kind === "damage" && roll.applied) {
+    // never applied (a miss, a spell resisted) does not. Only a stamp that
+    // names what the total landed on says that: a roll the engine spent
+    // inside its own call (src/lib/db/rolls.ts markRollSpent: a fall, a
+    // trap, the dice an AI GM sent for a character's damage) is stamped with
+    // no target, and counted here it read as damage dealt by the character
+    // it hurt.
+    if (roll.kind === "damage" && roll.applied && roll.targetEnemyId) {
       line.dealt += Math.max(0, roll.total);
     }
     if (roll.crit === "nat20") {
@@ -159,7 +165,13 @@ function gameSeconds(rounds: number): number {
   return Math.max(1, Math.round(rounds)) * ROUND_SECONDS;
 }
 
-// The fight's length for a stat tile: "24 s", "1 min", "1 min 12 s".
+// The shape of a translator, as the pure sentence builders take it (like
+// home/types.ts's agoLabel): the card words its own lines, and the server's
+// chapter record binds English.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+// The fight's length for a stat tile: "24 s", "1 min", "1 min 12 s" — unit
+// words, which every language here reads the same way.
 export function fightGameTime(rounds: number): string {
   const total = gameSeconds(rounds);
   const minutes = Math.floor(total / 60);
@@ -169,40 +181,44 @@ export function fightGameTime(rounds: number): string {
 }
 
 // The same in words, for a sentence: "24 seconds", "1 minute 12 seconds".
-export function fightGameTimeWords(rounds: number): string {
+export function fightGameTimeWords(t: T, rounds: number): string {
+  const tp = pluralOf(t);
   const total = gameSeconds(rounds);
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
   const parts = [
-    ...(minutes ? [`${minutes} minute${minutes === 1 ? "" : "s"}`] : []),
-    ...(seconds ? [`${seconds} second${seconds === 1 ? "" : "s"}`] : []),
+    ...(minutes ? [tp("{count} minute", "{count} minutes", { count: minutes })] : []),
+    ...(seconds ? [tp("{count} second", "{count} seconds", { count: seconds })] : []),
   ];
   return parts.join(" ");
 }
 
 // The real time the fight took at the table, in whole minutes, or "" when
 // none was recorded.
-export function fightTableTime(seconds: number): string {
+export function fightTableTime(t: T, seconds: number): string {
+  const tp = pluralOf(t);
   if (!(seconds > 0)) return "";
   const minutes = Math.max(1, Math.round(seconds / 60));
-  return `${minutes} minute${minutes === 1 ? "" : "s"} at the table`;
+  return tp("{count} minute at the table", "{count} minutes at the table", { count: minutes });
 }
 
-// One line for the chapter's record.
-export function describeEncounterSummary(summary: EncounterSummary): string {
+// One line for the chapter's record. The outcome is the encounter's own
+// status word; the rest is the dictionaries' (table.fight.*).
+export function describeEncounterSummary(t: T, summary: EncounterSummary): string {
+  const tp = pluralOf(t);
   const top = [...summary.fighters].sort((a, b) => b.dealt - a.dealt)[0];
   const parts = [
-    `${summary.outcome.replace(/_/g, " ")} after ${summary.rounds} round${summary.rounds === 1 ? "" : "s"} (${fightGameTimeWords(summary.rounds)})`,
-    `${summary.totals.dealt} damage dealt, ${summary.totals.taken} taken, ${summary.totals.healed} healed`,
+    tp("{outcome} after 1 round ({time})", "{outcome} after {count} rounds ({time})", { outcome: summary.outcome.replace(/_/g, " "), count: summary.rounds, time: fightGameTimeWords(t, summary.rounds) }),
+    t("{dealt} damage dealt, {taken} taken, {healed} healed", { dealt: summary.totals.dealt, taken: summary.totals.taken, healed: summary.totals.healed }),
   ];
   if (summary.kills) {
-    parts.push(`${summary.kills} slain`);
+    parts.push(tp("{count} slain", "{count} slain", { count: summary.kills }));
   }
   if (summary.spared) {
-    parts.push(`${summary.spared} knocked out and spared`);
+    parts.push(tp("{count} knocked out and spared", "{count} knocked out and spared", { count: summary.spared }));
   }
   if (top && top.dealt > 0) {
-    parts.push(`${top.name} struck hardest`);
+    parts.push(t("{name} struck hardest", { name: top.name }));
   }
   return parts.join("; ") + ".";
 }

@@ -88,6 +88,7 @@ export type GlobalConfigPatch = {
   signupsEnabled?: boolean;
   signupMode?: GlobalConfig["signupMode"];
   serverName?: string;
+  serverLanguage?: GlobalConfig["serverLanguage"];
   accountDeletionGraceDays?: number;
   abilityRerollBelow?: number;
   publicUrl?: string;
@@ -119,6 +120,7 @@ export function saveGlobalConfig(patch: GlobalConfigPatch): GlobalConfig {
         : (patch.signupsEnabled ?? current.signupsEnabled),
     signupMode,
     serverName: patch.serverName ?? current.serverName,
+    serverLanguage: patch.serverLanguage ?? current.serverLanguage,
     accountDeletionGraceDays:
       patch.accountDeletionGraceDays ?? current.accountDeletionGraceDays,
     abilityRerollBelow: patch.abilityRerollBelow ?? current.abilityRerollBelow,

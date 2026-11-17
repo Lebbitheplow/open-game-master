@@ -214,7 +214,9 @@ await test("A fast travel pace is -5 to passive Perception until the party stops
 await test("Off the board, night is darkness: a character without darkvision or a light sees nothing, a torch gives back full sight, and darkvision sees the dark as dim light (-5).", async () => {
   await at(23);
   assert.equal(await notice(5), false, `in the dark: ${lastNotice}`);
+  // Lit: a torch still in the pack lights nothing (W07).
   world.patch(lookout.id, { equipment: [{ name: "Torch", qty: 1 }] });
+  await world.invoke("use_item", { characterId: lookout.id, item: "Torch" });
   assert.equal(await notice(), true, `with a torch: ${lastNotice}`);
   world.patch(lookout.id, { equipment: [], features: [{ name: "Darkvision", source: "race" }] });
   assert.equal(await notice(10), true, `with darkvision: ${lastNotice}`);

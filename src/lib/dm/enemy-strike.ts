@@ -11,8 +11,8 @@
 // enemyRowSwingOdds: both sides' conditions, light, Pack Tactics and flanking
 // by side, a spell left on either), the riders on its roll (Bless, Bane), the
 // dice its traits add to a hit (side-allies.ts: Martial Advantage beside an
-// ally of its side, Surprise Attack), an effect's damage, Ray of
-// Enfeeblement, the blow by type, the damage through applyEnemyDamage (the
+// ally of its side, Surprise Attack), an effect's damage, Enlarge/Reduce, Ray
+// of Enfeeblement, the blow by type, the damage through landCreatureBlow (the
 // target's resistances, Undead Fortitude, its concentration, its death and
 // the end of the fight), and what the hit carries (enemy-hit-rows.ts). The
 // attacker walks in first when it can (enemy-approach.ts).
@@ -31,6 +31,7 @@ import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
 import { recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
 import { coverFor } from "@/lib/dm/attack-spatial";
@@ -39,11 +40,13 @@ import { effectOutcome } from "@/lib/dm/effect-tools";
 import { enemyRowSwingOdds } from "@/lib/dm/enemy-swing-odds";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 import { hitTraitDice } from "@/lib/dm/side-allies";
+import { chargeAfterHit, chargeForHit, enemyRunFeet, withChargeDice } from "@/lib/dm/enemy-charge";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
-import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
+import { landCreatureBlow } from "@/lib/dm/enemy-blow";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
-import { blowByType } from "@/lib/dm/enemy-hit";
+import { blowByType, sizedAttack } from "@/lib/dm/enemy-hit";
 import { alternativeBlow, attackNamed, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
@@ -79,6 +82,8 @@ export function enemyStrikesEnemy(
     // One swing made with its reaction, off its turn (Infectious Fury's
     // forced attack, mt-fb-spend.ts): its action and its turn are untouched.
     reaction?: boolean;
+    // No board: it ran straight at the target first (enemy-charge.ts).
+    charged?: boolean;
     sheets: CharacterSheet[];
     sheetsById: Map<string, CharacterSheet>;
   },
@@ -123,6 +128,8 @@ export function enemyStrikesEnemy(
     return spatial.blocked;
   }
   const live = getActiveEncounter(campaign.id) ?? encounter;
+  // Its run at the creature this turn, for a Charge or a Pounce (enemy-charge.ts).
+  const ranFeet = enemyRunFeet(encounter.id, enemy.id, target.id, input.charged === true);
   // A bonus action's swing spends the bonus action, not the action: it spent
   // the action here, so a creature that struck an enemy row with its bonus
   // attack lost its turn's action (found with issue #621).
@@ -183,7 +190,13 @@ export function enemyStrikesEnemy(
       continue;
     }
     shots += mode.ranged ? 1 : 0;
-    const attack: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
+    const swung: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
+    // The charge this hit would ride, and its extra dice (enemy-charge.ts).
+    const charge = chargeForHit(getActiveEncounter(campaign.id), enemy, swung, ranFeet);
+    // Enlarge/Reduce on the creature: its weapons grew or shrank with it, as
+    // on its swing at a character (enemy-hit.ts sizedAttack).
+    const sized = sizedAttack(charge ? withChargeDice(swung, charge) : swung, enemy.conditions);
+    const attack = sized.attack;
     const odds = enemyRowSwingOdds({
       campaign,
       encounterId: encounter.id,
@@ -216,13 +229,19 @@ export function enemyStrikesEnemy(
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
     turn.rollIds.push(hitRoll.id);
     const natCrit = toHit.crit === "nat20";
-    const hit = toHit.crit !== "nat1" && (natCrit || toHit.total >= vsAc);
+    const struck = toHit.crit !== "nat1" && (natCrit || toHit.total >= vsAc);
+    // The target's Parry or Shield, as a character's swing meets it
+    // (attack-swing.ts): a dominated creature's blow went through a mage's
+    // Shield. Read on the live fight, so a reaction spent this call counts.
+    const fight = struck && !natCrit ? getActiveEncounter(campaign.id) : null;
+    const parry = fight ? tryParry({ encounter: fight, enemy: now, total: toHit.total, natural20: false, ac: vsAc, melee: !mode.ranged, attackerUnseen: attackerUnseen(enemy.conditions, now.conditions, null) }) : null;
+    const hit = struck && !parry;
     const crit = natCrit || (hit && odds.autoCrit);
     if (attackerPos && targetPos && !attackerPos.hidden) {
       publishFx(campaign.id, planAttackFx({ from: attackerPos.at, to: targetPos.at, fromTokenId: attackerPos.tokenId, toTokenId: targetPos.tokenId, hit, crit, ranged: mode.ranged, damageType: attack.type, visibility: hitRoll.visibility }));
     }
     if (!hit) {
-      swings.push({ attack: attack.name, rolled: toHit.total, hit: false, ...(toHit.crit === "nat1" ? { fumble: true } : {}) });
+      swings.push({ attack: attack.name, rolled: toHit.total, hit: false, ...(toHit.crit === "nat1" ? { fumble: true } : {}), ...(parry ? { reaction: parry.note } : {}) });
       continue;
     }
     // Martial Advantage and Surprise Attack add their dice to the blow, and
@@ -252,11 +271,19 @@ export function enemyStrikesEnemy(
     turn.rollIds.push(damageRoll.id);
     const blow = blowByType(attack, damage, crit);
     // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
-    const dealt = enfeebledBlow(enemy, attack, mode.ranged, Math.max(0, blow.amount));
+    const dealt = enfeebledBlow(enemy, attack, mode.ranged, Math.max(sized.floor, blow.amount));
     // Stamped on the roll as it lands, so the after-fight card counts it.
     last = dealt > 0
       ? landRoll(damageRoll.id, now.id, () =>
-          applyEnemyDamage(campaign, turn, live, now, dealt, input.sheets, input.sheetsById, blow.type, {
+          landCreatureBlow({
+            campaign,
+            turn,
+            encounter: live,
+            target: now,
+            dealt,
+            blow,
+            sheets: input.sheets,
+            sheetsById: input.sheetsById,
             crit,
             magical: hasTrait(enemy.stats, "magicWeapons") || attack.spellAttack === true || attack.magical === true,
           }),
@@ -266,7 +293,11 @@ export function enemyStrikesEnemy(
     // What the hit carries besides its damage (a save or be knocked prone).
     const necrotic = blow.parts ? blow.parts.filter((part) => /necrotic/i.test(part.type)).reduce((sum, part) => sum + part.amount, 0) : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const onHit = resolveRowOnHit(campaign, turn, enemy, attack, now.id, { sheets: input.sheets, sheetsById: input.sheetsById, dealt: { total: dealt, necrotic } });
-    swings.push({ attack: attack.name, rolled: toHit.total, hit: true, ...(crit ? { crit: true } : {}), ...(traits.martial ? { martialAdvantage: true } : {}), damage: dealt, ...last, ...(onHit ?? {}) });
+    // A Charge or a Pounce, as at a character (enemy-charge.ts).
+    const charged = charge
+      ? chargeAfterHit(campaign, enemy, attack, charge, { id: now.id, name: now.displayName }, (ridden) => resolveRowOnHit(campaign, turn, enemy, ridden, now.id, { sheets: input.sheets, sheetsById: input.sheetsById, dealt: { total: 0, necrotic: 0 } }), () => (getEnemy(now.id)?.conditions ?? []).some((entry) => isConditionNamed(entry, "prone")))
+      : [];
+    swings.push({ attack: attack.name, rolled: toHit.total, hit: true, ...(crit ? { crit: true } : {}), ...(traits.martial ? { martialAdvantage: true } : {}), damage: dealt, ...last, ...(onHit ?? {}), ...(charged.length ? { charge: charged } : {}) });
   }
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

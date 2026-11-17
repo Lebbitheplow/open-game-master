@@ -1,6 +1,10 @@
 import type { VerifiedRow } from "./curate.ts";
 
 // How the admin panel and the setup wizard put a measurement into words.
+// The sentences live in the dictionaries (admin.images.measure.*); like
+// home/types.ts's agoLabel, the builders take the translator from the
+// component that draws them. seconds() stays unit words only ("19 s",
+// "1 min 12 s"), which both languages read the same way.
 
 // The fields of a catalog model as one ComfyUI reported it (ComfyModelReport
 // in src/lib/comfyui.ts) that the wording needs.
@@ -10,6 +14,9 @@ export type ReportLike = {
   fits: boolean | null;
 };
 
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 export function seconds(value: number): string {
   if (value < 90) return `${Math.round(value)} s`;
   const minutes = Math.floor(value / 60);
@@ -18,19 +25,25 @@ export function seconds(value: number): string {
 }
 
 // One line for a picker hint: what this hardware made of the model.
-export function measuredLine(report: ReportLike, hardware: string | null): string {
+export function measuredLine(t: T, report: ReportLike, hardware: string | null): string {
   const row = report.verified;
-  if (row?.verdict === "fails") return `Did not run on ${hardware ?? "this hardware"}.`;
-  if (row?.verdict === "poor") return `Runs on ${hardware ?? row.device}, but its pictures were poor there.`;
+  if (row?.verdict === "fails") return hardware ? t("Did not run on {device}.", { device: hardware }) : t("Did not run on this hardware.");
+  if (row?.verdict === "poor") return t("Runs on {device}, but its pictures were poor there.", { device: hardware ?? row.device });
   if (row) {
-    const verdict = row.verdict === "recommended" ? "Recommended. " : "";
-    return `${verdict}${seconds(row.seconds.square)} a picture, peaks ${row.peakGb} GB on ${hardware ?? row.device}.`;
+    const verdict = row.verdict === "recommended" ? t("Recommended. ") : "";
+    return t("{verdict}{time} a picture, peaks {peak} GB on {device}.", {
+      verdict,
+      time: seconds(row.seconds.square),
+      peak: String(row.peakGb),
+      device: hardware ?? row.device,
+    });
   }
-  if (report.fits === false) return `Peaked at ${report.needGb} GB elsewhere, more than this GPU has.`;
-  return hardware ? `Not measured on ${hardware} yet.` : "Not measured on this hardware yet.";
+  if (report.fits === false) return t("Peaked at {need} GB elsewhere, more than this GPU has.", { need: String(report.needGb) });
+  return hardware ? t("Not measured on {device} yet.", { device: hardware }) : t("Not measured on this hardware yet.");
 }
 
-// "a, b and c"
-export function listWords(words: readonly string[]): string {
-  return words.length < 2 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+// "a, b and c" — and "a, b et c" in French.
+export function listWords(t: T, words: readonly string[]): string {
+  if (words.length < 2) return words[0] ?? "";
+  return t("{list} and {last}", { list: words.slice(0, -1).join(", "), last: words[words.length - 1] });
 }

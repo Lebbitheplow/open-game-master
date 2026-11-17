@@ -13,8 +13,10 @@ import { TERRAIN, blocksMove, inBounds, tileIndex, type XY } from "@/lib/battlem
 export const BRUSHES = ["floor", "wall", "water", "difficult", "door", "lowwall", "climb"] as const;
 export type Brush = (typeof BRUSHES)[number];
 
-// Written for a person looking at a board, not for the tile alphabet.
-export const BRUSH_LABELS: Record<Brush, string> = {
+// The palette's words are the dictionaries' (maptools.brush.* and
+// maptools.brushEffect.*); the surface that shows them passes its
+// translator. The stored brush stays the raw kind.
+export const BRUSH_LABEL_KEYS: Record<Brush, string> = {
   floor: "Clear ground",
   wall: "Wall",
   water: "Water",
@@ -24,8 +26,15 @@ export const BRUSH_LABELS: Record<Brush, string> = {
   climb: "Climb",
 };
 
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function brushLabel(t: T, brush: Brush): string {
+  return t(BRUSH_LABEL_KEYS[brush] ?? "Clear ground");
+}
+
 // What each brush costs a walker, so the palette can say it out loud.
-export const BRUSH_EFFECTS: Record<Brush, string> = {
+export const BRUSH_EFFECT_KEYS: Record<Brush, string> = {
   floor: "Normal movement, and nothing blocks sight.",
   wall: "Blocks movement and sight, and grants cover behind it.",
   water: "Costs double to cross.",
@@ -34,6 +43,10 @@ export const BRUSH_EFFECTS: Record<Brush, string> = {
   lowwall: "A fence or ledge: blocks walking (not flying), not sight, and gives half cover behind it.",
   climb: "A ladder, rope or rough wall: costs double to climb, unless the mover has a climbing speed or Second-Story Work.",
 };
+
+export function brushEffect(t: T, brush: Brush): string {
+  return t(BRUSH_EFFECT_KEYS[brush] ?? "Normal movement, and nothing blocks sight.");
+}
 
 const BRUSH_CHARS: Record<Brush, string> = {
   floor: TERRAIN.floor,

@@ -23,6 +23,8 @@ const world = await openWorld();
 const kit = await combatKit(world);
 const { deriveHand } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { optionCost } = await import("../src/lib/dm/option-costs.ts");
 
 const LONGSWORD = [{ name: "Longsword", qty: 1, equipped: true }];
@@ -263,7 +265,7 @@ await test("The Hand deals swing maneuvers as riders, Rally and Commander's Stri
   }
   assert.equal(hand.find((card) => card.name === "Rally")?.cost, "bonus");
   const hits = [{ characterId: fighter.id, attacker: "Goblin", attackerId: "e1", attack: "Scimitar", type: "slashing", ranged: false, source: "attack", hit: true, damage: 6, answered: [] }];
-  const reactions = reactionCards(world.sheet(fighter.id), { ...TURN, myTurn: false }, hits, []);
+  const reactions = reactionCards(t, world.sheet(fighter.id), { ...TURN, myTurn: false }, hits, []);
   assert.ok(reactions.some((card) => card.name === "Parry"), reactions.map((card) => card.name).join(", "));
 });
 

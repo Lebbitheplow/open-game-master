@@ -20,6 +20,7 @@ import { drawQrCode } from "@/lib/qr-code";
 import { buildShareLinks } from "@/lib/share-link";
 import { roomCodeRefused, shareSheet } from "@/lib/shell-host";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { useShellShare } from "@/lib/use-shell-share";
 import { Dialog } from "@/components/ui/Dialog";
 
@@ -39,6 +40,7 @@ export function InviteQr({
   size?: string;
   className?: string;
 }) {
+  const t = useT();
   const [made, setMade] = useState<{ url: string; data: string } | null>(null);
   useEffect(() => {
     if (!url) {
@@ -67,9 +69,9 @@ export function InviteQr({
     >
       {data ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={data} alt={`QR code for invite link ${url}`} />
+        <img src={data} alt={t("QR code for invite link {url}", { url })} />
       ) : (
-        <div className="skeleton-block" role="status" aria-label="Drawing the QR code" />
+        <div className="skeleton-block" role="status" aria-label={t("Drawing the QR code")} />
       )}
     </div>
   );
@@ -78,8 +80,9 @@ export function InviteQr({
 // The room code in sigil lettering: one plate a character, arriving in turn.
 // The whole code is still one selectable, readable string for a screen reader.
 export function RoomCodeSigils({ code, size = "md" }: { code: string; size?: "md" | "lg" }) {
+  const t = useT();
   return (
-    <p className="lobby-sigils" data-size={size} aria-label={`Room code ${code.split("").join(" ")}`}>
+    <p className="lobby-sigils" data-size={size} aria-label={t("Room code {code}", { code: code.split("").join(" ") })}>
       {code.split("").map((char, index) => (
         <span
           // The index is the identity here: a rotated code replays the plates.
@@ -120,6 +123,7 @@ export function RoomCodeHeldNotice({
   busy?: boolean;
   className?: string;
 }) {
+  const t = useT();
   return (
     <div
       role="alert"
@@ -130,15 +134,15 @@ export function RoomCodeHeldNotice({
     >
       <div className="flex items-center gap-2 text-amber-200">
         <TriangleAlert className="size-4 shrink-0" />
-        <span className="font-medium">Another device holds this room code</span>
+        <span className="font-medium">{t("Another device holds this room code")}</span>
       </div>
       <p className="text-xs text-stone-300">
-        A friend who types it will not find this table.{" "}
-        {onNewCode ? "Make a new code and share that one." : "Ask the table's lead for a new code."}
+        {t("A friend who types it will not find this table.")}{" "}
+        {onNewCode ? t("Make a new code and share that one.") : t("Ask the table's lead for a new code.")}
       </p>
       {onNewCode ? (
         <button type="button" onClick={onNewCode} disabled={busy} className={cn(ui.btnSmall, "self-start")}>
-          <RefreshCw className={cn("size-4", busy && "animate-spin")} /> Get a new code
+          <RefreshCw className={cn("size-4", busy && "animate-spin")} /> {t("Get a new code")}
         </button>
       ) : null}
     </div>
@@ -171,6 +175,7 @@ export function InviteShareDialog({
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
   const [publicOrigin, setPublicOrigin] = useState("");
+  const t = useT();
   // Inside the desktop or Android app, on the app's own world: the tunnel
   // that lets friends anywhere join. Nothing here starts it. The row below
   // is the switch, and the host decides when to be online.
@@ -206,7 +211,7 @@ export function InviteShareDialog({
 
   async function copy(kind: "link" | "code") {
     const worked = await copyText(kind === "link" ? appUrl : inviteCode);
-    setError(worked ? "" : "Copying failed. Select the text and copy it by hand.");
+    setError(worked ? "" : t("Copying failed. Select the text and copy it by hand."));
     if (worked) {
       setCopied(kind);
       setTimeout(() => setCopied(null), 1500);
@@ -219,20 +224,18 @@ export function InviteShareDialog({
 
   async function share() {
     if (!sheet) return;
-    const title = campaignTitle || "my campaign";
+    const title = campaignTitle || t("my campaign");
     await sheet({
-      title: `Join ${title}`,
-      text: `Join ${campaignTitle ? `"${campaignTitle}"` : "my campaign"} on Open Game Master`,
+      title: t("Join {title}", { title }),
+      text: campaignTitle
+        ? t("Join \"{title}\" on Open Game Master", { title: campaignTitle })
+        : t("Join my campaign on Open Game Master"),
       url: appUrl,
     });
   }
 
   async function regenerate() {
-    if (
-      !await appConfirm(
-        "Generate a new invite code? Every link and QR shared so far stops working.",
-      )
-    ) {
+    if (!await appConfirm(t("Generate a new invite code? Every link and QR shared so far stops working."))) {
       return;
     }
     setRegenerating(true);
@@ -241,12 +244,12 @@ export function InviteShareDialog({
       const response = await fetch(`/api/campaigns/${campaignId}/invite`, { method: "POST" });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not regenerate the invite code.");
+        setError(data.error || t("Could not regenerate the invite code."));
       }
       // The campaign_updated stream event delivers the new code; the
       // inviteCode prop re-renders this dialog with it.
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setRegenerating(false);
     }
@@ -257,7 +260,7 @@ export function InviteShareDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Invite players"
+      title={t("Invite players")}
       icon={<QrCode className="size-4 text-amber-300" />}
       width="w-[min(92vw,26rem)]"
     >
@@ -269,10 +272,10 @@ export function InviteShareDialog({
         ) : null}
         <div className="flex flex-col items-center gap-1.5">
           <InviteQr url={open ? appUrl : ""} size="12rem" />
-          <p className="eyebrow text-[10px] text-stone-400">Scan to join</p>
+          <p className="eyebrow text-[10px] text-stone-400">{t("Scan to join")}</p>
         </div>
         <div className="flex w-full flex-col items-center text-center">
-          <p className="eyebrow mb-1.5 text-[10px] text-amber-200/70">Room code</p>
+          <p className="eyebrow mb-1.5 text-[10px] text-amber-200/70">{t("Room code")}</p>
           <RoomCodeSigils code={inviteCode} size="lg" />
           {codeRefused ? (
             <RoomCodeHeldNotice
@@ -282,7 +285,7 @@ export function InviteShareDialog({
             />
           ) : (
             <p className="mt-2 text-xs text-stone-400">
-              While you are sharing, a friend can type this code into the app and land here.
+              {t("While you are sharing, a friend can type this code into the app and land here.")}
             </p>
           )}
           <p className="mt-1 break-all font-code text-xs text-stone-500">{joinUrl}</p>
@@ -296,7 +299,7 @@ export function InviteShareDialog({
             className={cn(ui.btnSmall, "lobby-copy")}
           >
             {copied === "link" ? <CopyTick /> : <LinkIcon className="size-4" />}
-            {copied === "link" ? "Copied" : "Copy link"}
+            {copied === "link" ? t("Copied") : t("Copy link")}
           </button>
           <button
             type="button"
@@ -305,17 +308,17 @@ export function InviteShareDialog({
             className={cn(ui.btnSmall, "lobby-copy")}
           >
             {copied === "code" ? <CopyTick /> : <Copy className="size-4" />}
-            {copied === "code" ? "Copied" : "Copy code"}
+            {copied === "code" ? t("Copied") : t("Copy code")}
           </button>
           {sheet ? (
             <button type="button" onClick={() => void share()} className={ui.btnSmall}>
-              <Share2 className="size-4" /> Share
+              <Share2 className="size-4" /> {t("Share", { context: "action.share" })}
             </button>
           ) : null}
         </div>
         {/* A polite region, so the confirmation is heard as well as seen. */}
         <p role="status" className="sr-only">
-          {copied === "link" ? "Invite link copied." : copied === "code" ? "Room code copied." : ""}
+          {copied === "link" ? t("Invite link copied.") : copied === "code" ? t("Room code copied.") : ""}
         </p>
         {error ? <p className="motion-shake text-sm text-red-400">{error}</p> : null}
         {canRegenerate ? (
@@ -326,10 +329,10 @@ export function InviteShareDialog({
             className={cn(
               "inline-flex items-center gap-1.5 text-xs text-stone-500 transition-colors hover:text-red-400 disabled:opacity-50",
             )}
-            title="Invalidate every shared link and QR by rotating the code"
+            title={t("Invalidate every shared link and QR by rotating the code")}
           >
             <RefreshCw className={cn("size-3.5", regenerating && "animate-spin")} />
-            New code (kills old links)
+            {t("New code (kills old links)")}
           </button>
         ) : null}
       </div>
@@ -348,11 +351,12 @@ function ShareOnlineRow({
   onStart: () => Promise<void>;
   onStop: () => Promise<void>;
 }) {
+  const t = useT();
   if (status.state === "starting") {
     return (
       <div className="flex w-full animate-fade-up items-center gap-2 rounded-lg border border-stone-700/60 bg-stone-900/60 px-3 py-2 text-sm text-stone-300">
         <Loader2 className="size-4 shrink-0 animate-spin text-amber-300" />
-        <span>Opening a public address so friends anywhere can join...</span>
+        <span>{t("Opening a public address so friends anywhere can join...")}</span>
       </div>
     );
   }
@@ -361,18 +365,18 @@ function ShareOnlineRow({
       <div className="flex w-full flex-col gap-1.5 rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-3 py-2 text-sm">
         <div className="flex items-center gap-2 text-emerald-200">
           <Globe className="size-4 shrink-0" />
-          <span className="font-medium">Shared online</span>
+          <span className="font-medium">{t("Shared online")}</span>
           <button
             type="button"
             onClick={() => void onStop()}
             className="ml-auto text-xs text-stone-400 transition-colors hover:text-red-400"
           >
-            Stop sharing
+            {t("Stop sharing")}
           </button>
         </div>
         <p className="break-all font-code text-xs text-stone-300">{status.url}</p>
         <p className="text-xs text-stone-500">
-          Friends anywhere can join with the link below while the app runs.
+          {t("Friends anywhere can join with the link below while the app runs.")}
         </p>
       </div>
     );
@@ -381,17 +385,17 @@ function ShareOnlineRow({
     <div className="flex w-full flex-col gap-1.5 rounded-lg border border-stone-700/60 bg-stone-900/60 px-3 py-2 text-sm">
       <div className="flex items-center gap-2 text-stone-300">
         <Globe className="size-4 shrink-0 text-stone-500" />
-        <span>{status.state === "error" ? "Sharing online failed" : "Not shared online"}</span>
+        <span>{status.state === "error" ? t("Sharing online failed") : t("Not shared online")}</span>
         <button type="button" onClick={() => void onStart()} className={cn(ui.btnSmall, "ml-auto")}>
-          {status.state === "error" ? "Try again" : "Share online"}
+          {status.state === "error" ? t("Try again", { context: "home.failed.retry" }) : t("Share online")}
         </button>
       </div>
       <p className="text-xs text-stone-500">
         {status.state === "error"
           ? status.error
           : status.lanUrl
-            ? `Only friends on your Wi-Fi can reach ${status.lanUrl} until you share online.`
-            : "Share online and friends anywhere can join with the link below."}
+            ? t("Only friends on your Wi-Fi can reach {url} until you share online.", { url: status.lanUrl })
+            : t("Share online and friends anywhere can join with the link below.")}
       </p>
     </div>
   );

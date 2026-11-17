@@ -5,8 +5,9 @@ import { Info, Loader2 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GameIcon } from "@/components/ui/GameIcon";
 import type { IconRef } from "@/lib/icons";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { Dialog } from "@/components/ui/Dialog";
 import type { ItemSheet } from "@/lib/help/item-sheet";
 import { firstSentence, parseRulesBlocks } from "@/lib/help/rules-text";
@@ -103,6 +104,7 @@ export function renderRules(text: string): ReactNode {
 function ContentBody({ reference }: { reference: ContentRef }) {
   // The table the dialog opened at reads its DMs' homebrew.
   const campaignId = useContentCampaign();
+  const t = useT();
   const [state, setState] = useState<{ text: string | null; loading: boolean }>({
     text: null,
     loading: true,
@@ -114,12 +116,12 @@ function ContentBody({ reference }: { reference: ContentRef }) {
       try {
         const { describeContentEntry } = await import("@/lib/help");
         const { needsNote } = await import("@/lib/content/levelup-logic");
-        const { BEST_EFFORT_NOTE } = await import("@/lib/content/reading-logic");
         // An entry built on rules this game does not play, or played from
         // mechanics the app read and nobody checked, says so first (issue
-        // #570).
+        // #570). The note is the reader's words — the keyed "best effort"
+        // line, whose English is reading-logic's constant.
         const withNote = (entry: { needs?: Parameters<typeof needsNote>[0]; bestEffort?: boolean } | undefined, text: string | null) => {
-          const notes = [needsNote(entry?.needs ?? []), entry?.bestEffort ? BEST_EFFORT_NOTE : null].filter(Boolean);
+          const notes = [needsNote(entry?.needs ?? []), entry?.bestEffort ? t("Best effort: the app read this entry's rules from its text, and nobody has checked that reading yet. If it plays differently from what the text says, the text and the GM win, and a workshop copy can fix it for your table.") : null].filter(Boolean);
           return text && notes.length ? `${notes.join("\n\n")}\n\n${text}` : text;
         };
         const response = await fetch(
@@ -159,7 +161,7 @@ function ContentBody({ reference }: { reference: ContentRef }) {
     return () => {
       cancelled = true;
     };
-  }, [reference.kind, reference.slug, reference.name, campaignId]);
+  }, [reference.kind, reference.slug, reference.name, campaignId, t]);
 
   if (state.loading) {
     return (
@@ -399,6 +401,7 @@ export function InfoButton({
   size?: "sm" | "md";
 }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   // Nothing to say and nothing to look up: render no control at all rather
   // than a button that opens an empty box.
   if (!text?.trim() && !reference) {
@@ -413,7 +416,7 @@ export function InfoButton({
           event.stopPropagation();
           setOpen(true);
         }}
-        aria-label={`What is ${label}?`}
+        aria-label={t("What is {label}?", { label })}
         // tap-reach: the glyph stays small in its line, a finger gets 40 px
         // round it (audit WA-08).
         className={cn(
@@ -451,6 +454,13 @@ export function InfoChipList({
     note?: string;
     // The painted icon that leads the chip, when the thing has one.
     icon?: IconRef;
+    // What leads the chip in the painting's place, when the painting cannot
+    // be read at the chip's size (a carried item: src/lib/srd/
+    // item-category-logic.ts). The painting stays in the hover, where it has
+    // room, and the label is said for the picture.
+    // Its tone names the kind on the chip (data-tone) and its style tints it
+    // (src/lib/srd/item-category-logic.ts itemToneStyle).
+    lead?: { icon: IconRef; label: string; tone?: string; style?: CSSProperties };
   }>;
   emptyText?: string;
 }) {
@@ -462,21 +472,29 @@ export function InfoChipList({
       {items.map((item) => {
         const line = firstLine(item.text);
         return (
-          <span key={item.name} className="info-chip">
+          <span key={item.name} className="info-chip" data-tone={item.lead?.tone} style={item.lead?.style}>
             <Tooltip
               content={
                 <span className="flex items-start gap-2.5">
-                  {item.icon ? <GameIcon icon={item.icon} size="size-12" className="shrink-0" /> : null}
+                  {/* A Hand card's painting is twice as wide as it is tall. */}
+                  {item.icon ? <GameIcon icon={item.icon} size={item.icon.kind === "action" ? "h-12 w-24" : "size-12"} className="shrink-0" /> : null}
                   <span className="min-w-0">
                     <span className="block font-display text-[13px] tracking-wide text-amber-100">{item.name}</span>
-                    {item.meta ? <span className="block text-[10px] uppercase tracking-wider text-stone-500">{item.meta}</span> : null}
+                    {(item.meta ?? item.lead?.label) ? <span className="block text-[10px] uppercase tracking-wider text-stone-500">{item.meta ?? item.lead?.label}</span> : null}
                     <span className="mt-0.5 block text-stone-300">{line ?? "Select the mark beside it for the full entry."}</span>
                   </span>
                 </span>
               }
             >
               <span className="flex min-w-0 items-center gap-1.5" tabIndex={-1}>
-                {item.icon ? <GameIcon icon={item.icon} size="size-8" /> : null}
+                {item.lead ? (
+                  <>
+                    <GameIcon icon={item.lead.icon} size="size-8" className="tone-rim" />
+                    <span className="sr-only">{item.lead.label}:</span>
+                  </>
+                ) : item.icon ? (
+                  <GameIcon icon={item.icon} size="size-8" />
+                ) : null}
                 <span className="truncate">{item.name}</span>
                 {item.note ? <span className="text-stone-500">{item.note}</span> : null}
               </span>

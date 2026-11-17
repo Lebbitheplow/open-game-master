@@ -4,6 +4,7 @@ import { Check, Loader2 } from "lucide-react";
 import { useRef, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { replayAnimation } from "@/lib/motion/replay";
+import { useT } from "@/lib/locale";
 import { featureChoices } from "@/lib/battlemap/hand-subclass";
 import { otherSpeedsLine } from "@/components/sheet/sheet-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -13,7 +14,8 @@ import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 // Flying and swimming speeds a subclass grants (SheetDerived.speeds), as
 // chips under the vitals; nothing when the character has none.
 export function OtherSpeeds({ speeds }: { speeds: { fly?: number; swim?: number; climb?: number } | undefined }) {
-  const lines = otherSpeedsLine(speeds);
+  const t = useT();
+  const lines = otherSpeedsLine(t, speeds);
   if (!lines.length) return null;
   return (
     <div className="flex flex-wrap gap-1.5 stagger-pop">
@@ -57,6 +59,7 @@ export function FeatureChoicePicker({
   const [sent, setSent] = useState<Record<string, string>>({});
   const [refusal, setRefusal] = useState<string | null>(null);
   const refusalRef = useRef<HTMLParagraphElement>(null);
+  const t = useT();
   if (!choices.length) return null;
 
   async function choose(spend: string, option: string) {
@@ -74,13 +77,13 @@ export function FeatureChoicePicker({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setRefusal(data.error || "The choice was refused.");
+        setRefusal(data.error || t("The choice was refused."));
         replayAnimation(refusalRef.current, "shake-x var(--dur-beat) var(--ease-snap) both");
         return;
       }
       setSent((current) => ({ ...current, [spend]: option }));
     } catch {
-      setRefusal("Could not reach the server.");
+      setRefusal(t("Could not reach the server.", { context: "sheet.unreachable" }));
     } finally {
       setBusy(null);
     }
@@ -114,12 +117,12 @@ export function FeatureChoicePicker({
                       onClick={() => void choose(choice.spend, option)}
                       title={
                         !mine
-                          ? "The character's own player chooses."
+                          ? t("The character's own player chooses.")
                           : inCombat
-                            ? "Chosen outside a fight."
+                            ? t("Chosen outside a fight.")
                             : waiting
-                              ? "Sent. The GM resolves it."
-                              : `Choose ${titleCase(option)}`
+                              ? t("Sent. The GM resolves it.")
+                              : t("Choose {option}", { option: titleCase(option) })
                       }
                       className={cn(
                         "hand-option motion-press inline-flex min-h-9 items-center gap-1 rounded-full border px-3 sm:min-h-8",

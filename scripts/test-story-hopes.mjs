@@ -120,8 +120,8 @@ await test("a library character's hopes start each new table, and a table's own 
 
 await test("the builder asks for them, labelled and counted, and sends them", () => {
   const step = read("src/app/characters/builder/steps/IdentityStep.tsx");
-  assert.match(step, /title="Hopes for this story \(optional\)"/);
-  assert.match(step, /aria-label="Hopes for this story"/);
+  assert.match(step, /title=\{t\("Hopes for this story \(optional\)"\)\}/);
+  assert.match(step, /aria-label=\{t\("Hopes for this story"\)\}/);
   assert.match(step, /<LengthNote id=\{`\$\{hopesId\}-length`\} length=\{state\.hopes\.length\} max=\{HOPES_MAX\}/);
   assert.match(read("src/app/characters/builder/submit.ts"), /hopes: \(state\.hopes \?\? ""\)\.trim\(\),/);
   assert.match(read("src/app/campaigns/[campaignId]/CharacterSheetDialog.tsx"), /sheet\.isCompanion \? null : <StoryHopes sheet=\{sheet\} mine=\{mine\} \/>/);
@@ -134,7 +134,7 @@ await test("an older host, which drops the field, is never asked for hopes", asy
   const older = { story: { configured: true, reachable: true }, utility: { configured: true }, images: { configured: false, reachable: false, backend: "comfyui" }, tts: { configured: false, reachable: false }, stt: { configured: false }, voice: { enabled: false, mode: "off" } };
   assert.equal(hostOffers(older, "storyHopes"), false);
   assert.equal(hostOffers({ ...older, features: { storyHopes: true } }, "storyHopes"), true);
-  assert.match(read("src/app/characters/builder/steps/IdentityStep.tsx"), /const asksHopes = hostOffers\(useCapabilities\(\), "storyHopes"\);[\s\S]*\{asksHopes \? \(\n\s+<StepPanel\n\s+title="Hopes for this story \(optional\)"/);
+  assert.match(read("src/app/characters/builder/steps/IdentityStep.tsx"), /const asksHopes = hostOffers\(useCapabilities\(\), "storyHopes"\);[\s\S]*\{asksHopes \? \(\n\s+<StepPanel\n\s+title=\{t\("Hopes for this story \(optional\)"\)\}/);
   assert.match(read("src/app/campaigns/[campaignId]/StoryHopes.tsx"), /const kept = hostOffers\(useCapabilities\(\), "storyHopes"\);\n\s+if \(!kept\) \{\n\s+return null;/);
 });
 

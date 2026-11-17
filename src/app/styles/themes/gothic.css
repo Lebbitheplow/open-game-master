@@ -1,0 +1,78 @@
+/* gothic: both brightness palettes. See docs/appearance-themes.md. */
+[data-appearance="gothic"] {
+  --theme-table-corner-size: 48px;
+  --theme-table-corner-size-small: 23px;
+  --material-fitting-radius: 50% 50% 3px 3px;
+  --material-control-radius: 12px 12px 2px 2px;
+  --material-panel-radius: 18px 18px 3px 3px;
+  --material-primary-wash: linear-gradient(#782c48e8, #3c1428eb);
+  --material-send-wash: linear-gradient(#782c48, #3c1428);
+  --material-send-edge: var(--color-amber-400);
+  --material-chosen-wash: var(--material-send-wash);
+  --material-metal-finish: linear-gradient(135deg, #e2cbd3, #93727f 48%, #cdb3bf 51%, #75535f);
+  --material-metal-ink: #301723;
+  --material-rail-wash: linear-gradient(#20141b70, #20141b70);
+}
+[data-appearance="gothic"][data-theme="dark"] {
+  --background: #160e13;
+  --foreground: #efe3e7;
+  --color-stone-950: #170f15;
+  --color-stone-900: #271a22;
+  --color-stone-800: #3a2832;
+  --color-stone-700: #523b48;
+  --color-stone-600: #816774;
+  --color-stone-500: #b098a5;
+  --color-stone-400: #c5afba;
+  --color-stone-300: #dac6cf;
+  --color-stone-200: #e9d8e0;
+  --color-stone-100: #f4eaf0;
+  --color-stone-50: #fcf6f9;
+  --color-amber-950: #30111e;
+  --color-amber-900: #4d1e31;
+  --color-amber-800: #70324a;
+  --color-amber-700: #974c68;
+  --color-amber-600: #b7758e;
+  --color-amber-500: #cf97ad;
+  --color-amber-400: #e0b7c6;
+  --color-amber-300: #ebccd7;
+  --color-amber-200: #f2dfe7;
+  --color-amber-100: #f9edf2;
+  --color-amber-50: #fff7fa;
+}
+[data-appearance="gothic"][data-theme="light"] {
+  --material-send-wash: linear-gradient(#74304d, #48162d);
+  --material-primary-wash: linear-gradient(#74304deb, #48162df0);
+  --background: #f1e8e7;
+  --foreground: #33212a;
+  --color-stone-950: #faf5f2;
+  --color-stone-900: #eee4e1;
+  --color-stone-800: #e1d2d0;
+  --color-stone-700: #c7b3b5;
+  --color-stone-600: #967b85;
+  --color-stone-500: #745965;
+  --color-stone-400: #5f4452;
+  --color-stone-300: #4a313e;
+  --color-stone-200: #38222d;
+  --color-stone-100: #291821;
+  --color-stone-50: #1d0f17;
+  --color-amber-950: #faeaf0;
+  --color-amber-900: #f0d6e0;
+  --color-amber-800: #dcb1c2;
+  --color-amber-700: #bb819a;
+  --color-amber-600: #965b74;
+  --color-amber-500: #7b405c;
+  --color-amber-400: #692e4b;
+  --color-amber-300: #54223b;
+  --color-amber-200: #43192e;
+  --color-amber-100: #321022;
+  --color-amber-50: #230a17;
+}
+
+[data-appearance="gothic"] {
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='240' viewBox='0 0 160 240'%3E%3Cg fill='none' stroke='%23ad7f94' stroke-width='1'%3E%3Cpath d='M20 240V100Q20 45 80 12Q140 45 140 100V240M34 240V105Q34 62 80 30Q126 62 126 105V240M80 30V240M34 130H126'/%3E%3Ccircle cx='80' cy='100' r='17'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 160px 240px;
+  --appearance-corner: 0.3rem;
+}
+html[data-appearance="gothic"] .ornate::before,
+html[data-appearance="gothic"] .ornate::after { width: 20px; height: 20px; border-style: double; }
+[data-appearance="gothic"] > .appearance-preview-frame { border-radius: 48% 48% 0.2rem 0.2rem; }

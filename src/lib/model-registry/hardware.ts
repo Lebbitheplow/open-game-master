@@ -28,8 +28,18 @@ export type Machine = {
 // on a 16 GB card. The desktop app holds the same line (its
 // LOCAL_AI_MINIMUM_GB), and docs/text-backends.md explains it.
 export const LOCAL_STORYTELLER_MINIMUM_GB = 16;
-// About what the recommended storyteller (Qwen3.6-35B-A3B at Q4) needs.
-export const RECOMMENDED_STORYTELLER_GB = 28;
+// The recommended storyteller's quantizations, largest first, by the
+// graphics memory that holds each one whole with its 64K window, as the
+// desktop app's catalog sizes them (its needsGb). Whole on the card: a 16 GB
+// card was once counted with half its system memory and recommended the
+// recommended model with its experts in RAM, and every turn crawled (issue
+// 954).
+export const STORYTELLER_QUANTS = [
+  { needsGb: 45, quant: "Q8_0" },
+  { needsGb: 38, quant: "UD-Q6_K_XL" },
+  { needsGb: 28, quant: "UD-Q4_K_M" },
+  { needsGb: 22, quant: "UD-Q3_K_XL" },
+] as const;
 
 const CHECK_TTL_MS = 5 * 60_000;
 const STATS_TIMEOUT_MS = 2_500;
@@ -104,12 +114,14 @@ export function graphicsMemoryGb(machine: Pick<Machine, "ramGb" | "gpu" | "unifi
   return machine.unified ? machine.ramGb * 0.8 : machine.gpu.vramGb;
 }
 
-// The memory a local model may take, reckoned the way the desktop app
-// reckons it (its src/main/local-ai/catalog.ts), so the server, the app and
-// the docs agree: most of a unified pool, or a card plus half the system
-// memory, where a mixture-of-experts model's experts can wait at some cost
-// in speed. With no card known, the machine's memory is the most a model
-// could have, so only weights beyond it are judged too big.
+// The most memory a local model can take at all, reckoned the way the
+// desktop app reckons it (its src/main/local-ai/catalog.ts), so the server,
+// the app and the docs agree: most of a unified pool, or a card plus half
+// the system memory, where a mixture-of-experts model's experts can wait,
+// slowly. It judges what is too big to run, never what is recommended
+// (storytellerFit goes by the card alone). With no card known, the
+// machine's memory is the most a model could have, so only weights beyond
+// it are judged too big.
 export function memoryBudgetGb(machine: Pick<Machine, "ramGb" | "gpu" | "unified">): number {
   if (!machine.gpu) return machine.ramGb;
   return machine.unified ? machine.ramGb * 0.8 : machine.gpu.vramGb + machine.ramGb * 0.5;
@@ -123,16 +135,27 @@ export function fitsMachine(sizeGb: number, machine: Pick<Machine, "ramGb" | "gp
   return sizeGb * 1.1 <= budget;
 }
 
-// Which local storyteller this machine runs, by the docs' table: below the
-// 16 GB minimum, the minimum (gpt-oss-20b), or the recommended model. A
-// "16 GB" card reports a little under 16 once its driver takes a share.
+// Which local storyteller this machine runs whole on its graphics, by the
+// docs' table: below the 16 GB minimum, the minimum (gpt-oss-20b), or the
+// recommended model. A "16 GB" card reports a little under 16 once its
+// driver takes a share, and a 24 GB one a little under 24.
 export type StorytellerFit = "unknown" | "below" | "minimum" | "recommended";
+
+const READS_UNDER_GB = 0.5;
 
 export function storytellerFit(machine: Pick<Machine, "ramGb" | "gpu" | "unified">): StorytellerFit {
   const graphics = graphicsMemoryGb(machine);
   if (graphics === null) return "unknown";
-  if (graphics < LOCAL_STORYTELLER_MINIMUM_GB - 0.5) return "below";
-  return memoryBudgetGb(machine) >= RECOMMENDED_STORYTELLER_GB ? "recommended" : "minimum";
+  if (graphics < LOCAL_STORYTELLER_MINIMUM_GB - READS_UNDER_GB) return "below";
+  return storytellerQuant(machine) ? "recommended" : "minimum";
+}
+
+// The recommended storyteller's largest quantization this machine's
+// graphics hold whole, or null when none does (the minimum, or below it).
+export function storytellerQuant(machine: Pick<Machine, "ramGb" | "gpu" | "unified">): string | null {
+  const graphics = graphicsMemoryGb(machine);
+  if (graphics === null) return null;
+  return STORYTELLER_QUANTS.find((entry) => graphics >= entry.needsGb - READS_UNDER_GB)?.quant ?? null;
 }
 
 declare global {
@@ -188,8 +211,16 @@ export async function machine(): Promise<Machine> {
   return found;
 }
 
-export function describeMachine(found: Pick<Machine, "ramGb" | "gpu" | "unified">): string {
-  const memory = `${Math.round(found.ramGb)} GB memory`;
-  if (!found.gpu) return `${memory}, no graphics card found`;
-  return found.unified ? `${found.gpu.name}, ${memory} shared` : `${found.gpu.name} with ${found.gpu.vramGb} GB, ${memory}`;
+// This machine in words, for the admin panel and the setup scan. The
+// sentences live in the dictionaries (admin.models.machine.*); the card's
+// name is the driver's own, and the numbers are the same in every language.
+export function describeMachine(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  found: Pick<Machine, "ramGb" | "gpu" | "unified">,
+): string {
+  const memory = t("{ram} GB memory", { ram: Math.round(found.ramGb) });
+  if (!found.gpu) return t("{memory}, no graphics card found", { memory });
+  return found.unified
+    ? t("{gpu}, {memory} shared", { gpu: found.gpu.name, memory })
+    : t("{gpu} with {vram} GB, {memory}", { gpu: found.gpu.name, vram: found.gpu.vramGb, memory });
 }

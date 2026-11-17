@@ -25,6 +25,8 @@ if (!target) {
 }
 
 const { addonManifestSchema, addonFit, CONTRIBUTION_KINDS, platformName } = await import("../src/lib/addons/manifest.ts");
+const { ADDON_MODIFIES } = await import("../src/lib/addons/manifest-parts.ts");
+const { partBytes } = await import("../src/lib/addons/settings.ts");
 const { readArchiveManifest, unpackArchive } = await import("../src/lib/addons/archive.ts");
 const { resolveInside } = await import("../src/lib/addons/paths.ts");
 
@@ -72,6 +74,19 @@ if (manifest) {
   for (const platform of ["linux", "win32", "darwin"]) {
     const fit = addonFit(manifest, { platform, arch: "x64", serverVersion: "999.0.0" });
     notes.push(`${platform}: ${fit.ok ? "runs" : fit.reason}`);
+  }
+  // Two addons conflict when both replace the same name, so a misspelt
+  // name quietly misses the clash it was meant to declare.
+  for (const entry of manifest.modifies) {
+    const known = ADDON_MODIFIES[entry.what] || entry.what.includes("/");
+    notes.push(`modifies ${entry.what} (${entry.how})${known ? "" : `: not one of the common names (${Object.keys(ADDON_MODIFIES).join(", ")}); check the spelling, or propose it`}`);
+  }
+  for (const part of manifest.parts) {
+    notes.push(`part ${part.id} "${part.title}"${part.default ? " (chosen by default)" : ""}: up to ${Math.max(1, Math.round(partBytes(manifest, part.id) / 1024 ** 2))} MB`);
+  }
+  const folders = (manifest.setup?.downloads ?? []).some((download) => download.github);
+  if ((manifest.parts.length || folders) && !manifest.minServerVersion) {
+    notes.push("WARNING parts and repository-folder downloads are new: set minServerVersion to the first Open Game Master release that reads them, so older servers say so instead of failing to read addon.json");
   }
 }
 

@@ -17,6 +17,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { openBuilder } from "./enforce-builder.mjs";
 import { PORTRAIT } from "./enforce-creation.mjs";
+import { translate } from "../../src/lib/messages-logic.ts";
 
 const src = (file) => import(new URL(`../../src/${file}`, import.meta.url).href);
 
@@ -195,8 +196,9 @@ export async function openSweepBuilder({ world, user, campaignId = null }) {
     });
   }
 
-  // "Fill what's left", as useQuickFill runs it.
-  async function fill(start, { answers, only, rng = seeded() } = {}) {
+  // "Fill what's left", as useQuickFill runs it. The fills' labels read
+  // through the dictionary; the harness reads them in English, the source.
+  async function fill(start, { answers, only, rng = seeded(), t = (key, vars) => translate("en", key, vars), locale = "en" } = {}) {
     let fields = start;
     const filled = [];
     for (let round = 0; round < quick.FILL_ROUNDS + 1; round += 1) {
@@ -204,6 +206,8 @@ export async function openSweepBuilder({ world, user, campaignId = null }) {
       const pool = derived.casts ? await spellPool(derived.spellSearchClass, derived.maxSpellLevel) : [];
       const subclasses = fields.classId ? (await subclassesOf(fields.classId)).map((row) => row.name) : [];
       const step = quick.fillRound({
+        t,
+        locale,
         fields,
         derived,
         race: find(races, fields.raceId),

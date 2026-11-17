@@ -25,8 +25,12 @@ import { variantGivesAnything, variantShort, variantSummary } from "@/lib/conten
 import { Chip } from "./steps/shared";
 import { RacialCantripPicker } from "./RacialCantripPicker";
 import { featChoice } from "@/lib/schemas/sheet";
+import { skillLabel } from "@/lib/srd";
+import { useLocale, useT, useTp } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 
-const ABILITY_NAMES: Record<Ability, string> = {
+// An ability key as its name in the reader's language (sheet.ability.*).
+const ABILITY_LABEL_KEYS: Record<Ability, string> = {
   str: "Strength",
   dex: "Dexterity",
   con: "Constitution",
@@ -35,9 +39,7 @@ const ABILITY_NAMES: Record<Ability, string> = {
   cha: "Charisma",
 };
 
-function skillName(skillId: string) {
-  return SRD_SKILLS.find((skill) => skill.id === skillId)?.name ?? skillId;
-}
+
 
 // The picks a race offers instead of fixing: half-elf's two +1 ability
 // bumps and two skills, high elf's wizard cantrip, hill dwarf's tool, the
@@ -128,6 +130,9 @@ export function RacialChoicesSection({
   known?: KnownTraining;
   inputClass: string;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const draconic = takesDraconicAncestry(race.id);
   const racialFeats = onFeatsChange ? racialFeatCount(race.id) : 0;
   const hasChoices = Boolean(
@@ -140,6 +145,7 @@ export function RacialChoicesSection({
   // and rechecked on the feat once picked.
   const judge = useFeatJudge();
   const noteId = useId();
+  const abilityWord = (ability: Ability | string) => t(ABILITY_LABEL_KEYS[ability as Ability] ?? String(ability));
   const pickFeat = (name: string) => {
     if (!onFeatsChange || feats.includes(name) || feats.length >= racialFeats) {
       return;
@@ -158,23 +164,23 @@ export function RacialChoicesSection({
 
   return (
     <div className="space-y-3 rounded-lg border border-amber-900/40 bg-amber-950/10 p-3">
-      <p className="text-xs text-amber-200/90">{race.name} choices</p>
+      <p className="text-xs text-amber-200/90">{t("{race} choices", { race: race.name })}</p>
 
       {/* First: what it gives changes what the picks below may be. */}
       {race.variants && onVariantChange ? (
         <div data-builder-target="variant">
           <label className="block">
             <span className="mb-1 block text-stone-400">
-              {race.variants.label}: it changes what your {race.name} gets
+              {t("{label}: it changes what your {species} gets", { label: race.variants.label, species: race.name })}
             </span>
             <Select<string>
               value={variant}
               onChange={onVariantChange}
               className="w-full"
               label={race.variants.label}
-              placeholder="Choose one..."
+              placeholder={t("Choose one...")}
               options={[
-                { value: "", label: "Choose one..." },
+                { value: "", label: t("Choose one...") },
                 ...race.variants.options.map((option) => ({
                   value: option.id,
                   label: variantGivesAnything(option) ? `${option.name} (${variantShort(option)})` : option.name,
@@ -195,14 +201,19 @@ export function RacialChoicesSection({
 
       {race.asiChoice ? (
         <div data-builder-target="racialAsi">
-          {/* One line of words that wraps as words do: as a flex row the
-              glossary term stood alone on a phone's first line. */}
           <span className="mb-1 block text-stone-400">
-            <GameTerm id="ability_score">Ability</GameTerm> increases ({race.asiChoice.amounts ? asiPickWords(race.asiChoice) : `+${race.asiChoice.amount}`} to{" "}
-            {asiFrom
-              ? asiFrom.map((ability) => ABILITY_NAMES[ability]).join(" or ")
-              : `${race.asiChoice.count} abilities of your choice`}
-            )
+            <GameTerm id="ability_score">Ability</GameTerm>{" "}
+            {race.asiChoice.amounts
+              ? `increases (${asiPickWords(race.asiChoice)} to ${asiFrom ? asiFrom.map((ability) => abilityWord(ability)).join(" or ") : `${race.asiChoice.count} abilities of your choice`})`
+              : t(" increases (+{amount} to {from})", {
+                  amount: race.asiChoice.amount,
+                  from: asiFrom
+                    ? t("{from} or {count} abilities of your choice", {
+                        from: asiFrom.map((ability) => abilityWord(ability)).join(" or "),
+                        count: race.asiChoice.count,
+                      })
+                    : "",
+                })}
           </span>
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: race.asiChoice.count }, (_, index) => (
@@ -211,17 +222,17 @@ export function RacialChoicesSection({
                   value={asi[index] ?? ""}
                   onChange={(next) => onAsiChange(index, next)}
                   className="min-w-0 grow"
-                  label={race.asiChoice!.amounts ? `Ability increase ${index + 1} (+${asiPickAmount(race.asiChoice!, index)})` : `Ability increase ${index + 1}`}
-                  placeholder="Choose an ability..."
+                  label={race.asiChoice!.amounts ? `Ability increase ${index + 1} (+${asiPickAmount(race.asiChoice!, index)})` : t("Ability increase {n}", { n: index + 1 })}
+                  placeholder={t("Choose an ability...")}
                   options={[
                     // Still a row of its own, so a pick can be taken back.
-                    { value: "" as const, label: "Choose an ability..." },
+                    { value: "" as const, label: t("Choose an ability...") },
                     ...ABILITIES.filter(
                       (ability) =>
                         !fixedAbilities.has(ability) &&
                         (!asiFrom || asiFrom.includes(ability)) &&
                         (asi[index] === ability || !asi.includes(ability)),
-                    ).map((ability) => ({ value: ability, label: ABILITY_NAMES[ability] })),
+                    ).map((ability) => ({ value: ability, label: abilityWord(ability) })),
                   ]}
                 />
                 {/* The ability's glossary entry as the skills' ⓘ: the words
@@ -236,9 +247,9 @@ export function RacialChoicesSection({
 
       {race.skillChoice ? (
         <div data-builder-target="racialSkills">
-          <span className="mb-1 block text-stone-400">
-            <GameTerm id="skill">Skill</GameTerm> proficiencies ({race.skillChoice.count} of your
-            choice)
+          <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
+            <GameTerm id="skill">Skill</GameTerm>
+            {t(" proficiencies ({count} of your choice)", { count: race.skillChoice.count })}
           </span>
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: race.skillChoice.count }, (_, index) => (
@@ -247,19 +258,19 @@ export function RacialChoicesSection({
                   value={skills[index] ?? ""}
                   onChange={(next) => onSkillsChange(index, next)}
                   className="min-w-0 grow"
-                  label={`Skill proficiency ${index + 1}`}
-                  placeholder="Choose a skill..."
+                  label={t("Skill proficiency {n}", { n: index + 1 })}
+                  placeholder={t("Choose a skill...")}
                   options={[
-                    { value: "", label: "Choose a skill..." },
+                    { value: "", label: t("Choose a skill...") },
                     ...(race.skillChoice?.from?.length ? race.skillChoice.from : ALL_SKILLS).filter(
                       (skill) => skills[index] === skill || (!skills.includes(skill) && !grantedSkills.includes(skill)),
-                    ).map((skill) => ({ value: skill as string, label: skillName(skill) })),
+                    ).map((skill) => ({ value: skill as string, label: skillLabel(skill, locale) })),
                   ]}
                 />
                 {skills[index] ? (
                   <InfoButton
-                    label={skillName(skills[index])}
-                    text={describeSkill(skills[index])}
+                    label={skillLabel(skills[index], locale)}
+                    text={describeSkill(t, skills[index], locale)}
                   />
                 ) : null}
               </span>
@@ -271,19 +282,24 @@ export function RacialChoicesSection({
       {draconic && onAncestryChange ? (
         <label className="block" data-builder-target="ancestry">
           <span className="mb-1 block text-stone-400">
-            Draconic ancestry: your breath weapon&apos;s damage and save, and the damage you resist
+            {t("Draconic ancestry: your breath weapon's damage and save, and the damage you resist")}
           </span>
           <Select<string>
             value={ancestry}
             onChange={onAncestryChange}
             className="w-full"
-            label="Draconic ancestry"
-            placeholder="Choose a dragon..."
+            label={t("Draconic ancestry")}
+            placeholder={t("Choose a dragon...")}
             options={[
-              { value: "", label: "Choose a dragon..." },
+              { value: "", label: t("Choose a dragon...") },
               ...DRACONIC_ANCESTRIES.map((entry) => ({
                 value: entry.id,
-                label: `${entry.dragon} (${entry.damageType}, ${entry.area}, ${entry.save.toUpperCase()} save)`,
+                label: t("{dragon} ({type}, {area}, {save} save)", {
+                  dragon: t(entry.dragon),
+                  type: t(entry.damageType),
+                  area: t(entry.area),
+                  save: t(entry.save.toUpperCase()),
+                }),
               })),
             ]}
           />
@@ -293,8 +309,10 @@ export function RacialChoicesSection({
       {repeated.length && onRepeatChange ? (
         <div data-builder-target="repeatSkills">
           <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
-            Your race and background both give {repeated.map(skillName).join(" and ")}; choose
-            {repeated.length === 1 ? " another skill" : ` ${repeated.length} other skills`} in its place
+            {t("Your race and background both give {list}; choose {choice} in its place", {
+              list: repeated.map((id) => skillLabel(id, locale)).join(" and "),
+              choice: tp("another skill", "{count} other skills", { count: repeated.length }),
+            })}
           </span>
           <div className="grid grid-cols-2 gap-2">
             {repeated.map((_, index) => (
@@ -303,19 +321,19 @@ export function RacialChoicesSection({
                   value={repeatSkills[index] ?? ""}
                   onChange={(next) => onRepeatChange(index, next)}
                   className="min-w-0 grow"
-                  label={`Skill in place of a repeated one ${index + 1}`}
-                  placeholder="Choose a skill..."
+                  label={t("Skill in place of a repeated one {n}", { n: index + 1 })}
+                  placeholder={t("Choose a skill...")}
                   options={[
-                    { value: "", label: "Choose a skill..." },
+                    { value: "", label: t("Choose a skill...") },
                     ...ALL_SKILLS.filter(
                       (skill) =>
                         repeatSkills[index] === skill ||
                         (!repeatSkills.includes(skill) && !grantedSkills.includes(skill) && !skills.includes(skill)),
-                    ).map((skill) => ({ value: skill as string, label: skillName(skill) })),
+                    ).map((skill) => ({ value: skill as string, label: skillLabel(skill, locale) })),
                   ]}
                 />
                 {repeatSkills[index] ? (
-                  <InfoButton label={skillName(repeatSkills[index])} text={describeSkill(repeatSkills[index])} />
+                  <InfoButton label={skillLabel(repeatSkills[index], locale)} text={describeSkill(t, repeatSkills[index], locale)} />
                 ) : null}
               </span>
             ))}
@@ -326,19 +344,17 @@ export function RacialChoicesSection({
       {racialFeats > 0 && onFeatsChange ? (
         <div data-builder-target="racialFeat">
           <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
-            Feat ({racialFeats === 1 ? "one" : racialFeats} of your choice)
+            {t("Feat ({count} of your choice)", { count: racialFeats })}
           </span>
           <p className="mb-1.5 text-xs text-stone-500">
-            {`A feat is a talent other characters only earn with an ability score improvement; ${race.name} starts with one. `}
-            Browse the list (tap ⓘ to read what each does), or search by name if you already have
-            one in mind.
+            {t("A feat is a talent other characters only earn with an ability score improvement; {race} starts with one. Browse the list (tap ⓘ to read what each does), or search by name if you already have one in mind.", { race: race.name })}
           </p>
           {feats.length ? (
             <div className="mb-1.5 flex flex-wrap gap-1.5">
               {feats.map((feat) => (
                 <Chip
                   key={feat}
-                  label={feat}
+                  label={contentName("feats", feat, locale)}
                   info={{ reference: { kind: "feats", slug: contentSlug(feat), name: feat } }}
                   onRemove={() => onFeatsChange(feats.filter((entry) => entry !== feat))}
                 />
@@ -352,17 +368,17 @@ export function RacialChoicesSection({
             <>
               <CatalogBrowser
                 kind="feats"
-                buttonLabel="Browse every feat"
+                buttonLabel={t("Browse every feat")}
                 selectedNames={feats}
                 judge={judge ? (entry) => judgeEntry(judge, entry) : undefined}
                 onPick={(entry) => pickFeat(entry.name)}
                 onUnpick={(featName) => onFeatsChange(feats.filter((entry) => entry !== featName))}
-                sections={[{ key: "feats:all", label: "All feats" }]}
+                sections={[{ key: "feats:all", label: t("All feats") }]}
               />
-              <p className="mt-2 mb-1 text-xs text-stone-500">Or search by name:</p>
+              <p className="mt-2 mb-1 text-xs text-stone-500">{t("Or search by name:")}</p>
               <ContentPicker
                 kind="feats"
-                placeholder="Search feats (e.g. alert, tough)"
+                placeholder={t("Search feats (e.g. alert, tough)")}
                 judge={judge ? (entry) => judgeEntry(judge, entry) : undefined}
                 onPick={(entry) => pickFeat(entry.name)}
               />
@@ -383,13 +399,13 @@ export function RacialChoicesSection({
             : null}
           {featScores.length > 1 && onFeatAbilityChange ? (
             <label className="mt-2 block sm:w-64">
-              <span className="mb-1 block text-xs text-stone-500">{feats[0]} raises by 1</span>
+              <span className="mb-1 block text-xs text-stone-500">{t("{feat} raises by 1", { feat: contentName("feats", feats[0], locale) })}</span>
               <Select<Ability>
                 value={featScores.includes(featAbility as Ability) ? (featAbility as Ability) : featScores[0]}
                 onChange={(ability) => onFeatAbilityChange(ability)}
-                label={`${feats[0]} raises`}
+                label={t("{feat} raises", { feat: contentName("feats", feats[0], locale) })}
                 className="w-full"
-                options={featScores.map((ability) => ({ value: ability, label: ABILITY_NAMES[ability] }))}
+                options={featScores.map((ability) => ({ value: ability, label: abilityWord(ability) }))}
               />
             </label>
           ) : null}
@@ -398,14 +414,14 @@ export function RacialChoicesSection({
 
       {race.toolChoice ? (
         <label className="block" data-builder-target="racialTool">
-          <span className="mb-1 block text-stone-400">Tool proficiency</span>
+          <span className="mb-1 block text-stone-400">{t("Tool proficiency")}</span>
           <Select<string>
             value={tool}
             onChange={onToolChange}
             className="w-full"
-            label="Tool proficiency"
-            placeholder="Choose a tool..."
-            options={[{ value: "", label: "Choose a tool..." }, ...toolPickOptions(race.toolChoice.from)]}
+            label={t("Tool proficiency")}
+            placeholder={t("Choose a tool...")}
+            options={[{ value: "", label: t("Choose a tool...") }, ...toolPickOptions(race.toolChoice.from, t)]}
           />
         </label>
       ) : null}
@@ -453,9 +469,9 @@ export function RacialChoicesSection({
                 options={[
                   { value: "", label: "Choose a skill or tool..." },
                   ...ALL_SKILLS.filter((skill) => training[index] === skill || (!training.includes(skill) && !grantedSkills.includes(skill) && !skills.includes(skill))).map(
-                    (skill) => ({ value: skill as string, label: skillName(skill) }),
+                    (skill) => ({ value: skill as string, label: skillLabel(skill, locale) }),
                   ),
-                  ...toolPickOptions(KNOWN_TOOLS.filter((tool) => training[index] === tool || !training.includes(tool))),
+                  ...toolPickOptions(KNOWN_TOOLS.filter((tool) => training[index] === tool || !training.includes(tool)), t),
                 ]}
               />
             ))}
@@ -478,12 +494,12 @@ export function RacialChoicesSection({
               { value: "", label: "Choose a skill or tool..." },
               ...[...new Set([...grantedSkills, ...skills.filter(Boolean), ...training.filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick))])].map((skill) => ({
                 value: skill,
-                label: skillName(skill),
+                label: skillLabel(skill, locale),
               })),
               // The tools the lineage trains (Adaptable Acumen's picks, its own list).
               ...[...new Set([...(race.tools ?? []), ...(tool ? [tool] : []), ...training.filter((pick) => KNOWN_TOOLS.includes(pick))])].map((held) => ({
                 value: held,
-                label: toolLabel(held),
+                label: toolLabel(held, t),
               })),
             ]}
           />

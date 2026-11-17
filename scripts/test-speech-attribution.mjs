@@ -337,4 +337,21 @@ test("a line split by a short tag is one card with the tag inside it (issue #917
   assert.equal(split(" she says. "), 1);
 });
 
+// Issue 965: the claims reader put a stranger's line on the companion who
+// spoke before it. The words around a line that tie it to someone the table
+// does not list say so, with who the paragraph does name.
+test("a line the prose gives to someone unlisted is a stranger's, with who its paragraph names", () => {
+  const people = [{ kind: "npc", id: "t1", name: "Tobin", gender: "male" }, ...cast];
+  const strangers = (text) => [...speech.unlistedSpeakerLines(text, people, { englishPronouns: true })].map(([line, named]) => [line, [...named].sort()]);
+  const scene = 'Tobin stands beside you. "They\'re coming," he whispers.\n\nThe lead cultist raises a hand, his voice a low, guttural growl. "The heir. Give us the fragment, and you may live."';
+  assert.deepEqual(strangers(scene), [["The heir. Give us the fragment, and you may live.", []]], "the cultist's line names nobody listed; Tobin's own line is no stranger's");
+  assert.deepEqual(strangers('"Give it here," the cultist growls.'), [["Give it here,", []]], "a tag that opens on someone unlisted");
+  assert.deepEqual(strangers('"Halt!" The guard bars the way.'), [["Halt!", []]], "the beat after a line that opens its paragraph");
+  assert.deepEqual(strangers('Fella nods to Tobin. "Agreed."'), [["Agreed.", ["t1", "tobin"]]], "a stranger's line in a paragraph that names Tobin keeps him to hand");
+  assert.deepEqual(strangers('Marla looks up. "You came back," she says.'), [], "a known subject");
+  assert.deepEqual(strangers('The cultist points. "Run," Tobin hisses.'), [], "the line's own tag names a listed person");
+  assert.deepEqual(strangers('"Who\'s there?"'), [], "nothing around the line says anything");
+  assert.deepEqual([...speech.unlistedSpeakerLines('Le chef lève la main. « Donnez-le. »', people, { englishPronouns: false })], [], "only English prose is read for it");
+});
+
 console.log(`test-speech-attribution: ${passed} passed`);

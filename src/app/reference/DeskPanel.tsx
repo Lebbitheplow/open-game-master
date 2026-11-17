@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { DESK_QUESTION_MAX, type DeskAnswer } from "@/lib/reference/desk-logic";
+import { useT, useTp } from "@/lib/locale";
 
 // The fact-checking desk: a rules question, answered from what the server
 // actually has, with the sources shown BEFORE the answer is asked for.
@@ -17,7 +18,8 @@ import { DESK_QUESTION_MAX, type DeskAnswer } from "@/lib/reference/desk-logic";
 
 type PreviewSource = { kind: string; ref: string; name: string; origin: string };
 
-const KIND_LABELS: Record<string, string> = {
+// The source kinds' words by value; the keys live with the desk group.
+const KIND_KEYS: Record<string, string> = {
   spell: "spell",
   monster: "monster",
   item: "item",
@@ -29,6 +31,8 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 export function DeskPanel() {
+  const t = useT();
+  const tp = useTp();
   const [question, setQuestion] = useState("");
   const [sources, setSources] = useState<PreviewSource[]>([]);
   const [answer, setAnswer] = useState<DeskAnswer | null>(null);
@@ -84,12 +88,12 @@ export function DeskPanel() {
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error ?? "The desk could not answer that.");
+        setError(data.error ?? t("The desk could not answer that."));
         return;
       }
       setAnswer(data.result);
     } catch {
-      setError("The desk could not answer that.");
+      setError(t("The desk could not answer that."));
     } finally {
       setAsking(false);
     }
@@ -98,9 +102,7 @@ export function DeskPanel() {
   return (
     <div>
       <p className="mb-3 text-sm text-stone-400">
-        A rules question, answered from the content pack, the rules basics and your own house
-        rules. Every citation is checked against what the desk actually supplied, so a source
-        listed here is one that exists.
+        {t("A rules question, answered from the content pack, the rules basics and your own house rules. Every citation is checked against what the desk actually supplied, so a source listed here is one that exists.")}
       </p>
 
       <div className="mb-3 flex gap-2">
@@ -113,8 +115,8 @@ export function DeskPanel() {
               void ask();
             }
           }}
-          placeholder="Does a readied spell need concentration?"
-          aria-label="Your rules question"
+          placeholder={t("Does a readied spell need concentration?")}
+          aria-label={t("Your rules question")}
           className={cn(ui.input, "h-10 min-w-0 flex-1")}
         />
         <button
@@ -124,7 +126,7 @@ export function DeskPanel() {
           className={ui.btnSecondary}
         >
           {asking ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          Ask
+          {t("Ask")}
         </button>
       </div>
 
@@ -132,8 +134,8 @@ export function DeskPanel() {
         <div className="reveal mb-4 rounded-lg border border-amber-500/15 bg-stone-950/40 p-3">
           <p className="section-head-title mb-2 whitespace-normal">
             {sources.length
-              ? `${sources.length} source${sources.length === 1 ? "" : "s"} the desk would read`
-              : "Nothing on file bears on this yet"}
+              ? tp("{count} source the desk would read", "{count} sources the desk would read", { count: sources.length })
+              : t("Nothing on file bears on this yet")}
           </p>
           {sources.length ? (
             <ul className="stagger flex flex-wrap gap-1.5">
@@ -145,14 +147,14 @@ export function DeskPanel() {
                 >
                   <span className="text-stone-300">{source.name}</span>
                   <span className="ml-1.5 text-stone-500">
-                    {KIND_LABELS[source.kind] ?? source.kind}
+                    {KIND_KEYS[source.kind] ? t(KIND_KEYS[source.kind]) : source.kind}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-xs text-stone-500">
-              The desk will still answer, from general rules knowledge, and will say that it did.
+              {t("The desk will still answer, from general rules knowledge, and will say that it did.")}
             </p>
           )}
         </div>
@@ -182,8 +184,7 @@ export function DeskPanel() {
             </ul>
           ) : (
             <p className="mt-4 border-t border-amber-500/15 pt-3 text-xs text-amber-200/80">
-              This answer cites nothing on file. Treat it as a starting point and check it against
-              a book before it settles anything at the table.
+              {t("This answer cites nothing on file. Treat it as a starting point and check it against a book before it settles anything at the table.")}
             </p>
           )}
         </div>

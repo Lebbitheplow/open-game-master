@@ -3,6 +3,11 @@ import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { catalogStatus, refreshModelCatalog } from "@/lib/model-registry/catalog";
 import { modelChoices } from "@/lib/model-registry/registry";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the listing's verdicts ride to the picker as data until a
+// surface asks in the table's language.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { openAiSpeechConfig } from "@/lib/openai-images";
 import { serverEnv } from "@/lib/server-env";
 import { keyForListing } from "@/lib/setup/discovery-logic";
@@ -82,6 +87,6 @@ export async function POST(request: Request) {
         ];
   const key =
     saved.map(([savedBaseUrl, savedKey]) => keyForListing({ typed: apiKey, savedKey, savedBaseUrl, baseUrl: target })).find(Boolean) ?? "";
-  const choices = await modelChoices({ role, provider, baseUrl: target, apiKey: key, selected: model, harnessId });
+  const choices = await modelChoices(enT, { role, provider, baseUrl: target, apiKey: key, selected: model, harnessId });
   return Response.json(choices);
 }

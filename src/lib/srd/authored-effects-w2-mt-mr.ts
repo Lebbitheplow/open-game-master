@@ -173,6 +173,6 @@ export const AUTHORED_DATA_W2_MT_MR: Record<string, AuthoredEntry> = {
   },
   "rogue::Death's Friend": {
     subclass: "Phantom",
-    heldBy: { file: "src/lib/dm/rest-tools.ts", call: "soulTrinketAtRestEnd(" },
+    heldBy: { file: "src/lib/dm/rest-benefits.ts", call: "soulTrinketAtRestEnd(" },
   },
 };

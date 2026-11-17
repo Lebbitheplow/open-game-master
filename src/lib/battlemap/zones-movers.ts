@@ -68,7 +68,8 @@ export function moverSpellTraits(mover: ZoneMover | null): { landStride?: true; 
   }
   return {
     ...(has(mover, "freedom of movement") ? { landStride: true as const } : {}),
-    ...(has(mover, "spider climb") ? { climbs: true as const } : {}),
+    // A Potion of Climbing's climbing speed too (condition-effects-last.ts).
+    ...(has(mover, "spider climb") || has(mover, "climbing speed") ? { climbs: true as const } : {}),
     ...(has(mover, "water walk") ? { swims: true as const } : {}),
   };
 }

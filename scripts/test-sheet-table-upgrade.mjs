@@ -112,7 +112,7 @@ const wizard = world.addHero({
 world.patch(fighter.id, {
   currentHp: 0,
   tempHp: 0,
-  conditions: ["unconscious"],
+  conditions: ["unconscious", "prone"],
   deathSaves: { successes: 1, failures: 2, stable: false, dead: false },
   exhaustion: 2,
   xp: 7000,
@@ -159,7 +159,7 @@ await test("the sheets read after the upgrade as they did before it", () => {
   const stored = sheets.getSheetById(fighter.id);
   assert.equal(stored.currentHp, 0);
   assert.deepEqual(stored.deathSaves, { successes: 1, failures: 2, stable: false, dead: false });
-  assert.deepEqual(stored.conditions, ["unconscious"]);
+  assert.deepEqual(stored.conditions, ["unconscious", "prone"]);
   assert.equal(stored.exhaustion, 2);
   assert.equal(stored.xp, 7000);
   assert.equal(stored.hitDice.spent, 3);

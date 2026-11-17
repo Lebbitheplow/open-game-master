@@ -3,12 +3,14 @@ import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { previewBuiltJoin, previewLibraryJoin, previewPregenJoin, type JoinPreview } from "@/lib/characters/seat-preview";
 import { companionRoleRefusal, getCharacterForUser } from "@/lib/db/characters";
 import { heroFell } from "@/lib/characters/fallen-logic";
-import { HERO_DOOR_SHUT, heroDoorFor } from "@/lib/characters/hero-door";
+import { heroDoorFor } from "@/lib/characters/hero-door";
 import { getSheetForUser, listSheetsForUser } from "@/lib/db/sheets";
 import { createSheetSchema } from "@/lib/schemas/sheet";
 import { olderBuilderOf } from "@/lib/srd/legality/older-builder";
 import { pregenById } from "@/lib/starter/pregens";
 import { seatPicksSchema } from "@/lib/characters/seat-picks";
+import { bookLocaleOf } from "@/lib/rulebook/book";
+import { translate, type Locale } from "@/lib/messages-logic";
 import { claimRefusal, offeredPregenFor, pregenSeatRefusal } from "@/lib/db/pregen-offers";
 
 export const runtime = "nodejs";
@@ -48,13 +50,21 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The confirm sheet reads the asker's language: the sentences the route
+  // words itself and the ones the shared builders word for it.
+  const locale: Locale = bookLocaleOf(request);
+  const t = (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars);
   if (!capsFor(context).needsCharacter) {
-    return Response.json({ error: "The GM seat plays no character." }, { status: 400 });
+    return Response.json({ error: t("The GM seat plays no character.") }, { status: 400 });
   }
   const raw = await request.json().catch(() => ({}));
   const parsed = previewSchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0]?.message || "Pick a hero." }, { status: 400 });
+    // The schema's own message is the English sentence; the route's words
+    // follow the asker's language.
+    const firstIssue = parsed.error.issues[0]?.message;
+    const message = firstIssue === "Pick one hero." ? t("Pick one hero.") : firstIssue || t("Pick a hero.");
+    return Response.json({ error: message }, { status: 400 });
   }
   const { libraryCharacterId, pregenId, offeredPregenId, sheet, flow, picks } = parsed.data;
   // A first seat is judged at the level it joins at: a fallen hero's
@@ -69,12 +79,12 @@ export async function POST(
   if (libraryCharacterId) {
     const character = getCharacterForUser(context.user.id, libraryCharacterId);
     if (!character) {
-      return Response.json({ error: "Character not found in your library." }, { status: 404 });
+      return Response.json({ error: t("Character not found in your library.") }, { status: 404 });
     }
     if (character.role === "companion") {
-      return Response.json({ error: companionRoleRefusal(character) }, { status: 400 });
+      return Response.json({ error: companionRoleRefusal(character, t) }, { status: 400 });
     }
-    preview = previewLibraryJoin(character, seatCampaign, context.user.id, picks);
+    preview = previewLibraryJoin(character, seatCampaign, context.user.id, picks, t, locale);
     // A hero already at this table is selected again, not copied twice
     // (instantiateIntoCampaign), so a join changes nothing about it.
     const here = listSheetsForUser(campaignId, context.user.id).find(
@@ -84,39 +94,39 @@ export async function POST(
     // alone, not "already at this table" beside it.
     alreadyHere = here !== undefined && !heroFell(here);
     if (here && heroFell(here)) {
-      fallenPick = `${here.name} fell at this table. Bring in someone else.`;
+      fallenPick = t("{name} fell at this table. Bring in someone else.", { name: here.name });
     }
     // A copy of a DM's offered pregen does not sit where another sheet plays
     // that pregen (src/lib/db/pregen-offers.ts), as the join will say. A lobby
     // switch gives up the current sheet first, which holds nothing then.
     const replacing = flow === "replace" ? (getSheetForUser(campaignId, context.user.id)?.id ?? "") : "";
-    const held = here ? null : pregenSeatRefusal(campaignId, character, context.user.id, replacing);
+    const held = here ? null : pregenSeatRefusal(campaignId, character, context.user.id, replacing, t);
     if (held) {
       preview = { ...preview, ok: false, problems: [held, ...preview.problems] };
     }
   } else if (sheet) {
-    preview = previewBuiltJoin(sheet, seatCampaign, context.user.id, olderBuilderOf((raw as { sheet?: unknown } | null)?.sheet));
+    preview = previewBuiltJoin(sheet, seatCampaign, context.user.id, olderBuilderOf((raw as { sheet?: unknown } | null)?.sheet), t, locale);
   } else if (offeredPregenId) {
     // Unticked, another table's, or not a pregen at all: no such hero. The
     // DM's own pregens are in their library already.
     const offer = offeredPregenFor(campaignId, offeredPregenId);
     if (!offer || offer.character.userId === context.user.id) {
-      return Response.json({ error: "No such hero." }, { status: 404 });
+      return Response.json({ error: t("No such hero.") }, { status: 404 });
     }
-    preview = previewLibraryJoin(offer.character, seatCampaign, context.user.id, picks);
+    preview = previewLibraryJoin(offer.character, seatCampaign, context.user.id, picks, t, locale);
     const refusals = [
-      ...(flow !== "join" ? ["A pregen the GM offers takes a first seat; a lobby switch is to one of your own heroes."] : []),
-      ...[claimRefusal(offer, context.user.id)].filter((line): line is string => Boolean(line)),
+      ...(flow !== "join" ? [t("A pregen the GM offers takes a first seat; a lobby switch is to one of your own heroes.")] : []),
+      ...[claimRefusal(offer, context.user.id, t)].filter((line): line is string => Boolean(line)),
     ];
     if (refusals.length) {
       preview = { ...preview, ok: false, problems: [...refusals, ...preview.problems] };
     }
   } else {
-    const pregen = pregenById(pregenId ?? "");
+    const pregen = pregenById(pregenId ?? "", locale);
     if (!pregen) {
-      return Response.json({ error: "No such hero." }, { status: 404 });
+      return Response.json({ error: t("No such hero.") }, { status: 404 });
     }
-    preview = previewPregenJoin(pregen, seatCampaign, context.user.id, picks);
+    preview = previewPregenJoin(pregen, seatCampaign, context.user.id, picks, t, locale);
   }
 
   // The door rules the join answers with before it reads the sheet, so the
@@ -129,10 +139,10 @@ export async function POST(
   }
   const doorProblems: string[] = [];
   if (flow === "join" && !alreadyHere && !door.open) {
-    doorProblems.push(HERO_DOOR_SHUT);
+    doorProblems.push(t("You already have a character in this campaign."));
   }
   if (flow === "replace" && context.campaign.status !== "lobby") {
-    doorProblems.push("Characters can only be changed in the lobby.");
+    doorProblems.push(t("Characters can only be changed in the lobby."));
   }
   if (doorProblems.length) {
     preview = { ...preview, ok: false, problems: [...doorProblems, ...preview.problems] };

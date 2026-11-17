@@ -1,0 +1,26 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "date": "2026-11-14",
+  "encoding": "Frame: lossless WebP with original alpha. Texture and backdrop: WebP quality 88. Source PNGs retained in workspace appearance-review/art-source.",
+  "corner": "The corner slot reuses the frame asset. CSS shows its top-left quadrant at 400% background size; shared rendering rotates the quadrant for the other corners.",
+  "assets": [
+    {
+      "source": "exec-8139c1e3-1921-4842-8b7a-65cde23a661d.png",
+      "file": "celestial-brass-frame-v1.webp",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Asset type: production fantasy strategy-game UI nine-slice square frame, 1024x1024. Front-facing orthographic. A narrow richly hand-painted frame made from polished midnight-indigo stone with aged brass edging, delicate engraved celestial runes (abstract marks, not readable text), small amethyst crystal inlays and fine astronomical filigree. The material should feel tactile and sculpted, sophisticated wizard's observatory furniture, restrained light from violet crystals, neutral highlights. Four straight continuous rails occupy only the outer 10 percent, slightly more elaborate angular brass corner joints occupy the outer 18 percent. Middle stretches simple and repeatable for responsive nine-slice rendering. Completely transparent empty central rectangle occupying at least 64 percent in both dimensions; transparent outside the frame with 2 percent margin. Frame square to image, no perspective, no scenery, no people, no interface controls, no letters or numerals, no logos. Actual alpha transparency, not a checkerboard. All decorative pieces inside image, nothing cropped. This must be a usable border asset, not a UI mockup."
+    },
+    {
+      "source": "exec-45567046-1a76-4b17-916c-ac5c2cd4a8e5.png",
+      "file": "indigo-stone-v1.webp",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. A production seamless square material tile, 1024x1024, for a fantasy wizard observatory interface. Close-up of polished midnight-indigo stone, subtle flowing violet mineral veins and faint fine etched abstract celestial geometry. Rich hand-painted strategy-game material, gentle sculptural relief but evenly lit and restrained enough beneath readable interface text. Medium-dark indigo, muted purple pores, occasional tiny dull brass flecks. Seamless repeating in both axes. Edge-to-edge opaque surface, front-facing orthographic, no perspective, no frame, no objects, no large emblems, no strong highlights, no vignette, no readable symbols, letters or logos."
+    },
+    {
+      "source": "exec-f036d2bc-70be-4c66-8c58-0e4188a0f3f6.png",
+      "file": "astral-observatory-v1.webp",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Production wide 3:1 environment banner for a fantasy wizard observatory game interface. Rich hand-painted premium strategy-game environment art: an ancient celestial observatory with carved indigo stone terraces, slender aged brass orrery rings and violet crystal lamps, opening onto a breathtaking star-filled sky. A luminous intricate astrolabe and telescope on the right third; an open arched walkway on the left with atmospheric depth and distant mountain silhouettes. Soft amber lamplight against cool indigo and amethyst starlight, tactile stone and engraved brass, fine cosmic dust, scholarly wonder and calm rather than explosions. Framed composition reads at very shallow header crop, strongest details on right, open atmospheric space to left. Fully opaque scenery edge-to-edge. No people, letters, numbers, labels, logos, UI controls or rectangular border."
+    }
+  ]
+}

@@ -96,11 +96,14 @@ await test("A workshop disease incubates, shows its symptoms, worsens on a faile
   const out = await withDice([2], () => world.invoke("afflict", { characterId: patient.id, kind: "disease", name: "Marsh Fever" }));
   assert.equal(out.ok, true, out.error);
   assert.equal(has(patient.id, "marsh fever"), false, "symptoms before the incubation");
-  await world.invoke("pass_time", { amount: 1, unit: "days" });
+  // Half a day at a time: a whole day waited out ends in a night's long rest,
+  // whose save would take the dice queued for the rests below.
+  await world.invoke("pass_time", { amount: 12, unit: "hours" });
+  await world.invoke("pass_time", { amount: 12, unit: "hours" });
   assert.equal(has(patient.id, "marsh fever"), true, "no symptoms after a day");
   assert.equal(world.sheet(patient.id).exhaustion, 1);
   const rest = async (face) => {
-    await world.invoke("pass_time", { amount: 1, unit: "days" });
+    await world.invoke("pass_time", { amount: 16, unit: "hours" });
     return withDice([face], () => world.invoke("take_rest", { kind: "long" }));
   };
   // The rest takes its own level off (1 to 0); the failed save puts one back.

@@ -2,6 +2,7 @@
 
 import { ChevronDown, Download, FlaskConical, Loader2, RefreshCw, ScrollText, Trash2, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CreditLine, ModifiesLine, PartsPicker } from "@/app/admin/AddonParts";
 import { AddonFields, fieldDefaults, type FieldValues } from "@/components/addons/AddonFields";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { Switch } from "@/components/ui/Switch";
@@ -13,29 +14,43 @@ import type { TaskView } from "@/lib/addons/tasks";
 import { forgetAddons } from "@/lib/addons/use-addons";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 
-// One installed addon on Admin > Addons: what it is and where it came from,
-// whether it is on, what it asks for, its setup, its settings, the programs
-// it needs, its log, and its update and remove buttons.
+// One installed addon on Admin > Addons: what it is, who made it and where it came from, whether it
+// is on, what it asks for and changes, its parts, setup, settings, programs, log, update and remove.
 
-const SOURCE_LABEL: Record<AdminAddon["source"], string> = {
+const SOURCE_KEYS: Record<AdminAddon["source"], MessageKey> = {
   registry: "From the addon list",
   file: "From a file, not reviewed",
   github: "From GitHub, not reviewed",
   dev: "Development folder",
 };
 
-const STATUS: Record<AdminAddon["status"], { label: string; tone: string }> = {
-  ready: { label: "On", tone: "bg-emerald-400" },
-  disabled: { label: "Off", tone: "bg-stone-500" },
-  "needs-approval": { label: "Waiting for your yes", tone: "bg-amber-400" },
-  "needs-settings": { label: "Needs settings", tone: "bg-amber-400" },
-  "needs-setup": { label: "Needs setup", tone: "bg-amber-400" },
-  conflict: { label: "Conflict", tone: "bg-red-400" },
-  "missing-files": { label: "Files missing", tone: "bg-red-400" },
-  broken: { label: "Broken", tone: "bg-red-400" },
-  unfit: { label: "Cannot run here", tone: "bg-red-400" },
-  unsupported: { label: "Not available", tone: "bg-stone-600" },
+const STATUS_KEYS: Record<AdminAddon["status"], MessageKey> = {
+  ready: "On",
+  disabled: "Off",
+  "needs-approval": "Waiting for your yes",
+  "needs-settings": "Needs settings",
+  "needs-setup": "Needs setup",
+  conflict: "Conflict",
+  "missing-files": "Files missing",
+  broken: "Broken",
+  unfit: "Cannot run here",
+  unsupported: "Not available",
+};
+
+const STATUS_TONES: Record<AdminAddon["status"], string> = {
+  ready: "bg-emerald-400",
+  disabled: "bg-stone-500",
+  "needs-approval": "bg-amber-400",
+  "needs-settings": "bg-amber-400",
+  "needs-setup": "bg-amber-400",
+  conflict: "bg-red-400",
+  "missing-files": "bg-red-400",
+  broken: "bg-red-400",
+  unfit: "bg-red-400",
+  unsupported: "bg-stone-600",
 };
 
 type Details = { requirements: RequirementCheck[]; log: string[] };
@@ -53,6 +68,7 @@ export function AdminAddonCard({
   onInstall: (addonId: string) => void;
   busy: boolean;
 }) {
+  const t = useT();
   const manifest = addon.manifest;
   const [open, setOpen] = useState(false);
   const [working, setWorking] = useState("");
@@ -61,7 +77,10 @@ export function AdminAddonCard({
   const [dirty, setDirty] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
   const [test, setTest] = useState("");
-  const status = STATUS[addon.status];
+  const savedParts = (addon.parts ?? []).filter((part) => part.chosen).map((part) => part.id);
+  const [parts, setParts] = useState<string[]>(savedParts);
+  const partsDirty = parts.length !== savedParts.length || parts.some((id) => !savedParts.includes(id));
+  const status = STATUS_KEYS[addon.status];
   const name = manifest?.name ?? addon.id;
 
   async function call(method: string, body?: unknown, path = ""): Promise<Record<string, unknown> | null> {
@@ -71,9 +90,9 @@ export function AdminAddonCard({
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     }).catch(() => null);
-    const data = response ? ((await response.json().catch(() => ({}))) as Record<string, unknown>) : { error: "Could not reach the server." };
+    const data = response ? ((await response.json().catch(() => ({}))) as Record<string, unknown>) : { error: t("Could not reach the server.", { context: "admin.error.unreachable" }) };
     if (!response?.ok) {
-      setError(String(data.error ?? "That did not work."));
+      setError(String(data.error ?? t("That did not work.", { context: "admin.addons.card.fail" })));
       return null;
     }
     return data;
@@ -84,9 +103,9 @@ export function AdminAddonCard({
       const asks = manifest.permissions
         .map((permission) => permissions[permission as keyof typeof permissions]?.label ?? permission)
         .join("; ");
-      const sure = await appConfirm(`${name} asks to: ${asks}. Switch it on?`, {
-        title: "Switch this addon on?",
-        actionLabel: "Accept and switch on",
+      const sure = await appConfirm(t("{name} asks to: {list}. Switch it on?", { name, list: asks }), {
+        title: t("Switch this addon on?"),
+        actionLabel: t("Accept and switch on"),
         tone: "plain",
       });
       if (!sure) return;
@@ -100,10 +119,14 @@ export function AdminAddonCard({
       if (next && fresh?.status === "needs-settings") {
         // Its setup waits for these: open them where they are filled in.
         setOpen(true);
-        await onChanged(`${name} is on. Fill in ${fresh.missingSettings.join(", ")} to finish setting it up.`);
+        await onChanged(t("{name} is on. Fill in {list} to finish setting it up.", { name, list: fresh.missingSettings.join(", ") }));
         return;
       }
-      await onChanged(next ? (done.setupTask ? `${name} is on. Its setup has started.` : `${name} is on.`) : `${name} is off.`);
+      await onChanged(next
+        ? done.setupTask
+          ? t("{name} is on. Its setup has started.", { name })
+          : t("{name} is on.", { name })
+        : t("{name} is off.", { name }));
     }
   }
 
@@ -118,7 +141,12 @@ export function AdminAddonCard({
     if (done) {
       forgetAddons();
       const installed = done.installed as { version: string };
-      await onChanged(`Updated ${name} to v${installed.version} (${String(done.from)}).${done.setupTask ? " Its setup has started." : ""}`);
+      await onChanged(t("Updated {name} to v{version} ({from}).{setup}", {
+        name,
+        version: installed.version,
+        from: String(done.from),
+        setup: done.setupTask ? t(" Its setup has started.") : "",
+      }));
     }
   }
 
@@ -129,7 +157,25 @@ export function AdminAddonCard({
     if (done) {
       setDirty(false);
       await onChanged(
-        done.setupTask ? `Saved ${name}'s settings. Its setup has started.` : `Saved ${name}'s settings. It starts with them on its next run.`,
+        done.setupTask
+          ? t("Saved {name}'s settings. Its setup has started.", { name })
+          : t("Saved {name}'s settings. It starts with them on its next run.", { name }),
+      );
+    }
+  }
+
+  async function saveParts() {
+    setWorking("parts");
+    const done = await call("PATCH", { parts });
+    setWorking("");
+    if (done) {
+      forgetAddons();
+      await onChanged(
+        done.setupTask
+          ? `Saved ${name}'s parts. Its setup has started: it fetches what you added and removes what you left out.`
+          : addon.enabled
+            ? `Saved ${name}'s parts.`
+            : `Saved ${name}'s parts. They are fetched when you switch it on.`,
       );
     }
   }
@@ -152,18 +198,18 @@ export function AdminAddonCard({
     const data = response ? ((await response.json().catch(() => ({}))) as { ok?: boolean; tools?: string[]; error?: string; log?: string[] }) : null;
     setWorking("");
     if (!data) {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.error.unreachable" }));
       return;
     }
-    setTest(data.ok ? `Started. It offers ${data.tools?.join(", ") || "no tools"}.` : "");
-    if (!data.ok) setError(data.error ?? "It did not start.");
+    setTest(data.ok ? t("Started. It offers {tools}.", { tools: data.tools?.join(", ") || "" }) || t("Started. It offers no tools.") : "");
+    if (!data.ok) setError(data.error ?? t("It did not start."));
     setDetails((current) => ({ requirements: current?.requirements ?? [], log: data.log ?? [] }));
   }
 
   async function remove() {
-    const sure = await appConfirm(`Remove ${name}? Its files and its data folder go with it. What it already made (workshops, maps) stays.`, {
-      title: "Remove this addon?",
-      actionLabel: "Remove",
+    const sure = await appConfirm(t("Remove {name}? Its files and its data folder go with it. What it already made (workshops, maps) stays.", { name }), {
+      title: t("Remove this addon?"),
+      actionLabel: t("Remove", { context: "action.remove" }),
       tone: "danger",
     });
     if (!sure) return;
@@ -172,7 +218,7 @@ export function AdminAddonCard({
     setWorking("");
     if (done) {
       forgetAddons();
-      await onChanged(`Removed ${name}.`);
+      await onChanged(t("Removed {name}.", { name }));
     }
   }
 
@@ -187,23 +233,23 @@ export function AdminAddonCard({
         <div className="min-w-0 flex-1">
           <p className="font-display text-sm text-amber-100">{name}</p>
           <p className="text-[11px] text-stone-500">
-            v{addon.version}
-            {manifest?.author ? ` · by ${manifest.author}` : ""} · {SOURCE_LABEL[addon.source]}
+            v{addon.version} · {t(SOURCE_KEYS[addon.source])}
+            {addon.origin ? (
+              <>
+                {" · "}
+                <a href={addon.origin.url} target="_blank" rel="noreferrer" className="hover:text-amber-200">
+                  {addon.origin.label}
+                </a>
+              </>
+            ) : null}
           </p>
-          {addon.origin ? (
-            <p className="text-[11px] text-stone-500">
-              GitHub:{" "}
-              <a href={addon.origin.url} target="_blank" rel="noreferrer" className="text-amber-200/80 hover:text-amber-200">
-                {addon.origin.repo}
-              </a>{" "}
-              · {addon.origin.label}
-            </p>
-          ) : null}
+          {/* An older host sends no credit: its author alone, as before. */}
+          <CreditLine credit={addon.credit ?? (manifest?.author ? { author: manifest.author, repo: "", url: "", profile: "", also: [] } : undefined)} />
         </div>
         <span className="flex items-center gap-2 text-[11px] text-stone-400">
-          <span className={cn("size-2 rounded-full", status.tone)} aria-hidden="true" />
-          {status.label}
-          {addon.running ? <span className="text-emerald-300/80">· running</span> : null}
+          <span className={cn("size-2 rounded-full", STATUS_TONES[addon.status])} aria-hidden="true" />
+          {t(STATUS_KEYS[addon.status])}
+          {addon.running ? <span className="text-emerald-300/80">{t("· running")}</span> : null}
         </span>
         {canSwitch ? (
           <Switch
@@ -215,19 +261,20 @@ export function AdminAddonCard({
         ) : null}
       </div>
       {manifest?.description ? <p className="mt-1 text-xs text-stone-400">{manifest.description}</p> : null}
+      <ModifiesLine modifies={addon.modifies} className="mt-1" />
       {addon.conflicts.length ? (
         <ul className="mt-2 space-y-0.5">
           {addon.conflicts.map((conflict) => (
             <li key={conflict.id} className={cn("text-[11px] leading-4", conflict.on ? "text-red-300/90" : "text-stone-500")}>
-              Cannot run beside {conflict.name}
-              {conflict.on ? " (switched on)" : ""}: {conflict.reason}
+              {t("Cannot run beside {name}", { name: conflict.name })}
+              {conflict.on ? t(" (switched on)") : ""}: {conflict.reason}
             </li>
           ))}
         </ul>
       ) : null}
       {addon.exclusive.length ? (
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
-          Takes turns with other addons for: {addon.exclusive.join(", ")}.
+          {t("Takes turns with other addons for: {list}.", { list: addon.exclusive.join(", ") })}
         </p>
       ) : null}
       {/* While its setup runs, the setup's own progress says it. */}
@@ -236,7 +283,7 @@ export function AdminAddonCard({
       ) : null}
       {addon.status === "needs-settings" && !open ? (
         <button type="button" onClick={() => setOpen(true)} className={cn(ui.btnSmall, "mt-2 w-fit text-xs")}>
-          Fill in its settings
+          {t("Fill in its settings")}
         </button>
       ) : null}
       {contributes.length ? (
@@ -250,9 +297,23 @@ export function AdminAddonCard({
       ) : null}
       {manifest?.permissions.length ? (
         <p className="mt-2 text-[11px] leading-4 text-stone-500">
-          Asks to:{" "}
+          {t("Asks to: ")}
           {manifest.permissions.map((permission) => permissions[permission as keyof typeof permissions]?.label ?? permission).join("; ")}.
         </p>
+      ) : null}
+      {addon.parts?.length ? (
+        <div className="mt-1">
+          <PartsPicker idPrefix={`addon-${addon.id}`} parts={addon.parts} chosen={parts} onChange={setParts} disabled={working === "parts"} />
+          {partsDirty ? (
+            <div className="reveal mt-1.5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void saveParts()} disabled={working === "parts"} className={cn(ui.btnSmall, "text-xs")}>
+                {working === "parts" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                Save parts
+              </button>
+              <button type="button" onClick={() => setParts(savedParts)} disabled={working === "parts"} className={cn(ui.btnSmall, "text-xs")}>Keep as it was</button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {addon.setup.has ? <AddonSetup addon={addon} name={name} onChanged={onChanged} /> : null}
       {error ? <p role="alert" className="motion-shake mt-2 text-xs text-red-400">{error}</p> : null}
@@ -262,20 +323,20 @@ export function AdminAddonCard({
         {addon.update ? (
           <button type="button" onClick={() => void update()} disabled={busy || working === "update"} className={cn(ui.btnSmall, "text-xs")}>
             {busy || working === "update" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-            Update to {addon.update}
+            {t("Update to {version}", { version: addon.update })}
           </button>
         ) : addon.source === "registry" && (addon.status === "missing-files" || addon.status === "broken") ? (
           // Files gone (a world moved to a new machine, a folder deleted by
           // hand): the list still has it, so it is fetched again here.
           <button type="button" onClick={() => onInstall(addon.id)} disabled={busy} className={cn(ui.btnSmall, "text-xs")}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-            Reinstall
+            {t("Reinstall")}
           </button>
         ) : null}
         {manifest ? (
           <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className={cn(ui.btnSmall, "text-xs")}>
             <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
-            {open ? "Less" : "Settings and checks"}
+            {open ? t("Less") : t("Settings and checks")}
           </button>
         ) : null}
         {addon.source !== "dev" ? (
@@ -307,27 +368,27 @@ export function AdminAddonCard({
               />
               <button type="button" onClick={() => void saveSettings()} disabled={!dirty || working === "settings"} className={cn(ui.btnSmall, "text-xs")}>
                 {working === "settings" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                {dirty ? "Save settings" : "Saved"}
+                {dirty ? t("Save settings") : t("Saved", { context: "admin.addons.card.saved" })}
               </button>
             </section>
           ) : (
-            <p className="text-[11px] text-stone-500">It has no settings.</p>
+            <p className="text-[11px] text-stone-500">{t("It has no settings.")}</p>
           )}
 
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void check()} disabled={working === "check"} className={cn(ui.btnSmall, "text-xs")}>
               {working === "check" ? <Loader2 className="size-3.5 animate-spin" /> : <ScrollText className="size-3.5" />}
-              Check what it needs, and its log
+              {t("Check what it needs, and its log")}
             </button>
             <button
               type="button"
               onClick={() => void runTest()}
               disabled={working === "test" || addon.status !== "ready"}
-              title={addon.status === "ready" ? undefined : "Switch it on first"}
+              title={addon.status === "ready" ? undefined : t("Switch it on first")}
               className={cn(ui.btnSmall, "text-xs")}
             >
               {working === "test" ? <Loader2 className="size-3.5 animate-spin" /> : <FlaskConical className="size-3.5" />}
-              Start it and list its tools
+              {t("Start it and list its tools")}
             </button>
           </div>
 
@@ -338,7 +399,7 @@ export function AdminAddonCard({
                   {details.requirements.map((requirement) => (
                     <li key={requirement.program} className="text-[11px] leading-4">
                       <span className={requirement.ok ? "text-emerald-300/90" : "text-amber-300/90"}>
-                        {requirement.ok ? "Found" : "Missing"} {requirement.program}
+                        {requirement.ok ? t("Found") : t("Missing")} {requirement.program}
                         {requirement.version ? ` ${requirement.version}` : ""}
                       </span>
                       {requirement.found ? <span className="font-code text-stone-500"> {requirement.found}</span> : null}
@@ -352,10 +413,10 @@ export function AdminAddonCard({
                   ))}
                 </ul>
               ) : (
-                <p className="text-[11px] text-stone-500">It needs nothing else installed.</p>
+                <p className="text-[11px] text-stone-500">{t("It needs nothing else installed.")}</p>
               )}
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-stone-800 bg-stone-950/80 p-2 font-code text-[10px] leading-4 text-stone-400">
-                {details.log.length ? details.log.join("\n") : "Nothing logged since the server started."}
+                {details.log.length ? details.log.join("\n") : t("Nothing logged since the server started.")}
               </pre>
             </div>
           ) : null}
@@ -369,6 +430,7 @@ export function AdminAddonCard({
 // how far a run has got (followed after a reload too), what went wrong last
 // time, and the button to run it (again).
 function AddonSetup({ addon, name, onChanged }: { addon: AdminAddon; name: string; onChanged: (notice: string) => Promise<void> }) {
+  const t = useT();
   const [run, setRun] = useState<TaskView | null>(null);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
@@ -390,7 +452,13 @@ function AddonSetup({ addon, name, onChanged }: { addon: AdminAddon; name: strin
       if (!live.current) return;
       setRun(null);
       await onChanged(
-        done?.status === "done" ? `${name} is set up.` : done?.status === "cancelled" ? `Stopped ${name}'s setup.` : done ? `${name}'s setup did not finish.` : "",
+        done?.status === "done"
+          ? t("{name} is set up.", { name })
+          : done?.status === "cancelled"
+            ? t("Stopped {name}'s setup.", { name })
+            : done
+              ? t("{name}'s setup did not finish.", { name })
+              : "",
       );
     },
     [name, onChanged],
@@ -410,10 +478,10 @@ function AddonSetup({ addon, name, onChanged }: { addon: AdminAddon; name: strin
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ do: "setup" }),
     }).catch(() => null);
-    const data = response ? ((await response.json().catch(() => ({}))) as { task?: TaskView; error?: string }) : { error: "Could not reach the server." };
+    const data = response ? ((await response.json().catch(() => ({}))) as { task?: TaskView; error?: string }) : { error: t("Could not reach the server.", { context: "admin.error.unreachable" }) };
     setStarting(false);
     if (!response?.ok || !data.task) {
-      setError(data.error ?? "Its setup did not start.");
+      setError(data.error ?? t("Its setup did not start."));
       return;
     }
     void follow(data.task);
@@ -421,13 +489,23 @@ function AddonSetup({ addon, name, onChanged }: { addon: AdminAddon; name: strin
 
   const { setup } = addon;
   const canRun = addon.enabled && (addon.status === "ready" || addon.status === "needs-setup");
-  const blockedBy = !addon.enabled ? "Switch it on first" : addon.status === "needs-settings" ? "Fill in its settings first" : canRun ? undefined : addon.problem;
+  const blockedBy = !addon.enabled
+    ? t("Switch it on first")
+    : addon.status === "needs-settings"
+      ? t("Fill in its settings first")
+      : canRun
+        ? undefined
+        : addon.problem;
   return (
     <div className="mt-2 rounded-lg border border-stone-800/80 bg-stone-950/40 p-2.5">
       <p className="text-[11px] leading-4 text-stone-400">
         <Wrench className="mr-1 inline size-3 align-[-2px] text-stone-500" aria-hidden="true" />
-        Setup: {setup.steps.join("; ")}
-        {setup.diskMB ? `. Needs about ${setup.diskMB >= 1024 ? `${(setup.diskMB / 1024).toFixed(1)} GB` : `${setup.diskMB} MB`} of disk.` : "."}
+        {t("Setup: {steps}{disk}", {
+          steps: setup.steps.join("; "),
+          disk: setup.diskMB
+            ? t(". Needs about {size} of disk.", { size: setup.diskMB >= 1024 ? `${(setup.diskMB / 1024).toFixed(1)} GB` : `${setup.diskMB} MB` })
+            : ".",
+        })}
       </p>
       {run ? (
         <div className="live-in mt-2 space-y-1.5" role="status">
@@ -439,15 +517,15 @@ function AddonSetup({ addon, name, onChanged }: { addon: AdminAddon; name: strin
           </div>
           <p className="flex min-w-0 items-center gap-2 text-[11px] text-stone-300">
             <Loader2 className="size-3 shrink-0 animate-spin" />
-            <span className="truncate">{run.progress.message || "Setting up"}</span>
+            <span className="truncate">{run.progress.message || t("Setting up")}</span>
           </p>
           <button type="button" onClick={() => void cancelTask(run.id)} className={cn(ui.btnSmall, "text-xs")}>
-            Stop it
+            {t("Stop it")}
           </button>
         </div>
       ) : (
         <>
-          {setup.error ? <p className="live-in mt-1 text-[11px] leading-4 text-red-300/90">Last setup failed: {setup.error}</p> : null}
+          {setup.error ? <p className="live-in mt-1 text-[11px] leading-4 text-red-300/90">{t("Last setup failed: {error}", { error: setup.error })}</p> : null}
           {error ? <p role="alert" className="motion-shake mt-1 text-[11px] text-red-400">{error}</p> : null}
           <button
             type="button"
@@ -457,7 +535,7 @@ function AddonSetup({ addon, name, onChanged }: { addon: AdminAddon; name: strin
             className={cn(ui.btnSmall, "mt-2 text-xs")}
           >
             {starting ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-            {setup.needed ? "Run its setup" : "Run its setup again"}
+            {setup.needed ? t("Run its setup") : t("Run its setup again")}
           </button>
         </>
       )}

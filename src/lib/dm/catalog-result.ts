@@ -10,9 +10,19 @@
 // changed first, then the engine's own sentences, then one line per
 // creature an area touched.
 //
-// Pure: no I/O, so scripts/test-invoke-catalog.mjs drives it directly.
+// Pure: no I/O, so scripts/test-invoke-catalog.mjs drives it directly. The
+// fixed words are the dictionaries' (result.*); the showing surface passes
+// its translator, and the pinned English below is what the tests and the
+// model-facing copies read.
+import { translate } from "@/lib/messages-logic";
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 export type ResultTone = "good" | "bad" | "info";
+
+// The pinned English, for the tests and any caller with no reader in hand.
+const enT: T = (key, vars) => translate("en", key, vars);
 export type ResultLine = { text: string; tone: ResultTone };
 
 type Row = Record<string, unknown>;
@@ -52,9 +62,9 @@ const SENTENCE_LISTS: Array<{ key: string; tone: ResultTone }> = [
 // initiative order turned into who the table is waiting on.
 const MODEL_ORDER = /^(now call|call |narrate|telegraph)|game state|your next call/i;
 
-function forAPerson(text: string): string {
+function forAPerson(t: T, text: string): string {
   const waiting = text.match(/^Now call request_roll with kind=initiative for EACH character: (.+?)\.\s/i);
-  const plain = waiting ? `Waiting on initiative from ${waiting[1]}. ${text.slice(waiting[0].length)}` : text;
+  const plain = waiting ? `${t("Waiting on initiative from {names}.", { names: waiting[1] })} ${text.slice(waiting[0].length)}` : text;
   return plain
     .replace(/\s*\((?:character|enemy|token|sheet)Id=[^)]*\)/g, "")
     .split(/(?<=[.!?])\s+/)
@@ -82,7 +92,7 @@ function scalar(value: unknown): string | null {
 }
 
 // One creature an area or a split touched: "Goblin 1: failed the save (8), 14 damage, dead".
-function describeRow(row: Row): ResultLine | null {
+function describeRow(t: T, row: Row): ResultLine | null {
   const who = scalar(row.target) ?? scalar(row.name) ?? scalar(row.character) ?? scalar(row.enemy);
   if (!who) {
     return null;
@@ -90,40 +100,40 @@ function describeRow(row: Row): ResultLine | null {
   const parts: string[] = [];
   if (typeof row.success === "boolean") {
     const rolled = typeof row.save === "number" ? ` (${row.save})` : "";
-    parts.push(row.success ? `made the save${rolled}` : `failed the save${rolled}`);
+    parts.push(row.success ? `${t("made the save")}${rolled}` : `${t("failed the save")}${rolled}`);
   }
   if (typeof row.autoFailed === "string") {
-    parts.push(`failed automatically: ${row.autoFailed}`);
+    parts.push(t("failed automatically: {what}", { what: row.autoFailed }));
   }
   const damage = typeof row.damage === "number" ? row.damage : typeof row.amount === "number" ? row.amount : null;
   if (damage !== null) {
-    parts.push(`${damage} damage`);
+    parts.push(t("{count} damage", { count: damage }));
   }
   for (const key of ["hp", "health", "conditionApplied", "conditionRefused", "note", "resistance"]) {
     const text = scalar(row[key]);
     if (text) {
-      parts.push(key === "hp" ? `HP ${text}` : text);
+      parts.push(key === "hp" ? t("HP {hp}", { hp: text }) : text);
     }
   }
   // Prismatic Spray: the rays each creature drew and what each did
   // (src/lib/dm/prismatic.ts), the engine's own words.
   const rays = scalar(row.rays);
   if (rays) {
-    parts.push(`${Array.isArray(row.rays) && row.rays.length > 1 ? "rays" : "ray"} ${rays}`);
+    parts.push(`${Array.isArray(row.rays) && row.rays.length > 1 ? t("rays") : t("ray")} ${rays}`);
   }
   if (Array.isArray(row.effects)) {
     parts.push(...row.effects.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== ""));
   }
   if (typeof row.tempHpAbsorbed === "number" && row.tempHpAbsorbed > 0) {
-    parts.push(`temp HP absorbed ${row.tempHpAbsorbed}`);
+    parts.push(t("temp HP absorbed {count}", { count: row.tempHpAbsorbed }));
   }
   if (typeof row.concentrationBroken === "string") {
-    parts.push(`concentration on ${row.concentrationBroken} broken`);
+    parts.push(t("concentration on {spell} broken", { spell: row.concentrationBroken }));
   }
   if (row.dead === true) {
-    parts.push("dead");
+    parts.push(t("dead"));
   } else if (row.dropped === true) {
-    parts.push("down at 0 HP");
+    parts.push(t("down at 0 HP"));
   }
   const bad = row.dead === true || row.dropped === true || typeof row.concentrationBroken === "string";
   // A row can say the same thing twice (its health word "dead" and its dead
@@ -135,29 +145,30 @@ function describeRow(row: Row): ResultLine | null {
     said.add(key);
     return true;
   });
-  return { text: `${who}: ${once.join(", ") || "no effect"}`, tone: bad ? "bad" : "info" };
+  return { text: `${who}: ${once.join(", ") || t("no effect")}`, tone: bad ? "bad" : "info" };
 }
 
-function concentrationLine(value: unknown): ResultLine | null {
+function concentrationLine(t: T, value: unknown): ResultLine | null {
   if (!isRecord(value)) {
     return null;
   }
-  const spell = scalar(value.spell) ?? "their spell";
-  const rolled = typeof value.rolled === "number" ? `rolled ${value.rolled}` : null;
-  const dc = typeof value.dc === "number" ? `DC ${value.dc}` : null;
+  const spell = scalar(value.spell) ?? t("their spell");
+  const rolled = typeof value.rolled === "number" ? t("rolled {count}", { count: value.rolled }) : null;
+  const dc = typeof value.dc === "number" ? t("DC {count}", { count: value.dc }) : null;
   const held = value.held === true || value.kept === true || value.broken === false;
   const broken = value.held === false || value.kept === false || value.broken === true;
-  const verdict = held ? "held" : broken ? "broken" : null;
-  const detail = [rolled && dc ? `${rolled} against ${dc}` : rolled ?? dc, verdict].filter(Boolean).join(", ");
+  const verdict = held ? t("held", { context: "result.concentration.held" }) : broken ? t("broken") : null;
+  const parts = [rolled && dc ? t("{rolled} against {dc}", { rolled, dc }) : rolled ?? dc, verdict].filter(Boolean).join(", ");
+  const detail = parts ? `: ${parts}` : "";
   return {
-    text: `Concentration on ${spell}${detail ? `: ${detail}` : ""}`,
+    text: t("Concentration on {spell}{detail}", { spell, detail }),
     tone: broken ? "bad" : "info",
   };
 }
 
-export function describeAdjudicationResult(result: unknown): ResultLine[] {
+export function describeAdjudicationResult(result: unknown, t: T = enT): ResultLine[] {
   if (!isRecord(result)) {
-    return [{ text: "Done.", tone: "good" }];
+    return [{ text: t("Done.", { context: "result.done" }), tone: "good" }];
   }
   const lines: ResultLine[] = [];
   const used = new Set<string>();
@@ -170,15 +181,15 @@ export function describeAdjudicationResult(result: unknown): ResultLine[] {
   const total = take("total");
   const success = take("success");
   if (typeof total === "number") {
-    const verdict = typeof success === "boolean" ? (success ? ", success" : ", failure") : "";
-    lines.push({ text: `Rolled ${total}${verdict}`, tone: success === false ? "bad" : "info" });
+    const verdict = typeof success === "boolean" ? (success ? t(", success") : t(", failure")) : "";
+    lines.push({ text: t("Rolled {count}", { count: total }) + verdict, tone: success === false ? "bad" : "info" });
   } else if (typeof success === "boolean") {
-    lines.push({ text: success ? "Success" : "Failure", tone: success ? "good" : "bad" });
+    lines.push({ text: success ? t("Success") : t("Failure"), tone: success ? "good" : "bad" });
   }
   const hit = take("hit");
   if (typeof hit === "boolean") {
     const crit = take("crit") === true;
-    lines.push({ text: hit ? (crit ? "Critical hit" : "Hit") : "Miss", tone: hit ? "good" : "info" });
+    lines.push({ text: hit ? (crit ? t("Critical hit") : t("Hit", { context: "result.hit" })) : t("Miss"), tone: hit ? "good" : "info" });
   }
 
   // What the hit points did.
@@ -186,11 +197,11 @@ export function describeAdjudicationResult(result: unknown): ResultLine[] {
   used.add("damageApplied");
   used.add("damageRolled");
   if (typeof damage === "number") {
-    lines.push({ text: `${damage} damage`, tone: "info" });
+    lines.push({ text: t("{count} damage", { count: damage }), tone: "info" });
   }
   const hp = scalar(take("hp"));
   if (hp) {
-    lines.push({ text: `HP now ${hp}`, tone: "info" });
+    lines.push({ text: t("HP now {hp}", { hp }), tone: "info" });
   }
   const health = scalar(take("health"));
   if (health) {
@@ -198,35 +209,35 @@ export function describeAdjudicationResult(result: unknown): ResultLine[] {
   }
   const absorbed = take("tempHpAbsorbed");
   if (typeof absorbed === "number" && absorbed > 0) {
-    lines.push({ text: `Temporary hit points absorbed ${absorbed}`, tone: "info" });
+    lines.push({ text: t("Temporary hit points absorbed {count}", { count: absorbed }), tone: "info" });
   }
   const broken = take("concentrationBroken");
   if (typeof broken === "string" && broken) {
-    lines.push({ text: `Concentration on ${broken} broken`, tone: "bad" });
+    lines.push({ text: t("Concentration on {spell} broken", { spell: broken }), tone: "bad" });
   }
-  const concentration = concentrationLine(take("concentration"));
+  const concentration = concentrationLine(t, take("concentration"));
   if (concentration) {
     lines.push(concentration);
   }
-  const enemyConcentration = concentrationLine(take("enemyConcentration"));
+  const enemyConcentration = concentrationLine(t, take("enemyConcentration"));
   if (enemyConcentration) {
     lines.push(enemyConcentration);
   }
   if (take("dead") === true) {
-    lines.push({ text: "Dead", tone: "bad" });
+    lines.push({ text: t("Dead"), tone: "bad" });
   } else if (take("dropped") === true) {
-    lines.push({ text: "Down at 0 HP", tone: "bad" });
+    lines.push({ text: t("Down at 0 HP"), tone: "bad" });
   }
   const dying = scalar(take("dying"));
   if (dying) {
-    lines.push({ text: `Dying: ${dying}`, tone: "bad" });
+    lines.push({ text: t("Dying: {who}", { who: dying }), tone: "bad" });
   }
 
   // The save the effect forced, in the words a table uses: "DEX save, DC 15".
   const dc = take("dc");
   if (typeof dc === "number") {
     const ability = scalar(result.saveAbility);
-    lines.push({ text: ability ? `${ability.toUpperCase()} save, DC ${dc}` : `Save DC ${dc}`, tone: "info" });
+    lines.push({ text: ability ? t("{ability} save, DC {count}", { ability: ability.toUpperCase(), count: dc }) : t("Save DC {count}", { count: dc }), tone: "info" });
   }
 
   // The engine's own sentences.
@@ -253,7 +264,7 @@ export function describeAdjudicationResult(result: unknown): ResultLine[] {
     const rows = take(key);
     if (Array.isArray(rows)) {
       for (const row of rows) {
-        const line = isRecord(row) ? describeRow(row) : null;
+        const line = isRecord(row) ? describeRow(t, row) : null;
         if (line) {
           lines.push(line);
         }
@@ -261,13 +272,13 @@ export function describeAdjudicationResult(result: unknown): ResultLine[] {
     }
   }
   if (take("encounterOver") === true) {
-    lines.push({ text: "The fight is over.", tone: "good" });
+    lines.push({ text: t("The fight is over."), tone: "good" });
   }
   // A round number on its own reads as a label; with a sentence that already
   // names the round it is said once.
   const round = take("round");
   if (typeof round === "number" && !lines.some((line) => line.text.toLowerCase().includes(`round ${round}`))) {
-    lines.push({ text: `Round ${round}`, tone: "info" });
+    lines.push({ text: t("Round {count}", { count: round }), tone: "info" });
   }
 
   // Anything else a handler said in words, labelled by its key.
@@ -283,7 +294,7 @@ export function describeAdjudicationResult(result: unknown): ResultLine[] {
     }
   }
   const readable = lines
-    .map((line) => ({ ...line, text: forAPerson(line.text) }))
+    .map((line) => ({ ...line, text: forAPerson(t, line.text) }))
     .filter((line) => line.text);
-  return readable.length ? readable : [{ text: "Done.", tone: "good" }];
+  return readable.length ? readable : [{ text: t("Done.", { context: "result.done" }), tone: "good" }];
 }

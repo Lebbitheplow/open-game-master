@@ -2,6 +2,7 @@
 
 import { Loader2, Puzzle, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AddonByline, addonByText } from "@/components/addons/AddonByline";
 import { AddonFields, fieldDefaults, type FieldValues } from "@/components/addons/AddonFields";
 import { appNotice } from "@/components/ui/ConfirmDialog";
 import { SectionHead } from "@/components/ui/SectionHead";
@@ -14,6 +15,7 @@ import { useAddons } from "@/lib/addons/use-addons";
 import { cn } from "@/lib/cn";
 import { navigateTo } from "@/lib/navigation";
 import { ui } from "@/lib/ui";
+import { useT, useTp } from "@/lib/locale";
 
 // A workshop made by an addon: a rulebook PDF read by a PDF importer, a
 // file of stat blocks, anything an installed importer reads. Shown only
@@ -31,12 +33,14 @@ type Stage =
   | { step: "preview"; task: TaskView; preview: BundlePreviewData };
 
 export function AddonImportButton({
-  label = "Import with an addon",
+  label,
   className = ui.btnSecondary,
 }: {
   label?: string;
   className?: string;
 } = {}) {
+  const t = useT();
+  const tp = useTp();
   const { workshopImporters } = useAddons();
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState("");
@@ -76,13 +80,13 @@ export function AddonImportButton({
     const current = await followTask(task, (update) => setStage({ step: "run", task: update }), () => live.current);
     if (!current) {
       if (live.current) {
-        setError("Lost track of the run. Try again.");
+        setError(t("Lost track of the run. Try again."));
         setStage({ step: "pick" });
       }
       return;
     }
     if (current.status !== "done") {
-      setError(current.error || "The addon did not finish.");
+      setError(current.error || t("The addon did not finish."));
       setStage({ step: "pick" });
       return;
     }
@@ -93,7 +97,7 @@ export function AddonImportButton({
     }).catch(() => null);
     const preview = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(preview.error ?? "The workshop the addon made could not be read.");
+      setError(preview.error ?? t("The workshop the addon made could not be read."));
       setStage({ step: "pick" });
       return;
     }
@@ -106,7 +110,7 @@ export function AddonImportButton({
     if (!file) return;
     setError("");
     if (file.size > importer.maxInputMB * 1024 * 1024) {
-      setError(`${importer.title} takes files up to ${importer.maxInputMB} MB.`);
+      setError(t("{name} takes files up to {limit} MB.", { name: importer.title, limit: importer.maxInputMB }));
       return;
     }
     setStage({ step: "upload", sent: 0, size: file.size });
@@ -131,7 +135,7 @@ export function AddonImportButton({
     }).catch(() => null);
     const data = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(data.error ?? "The addon could not start.");
+      setError(data.error ?? t("The addon could not start."));
       setStage({ step: "pick" });
       return;
     }
@@ -153,18 +157,18 @@ export function AddonImportButton({
     }).catch(() => null);
     const data = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(data.error ?? "That workshop could not be imported.");
+      setError(data.error ?? t("That workshop could not be imported."));
       setBusy(false);
       return;
     }
     const shelf = (data as { shelf?: { renamed?: string[]; refused?: string[] } }).shelf;
     const renamed = (shelf?.renamed ?? []).filter(Boolean);
     if (renamed.length) {
-      await appNotice(`${renamed.join(" ")} The new workshop's Cast, fights and pregens use these names; your other workshops are unchanged.`, "Kept beside your own");
+      await appNotice(t("{list} The new workshop's Cast, fights and pregens use these names; your other workshops are unchanged.", { list: renamed.join(" ") }), t("Kept beside your own"));
     }
     const refused = (shelf?.refused ?? []).filter(Boolean);
     if (refused.length) {
-      await appNotice(`${refused.join(" ")} The rest of the workshop came in without ${refused.length === 1 ? "it" : "them"}.`, "Left out");
+      await appNotice(tp("{list} The rest of the workshop came in without it.", "{list} The rest of the workshop came in without them.", { count: refused.length, list: refused.join(" ") }), t("Left out"));
     }
     navigateTo(`/workshop/${data.workshopId}`);
   }
@@ -181,39 +185,39 @@ export function AddonImportButton({
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         className={className}
-        title="Read a file into a new workshop with an addon this server has"
+        title={t("Read a file into a new workshop with an addon this server has")}
       >
         <Puzzle className="size-4" />
-        {label}
+        {label ?? t("Import with an addon")}
       </button>
 
       {open ? (
         <div className={cn(ui.card, "reveal mt-3 p-4")}>
           <SectionHead
-            title="Import with an addon"
+            title={t("Import with an addon")}
             glyph="system-plugin"
             aside={
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className={ui.iconAction}>
+              <button type="button" onClick={() => setOpen(false)} aria-label={t("Close", { context: "action.close" })} className={ui.iconAction}>
                 <X className="size-4" />
               </button>
             }
           />
           {workshopImporters.length > 1 ? (
             <Select
-              label="Importer"
+              label={t("Importer")}
               value={key(importer)}
               onChange={choose}
               disabled={working}
-              options={workshopImporters.map((entry) => ({ value: key(entry), label: entry.title, hint: entry.addonName }))}
+              options={workshopImporters.map((entry) => ({ value: key(entry), label: entry.title, hint: addonByText(entry) }))}
             />
           ) : (
             <p className="text-sm text-amber-100">
-              {importer.title} <span className="text-xs text-stone-500">· {importer.addonName}</span>
+              {importer.title} <AddonByline owner={importer} />
             </p>
           )}
           {importer.description ? <p className="mt-1 text-xs text-stone-400">{importer.description}</p> : null}
           <p className="mt-1 text-[11px] text-stone-500">
-            Reads {importer.accepts.filter((entry) => entry.startsWith(".")).join(", ") || importer.accepts.join(", ")} files up to {importer.maxInputMB} MB.
+            {t("Reads {formats} files up to {limit} MB.", { formats: importer.accepts.filter((entry) => entry.startsWith(".")).join(", ") || importer.accepts.join(", "), limit: importer.maxInputMB })}
           </p>
 
           {importer.options.length && stage.step === "pick" ? (
@@ -244,7 +248,7 @@ export function AddonImportButton({
               />
               <button type="button" onClick={() => fileInput.current?.click()} className={ui.btnPrimary}>
                 <Upload className="size-4" />
-                Choose a file
+                {t("Choose a file")}
               </button>
             </div>
           ) : null}
@@ -260,12 +264,12 @@ export function AddonImportButton({
               <p className="flex items-center gap-2 text-xs text-stone-300">
                 <Loader2 className="size-3.5 animate-spin" />
                 {stage.step === "upload"
-                  ? `Sending the file: ${Math.round(stage.sent / 1024 / 1024)} of ${Math.max(1, Math.round(stage.size / 1024 / 1024))} MB`
-                  : stage.task.progress.message || "Reading"}
+                  ? t("Sending the file: {sent} of {total} MB", { sent: Math.round(stage.sent / 1024 / 1024), total: Math.max(1, Math.round(stage.size / 1024 / 1024)) })
+                  : stage.task.progress.message || t("Reading")}
               </p>
               {stage.step === "run" ? (
                 <button type="button" onClick={() => void cancel()} className={cn(ui.btnSmall, "text-xs")}>
-                  Stop it
+                  {t("Stop it")}
                 </button>
               ) : null}
             </div>

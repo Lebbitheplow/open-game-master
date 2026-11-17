@@ -7,13 +7,15 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
+import { HEALTH_RING, healthLabel, type HealthWord } from "@/lib/battlemap/health-words";
 import { conditionRule } from "@/lib/battlemap/condition-rules";
 import { placePlate } from "@/lib/battlemap/plate-place";
-import { HEALTH_LABEL, HEALTH_RING, type HealthWord } from "@/lib/battlemap/health-words";
 import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { offSide, SidePlateBand, sidesLine, SideSr } from "@/app/campaigns/[campaignId]/SideBadge";
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
+import { contentName } from "@/lib/content/names";
+import { useLocale, useT, useTp } from "@/lib/locale";
 import { variantUrl, type VariantWidth } from "@/lib/image-variant-url";
 
 // The chrome on the board as a stage (docs/visual-overhaul-plan.md 5.1): the
@@ -103,6 +105,8 @@ export function InitiativeRail({
   namesOnly?: boolean;
   above?: boolean;
 }) {
+  const t = useT();
+  const tp = useTp();
   if (!encounter.orderReady || !encounter.order.length) {
     return null;
   }
@@ -114,10 +118,10 @@ export function InitiativeRail({
   if (namesOnly) {
     return (
       <div className="board-initiative-names" data-tour="battle-initiative">
-        <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={`Round ${round}, open initiative order`}>
-          Round {round} · initiative
+        <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={t("Round {round}, open initiative order", { round })}>
+          {t("Round {round} · initiative", { round })}
         </button>
-        <ol tabIndex={0} aria-label="Initiative order">
+        <ol tabIndex={0} aria-label={t("Initiative order")}>
           {encounter.order.map((entry, at) => (
             <li key={`${entry.id}-${at}`} aria-current={lit.includes(at) ? "step" : undefined} title={entry.name}>
               {entry.name}
@@ -151,15 +155,15 @@ export function InitiativeRail({
       // On the board, the resting view keeps the tiles out from under it
       // (useBoardCamera.ts, camera-fit.ts).
       data-fit-clear={above || namesOnly ? undefined : ""}
-      aria-label={`Round ${round}, initiative order. ${encounter.acting?.name ?? order[up]?.name ?? ""} is up. ${sidesLine(encounter)}Open the order.`}
+      aria-label={t("Round {round}, initiative order. {name} is up. {sides}Open the order.", { round, name: encounter.acting?.name ?? order[up]?.name ?? "", sides: sidesLine(t, encounter) })}
       className={cn(
         "flex text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
         above ? "min-h-10 max-w-full items-center gap-2" : "absolute left-2 top-2 z-10 flex-col items-start gap-1 @md:left-3.5 @md:top-3.5 @md:gap-1.5",
       )}
     >
       <span className="board-eyebrow">
-        Round {round}
-        <span className="hidden @md:inline"> · initiative</span>
+        {t("Round {round}", { round })}
+        <span className="hidden @md:inline"> {t("· initiative")}</span>
       </span>
       <span className="flex gap-[3px] @md:gap-[5px]">
         {shown.map(({ entry, at }, index) => {
@@ -167,7 +171,7 @@ export function InitiativeRail({
           return (
             <span
               key={`${entry.id}-${at}`}
-              title={`${entry.name}${entry.hidden ? " (hidden)" : ""}${entry.initiative !== undefined ? ` · ${entry.initiative}` : ""}`}
+              title={`${entry.name}${entry.hidden ? ` ${t("(hidden)", { context: "board.hiddenMark" })}` : ""}${entry.initiative !== undefined ? ` · ${entry.initiative}` : ""}`}
               className={cn(
                 "board-plate relative block h-[38px] w-[31px] overflow-hidden rounded-[6px] border bg-[#0d0b1c] shadow-[0_2px_6px_rgba(4,2,12,0.55)] @md:h-14 @md:w-[46px] @md:rounded-[7px]",
                 current ? "border-transparent" : "border-[rgba(227,193,92,0.25)]",
@@ -223,10 +227,10 @@ export function InitiativeRail({
 // turnHudBudget): the pips are drawn only for a seat that was sent one.
 export type TurnHudBudget = { action: boolean; bonus: boolean; reaction: boolean };
 
-const PIPS: Array<{ key: keyof TurnHudBudget; label: string }> = [
-  { key: "action", label: "ACTION" },
-  { key: "bonus", label: "BONUS" },
-  { key: "reaction", label: "REACTION" },
+const PIPS: Array<{ key: keyof TurnHudBudget; labelKey: string }> = [
+  { key: "action", labelKey: "ACTION" },
+  { key: "bonus", labelKey: "BONUS" },
+  { key: "reaction", labelKey: "REACTION" },
 ];
 
 // Top-right: whose turn, and on your own turn what you have left.
@@ -248,17 +252,19 @@ export function TurnHud({
   ac?: number | null;
   hp?: { current: number; max: number } | null;
 }) {
+  const t = useT();
+  const tp = useTp();
   if (!actorName) {
     return null;
   }
   const stats = [
-    typeof speedLeftFeet === "number" ? `${speedLeftFeet} ft left` : null,
-    typeof ac === "number" ? `AC ${ac}` : null,
+    typeof speedLeftFeet === "number" ? t("{feet} ft left", { feet: speedLeftFeet }) : null,
+    typeof ac === "number" ? t("AC {ac}", { ac }) : null,
     hp ? `${hp.current}/${hp.max}` : null,
   ].filter(Boolean);
   return (
-    <div className="pointer-events-none absolute right-2 top-2 z-10 flex max-w-[58%] flex-col items-end gap-1 @md:right-3.5 @md:top-3.5 @md:gap-[7px]">
-      <span className="board-eyebrow block max-w-full truncate text-right">{mine ? `${actorName} · ${commanded ? "your orders" : "your turn"}` : `${actorName}'s turn`}</span>
+    <div className="board-turn-hud pointer-events-none absolute right-2 top-2 z-10 flex max-w-[58%] flex-col items-end gap-1 @md:right-3.5 @md:top-3.5 @md:gap-[7px]">
+      <span className="board-eyebrow block max-w-full truncate text-right">{mine ? (commanded ? t("{name} · your orders", { name: actorName }) : t("{name} · your turn", { name: actorName })) : t("{name}'s turn", { name: actorName })}</span>
       {mine && budget ? (
         // On a narrow board the pips and the stats sit under the rail's
         // plates instead of beside them, where there is no room.
@@ -276,7 +282,7 @@ export function TurnHud({
                 className="turn-pip flex items-center gap-[5px] rounded-full border px-2 py-[3px] font-mono text-[9px] tracking-[0.04em] @md:text-[10px]"
               >
                 <span className="turn-pip-shape" aria-hidden="true" />
-                {pip.label}
+                {t(pip.labelKey)}
               </span>
             );
           })}
@@ -284,6 +290,9 @@ export function TurnHud({
       ) : null}
       {mine && stats.length ? (
         <div className={cn("board-glass rounded-lg px-[9px] py-1 font-mono text-[9px] @md:mt-0 @md:text-[10px]", !budget && "mt-[42px]")}>
+          {/* Where a short board hides the heading (world.css), the plate
+              names the companion whose stats these are. */}
+          {commanded ? <span className="turn-hud-who hidden">{actorName} · </span> : null}
           {stats.join(" · ")}
         </div>
       ) : null}
@@ -320,22 +329,26 @@ export function TurnBanner({ text, mine }: { text: string; mine: boolean }) {
 }
 
 function HealthWordChip({ word }: { word: HealthWord }) {
+  const t = useT();
+  const tp = useTp();
   return (
     <span
       className="rounded-full border px-1.5 py-px text-[10px] font-medium"
       style={{ borderColor: `${HEALTH_RING[word]}99`, color: HEALTH_RING[word], background: "rgba(8,6,18,0.6)" }}
     >
-      {HEALTH_LABEL[word] ?? word}
+      {healthLabel(t, word)}
     </span>
   );
 }
 
 export function ConditionChip({ label, rounds, note }: { label: string; rounds?: number; note?: string }) {
+  const t = useT();
+  const tp = useTp();
   return (
     <span className="fx-pop inline-flex max-w-full items-center gap-1 rounded-full border border-amber-900/60 bg-amber-950/30 py-px pl-px pr-1.5 text-[10px] text-amber-300">
       <GameIcon icon={{ kind: "condition", key: conditionIconKey(label) }} size="size-4" />
       <span className="capitalize">{label}</span>
-      {rounds ? ` (${rounds} rd)` : ""}
+      {rounds ? ` ${tp("({count} rd)", "({count} rd)", { count: rounds })}` : ""}
       {/* What the engine's metadata says: until whose turn, the save that
           ends it, who laid it (src/lib/battlemap/condition-notes.ts). */}
       {note ? <span className="truncate text-amber-200/70">{note}</span> : null}
@@ -347,10 +360,12 @@ export function ConditionChip({ label, rounds, note }: { label: string; rounds?:
 // plate: the board's own verdict (view-tactics.ts), the one the hit preview
 // and pc_attack read.
 function EdgeChips({ edge }: { edge: TargetEdge }) {
+  const t = useT();
+  const tp = useTp();
   const chips = [
-    edge.blocked ? "No line of sight" : edge.cover === 5 ? "Three-quarters cover (+5 AC)" : edge.cover === 2 ? "Half cover (+2 AC)" : null,
-    edge.flanking ? "Flanked: advantage in melee" : null,
-    edge.hostileBeside && !edge.adjacent ? "Enemy beside you: ranged at disadvantage" : null,
+    edge.blocked ? t("No line of sight") : edge.cover === 5 ? t("Three-quarters cover (+{ac} AC)", { ac: 5 }) : edge.cover === 2 ? t("Half cover (+{ac} AC)", { ac: 2 }) : null,
+    edge.flanking ? t("Flanked: advantage in melee") : null,
+    edge.hostileBeside && !edge.adjacent ? t("Enemy beside you: ranged at disadvantage") : null,
   ].filter((chip): chip is string => Boolean(chip));
   if (!chips.length) return null;
   return (
@@ -368,7 +383,9 @@ function EdgeChips({ edge }: { edge: TargetEdge }) {
 // name, what it does (condition-rules.ts for the SRD's own; every other
 // condition's note leads with its summary), and how long it lasts.
 function ConditionRow({ id, label, rounds, note }: { id: string; label: string; rounds?: number; note?: string }) {
-  const rule = conditionRule(id);
+  const t = useT();
+  const tp = useTp();
+  const rule = conditionRule(id, t);
   return (
     <li className="fx-pop flex items-start gap-2 text-left">
       {/* A fixed box, so a condition with no painting keeps its text in line. */}
@@ -381,7 +398,7 @@ function ConditionRow({ id, label, rounds, note }: { id: string; label: string; 
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] font-semibold text-[#ecd287]">
           <span className="capitalize">{label}</span>
-          {rounds ? <span className="font-normal text-[rgba(244,224,166,0.8)]">{` (${rounds} rd)`}</span> : null}
+          {rounds ? <span className="font-normal text-[rgba(244,224,166,0.8)]">{` ${tp("({count} rd)", "({count} rd)", { count: rounds })}`}</span> : null}
         </span>
         {rule ? <span className="block text-[10px] leading-snug text-[#d8d3ea]">{rule}</span> : null}
         {note ? <span className="block text-[10px] leading-snug text-[rgba(244,224,166,0.75)]">{note}</span> : null}
@@ -435,6 +452,8 @@ export function TokenPlate({
   pinned?: boolean;
   onClose?: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const pin = useRef<HTMLSpanElement>(null);
   const plateRef = useRef<HTMLDivElement>(null);
   const [spot, setSpot] = useState<{ left: number; top: number; below: boolean } | null>(null);
@@ -480,6 +499,10 @@ export function TokenPlate({
     closeRef.current = onClose;
   });
   const shown = Boolean(spot);
+  // The name reads in the reader's language; the token's own name, which the
+  // board's moves and the DM's taps send, stays the stored English one.
+  const locale = useLocale();
+  const plateName = contentName("monsters", token.name, locale);
   // Pinned: the keyboard comes to the plate once it is in place, and goes
   // back where it was when the plate closes. A press outside the plate and
   // the board closes it; the board's own taps close or move it themselves.
@@ -524,7 +547,7 @@ export function TokenPlate({
     <div
       ref={plateRef}
       role={pinned ? "dialog" : "tooltip"}
-      aria-label={pinned ? `${token.name}: details` : undefined}
+      aria-label={pinned ? t("{name}: details", { name: token.name }) : undefined}
       tabIndex={pinned ? -1 : undefined}
       data-pinned={pinned ? "true" : undefined}
       className={cn(
@@ -541,7 +564,7 @@ export function TokenPlate({
       style={spot ? { left: spot.left, top: spot.top, ...(paged && floor ? { minHeight: floor } : {}) } : undefined}
     >
       {pinned ? (
-        <button type="button" onClick={() => onClose?.()} aria-label="Close" className={cn(pagerButton, "absolute right-1 top-1")}>
+        <button type="button" onClick={() => onClose?.()} aria-label={t("Close", { context: "action.close" })} className={cn(pagerButton, "absolute right-1 top-1")}>
           <X className="size-3.5" />
         </button>
       ) : null}
@@ -563,7 +586,7 @@ export function TokenPlate({
           )}
         />
         <span className={cn("mt-1 flex min-w-0 flex-col sm:w-full sm:items-center sm:text-center", crowded ? "flex-1 items-start text-left" : "w-full items-center text-center")}>
-          <span className="block max-w-full truncate font-display text-xs font-semibold">{token.name}</span>
+          <span className="block max-w-full truncate font-display text-xs font-semibold">{plateName}</span>
           {health ? <HealthWordChip word={health} /> : null}
           {edge && crowded ? <EdgeChips edge={edge} /> : null}
         </span>
@@ -575,19 +598,19 @@ export function TokenPlate({
               out from under the pointer. */}
           {pinned && pages > 1 ? (
             <div className="flex items-center gap-2 text-[11px] text-[#d8d3ea]">
-              <button type="button" onClick={() => setPage(at - 1)} disabled={at === 0} aria-label="Previous conditions" className={pagerButton}>
+              <button type="button" onClick={() => setPage(at - 1)} disabled={at === 0} aria-label={t("Previous conditions")} className={pagerButton}>
                 <ChevronLeft className="size-4" />
               </button>
               {/* Even digits and a set width: the next arrow holds still. */}
-              <span aria-live="polite" className="min-w-[5.5rem] text-center tabular-nums">{`Page ${at + 1} of ${pages}`}</span>
-              <button type="button" onClick={() => setPage(at + 1)} disabled={at === pages - 1} aria-label="Next conditions" className={pagerButton}>
+              <span aria-live="polite" className="min-w-[5.5rem] text-center tabular-nums">{t("Page {page} of {pages}", { page: at + 1, pages })}</span>
+              <button type="button" onClick={() => setPage(at + 1)} disabled={at === pages - 1} aria-label={t("Next conditions")} className={pagerButton}>
                 <ChevronRight className="size-4" />
               </button>
             </div>
           ) : null}
           <ul
             className={cn("min-w-0 gap-1.5", crowded ? "grid w-full grid-cols-1 sm:grid-cols-2 sm:gap-x-3" : "flex flex-col")}
-            aria-label="Conditions"
+            aria-label={t("Conditions")}
           >
             {onPage.map((condition, index) => (
               <ConditionRow key={`${condition.id}-${at * size + index}`} {...condition} />
@@ -596,7 +619,7 @@ export function TokenPlate({
           {/* Hovered, the rest are named: a click opens the plate to page them. */}
           {rest.length ? (
             <p className="text-[10px] leading-snug text-[#aeaac6]" data-plate-more>
-              <span className="font-semibold text-[#ecd287]">{`+${rest.length} more: `}</span>
+              <span className="font-semibold text-[#ecd287]">{t("+{count} more: ", { count: rest.length })}</span>
               <span className="capitalize">{rest.map((condition) => condition.label).join(", ")}</span>
             </p>
           ) : null}
@@ -634,11 +657,13 @@ export function TargetChips({
   onPick: (tokenId: string) => void;
   onHover?: (tokenId: string | null) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   if (!targets.length) {
-    return <p className="text-[11px] text-stone-500">Nobody here to aim at.</p>;
+    return <p className="text-[11px] text-stone-500">{t("Nobody here to aim at.")}</p>;
   }
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Targets">
+    <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label={t("Targets")}>
       {targets.map(({ token, face, health, feet }, index) => (
         <button
           key={token.id}
@@ -660,7 +685,7 @@ export function TargetChips({
           <span className="min-w-0">
             <span className="block max-w-[9rem] truncate text-xs font-medium text-stone-100">{token.name}</span>
             <span className="block font-mono text-[10px] text-stone-400">
-              {[health ? HEALTH_LABEL[health] ?? health : null, feet !== null ? `${feet} ft` : null].filter(Boolean).join(" · ")}
+              {[health ? healthLabel(t, health) : null, feet !== null ? t("{feet} ft", { feet }) : null].filter(Boolean).join(" · ")}
             </span>
           </span>
         </button>

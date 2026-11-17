@@ -1,0 +1,116 @@
+/* Royal bookbinding: blue enamel, gilded wheat and quiet vellum reading insets. */
+[data-appearance="kingdoms"] {
+  --theme-table-corner-size: 48px;
+  --theme-table-corner-size-small: 23px;
+  --theme-lobby-corner-size: 144px;
+  --theme-lobby-corner-size-small: 88px;
+  --material-fitting-radius: 5px 5px 45% 45%;
+  --material-control-radius: 3px;
+  --material-panel-radius: 6px 6px 2px 2px;
+  --material-primary-wash: linear-gradient(#254b98f5, #142d69fa);
+  --material-send-wash: linear-gradient(#254b98, #142d69);
+  --material-send-edge: var(--material-edge);
+  --material-chosen-wash: var(--material-send-wash);
+  --material-metal-finish: linear-gradient(135deg, #f8e3a6, #ba8d39 47%, #f2d58b 51%, #94621f);
+  --material-metal-ink: #182b51;
+  --material-edge: #a38448;
+  --material-rail-wash: linear-gradient(#14346be8, #0f234deb);
+  --appearance-corner: 0.25rem;
+}
+[data-appearance="kingdoms"][data-theme="dark"] {
+  --background: #0b1428;
+  --foreground: #f1ebdb;
+  --color-stone-950: #101b30;
+  --color-stone-900: #18263d;
+  --color-stone-800: #26354c;
+  --color-stone-700: #3a4a61;
+  --color-stone-600: #738096;
+  --color-stone-500: #a1aabb;
+  --color-stone-400: #bac1cc;
+  --color-stone-300: #d1d5db;
+  --color-stone-200: #e6e5df;
+  --color-stone-100: #f3efdf;
+  --color-stone-50: #fff9e9;
+  --color-amber-950: #0e2047;
+  --color-amber-900: #193362;
+  --color-amber-800: #244681;
+  --color-amber-700: #365d9d;
+  --color-amber-600: #6389bf;
+  --color-amber-500: #8daadd;
+  --color-amber-400: #acc5ed;
+  --color-amber-300: #c4d6f6;
+  --color-amber-200: #d8e4fc;
+  --color-amber-100: #e7efff;
+  --color-amber-50: #f5f8ff;
+  --material-metal: #ebd49b;
+  --material-panel-wash: linear-gradient(#192942ed, #101d33f5);
+  --material-control-wash: linear-gradient(#263b5de8, #162a48f2);
+  --material-body-wash: linear-gradient(#0b1428f2, #0b1428f2);
+}
+[data-appearance="kingdoms"][data-theme="light"] {
+  --background: #f3eddd;
+  --foreground: #1b2b47;
+  --color-stone-950: #fffaed;
+  --color-stone-900: #f1e9d6;
+  --color-stone-800: #e3dbc8;
+  --color-stone-700: #c1b7a0;
+  --color-stone-600: #8b806d;
+  --color-stone-500: #6d6252;
+  --color-stone-400: #514b41;
+  --color-stone-300: #383d43;
+  --color-stone-200: #25334a;
+  --color-stone-100: #19273f;
+  --color-stone-50: #101c30;
+  --color-amber-950: #eff4ff;
+  --color-amber-900: #dbe6fb;
+  --color-amber-800: #bdcfee;
+  --color-amber-700: #8ca7d7;
+  --color-amber-600: #5276b4;
+  --color-amber-500: #335b9b;
+  --color-amber-400: #244981;
+  --color-amber-300: #1d3a69;
+  --color-amber-200: #172e54;
+  --color-amber-100: #11223f;
+  --color-amber-50: #0a172d;
+  --material-metal: #284779;
+  --material-edge: #927039;
+  --material-panel-wash: linear-gradient(#fff8e6b8, #f0e4cbd4);
+  --material-control-wash: linear-gradient(#fff9e8a8, #e7d8b8cc);
+  --material-body-wash: linear-gradient(#f3edddcf, #f3eddde0);
+}
+
+/* The shared material layer paints blue enamel, including the moving highlight.
+   Retain warm ivory labels over the opaque blue action surfaces. */
+html[data-appearance="kingdoms"][data-theme] .theme-table .cine-send,
+html[data-appearance="kingdoms"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
+  color: #fff5db;
+}
+html[data-appearance="kingdoms"][data-theme] .theme-table .cine-header {
+  border-bottom: 3px double var(--material-edge);
+}
+html[data-appearance="kingdoms"][data-theme] .lobby-head {
+  border-bottom: 3px double var(--material-edge);
+}
+/* The hand floats over the dark map in either brightness mode; day blue ink
+   is only appropriate on the surrounding ivory reading panels. */
+html[data-appearance="kingdoms"] .theme-table .cine-fight-hand .hand-label {
+  color: #f3dca5;
+}
+html[data-appearance="kingdoms"] .theme-table .cine-fight-hand .hand-hint {
+  color: #f1e6d3;
+}
+/* Ambient motes and moving contours compete with the manuscript materials.
+   Only the decorative canvas directly under body is the app backdrop. */
+html[data-appearance="kingdoms"] .ambient-dust,
+html[data-appearance="kingdoms"] body > canvas[aria-hidden] { display: none; }
+@media (forced-colors: active) {
+  html[data-appearance="kingdoms"] {
+    --material-send-wash: ButtonFace;
+    --material-send-edge: ButtonText;
+    --material-chosen-wash: ButtonFace;
+  }
+  html[data-appearance="kingdoms"][data-theme] .theme-table .cine-send,
+  html[data-appearance="kingdoms"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
+    color: ButtonText;
+  }
+}

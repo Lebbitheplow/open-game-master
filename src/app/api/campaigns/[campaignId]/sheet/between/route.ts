@@ -4,6 +4,7 @@ import { ownSheetFor } from "@/lib/character-seat";
 import { afflictionLines } from "@/lib/dm/between-lines";
 import { liveAfflictions } from "@/lib/dm/afflictions";
 import { lifestyleLine } from "@/lib/dm/lifestyle";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,7 +39,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ camp
   const lines = afflictionLines(campaignId, sheet)
     .map((text, index) => ({ text, hidden: (entries[index]?.conditions.length ?? 0) === 0 }))
     .filter((line) => dm || !line.hidden);
-  const living = lifestyleLine(campaignId, sheet.id);
+  const t = requestT(request);
+  const living = lifestyleLine(campaignId, sheet.id, t);
   return Response.json({
     lines: [
       ...lines.map((line) => ({ text: line.text, kind: "affliction" as const, ...(line.hidden ? { secret: true } : {}) })),

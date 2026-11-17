@@ -24,9 +24,11 @@ import { DeskPanel } from "@/app/reference/DeskPanel";
 import { CategoryRail } from "@/app/reference/CategoryRail";
 import { ResultBadges, type BadgeRow } from "@/app/reference/ResultBadges";
 import { needsNote } from "@/lib/content/levelup-logic";
-import { BEST_EFFORT_NOTE } from "@/lib/content/reading-logic";
 import { MAX_COMPARE, type CompareKind } from "@/lib/reference/compare";
 import { textKey } from "@/lib/language/text-logic";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
+import type { MessageKey } from "@/lib/messages-logic";
 
 // Which painted icon set a reference category draws from (src/lib/icons.ts).
 // A spell is not here: it wears its glyph (ResultIcon).
@@ -66,16 +68,30 @@ type Ruling = {
   origin: string;
 };
 
+// The category rail's labels are the dictionaries' docs.ref.tab.* lines, by
+// kind; the kinds stay the stable union the routes search.
+const TAB_KEYS: Record<(typeof TABS)[number]["kind"], MessageKey> = {
+  glossary: "Basics",
+  spells: "Spells",
+  feats: "Feats",
+  items: "Items",
+  conditions: "Conditions",
+  races: "Lineages",
+  backgrounds: "Backgrounds",
+  monsters: "Monsters",
+  rulings: "House rules",
+};
+
 const TABS = [
-  { kind: "glossary", label: "Basics", glyph: "system-lore" },
-  { kind: "spells", label: "Spells", glyph: "cue-arcane" },
-  { kind: "feats", label: "Feats", glyph: "rest-proficiency" },
-  { kind: "items", label: "Items", glyph: "tab-loot" },
-  { kind: "conditions", label: "Conditions", glyph: "rest-concentration-break" },
-  { kind: "races", label: "Lineages", glyph: "tab-characters" },
-  { kind: "backgrounds", label: "Backgrounds", glyph: "tab-journal" },
-  { kind: "monsters", label: "Monsters", glyph: "system-bestiary" },
-  { kind: "rulings", label: "House rules", glyph: "system-rules" },
+  { kind: "glossary", glyph: "system-lore" },
+  { kind: "spells", glyph: "cue-arcane" },
+  { kind: "feats", glyph: "rest-proficiency" },
+  { kind: "items", glyph: "tab-loot" },
+  { kind: "conditions", glyph: "rest-concentration-break" },
+  { kind: "races", glyph: "tab-characters" },
+  { kind: "backgrounds", glyph: "tab-journal" },
+  { kind: "monsters", glyph: "system-bestiary" },
+  { kind: "rulings", glyph: "system-rules" },
 ] as const;
 
 type Kind = (typeof TABS)[number]["kind"];
@@ -95,6 +111,26 @@ function categoryGlyph(kind: Kind): string {
 // The two kinds compare.ts knows how to put side by side.
 function comparableKind(kind: Kind): CompareKind | null {
   return kind === "spells" || kind === "monsters" ? kind : null;
+}
+
+// A tab's table in the official-name maps, for the row titles: the races'
+// tab reads the species' names, items the carried gear's. Glossary terms and
+// house rules are not rows and carry their own French where they have it.
+function kindTable(kind: Kind): "spells" | "monsters" | "species" | "backgrounds" | "conditions" | "items" {
+  switch (kind) {
+    case "spells":
+      return "spells";
+    case "monsters":
+      return "monsters";
+    case "races":
+      return "species";
+    case "backgrounds":
+      return "backgrounds";
+    case "conditions":
+      return "conditions";
+    default:
+      return "items";
+  }
 }
 
 // The plate at the head of a result. GameIcon draws nothing when a thing has
@@ -120,6 +156,12 @@ function ResultIcon({ kind, name, data }: { kind: Kind; name: string; data?: Rec
 }
 
 export default function ReferencePage() {
+  const t = useT();
+  const locale = useLocale();
+  // Glossary bodies follow the reader: the French explanation fields when
+  // the locale is fr and present, the English source otherwise. The term's
+  // name itself is WotC's French SRD wording, carried on the entry as `fr`.
+  const french = locale === "fr";
   const [mode, setMode] = useState<Mode>("browse");
   const [kind, setKind] = useState<Kind>("glossary");
   const [query, setQuery] = useState("");
@@ -146,7 +188,7 @@ export default function ReferencePage() {
     }
     return terms.filter(
       (term) =>
-        textKey(term.term).includes(needle) || textKey(term.short).includes(needle),
+        textKey(term.term).includes(needle) || textKey(term.fr ?? "").includes(needle) || textKey(term.short).includes(needle),
     );
   }, [terms, query]);
 
@@ -240,16 +282,18 @@ export default function ReferencePage() {
   }
 
   function openTerm(term: GlossaryTerm) {
-    setOpen({ title: term.term, text: [term.short, term.long].filter(Boolean).join("\n\n") });
+    const short = french && term.shortFr ? term.shortFr : term.short;
+    const long = french && term.longFr ? term.longFr : term.long;
+    setOpen({ title: french && term.fr ? term.fr : term.term, text: [short, long].filter(Boolean).join("\n\n") });
   }
 
   function openRow(row: Row) {
     // What an entry built on rules this game does not play means at the
     // table comes first (issue #570).
-    const notes = [needsNote(row.needs ?? []), row.bestEffort ? BEST_EFFORT_NOTE : null].filter(Boolean);
-    const text = describeContentEntry(row.data) ?? "No description available for this entry.";
+    const notes = [needsNote(row.needs ?? []), row.bestEffort ? t("Best effort: the app read this entry's rules from its text, and nobody has checked that reading yet. If it plays differently from what the text says, the text and the GM win, and a workshop copy can fix it for your table.") : null].filter(Boolean);
+    const text = describeContentEntry(row.data) ?? t("No description available for this entry.");
     setOpen({
-      title: row.name,
+      title: contentName(kindTable(kind), row, locale),
       meta: kind === "spells" ? spellSummary(row.data) : undefined,
       text: notes.length ? `${notes.join("\n\n")}\n\n${text}` : text,
     });
@@ -288,25 +332,25 @@ export default function ReferencePage() {
 
   const compareCount = selection?.entries.length ?? 0;
   const modes = [
-    { value: "browse" as const, label: "Browse", icon: Search },
+    { value: "browse" as const, label: t("Browse"), icon: Search },
     {
       value: "compare" as const,
-      label: compareCount ? `Compare (${compareCount})` : "Compare",
+      label: compareCount ? t("Compare ({count})", { count: compareCount }) : t("Compare"),
       icon: Columns3,
     },
-    { value: "calculators" as const, label: "Calculators", icon: Calculator },
-    { value: "ask" as const, label: "Ask", icon: MessageCircleQuestion },
+    { value: "calculators" as const, label: t("Calculators"), icon: Calculator },
+    { value: "ask" as const, label: t("Ask"), icon: MessageCircleQuestion },
   ];
 
   return (
     <PageShell
       icon={PIXEL_ICONS.support}
       glyph="tab-reference"
-      title="Rules reference"
-      blurb="Look something up, line things up side by side, run the numbers, or ask."
+      title={t("Rules reference")}
+      blurb={t("Look something up, line things up side by side, run the numbers, or ask.")}
       actions={
         <Link href="/rulebook" className={cn(ui.btnSmall, "gap-1.5")}>
-          <GameIcon icon={{ kind: "glyph", key: "system-rules" }} size="size-5" /> Read the rulebook
+          <GameIcon icon={{ kind: "glyph", key: "system-rules" }} size="size-5" /> {t(" Read the rulebook")}
         </Link>
       }
     >
@@ -316,7 +360,7 @@ export default function ReferencePage() {
           options={modes}
           value={mode}
           onChange={setMode}
-          label="Reference mode"
+          label={t("Reference mode")}
           size="sm"
           className="w-max"
         />
@@ -325,17 +369,17 @@ export default function ReferencePage() {
       {/* Keyed by mode so the incoming desk rises in instead of cutting. */}
       <div key={mode} className="motion-tab space-y-4">
         {mode === "calculators" ? (
-          <PageSection heading="Calculators" glyph="tab-dice">
+          <PageSection heading={t("Calculators")} glyph="tab-dice">
             <CalculatorsPanel />
           </PageSection>
         ) : null}
         {mode === "ask" ? (
-          <PageSection heading="Ask the desk" glyph="tab-lead">
+          <PageSection heading={t("Ask the desk")} glyph="tab-lead">
             <DeskPanel />
           </PageSection>
         ) : null}
         {mode === "compare" ? (
-          <PageSection heading="Compare" glyph="system-tables">
+          <PageSection heading={t("Compare")} glyph="system-tables">
           <ComparePanel
             selection={selection ?? { kind: "spells", entries: [] }}
             onRemove={(slug) =>
@@ -352,11 +396,11 @@ export default function ReferencePage() {
 
         {mode === "browse" ? (
           <PageSection
-            heading="Browse"
+            heading={t("Browse")}
             glyph={categoryGlyph(kind)}
-            intro="New to this? Start with Basics, which explains the terms the game leans on constantly. The other tabs search everything the app knows about, including your own homebrew and the house rules on your rulesets."
+            intro={t("New to this? Start with Basics, which explains the terms the game leans on constantly. The other tabs search everything the app knows about, including your own homebrew and the house rules on your rulesets.")}
           >
-            <CategoryRail tabs={TABS} value={kind} onChange={setKind} label="Category" className="mb-3" />
+            <CategoryRail tabs={TABS.map((tab) => ({ ...tab, label: t(TAB_KEYS[tab.kind]) }))} value={kind} onChange={setKind} label={t("Category")} className="mb-3" />
 
             <div className="relative mb-4">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-amber-300/70" />
@@ -365,12 +409,12 @@ export default function ReferencePage() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={
                   kind === "glossary"
-                    ? "Search the basics"
+                    ? t("Search the basics")
                     : kind === "rulings"
-                      ? "Search your house rules"
-                      : `Search ${kind}`
+                      ? t("Search your house rules")
+                      : t("Search {kind}", { kind })
                 }
-                aria-label="Search"
+                aria-label={t("Search", { context: "docs.ref.searchAria" })}
                 className={cn(ui.input, "h-11 pl-9 pr-9")}
               />
               {loading ? (
@@ -380,7 +424,7 @@ export default function ReferencePage() {
 
             {comparableKind(kind) ? (
               <p className="reveal mb-3 text-xs text-stone-500">
-                Tick up to {MAX_COMPARE} to line them up side by side in Compare.
+                {t("Tick up to {max} to line them up side by side in Compare.", { max: MAX_COMPARE })}
               </p>
             ) : null}
 
@@ -391,15 +435,17 @@ export default function ReferencePage() {
                     <button type="button" onClick={() => openTerm(term)} className={ROW}>
                       <GameIcon icon={{ kind: "glyph", key: "system-lore" }} size="size-8" />
                       <span className="min-w-0 flex-1">
-                        <span className="block font-display text-sm tracking-wide text-amber-100">{term.term}</span>
-                        <span className="block text-xs text-stone-400">{term.short}</span>
+                        <span className="block font-display text-sm tracking-wide text-amber-100">{french && term.fr ? term.fr : term.term}</span>
+                        <span className="block text-xs text-stone-400">
+                          {french && term.shortFr ? term.shortFr : term.short}
+                        </span>
                       </span>
                     </button>
                   </li>
                 ))}
                 {!filteredTerms.length ? (
                   <li>
-                    <EmptyState art="scrolls" size="sm" title="Nothing matches that." />
+                    <EmptyState art="scrolls" size="sm" title={t("Nothing matches that.")} />
                   </li>
                 ) : null}
               </ul>
@@ -426,8 +472,8 @@ export default function ReferencePage() {
                       size="sm"
                       title={
                         query.trim()
-                          ? "None of your house rules mention that."
-                          : "No house rules yet. Rulesets in your library are where they live."
+                          ? t("None of your house rules mention that.")
+                          : t("No house rules yet. Rulesets in your library are where they live.")
                       }
                     />
                   </li>
@@ -441,9 +487,9 @@ export default function ReferencePage() {
                       <button
                         type="button"
                         onClick={() => toggleCompare(row)}
-                        aria-label={`Compare ${row.name}`}
+                        aria-label={t("Compare {name}", { name: contentName(kindTable(rowsKind), row, locale) })}
                         aria-pressed={picked.has(row.slug)}
-                        title={picked.has(row.slug) ? "Take out of Compare" : "Add to Compare"}
+                        title={picked.has(row.slug) ? t("Take out of Compare") : t("Add to Compare")}
                         className={cn(
                           "motion-press min-w-10 shrink-0 rounded-xl border px-2.5 text-xs transition-colors",
                           picked.has(row.slug)
@@ -463,7 +509,7 @@ export default function ReferencePage() {
                             row.source === "homebrew" ? "text-amber-300" : "text-stone-100",
                           )}
                         >
-                          {row.name}
+                          {contentName(kindTable(rowsKind), row, locale)}
                         </span>
                         {/* The spell level that sat here is the first chip now. */}
                         <ResultBadges category={rowsKind} row={row} />
@@ -478,8 +524,8 @@ export default function ReferencePage() {
                       size="sm"
                       title={
                         unavailable
-                          ? "The content pack is not installed, so there is nothing to browse here yet."
-                          : "Nothing matches that."
+                          ? t("The content pack is not installed, so there is nothing to browse here yet.")
+                          : t("Nothing matches that.")
                       }
                     />
                   </li>
@@ -487,12 +533,12 @@ export default function ReferencePage() {
                 {rows.length ? (
                   <li className="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-stone-500">
                     <span aria-live="polite">
-                      Showing {rows.length}
-                      {hasMore ? ", and there are more" : ""}
+                      {t("Showing {count}", { count: rows.length })}
+                      {hasMore ? t(", and there are more") : ""}
                     </span>
                     {hasMore ? (
                       <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className={ui.btnSmall}>
-                        {loadingMore ? <Loader2 className="size-3.5 animate-spin" /> : null} Load more
+                        {loadingMore ? <Loader2 className="size-3.5 animate-spin" /> : null} {t(" Load more")}
                       </button>
                     ) : null}
                   </li>

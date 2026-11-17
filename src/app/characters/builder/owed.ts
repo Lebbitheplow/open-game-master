@@ -1,4 +1,10 @@
+import type { MessageKey } from "@/lib/messages-logic";
 import type { BlockerTarget, StepBlock } from "./submit";
+import { pluralOf } from "@/lib/messages-logic";
+
+// The caller's translator (home/types.ts agoLabel pattern): the owed line
+// reads in the reader's language, a test passing translate("en", ...).
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
 
 // The "choices left on this step" line (steps/shared.tsx OwedLine): every
 // pick a step's gate still holds, once per block, in the gate's order and
@@ -6,7 +12,7 @@ import type { BlockerTarget, StepBlock } from "./submit";
 // says how many there are and goes to each. Pure, for
 // scripts/test-builder-owed.mjs.
 
-export const TARGET_WORDS: Record<BlockerTarget, string> = {
+export const TARGET_WORDS: Record<BlockerTarget, MessageKey> = {
   name: "Name",
   background: "Background",
   backgroundSkills: "Background skills",
@@ -40,22 +46,27 @@ export const TARGET_WORDS: Record<BlockerTarget, string> = {
 
 export type OwedPick = { target: BlockerTarget; label: string; message: string };
 
-export function owedPicks(blocks: ReadonlyArray<StepBlock>): OwedPick[] {
+export function owedPicks(t: Translator, blocks: ReadonlyArray<StepBlock>): OwedPick[] {
   const seen = new Set<BlockerTarget>();
   const out: OwedPick[] = [];
   for (const entry of blocks) {
     if (seen.has(entry.target)) continue;
     seen.add(entry.target);
-    out.push({ target: entry.target, label: entry.label ?? TARGET_WORDS[entry.target], message: entry.message });
+    out.push({ target: entry.target, label: entry.label ?? t(TARGET_WORDS[entry.target]), message: entry.message });
   }
   return out;
 }
 
 const COUNT_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
 
-// "Two choices left on this step", or null when none are.
-export function owedHeadline(count: number): string | null {
+// "Two choices left on this step", or null when none are. English spells a
+// small count out, as the builder always has; another language takes its
+// catalog's line with the figure.
+export function owedHeadline(t: Translator, count: number): string | null {
+  const tp = pluralOf(t);
   if (count <= 0) return null;
-  const words = COUNT_WORDS[count] ?? String(count);
-  return `${words} ${count === 1 ? "choice" : "choices"} left on this step`;
+  const line = tp("{count} choice left on this step", "{count} choices left on this step", { count });
+  const english = `${count} ${count === 1 ? "choice" : "choices"} left on this step`;
+  const words = COUNT_WORDS[count];
+  return line === english && words ? `${words} ${count === 1 ? "choice" : "choices"} left on this step` : line;
 }

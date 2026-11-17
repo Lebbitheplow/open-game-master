@@ -6,10 +6,10 @@ import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import type { Gender } from "@/lib/gender";
 import { storedSex, type Sex } from "@/lib/actor-sex-logic";
 import type { Ruler } from "@/lib/battlemap/board-move";
+import type { SceneryPlacement } from "@/lib/battlemap/render/renderer.js";
 
-// The board view contract: what the table page posts into an addon's
-// sandboxed frame, and what it accepts back (docs/addons/extension-points.md,
-// "Board views").
+// The board view contract: what the table page posts into an addon's sandboxed
+// frame, and what it accepts back (docs/addons/extension-points.md, "Board views").
 //
 // The frame is an addon's own HTML page, loaded with sandbox="allow-scripts"
 // and no allow-same-origin, so it runs in an opaque origin: it cannot read
@@ -40,6 +40,8 @@ export type BoardSnapshotToken = {
   y: number;
   // Squares per side: 1 for medium, 2 for large, and so on.
   size: number;
+  side?: "party" | "foe";
+  walkPath?: Array<{ x: number; y: number }>;
   mine: boolean;
   down: boolean;
   hidden: boolean;
@@ -97,11 +99,13 @@ export type BoardSnapshot = {
   moveAim: { x: number; y: number } | null;
   // Whether the map has a picture under it; ask for it as the file "backdrop".
   hasBackdrop: boolean;
+  scenery?: SceneryPlacement[];
   // What this addon's own generator left on the map, or null.
   view: { data: unknown; files: Array<{ name: string; type: string; bytes: number }> } | null;
-  // Where this addon's asset library is served (its data folder's public/,
-  // which its setup fills): fetch "<assetsUrl><file>".
+  // Where its asset library is served (data folder's public/, which setup
+  // fills): fetch "<assetsUrl><file>". `parts`: its parts set up here.
   assetsUrl: string;
+  parts?: string[];
   // This viewer's choices for the view's own options (the manifest's
   // boardViews[].options), normalized to the fields, defaults filled in.
   options: OptionValues;
@@ -145,7 +149,9 @@ export function boardSnapshot(
     looks?: Map<string, BoardLook>;
     intents?: TokenIntent[] | null;
     moveAim?: { x: number; y: number } | null;
+    scenery?: SceneryPlacement[];
     assetsUrl?: string;
+    parts?: string[];
     // The view's option fields and what this device chose for them.
     viewOptions?: { fields: OptionField[]; values: unknown };
   },
@@ -175,6 +181,8 @@ export function boardSnapshot(
       x: token.x,
       y: token.y,
       size: view.tokenFootprint[token.id] ?? 1,
+      ...(token.side === "party" || token.side === "foe" ? { side: token.side } : {}),
+      ...(token.walkPath && !options.appearance.reducedMotion ? { walkPath: token.walkPath } : {}),
       mine: token.mine,
       down: token.down,
       hidden: token.hidden,
@@ -194,8 +202,10 @@ export function boardSnapshot(
     budgetLeft: view.budgetLeft,
     moveAim: options.moveAim ?? null,
     hasBackdrop: Boolean(view.backdrop),
+    ...(!view.backdrop && options.scenery ? { scenery: options.scenery } : {}),
     view: own ? { data: own.data, files: own.files.map(({ name, type, bytes }) => ({ name, type, bytes })) } : null,
     assetsUrl: options.assetsUrl ?? `/api/addons/${addonId}/assets/`,
+    parts: options.parts ?? [],
     options: options.viewOptions ? normalizeOptionValues(options.viewOptions.fields, options.viewOptions.values) : {},
     viewer: { canDirect: options.canDirect },
     appearance: options.appearance,
@@ -302,18 +312,19 @@ export function nativeBoardHud(hud: BoardHud): BoardHud {
 }
 
 export function offeredBoardControl(hud: Pick<BoardHud, "controls" | "panel" | "pending">, id: BoardControlId, value?: string): BoardControl | null {
-  const control = (hud.panel ? hud.panel.controls : hud.controls).find(entry => entry.id === id);
-  if (!control || control.disabled !== null || hud.pending) return null;
-  if (control.options && !control.options.some(option => option.value === value && option.disabled === null)) return null;
-  if (control.input && (typeof value !== "string" || value.length > 200)) return null;
-  return control;
+  if (hud.pending) return null;
+  return (hud.panel?.controls ?? hud.controls).find(entry =>
+    entry.id === id && entry.disabled === null
+    && (!entry.options || entry.options.some(option => option.value === value && option.disabled === null))
+    && (!entry.input || (typeof value === "string" && value.length <= 200)),
+  ) ?? null;
 }
 export type HostMessage =
   | { odm: number; type: "battlefield-ui"; mapId: string; revision: number; hud: BoardHud }
   | { odm: number; type: "action-menu"; revision: number; menu: BoardActionMenu | null }
   | { odm: number; type: "rendering"; active: boolean }
   | { odm: number; type: "snapshot"; snapshot: BoardSnapshot; sessionLayout?: "stage" }
-  | { odm: number; type: "scene"; genre: string | null; appearance: BoardSnapshot["appearance"]; options: BoardSnapshot["options"]; assetsUrl: string }
+  | { odm: number; type: "scene"; genre: string | null; appearance: BoardSnapshot["appearance"]; options: BoardSnapshot["options"]; assetsUrl: string; parts?: string[] }
   | { odm: number; type: "ruler"; mapId: string; ruler: Ruler | null }
   | { odm: number; type: "fx"; events: BoardFx[] }
   | { odm: number; type: "ping"; x: number; y: number; focus: boolean; at: number }

@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { returnFocus } from "@/components/ui/return-focus";
+import { ThemeOrnaments } from "@/components/ThemeOrnaments";
 import {
   Eraser,
   Footprints,
@@ -32,6 +33,7 @@ import {
 import { useBoardCamera } from "@/app/campaigns/[campaignId]/useBoardCamera";
 import { DRAWING_TONE } from "@/app/campaigns/[campaignId]/BoardStage";
 import { TILE } from "@/app/campaigns/[campaignId]/battleMapCells";
+import { useT } from "@/lib/locale";
 import {
   DRAWING_KINDS,
   DRAWING_TONES,
@@ -49,11 +51,11 @@ import { footprintDistance } from "@/lib/battlemap/footprint";
 import { useAreaAim } from "@/app/campaigns/[campaignId]/BoardAreaAim";
 import { BoardMoveNotes, useMoveNotes } from "@/app/campaigns/[campaignId]/BoardMoveNotes";
 import type { FxEvent } from "@/lib/battlemap/fx-plan";
-import { TEMPLATE_SHAPES, SHAPE_LABELS, type TemplateShape } from "@/lib/battlemap/template";
+import { TEMPLATE_SHAPES, SHAPE_LABEL_KEYS, shapeLabel, type TemplateShape } from "@/lib/battlemap/template";
 import type { AdhocTokenKind } from "@/lib/battlemap/types";
-import { ADHOC_LABELS, ADHOC_NAME_MAX, type MapPing } from "@/lib/dm/board-logic";
+import { ADHOC_LABEL_KEYS, ADHOC_NAME_MAX, type MapPing } from "@/lib/dm/board-logic";
 import { ENTRY_NAME_MAX, MIN_INITIATIVE, MAX_INITIATIVE } from "@/lib/dm/initiative-edit";
-import { extraTurnTag } from "@/lib/battlemap/initiative-rows";
+import { extraTurnTagT } from "@/lib/battlemap/initiative-rows";
 import { offSide, sideWords } from "@/app/campaigns/[campaignId]/SideBadge";
 import { playingSheet } from "@/lib/battlemap/hand-table";
 import type { PlayerMapView } from "@/lib/battlemap/view";
@@ -86,7 +88,7 @@ import { TabletopOrder } from "@/app/campaigns/[campaignId]/CinematicParts";
 import { AddonBoardView, postTo, useAnchor } from "@/app/campaigns/[campaignId]/AddonBoardView";
 import { AddonViewSwitch, boardViewKey, useBoardView, useBoardViewOptions } from "@/app/campaigns/[campaignId]/AddonViewSwitch";
 import { createAnchorStore, type AnchorStore, type Anchor, type BoardActionMenu, type BoardHud, type BoardControl, type BoardPanel, type BoardControlId, type BoardLook, type CameraControl, type ViewCameraState } from "@/lib/addons/board-bridge";
-import { HEALTH_LABEL } from "@/lib/battlemap/health-words";
+import { healthLabel } from "@/lib/battlemap/health-words";
 import { HAND_AIM_EVENT, HAND_TARGET_EVENT, HAND_BOARD_ACTION_EVENT, HAND_BOARD_STATUS_EVENT, HAND_BOARD_CONTROL_EVENT, HAND_BOARD_SURFACE_EVENT, type HandAimDetail, type HandBoardAction, type HandBoardStatus } from "@/lib/battlemap/hand-play";
 
 // The tactical battle map tab.
@@ -204,6 +206,7 @@ export function BattleMapPanel({
   // Whether the panel is on screen; the sky's weather rests while it is not.
   visible?: boolean;
 }) {
+  const t = useT();
   // A face for every token: the character's plate by lineage and class (an
   // uploaded portrait overrides it in the grid), a monster's plate by creature
   // type and setting. The DM's ad hoc NPCs and props keep their initial.
@@ -481,12 +484,12 @@ export function BattleMapPanel({
       });
       const data = (await response.json().catch(() => ({}))) as { error?: string } & Record<string, unknown>;
       if (!response.ok) {
-        setError(data.error ?? "That was not allowed.");
+        setError(data.error ?? t("That was not allowed."));
         return null;
       }
       return data;
     } catch {
-      setError("Could not reach the table.");
+      setError(t("Could not reach the table."));
       return null;
     } finally {
       setBusy(false);
@@ -512,7 +515,7 @@ export function BattleMapPanel({
     if (done) {
       setHover(null);
       const feet = (done.undone as { feet?: unknown } | undefined)?.feet;
-      moveNotes.push([{ text: typeof feet === "number" ? `Back where you stood: ${feet} feet of movement returned.` : "Back where you stood.", tone: "move" }]);
+      moveNotes.push([{ text: typeof feet === "number" ? t("Back where you stood: {feet} feet of movement returned.", { feet }) : t("Back where you stood."), tone: "move" }]);
     }
     await refreshBattleMap();
   }
@@ -555,7 +558,7 @@ export function BattleMapPanel({
       await refreshBattleMap();
       return true;
     } catch {
-      setError("Could not reach the table.");
+      setError(t("Could not reach the table."));
       return false;
     } finally {
       setBusy(false);
@@ -649,10 +652,10 @@ export function BattleMapPanel({
       // engine's sentence, shown on the board's own error line.
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? "The turn could not be ended.");
+        setError(data.error ?? t("The turn could not be ended."));
       }
     } catch {
-      setError("Could not reach the table.");
+      setError(t("Could not reach the table."));
     } finally {
       setEndingTurn(false);
     }
@@ -709,7 +712,7 @@ export function BattleMapPanel({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? "Nothing to erase.");
+        setError(data.error ?? t("Nothing to erase."));
       }
     } finally {
       setBusy(false);
@@ -890,7 +893,7 @@ export function BattleMapPanel({
       }
       if (tool === "place") {
         if (!placeName.trim()) {
-          setError("Name it first.");
+          setError(t("Name it first.", { context: "board.error.nameFirst" }));
           return;
         }
         void board({ do: "add", kind: placeKind, name: placeName.trim(), x, y }).then((ok) => {
@@ -927,7 +930,7 @@ export function BattleMapPanel({
               error?: string;
             };
             if (!response.ok) {
-              setError(data.error ?? "That area could not be measured.");
+              setError(data.error ?? t("That area could not be measured."));
               return;
             }
             setMeasure({
@@ -986,13 +989,13 @@ export function BattleMapPanel({
     }
     if (targeting && onCompose) {
       if (token.kind !== "enemy" && token.kind !== "npc") {
-        setError("Pick an enemy.");
+        setError(t("Pick an enemy."));
         return;
       }
       onCompose(
         targeting === "attack"
-          ? `I attack ${token.name}.`
-          : `I cast  at ${token.name}.`,
+          ? t("I attack {name}.", { name: token.name })
+          : t("I cast at {name}.", { name: token.name }),
       );
       setTargeting(null);
       setAimHoverId(null);
@@ -1052,7 +1055,7 @@ export function BattleMapPanel({
     // A native board view draws no plate, so it is not offered there.
     const details: HudAction[] = nativeHudActive ? [] : [{
       id: "details",
-      label: "Details",
+      label: t("Details"),
       icon: Info,
       onPick: () => {
         setHudTokenId(null);
@@ -1061,7 +1064,7 @@ export function BattleMapPanel({
       },
     }];
     if (canDirect) {
-      return [...dmActions(hudToken, {
+      return [...dmActions(t, hudToken, {
         hold: () => {
           setHeld((current) => (current === hudToken.id ? null : hudToken.id));
           setTool("handle");
@@ -1088,6 +1091,7 @@ export function BattleMapPanel({
     // The same engine questions the Hand asks (src/lib/battlemap/hand-hud.ts),
     // so a sigil the engine would refuse says so instead of composing.
     const actions = playerActions(
+      t,
       (text) => {
         onCompose?.(text);
         setHudTokenId(null);
@@ -1102,83 +1106,83 @@ export function BattleMapPanel({
     } }) : actions), ...details];
     // `board` is a closure over state; the actions are rebuilt per token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hudToken, canDirect, onCompose, mySheet, encounter, myTurn, view.currentTurnName, scene, nativeHudSupported, nativeHudActive, nativeBattlefieldActive, campaignId]);
+  }, [hudToken, canDirect, onCompose, mySheet, encounter, myTurn, view.currentTurnName, scene, nativeHudSupported, nativeHudActive, nativeBattlefieldActive, campaignId, t]);
 
   const closeHud = useCallback(() => {
     setNativeSelection(null); setPlateTokenId(null); setPlatePinned(false);
     setHudTokenId(null); setTargeting(null); setAimHoverId(null); setTeleporting(null);
   }, []);
-  const hudHint = targeting ? (targeting === "attack" ? "Tap the enemy you attack" : "Tap the enemy you cast at")
-    : teleporting === hudToken?.id ? "Tap the tile it appears on" : undefined;
+  const hudHint = targeting ? (targeting === "attack" ? t("Tap the enemy you attack") : t("Tap the enemy you cast at"))
+    : teleporting === hudToken?.id ? t("Tap the tile it appears on") : undefined;
   const nativeActionMenu = useMemo<BoardActionMenu | null>(() => hudToken && !prompt ? {
     tokenId: hudToken.id,
     hint: hudHint,
-    actions: [...(targeting ? [] : hudActions).map(action => ({ id: action.id, label: action.label, disabled: busy || endingTurn || handStatus?.sending ? "Please wait for the current request." : action.disabled ?? null })), { id: "close", label: "Close", disabled: null }],
-  } : null, [hudToken, hudActions, targeting, hudHint, prompt, busy, endingTurn, handStatus?.sending]);
+    actions: [...(targeting ? [] : hudActions).map(action => ({ id: action.id, label: action.label, disabled: busy || endingTurn || handStatus?.sending ? t("Please wait for the current request.") : action.disabled ?? null })), { id: "close", label: t("Close", { context: "board.close" }), disabled: null }],
+  } : null, [hudToken, hudActions, targeting, hudHint, prompt, busy, endingTurn, handStatus?.sending, t]);
 
-  const closePanel: BoardControl = { id: "panel-close", label: "Close", disabled: null };
+  const closePanel: BoardControl = { id: "panel-close", label: t("Close", { context: "board.close" }), disabled: null };
   const choose = (id: BoardControlId, label: string, value: string, options: Array<{ value: string; label: string; disabled: string | null }>): BoardControl => ({ id, label, value, disabled: null, options });
   const option = (value: string, label = value) => ({ value, label, disabled: null });
-  const toolsPanel: BoardPanel = { title: "Battlefield tools", lines: ["Choose a tool, then close this panel to use it on the battlefield.", "Left drag orbits; middle drag pans; wheel zooms. WASD/arrows pan, 0 fits, Esc cancels. While drawing, left drag makes a mark.", ...(liveMeasure?.caught.length ? [`Caught: ${liveMeasure.caught.map(entry => entry.name).join(", ")}`] : []), ...(error ? [error] : [])], controls: [
-    ...(!canDirect && !scene ? [{ id: "follow-turn" as const, label: `Keep current turn in view: ${followTurn ? "on" : "off"}`, disabled: null }] : []),
-    choose("view", "Board view", addonView ? boardViewKey(addonView) : "", [option("", "ODM Board"), ...offeredViews.map(entry => option(boardViewKey(entry), entry.title))]),
-    ...(meUserId && multiCharacter !== "off" && sheets.filter(sheet => sheet.userId === meUserId && !sheet.isCompanion).length > 1 ? [choose("play-as", "Playing as", playingSheet(sheets, meUserId, activeSheetId)?.id ?? "", sheets.filter(sheet => sheet.userId === meUserId && !sheet.isCompanion).map(sheet => option(sheet.id, sheet.name)))] : []),
-    ...(canDirect ? [choose("tool", "Tool", tool, [option("handle", "Move pieces"), option("place", "Put something down"), option("measure", "Measure an area"), option("point", "Point at a tile"), ...(canDraw ? [option("draw", "Draw on the board")] : [])])] : [{ id: "point" as const, label: `Point at a tile: ${pointing ? "on" : "off"}`, disabled: null }, ...(canDraw ? [{ id: "draw" as const, label: `Drawing: ${drawing ? "on" : "off"}`, disabled: null }] : [])]),
-    ...(canDirect && tool === "place" ? [choose("place-kind", "Place", placeKind, Object.entries(ADHOC_LABELS).map(([value, label]) => option(value, label))), { id: "place-name" as const, label: "Name", disabled: null, input: { value: placeName } }] : []),
-    ...(canDirect && tool === "measure" ? [choose("measure-shape", "Shape", shape, TEMPLATE_SHAPES.map(value => option(value, SHAPE_LABELS[value]))), choose("measure-size", "Size in feet", String(sizeFeet), Array.from({ length: 12 }, (_, index) => option(String((index + 1) * 5), `${(index + 1) * 5} ft`))), { id: "measure-clear" as const, label: "Clear measure", disabled: null }, ...(liveMeasure?.caught.some(entry => entry.enemyId) ? [{ id: "measure-copy" as const, label: "Copy enemy ids", disabled: null }] : [])] : []),
-    ...(drawActive && canDraw ? [choose("draw-kind", "Mark", drawKind, DRAWING_KINDS.map(value => option(value))), choose("draw-tone", "Ink", drawTone, DRAWING_TONES.map(value => option(value))), { id: "draw-ttl" as const, label: `Fades next round: ${drawTtl ? "yes" : "no"}`, disabled: null }, { id: "draw-erase" as const, label: canDirect ? "Clear all marks" : "Erase my marks", disabled: null }] : []), closePanel,
+  const toolsPanel: BoardPanel = { title: t("Battlefield tools"), lines: [t("Choose a tool, then close this panel to use it on the battlefield."), t("Left drag orbits; middle drag pans; wheel zooms. WASD/arrows pan, 0 fits, Esc cancels. While drawing, left drag makes a mark."), ...(liveMeasure?.caught.length ? [t("Caught: {names}", { names: liveMeasure.caught.map(entry => entry.name).join(", ") })] : []), ...(error ? [error] : [])], controls: [
+    ...(!canDirect && !scene ? [{ id: "follow-turn" as const, label: t("Keep current turn in view: {state}", { state: followTurn ? t("on", { context: "board.state.on" }) : t("off", { context: "board.state.off" }) }), disabled: null }] : []),
+    choose("view", t("Board view"), addonView ? boardViewKey(addonView) : "", [option("", t("ODM Board")), ...offeredViews.map(entry => option(boardViewKey(entry), entry.title))]),
+    ...(meUserId && multiCharacter !== "off" && sheets.filter(sheet => sheet.userId === meUserId && !sheet.isCompanion).length > 1 ? [choose("play-as", t("Playing as"), playingSheet(sheets, meUserId, activeSheetId)?.id ?? "", sheets.filter(sheet => sheet.userId === meUserId && !sheet.isCompanion).map(sheet => option(sheet.id, sheet.name)))] : []),
+    ...(canDirect ? [choose("tool", t("Tool"), tool, [option("handle", t("Move pieces")), option("place", t("Put something down")), option("measure", t("Measure an area")), option("point", t("Point at a tile")), ...(canDraw ? [option("draw", t("Draw on the board"))] : [])])] : [{ id: "point" as const, label: t("Point at a tile: {state}", { state: pointing ? t("on", { context: "board.state.on" }) : t("off", { context: "board.state.off" }) }), disabled: null }, ...(canDraw ? [{ id: "draw" as const, label: t("Drawing: {state}", { state: drawing ? t("on", { context: "board.state.on" }) : t("off", { context: "board.state.off" }) }), disabled: null }] : [])]),
+    ...(canDirect && tool === "place" ? [choose("place-kind", t("Place", { context: "board.tools.placeTitle" }), placeKind, (Object.keys(ADHOC_LABEL_KEYS) as AdhocTokenKind[]).map(value => option(value, value === "npc" ? t("Person") : t("Object")))), { id: "place-name" as const, label: t("Name"), disabled: null, input: { value: placeName } }] : []),
+    ...(canDirect && tool === "measure" ? [choose("measure-shape", t("Shape"), shape, TEMPLATE_SHAPES.map(value => option(value, shapeLabel(t, value)))), choose("measure-size", t("Size in feet"), String(sizeFeet), Array.from({ length: 12 }, (_, index) => option(String((index + 1) * 5), t("{feet} ft", { feet: (index + 1) * 5 })))), { id: "measure-clear" as const, label: t("Clear measure"), disabled: null }, ...(liveMeasure?.caught.some(entry => entry.enemyId) ? [{ id: "measure-copy" as const, label: t("Copy enemy ids"), disabled: null }] : [])] : []),
+    ...(drawActive && canDraw ? [choose("draw-kind", t("Mark"), drawKind, DRAWING_KINDS.map(value => option(value, ({ "stroke": t("Freehand"), "arrow": t("Arrow"), "rect": t("Rectangle"), "ellipse": t("Ellipse") } as Record<string, string>)[value] ?? String(value)))), choose("draw-tone", t("Ink"), drawTone, DRAWING_TONES.map(value => option(value, ({ "gold": t("gold"), "ember": t("ember"), "sky": t("sky"), "moss": t("moss"), "bone": t("bone") } as Record<string, string>)[value] ?? String(value)))), { id: "draw-ttl" as const, label: t("Fades next round: {state}", { state: drawTtl ? t("yes") : t("no", { context: "board.state.no" }) }), disabled: null }, { id: "draw-erase" as const, label: canDirect ? t("Clear all marks") : t("Erase my marks"), disabled: null }] : []), closePanel,
   ] };
   const orderKey = JSON.stringify([campaignId, view.mapId, encounter?.order, encounter?.turnIndex, view.round]);
   const confirmation = orderConfirm?.key === orderKey ? orderConfirm : null;
   const selectedEntry = encounter?.order.find(entry => entry.id === orderEntry) ?? encounter?.order[encounter.turnIndex];
   const selectedIndex = selectedEntry ? encounter?.order.indexOf(selectedEntry) ?? -1 : -1;
   const orderPanel: BoardPanel | null = encounter && orderOpen ? {
-    title: `Initiative, round ${view.round}`,
-    lines: [...(encounter.orderReady ? encounter.order.map((entry, index) => `${index === encounter.turnIndex ? "▶ " : ""}${entry.name}${entry.initiative !== undefined ? ` · ${entry.initiative}` : ""}${entry.hidden ? " · hidden" : ""}${extraTurnTag(entry) ? ` · ${extraTurnTag(entry)!.title}` : ""}${offSide(encounter, entry.id, entry.kind) ? ` · ${sideWords(offSide(encounter, entry.id, entry.kind)!)}` : ""}`) : ["Waiting for everyone's initiative roll.", ...(encounter.staged ?? []).map(entry => `${entry.name}: ${entry.initiative}`)]), ...(canDirect ? ["Stepping back changes the turn and round only; hit points and conditions stay as they are.", ...(encounter.enemiesDue?.length ? [`Enemy turns due: ${encounter.enemiesDue.map(entry => `${entry.name}${entry.acted ? " (acted)" : ""}`).join(", ")}`] : [])] : []), ...(error ? [error] : [])],
+    title: t("Initiative, round {n}", { n: view.round }),
+    lines: [...(encounter.orderReady ? encounter.order.map((entry, index) => `${index === encounter.turnIndex ? "▶ " : ""}${entry.name}${entry.initiative !== undefined ? ` · ${entry.initiative}` : ""}${entry.hidden ? ` · ${t("hidden")}` : ""}${extraTurnTagT(t, entry) ? ` · ${extraTurnTagT(t, entry)!.title}` : ""}${offSide(encounter, entry.id, entry.kind) ? ` · ${sideWords(t, offSide(encounter, entry.id, entry.kind)!)}` : ""}`) : [t("Waiting for everyone's initiative roll."), ...(encounter.staged ?? []).map(entry => t("{name}: {score}", { name: entry.name, score: entry.initiative }))]), ...(canDirect ? [t("Stepping back changes the turn and round only; hit points and conditions stay as they are."), ...(encounter.enemiesDue?.length ? [t("Enemy turns due: {names}", { names: encounter.enemiesDue.map(entry => `${entry.name}${entry.acted ? ` ${t("(acted)")}` : ""}`).join(", ") })] : [])] : []), ...(error ? [error] : [])],
     controls: [...(canDirect && encounter.orderReady ? [
-      choose("order-entry", "Combatant", selectedEntry?.id ?? "", encounter.order.map(entry => option(entry.id, entry.name))),
-      { id: "order-up" as const, label: "Up the order", disabled: selectedIndex > 0 ? null : "Already first." }, { id: "order-down" as const, label: "Down the order", disabled: selectedIndex >= 0 && selectedIndex < encounter.order.length - 1 ? null : "Already last." },
-      { id: "order-delay" as const, label: "Delay to end", disabled: selectedEntry ? null : "Choose a combatant." }, { id: "order-remove" as const, label: "Take out of order…", disabled: selectedEntry ? null : "Choose a combatant." }, { id: "order-take" as const, label: "Give them the turn", disabled: selectedEntry?.kind === "pc" && selectedIndex !== encounter.turnIndex ? null : "Choose another player's slot." },
-      { id: "order-back" as const, label: "Back a turn", disabled: null }, { id: "order-forward" as const, label: "On a turn", disabled: null }, { id: "order-reset" as const, label: "Reset initiative…", disabled: null },
-      { id: "order-name" as const, label: "New slot name", disabled: null, input: { value: orderName } }, { id: "order-score" as const, label: `Initiative (${MIN_INITIATIVE} to ${MAX_INITIATIVE})`, disabled: null, input: { value: String(orderScore), numeric: true } }, { id: "order-insert" as const, label: "Add slot", disabled: orderName.trim() ? null : "Name the slot first." },
-      ...(encounter.enemiesDue?.length ? [{ id: "order-enemies-play" as const, label: "Play remaining enemies", disabled: null }, { id: "order-enemies-pass" as const, label: "Done, hand on turn", disabled: null }] : encounter.companionTurn ? [{ id: "order-companion" as const, label: `Play ${encounter.companionTurn.name}'s turn`, disabled: null }] : []),
+      choose("order-entry", t("Combatant"), selectedEntry?.id ?? "", encounter.order.map(entry => option(entry.id, entry.name))),
+      { id: "order-up" as const, label: t("Up the order"), disabled: selectedIndex > 0 ? null : t("Already first.") }, { id: "order-down" as const, label: t("Down the order"), disabled: selectedIndex >= 0 && selectedIndex < encounter.order.length - 1 ? null : t("Already last.") },
+      { id: "order-delay" as const, label: t("Delay to end"), disabled: selectedEntry ? null : t("Choose a combatant.") }, { id: "order-remove" as const, label: t("Take out of order…"), disabled: selectedEntry ? null : t("Choose a combatant.") }, { id: "order-take" as const, label: t("Give them the turn"), disabled: selectedEntry?.kind === "pc" && selectedIndex !== encounter.turnIndex ? null : t("Choose another player's slot.") },
+      { id: "order-back" as const, label: t("Back a turn"), disabled: null }, { id: "order-forward" as const, label: t("On a turn"), disabled: null }, { id: "order-reset" as const, label: t("Reset initiative…"), disabled: null },
+      { id: "order-name" as const, label: t("New slot name"), disabled: null, input: { value: orderName } }, { id: "order-score" as const, label: t("Initiative ({min} to {max})", { min: MIN_INITIATIVE, max: MAX_INITIATIVE }), disabled: null, input: { value: String(orderScore), numeric: true } }, { id: "order-insert" as const, label: t("Add slot"), disabled: orderName.trim() ? null : t("Name the slot first.") },
+      ...(encounter.enemiesDue?.length ? [{ id: "order-enemies-play" as const, label: t("Play remaining enemies"), disabled: null }, { id: "order-enemies-pass" as const, label: t("Done, hand on turn"), disabled: null }] : encounter.companionTurn ? [{ id: "order-companion" as const, label: t("Play {name}'s turn", { name: encounter.companionTurn.name }), disabled: null }] : []),
     ] : []), closePanel],
   } : null;
-  const nativePanel = nativeBattlefieldActive && !prompt ? handStatus?.panel ?? (confirmation ? { title: confirmation.title, lines: [confirmation.line], controls: [{ id: "confirm" as const, label: "Confirm", disabled: null }, closePanel] } : orderPanel ?? (toolsOpen ? toolsPanel : null)) : null;
+  const nativePanel = nativeBattlefieldActive && !prompt ? handStatus?.panel ?? (confirmation ? { title: confirmation.title, lines: [confirmation.line], controls: [{ id: "confirm" as const, label: t("Confirm"), disabled: null }, closePanel] } : orderPanel ?? (toolsOpen ? toolsPanel : null)) : null;
 
   const selectedFigure = nativeSelection?.mapId === view.mapId ? tokensById.get(nativeSelection.tokenId) : undefined;
   const battlefieldHud: BoardHud = {
     selection: selectedFigure && !selectedFigure.hidden ? {
       tokenId: selectedFigure.id, name: selectedFigure.name,
-      lines: [view.tokenHealth[selectedFigure.id] ? HEALTH_LABEL[view.tokenHealth[selectedFigure.id]] : "", ...(view.tokenConditions[selectedFigure.id] ?? []).map(entry => [entry.label, entry.rounds ? `${entry.rounds} rd` : "", entry.note].filter(Boolean).join(" · ")),
+      lines: [view.tokenHealth[selectedFigure.id] ? healthLabel(t, view.tokenHealth[selectedFigure.id]) : "", ...(view.tokenConditions[selectedFigure.id] ?? []).map(entry => [entry.label, entry.rounds ? `${entry.rounds} rd` : "", entry.note].filter(Boolean).join(" · ")),
         ...(selectedFigure.kind === "enemy" && view.edges?.[selectedFigure.refId] ? (() => {
           const edge = view.edges[selectedFigure.refId];
-          return [edge.blocked ? "No line of sight" : edge.cover ? `Cover: +${edge.cover} AC` : "", edge.flanking ? "Flanked: advantage in melee" : "", edge.hostileBeside && !edge.adjacent ? "Ranged at disadvantage: enemy beside you" : ""];
+          return [edge.blocked ? t("No line of sight") : edge.cover ? t("Cover: +{ac} AC", { ac: edge.cover }) : "", edge.flanking ? t("Flanked: advantage in melee") : "", edge.hostileBeside && !edge.adjacent ? t("Ranged at disadvantage: enemy beside you") : ""];
         })() : [])].filter(Boolean),
     } : null,
-    turn: view.currentTurnName ? `${view.currentTurnName}'s turn · Round ${view.round}` : "",
-    stats: [myTurn ? `${view.budgetLeft * TILE_FEET} ft left` : "", mySheet ? `HP ${mySheet.currentHp}/${effectiveMaxHp(mySheet)} · AC ${mySheet.ac}` : "",
-      myTurn && turnBudget ? `Action ${turnBudget.action ? "ready" : "spent"} · Bonus ${turnBudget.bonus ? "ready" : "spent"} · Reaction ${turnBudget.reaction ? "ready" : "spent"}` : "",
-      encounter?.orderReady ? `Order: ${encounter.order.map(entry => entry.name).join(" → ")}` : ""].filter(Boolean),
-    hint: [hudHint ?? (handAim?.active ? "Choose the card's target on the board or in your hand, then play the card." : cameraLocked ? "The DM is steering the view" : boardHintText({ canDirect, tool, teleporting: Boolean(teleporting), held: Boolean(held), liveOrigin: Boolean(liveOrigin), pointing, drawing, targeting: Boolean(targeting), canMove, moveAimed: Boolean(livePending), scene, budgetLeft: view.budgetLeft, hasToken: Boolean(view.myTokenId) })), moveModeHint(moveMode, view.moves), areaAim.hint].filter(Boolean).join("\n"),
-    notices: [...moveNotes.notes.map(note => note.text), ...(fieldRoll ? [fieldRoll.label] : []), ...(handStatus?.notice ? [handStatus.notice] : []), ...(areaAim.caught.length ? [`Area catches: ${areaAim.caught.join(", ")}`] : []), ...(liveMeasure?.caught.length ? [`Measured: ${liveMeasure.caught.map(entry => entry.name).join(", ")}`] : [])], error, pending: busy || endingTurn || Boolean(handStatus?.sending),
-    controls: prompt && tokensById.has(prompt.tokenId) ? [{ id: "prompt-submit", label: "Apply", disabled: null }, { id: "prompt-cancel", label: "Cancel input", disabled: null }] : [
-      ...(myTurn && !scene && !targeting ? [{ id: "end-turn" as const, label: "End turn", disabled: endingTurn ? "Ending turn…" : turnHeld ? turnHeldLine(turnHeld, true) : null }] : []),
-      ...(undoFeet !== null && !targeting ? [{ id: "undo-move" as const, label: `Undo ${undoFeet} ft`, disabled: null }] : []),
-      ...(!cameraLocked ? [{ id: "fit" as const, label: "Fit board", disabled: null }] : []),
-      ...(canDirect ? [{ id: "camera-pull" as const, label: "Bring everyone here", disabled: null }, { id: "camera-lock" as const, label: "Lock view", disabled: null }, { id: "camera-free" as const, label: "Free view", disabled: null }] : []),
-      ...(cameraLocked && cameraCanRelease ? [{ id: "camera-release" as const, label: "Look around", disabled: null }] : []),
-      ...(targeting || nativeSelection || held || teleporting ? [{ id: "cancel" as const, label: "Cancel", disabled: null }] : []),
-      ...(encounter ? [{ id: "order" as const, label: "Initiative", disabled: null }] : []),
+    turn: view.currentTurnName ? t("{name}'s turn · Round {round}", { name: view.currentTurnName, round: view.round }) : "",
+    stats: [myTurn ? t("{feet} ft left", { feet: view.budgetLeft * TILE_FEET }) : "", mySheet ? t("HP {hp}/{max} · AC {ac}", { hp: mySheet.currentHp, max: effectiveMaxHp(mySheet), ac: mySheet.ac }) : "",
+      myTurn && turnBudget ? t("Action {action} · Bonus {bonus} · Reaction {reaction}", { action: turnBudget.action ? t("ready", { context: "board.hud.budget.actionReady" }) : t("spent", { context: "board.hud.budget.actionSpent" }), bonus: turnBudget.bonus ? t("ready", { context: "board.hud.budget.bonusReady" }) : t("spent", { context: "board.hud.budget.bonusSpent" }), reaction: turnBudget.reaction ? t("ready", { context: "board.hud.budget.reactionReady" }) : t("spent", { context: "board.hud.budget.reactionSpent" }) }) : "",
+      encounter?.orderReady ? t("Order: {names}", { names: encounter.order.map(entry => entry.name).join(" → ") }) : ""].filter(Boolean),
+    hint: [hudHint ?? (handAim?.active ? t("Choose the card's target on the board or in your hand, then play the card.") : cameraLocked ? t("The DM is steering the view") : boardHintText(t, { canDirect, tool, teleporting: Boolean(teleporting), held: Boolean(held), liveOrigin: Boolean(liveOrigin), pointing, drawing, targeting: Boolean(targeting), canMove, moveAimed: Boolean(livePending), scene, budgetLeft: view.budgetLeft, hasToken: Boolean(view.myTokenId) })), moveModeHint(t, moveMode, view.moves), areaAim.hint].filter(Boolean).join("\n"),
+    notices: [...moveNotes.notes.map(note => note.text), ...(fieldRoll ? [fieldRoll.label] : []), ...(handStatus?.notice ? [handStatus.notice] : []), ...(areaAim.caught.length ? [t("Area catches: {names}", { names: areaAim.caught.join(", ") })] : []), ...(liveMeasure?.caught.length ? [t("Measured: {names}", { names: liveMeasure.caught.map(entry => entry.name).join(", ") })] : [])], error, pending: busy || endingTurn || Boolean(handStatus?.sending),
+    controls: prompt && tokensById.has(prompt.tokenId) ? [{ id: "prompt-submit", label: t("Apply"), disabled: null }, { id: "prompt-cancel", label: t("Cancel input"), disabled: null }] : [
+      ...(myTurn && !scene && !targeting ? [{ id: "end-turn" as const, label: t("End turn"), disabled: endingTurn ? t("Ending turn…") : turnHeld ? turnHeldLine(turnHeld, true, t) : null }] : []),
+      ...(undoFeet !== null && !targeting ? [{ id: "undo-move" as const, label: t("Undo {feet} ft", { feet: undoFeet }), disabled: null }] : []),
+      ...(!cameraLocked ? [{ id: "fit" as const, label: t("Fit board"), disabled: null }] : []),
+      ...(canDirect ? [{ id: "camera-pull" as const, label: t("Bring everyone here"), disabled: null }, { id: "camera-lock" as const, label: t("Lock view"), disabled: null }, { id: "camera-free" as const, label: t("Free view"), disabled: null }] : []),
+      ...(cameraLocked && cameraCanRelease ? [{ id: "camera-release" as const, label: t("Look around"), disabled: null }] : []),
+      ...(targeting || nativeSelection || held || teleporting ? [{ id: "cancel" as const, label: t("Cancel"), disabled: null }] : []),
+      ...(encounter ? [{ id: "order" as const, label: t("Initiative"), disabled: null }] : []),
       ...(nativeBattlefieldActive ? [
-        ...(!canDirect && canMove && !areaAim.active && view.moves ? [choose("move-mode", "Move", moveMode, [option("walk", "Walk"), option("jump", "Jump"), ...(view.moves.drag ? [option("drag", `Drag ${view.moves.drag.names.join(" and ")}`)] : [])])] : []),
-        { id: "tools" as const, label: "Tools", disabled: null }, { id: "enlarge" as const, label: enlarged ? "Back to campaign" : "Enlarge", disabled: null },
+        ...(!canDirect && canMove && !areaAim.active && view.moves ? [choose("move-mode", t("Move", { context: "board.moveMode.title" }), moveMode, [option("walk", t("Walk")), option("jump", t("Jump")), ...(view.moves.drag ? [option("drag", t("Drag {names}", { names: view.moves.drag.names.join(" and ") }))] : [])])] : []),
+        { id: "tools" as const, label: t("Tools"), disabled: null }, { id: "enlarge" as const, label: enlarged ? t("Back to campaign") : t("Enlarge"), disabled: null },
       ] : []),
     ],
     panel: nativePanel,
     drawing: nativeBattlefieldActive && drawActive && canDraw ? { kind: drawKind, tone: drawTone } : null,
     tiles: nativeBattlefieldActive ? (areaAim.overlay?.ghost ?? areaAim.overlay?.set)?.cells ?? liveMeasure?.tiles ?? [] : [],
-    prompt: prompt && tokensById.has(prompt.tokenId) ? { title: `${prompt.kind === "damage" ? "Damage" : prompt.kind === "heal" ? "Heal" : "Condition on"} ${tokensById.get(prompt.tokenId)!.name}`, label: prompt.kind === "condition" ? "Condition" : "Hit points", numeric: prompt.kind !== "condition" } : null,
+    prompt: prompt && tokensById.has(prompt.tokenId) ? { title: prompt.kind === "damage" ? t("Damage {name}", { name: tokensById.get(prompt.tokenId)!.name }) : prompt.kind === "heal" ? t("Heal {name}", { name: tokensById.get(prompt.tokenId)!.name }) : t("Condition on {name}", { name: tokensById.get(prompt.tokenId)!.name }), label: prompt.kind === "condition" ? t("Condition") : t("Hit points"), numeric: prompt.kind !== "condition" } : null,
   };
 
   const promptToken = prompt ? tokensById.get(prompt.tokenId) : undefined;
@@ -1197,7 +1201,7 @@ export function BattleMapPanel({
       } else {
         const amount = Number.parseInt(value, 10);
         if (!Number.isFinite(amount) || amount < 1) {
-          setError("Give a number of hit points.");
+          setError(t("Give a number of hit points."));
           return;
         }
         if (prompt.kind === "damage") {
@@ -1242,7 +1246,7 @@ export function BattleMapPanel({
       case "draw": if (canDraw) { setDrawing(current => !current); setToolsOpen(false); } break;
       case "tool": if (canDirect) { setTool(value as BoardTool); setHeld(null); setTeleporting(null); setMeasureOrigin(null); } break;
       case "place-kind": setPlaceKind(value as AdhocTokenKind); break;
-      case "place-name": if ((value?.length ?? 0) <= ADHOC_NAME_MAX) setPlaceName(value ?? ""); else setError(`Use at most ${ADHOC_NAME_MAX} characters.`); break;
+      case "place-name": if ((value?.length ?? 0) <= ADHOC_NAME_MAX) setPlaceName(value ?? ""); else setError(t("Use at most {max} characters.", { max: ADHOC_NAME_MAX })); break;
       case "measure-shape": setShape(value as TemplateShape); setMeasure(null); setMeasureOrigin(null); break;
       case "measure-size": setSizeFeet(Number(value)); setMeasure(null); setMeasureOrigin(null); break;
       case "measure-clear": setMeasure(null); setMeasureOrigin(null); break;
@@ -1252,8 +1256,8 @@ export function BattleMapPanel({
       case "draw-ttl": setDrawTtl(current => !current); break;
       case "draw-erase": void eraseDrawings(); break;
       case "order-entry": setOrderEntry(value ?? ""); break;
-      case "order-name": if ((value?.length ?? 0) <= ENTRY_NAME_MAX) setOrderName(value ?? ""); else setError(`Use at most ${ENTRY_NAME_MAX} characters.`); break;
-      case "order-score": { const score = Number(value); if (/^-?\d+$/.test(value ?? "") && Number.isInteger(score) && score >= MIN_INITIATIVE && score <= MAX_INITIATIVE) setOrderScore(score); else setError(`Initiative must be ${MIN_INITIATIVE} to ${MAX_INITIATIVE}.`); break; }
+      case "order-name": if ((value?.length ?? 0) <= ENTRY_NAME_MAX) setOrderName(value ?? ""); else setError(t("Use at most {max} characters.", { max: ENTRY_NAME_MAX })); break;
+      case "order-score": { const score = Number(value); if (/^-?\d+$/.test(value ?? "") && Number.isInteger(score) && score >= MIN_INITIATIVE && score <= MAX_INITIATIVE) setOrderScore(score); else setError(t("Initiative must be {min} to {max}.", { min: MIN_INITIATIVE, max: MAX_INITIATIVE })); break; }
       case "order-up": case "order-down": if (selectedEntry) editOrder({ op: "move", id: selectedEntry.id, direction: action === "order-up" ? "up" : "down" }); break;
       case "order-delay": if (selectedEntry) editOrder({ op: "delay", id: selectedEntry.id }); break;
       case "order-take": if (selectedEntry?.kind === "pc") editOrder({ op: "goto", id: selectedEntry.id }); break;
@@ -1261,8 +1265,8 @@ export function BattleMapPanel({
       case "order-enemies-play": case "order-enemies-pass": editOrder({ op: "enemies", play: action === "order-enemies-play" }); break;
       case "order-companion": editOrder({ op: "companion" }); break;
       case "order-insert": if (orderName.trim()) editOrder({ op: "insert", name: orderName.trim(), initiative: orderScore }); break;
-      case "order-remove": if (canDirect && selectedEntry) setOrderConfirm({ key: orderKey, title: `Take ${selectedEntry.name} out?`, line: "They get no more turns in this fight. The creature stays on the board.", body: { op: "remove", id: selectedEntry.id } }); break;
-      case "order-reset": if (canDirect) setOrderConfirm({ key: orderKey, title: "Reset initiative?", line: "Clear the order and have everyone roll again?", body: { op: "reset" } }); break;
+      case "order-remove": if (canDirect && selectedEntry) setOrderConfirm({ key: orderKey, title: t("Take {name} out?", { name: selectedEntry.name }), line: t("They get no more turns in this fight. The creature stays on the board."), body: { op: "remove", id: selectedEntry.id } }); break;
+      case "order-reset": if (canDirect) setOrderConfirm({ key: orderKey, title: t("Reset initiative?"), line: t("Clear the order and have everyone roll again?"), body: { op: "reset" } }); break;
       case "confirm": if (canDirect && confirmation) { editOrder(confirmation.body); setOrderConfirm(null); } break;
     }
   }
@@ -1287,7 +1291,7 @@ export function BattleMapPanel({
     <div
       ref={attachFrame}
       tabIndex={0}
-      aria-label="Board view. Scroll or pinch to zoom, drag or use the arrow keys to pan, plus and minus to zoom, 0 to fit."
+      aria-label={t("Board view. Scroll or pinch to zoom, drag or use the arrow keys to pan, plus and minus to zoom, 0 to fit.")}
       // A container, so the stage chrome sizes to the board it sits on (the
       // side panel, a phone, the enlarged dialog) and not to the window.
       // board-view (board.css) draws the ring that says the board has the
@@ -1443,7 +1447,7 @@ export function BattleMapPanel({
         {drawActive && !nativeBattlefieldActive ? (
           <div
             className="absolute inset-0 z-10 cursor-crosshair"
-            aria-label="Drawing surface"
+            aria-label={t("Drawing surface")}
             data-no-pan=""
             onPointerDown={onDrawDown}
             onPointerMove={onDrawMove}
@@ -1469,10 +1473,10 @@ export function BattleMapPanel({
                 hint={
                   targeting
                     ? targeting === "attack"
-                      ? "Tap the enemy you attack"
-                      : "Tap the enemy you cast at"
+                      ? t("Tap the enemy you attack")
+                      : t("Tap the enemy you cast at")
                     : teleporting === hudToken.id
-                      ? "Tap the tile it appears on"
+                      ? t("Tap the tile it appears on")
                       : undefined
                 }
                 onClose={() => {
@@ -1545,14 +1549,14 @@ export function BattleMapPanel({
         />
       ) : null}
       {!scene && bannerKey ? (
-        <TurnBanner key={bannerKey} text={commanding ? `${view.currentTurnName}: your orders` : myTurn ? "Your turn" : view.currentTurnName} mine={myTurn} />
+        <TurnBanner key={bannerKey} text={commanding ? t("{name}: your orders", { name: view.currentTurnName }) : myTurn ? t("Your turn") : view.currentTurnName} mine={myTurn} />
       ) : null}
       {fieldRoll ? <FieldDie label={fieldRoll.label} /> : null}
       <BoardMoveNotes notes={moveNotes.notes} />
       {targeting ? (
         <div className="board-foot-note absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-[10px] border border-[rgba(224,112,58,0.5)] bg-[rgba(13,11,28,0.94)] px-3 py-1.5 shadow-elev-2">
           <span className="whitespace-nowrap font-display text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ffbe8f]">
-            {targeting === "attack" ? "Attack" : "Cast"} · pick a target
+            {targeting === "attack" ? t("Attack") : t("Cast", { context: "board.targeting.cast" })} · {t("pick a target")}
           </span>
           <button
             type="button"
@@ -1560,7 +1564,7 @@ export function BattleMapPanel({
               setTargeting(null);
               setAimHoverId(null);
             }}
-            aria-label="Cancel aiming"
+            aria-label={t("Cancel aiming")}
             className="motion-press rounded-md border border-[rgba(107,99,148,0.5)] bg-[rgba(21,18,41,0.8)] px-2 py-0.5 text-[#aeaac6] hover:text-[#e9e6f4]"
           >
             {/* The size sits on a span: globals.css resets a button's own font. */}
@@ -1581,12 +1585,12 @@ export function BattleMapPanel({
               type="button"
               onClick={() => void undoMove()}
               disabled={busy}
-              aria-label={`Undo move, ${undoFeet} feet`}
-              title={`Take back your last move and its ${undoFeet} feet (Ctrl+Z)`}
+              aria-label={t("Undo move, {feet} feet", { feet: undoFeet })}
+              title={t("Take back your last move and its {feet} feet (Ctrl+Z)", { feet: undoFeet })}
               className={cn(TURN_BUTTON, "motion-pop inline-flex items-center gap-1.5")}
             >
               <Undo2 className="size-3.5" aria-hidden="true" />
-              <span className="block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">Undo move</span>
+              <span className="board-undo-word block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">{t("Undo move")}</span>
             </button>
           ) : null}
           <button
@@ -1596,7 +1600,7 @@ export function BattleMapPanel({
             aria-busy={turnHeld ? true : undefined}
             className={TURN_BUTTON}
           >
-            <span className="block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">{turnHeld ? "Ending turn…" : "End turn"}</span>
+            <span className="block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">{turnHeld ? t("Ending turn…") : t("End turn")}</span>
           </button>
           {turnHeld ? <TurnHoldNote held={turnHeld} mine className="max-w-56 rounded bg-black/60 px-2 py-1" /> : null}
         </div>
@@ -1616,17 +1620,17 @@ export function BattleMapPanel({
       {cam.locked ? (
         <div className="board-foot-note absolute bottom-2 left-2 z-10 flex items-center gap-2 rounded-md border border-amber-800/60 bg-stone-950/90 px-2 py-1 text-[11px] text-amber-200 shadow-elev-1">
           <Lock className="size-3" />
-          The GM is steering the view
+          {t("The GM is steering the view")}
           {cam.canRelease ? (
             <button type="button" onClick={releaseCamera} className="ml-1 text-stone-300 underline">
-              look around anyway
+              {t("look around anyway")}
             </button>
           ) : null}
         </div>
       ) : null}
       </> : null}
       <span className="sr-only" aria-live="polite">
-        {!scene && view.currentTurnName ? (commanding ? `${view.currentTurnName}'s turn: your orders.` : myTurn ? "Your turn." : `${view.currentTurnName}'s turn.`) : ""}
+        {!scene && view.currentTurnName ? (commanding ? t("{name}'s turn: your orders.", { name: view.currentTurnName }) : myTurn ? t("Your turn.") : t("{name}'s turn.", { name: view.currentTurnName })) : ""}
       </span>
     </div>
   );
@@ -1655,7 +1659,7 @@ export function BattleMapPanel({
           caught={areaAim.caught}
         />
         <p className="board-hint text-[11px] leading-4 text-stone-500">
-          {boardHintText({
+          {boardHintText(t, {
             canDirect,
             tool,
             teleporting: Boolean(teleporting),
@@ -1696,7 +1700,7 @@ export function BattleMapPanel({
       <button
         type="button"
         onClick={() => setPointing((current) => !current)}
-        title="Point at a tile"
+        title={t("Point at a tile")}
         aria-pressed={pointing}
         className={`rounded p-1 ${
           pointing ? "bg-amber-950/60 text-amber-300" : "text-stone-400 hover:bg-stone-900"
@@ -1708,7 +1712,7 @@ export function BattleMapPanel({
         <button
           type="button"
           onClick={() => setDrawing((current) => !current)}
-          title="Draw on the board"
+          title={t("Draw on the board")}
           aria-pressed={drawing}
           className={`rounded p-1 ${
             drawing ? "bg-amber-950/60 text-amber-300" : "text-stone-400 hover:bg-stone-900"
@@ -1735,15 +1739,15 @@ export function BattleMapPanel({
           {scene ? (
             <>
               <Footprints className="size-4 text-amber-400" />
-              Exploring
+              {t("Exploring")}
             </>
           ) : (
             <>
               <Swords className="size-4 text-red-400" />
-              Round {view.round}
+              {t("Round {round}", { round: view.round })}
               {view.currentTurnName ? (
                 <span className="text-xs font-normal text-stone-400">
-                  {view.currentTurnName}&apos;s turn
+                  {t("{name}'s turn", { name: view.currentTurnName })}
                 </span>
               ) : null}
             </>
@@ -1757,7 +1761,7 @@ export function BattleMapPanel({
             onClick={() => setEnlarged(true)}
 
             className="rounded p-1 text-stone-400 hover:bg-stone-900 hover:text-stone-200"
-            aria-label="Enlarge battle map"
+            aria-label={t("Enlarge battle map")}
           >
             <Maximize2 className="size-4" />
           </button>
@@ -1803,7 +1807,7 @@ export function BattleMapPanel({
                 drawKind === kind ? "border-amber-700 bg-amber-950/50 text-amber-100" : "border-stone-700 text-stone-400",
               )}
             >
-              {kind}
+              {({ "stroke": t("Freehand"), "arrow": t("Arrow"), "rect": t("Rectangle"), "ellipse": t("Ellipse") } as Record<string, string>)[kind] ?? String(kind)}
             </button>
           ))}
           <span className="mx-1 h-4 w-px bg-stone-800" />
@@ -1811,7 +1815,7 @@ export function BattleMapPanel({
             <button
               key={tone}
               type="button"
-              aria-label={`${tone} ink`}
+              aria-label={t("{tone} ink", { tone: ({ "gold": t("gold"), "ember": t("ember"), "sky": t("sky"), "moss": t("moss"), "bone": t("bone") } as Record<string, string>)[tone] ?? String(tone) })}
               aria-pressed={drawTone === tone}
               onClick={() => setDrawTone(tone)}
               className={cn(
@@ -1823,16 +1827,16 @@ export function BattleMapPanel({
           ))}
           <label className="ml-1 flex items-center gap-1 text-[11px] text-stone-500">
             <input type="checkbox" checked={drawTtl} onChange={(event) => setDrawTtl(event.target.checked)} />
-            fades next round
+            {t("fades next round")}
           </label>
           <button
             type="button"
             onClick={() => void eraseDrawings()}
             className="ml-auto flex items-center gap-1 rounded-md border border-stone-700 px-2 py-0.5 text-[11px] text-stone-400 hover:text-red-300"
-            title={canDirect ? "Clear every mark" : "Erase your marks"}
+            title={canDirect ? t("Clear all marks") : t("Erase my marks")}
           >
             <Eraser className="size-3" />
-            {canDirect ? "Clear" : "Erase mine"}
+            {canDirect ? t("Clear", { context: "board.clearShort" }) : t("Erase mine")}
           </button>
         </div>
       ) : null}
@@ -1856,14 +1860,14 @@ export function BattleMapPanel({
         open={Boolean(prompt && promptToken) && !nativeHudActive}
         title={
           prompt?.kind === "damage"
-            ? `Damage ${promptToken?.name ?? ""}`
+            ? t("Damage {name}", { name: promptToken?.name ?? "" })
             : prompt?.kind === "heal"
-              ? `Heal ${promptToken?.name ?? ""}`
-              : `Condition on ${promptToken?.name ?? ""}`
+              ? t("Heal {name}", { name: promptToken?.name ?? "" })
+              : t("Condition on {name}", { name: promptToken?.name ?? "" })
         }
-        label={prompt?.kind === "condition" ? "Condition" : "Hit points"}
-        placeholder={prompt?.kind === "condition" ? "prone" : "8"}
-        submitLabel={prompt?.kind === "damage" ? "Deal it" : prompt?.kind === "heal" ? "Heal" : "Apply"}
+        label={prompt?.kind === "condition" ? t("Condition") : t("Hit points")}
+        placeholder={prompt?.kind === "condition" ? t("prone") : "8"}
+        submitLabel={prompt?.kind === "damage" ? t("Deal it") : prompt?.kind === "heal" ? t("Heal") : t("Apply")}
         onSubmit={submitPrompt}
         onOpenChange={(open) => {
           if (!open) {
@@ -1885,10 +1889,11 @@ export function BattleMapPanel({
           <Dialog.Overlay className="cine-tabletop-veil fixed inset-0 z-40" />
           {/* The tabletop ("ODM World Concepts" 3c): the board framed in gold
               on a starfield table, the turn order down the right. */}
-          <Dialog.Content {...returnFocus} className="cine-tabletop fixed inset-0 z-50 flex flex-col outline-none">
+          <Dialog.Content {...returnFocus} className="cine-tabletop theme-overlay fixed inset-0 z-50 flex flex-col outline-none">
+            <ThemeOrnaments surface="overlay" />
             <div className={nativeBattlefieldActive ? "sr-only" : "cine-tabletop-head"}>
               <Dialog.Title className="cine-tabletop-title">
-                {scene ? "The ground here" : `Battle map, round ${view.round}`}
+                {scene ? t("The ground here") : t("Battle map, round {round}", { round: view.round })}
               </Dialog.Title>
               {!nativeBattlefieldActive ? <div className="flex min-w-0 items-center gap-2">
                 {/* The dialog covers the Party panel, so a player fielding
@@ -1906,7 +1911,7 @@ export function BattleMapPanel({
                   />
                   {playerTools}
                 </div>
-                <Dialog.Close className="cine-tabletop-close shrink-0" aria-label="Close the board">
+                <Dialog.Close className="cine-tabletop-close shrink-0" aria-label={t("Close the board")}>
                   <X className="size-4" />
                 </Dialog.Close>
               </div> : null}

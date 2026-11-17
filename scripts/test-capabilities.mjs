@@ -208,12 +208,12 @@ check("the DM's maps and scene pictures are gated on imagesAvailable", () => {
   // Maps: the synchronous location handler takes the answer from its callers.
   // The answer is required, so a caller cannot forget it and queue against
   // a backend that is not there; behaviour: scripts/test-no-pictures-turn.mjs.
-  assert.match(turn, /export function handleLocationCall\([^)]*picturesAvailable: boolean,?\s*\)/);
+  assert.match(turn, /export function handleLocationCall\([^)]*picturesAvailable: boolean[,\s)]/);
   assert.match(turn, /mapsEnabled &&\s*picturesAvailable &&/);
   assert.match(turn, /await imagesAvailable\(campaign\.settings\)\)/);
   assert.match(turn, /handleLocationCall\(campaign, locationCall\.name, locationCall\.rawArguments, picturesAvailable\)/);
   assert.match(dispatch, /await imagesAvailable\(campaign\.settings\)\)/);
-  assert.match(dispatch, /handleLocationCall\(campaign, name, rawArguments, pictures\)/);
+  assert.match(dispatch, /handleLocationCall\(campaign, name, rawArguments, pictures[,)]/);
   // Scene pictures: the turn's own picture goes through the gated door, and a
   // dropped one is marked not needed so its placeholder does not outlive it.
   assert.match(turn, /void fulfillAutoImage\(campaignId, message\.id, message\.imageRequest/);

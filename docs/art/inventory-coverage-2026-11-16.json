@@ -1,0 +1,183 @@
+{
+  "scope": "All checked-in item-tag entries, mechanical magic-item definitions, SRD equipment and goods; excludes live data and uninstalled packs.",
+  "total": 1804,
+  "before": {
+    "circular": 734,
+    "existing-genre": 24,
+    "generic": 1046
+  },
+  "after": {
+    "circular": 772,
+    "existing-genre": 24,
+    "generic": 1008
+  },
+  "recoveredEntries": [
+    {
+      "name": "Arcane Focus",
+      "art": "magic-gem"
+    },
+    {
+      "name": "Backpack",
+      "art": "gear-backpack"
+    },
+    {
+      "name": "Bedroll",
+      "art": "gear-bedroll"
+    },
+    {
+      "name": "Blessed Pauper's Purse",
+      "art": "magic-bag"
+    },
+    {
+      "name": "Cap of Thorns",
+      "art": "magic-hat"
+    },
+    {
+      "name": "Clockwork Gauntlet",
+      "art": "magic-gauntlets"
+    },
+    {
+      "name": "Clockwork Pendant",
+      "art": "magic-amulet"
+    },
+    {
+      "name": "Component Pouch",
+      "art": "gear-component-pouch"
+    },
+    {
+      "name": "Crafter’s Codex",
+      "art": "magic-book"
+    },
+    {
+      "name": "Crystal",
+      "art": "magic-gem"
+    },
+    {
+      "name": "Cubic Gate",
+      "art": "magic-cube"
+    },
+    {
+      "name": "Death’s Essence Pendant",
+      "art": "magic-amulet"
+    },
+    {
+      "name": "Gauntlet of Dominion",
+      "art": "magic-gauntlets"
+    },
+    {
+      "name": "Gauntlet of the Iron Sphere",
+      "art": "magic-gauntlets"
+    },
+    {
+      "name": "Girdle of Traveling Alchemy",
+      "art": "magic-belt"
+    },
+    {
+      "name": "Glove of Swift Return",
+      "art": "magic-gloves"
+    },
+    {
+      "name": "Grasping Cap",
+      "art": "magic-hat"
+    },
+    {
+      "name": "Holy Symbol",
+      "art": "gear-holy-symbol"
+    },
+    {
+      "name": "Ink (1 ounce bottle)",
+      "art": "magic-bottle"
+    },
+    {
+      "name": "Little Bag of Sand",
+      "art": "magic-bag"
+    },
+    {
+      "name": "Phoenix-Feather Cap",
+      "art": "magic-hat"
+    },
+    {
+      "name": "Playing Card Set",
+      "art": "magic-deck"
+    },
+    {
+      "name": "Rations (1 day)",
+      "art": "gear-rations"
+    },
+    {
+      "name": "Resolute Bracer",
+      "art": "magic-bracers"
+    },
+    {
+      "name": "Robes",
+      "art": "magic-robe"
+    },
+    {
+      "name": "Sack",
+      "art": "magic-bag"
+    },
+    {
+      "name": "Selket's Bracer",
+      "art": "magic-bracers"
+    },
+    {
+      "name": "Spellbook",
+      "art": "magic-book"
+    },
+    {
+      "name": "Thieves' Tools",
+      "art": "gear-thieves-tools"
+    },
+    {
+      "name": "Toothsome Purse",
+      "art": "magic-bag"
+    },
+    {
+      "name": "Vestments",
+      "art": "magic-robe"
+    },
+    {
+      "name": "Waterskin",
+      "art": "gear-waterskin"
+    },
+    {
+      "name": "Wooden Staff (druidic focus)",
+      "art": "magic-staff"
+    },
+    {
+      "name": "Yew wand",
+      "art": "magic-wand"
+    },
+    {
+      "name": "Yew Wand (druidic focus)",
+      "art": "magic-wand"
+    }
+  ],
+  "entriesWithGenreOverrides": 143,
+  "regressions": 0,
+  "aliasDifferences": [
+    {
+      "name": "staff",
+      "canonical": "Staff (arcane focus)",
+      "actual": "weapon-quarterstaff",
+      "expected": "magic-staff",
+      "reason": "Bare staff names remain weapon aliases; explicitly named foci use focus art."
+    },
+    {
+      "name": "wooden staff",
+      "canonical": "Wooden Staff (druidic focus)",
+      "actual": "weapon-quarterstaff",
+      "expected": "magic-staff",
+      "reason": "Bare staff names remain weapon aliases; explicitly named foci use focus art."
+    }
+  ],
+  "remainingArmorGaps": [
+    "Spiked Armor"
+  ],
+  "notes": [
+    "Base coverage and genre availability are separate columns in the accompanying CSV.",
+    "Generic entries include vehicles, trade goods and named gear with no reliable known physical base.",
+    "No live campaign data or installed content databases were read.",
+    "Review fix: a leading form word counts only when it is the thing itself (alone, or before of, a comma or a bracket), so Stone Staff takes the staff and Book Shroud the generic picture; a potion named anywhere in a name takes the potion (Bloodlink Potion and the three Potions of Troll Blood)."
+  ]
+}

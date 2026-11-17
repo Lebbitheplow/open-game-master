@@ -8,15 +8,19 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const {
+  brushLabelKey,
   MAX_BRUSH_RADIUS,
   MAX_STROKES,
   OVERWORLD_BRUSHES,
-  OVERWORLD_BRUSH_LABELS,
   isSettleable,
   paintOverworld,
   terrainMix,
 } = await import("../src/lib/overworld/paint.ts");
 const { generateOverworldTerrain, tileAt } = await import("../src/lib/overworld/logic.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// English-bound: the painter's refusals are asserted in the source words.
+const t = (key, vars) => translate("en", key, vars);
 
 let passed = 0;
 function test(name, fn) {
@@ -31,13 +35,13 @@ const flat = (tile) => tile.repeat(W * H);
 const grid = (rows) => rows.join("");
 const at = (terrain, x, y) => tileAt(terrain, W, x, y);
 const paint = (terrain, strokes, anchors) =>
-  paintOverworld({ terrain, width: W, height: H, strokes, anchors });
+  paintOverworld(t, { terrain, width: W, height: H, strokes, anchors });
 
 // ---- the palette ----
 
 test("every brush has a label a person can read", () => {
   for (const brush of OVERWORLD_BRUSHES) {
-    assert.ok(OVERWORLD_BRUSH_LABELS[brush], `${brush} has no label`);
+    assert.ok(translate("en", brushLabelKey(brush)).length > 0, `${brush} has no label`);
   }
 });
 
@@ -107,7 +111,7 @@ test("painting nothing is refused", () => {
 });
 
 test("a terrain of the wrong length is refused", () => {
-  const result = paintOverworld({
+  const result = paintOverworld(t, {
     terrain: "ppp",
     width: W,
     height: H,
@@ -256,7 +260,7 @@ test("the mix works on a real generated map", () => {
 
 test("a generated map can be painted without special handling", () => {
   const terrain = generateOverworldTerrain(999, 24, 16);
-  const result = paintOverworld({
+  const result = paintOverworld(t, {
     terrain,
     width: 24,
     height: 16,

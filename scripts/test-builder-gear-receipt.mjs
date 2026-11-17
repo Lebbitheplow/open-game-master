@@ -15,6 +15,8 @@ const { openBuilder } = await import("./lib/enforce-builder.mjs");
 const receiptMath = await import("../src/app/characters/builder/receiptMath.ts");
 const { default: GearReceipt } = await import("../src/app/characters/builder/GearReceipt.tsx");
 const { purseViewFor } = await import("../src/app/characters/builder/derivedReasons.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { judgeStartingGear } = await import("../src/lib/srd/starting-wealth.ts");
 const { deriveHand } = await import("../src/lib/battlemap/hand.ts");
 const { storedSheetSchema } = await import("../src/lib/schemas/sheet.ts");
@@ -250,7 +252,7 @@ test("gear that is not a weapon has no attack line", () => {
 test("the purse view hands the receipt to the gear step", () => {
   const { again } = buildWith({ class: "rogue" });
   const { derived } = again();
-  const view = purseViewFor({
+  const view = purseViewFor(t, {
     purse: derived.purse,
     keepsStoredGear: false,
     backgroundName: "Acolyte",

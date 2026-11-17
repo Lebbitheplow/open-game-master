@@ -16,7 +16,8 @@ import { agentTurnBegunBefore, closeAgentTurn, isAgentRequest, readAgentNarratio
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { narratedLines } from "@/lib/dm/speech-lines";
 import { withoutOrphanClosers } from "@/lib/dm/narration-tidy-logic";
-import { NARRATION_MAX_CHARS, textLength, tooLongMessage } from "@/lib/text-limits";
+import { NARRATION_MAX_CHARS, formatCount, textLength } from "@/lib/text-limits";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,18 +51,31 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The composer shows the refusal raw (SessionView.tsx submit), so it
+  // answers in the asker's language.
+  const t = requestT(request);
   const { campaign, user } = context;
   if (campaign.status !== "active") {
-    return Response.json({ error: "The adventure has not started yet." }, { status: 400 });
+    return Response.json({ error: t("The adventure has not started yet.") }, { status: 400 });
   }
 
   const parsed = narrateSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: "Write something to narrate." }, { status: 400 });
+    return Response.json({ error: t("Write something to narrate.") }, { status: 400 });
   }
   if (textLength(parsed.data.content) > NARRATION_MAX_CHARS) {
+    // The shared builder (text-limits.ts) stays English for its other
+    // consumers; this route maps its sentence at the boundary instead, as
+    // the actions route does.
     return Response.json(
-      { error: tooLongMessage("A passage", NARRATION_MAX_CHARS, textLength(parsed.data.content)), maxChars: NARRATION_MAX_CHARS },
+      {
+        error: t("{what} can be up to {max} characters; this one has {length}. Shorten it and send it again.", {
+          what: t("A passage"),
+          max: formatCount(NARRATION_MAX_CHARS),
+          length: formatCount(textLength(parsed.data.content)),
+        }),
+        maxChars: NARRATION_MAX_CHARS,
+      },
       { status: 400 },
     );
   }
@@ -72,6 +86,7 @@ export async function POST(
   const paused = refuseDuringBreak(
     campaignId,
     isAgentRequest(request) ? (tableBreak) => agentTurnBegunBefore(campaignId, tableBreak.at) : undefined,
+    request,
   );
   if (paused) {
     return paused;
@@ -83,7 +98,7 @@ export async function POST(
   if (parsed.data.speaker?.kind === "npc" && parsed.data.speaker.id) {
     const npc = getNpcById(parsed.data.speaker.id);
     if (!npc || npc.campaignId !== campaignId) {
-      return Response.json({ error: "No one by that name in the cast." }, { status: 400 });
+      return Response.json({ error: t("No one by that name in the cast.") }, { status: 400 });
     }
     speaker = { kind: "npc", id: npc.id, name: npc.name };
   } else if (parsed.data.speaker?.kind === "monster" && parsed.data.speaker.name) {
@@ -95,7 +110,7 @@ export async function POST(
   const agent = isAgentRequest(request);
   const content = agent ? withoutOrphanClosers(parsed.data.content).trim() : parsed.data.content;
   if (!content) {
-    return Response.json({ error: "Write something to narrate." }, { status: 400 });
+    return Response.json({ error: t("Write something to narrate.") }, { status: 400 });
   }
   // The agent's prose is checked like the storyteller's, and a contradiction
   // comes back to it as the rewrite prompt.

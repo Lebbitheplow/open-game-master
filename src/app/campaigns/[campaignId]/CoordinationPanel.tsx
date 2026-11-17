@@ -17,6 +17,7 @@ import {
   type CoordinationPhase,
   type PlanSequence,
 } from "@/lib/dm/coordination-logic";
+import { useT } from "@/lib/locale";
 
 // The plan the party is coordinating (issue 254), above the composer for
 // every seat. Each player drafts a line per character they control, changes
@@ -46,6 +47,7 @@ export function CoordinationPanel({
   meUserId: string;
   steersStory: boolean;
 }) {
+  const t = useT();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -142,9 +144,11 @@ export function CoordinationPanel({
 
         {own && entry.orderChanged ? (
           <p role="status" className="motion-pop mt-1.5 rounded border border-amber-500/40 bg-amber-950/30 px-2 py-1 text-[11px] text-amber-100" data-order-notice>
-            The lead changed the order after you were ready:{" "}
-            {sequence ? `${entry.name} is now ${placeWords(phase, entry.characterId)}` : "everyone now acts at once"}. Check your
-            part still fits, then mark it Ready again.
+            {t("The lead changed the order after you were ready: {place}. Check your part still fits, then mark it Ready again.", {
+              place: sequence
+                ? t("{name} is now {place}", { name: entry.name, place: placeWords(t, phase, entry.characterId) })
+                : t("everyone now acts at once"),
+            })}
           </p>
         ) : null}
 

@@ -27,7 +27,24 @@ export type NameChoice = {
   unmet?: boolean;
 };
 
-export const NAME_GROUP_LABEL: Record<NameGroup, string> = { party: "Party", people: "People", places: "Places" };
+// The menu's group headings, worded by the dictionary (table.name.group.*)
+// when the menu passes its translator; the pinned English below is what the
+// tests and the plain-form callers see (the materialChoices pattern,
+// mapCatalogue.ts).
+const NAME_GROUP_KEY: Record<NameGroup, string> = {
+  party: "Party",
+  people: "People",
+  places: "Places",
+};
+
+const NAME_GROUP_EN: Record<NameGroup, string> = { party: "Party", people: "People", places: "Places" };
+
+export function nameGroupLabel(
+  group: NameGroup,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  return t ? t(NAME_GROUP_KEY[group]) : NAME_GROUP_EN[group];
+}
 
 const GROUP_ORDER: readonly NameGroup[] = ["party", "people", "places"];
 

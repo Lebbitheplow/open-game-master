@@ -34,12 +34,14 @@ import {
   isSystemId,
   systemCount,
   systemGlyph,
+  systemLabel,
   type SystemId,
   type WorldCount,
 } from "@/app/workshop/[workshopId]/systems";
 import type { WorkshopSummary } from "@/app/workshop/types";
 import { parseRef, refOf } from "@/lib/worldforge/model";
 import type { RecordVersions } from "@/app/workshop/[workshopId]/useWorkshopVersions";
+import { useT } from "@/lib/locale";
 import { CreateButton } from "@/app/workshop/[workshopId]/CreateChooser";
 
 // One system, open. A way back to the hub, the system's name with its count,
@@ -103,13 +105,14 @@ export function SystemView({
   // when its own kind's moves.
   versions: RecordVersions;
 }) {
+  const t = useT();
   const current = WORKSHOP_SYSTEMS.find((entry) => entry.id === system) ?? WORKSHOP_SYSTEMS[0];
-  const count = systemCount(current.id, workshop, bestiary, homebrew, pregens, plugin, world);
+  const count = systemCount(t, current.id, workshop, bestiary, homebrew, pregens, plugin, world);
   const items: IconRailItem<SystemId>[] = WORKSHOP_SYSTEMS.map((entry) => {
-    const entryCount = systemCount(entry.id, workshop, bestiary, homebrew, pregens, plugin, world);
+    const entryCount = systemCount(t, entry.id, workshop, bestiary, homebrew, pregens, plugin, world);
     return {
       value: entry.id,
-      label: entry.label,
+      label: systemLabel(t, entry.id),
       icon: entry.icon,
       badge: entryCount.total || undefined,
       tour: `system-tab-${entry.id}`,
@@ -127,13 +130,13 @@ export function SystemView({
       </button>
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
         <GameIcon icon={systemGlyph(current.id)} size="size-9" />
-        <h2 className="gold-title font-display text-xl tracking-wide">{current.label}</h2>
+        <h2 className="gold-title font-display text-xl tracking-wide">{systemLabel(t, current.id)}</h2>
         <span className="text-sm text-stone-500">{count.phrase}</span>
         <CreateButton onClick={onCreate} className="ml-auto" />
         <button
           type="button"
-          aria-label={`How ${current.label} works`}
-          title="Guide and tour for this tool"
+          aria-label={`${t("How {name} works", { name: systemLabel(t, current.id) })}`}
+          title={t("Guide and tour for this tool")}
           onClick={onHelp}
           data-tour="system-help"
           className={cn(ui.iconAction, headIcon)}
@@ -153,7 +156,7 @@ export function SystemView({
 
       {from && parseRef(from) && system !== "world" ? (
         <button type="button" onClick={() => onWorldEntry(from)} className={cn(ui.btnSmall, "mb-3")} data-testid="back-to-world-entry">
-          <ArrowLeft className="size-3.5" /> Back to the World entry
+          <ArrowLeft className="size-3.5" /> {t("Back to the World entry")}
         </button>
       ) : null}
       {/* Keyed by system so the incoming tool rises in instead of cutting. */}

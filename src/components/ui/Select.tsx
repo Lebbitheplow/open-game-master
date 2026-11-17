@@ -2,7 +2,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronDown } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
 import type { IconRef } from "@/lib/icons";
@@ -20,6 +20,9 @@ export type SelectOption<T extends string> = {
   // A quieter second line under the label.
   hint?: string;
   icon?: IconRef;
+  // Drawn where the icon goes, for a mark that is not a painted glyph (a
+  // language's flag).
+  leading?: ReactNode;
   disabled?: boolean;
   // Options sharing a group are listed under that heading.
   group?: string;
@@ -79,7 +82,7 @@ export function Select<T extends string>({
         }}
       >
         <button type="button" aria-label={label} disabled={disabled} className={cn("kit-select", size === "sm" && "kit-select-sm", className)}>
-          {chosen?.icon ? <GameIcon icon={chosen.icon} size={size === "sm" ? "size-4" : "size-5"} /> : null}
+          {chosen?.icon ? <GameIcon icon={chosen.icon} size={size === "sm" ? "size-4" : "size-5"} /> : chosen?.leading ?? null}
           <span className={cn("min-w-0 grow truncate text-left", !chosen && "text-stone-500")}>{chosen ? chosen.label : placeholder}</span>
           <ChevronDown className="kit-select-chevron size-3.5 shrink-0" aria-hidden="true" />
         </button>
@@ -115,7 +118,7 @@ export function Select<T extends string>({
                       className="kit-select-row"
                       style={{ animationDelay: `${Math.min(index, 10) * 22}ms` }}
                     >
-                      {option.icon ? <GameIcon icon={option.icon} size="size-6" /> : null}
+                      {option.icon ? <GameIcon icon={option.icon} size="size-6" /> : option.leading ?? null}
                       <span className="min-w-0 grow">
                         <span className="block truncate">{option.label}</span>
                         {option.hint ? <span className="block truncate text-[11px] text-stone-500">{option.hint}</span> : null}

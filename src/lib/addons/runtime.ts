@@ -12,6 +12,7 @@ import { pythonRequirement, checkRequirement } from "@/lib/addons/requirements";
 import { answerSampling, type SamplingContext } from "@/lib/addons/sampling";
 import { withExclusive } from "@/lib/addons/resources";
 import { effectiveSettings } from "@/lib/addons/settings";
+import { installableParts } from "@/lib/addons/parts";
 import type { AddonTask } from "@/lib/addons/tasks";
 
 // Running addons. Each is one long-lived program, started the first time
@@ -135,6 +136,8 @@ async function environment(addon: InstalledAddon & { manifest: AddonManifest }, 
     // assets): a model library, sprite sheets.
     ODM_ADDON_PUBLIC_DIR: path.join(dataDir, "public"),
     ODM_ADDON_SETTINGS: JSON.stringify(effectiveSettings(addon.manifest.settings, addon.state.settings ?? {})),
+    // The parts the admin chose that can be fetched here, as a JSON list.
+    ODM_ADDON_PARTS: JSON.stringify(installableParts(addon, `${hostFacts().platform}-${hostFacts().arch}`)),
     ODM_ADDON_API_VERSION: String(ADDON_API_VERSION),
     ODM_SERVER_VERSION: serverVersion(),
     PYTHONUNBUFFERED: "1",

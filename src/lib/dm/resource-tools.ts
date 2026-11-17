@@ -9,10 +9,12 @@ import { breakConcentration, droppedLine, setConcentration } from "@/lib/dm/conc
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
 import { diceFor as healingOn, rollOwnDice } from "@/lib/dm/character-roll";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
-import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms, sheetCatalog } from "@/lib/srd/class-resources";
+import { canRegain, regainRoom } from "@/lib/dm/regain";
+import { heldUnlimitedState, isUnlimited, matchResource, RAGING, rechargeOf, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms, sheetCatalog } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
 import { treatsRefusal } from "@/lib/dm/ar-wbf-feat-treats";
@@ -404,6 +406,14 @@ function reachRefusal(
   return null;
 }
 
+// The display name of a feature whose spend heals a character (Lay on Hands,
+// a pool of healing dice, a feature's healing roll), or null. Its target is a
+// character named by targetCharacterId, and the user when none is named.
+export function characterHealNamed(sheet: CharacterSheet, resourceName: string): string | null {
+  const def = matchResource(resourceName, sheetCatalog(sheet));
+  return def && (def.effect.kind === "heal_pool" || def.effect.kind === "heal_dice_pool" || def.effect.kind === "heal_target") ? def.displayName : null;
+}
+
 export function computeUseResource(
   campaign: Campaign,
   sheet: CharacterSheet,
@@ -541,6 +551,21 @@ export function computeUseResource(
     };
   }
 
+  // Lay on Hands draws "from the pool to restore a number of hit points"
+  // (SRD 5.1), point for point, and nobody regains past their maximum: the
+  // pool paid whatever the call named, so 20 drawn for an ally 5 short spent
+  // 20 and told the table 20 were healed, and a full ally took 5 for nothing.
+  const asked = amount;
+  if (def.effect.kind === "heal_pool" && !target.deathSaves?.dead) {
+    const room = regainRoom(campaign.id, target);
+    if (room <= 0) {
+      return {
+        error: `${target.name} ${canRegain(target) ? "is at full hit points" : "cannot regain hit points right now"}, so ${def.displayName} would restore nothing. Nothing was spent.`,
+        refused: "rules",
+      };
+    }
+    amount = Math.min(amount, room);
+  }
   // Elemental Wild Shape spends two uses at once, or is refused before
   // anything is spent (src/lib/dm/wild-shape-use.ts).
   const elementalAsk = def.effect.kind === "wild_shape" ? elementalWildShape(sheet, form?.name) : null;
@@ -616,7 +641,7 @@ export function computeUseResource(
       resource: def.displayName,
       spent: slotPays ? `a level ${more.slotLevel} spell slot (no use was left)` : paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : paidSlot !== null ? `a level ${paidSlot} spell slot (no use was left)` : cost,
       left: unlimited ? "unlimited" : paid || paidSlot !== null ? `0/${state.max}` : `${left - cost}/${state.max}`,
-      refills: def.recharge === "short" ? "on any rest" : "on a long rest",
+      refills: rechargeOf(def, sheet) === "short" ? "on any rest" : "on a long rest",
       effect: def.guidance,
     },
   };
@@ -665,10 +690,14 @@ export function computeUseResource(
   // Multiclass: an effect's level-scaled dice read the owning class's level
   // (Second Wind heals 1d10 + FIGHTER level), not the summed character level.
   const fxLevel = resourceLevel(def, sheet);
+  // What the effect's formula reads besides that level: the modifiers and
+  // the character's proficiency bonus ("prof", "profd4": Healing Hands,
+  // Chef), from the total level and worn magic, not the class level's.
+  const fxMods = formulaMods(derived);
   switch (def.effect.kind) {
     case "heal_self": {
       // "halfmax": half the character's hit point maximum (Unearthly Recovery).
-      const expression = def.effect.dice(fxLevel, derived.abilityMods).replace(/\bhalfmax\b/g, String(Math.floor(effectiveMaxHp(sheet) / 2)));
+      const expression = def.effect.dice(fxLevel, fxMods).replace(/\bhalfmax\b/g, String(Math.floor(effectiveMaxHp(sheet) / 2)));
       const total = rollHealing(campaign, sheet, def.displayName, expression);
       outcome.healTarget = { characterId: sheet.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
@@ -680,6 +709,9 @@ export function computeUseResource(
       }
       outcome.healTarget = { characterId: target.id, amount };
       outcome.result.healed = `${amount} HP to ${target.name}`;
+      if (amount < asked) {
+        outcome.result.drawn = `${amount} of the ${asked} asked: ${target.name} was ${amount} short of their maximum, and the pool keeps the rest.`;
+      }
       return outcome;
     }
     case "heal_dice_pool": {
@@ -721,7 +753,7 @@ export function computeUseResource(
       }
       // Perfected Formula: each healing die counts as at least half its faces
       // (genre-a-cyberpunk-programs.ts healDiceFloor).
-      const expression = healDiceFloor(sheet, def.effect.dice(fxLevel, derived.abilityMods));
+      const expression = healDiceFloor(sheet, def.effect.dice(fxLevel, fxMods));
       const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
@@ -744,7 +776,7 @@ export function computeUseResource(
       if (spoiled) {
         return spoiled;
       }
-      const expression = def.effect.dice(fxLevel, derived.abilityMods);
+      const expression = def.effect.dice(fxLevel, fxMods);
       const total = Math.max(
         1,
         rollHealing(campaign, sheet, healingOn(`${def.displayName} (temporary HP)`, sheet, target), expression),
@@ -803,7 +835,11 @@ export function computeUseResource(
             campaign,
             sheet,
             healingOn(`${def.displayName} (temporary HP)`, sheet, recipient),
-            effect.tempHp(sheet.level, derived.abilityMods),
+            // At the granting class's level, as the effect's other dice
+            // are: Fighting Spirit's 5 / 10 / 15 are fighter levels and
+            // Form of Dread adds the warlock level (a fighter 3 / wizard 7
+            // took 10, a warlock 3 / fighter 5 added 8).
+            effect.tempHp(fxLevel, fxMods),
           ),
         );
         if (rolled > recipient.tempHp) {
@@ -841,14 +877,14 @@ export function computeUseResource(
       const saved = rollCounterSave(campaign, sheet, def, {
         save: effect.save,
         dc: counterSaveDc(effect.dcAbility, derived, Math.max(...Object.values(derived.abilityMods))),
-        dice: effect.dice ? effect.dice(fxLevel, derived.abilityMods) : null,
+        dice: effect.dice ? effect.dice(fxLevel, fxMods) : null,
         condition: effect.condition,
       }, variant, aim);
       return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...saved.result } };
     }
     case "hit_damage": {
       // Fury of the Small: rolled here onto the creature hit, after the hit.
-      const hit = resolveCounterHit(campaign, sheet, { name: def.displayName, dice: def.effect.dice(fxLevel, derived.abilityMods), larger: def.effect.larger, holderSize: sheetSize(sheet) }, aim ?? {});
+      const hit = resolveCounterHit(campaign, sheet, { name: def.displayName, dice: def.effect.dice(fxLevel, fxMods), larger: def.effect.larger, holderSize: sheetSize(sheet) }, aim ?? {});
       return "error" in hit ? hit : { ...outcome, result: { ...outcome.result, ...hit.result } };
     }
     case "teleport": {

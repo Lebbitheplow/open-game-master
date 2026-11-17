@@ -3,6 +3,7 @@ import { isErrorResponse, steersStory, requireMember } from "@/lib/campaign-api"
 import { deleteNote, getNoteById, updateNote, type Note } from "@/lib/db/notes";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +27,9 @@ export async function PATCH(
   { params }: { params: Promise<{ campaignId: string; noteId: string }> },
 ) {
   const { campaignId, noteId } = await params;
-  const context = await requireMember(campaignId);
+  // The refusals read the asker's language; alerts show them raw.
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -54,17 +57,17 @@ export async function PATCH(
   if (patch.title !== undefined || patch.body !== undefined) {
     const canEdit = author || (lead && campaignPublic);
     if (!canEdit) {
-      return Response.json({ error: "Only the author can edit this note." }, { status: 403 });
+      return Response.json({ error: t("Only the author can edit this note.") }, { status: 403 });
     }
   }
   if (patch.pinned !== undefined) {
     if (!lead || !campaignPublic || note.status !== "active") {
-      return Response.json({ error: "Only the party lead can pin party notes." }, { status: 403 });
+      return Response.json({ error: t("Only the party lead can pin party notes.") }, { status: 403 });
     }
   }
   if (patch.status !== undefined) {
     if (!lead || note.status !== "pending") {
-      return Response.json({ error: "Only the party lead can approve suggestions." }, { status: 403 });
+      return Response.json({ error: t("Only the party lead can approve suggestions.") }, { status: 403 });
     }
   }
 
@@ -79,11 +82,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string; noteId: string }> },
 ) {
   const { campaignId, noteId } = await params;
-  const context = await requireMember(campaignId);
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -100,7 +104,7 @@ export async function DELETE(
     (note.visibility === "public" &&
       (lead || (note.status === "active" && isCharacterOwner(note, context.user.id))));
   if (!allowed) {
-    return Response.json({ error: "You cannot delete this note." }, { status: 403 });
+    return Response.json({ error: t("You cannot delete this note.") }, { status: 403 });
   }
 
   deleteNote(noteId);

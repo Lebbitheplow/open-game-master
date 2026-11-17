@@ -4,6 +4,7 @@
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "../language/text-logic.ts";
 import { lineNamed } from "../srd/item-row.ts";
+import { bundlesAsRounds, carriedAsRounds } from "../srd/ammo-bundles.ts";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 
 export type SlotState = { max: number; used: number };
@@ -35,7 +36,7 @@ export function isIdentified(item: { identified?: boolean }): boolean {
 // xpTargetLevel is levelForXp(patch.xp), computed by the caller so this module
 // stays import-free; leave it undefined when the patch does not set xp.
 export function sheetBuffViolation(
-  sheet: { name: string; level: number; maxHp: number; gold: number },
+  sheet: { name: string; level: number; maxHp: number; gold: number; abilities?: Record<string, number> },
   patch: { level?: number; maxHp?: number; gold?: number; abilities?: Record<string, number> },
   xpTargetLevel?: number,
 ): ToolError | null {
@@ -51,10 +52,17 @@ export function sheetBuffViolation(
   if (typeof patch.gold === "number" && patch.gold - sheet.gold > 1000) {
     return { error: `Coin moves through purchases, loot, and roll_treasure, not a direct sheet edit; ${sheet.name}'s gold is unchanged.`, retry: true };
   }
+  // Past 20 a score rises only by a manual or tome read (use_item,
+  // src/lib/srd/studied-books.ts) or Primal Champion; one already past it
+  // keeps its number.
   if (patch.abilities) {
     for (const [ability, score] of Object.entries(patch.abilities)) {
-      if (typeof score === "number" && score > 20) {
-        return { error: `Ability scores cap at 20 here; leave ${sheet.name}'s ${ability.toUpperCase()} at 20 or lower.`, retry: true };
+      const cap = Math.max(20, sheet.abilities?.[ability] ?? 0);
+      if (typeof score === "number" && score > cap) {
+        return {
+          error: `Ability scores cap at ${cap} here; leave ${sheet.name}'s ${ability.toUpperCase()} at ${cap} or lower. A manual or tome the character reads raises a score past 20 through use_item.`,
+          retry: true,
+        };
       }
     }
   }
@@ -125,22 +133,39 @@ export function spendSlotMath(slot: SlotState | undefined | null): SlotState | n
 // attuned to it. A homebrew block is read again from the entry when the
 // sheet is (hydrateHomebrewGear), so it does not travel either. Trades used
 // to keep the name alone, so a traded scroll lost its spell and a renamed
-// sword its weapon (issue #424, found beside it).
-export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number): Row {
+// sword its weapon (issue #424, found beside it). A bundle of ammunition
+// travels as its rounds (src/lib/srd/ammo-bundles.ts): one "Arrows (20)"
+// handed to a friend who had one merged into a line of two arrows.
+//
+// The attunement stays with whoever holds it, not with the row: SRD 5.1,
+// Attunement, ends it only "if the item has been more than 100 feet away for
+// at least 24 hours, if the creature dies, or if another creature attunes to
+// the item", so a cloak lent for a moment came back needing a short rest.
+// `move` names who it leaves (`from`) and who takes it (`to`): the row keeps
+// its lender in attunedBy, and is attuned again when it reaches them.
+export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number, move: { from?: string; to?: string } = {}): Row {
   const {
     equipped: _equipped,
-    attuned: _attuned,
+    attuned,
     attuning: _attuning,
+    attunedBy,
     layered: _layered,
     gear: _gear,
     ...kept
-  } = row as Row & { equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean; gear?: unknown };
+  } = row as Row & { equipped?: boolean; attuned?: boolean; attuning?: boolean; attunedBy?: string; layered?: boolean; gear?: unknown };
   void _equipped;
-  void _attuned;
   void _attuning;
   void _layered;
   void _gear;
-  return { ...(kept as Row), qty: Math.max(1, Math.floor(qty)) };
+  const lender = attuned ? move.from : attunedBy;
+  const bond = lender && lender === move.to ? { attuned: true } : lender ? { attunedBy: lender } : {};
+  // A stacked row's charges are the one in use's, the rest whole
+  // (stabilize.ts kitAfterUse, item-charges.ts): some of a stack handed on
+  // are whole ones, and the one in use stays. Copied onto both, one kit of
+  // two came over as 3 uses where 10 were.
+  const { charges, ...rest } = kept as Row & { charges?: number };
+  const whole = charges === undefined || Math.floor(qty) < row.qty ? {} : { charges };
+  return carriedAsRounds({ ...(rest as Row), ...whole, ...bond }, qty);
 }
 
 // Whether two rows are the same thing, the rule grantItemMath merges by:
@@ -155,14 +180,19 @@ export function sameItemRow(a: EquipmentRow, b: EquipmentRow): boolean {
   );
 }
 
-// A row added to a pack, merged into the same thing when it is there.
+// A row added to a pack, merged into the same thing when it is there. A
+// stack holds one count of charges, the one in use's (handedOverRow): an
+// opened kit joins a whole one with its count, and two opened ones stay two
+// lines. Merged as whole, an opened kit's 3 uses became 10.
 export function addRowMath<Row extends EquipmentRow>(equipment: Row[], row: Row): Row[] {
-  const index = equipment.findIndex((item) => sameItemRow(item, row));
+  const used = (item: Row) => (item as Row & { charges?: number }).charges;
+  const index = equipment.findIndex((item) => sameItemRow(item, row) && (used(item) === undefined || used(row) === undefined));
   if (index < 0) {
     return [...equipment, row];
   }
   const next = [...equipment];
-  next[index] = { ...next[index], qty: next[index].qty + row.qty };
+  const charges = used(next[index]) ?? used(row);
+  next[index] = { ...next[index], qty: next[index].qty + row.qty, ...(charges === undefined ? {} : { charges }) };
   return next;
 }
 
@@ -187,8 +217,9 @@ export function removeItemMath<Row extends EquipmentRow>(equipment: Row[], name:
 }
 
 // What a tool says an item is, beyond its name: its tags, its worth, a
-// scroll's spell.
-export type ItemFacts = { srdName?: string; tags?: ItemTag[]; worth?: number; spell?: string };
+// scroll's spell, and its own weight (a row the party's pack kept: taken
+// out without it, an item no table weighs weighed nothing).
+export type ItemFacts = { srdName?: string; tags?: ItemTag[]; worth?: number; spell?: string; weight?: number };
 
 function itemFacts(facts: ItemFacts): ItemFacts {
   return {
@@ -196,6 +227,7 @@ function itemFacts(facts: ItemFacts): ItemFacts {
     ...(facts.tags?.length ? { tags: facts.tags } : {}),
     ...(facts.worth ? { worth: facts.worth } : {}),
     ...(facts.spell ? { spell: facts.spell } : {}),
+    ...(facts.weight ? { weight: facts.weight } : {}),
   };
 }
 
@@ -215,19 +247,24 @@ export function grantItemMath(
   // sheet.
   options: { identified?: boolean } & ItemFacts = {},
 ) {
-  const amount = Math.max(1, Math.floor(qty));
+  // A bundle of ammunition is its rounds, as a pack counts them (SRD 5.1,
+  // Adventuring Gear, "Arrows (20)"; src/lib/srd/ammo-bundles.ts): bought
+  // twice, "Arrows (20)" x2 was counted as two arrows.
   const known = options.identified !== false;
-  const facts = known ? itemFacts(options) : {};
+  const asRounds = bundlesAsRounds({ name, qty, ...(known && options.srdName ? { srdName: options.srdName } : {}) }, qty);
+  const named = asRounds.name;
+  const amount = Math.max(1, Math.floor(asRounds.qty));
+  const facts = known ? itemFacts({ ...options, srdName: asRounds.srdName }) : {};
   // Two scrolls of different spells, or two potions of different rows, are
   // two things, whatever they are called.
   const index = equipment.findIndex(
-    (item) => textKey(item.name) === textKey(name) && isIdentified(item) === known && item.spell === facts.spell && item.srdName === facts.srdName,
+    (item) => textKey(item.name) === textKey(named) && isIdentified(item) === known && item.spell === facts.spell && item.srdName === facts.srdName,
   );
   if (index < 0) {
     return {
       equipment: [
         ...equipment,
-        known ? { name, qty: amount, ...facts } : { name, qty: amount, identified: false },
+        known ? { name: named, qty: amount, ...facts } : { name: named, qty: amount, identified: false },
       ],
     };
   }

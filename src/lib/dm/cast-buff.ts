@@ -34,6 +34,7 @@ import { extendedRounds, factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagi
 import { lifetimeAtSlot } from "@/lib/dm/spell-effects";
 import { withTempHpClaim, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healDeathHook } from "@/lib/dm/death";
+import { neutralizeOnePoison, neutralizesPoison } from "@/lib/dm/poison-neutralize";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import { castRedirect } from "@/lib/dm/cast-redirect";
@@ -42,6 +43,7 @@ import { handleSetCondition } from "@/lib/dm/set-condition";
 import { handleDispelMagic } from "@/lib/dm/dispel";
 import { summonSpellFor } from "@/lib/srd/summon-spells";
 import { castSummon } from "@/lib/dm/summon-cast";
+import { commandsUndead, commandUndead } from "@/lib/dm/undead-command";
 import { castFindFamiliar, isFindFamiliar } from "@/lib/dm/familiar-cast";
 import { castShapeAtEnemy, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph";
 import { allyRowRefusal, allyRowsOf, layBuffOnRows } from "@/lib/dm/cast-buff-allies";
@@ -56,6 +58,7 @@ import type { FreeLimit } from "@/lib/srd/counter-casts";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
 import { itemCastOpen } from "@/lib/dm/item-casts";
 import type { CastingSheet } from "@/lib/srd";
+import { armorBarsBuff } from "@/lib/dm/armor-donned-logic";
 
 // Temporary hit points a chosen variant grants on top of its condition.
 const VARIANT_TEMP_HP: Record<string, string> = {
@@ -145,6 +148,13 @@ export function handleCastBuff(
   const grantedSpell = grantedCastOf(sheet, args.spell ?? "", spellFactsFor(args.spell ?? "", spellAuthorsFor(campaign)));
   if (!castsSpells(sheet) && !grantedSpell && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
+  }
+  // Animate Dead's and Create Undead's command is the spell's bonus action,
+  // no casting: asked before the cast guard, which would refuse a 1-minute
+  // casting in a fight (undead-command.ts).
+  const commanding = summonSpellFor(spellEngineName(args.spell, spellAuthorsFor(campaign)));
+  if (commanding && commandsUndead(commanding, args.variant)) {
+    return commandUndead(campaign, sheet, commanding, findSpellByName(args.spell, spellAuthorsFor(campaign))?.name ?? args.spell);
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);
   if (barred) {
@@ -321,6 +331,10 @@ export function handleCastBuff(
       refused: "rules",
     };
   }
+  const armored = targetSheets.find((target) => armorBarsBuff(condition, target.equipment ?? []));
+  if (armored) {
+    return { error: `${armored.name} is wearing armor, and ${resolvedMech.name} touches a creature who isn't. Nothing was spent.`, refused: "rules" };
+  }
   // How many creatures one casting touches: Bless three, one more for each
   // slot level above 1st; Aid three; a single-target buff one, or one more
   // a slot level where the spell says so (Fly, Enhance Ability).
@@ -434,6 +448,8 @@ export function handleCastBuff(
   // Extended Spell paid for this cast doubles it (mt-srd-metamagic.ts).
   const lasts = extendedRounds(sheet, lifetimeAtSlot(resolvedMech.name, buff.rounds, slotLevel, authors));
   const rounds = lasts === null ? null : Math.max(1, lasts);
+  // Past a day it stays the spell's own: whole days as days, else minutes,
+  // the clock ending it (a table's ten-day ward was written as 1,440 minutes).
   const duration =
     rounds === null
       ? {}
@@ -441,7 +457,9 @@ export function handleCastBuff(
         ? { rounds }
         : rounds % 600 === 0 && rounds / 600 <= 24
           ? { hours: rounds / 600 }
-          : { minutes: Math.min(1440, Math.ceil(rounds / 10)) };
+          : rounds % 14400 === 0
+            ? { days: rounds / 14400 }
+            : { minutes: Math.ceil(rounds / 10) };
   const spellMeta: ConditionMeta = {
     spell: resolvedMech.name,
     source: sheet.id,
@@ -449,6 +467,7 @@ export function handleCastBuff(
     ...(quarry ? { quarry: quarry.id } : {}),
   };
   const applied: string[] = [];
+  const neutralized: string[] = [];
   for (const target of targetSheets) {
     if (warded.has(target.id)) {
       continue;
@@ -470,6 +489,11 @@ export function handleCastBuff(
       continue;
     }
     applied.push(target.name);
+    // Protection from Poison ends one poisoning as it lands (poison-neutralize.ts).
+    const cured = neutralizesPoison(condition) ? neutralizeOnePoison(campaign.id, target.id, resolvedMech.name) : null;
+    if (cured) {
+      neutralized.push(cured);
+    }
     // The maximum (and the current hit points with it) follows the
     // condition from here: src/lib/db/sheets.ts patchSheet, maxHpRiders.
     if (polymorphForm) {
@@ -545,6 +569,7 @@ export function handleCastBuff(
     targets: applied,
     ...(shared ? { companion: shared } : {}),
     ...(noEffect ? { noEffect } : {}),
+    ...(neutralized.length ? { poisonNeutralized: neutralized } : {}),
     ...(quarry ? { quarry: quarry.displayName } : {}),
     ...(maxHpGain ? { hitPoints: `+${maxHpGain} to the maximum and current hit points of each` } : {}),
     ...(polymorphForm
@@ -559,7 +584,9 @@ export function handleCastBuff(
     duration:
       "hours" in duration
         ? `${duration.hours} hour${duration.hours === 1 ? "" : "s"}`
-        : "minutes" in duration
+        : "days" in duration
+          ? `${duration.days} days`
+          : "minutes" in duration
           ? `${duration.minutes} minutes`
           : rounds === null
             ? "until dispelled"

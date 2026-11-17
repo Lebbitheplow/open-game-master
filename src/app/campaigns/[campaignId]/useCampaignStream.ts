@@ -58,6 +58,7 @@ import { registerWorkshopClasses } from "@/lib/classes/workshop-registry";
 import { registerPackClasses, type PackClassTable } from "@/lib/classes/pack-class-registry";
 import { revealIsNews, STAGE_HEARD_MAX } from "@/lib/dice/roll-stage-logic";
 import type { WorkshopClass } from "@/lib/homebrew/class-data";
+import { useCampaignAppearance } from "@/lib/theme-mode";
 
 export type DmStatus =
   | "idle"
@@ -1409,6 +1410,7 @@ export function reloadsSnapshot(eventType: string, payload: unknown): boolean {
 
 export function useCampaignStream(campaignId: string) {
   const [state, dispatch] = useReducer(campaignReducer, initialState);
+  useCampaignAppearance(state.error ? null : state.campaign?.gameSettings);
   // The SSE handlers are registered once, so they cannot close over `state`.
   // Caps are set by the snapshot and never change for a mounted session, but
   // the handlers still need to read them after that first load.

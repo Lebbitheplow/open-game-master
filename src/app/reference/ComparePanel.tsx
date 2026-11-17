@@ -7,6 +7,8 @@ import { ui } from "@/lib/ui";
 import { EmptyState } from "@/components/EmptyState";
 import { D20Spinner } from "@/components/ui/D20Spinner";
 import { Switch } from "@/components/ui/Switch";
+import { contentName } from "@/lib/content/names";
+import { useLocale } from "@/lib/locale";
 import type { CompareKind, CompareTable } from "@/lib/reference/compare";
 
 // Several monsters or spells side by side, with the rows that differ marked.
@@ -34,6 +36,11 @@ export function ComparePanel({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [onlyDiffering, setOnlyDiffering] = useState(true);
+  // The compared entries' official names read in the reader's language; the
+  // slugs picked and sent stay what they were.
+  const locale = useLocale();
+  const shown = (entry: { slug?: string; name: string; source?: string }) =>
+    contentName(selection.kind, entry, locale);
 
   const slugs = selection.entries.map((entry) => entry.slug).join("|");
 
@@ -104,11 +111,11 @@ export function ComparePanel({
             key={entry.slug}
             className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-400/10 py-0.5 pl-3 pr-1 text-xs text-amber-100"
           >
-            {entry.name}
+            {shown(entry)}
             <button
               type="button"
               onClick={() => onRemove(entry.slug)}
-              aria-label={`Remove ${entry.name}`}
+              aria-label={`Remove ${shown(entry)}`}
               className="motion-nudge inline-flex size-7 items-center justify-center rounded-full text-stone-400 hover:text-amber-200"
             >
               <X className="size-3" />
@@ -147,7 +154,7 @@ export function ComparePanel({
                         column.source === "homebrew" ? "text-amber-300" : "text-amber-100",
                       )}
                     >
-                      {column.name}
+                      {shown(column)}
                     </th>
                   ))}
                 </tr>

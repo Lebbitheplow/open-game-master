@@ -9,6 +9,7 @@ import { askConcentrationSwap, isConcentrationQuestion } from "@/components/conc
 import { spellsToLookUp } from "@/lib/battlemap/hand";
 import { stepMix, summonDoorPost, summonDoorRows, summonReady, type SummonChoices, type SummonDoorRow } from "@/lib/battlemap/hand-summon";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { useT, useTp } from "@/lib/locale";
 import { useHandSpells, useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -25,11 +26,13 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // casts it at a table the AI runs, the GM resolves it as played at one a
 // person runs.
 export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; mine: boolean; inCombat: boolean }) {
+  const t = useT();
+  const tp = useTp();
   const offered = hostOffers(useCapabilities(), "summonPicker");
   const catalogues = useHandSummons(mine && offered ? sheet : null, mine && offered);
   // The table's own spell facts, which the cast guard's refusals read.
   const spells = useHandSpells(mine && offered ? sheet : null);
-  const rows = useMemo(() => summonDoorRows(sheet, spellsToLookUp(sheet), catalogues, inCombat, spells), [sheet, catalogues, inCombat, spells]);
+  const rows = useMemo(() => summonDoorRows(sheet, spellsToLookUp(sheet), catalogues, inCombat, spells, t), [sheet, catalogues, inCombat, spells, t]);
   const [choices, setChoices] = useState<Record<string, SummonChoices>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -62,39 +65,39 @@ export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; m
         data = (await response.json().catch(() => ({}))) as { error?: string };
       }
       if (!response.ok) {
-        setRefusal(data.error || "The casting was refused.");
+        setRefusal(data.error || t("The casting was refused."));
         replayAnimation(refusalRef.current, "shake-x var(--dur-beat) var(--ease-snap) both");
         return;
       }
       setSent(row.spell);
       setChoices((current) => ({ ...current, [row.spell]: {} }));
     } catch {
-      setRefusal("Could not reach the server.");
+      setRefusal(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(null);
     }
   }
 
   return (
-    <section className="reveal mt-3 space-y-3" aria-label="Summoning">
+    <section className="reveal mt-3 space-y-3" aria-label={t("Summoning")}>
       {rows.map((row) => {
         const pick = pickOf(row);
         const card = { name: row.spell, summon: row.pick?.summon, choice: row.pick?.choice };
         const ready = row.state === "begin" || summonReady(card, pick);
-        const label = row.state === "begin" ? "Begin casting" : row.state === "finish" ? "Finish casting" : "Cast";
+        const label = row.state === "begin" ? t("Begin casting") : row.state === "finish" ? t("Finish casting") : t("Cast", { context: "table.summon.cast" });
         return (
           <div key={row.spell} className="rounded-lg border border-stone-700/60 p-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-display text-sm text-amber-100">{row.spell}</span>
               <span className="text-xs text-stone-400">
                 {row.state === "casting"
-                  ? `Casting: ${row.roundsLeft ?? 0} rounds left.`
+                  ? tp("Casting: {count} rounds left.", "Casting: {count} rounds left.", { count: row.roundsLeft ?? 0 })
                   : row.state === "begin"
-                    ? "Takes a minute or more: begun with your action, the creature chosen when it is done."
+                    ? t("Takes a minute or more: begun with your action, the creature chosen when it is done.")
                     : row.state === "finish"
-                      ? "The casting is done: choose what it brings."
+                      ? t("The casting is done: choose what it brings.")
                       : row.slotLevel
-                        ? `Level ${row.slotLevel} slot.`
+                        ? t("Level {level} slot.", { level: row.slotLevel })
                         : ""}
               </span>
             </div>
@@ -113,7 +116,7 @@ export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; m
                 <button
                   type="button"
                   disabled={!ready || row.blocked !== null || row.disabled !== null || busy !== null}
-                  title={row.blocked ?? row.disabled ?? (ready ? undefined : "Choose the creature first.")}
+                  title={row.blocked ?? row.disabled ?? (ready ? undefined : t("Choose the creature first."))}
                   onClick={() => void send(row, false)}
                   className={cn(ui.btnSmall, "min-h-10 sm:min-h-8")}
                 >
@@ -124,18 +127,18 @@ export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; m
                   <button
                     type="button"
                     disabled={!ready || row.blocked !== null || busy !== null}
-                    title={row.blocked ?? "Ten minutes longer, and no spell slot spent."}
+                    title={row.blocked ?? t("Ten minutes longer, and no spell slot spent.")}
                     onClick={() => void send(row, true)}
                     className={cn(ui.btnSmall, "min-h-10 sm:min-h-8")}
                   >
                     {busy === `${row.spell}:true` ? <Loader2 className="size-3 animate-spin" /> : null}
-                    Cast as a ritual
+                    {t("Cast as a ritual")}
                   </button>
                 ) : null}
                 {row.blocked || row.disabled ? <span className="text-[11px] text-stone-400">{row.blocked ?? row.disabled}</span> : null}
                 {sent === row.spell ? (
                   <span role="status" className="animate-fade-up text-[11px] text-sky-200/90">
-                    Sent.
+                    {t("Sent.")}
                   </span>
                 ) : null}
               </div>

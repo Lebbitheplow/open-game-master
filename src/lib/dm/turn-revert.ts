@@ -14,7 +14,7 @@ import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { takeBackFightEvent } from "@/lib/dm/fight-event-undo";
 import { cardRevertWarnings, takeBackCardResolution } from "@/lib/dm/resolve-card";
 import { removeSummon } from "@/lib/dm/summon-store";
-import { isFightTable, planRowsRevert, type FightState, type RowPlan, type RowState } from "@/lib/dm/turn-rows-logic";
+import { initiativeFloorFight, isFightTable, planRowsRevert, type FightState, type RowPlan, type RowState } from "@/lib/dm/turn-rows-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 
 // The part of "Revert this turn" that is not a sheet's audit or the clock
@@ -85,7 +85,13 @@ function rowsPlan(turnId: string, hidden?: ReadonlySet<string>): { plan: RowPlan
   });
   const fights = new Map<string, FightState>();
   const turn = getDatabase().prepare(`SELECT campaign_id FROM dm_turns WHERE id = ?`).get(turnId) as { campaign_id: string } | undefined;
-  for (const id of new Set(rows.flatMap((row) => (row.encounterId ? [row.encounterId] : [])))) {
+  // The fights the turn's rows belong to, and the one a floor it changed
+  // names, so the plan knows whether that floor's fight is on.
+  const floorFights = rows.flatMap((row) => {
+    const id = row.table === "campaigns" ? initiativeFloorFight(row.before?.floor_json) : null;
+    return id ? [id] : [];
+  });
+  for (const id of new Set([...rows.flatMap((row) => (row.encounterId ? [row.encounterId] : [])), ...floorFights])) {
     const own = rows.find((row) => row.table === "encounters" && row.rowId === id);
     const now = readRow("encounters", id);
     // Another fight on now, which a fight this turn ended cannot be opened

@@ -3,6 +3,7 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { normalizeSettings, scrubStorySettings } from "@/lib/db/settings";
 import { configuredDefaultStorySettings } from "@/lib/runtime-defaults";
 import { normalizeGameSettings, type GameSettings, type TableLanguage } from "@/lib/schemas/game-settings";
+import type { ProbedLanguage } from "@/lib/embedding-language-logic";
 import { normalizeCampaignKind, type CampaignKind } from "@/lib/workshop/kind";
 import type {
   CampaignCover,
@@ -464,6 +465,25 @@ export function listCampaignsForUser(userId: string): CampaignSummary[] {
   });
 }
 
+// Every campaign still in play whose table language is not English, for the
+// admin page's warning when the embedding model cannot read it
+// (src/lib/embedding-language.ts). An ended campaign recalls nothing more.
+export type CampaignLanguage = { id: string; title: string; language: ProbedLanguage };
+
+export function listCampaignLanguages(): CampaignLanguage[] {
+  const rows = getDatabase()
+    .prepare(
+      `SELECT id, title, game_settings_json FROM campaigns
+       WHERE kind = 'campaign' AND status != 'ended'
+       ORDER BY title`,
+    )
+    .all() as { id: string; title: string; game_settings_json: string }[];
+  return rows.flatMap((row) => {
+    const language = normalizeGameSettings(parseJson(row.game_settings_json, {})).tableLanguage;
+    return language === "english" ? [] : [{ id: row.id, title: row.title, language }];
+  });
+}
+
 // Returns the campaign only if the user is a member; role reflects the user.
 export function getCampaignForUser(campaignId: string, userId: string): Campaign | null {
   const row = getDatabase()
@@ -837,6 +857,42 @@ export function getFloor(campaignId: string): Floor {
     .prepare(`SELECT floor_json FROM campaigns WHERE id = ?`)
     .get(campaignId) as { floor_json?: string } | undefined;
   return normalizeFloor(parseJson(row?.floor_json ?? null, null));
+}
+
+// Whether the floor is a fight's (initiative, or a hold that opens into it)
+// whose fight is no longer on. A revert of an older turn put "Round 4, your
+// turn" back over a fight that had ended: the banner said it was the player's
+// turn, End Turn said it was not, and the lead's floor controls were refused
+// for a fight that owned nothing (issue 968). Read where a person sets the
+// floor and after a revert; the engine's own fight ending reads the floor as
+// it stands, to hand it on (enemy-damage.ts afterTheFight).
+export function staleFightFloor(campaignId: string): boolean {
+  const floor = getFloor(campaignId);
+  const initiative = floor.mode === "initiative" ? floor : floor.mode === "hold" && floor.next.mode === "initiative" ? floor.next : null;
+  if (!initiative) {
+    return false;
+  }
+  return !getDatabase()
+    .prepare(`SELECT 1 FROM encounters WHERE id = ? AND campaign_id = ? AND status = 'active'`)
+    .get(initiative.encounterId, campaignId);
+}
+
+// A stale fight floor, released to the open table when no fight is on (with
+// one on, its own pointer sets the floor at the next turn). Returns the floor
+// it set, or null when nothing changed.
+export function releaseStaleFightFloor(campaignId: string): Floor | null {
+  if (!staleFightFloor(campaignId)) {
+    return null;
+  }
+  const fightOn = getDatabase()
+    .prepare(`SELECT 1 FROM encounters WHERE campaign_id = ? AND status = 'active' AND kind = 'fight'`)
+    .get(campaignId);
+  if (fightOn) {
+    return null;
+  }
+  const open: Floor = { mode: "open" };
+  setFloor(campaignId, open);
+  return open;
 }
 
 export function setFloor(campaignId: string, floor: Floor) {

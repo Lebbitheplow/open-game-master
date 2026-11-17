@@ -228,6 +228,9 @@ export async function runPaths(suiteName, kinds) {
     smite: { hero: "paladin", ...weaponCase("Longsword"), args: { weapon: "Longsword", smite: 1 } },
     stunningStrike: { hero: "monk", ...weaponCase("Quarterstaff"), args: { weapon: "Quarterstaff", stunningStrike: true } },
     damage: { hero: "fighter", label: "a named blow", args: { weapon: "Longsword", damage: "2d6+1", damageType: "fire" }, sheetPatch: { equipment: gearFor("Longsword") } },
+    // A shot that names its magic arrow: the +1 on the roll and the damage on
+    // every path (rules audit 2026-11-16, G18).
+    ammo: { hero: "fighter", ...weaponCase("Longbow"), args: { weapon: "Longbow", ammo: "+1 Arrows" }, sheetPatch: { equipment: [...gearFor("Longbow"), { name: "+1 Arrows", qty: 20 }] } },
   };
   Object.assign(SKIP, {
     "spell.Plane Shift": "needs a forked rod worth 250 gp attuned to a plane",

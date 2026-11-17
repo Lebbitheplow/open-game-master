@@ -17,6 +17,7 @@
 // engine catches creatures in (src/lib/dm/aoe-shape.ts creaturesInBlast).
 //
 // Pure: the Hand, the board and the console's form all import it.
+import { translate } from "@/lib/messages-logic";
 import { layZone, type ZoneLayout, type ZoneMap } from "@/lib/battlemap/zones";
 import { zoneRowFor, type ZoneNamed, type ZoneShape, type ZoneTone } from "@/lib/battlemap/zones-spells";
 import { blastPickOf, blastShape, blastSummary, blastTemplate, type AreaShape } from "@/lib/battlemap/area-shape";
@@ -175,41 +176,56 @@ export function areaCells(area: HandArea, pick: AreaPick, map: ZoneMap, caster: 
   return layZone(row, { origin, toward, caster, slotLevel: area.slotLevel }, map);
 }
 
-// The pick in words, for the aim bar and the sentence the engine reads.
-export function describePick(area: HandArea, pick: AreaPick): string {
+// The pick in words. `pickWords` reads the table's language (table.hand.area.*)
+// for the aim bar and the board; `describePick` is the English line the composed
+// sentence carries to the engine (hand-play.ts composeSentence), so it reads the
+// dictionary bound to English and never moves with the interface's language.
+export function pickWords(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  area: HandArea,
+  pick: AreaPick,
+): string {
   const square = (point: XY) => `(${point.x},${point.y})`;
-  if (area.pick === "none") return area.blast ? "around me" : "centred on you";
-  if (area.pick === "direction") return pick.toward ? `toward ${square(pick.toward)}` : "";
+  if (area.pick === "none") return t(area.blast ? "around me" : "centred on you");
+  if (area.pick === "direction") return pick.toward ? t("toward {square}", { square: square(pick.toward) }) : "";
   if (area.pick === "wall") {
     if (!pick.at) return "";
     return pick.toward && !same(pick.at, pick.toward)
-      ? `from ${square(pick.at)} toward ${square(pick.toward)}`
-      : `from ${square(pick.at)}`;
+      ? t("from {at} toward {toward}", { at: square(pick.at), toward: square(pick.toward) })
+      : t("from {square}", { square: square(pick.at) });
   }
-  if (area.move) return pick.at ? `to ${square(pick.at)}` : "";
-  return pick.at ? `centred on ${square(pick.at)}` : "";
+  if (area.move) return pick.at ? t("to {square}", { square: square(pick.at) }) : "";
+  return pick.at ? t("centred on {square}", { square: square(pick.at) }) : "";
+}
+
+export function describePick(area: HandArea, pick: AreaPick): string {
+  return pickWords((key, vars) => translate("en", key, vars), area, pick);
 }
 
 // What the board asks for next, in the aim bar's words.
-export function pickHint(area: HandArea, pick: AreaPick): string {
+export function pickHint(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  area: HandArea,
+  pick: AreaPick,
+): string {
   switch (area.pick) {
     case "none":
-      return area.blast ? "It bursts around you." : "It is laid around you.";
+      return t(area.blast ? "It bursts around you." : "It is laid around you.");
     case "direction":
       return pick.toward
-        ? "Tap another square to turn it."
+        ? t("Tap another square to turn it.")
         : area.blast
-          ? `Tap the board where the ${area.blast.shape} points.`
-          : "Tap the board where the line blows toward.";
+          ? t("Tap the board where the {shape} points.", { shape: area.blast.shape })
+          : t("Tap the board where the line blows toward.");
     case "wall":
       return !pick.at
-        ? "Tap the board where the wall begins."
+        ? t("Tap the board where the wall begins.")
         : pick.toward
-          ? "Tap again to start the wall over."
-          : "Tap where it runs toward, or leave it across your view.";
+          ? t("Tap again to start the wall over.")
+          : t("Tap where it runs toward, or leave it across your view.");
     case "point":
-      if (area.move) return pick.at ? "Tap another square to go there instead." : "Tap the square to move to.";
-      return pick.at ? "Tap another square to move it." : "Tap the board where it is centred.";
+      if (area.move) return pick.at ? t("Tap another square to go there instead.") : t("Tap the square to move to.");
+      return pick.at ? t("Tap another square to move it.") : t("Tap the board where it is centred.");
   }
 }
 

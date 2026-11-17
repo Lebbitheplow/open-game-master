@@ -4,7 +4,6 @@ import { ContentScopeProvider } from "@/lib/content-scope";
 import { HeartPulse, Loader2, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
-import { GameTerm } from "@/components/ui/GameTerm";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { useWiderSpellPool } from "@/components/sheet/useSpellPool";
 import { cn } from "@/lib/cn";
@@ -16,6 +15,8 @@ import { subclassBlurb, subclassLevelFor } from "@/lib/srd/features";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { withSpeciesVariant } from "@/lib/content/species-variants";
 import { ui } from "@/lib/ui";
+import { useLocale, useT, useTp } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 import { applyClassReskins, applyIdReskins } from "@/lib/worlds/reskin-logic";
 import AsiFeatEditor from "./AsiFeatEditor";
 import FeatChoicesFields, { knownTraining } from "./FeatChoicesFields";
@@ -100,7 +101,10 @@ function LevelUpSheetForm({
   cancelHref: string;
 }) {
   useEffectsRoot();
-  const nextLevel = Math.min(20, initialLevel + 1);
+const t = useT();
+const tp = useTp();
+  const locale = useLocale();
+    const nextLevel = Math.min(20, initialLevel + 1);
   const { races: rawRaces, classes: rawClasses, backgrounds: rawBackgrounds, loaded } = useBuilderOptions(initial.race);
   // The library builds with no world pack: names as the rows hold them.
   const races = useMemo(() => applyIdReskins(rawRaces, []), [rawRaces]);
@@ -170,21 +174,21 @@ function LevelUpSheetForm({
   }
 
   // Every pick the build still owes, in the order the save checks them.
-  const gear = gearBlocker(derived);
+  const gear = gearBlocker(t, derived);
   const blocks: StepBlock[] = [
-    ...identityBlocks(state),
-    ...backgroundBlocks(state, background, derived),
-    ...abilitiesBlocks(derived, state, featJudge),
-    ...ancestryBlocks(state, race, background, derived, featJudge),
-    ...callingBlocks(klass, state, derived),
-    ...spellsBlocks(withPoolSupply(derived, spellPool), klass),
+    ...identityBlocks(t, state),
+    ...backgroundBlocks(t, state, background, derived),
+    ...abilitiesBlocks(t, derived, state, featJudge),
+    ...ancestryBlocks(t, state, race, background, derived, featJudge),
+    ...callingBlocks(t, klass, state, derived),
+    ...spellsBlocks(t, withPoolSupply(derived, spellPool), klass),
     ...(gear ? [gear] : []),
   ];
   const racialFeatProblem = unmetFeatMessage(featJudge, state.feats.slice(0, race ? racialFeatCount(race.id) : 0));
   if (racialFeatProblem) {
     blocks.push({ message: racialFeatProblem, target: "racialFeat" });
   }
-  const owed = owedPicks(blocks);
+  const owed = owedPicks(t, blocks);
   const owedTargets = new Set(owed.map((pick) => pick.target));
   // The gate names a pick on this sheet first: the ones it sends to the
   // whole build are listed below it, with the way there.
@@ -194,7 +198,7 @@ function LevelUpSheetForm({
   // What this level brings, read off the tables by level, so a section
   // stays while its pick is made (the owed list empties as it is).
   const rows = klass
-    ? levelProgressionRows(builderProgressionInput(state, derived, klass, { current: initialLevel, next: nextLevel }))
+    ? levelProgressionRows(builderProgressionInput(state, derived, klass, { current: initialLevel, next: nextLevel }), t, locale)
     : [];
   const newRow = rows[nextLevel - 1];
   const heldRow = rows[initialLevel - 1];
@@ -251,7 +255,7 @@ function LevelUpSheetForm({
       return;
     }
     const input = { state, derived, race, klass, background, initial, featJudge };
-    const check = validateBuilder(input);
+    const check = validateBuilder(t, input);
     if (check) {
       if (check.kind === "spellWarning") {
         state.setSpellWarningAck(true);
@@ -269,7 +273,7 @@ function LevelUpSheetForm({
   const preview = derived.preview;
   const hpLine =
     preview && klass
-      ? hitPointsLine({
+      ? hitPointsLine(t, {
           hitDie: klass.hitDie,
           level: derived.effectiveLevel,
           maxHp: preview.maxHp,
@@ -280,7 +284,7 @@ function LevelUpSheetForm({
         })
       : null;
   const hpGain = preview && !preview.hpKept && preview.hpMethod !== "rolled" ? preview.maxHp - initial.maxHp : null;
-  const who = initial.name.trim() || "Your hero";
+  const who = initial.name.trim() || t("Your hero");
   const shown = state.subclass ? pickers.chosenArchetype?.desc || subclassBlurb(klass?.id ?? "", state.subclass) : "";
   const saveBlocked = Boolean(firstOwed) || busy || fill.running;
 
@@ -297,12 +301,12 @@ function LevelUpSheetForm({
           />
         ) : null}
 
-        <StepPanel title={`What level ${nextLevel} brings`} ornate className="border-amber-500/30">
+        <StepPanel title={t("What level {level} brings", { level: nextLevel })} ornate className="border-amber-500/30">
           <div className="space-y-3">
             <div data-level-up-hp="" className="flex items-start gap-2">
               <HeartPulse aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-rose-300" />
               <p className="min-w-0 flex-1 text-stone-200">
-                <span className="font-medium">Hit points: </span>
+                <span className="font-medium">{t("Hit points: ")}</span>
                 {hpLine ? (
                   <>
                     {hpGain !== null ? (
@@ -319,18 +323,18 @@ function LevelUpSheetForm({
                     <span className="mt-0.5 block text-xs text-stone-500">{hpLine.reason}</span>
                   </>
                 ) : (
-                  "worked out once the build is read."
+                  t("worked out once the build is read.")
                 )}
               </p>
             </div>
             <div data-level-up-features="" className="flex items-start gap-2">
               <Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-amber-200" />
               <div className="min-w-0 flex-1 text-stone-200">
-                <span className="font-medium">New features: </span>
-                {newRow?.features.length ? newRow.features.join(", ") : "none at this level."}
+                <span className="font-medium">{t("New features: ")}</span>
+                {newRow?.features.length ? newRow.features.join(", ") : t("none at this level.")}
                 {newRow && newRow.proficiency > (heldRow?.proficiency ?? newRow.proficiency) ? (
                   <span className="mt-0.5 block text-xs text-stone-400">
-                    Proficiency bonus rises to +{newRow.proficiency}.
+                    {t("Proficiency bonus rises to +{bonus}.", { bonus: newRow.proficiency })}
                   </span>
                 ) : null}
               </div>
@@ -338,10 +342,10 @@ function LevelUpSheetForm({
           </div>
           <p className="mt-3 text-xs text-stone-400" data-level-up-owed={sheetOwed.length}>
             {nothingToChoose
-              ? `Nothing to choose at level ${nextLevel}. Save takes the level.`
+              ? t("Nothing to choose at level {level}. Save takes the level.", { level: nextLevel })
               : sheetOwed.length
-                ? `${sheetOwed.length === 1 ? "One choice is" : `${sheetOwed.length} choices are`} still to make below. Choose for me fills only the empty ones.`
-                : "Every choice for this level is made."}
+                ? tp("One choice is still to make below. Choose for me fills only the empty ones.", "{count} choices are still to make below. Choose for me fills only the empty ones.", { count: sheetOwed.length })
+                : t("Every choice for this level is made.")}
           </p>
           {sheetOwed.length ? (
             <button
@@ -351,25 +355,25 @@ function LevelUpSheetForm({
               data-level-up-fill=""
               className={cn(ui.btnSecondary, "mt-2")}
             >
-              <Wand2 aria-hidden="true" className="size-4" /> {fill.running ? "Choosing..." : "Choose for me"}
+              <Wand2 aria-hidden="true" className="size-4" /> {fill.running ? t("Choosing...") : t("Choose for me")}
             </button>
           ) : null}
         </StepPanel>
 
         {showSubclass && klass ? (
-          <StepPanel title="Subclass" anchor="subclass">
-            <Field label="Subclass">
+          <StepPanel title={t("Subclass")} anchor="subclass">
+            <Field label={t("Subclass")}>
               <OptionPicker
                 value={state.subclass}
                 groups={pickers.subclassGroups}
-                placeholder="None yet"
+                placeholder={t("None yet")}
                 className={inputClass}
                 onChange={state.changeSubclass}
               />
               <span className="mt-1 flex items-start gap-1 text-xs text-stone-500">
                 {state.subclass ? (
                   <>
-                    <span className="grow">{firstSentence(shown) ?? "A specialization within your class."}</span>
+                    <span className="grow">{firstSentence(shown) ?? t("A specialization within your class.")}</span>
                     <InfoButton
                       label={state.subclass}
                       text={shown || undefined}
@@ -378,8 +382,8 @@ function LevelUpSheetForm({
                   </>
                 ) : (
                   <span className="grow">
-                    <span className="text-amber-300">Still to choose. </span>A {klass.name.toLowerCase()} chooses a{" "}
-                    <GameTerm id="subclass">subclass</GameTerm> at level {pickLevel}. It decides much of how they play from here.
+                    <span className="text-amber-300">{t("Still to choose. ")}</span>
+                    {t("A {class} chooses a subclass at level {level}. It decides much of how they play from here.", { class: contentName("classes", klass.name, locale).toLowerCase(), level: pickLevel ?? 0 })}
                   </span>
                 )}
               </span>
@@ -429,7 +433,7 @@ function LevelUpSheetForm({
         {showSpells && klass ? <SpellsSection state={state} derived={derived} klass={klass} pack={null} /> : null}
 
         {showRacialCantrips && race ? (
-          <StepPanel title={`${race.name} choices`}>
+          <StepPanel title={t("{race} choices", { race: contentName("species", race.name, locale) })}>
             <RacialCantripPicker race={race} cantrips={state.racialCantrips} onChange={state.setRacialCantrips} />
           </StepPanel>
         ) : null}
@@ -439,14 +443,14 @@ function LevelUpSheetForm({
             data-level-up-elsewhere=""
             className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-100"
           >
-            <h2 className="font-medium">Also still to choose, in the whole build</h2>
+            <h2 className="font-medium">{t("Also still to choose, in the whole build")}</h2>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {elsewhere.map((pick) => (
                 <li key={pick.target}>{pick.message}</li>
               ))}
             </ul>
             <Link href={wholeBuildHref} className="mt-1 inline-flex min-h-10 items-center text-amber-300 underline underline-offset-2">
-              Edit the whole build to choose {elsewhere.length === 1 ? "it" : "them"}
+              {tp("Edit the whole build to choose it", "Edit the whole build to choose them", { count: elsewhere.length })}
             </Link>
           </section>
         ) : null}
@@ -467,17 +471,17 @@ function LevelUpSheetForm({
             data-level-up-save=""
             className={cn(ui.btnPrimary, "min-w-0 flex-1 sm:flex-none", saveBlocked && "opacity-60")}
           >
-            {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null} Take level {nextLevel}
+            {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null} {t("Take level {level}", { level: nextLevel })}
           </button>
           <Link href={wholeBuildHref} data-level-up-whole="" className={cn(ui.btnSecondary, "min-w-0 flex-1 sm:flex-none")}>
-            Edit the whole build
+            {t("Edit the whole build")}
           </Link>
           <Link href={cancelHref} className="inline-flex min-h-10 items-center px-2 text-xs text-stone-400 hover:text-amber-200">
-            Not now
+            {t("Not now")}
           </Link>
           {firstOwed ? (
             <p id={`${rootId}-blocker`} className="basis-full text-xs text-stone-400">
-              {who} takes the level once this is chosen: {firstOwed.message}
+              {t("{who} takes the level once this is chosen: {message}", { who, message: firstOwed.message })}
             </p>
           ) : null}
         </div>

@@ -97,6 +97,17 @@ export function findShapeForm(term: string): BeastForm | null {
   return findNamed(SHAPE_FORMS, term, (form) => [form.name]);
 }
 
+// The swimming and climbing speeds of the form a sheet wears (SRD 5.1, Wild
+// Shape: "Your game statistics are replaced by the statistics of the
+// beast"; Polymorph the same). The board's walking traits and the
+// underwater swing read a swimming speed from features and worn items, so a
+// druid as a crocodile paddled at double cost and bit at disadvantage in
+// the water it lives in.
+export function formSpeeds(wildShape: { form: string } | null | undefined): { swim: boolean; climb: boolean } {
+  const form = wildShape ? findShapeForm(wildShape.form) : null;
+  return { swim: Boolean(form?.speeds.swim), climb: Boolean(form?.speeds.climb) };
+}
+
 // The forms whose name holds a word a refused name was, for the refusal.
 export function beastFormsHolding(term: string, forms: BeastForm[] = BEAST_FORMS): BeastForm[] {
   return namesHolding(forms, term, (form) => [form.name]);

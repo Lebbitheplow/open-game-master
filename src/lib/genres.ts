@@ -1,3 +1,4 @@
+import type { Locale } from "@/lib/messages-logic";
 import type { Genre } from "@/lib/schemas/game-settings";
 import type { Climate } from "@/lib/srd/weather";
 
@@ -25,6 +26,9 @@ export type GenrePreset = {
   // Hints the story-setup pass can lean on. Read through nameRegisterHint.
   nameHints: string;
   defaultTheme: string;
+  // The theme line a French-reading creator seeds (genrePresetFor); the
+  // prompt-facing fields above stay English.
+  defaultThemeFr?: string;
   // The weather table the sky rolls from (src/lib/srd/weather.ts).
   climate: Climate;
 };
@@ -53,6 +57,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
     raceHint: "Any SRD race fits this world.",
     nameHints: "Evocative medieval-fantasy names (Thornhollow, the Gilded Reach).",
     defaultTheme: "A storied realm of kingdoms, wild frontiers, and buried ruins",
+    defaultThemeFr: "Un royaume chargé d'histoire, des frontières sauvages et des ruines enfouies",
   },
   {
     id: "dark_fantasy",
@@ -68,6 +73,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
     raceHint: "Any SRD race fits this world, worn down by it.",
     nameHints: "Bleak, heavy names (Mourngate, the Ashen Fen).",
     defaultTheme: "A blighted land under a dying sun where old powers stir",
+    defaultThemeFr: "Une terre ravagée sous un soleil mourant où d'anciens pouvoirs s'éveillent",
   },
   {
     id: "mystery",
@@ -84,6 +90,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
       "Everyone in this world is human; put their profession, bearing, and secrets in the personality brief instead of a fantasy species.",
     nameHints: "Grounded town-and-manor names (Harlowe House, Wickfield).",
     defaultTheme: "A tangled web of secrets in a town where everyone has something to hide",
+    defaultThemeFr: "Une toile d'intrigues dans une bourgade où chacun a quelque chose à cacher",
   },
   {
     id: "horror",
@@ -100,6 +107,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
       "Everyone in this world is human; whatever is not human is a monster, not a companion.",
     nameHints: "Wrong-feeling names (Hollow Vale, the Chapel of Quiet).",
     defaultTheme: "An isolated place where something ancient and hungry has woken",
+    defaultThemeFr: "Un lieu isolé où quelque chose d'ancien et d'affamé s'est réveillé",
   },
   {
     id: "cyberpunk",
@@ -116,6 +124,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
       "Everyone in this world is human; put the chrome, augments, and street identity in the personality brief instead of a fantasy species.",
     nameHints: "Corporate and street names (Kiroshi Spire, the Sump, NCPD grid 7).",
     defaultTheme: "A rain-slick megacity where corporations own everything but the shadows",
+    defaultThemeFr: "Une mégapole battue par la pluie où les corporations possèdent tout, sauf les ombres",
   },
   {
     id: "steampunk",
@@ -131,6 +140,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
     raceHint: "Any SRD race fits this world; gnomes and dwarves run the workshops.",
     nameHints: "Victorian-industrial names (Cogsworth Yards, the Aetherium Exchange).",
     defaultTheme: "A smoke-wreathed empire of invention on the brink of a power struggle",
+    defaultThemeFr: "Un empire enfumé d'inventions, au bord de la lutte pour le pouvoir",
   },
   {
     id: "post_apocalyptic",
@@ -147,6 +157,7 @@ export const GENRE_PRESETS: GenrePreset[] = [
       "People here are human survivors, or mutants (use half_orc for a mutant); describe the mutation in the personality brief.",
     nameHints: "Salvaged names (the Glasslands, Depot 9, New Haven).",
     defaultTheme: "A shattered world generations after the Fall, where ruins hold both treasure and death",
+    defaultThemeFr: "Un monde brisé, des générations après la Chute, où les ruines recèlent aussi bien des trésors que la mort",
   },
   {
     id: "custom",
@@ -166,4 +177,16 @@ export const GENRE_PRESETS: GenrePreset[] = [
 
 export function genrePreset(id: string): GenrePreset {
   return GENRE_PRESETS.find((preset) => preset.id === id) ?? GENRE_PRESETS[0];
+}
+
+// The preset a reader sees: the theme line in their language (the names and
+// blurbs live in the dictionaries, creator.genre.*). The AI-facing fields
+// stay the English ones; only what is shown or seeded into a new campaign
+// turns with the creator's locale.
+export function genrePresetFor(id: string, locale: Locale = "en"): GenrePreset {
+  const preset = genrePreset(id);
+  if (locale !== "fr" || !preset.defaultThemeFr) {
+    return preset;
+  }
+  return { ...preset, defaultTheme: preset.defaultThemeFr };
 }

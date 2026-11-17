@@ -6,6 +6,7 @@ import { PersonaLines, PersonalityFields } from "@/app/characters/builder/Person
 import { EMPTY_PERSONA, personaOrNothing, personaSuggestionsFor } from "@/lib/backgrounds/persona-logic";
 import type { CharacterSheet, Persona } from "@/lib/schemas/sheet";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { useT } from "@/lib/locale";
 import { KitButton } from "./PanelKit";
 
 // The character's trait, ideal, bond and flaw on the sheet in play. The
@@ -14,6 +15,7 @@ import { KitButton } from "./PanelKit";
 // character is grows with the story). The GM reads them every turn
 // (src/lib/dm/prompt.ts describeSheet).
 export function SheetPersonality({ sheet, mine }: { sheet: CharacterSheet; mine: boolean }) {
+  const t = useT();
   const [draft, setDraft] = useState<Persona | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export function SheetPersonality({ sheet, mine }: { sheet: CharacterSheet; mine:
   }
   if (!mine) {
     return (
-      <SheetBlock className="mt-4" title="Personality">
+      <SheetBlock className="mt-4" title={t("Personality")}>
         <PersonaLines persona={given} />
       </SheetBlock>
     );
@@ -42,39 +44,39 @@ export function SheetPersonality({ sheet, mine }: { sheet: CharacterSheet; mine:
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? "Could not save the personality.");
+        setError(data.error ?? t("Could not save the personality."));
         return;
       }
       setDraft(null);
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server."));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <SheetBlock className="mt-4" title="Personality">
+    <SheetBlock className="mt-4" title={t("Personality")}>
       {draft === null ? (
         <div className="space-y-2">
           {given ? (
             <PersonaLines persona={given} />
           ) : (
             <p className="text-xs text-stone-400">
-              A trait, an ideal, a bond and a flaw: four short lines the GM plays your hero by.
+              {t("A trait, an ideal, a bond and a flaw: four short lines the GM plays your hero by.")}
             </p>
           )}
-          <KitButton onClick={() => setDraft(given ?? EMPTY_PERSONA)}>{given ? "Change personality" : "Add a personality"}</KitButton>
+          <KitButton onClick={() => setDraft(given ?? EMPTY_PERSONA)}>{given ? t("Change personality") : t("Add a personality")}</KitButton>
         </div>
       ) : (
         <div className="space-y-3">
           <PersonalityFields value={draft} onChange={setDraft} suggestions={personaSuggestionsFor({ id: sheet.background })} />
           <div className="flex flex-wrap justify-end gap-2">
             <KitButton onClick={() => setDraft(null)} disabled={saving}>
-              Cancel
+              {t("Cancel")}
             </KitButton>
             <KitButton onClick={() => void save(draft)} disabled={saving} busy={saving} className="border-amber-500/50 text-amber-100">
-              Save personality
+              {t("Save personality")}
             </KitButton>
           </div>
           {error ? (

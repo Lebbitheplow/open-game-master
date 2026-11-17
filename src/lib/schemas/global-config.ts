@@ -2,6 +2,7 @@ import { z } from "zod";
 import { HARNESS_EFFORTS } from "@/lib/harness/types";
 import { CHECKPOINT_PRESET, isComfyPreset } from "@/lib/image-models/catalog";
 import { REROLL_LOW_DEFAULT } from "@/lib/srd/ability-rerolls";
+import { TABLE_LANGUAGES } from "@/lib/schemas/game-settings-options";
 
 // App-wide settings editable from /admin, stored as one JSON blob under
 // app_settings.key = 'global_config'. Every string field treats "" as "no
@@ -18,6 +19,10 @@ export const globalConfigSchema = z.object({
   // Shown by client apps in their server picker and on the login screen.
   // Blank = the product name.
   serverName: z.string().trim().max(100).default(""),
+  // The language this server's tables play in: new campaigns start in it,
+  // and anything but English switches the GM's memory search to a
+  // multilingual embedding model (src/lib/language/server-language.ts).
+  serverLanguage: z.enum(TABLE_LANGUAGES).default("english"),
   // Days between a player asking to delete their account and the purge job
   // erasing it (src/lib/account-deletion.ts). Signing in before the due
   // date lets them keep the account. 0 erases at the moment of the request.
@@ -191,7 +196,7 @@ export const globalConfigSchema = z.object({
   // the program uses the sign-in it already has on this machine.
   harness: z
     .object({
-      id: z.enum(["", "claude", "codex", "opencode", "grok"]).default(""),
+      id: z.enum(["", "claude", "codex", "opencode", "grok", "pi"]).default(""),
       // Blank = find it (PATH, the login shell's PATH, the usual install
       // folders). Set when it lives somewhere unusual.
       binaryPath: z.string().trim().max(500).default(""),

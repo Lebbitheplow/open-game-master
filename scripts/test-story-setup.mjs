@@ -9,7 +9,12 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
-import { storySetupWillRun, STORY_SETUP_WARNING, STORY_SETUP_WARNING_COMING } from "../src/lib/dm/story-setup-logic.ts";
+const { storySetupWillRun, storySetupWarning, storySetupWarningComing } = await import(
+  "../src/lib/dm/story-setup-logic.ts"
+);
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The warnings' words come from the dictionaries; this suite reads the English ones.
+const en = (key, vars) => translate("en", key, vars);
 
 const { test, finish } = suite("test-story-setup");
 
@@ -21,7 +26,7 @@ await test("The warning is for a one-time pass still to run, at a table the AI n
   assert.equal(storySetupWillRun({ ...base, aiStorySetup: false }), false);
   assert.equal(storySetupWillRun({ ...base, outlineWritten: true }), false, "the pass already ran");
   assert.equal(storySetupWillRun({ ...base, status: "active" }), false, "an import after the start");
-  for (const text of [STORY_SETUP_WARNING, STORY_SETUP_WARNING_COMING]) {
+  for (const text of [storySetupWarning(en), storySetupWarningComing(en)]) {
     assert.match(text, /Turn it off/);
     assert.match(text, /the AI still narrates/);
     assert.ok(!text.includes("—"), "no em dash");

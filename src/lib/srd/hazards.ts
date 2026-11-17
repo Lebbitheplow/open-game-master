@@ -93,3 +93,30 @@ export function extremeHeatSave(hour: number): { ability: "con"; dc: number; onF
   const h = Math.max(1, Math.round(Number(hour) || 1));
   return { ability: "con", dc: 5 + (h - 1), onFail: "one level of exhaustion" };
 }
+
+// The hours of extreme heat a character has already endured in a row, for
+// a stretch of `hours` more that ends at `now` (clock minutes). The last
+// stretch goes on when it ended less than an hour before this one began; a
+// break of an hour or more out of the heat starts the DC at 5 again. Each
+// call or travel leg once started at hour 1, so a desert crossed in two
+// 6-hour legs saved at DC 5 to 10 twice instead of DC 5 to 16.
+export function heatHoursSoFar(last: { hours: number; until: number } | undefined, now: number, hours: number): number {
+  if (!last) {
+    return 0;
+  }
+  const began = now - Math.max(0, hours) * 60;
+  return last.until > began - 60 ? last.hours : 0;
+}
+
+// --- Frigid water (the weather rules beside extreme cold): "A creature can
+// be immersed in frigid water for a number of minutes equal to its
+// Constitution score before suffering any ill effects. Each additional
+// minute spent in frigid water requires the creature to succeed on a DC 10
+// Constitution saving throw or gain one level of exhaustion." The saves for
+// `minutes` in the water, by the minute each falls on; none within the
+// score. ---
+export function frigidWaterSaves(conScore: number, minutes: number): Array<{ hour: number; dc: number }> {
+  const free = Math.max(0, Math.floor(Number(conScore) || 0));
+  const total = Math.max(0, Math.floor(Number(minutes) || 0));
+  return Array.from({ length: Math.max(0, total - free) }, (_, index) => ({ hour: free + index + 1, dc: 10 }));
+}

@@ -20,7 +20,7 @@ import { spellNamesOf, type SpellFacts } from "@/lib/srd/spell-facts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { COPPER_PER_GOLD, purseCopper } from "@/lib/srd/currency";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
@@ -239,11 +239,14 @@ const CLASS_FOCUS: Record<string, string[]> = {
   bard: ["instrument"],
   artificer: ["tools"],
 };
+// The SRD classes that cast spells (or have a subclass that does) and name
+// no focus: a component pouch is theirs (focusProblem).
+const POUCH_ONLY = new Set(["ranger", "fighter", "rogue", "monk", "barbarian"]);
 
 // A material with no price needs a component pouch or the caster's focus.
 // The priced parts are the materialPlan's to find; an item's own spell (a
 // scroll, a wand) never asks (cast-guard.ts castFromItem).
-export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment"> & Partial<Pick<CharacterSheet, "features" | "feats">>, facts: SpellFacts | null): ToolError | null {
+export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment"> & Partial<Pick<CharacterSheet, "features" | "feats" | "spellcasting">>, facts: SpellFacts | null): ToolError | null {
   if (!facts?.material || materialComponents(facts).length) {
     return null;
   }
@@ -271,7 +274,14 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
       ? null
       : { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name}'s focus is their kit and mask (${genre.feature}; a herbalism kit, a healer's kit or the beaked mask on the sheet) or a component pouch, and they carry neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
   }
-  const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());
+  // The class the spell is cast as, where an entry per class lists it: a
+  // focus serves its own class's spells (SRD 5.1, Druid: "a druidic focus as
+  // a spellcasting focus for your druid spells"). Judged by every class on
+  // the sheet, a ranger and druid's druidic focus stood in for a ranger
+  // spell (audit 2026-11-15, S19). A spell no entry lists (a domain's) is
+  // judged by them all.
+  const owners = (sheet.spellcasting?.casters ?? []).filter((caster) => findNamed([...(caster.known ?? []), ...(caster.prepared ?? []), ...(caster.cantrips ?? []), ...(caster.spellbook ?? [])], facts.name, (name) => [name]));
+  const classIds = (owners.length ? owners.map((caster) => caster.classId) : [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)]).map((id) => (id ?? "").trim().toLowerCase());
   const kinds = [...new Set(classIds.flatMap((id) => CLASS_FOCUS[id] ?? []))];
   // A horror caster's own focus (src/lib/srd/genre-gh-horror-focus.ts): the
   // exorcist's holy symbol or ritual kit, the occultist's grimoire, the
@@ -286,8 +296,17 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
       return { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name} needs a component pouch or ${horror.map((rule) => `${rule.label} (${rule.feature})`).join(" or ")} to cast it, and carries neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
     }
   }
-  // A caster whose class names no focus (a ranger, a fighter's Eldritch
-  // Knight reads an arcane one) may use any.
+  // SRD 5.1 names a focus for the classes above and no other: a ranger casts
+  // a material with no price from a component pouch alone, and so does a
+  // fighter's or rogue's casting subclass, whose text names none either. Any
+  // focus for them is the 2024 rule; the engine allowed it (audit
+  // 2026-11-15, S15). A class from outside the SRD (a workshop class) keeps
+  // any focus: its own text is not read here.
+  const pouchOnly = classIds.find((id) => POUCH_ONLY.has(id));
+  if (!kinds.length && pouchOnly) {
+    const who = pouchOnly === "ranger" ? "a ranger needs a component pouch; the SRD ranger has no spellcasting focus" : `a ${pouchOnly} who casts spells needs a component pouch; the class has no spellcasting focus`;
+    return { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${who}, and ${sheet.name} carries none. Add one to the sheet. Nothing was spent.`, refused: "rules" };
+  }
   const allowed = kinds.length ? kinds : Object.keys(FOCI);
   if (sheet.equipment.some((item) => allowed.some((kind) => hasItemTag(item, FOCI[kind])))) {
     return null;

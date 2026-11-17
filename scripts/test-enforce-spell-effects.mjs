@@ -378,19 +378,21 @@ await test("Shield is +5 AC until the start of the caster's next turn", async ()
 
 // ---- Mage Armor ----
 
-await test("Mage Armor makes an unarmored AC 13 + Dexterity, and does nothing over armor", async () => {
+// SRD 5.1: "You touch a willing creature who isn't wearing armor": one in
+// armor is refused before the slot is spent (audit 1116, Y12).
+await test("Mage Armor makes an unarmored AC 13 + Dexterity, and is refused over armor", async () => {
   const { world, sheets: [mage, tank] } = await party(
     wizard(5, { acOverride: false }),
     { ...FIGHTER, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }] },
   );
   assert.deepEqual([world.sheet(mage.id).ac, world.sheet(tank.id).ac], [10 + abilityMod(14), 16]);
-  for (const target of [mage, tank]) {
-    const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Mage Armor", level: 1, targetCharacterIds: [target.id] });
-    assert.equal(cast.ok, true, cast.error);
-  }
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Mage Armor", level: 1, targetCharacterIds: [mage.id] });
+  assert.equal(cast.ok, true, cast.error);
+  const armored = await world.invoke("cast_buff", { characterId: mage.id, spell: "Mage Armor", level: 1, targetCharacterIds: [tank.id] });
+  assert.equal(armored.refused, "rules");
   assert.equal(world.sheet(mage.id).ac, 13 + abilityMod(14));
   assert.equal(world.sheet(tank.id).ac, 16, "chain mail is chain mail");
-  assert.equal(world.sheet(mage.id).spellcasting.slots["1"].used, 2);
+  assert.equal(world.sheet(mage.id).spellcasting.slots["1"].used, 1);
   assert.equal(world.sheet(mage.id).concentratingOn ?? null, null, "Mage Armor takes no concentration");
 });
 

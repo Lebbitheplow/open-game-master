@@ -57,6 +57,123 @@ function footToClear(frame: HTMLElement | null): number {
   return Math.max(0, frame.getBoundingClientRect().bottom - foot.getBoundingClientRect().top - FOOT_LAP);
 }
 
+// How much of the board shows above the Hand, said on the stage for its
+// stylesheet (world.css, data-foot-band). The Hand is as tall as its cards
+// and the board as tall as the window leaves it, so on a laptop the strip
+// above the cards can be lower than what stands in it: under BAND_CLOSE the
+// camera's buttons have no room to stand in a column under the turn's own
+// plate, nor End turn over them in a row, and stood on the plate or were cut
+// by the board's top edge; under BAND_TIGHT the order's plates lie under
+// the Hand's heading.
+const BAND_CLOSE = 236;
+const BAND_TIGHT = 96;
+// The Hand keeps to the share of the board the camera already counts on
+// (FOOT_SHARE): nothing held it there, and on a laptop a picked card's aim
+// panel covered the board to its top edge (issue 992). The share is said on
+// the stage (--hand-share), where the stylesheet caps the aim panel to it
+// and scrolls the rest. Under SHARE_SHORT the full panel cannot fit, so the
+// stylesheet lays it out in fewer rows (data-hand-share) and the cards at
+// rest slide under the frame's lower edge by what the Hand is over
+// (--hand-tuck), never so far that a card's name goes under it. A board
+// with room for the whole Hand is left as it was.
+const SHARE_SHORT = 304;
+// Room kept under the lowest name.
+const NAME_CLEAR = 4;
+// The fan's cards lean about a point this far under their top (hand.css).
+const FAN_PIVOT = 470;
+
+// How far down the fan the lowest card name ends: by the layout, with each
+// card's own lean and droop (HandCardFace.tsx), and not by the cards' boxes,
+// which are still rising while they are dealt. A legendary card says its cost
+// and what is left at its foot (fight-bench-2 holds them in view), so it
+// counts to its foot and a fan that holds one keeps it whole.
+function nameLine(fan: HTMLElement): number {
+  let line = 0;
+  for (const name of fan.querySelectorAll<HTMLElement>(".hand-name")) {
+    const card = name.closest<HTMLElement>(".hand-card");
+    const slot = card?.closest<HTMLElement>(".hand-slot");
+    if (!card || !slot) continue;
+    let end = name.offsetHeight;
+    for (let at: HTMLElement | null = name; at && at !== card; at = at.offsetParent as HTMLElement | null) end += at.offsetTop;
+    if (card.dataset.cost === "legendary") end = card.offsetHeight;
+    const lean = (Math.abs(parseFloat(slot.style.getPropertyValue("--rot")) || 0) * Math.PI) / 180;
+    const droop = parseFloat(slot.style.getPropertyValue("--ty")) || 0;
+    line = Math.max(line, end + droop + (FAN_PIVOT - end) * (1 - Math.cos(lean)) + (card.offsetWidth / 2) * Math.sin(lean));
+  }
+  return parseFloat(getComputedStyle(fan).paddingTop) + line + NAME_CLEAR;
+}
+
+function clearHandMarks(stage: HTMLElement): void {
+  for (const mark of ["data-foot-band", "data-hand-share", "data-hand-tuck"]) stage.removeAttribute(mark);
+  for (const value of ["--hand-share", "--hand-tuck", "--turn-hud-room"]) stage.style.removeProperty(value);
+}
+
+function markFootBand(frame: HTMLElement): void {
+  const stage = frame.closest<HTMLElement>(STAGE_SELECTOR);
+  if (!stage) return;
+  const foot = footOf(frame);
+  if (!foot?.offsetHeight) {
+    clearHandMarks(stage);
+    return;
+  }
+  const share = Math.round(frame.clientHeight * FOOT_SHARE);
+  const short = share < SHARE_SHORT;
+  stage.style.setProperty("--hand-share", `${share}px`);
+  stage.toggleAttribute("data-hand-share", short);
+  // The Hand as it would stand untucked, against its share. The tuck in
+  // force lowers it only while the fan is shown: a picked card folds the
+  // fan away behind the aim panel.
+  const fan = foot.querySelector<HTMLElement>(".hand-fan");
+  const shown = fan?.offsetHeight ? fan : null;
+  const whole = foot.offsetHeight + (shown ? parseFloat(stage.style.getPropertyValue("--hand-tuck")) || 0 : 0);
+  const tuck = short && shown ? Math.round(Math.max(0, Math.min(whole - share, shown.offsetHeight - nameLine(shown)))) : 0;
+  if (tuck) stage.style.setProperty("--hand-tuck", `${tuck}px`);
+  else stage.style.removeProperty("--hand-tuck");
+  stage.toggleAttribute("data-hand-tuck", tuck > 0);
+  // From the Hand's foot, which does not move, so the strip is right before
+  // the cards have come down by a change in the tuck.
+  const band = foot.getBoundingClientRect().bottom - frame.getBoundingClientRect().top - (whole - tuck);
+  if (band < BAND_CLOSE) stage.setAttribute("data-foot-band", band < BAND_TIGHT ? "tight" : "close");
+  else stage.removeAttribute("data-foot-band");
+  const room = band < BAND_TIGHT ? roomBesideTurnHud(frame) : null;
+  if (room === null) stage.style.removeProperty("--turn-hud-room");
+  else stage.style.setProperty("--turn-hud-room", `${room}px`);
+}
+
+// Under BAND_TIGHT the strip is about one row tall, and the turn's own
+// heading and plate (BoardChrome.tsx TurnHud) stand at its right: the
+// camera's row lay over the plate and End turn over the heading (a painted
+// appearance's taller header leaves a 1366x768 window 59px of strip). The
+// row moves left of whichever of them shares its height, where it fits clear
+// of the round's line, and stays where it was where it does not (a narrow
+// board, the order's plates drawn). On your own turn the heading gives way
+// in that band (world.css), so the row has only the plate to clear.
+const TURN_HUD_SELECTOR = ".board-turn-hud";
+const ROW_GAP = 8;
+
+function roomBesideTurnHud(frame: HTMLElement): number | null {
+  const hud = frame.querySelector<HTMLElement>(TURN_HUD_SELECTOR);
+  const row = frame.querySelector<HTMLElement>(".board-corner");
+  if (!hud?.offsetWidth || !row) return null;
+  const parts = [...row.children].filter((child): child is HTMLElement => child instanceof HTMLElement && child.offsetWidth > 0);
+  if (!parts.length) return null;
+  const boxes = parts.map((part) => part.getBoundingClientRect());
+  const top = Math.min(...boxes.map((box) => box.top));
+  const bottom = Math.max(...boxes.map((box) => box.bottom));
+  const need = boxes.reduce((sum, box) => sum + box.width, 0) + ROW_GAP * (boxes.length - 1);
+  const frameBox = frame.getBoundingClientRect();
+  // The row's height does not change with where it stands across.
+  const lefts = [...hud.children]
+    .map((child) => child.getBoundingClientRect())
+    .filter((box) => box.width > 0 && box.bottom > top && box.top < bottom)
+    .map((box) => box.left);
+  if (!lefts.length) return null;
+  const room = frameBox.right - Math.min(...lefts) + ROW_GAP;
+  const order = frame.querySelector<HTMLElement>("[data-tour='battle-initiative']");
+  const left = order?.offsetWidth ? order.getBoundingClientRect().right + ROW_GAP : frameBox.left + ROW_GAP;
+  return frameBox.right - room - need >= left ? Math.ceil(room) : null;
+}
+
 function cornerToClear(frame: HTMLElement | null): { width: number; height: number } | null {
   const corner = frame?.querySelector<HTMLElement>(CLEAR_SELECTOR);
   if (!corner || !corner.offsetWidth) return null;
@@ -346,7 +463,26 @@ export function useBoardCamera(
         observer.observe(corner);
       }
     };
+    // The Hand folds, deals and gains a reaction's row without the frame
+    // changing size, and can come to the stage after the board has.
+    const watchFoot = () => {
+      const foot = footOf(frameEl);
+      if (foot && !watched.has(foot)) {
+        watched.add(foot);
+        observer.observe(foot);
+      }
+      // The turn's heading changes width with whose turn it is, and the row
+      // with Undo move, which comes after a walk.
+      for (const part of frameEl.querySelectorAll(`${TURN_HUD_SELECTOR}, .board-endturn`)) {
+        if (!watched.has(part)) {
+          watched.add(part);
+          observer.observe(part);
+        }
+      }
+      markFootBand(frameEl);
+    };
     const observer = new ResizeObserver(() => {
+      watchFoot();
       if (!enabledRef.current) return;
       const width = frameEl.clientWidth;
       if (!width) {
@@ -373,12 +509,15 @@ export function useBoardCamera(
     });
     observer.observe(frameEl);
     watchCorner();
+    watchFoot();
     // The order's strip mounts once the order is rolled, after the frame.
     const mounted = new MutationObserver(watchCorner);
     mounted.observe(frameEl, { childList: true });
     return () => {
       observer.disconnect();
       mounted.disconnect();
+      const stage = frameEl.closest<HTMLElement>(STAGE_SELECTOR);
+      if (stage) clearHandMarks(stage);
     };
   }, [frameEl, fit, options.enabled]);
 

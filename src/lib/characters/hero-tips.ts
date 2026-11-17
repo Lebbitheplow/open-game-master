@@ -5,18 +5,29 @@
 // resource table for a limited use, computeSheetDerived for the skills, the
 // spell DC and the scores. Nothing is invented: a character with no spell
 // gets no spell tip, and the reveal line says only what the sheet holds.
-// Pure and database-free; scripts/test-hero-tips.mjs drives it.
+// The sentences are the reader's (t-first with the enT default, like the
+// Hand's own cards), the skill's and the ability's names following the
+// locale through skillLabel and the sheet's own keys. Pure and
+// database-free; scripts/test-hero-tips.mjs drives it.
 import { carriedWeapons, deriveHand, FRESH_TURN, SAVE_LABEL, type HandCard, type SpellFact } from "@/lib/battlemap/hand";
 import type { CharacterSheet, CreateSheetInput } from "@/lib/schemas/sheet";
-import { computeSheetDerived, SRD_SKILLS, formatModifier } from "@/lib/srd";
-import { populateResources, resourceDef } from "@/lib/srd/class-resources";
+import { computeSheetDerived, skillLabel, SRD_SKILLS, formatModifier } from "@/lib/srd";
+import { populateResources, rechargeOf, resourceDef } from "@/lib/srd/class-resources";
 import { ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { weaponAttackProfile } from "@/lib/dm/attack-logic";
 import { textKey } from "@/lib/language/text-logic";
+import { translate, type Locale } from "@/lib/messages-logic";
 import { ABILITIES, type Ability } from "@/lib/schemas/abilities";
 import type { IconRef } from "@/lib/icons";
 import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
+import { pluralOf } from "@/lib/messages-logic";
+
+// The sentences the tips read in, English unless a caller passes the
+// reader's own (the t-first idiom with the enT default).
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // The library row the hero page reads: the sheet as saved, with its level.
 export type LibraryHero = {
@@ -102,7 +113,7 @@ export function freshPlaySheet(hero: LibraryHero): CharacterSheet {
     spellcasting: sheet.spellcasting,
     conditions: [],
     conditionMeta: {},
-    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }),
+    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }, proficiencyBonusOf({ ...sheet, level })),
     wildShape: null,
     pets: [],
     exhaustion: 0,
@@ -121,12 +132,27 @@ export function freshPlaySheet(hero: LibraryHero): CharacterSheet {
 
 const ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
 
-function restLine(recharge: "short" | "long"): string {
-  return recharge === "short" ? "back after a short rest" : "back after a long rest";
+// The save's abbreviation in the reader's language (the French SRD's FOR,
+// SAG…): the card carries the English three-letter code, the keys carry the
+// words.
+const SAVE_ABBR_KEY: Record<string, string> = {
+  STR: "STR",
+  DEX: "DEX",
+  CON: "CON",
+  INT: "INT",
+  WIS: "WIS",
+  CHA: "CHA",
+};
+
+function restLine(recharge: "short" | "long", t: T = enT): string {
+  return t(recharge === "short" ? "back after a short rest" : "back after a long rest");
 }
 
-function usesLine(count: number, recharge: "short" | "long"): string {
-  return `${count} ${count === 1 ? "use" : "uses"}, ${restLine(recharge)}`;
+function usesLine(count: number, recharge: "short" | "long", t: T = enT): string {
+  const tp = pluralOf(t);
+  return recharge === "short"
+    ? tp("{count} use, back after a short rest", "{count} uses, back after a short rest", { count })
+    : tp("{count} use, back after a long rest", "{count} uses, back after a long rest", { count });
 }
 
 // "1d8+3 slashing" reads as "1d8+3"; the damage type stays on the sheet.
@@ -176,8 +202,7 @@ function averageOf(expression: string | null): number {
   return total;
 }
 
-function attackTip(card: HandCard, sheet: CharacterSheet): HeroTip {
-  const verb = card.melee ? "Swing" : "Shoot";
+function attackTip(card: HandCard, sheet: CharacterSheet, t: T = enT): HeroTip {
   // Sneak Attack is the limit worth knowing beside a swing, when the attack
   // engine says this weapon can carry it (a finesse or ranged weapon).
   const riders = combatRiders(sheet);
@@ -189,11 +214,11 @@ function attackTip(card: HandCard, sheet: CharacterSheet): HeroTip {
       .sneakEligible;
   return {
     kind: "attack",
-    text: `${verb} your ${card.name}: ${card.roll || `${formatModifier(card.toHit ?? 0)} to hit`}, ${damageOf(card)}`,
-    note:
-      sneak
-        ? `Sneak Attack: +${riders.sneakAttackDice}d6 once a turn, when you have advantage or an ally is beside the target`
-        : "",
+    text: t("{lead}: {detail}", {
+      lead: t(card.melee ? "Swing your {name}" : "Shoot your {name}", { name: card.name }),
+      detail: `${card.roll || t("{bonus} to hit", { bonus: formatModifier(card.toHit ?? 0) })}, ${damageOf(card)}`,
+    }),
+    note: sneak ? t("Sneak Attack: +{dice}d6 once a turn, when you have advantage or an ally is beside the target", { dice: riders.sneakAttackDice }) : "",
     icon: card.icon,
   };
 }
@@ -212,29 +237,42 @@ function bestSpell(cards: HandCard[]): HandCard | null {
 }
 
 // What the spell does, in the card's own numbers: "heals 1d4+3", "+5 to
-// hit, 1d10", "DEX save DC 13, 1d8", or "3d4+3, it always hits".
-function spellEffect(card: HandCard): string {
+// hit, 1d10", "DEX save DC 13, 1d8", or "3d4+3, it always hits". The dice
+// are the card's own and stay as the engine wrote them.
+function spellEffect(card: HandCard, t: T = enT): string {
   if (card.heals) return card.dice;
-  if (card.save) return card.damage ? `${SAVE_LABEL[card.save.ability] ?? card.save.ability} save DC ${card.save.dc}, ${card.damage}` : card.dice;
-  if (card.toHit !== null) return [`${formatModifier(card.toHit)} to hit`, card.damage].filter(Boolean).join(", ");
-  return card.damage ? `${card.damage}, it always hits` : "";
+  if (card.save) {
+    const code = SAVE_LABEL[card.save.ability] ?? card.save.ability;
+    const save = SAVE_ABBR_KEY[code] ? t(SAVE_ABBR_KEY[code]) : code;
+    return card.damage ? t("{save} save DC {dc}, {damage}", { save, dc: card.save.dc, damage: card.damage }) : card.dice;
+  }
+  if (card.toHit !== null) return [t("{bonus} to hit", { bonus: formatModifier(card.toHit) }), card.damage].filter(Boolean).join(", ");
+  return card.damage ? t("{damage}, it always hits", { damage: card.damage }) : "";
 }
 
-function spellTip(card: HandCard, sheet: CharacterSheet): HeroTip {
+// The slot's level as words: the ordinal where the language counts with one
+// ("1st-level slot"), the level itself where it counts plainly ("emplacement
+// de niveau 1").
+function slotLevelWord(level: number, locale: Locale): string {
+  return locale === "fr" ? String(level) : (ORDINAL[level] ?? `level ${level}`);
+}
+
+function spellTip(card: HandCard, sheet: CharacterSheet, t: T = enT, locale: Locale = "en"): HeroTip {
   const slotLevel = card.intent.card === "spell" ? card.intent.slotLevel : null;
-  const how = card.cost === "bonus" ? " as a bonus action" : "";
-  const what = spellEffect(card);
+  const how = card.cost === "bonus" ? t(" as a bonus action") : "";
+  const what = spellEffect(card, t);
   let note = "";
   if (slotLevel) {
     const casting = sheet.spellcasting;
     const pact = casting?.pact && casting.pact.level === slotLevel && !casting.slots[String(slotLevel)];
     const count = pact ? casting!.pact!.max : casting?.slots[String(slotLevel)]?.max ?? 0;
-    const kind = pact ? "pact slot" : `${ORDINAL[slotLevel] ?? `level ${slotLevel}`}-level slot`;
-    note = `Uses a ${kind}: you have ${count}, ${restLine(pact ? "short" : "long")}`;
+    const kind = pact ? t("pact slot") : t("{level}-level slot", { level: slotLevelWord(slotLevel, locale) });
+    note = t("Uses a {kind}: you have {count}, {rest}", { kind, count, rest: restLine(pact ? "short" : "long", t) });
   } else if (slotLevel === null) {
-    note = "A cantrip: no slot, cast it as often as you like";
+    note = t("A cantrip: no slot, cast it as often as you like");
   }
-  return { kind: "spell", text: `Cast ${card.name}${how}${what ? `: ${what}` : ""}`, note, icon: cardIcon(card) };
+  const cast = `${t("Cast {name}", { name: card.name, context: "tips.spell.cast" })}${how}`;
+  return { kind: "spell", text: what ? t("{cast}: {detail}", { cast, detail: what }) : cast, note, icon: cardIcon(card) };
 }
 
 // A limited-use feature from the resource table (Second Wind, Rage, Bardic
@@ -245,19 +283,25 @@ function bestFeature(cards: HandCard[], sheet: CharacterSheet): { card: HandCard
     const def = resourceDef(card.intent.resourceId);
     const state = sheet.resources[card.intent.resourceId];
     if (!def || !state || state.max <= 0) continue;
-    return { card, uses: state.max, recharge: def.recharge };
+    return { card, uses: state.max, recharge: rechargeOf(def, sheet) };
   }
   return null;
 }
 
-function featureTip(found: { card: HandCard; uses: number; recharge: "short" | "long" }): HeroTip {
+function featureTip(found: { card: HandCard; uses: number; recharge: "short" | "long" }, t: T = enT): HeroTip {
   const { card } = found;
-  const how = card.cost === "bonus" ? " as a bonus action" : card.cost === "reaction" ? " as a reaction" : "";
-  const what = card.dice ? `: ${card.dice}` : "";
-  return { kind: "feature", text: `Use ${card.name}${how}${what}`, note: usesLine(found.uses, found.recharge), icon: card.icon };
+  const how = card.cost === "bonus" ? t(" as a bonus action") : card.cost === "reaction" ? t(" as a reaction") : "";
+  const use = `${t("Use {name}", { name: card.name, context: "tips.feature.use" })}${how}`;
+  return {
+    kind: "feature",
+    text: card.dice ? t("{use}: {detail}", { use, detail: card.dice }) : use,
+    note: usesLine(found.uses, found.recharge, t),
+    icon: card.icon,
+  };
 }
 
-// What each skill is for at the table, in a few words.
+// What each skill is for at the table, in a few words — the words live in
+// the dictionary (tips.skill.use.*), keyed here by the skill's id.
 type SkillId =
   | "acrobatics" | "animal_handling" | "arcana" | "athletics" | "deception" | "history" | "insight" | "intimidation" | "investigation"
   | "medicine" | "nature" | "perception" | "performance" | "persuasion" | "religion" | "sleight_of_hand" | "stealth" | "survival";
@@ -283,20 +327,25 @@ const SKILL_USES: Record<SkillId, string> = {
   survival: "track your quarry",
 };
 
-// The trained skills, best first; the SRD's order breaks a tie.
-function bestSkills(sheet: CharacterSheet): Array<{ id: string; name: string; bonus: number }> {
+// The trained skills, best first; the SRD's order breaks a tie. The name
+// reads in the locale (skillLabel), so a French reader sees « Athlétisme ».
+function bestSkills(sheet: CharacterSheet, locale: Locale = "en"): Array<{ id: string; name: string; bonus: number }> {
   const derived = computeSheetDerived(sheet);
   const trained = new Set([...sheet.proficiencies.skills, ...(sheet.proficiencies.expertise ?? [])]);
   return SRD_SKILLS.filter((skill) => trained.has(skill.id))
-    .map((skill) => ({ id: skill.id, name: skill.name, bonus: derived.skills[skill.id] ?? 0 }))
+    .map((skill) => ({ id: skill.id, name: skillLabel(skill.id, locale), bonus: derived.skills[skill.id] ?? 0 }))
     .sort((a, b) => b.bonus - a.bonus);
 }
 
-function skillTip(skill: { id: string; name: string; bonus: number }): HeroTip {
+function skillTip(skill: { id: string; name: string; bonus: number }, t: T = enT, locale: Locale = "en"): HeroTip {
   const use = SKILL_USES[skill.id as SkillId] as string | undefined;
+  const name = skillLabel(skill.id, locale);
+  const bonus = formatModifier(skill.bonus);
   return {
     kind: "skill",
-    text: `You're good at ${skill.name} (${formatModifier(skill.bonus)})${use ? `: ${use}` : ""}`,
+    text: use
+      ? t("You're good at {name} ({bonus}): {use}", { name, bonus, use: t(use) })
+      : t("You're good at {name} ({bonus})", { name, bonus }),
     note: "",
     icon: { kind: "glyph", key: `skill-${skill.id.replace(/_/g, "-")}` },
   };
@@ -305,52 +354,30 @@ function skillTip(skill: { id: string; name: string; bonus: number }): HeroTip {
 // Three things to try on a first turn, from what the character can really
 // do: the best weapon, a spell, a limited-use feature, and the best trained
 // skill, in that order, the first three that exist. A character with fewer
-// fills the rest from its next-best skills.
-export function threeThingsToTry(sheet: CharacterSheet, spells: Record<string, SpellFact> = {}): HeroTip[] {
+// fills the rest from its next-best skills. The sentences read in `t` (the
+// reader's language, English by default) and the skill's names follow
+// `locale`.
+export function threeThingsToTry(sheet: CharacterSheet, spells: Record<string, SpellFact> = {}, t: T = enT, locale: Locale = "en"): HeroTip[] {
   const cards = deriveHand(sheet, FRESH_TURN, { spells });
   const tips: HeroTip[] = [];
   const attack = bestAttack(cards, sheet);
   const spell = bestSpell(cards);
   const feature = bestFeature(cards, sheet);
-  const skills = bestSkills(sheet);
+  const skills = bestSkills(sheet, locale);
   // A caster whose cantrip out-hits the weapon they carry leads with the spell.
   if (spell && attack && sheet.spellcasting && (computeSheetDerived(sheet).spellAttack ?? -99) > (attack.toHit ?? 0)) {
-    tips.push(spellTip(spell, sheet), attackTip(attack, sheet));
+    tips.push(spellTip(spell, sheet, t, locale), attackTip(attack, sheet, t));
   } else {
-    if (attack) tips.push(attackTip(attack, sheet));
-    if (spell) tips.push(spellTip(spell, sheet));
+    if (attack) tips.push(attackTip(attack, sheet, t));
+    if (spell) tips.push(spellTip(spell, sheet, t, locale));
   }
-  if (feature && tips.length < 3) tips.push(featureTip(feature));
+  if (feature && tips.length < 3) tips.push(featureTip(feature, t));
   for (const skill of skills) {
     if (tips.length >= 3) break;
-    tips.push(skillTip(skill));
+    tips.push(skillTip(skill, t, locale));
   }
   return tips;
 }
-
-const ABILITY_NAMES: Record<Ability, string> = {
-  str: "Strength",
-  dex: "Dexterity",
-  con: "Constitution",
-  int: "Intelligence",
-  wis: "Wisdom",
-  cha: "Charisma",
-};
-
-const ABILITY_LINES: Record<Ability, string> = {
-  str: "the strongest arm in the room",
-  dex: "quick hands and quicker feet",
-  con: "hard to put down",
-  int: "a mind like a trap",
-  wis: "sees what others miss",
-  cha: "a voice people follow",
-};
-
-const CASTER_LINES: Record<"int" | "wis" | "cha", string> = {
-  int: "the sharpest mind at the table",
-  wis: "the steadiest will at the table",
-  cha: "the boldest voice at the table",
-};
 
 // One line that notices the build (F26). Three rules, tried in order, each
 // true of the sheet as saved:
@@ -359,20 +386,24 @@ const CASTER_LINES: Record<"int" | "wis" | "cha", string> = {
 //      the casting ability.
 //   3. Otherwise the highest score, the SRD's order breaking a tie:
 //      "Dexterity 17, quick hands and quicker feet".
-export function revealLine(sheet: CharacterSheet): string {
+export function revealLine(sheet: CharacterSheet, t: T = enT): string {
   if (sheet.ac >= 18) {
-    return `AC ${sheet.ac} at level ${sheet.level}, the party's wall`;
+    return t("AC {ac} at level {level}, the party's wall", { ac: sheet.ac, level: sheet.level });
   }
   const derived = computeSheetDerived(sheet);
   const casting = sheet.spellcasting;
   if (casting && derived.spellSaveDc !== null && derived.spellSaveDc >= 13) {
-    return `Spell DC ${derived.spellSaveDc}, ${CASTER_LINES[casting.ability]}`;
+    return t("Spell DC {dc}, {line}", { dc: derived.spellSaveDc, line: ({ "int": t("the sharpest mind at the table"), "wis": t("the steadiest will at the table"), "cha": t("the boldest voice at the table") } as Record<string, string>)[casting.ability] ?? String(casting.ability) });
   }
   let top: Ability = "str";
   for (const ability of ABILITIES) {
     if (sheet.abilities[ability] > sheet.abilities[top]) top = ability;
   }
-  return `${ABILITY_NAMES[top]} ${sheet.abilities[top]}, ${ABILITY_LINES[top]}`;
+  return t("{name} {score}, {line}", {
+    name: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[top] ?? String(top),
+    score: sheet.abilities[top],
+    line: ({ "wall": t("AC {ac} at level {level}, the party's wall"), "spellDc": t("Spell DC {dc}, {line}"), "ability": t("{name} {score}, {line}"), "str": t("the strongest arm in the room"), "dex": t("quick hands and quicker feet"), "con": t("hard to put down"), "int": t("a mind like a trap"), "wis": t("sees what others miss"), "cha": t("a voice people follow") } as Record<string, string>)[top] ?? String(top),
+  });
 }
 
 // Where the builder sends a character after its first save: the hero page,

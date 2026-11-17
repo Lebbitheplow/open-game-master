@@ -10,6 +10,8 @@
 //
 // Pure, for scripts/test-enforce-ui-dm.mjs.
 
+import { enemyHpCap } from "@/lib/dm/monster-abilities";
+
 type EnemyLike = {
   displayName: string;
   status: string;
@@ -33,8 +35,12 @@ export function enemyHpCorrection(enemy: EnemyLike, wanted: number): EnemyHpCorr
       error: `Hit points are corrected to 1 or more; dropping ${enemy.displayName} to 0 goes through Damage an enemy, so the engine decides what the fall means.`,
     };
   }
-  if (wanted > enemy.maxHp) {
-    return { error: `${enemy.displayName} has ${enemy.maxHp} hit points at most.` };
+  // Exhaustion 4 halves its maximum (SRD 5.1), as every other door that
+  // raises a creature's hit points reads it (monster-abilities.ts enemyHpCap):
+  // the stored maximum let a tired ogre be set back to its whole 59.
+  const most = enemyHpCap(enemy);
+  if (wanted > most) {
+    return { error: `${enemy.displayName} has ${most} hit points at most.` };
   }
   // A creature knocked out at 0 wakes when it regains a hit point (SRD 5.1,
   // Knocking a Creature Out: it is unconscious and stable; healing ends it).

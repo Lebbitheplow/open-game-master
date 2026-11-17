@@ -17,17 +17,23 @@ import { SpellFields } from "@/app/workshop/homebrew/SpellFields";
 import { draftFindings, draftFromCatalog, type HomebrewDraft } from "@/app/workshop/homebrew/draft";
 import { KIND_SINGULAR } from "@/app/workshop/homebrew/types";
 import { HazardFields } from "@/app/workshop/homebrew/HazardFields";
-import { homebrewAvailability } from "@/lib/homebrew/availability";
+import { homebrewAvailabilityT } from "@/lib/homebrew/availability";
 import { subclassLevelFor } from "@/lib/srd/features";
 import { CopySource } from "@/app/workshop/homebrew/CopySource";
 import dynamic from "next/dynamic";
 import { HOMEBREW_DESC_MAX } from "@/lib/schemas/homebrew";
+import { useT } from "@/lib/locale";
 
 // The class form and the catalog it borrows from load when a class is
 // opened, not with the workshop (scripts/bundle-budget.json).
 const ClassFields = dynamic(() => import("@/app/workshop/homebrew/ClassFields").then((module) => module.ClassFields), {
-  loading: () => <p className="text-xs text-stone-500">Loading the class form...</p>,
+  loading: () => <LoadingNote />,
 });
+
+function LoadingNote() {
+  const t = useT();
+  return <p className="text-xs text-stone-500">{t("Loading the class form...")}</p>;
+}
 
 // A spell draft that already names its classes searches that class's list
 // first; the catalogue is otherwise the whole book.
@@ -84,6 +90,7 @@ export function HomebrewEditor({
   // The author's own classes, for a subclass to sit under.
   workshopClasses?: Array<{ id: string; name: string; subclassLevel?: number }>;
 }) {
+  const t = useT();
   const findings = draftFindings(draft, variantRules, isNew ? undefined : savedName);
   const refused = findings.some((finding) => finding.level === "error");
   const setData = (data: HomebrewDraft["data"]) => onDraft({ ...draft, data });
@@ -93,7 +100,7 @@ export function HomebrewEditor({
   return (
     <div className="space-y-3">
       <div data-tour="homebrew-start">
-        <SectionHead title="Start from the books" glyph="tab-reference" />
+        <SectionHead title={t("Start from the books")} glyph="tab-reference" />
         <CatalogStart
           kind={draft.kind}
           scope={catalogScope(draft)}
@@ -103,12 +110,12 @@ export function HomebrewEditor({
 
       <CopySource kind={draft.kind} draft={draft} />
 
-      <SectionHead title={`The ${KIND_SINGULAR[draft.kind]}`} glyph={KIND_GLYPHS[draft.kind]} className="mb-0" />
+      <SectionHead title={({ "item": t("The item"), "spell": t("The spell"), "feat": t("The feat"), "background": t("The background"), "race": t("The species"), "class": t("The class"), "archetype": t("The subclass"), "hazard": t("The hazard") } as Record<string, string>)[draft.kind] ?? String(KIND_SINGULAR[draft.kind])} glyph={KIND_GLYPHS[draft.kind]} className="mb-0" />
       <TextField
-        label="Name"
+        label={t("Name")}
         value={draft.name}
         onChange={(name) => onDraft({ ...draft, name: name.slice(0, 80) })}
-        placeholder={`What this ${KIND_SINGULAR[draft.kind]} is called`}
+        placeholder={t("What this {kind} is called", { kind: ({ "item": t("item"), "spell": t("spell"), "feat": t("feat"), "background": t("background"), "race": t("species"), "class": t("class"), "archetype": t("subclass"), "hazard": t("hazard") } as Record<string, string>)[draft.kind] ?? String(KIND_SINGULAR[draft.kind]) })}
         maxLength={80}
       />
 
@@ -121,7 +128,7 @@ export function HomebrewEditor({
       ) : null}
 
       <TextArea
-        label="Description"
+        label={t("Description")}
         value={String(draft.data.desc ?? "")}
         onChange={(desc) => setData({ ...draft.data, desc })}
         maxLength={HOMEBREW_DESC_MAX}
@@ -129,11 +136,11 @@ export function HomebrewEditor({
         placeholder={
           draft.kind === "spell"
             ? "Each creature in a 15-foot cone must make a Dexterity saving throw, taking 3d6 fire damage on a failed save, or half as much on a successful one."
-            : "What it is, in the words the players will read."
+            : t("What it is, in the words the players will read.")
         }
         hint={
           draft.kind === "spell"
-            ? "What players read. The engine reads the damage, the save and the damage type out of it only where the block above leaves them empty; \"What the table resolves\" says which it used."
+            ? t("What players read. The engine reads the damage, the save and the damage type out of it only where the block above leaves them empty; \"What the table resolves\" says which it used.")
             : undefined
         }
       />
@@ -153,7 +160,7 @@ export function HomebrewEditor({
                       onClick={() => setReading(finding.page ?? null)}
                       className="motion-press ml-1.5 inline-flex items-center gap-0.5 text-stone-500 underline-offset-2 hover:text-amber-200 hover:underline"
                     >
-                      <BookOpen className="size-3" /> the rule
+                      <BookOpen className="size-3" /> {t("the rule")}
                     </button>
                   ) : null}
                 </span>
@@ -170,7 +177,7 @@ export function HomebrewEditor({
         // Where it is offered, said once it is kept (workshop import audit F06).
         <p className="flex items-start gap-1.5 text-xs text-stone-400" data-testid="homebrew-availability">
           <Info className="mt-0.5 size-3.5 shrink-0 text-sky-300/70" aria-hidden="true" />
-          <span>{homebrewAvailability(draft.kind, archetypeParent(draft, workshopClasses))}</span>
+          <span>{homebrewAvailabilityT(t, draft.kind, archetypeParent(draft, workshopClasses))}</span>
         </p>
       ) : null}
 
@@ -183,7 +190,7 @@ export function HomebrewEditor({
           className={ui.btnPrimary}
         >
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-          {isNew ? "Keep it" : "Save"}
+          {isNew ? t("Keep it") : t("Save", { context: "workshop.party.save" })}
         </button>
         {!isNew ? (
           <>
@@ -193,7 +200,7 @@ export function HomebrewEditor({
               onClick={onDuplicate}
               className={ui.btnSecondary}
             >
-              <Copy className="size-3.5" /> Duplicate
+              <Copy className="size-3.5" /> {t("Duplicate")}
             </button>
             <button
               type="button"
@@ -201,7 +208,7 @@ export function HomebrewEditor({
               onClick={onDelete}
               className={cn(ui.btnSmall, "ml-auto hover:border-red-500/50 hover:text-red-300")}
             >
-              <Trash2 className="size-3.5" /> Forget it
+              <Trash2 className="size-3.5" /> {t("Forget it")}
             </button>
           </>
         ) : null}

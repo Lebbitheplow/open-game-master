@@ -60,8 +60,9 @@ export type ReplaySwing = {
 
 // What one swing did in a replay: the damage that got through the defenses
 // (the concentration save is made against it), whether they stood when it
-// landed, and whether it dropped them.
-export type SwingOutcome = { landed: number; standing: boolean; dropped: boolean };
+// landed, whether it dropped them, and the temporary hit points it found
+// (Armor of Agathys answers a hit "while you have these hit points").
+export type SwingOutcome = { landed: number; standing: boolean; dropped: boolean; temp: number };
 
 const killed = (): DeathTrack => ({ ...freshDeathTrack(), failures: 3, dead: true });
 
@@ -138,8 +139,9 @@ export function replayHit<W extends { beastHp: number }>(start: Standing<W>, swi
   let dropped = false;
   const outcomes = swings.map((swing) => {
     const standing = up(state);
+    const temp = state.tempHp;
     if (!swing.hit || (standing && swing.standingHit === false)) {
-      return { landed: 0, standing, dropped: false };
+      return { landed: 0, standing, dropped: false, temp };
     }
     const asOrdinary = standing && swing.ordinary !== undefined;
     const raw = asOrdinary ? (swing.ordinary as { raw: number }).raw : swing.raw;
@@ -147,7 +149,7 @@ export function replayHit<W extends { beastHp: number }>(start: Standing<W>, swi
     const out = strike(state, raw, land, swing.crit && !asOrdinary, maxHp);
     state = out.next;
     dropped = dropped || out.dropped;
-    return { landed: out.landed, standing, dropped: out.dropped };
+    return { landed: out.landed, standing, dropped: out.dropped, temp };
   });
   return { after: state, swings: outcomes, dropped };
 }

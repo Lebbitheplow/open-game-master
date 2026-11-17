@@ -138,6 +138,13 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (maxSize) {
     rider.maxSize = maxSize;
   }
+  // The kinds the rider passes over ("a creature other than an elf or
+  // undead", a ghoul's claws): dropped here, a ghoul copied into the
+  // workshop paralyzed elves again.
+  const spares = (Array.isArray(source.spares) ? source.spares : []).map((kind) => textKey(text(kind, BLOCK_LIMITS.conditionName))).filter(Boolean).slice(0, 6);
+  if (spares.length) {
+    rider.spares = spares;
+  }
   // The lifetimes and riders the rules audit reads from a hit: an effect
   // that lasts until a long rest or for good, a drained hit point maximum,
   // being swallowed, and the clauses left to the DM, kept word for word.
@@ -168,6 +175,39 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   }
   if (source.wakesOnDamage === true) {
     rider.wakesOnDamage = true;
+  }
+  // A drained ability score (score-drain-text.ts): a shadow copied into the
+  // workshop still drains Strength.
+  const drain = (source.scoreDrain ?? null) as Raw | null;
+  const drained = drain ? ability(drain.ability) : null;
+  const drainDice = drain ? dice(drain.dice) : null;
+  if (drain && drained && drainDice && (drain.until === "short" || drain.until === "long")) {
+    rider.scoreDrain = { ability: drained, dice: drainDice, diesAtZero: drain.diesAtZero === true, until: drain.until };
+  }
+  // A disease with a daily save (an otyugh's bite, affliction-text.ts).
+  const disease = (source.disease ?? null) as Raw | null;
+  const diseaseDice = disease ? dice(disease.dice) : null;
+  if (diseaseDice) {
+    rider.disease = { dice: diseaseDice };
+  }
+  // What holds a target it restrains (a giant spider's webbing,
+  // hold-text.ts): its check and its numbers as an object.
+  const hold = (source.hold ?? null) as Raw | null;
+  const holdCheck = hold?.check && typeof hold.check === "object" ? (hold.check as Raw) : null;
+  const holdName = hold ? text(hold.name, 40).toLowerCase() : "";
+  const holdDc = holdCheck ? clamp(holdCheck.dc, 1, 30) : null;
+  if (hold && holdName && holdCheck && (holdCheck.ability === "str" || holdCheck.ability === "dex") && holdDc !== null) {
+    const ac = clamp(hold.ac, 1, 30);
+    const hp = clamp(hold.hp, 1, 500);
+    const vulnerable = text(hold.vulnerable, 120).toLowerCase();
+    const immune = text(hold.immune, 200).toLowerCase();
+    rider.hold = {
+      name: holdName,
+      check: { ability: holdCheck.ability, dc: holdDc },
+      ...(ac !== null && hp !== null ? { ac, hp } : {}),
+      ...(vulnerable ? { vulnerable } : {}),
+      ...(immune ? { immune } : {}),
+    };
   }
   const manual = (Array.isArray(source.manual) ? source.manual : [])
     .slice(0, MANUAL_CLAUSES)
@@ -352,6 +392,21 @@ export function checkSpecials(raw: unknown): Checked<MonsterAbility[]> {
     }
     if (source.endsOnDamage === true) {
       ability.endsOnDamage = true;
+    }
+    // The 24-hour immunity after a success (a dragon's Frightful Presence,
+    // save-effect.ts immuneAfter): dropped here, a dragon copied into the
+    // workshop asked the same hero the same save every round.
+    const immune = (source.immuneAfter ?? null) as Raw | null;
+    const immuneRounds = immune ? clamp(immune.rounds, 1, ROUND_CEILING) : null;
+    if (immune && immuneRounds !== null) {
+      // The kinds a shared immunity covers ("of all mummies (but not mummy lords)").
+      const kinds = (value: unknown) => (Array.isArray(value) ? value.map((kind) => text(kind, 60).toLowerCase()).filter(Boolean).slice(0, 6) : []);
+      ability.immuneAfter = {
+        rounds: immuneRounds,
+        onEnd: immune.onEnd === true,
+        ...(kinds(immune.kinds).length ? { kinds: kinds(immune.kinds) } : {}),
+        ...(kinds(immune.except).length ? { except: kinds(immune.except) } : {}),
+      };
     }
     const also = Array.isArray(source.also) ? source.also.map((name) => words(name, BLOCK_LIMITS.conditionName).toLowerCase()).filter(Boolean).slice(0, 4) : [];
     if (also.length) {

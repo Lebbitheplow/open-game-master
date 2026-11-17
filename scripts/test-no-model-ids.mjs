@@ -43,6 +43,7 @@ const PINNED = new Map([
   ["onnx/encoder_model_quantized.onnx", "the built-in Whisper's encoder file"],
   ["onnx/decoder_model_merged_quantized.onnx", "the built-in Whisper's decoder file"],
   ["Xenova/all-MiniLM-L6-v2", "the CPU embedding model retrieval runs on (src/lib/embeddings.ts)"],
+  ["Xenova/multilingual-e5-small", "the multilingual embedding model the warning tells a table in another language to set (src/lib/embedding-language-text.ts, docs/install.md)"],
 ]);
 
 // Folders whose names are all such dependencies.
@@ -55,8 +56,8 @@ const PINNED_PATHS = new Map([
 // so this list only shrinks.
 const LEFTOVERS = new Map([
   ["src/app/setup/StartHints.tsx", {
-    ids: ["qwen3.6-35b-a3b", "qwen3.6-35b-a3b-q8_0.gguf", "qwen3.6-35b", "gpt-oss-20b", "gpt-oss-20b-mxfp4.gguf"],
-    why: "the guided setup's instructions for starting a model server, which name the model to download: the recommended storyteller, and gpt-oss-20b as the 16 GB minimum (the maintainer's call, 2026-10-19, docs/text-backends.md)",
+    ids: ["qwen3.6-35b-a3b-q8_0.gguf", "qwen3.6-35b", "qwen3.6-35b-a3b", "gpt-oss-20b", "gpt-oss-20b-mxfp4.gguf"],
+    why: "the guided setup's instructions for starting a model server, which name the model to download: the recommended storyteller, and gpt-oss-20b as the 16 GB minimum (the maintainer's call, 2026-10-19, docs/text-backends.md); its heading line names the storyteller inside t() since the French interface",
   }],
 ]);
 

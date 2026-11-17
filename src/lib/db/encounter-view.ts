@@ -1,4 +1,5 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { type LastSave } from "@/lib/dm/last-save";
 import { triggerRecords } from "@/lib/dm/reaction-triggers";
 import type { TriggerRecordView } from "@/lib/srd/trigger-table";
@@ -15,6 +16,7 @@ import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
 import { answerLabel, critTurnsNormal, heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
+import { translate } from "@/lib/messages-logic";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { isRegeneratingDown } from "@/lib/dm/regeneration";
@@ -193,6 +195,11 @@ export type PublicTurn = {
   marks?: string[];
   // Flurry of Blows strikes bought and not yet made.
   flurryStrikes?: number;
+  // Slow holds the turn to an action or a bonus action and one attack, and
+  // takes the reaction (action-budget.ts slowedProblem). Without it the Hand
+  // offered a slowed fighter the bonus action and the swings the engine
+  // refused.
+  slowed?: boolean;
   dashed?: boolean;
   // How many Dashes the turn has taken, when more than one.
   dashes?: number;
@@ -267,6 +274,7 @@ function turnView(encounter: Encounter): { turn?: PublicTurn } {
       ...(budget.grantedActions ? { grantedActions: budget.grantedActions } : {}),
       ...(budget.oncePerTurn.length ? { marks: budget.oncePerTurn } : {}),
       ...(budget.flurryStrikes ? { flurryStrikes: budget.flurryStrikes } : {}),
+      ...(budget.slowed ? { slowed: true } : {}),
       ...(budget.dashed ? { dashed: true } : {}),
       ...((budget.dashes ?? 0) > 1 ? { dashes: budget.dashes } : {}),
       ...(budget.disengaged ? { disengaged: true } : {}),
@@ -383,6 +391,8 @@ export function publicEncounter(
   // met yet is neither on the map nor on the tracker.
   const hidden = new Set(options.hiddenRefIds ?? []);
   const cast = castLookup(encounter.campaignId);
+  const language = getCampaignById(encounter.campaignId)?.gameSettings.tableLanguage ?? "english";
+  const t = (key: string, vars?: Record<string, string | number>) => translate(language === "french" ? "fr" : "en", key, vars);
   // Names a condition's "until X's turn" or "from X" may show: the order as
   // this viewer sees it.
   const nameOf = namesLookup(
@@ -449,7 +459,7 @@ export function publicEncounter(
         enemy.status === "alive"
           ? Object.fromEntries(
               enemy.conditions.flatMap((name) => {
-                const line = conditionNoteLine(conditionNote(name, enemy.conditionMeta[name], nameOf, enemy.id), {
+                const line = conditionNoteLine(conditionNote(name, enemy.conditionMeta[name], nameOf, enemy.id, t), {
                   skipCounted: true,
                 });
                 return line ? [[name, line]] : [];
@@ -460,7 +470,8 @@ export function publicEncounter(
         ? {
             currentHp: enemy.currentHp,
             maxHp: enemy.maxHp,
-            ac: enemy.ac,
+            // What its attackers roll against, as GAME STATE says it.
+            ac: enemyAcWithEffects(encounter.campaignId, enemy),
             initiative: enemy.initiative,
             ...legendaryView(encounter, enemy),
             actions: enemyActionsView(encounter, enemy, movementView(encounter, enemy, board), lair ?? undefined),

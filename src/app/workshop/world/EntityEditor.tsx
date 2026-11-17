@@ -13,9 +13,11 @@ import type { WorldEntity } from "@/lib/db/world-forge";
 import { changesSince, describeValue, editableOf, same, type Editable, type EntryConflict } from "@/lib/worldforge/entry-merge";
 import { ROW_TEXT, olderText } from "@/lib/worldforge/account";
 import { useUnsavedDraft } from "@/app/workshop/unsaved";
+import { localeTag } from "@/lib/messages-logic";
 import type { EntryInput, UpdateOutcome } from "./useWorld";
 import { typeOf } from "./world-ui";
 import { KeptValueText } from "./ImportKept";
+import { useLocale, useT } from "@/lib/locale";
 
 // Editing one entry: what its own record holds (name, its line or its text,
 // aliases, tags, picture) and what WorldForge adds (type, folder, canon, the
@@ -24,7 +26,7 @@ import { KeptValueText } from "./ImportKept";
 // editor opened with, so another author's change elsewhere survives and a
 // clash on the same field is shown here with the draft kept.
 
-const CANON_WORDS: Record<Canon, string> = { canon: "Canon", draft: "Draft", alternate: "Alternate", retired: "Retired" };
+const CANON_KEYS: Record<Canon, string> = { canon: "Canon", draft: "Draft", alternate: "Alternate", retired: "Retired" };
 const LINE_LIMIT = { npc: 200, faction: 400 } as const;
 // What each record's own row holds (src/lib/worldforge/account.ts).
 const TEXT_LIMIT = ROW_TEXT;
@@ -89,6 +91,8 @@ export function EntityEditor({
 }) {
   const [drafting, setDrafting] = useState(false);
   const [draftHint, setDraftHint] = useState("");
+  const t = useT();
+  const locale = useLocale();
   const type = typeOf(doc, entity);
   const [opened, setOpened] = useState(() => editableOf(doc, entity));
   const [draft, setDraft] = useState<Draft>(() => draftOf(opened));
@@ -186,7 +190,7 @@ export function EntityEditor({
   function takeImported(key: string, label: string, theirs: unknown) {
     fill(key, theirs);
     setFilled((current) => [...current, key]);
-    setFilledSaid(`${label}: the import's version is in the form. Save to use it.`);
+    setFilledSaid(t("{label}: the import's version is in the form. Save to use it.", { label }));
     // The button pressed is gone: focus goes to the next one, or the notice.
     requestAnimationFrame(() => (keptRef.current?.querySelector("button") ?? keptRef.current)?.focus({ preventScroll: true }));
   }
@@ -201,20 +205,20 @@ export function EntityEditor({
     >
       {conflicts.length ? (
         <div className="flex flex-col gap-2 rounded-lg border border-amber-700/50 bg-amber-950/30 p-3 text-sm text-amber-100" role="alert" data-testid="entry-conflicts" ref={clashRef} tabIndex={-1}>
-          <p>Another author saved this entry while you had it open. Their other changes are now in the form. These fields clash with yours:</p>
+          <p>{t("Another author saved this entry while you had it open. Their other changes are now in the form. These fields clash with yours:")}</p>
           <ul className="flex flex-col gap-1.5">
             {conflicts.map((conflict) => (
               <li key={conflict.key} className="flex flex-wrap items-center gap-2">
                 <span>
-                  <strong>{conflict.label}</strong>: theirs is {describeValue(conflict.theirs)}.
+                  <strong>{conflict.label}</strong> {t(": theirs is {theirs}.", { theirs: describeValue(conflict.theirs) })}
                 </span>
                 <KitButton tone="small" onClick={() => takeTheirs(conflict)}>
-                  Use theirs
+                  {t("Use theirs")}
                 </KitButton>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-amber-200/80">Save keeps yours for any field you leave as it is.</p>
+          <p className="text-xs text-amber-200/80">{t("Save keeps yours for any field you leave as it is.")}</p>
         </div>
       ) : null}
       {kept.length || filled.length ? (
@@ -232,89 +236,91 @@ export function EntityEditor({
               {kept.map((item) => (
                 <li key={item.key} className="flex flex-col gap-1.5">
                   <span>
-                    <strong>{item.label}</strong>: this campaign&apos;s version was kept when it was brought in again; the import&apos;s version differs:
+                    <strong>{item.label}</strong> {t(": this campaign's version was kept when it was brought in again; the import's version differs:")}
                   </span>
                   <KeptValueText value={item.theirs} said={item.shown?.theirs} />
                   <span>
-                    <KitButton tone="small" onClick={() => takeImported(item.key, item.label, item.theirs)} aria-label={`Use the import's version of the ${item.label}`}>
-                      Use the import&apos;s version
+                    <KitButton tone="small" onClick={() => takeImported(item.key, item.label, item.theirs)} aria-label={t("Use the import's version of the {label}", { label: item.label })}>
+                      {t("Use the import's version")}
                     </KitButton>
                   </span>
                 </li>
               ))}
             </ul>
           ) : null}
-          {filled.length ? <p className="text-xs text-amber-200/80">The import&apos;s version is in the form. Save to use it; this campaign&apos;s version stays on the entry&apos;s page, ready to restore.</p> : null}
+          {filled.length ? <p className="text-xs text-amber-200/80">{t("The import's version is in the form. Save to use it; this campaign's version stays on the entry's page, ready to restore.")}</p> : null}
         </div>
       ) : null}
       <div className="grid gap-3 @lg:grid-cols-2">
-        {field("Name", <input className={ui.input} maxLength={80} value={draft.name} onChange={(event) => set("name", event.target.value)} required />)}
+        {field(t("Name"), <input className={ui.input} maxLength={80} value={draft.name} onChange={(event) => set("name", event.target.value)} required />)}
         {field(
-          "Type",
+          t("Type name"),
           <Select
-            label="Type"
+            label={t("Type name")}
             value={draft.typeId}
             onChange={(value) => set("typeId", value)}
             options={sameShelf.map((entry) => ({ value: entry.id, label: entry.name }))}
           />,
-          sameShelf.length > 1 ? undefined : "Other types live on other shelves: this one stays where it is.",
+          sameShelf.length > 1 ? undefined : t("Other types live on other shelves: this one stays where it is."),
         )}
         {field(
-          "Folder",
+          t("Folders"),
           <Select
-            label="Folder"
+            label={t("Folders")}
             value={draft.folderId || "__none"}
             onChange={(value) => set("folderId", value === "__none" ? "" : value)}
-            options={[{ value: "__none", label: "No folder" }, ...folderTree(doc.folders).map(({ folder, depth }) => ({ value: folder.id, label: `${" ".repeat(depth)}${folder.name}` }))]}
+            options={[{ value: "__none", label: t("No folder") }, ...folderTree(doc.folders).map(({ folder, depth }) => ({ value: folder.id, label: `${"  ".repeat(depth)}${folder.name}` }))]}
           />,
         )}
         {field(
-          "Canon",
-          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Canon">
+          t("Canon"),
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("Canon")}>
             {CANON_STATES.map((state) => (
               <button key={state} type="button" role="radio" aria-checked={draft.canon === state} onClick={() => set("canon", state)} className={cn(ui.btnSmall, "px-2 py-1 text-xs", draft.canon === state && "border-amber-500/60 bg-amber-400/10 text-amber-100")}>
-                {CANON_WORDS[state]}
+                {t(CANON_KEYS[state])}
               </button>
             ))}
           </div>,
           draft.canon === "canon"
                 ? undefined
                 : entity.shelf === "lore"
-                  ? "Not canon yet: kept from what players read until it is."
-                  : "Not canon yet: the AI GM treats it as uncertain.",
+                  ? t("Not canon yet: kept from what players read until it is.")
+                  : t("Not canon yet: the AI GM treats it as uncertain."),
         )}
       </div>
 
       {shortRow
         ? field(
-            entity.shelf === "npc" ? "In one line (what the table sees in the Cast)" : "In one line (the faction's blurb)",
+            entity.shelf === "npc" ? t("In one line (what the table sees in the Cast)") : t("In one line (the faction's blurb)"),
             <input className={ui.input} maxLength={LINE_LIMIT[entity.shelf as "npc" | "faction"]} value={draft.tagline} onChange={(event) => set("tagline", event.target.value)} />,
           )
         : field(
-            entity.shelf === "location" ? "On arrival (what the GM reads when the party arrives)" : "The entry",
+            entity.shelf === "location" ? t("On arrival (what the GM reads when the party arrives)") : t("The entry"),
             <textarea className={cn(ui.input, "min-h-28")} maxLength={TEXT_LIMIT[entity.shelf as "location" | "lore"]} value={draft.text} onChange={(event) => set("text", event.target.value)} />,
-            `${draft.text.length.toLocaleString("en")} of ${TEXT_LIMIT[entity.shelf as "location" | "lore"].toLocaleString("en")} characters${entity.shelf === "lore" ? ". Players read this one when the entry is theirs to read." : ""}`,
+            // The digit grouping reads the reader's locale (localeTag, the
+            // toLocaleDateString rule).
+            t("{at} of {total} characters{tail}", { at: draft.text.length.toLocaleString(localeTag(locale)), total: TEXT_LIMIT[entity.shelf as "location" | "lore"].toLocaleString(localeTag(locale)), tail: entity.shelf === "lore" ? t(". Players read this one when the entry is theirs to read.") : "" }),
           )}
       {entity.shelf !== "lore"
         ? field(
-            entity.shelf === "location" ? "In full (the wiki's article)" : "Article",
+            entity.shelf === "location" ? t("In full (the wiki's article)") : t("Article"),
             <textarea className={cn(ui.input, "min-h-32")} maxLength={LIMITS.article} value={draft.article} onChange={(event) => set("article", event.target.value)} />,
             entity.shelf === "location"
-              ? "The wiki's full account, shown above the arrival text. Leave it empty and the wiki shows the arrival text alone."
-              : "The wiki's full account. Names of other entries link themselves.",
+              ? t("The wiki's full account, shown above the arrival text. Leave it empty and the wiki shows the arrival text alone.")
+              : t("The wiki's full account. Names of other entries link themselves."),
           )
         : null}
       {older ? (
         <div className="flex flex-col gap-2 rounded-lg border border-amber-700/50 bg-amber-950/30 p-3 text-sm text-amber-100" data-testid="older-text">
-          <span className="eyebrow text-[10px] text-amber-300">An older text from an import</span>
-          <p className="text-xs text-amber-200/80">Kept beside the entry because the two say different things. Players never see it. Nothing is lost until you remove one.</p>
+          <span className="eyebrow text-[10px] text-amber-300">{t("An older text from an import")}</span>
+          <p className="text-xs text-amber-200/80">{t("An older text from an import is kept beside this entry, because the two say different things. Players never see it. Open Edit to choose between them.")}</p>
           <p className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md bg-stone-950/40 p-2 text-xs leading-5 text-stone-300">{older}</p>
           <span className="flex flex-wrap gap-2">
             <KitButton tone="small" onClick={() => setDraft((current) => ({ ...current, text: current.article.slice(0, TEXT_LIMIT.lore), article: current.text }))}>
-              Use this one instead
+              {t("Use this one instead")}
             </KitButton>
             <KitButton tone="small" onClick={() => set("article", "")}>
-              Remove it
+              {t("Remove it")}
             </KitButton>
           </span>
         </div>
@@ -323,16 +329,16 @@ export function EntityEditor({
       {onDraft ? (
         <div className="flex flex-wrap items-center gap-2 motion-pop">
           <KitButton tone="small" busy={drafting} disabled={drafting} onClick={draftIt} data-tour="world-draft">
-            {drafting ? null : <Sparkles className="size-3.5" />} {drafting ? "Drafting" : "Draft it"}
+            {drafting ? null : <Sparkles className="size-3.5" />} {drafting ? t("Drafting") : t("Draft it")}
           </KitButton>
-          <input className={cn(ui.input, "max-w-sm flex-1 py-1 text-xs")} placeholder="Steer the draft (optional)" aria-label="Steer the draft" maxLength={300} value={draftHint} onChange={(event) => setDraftHint(event.target.value)} />
-          <span className="text-[11px] text-stone-500">Fills the text above; nothing is kept until Save.</span>
+          <input className={cn(ui.input, "max-w-sm flex-1 py-1 text-xs")} placeholder={t("Steer it (optional): grim, low magic, say")} aria-label={t("Steer the outline")} maxLength={300} value={draftHint} onChange={(event) => setDraftHint(event.target.value)} />
+          <span className="text-[11px] text-stone-500">{t("Fills the text above; nothing is kept until Save.")}</span>
         </div>
       ) : null}
 
       <div className="grid gap-3 @lg:grid-cols-2">
-        {field("Also called", <input className={ui.input} placeholder="another name, a title" value={draft.aliases} onChange={(event) => set("aliases", event.target.value)} />, "Separated by commas.")}
-        {field("Tags", <input className={ui.input} placeholder="harbour, smugglers" value={draft.tags} onChange={(event) => set("tags", event.target.value)} />, "Separated by commas.")}
+        {field(t("Also called"), <input className={ui.input} placeholder={t("another name, a title")} value={draft.aliases} onChange={(event) => set("aliases", event.target.value)} />, t("Separated by commas."))}
+        {field(t("Tags"), <input className={ui.input} placeholder={t("harbour, smugglers")} value={draft.tags} onChange={(event) => set("tags", event.target.value)} />, t("Separated by commas."))}
       </div>
 
       {chosenType.fields.length ? (
@@ -343,28 +349,28 @@ export function EntityEditor({
         </div>
       ) : null}
 
-      {field("Picture", <LoreImageField imagePath={draft.portrait} onChange={(path) => set("portrait", path)} />)}
+      {field(t("Picture"), <LoreImageField imagePath={draft.portrait} onChange={(path) => set("portrait", path)} />)}
 
       <div className="grid gap-3 @lg:grid-cols-2">
         {field(
-          "Hidden truth (kept from players)",
+          t("Hidden truth (kept from players)"),
           <textarea className={cn(ui.input, "min-h-20 border-red-900/50")} maxLength={4_000} value={draft.hiddenTruth} onChange={(event) => set("hiddenTruth", event.target.value)} />,
-          "True in the world, unknown to it. The GM may let it surface; players never read it here.",
+          t("True in the world, unknown to it. The GM may let it surface; players never read it here."),
         )}
         {field(
-          "Author's notes",
+          t("Author's notes"),
           <textarea className={cn(ui.input, "min-h-20")} maxLength={4_000} value={draft.notes} onChange={(event) => set("notes", event.target.value)} />,
-          "Out of the world: inspirations, reminders.",
+          t("Out of the world: inspirations, reminders."),
         )}
       </div>
 
       {error && !rebased ? <PanelError>{error}</PanelError> : null}
       <div className="flex justify-end gap-2">
         <KitButton tone="small" onClick={onCancel}>
-          <X className="size-3.5" /> Cancel
+          <X className="size-3.5" /> {t("Cancel")}
         </KitButton>
         <KitButton tone="primary" type="submit" busy={saving} disabled={saving || !draft.name.trim()}>
-          {saving ? null : <Check className="size-3.5" />} Save
+          {saving ? null : <Check className="size-3.5" />} {t("Save", { context: "workshop.party.save" })}
         </KitButton>
       </div>
     </form>
@@ -372,17 +378,18 @@ export function EntityEditor({
 }
 
 function FieldInput({ def, doc, value, onChange }: { def: FieldDef; doc: WorldDoc; value: FieldValue | undefined; onChange: (value: FieldValue | undefined) => void }) {
+  const t = useT();
   const label = (
     <span className="eyebrow flex items-center gap-1 text-[10px] text-stone-500">
       {def.name}
-      {def.authorOnly ? <Lock className="size-3 text-red-400" aria-label="Author only" /> : null}
+      {def.authorOnly ? <Lock className="size-3 text-red-400" aria-label={t("Author only")} /> : null}
     </span>
   );
   if (def.kind === "select") {
     return (
       <div className="flex flex-col gap-1">
         {label}
-        <Select label={def.name} value={(value as string) ?? ""} placeholder="Not set" onChange={(next) => onChange(next === "__none" ? undefined : next)} options={[{ value: "__none", label: "Not set" }, ...def.options.map((option) => ({ value: option, label: option }))]} />
+        <Select label={def.name} value={(value as string) ?? ""} placeholder={t("Not set", { context: "workshop.world.editor.notSet" })} onChange={(next) => onChange(next === "__none" ? undefined : next)} options={[{ value: "__none", label: t("Not set", { context: "workshop.world.editor.notSet" }) }, ...def.options.map((option) => ({ value: option, label: option }))]} />
       </div>
     );
   }
@@ -402,7 +409,7 @@ function FieldInput({ def, doc, value, onChange }: { def: FieldDef; doc: WorldDo
           {doc.calendars.length ? (
             <Select label={`${def.name}, calendar`} size="sm" className="flex-1" value={year.calendarId} onChange={(calendarId) => onChange({ ...year, calendarId })} options={doc.calendars.map((calendar) => ({ value: calendar.id, label: calendar.abbrev || calendar.name, hint: calendar.name }))} />
           ) : (
-            <span className="self-center text-[11px] text-stone-500">Add a calendar in Timeline to name the reckoning.</span>
+            <span className="self-center text-[11px] text-stone-500">{t("Add a calendar in Timeline to name the reckoning.")}</span>
           )}
         </div>
       </div>

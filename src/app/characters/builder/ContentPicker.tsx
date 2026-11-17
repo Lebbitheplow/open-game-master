@@ -6,6 +6,8 @@ import { cn } from "@/lib/cn";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { describeContentEntry, spellSummary } from "@/lib/help";
 import { useContentSearch, type PickerEntry } from "./useContentSearch";
+import { useLocale, useT, useTp } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 
 export type { PickerEntry } from "./useContentSearch";
 
@@ -38,6 +40,13 @@ export default function ContentPicker({
   // be picked.
   judge?: (entry: PickerEntry) => { blocked: boolean; note: string } | null;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
+  // A feat's row name reads in the reader's language (the official maps; a
+  // homebrew row stays its author's words) while the pick itself stores the
+  // row's own English name.
+  const rowName = (entry: PickerEntry) => (kind === "feats" ? contentName("feats", entry, locale) : entry.name);
   const { query, setQuery, results: found, setResults, open, setOpen, loading, unavailable, failed, unadmitted } =
     useContentSearch(kind, extraParams);
   const results = hide ? found.filter((entry) => !hide(entry)) : found;
@@ -87,13 +96,12 @@ export default function ContentPicker({
         </p>
       ) : open && !results.length && query.trim() && !loading ? (
         <p className="mt-1 rounded-lg border border-stone-800 bg-stone-950/60 px-3 py-2 text-xs text-stone-500">
-          Nothing matched &quot;{query.trim()}&quot;. Try fewer letters, or pick from the full list.
+          {t("Nothing matched “{query}”. Try fewer letters, or pick from the full list.", { query: query.trim() })}
         </p>
       ) : null}
       {unadmitted.length ? (
         <p className="mt-1 text-sm text-stone-500">
-          Your own {unadmitted.join(", ")} {unadmitted.length === 1 ? "is" : "are"} not offered at this table: whoever runs it (the owner, the
-          GM or the assistant GM) keeps a copy in their workshop to admit one.
+          {tp("Your own {list} is not offered at this table: whoever runs it (the owner, the GM or the assistant GM) keeps a copy in their workshop to admit one.", "Your own {list} are not offered at this table: whoever runs it (the owner, the GM or the assistant GM) keeps a copy in their workshop to admit one.", { count: unadmitted.length, list: unadmitted.join(", ") })}
         </p>
       ) : null}
       {open && results.length ? (
@@ -125,21 +133,21 @@ export default function ContentPicker({
                     <span
                       className={cn(entry.source === "homebrew" && "text-amber-300")}
                     >
-                      {entry.name}
+                      {rowName(entry)}
                     </span>
                   </span>
                   {verdict ? <PrerequisiteLine id={`${noteId}-${index}`} {...verdict} /> : null}
                 </span>
                 <span className="shrink-0 text-xs text-stone-500">
                   {entry.source === "homebrew"
-                    ? "homebrew"
+                    ? t("homebrew")
                     : (renderMeta?.(entry) ?? "")}
                 </span>
               </button>
               {/* The row already carries the full entry, so reading a spell
                   before adding it costs no extra request. */}
               <InfoButton
-                label={entry.name}
+                label={rowName(entry)}
                 meta={kind === "spells" ? spellSummary(entry.data) : undefined}
                 text={describeContentEntry(entry.data)}
                 reference={

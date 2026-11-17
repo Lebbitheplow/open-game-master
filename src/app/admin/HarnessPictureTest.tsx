@@ -3,6 +3,8 @@
 import { Check, ImageIcon, Loader2, Minus, Wand2, X } from "lucide-react";
 import { useState } from "react";
 import { ui } from "@/lib/ui";
+import { useT, useTp } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 
 // The agent program's picture test, painted the way the tables paint
 // (src/lib/harness/picture-test.ts): the tables' own picture door and queue,
@@ -15,24 +17,28 @@ type CampaignRow = { id: string; title: string; kind: string; backend: string; p
 type Result = { image?: { url: string }; stages?: Stage[]; campaigns?: CampaignRow[]; wouldMove?: number; error?: string };
 type Moved = { id: string; title: string; from: string; mapsTurnedOn: boolean };
 
-const STAGE_LABELS: Record<string, string> = {
+const STAGE_KEYS: Record<string, MessageKey> = {
   painted: "Painted a location map through the tables' picture queue",
   saved: "Saved where the table is sent it",
   shape: "Came back in the map's landscape shape",
 };
 const STAGE_ORDER = ["painted", "saved", "shape"];
 
-const BACKEND_NAMES: Record<string, string> = {
-  comfyui: "ComfyUI",
-  openai: "OpenAI",
+// Backend names that need the table's language; ComfyUI and OpenAI are the
+// same words everywhere.
+const BACKEND_KEYS: Record<string, MessageKey> = {
   "mflux-hs": "the FLUX worker",
   "sdnq-hs": "the FLUX worker",
   harness: "the agent",
 };
 
-function names(rows: Array<{ title: string }>): string {
+function backendName(t: (key: string) => string, backend: string): string {
+  return BACKEND_KEYS[backend] ? t(BACKEND_KEYS[backend]) : backend;
+}
+
+function names(t: (key: string, vars?: Record<string, string | number>) => string, rows: Array<{ title: string }>): string {
   const titles = rows.map((row) => row.title);
-  return titles.length > 3 ? `${titles.slice(0, 3).join(", ")} and ${titles.length - 3} more` : titles.join(", ");
+  return titles.length > 3 ? t("{list} and {count} more", { list: titles.slice(0, 3).join(", "), count: titles.length - 3 }) : titles.join(", ");
 }
 
 export function HarnessPictureTest({
@@ -52,6 +58,8 @@ export function HarnessPictureTest({
   onVerified: () => void;
   onAdopted?: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const [painting, setPainting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [adopting, setAdopting] = useState(false);
@@ -69,12 +77,12 @@ export function HarnessPictureTest({
         body: JSON.stringify({ action: "picture" }),
       });
       const data = (await response.json().catch(() => ({}))) as Result;
-      setResult(response.ok && data.image ? data : { ...data, error: data.error ?? "No picture came back." });
+      setResult(response.ok && data.image ? data : { ...data, error: data.error ?? t("No picture came back.") });
       if (response.ok && data.image) {
         onVerified();
       }
     } catch {
-      setResult({ error: "Could not reach the server." });
+      setResult({ error: t("Could not reach this server.") });
     } finally {
       setPainting(false);
     }
@@ -91,13 +99,13 @@ export function HarnessPictureTest({
       });
       const data = (await response.json().catch(() => ({}))) as { moved?: Moved[]; error?: string };
       if (!response.ok) {
-        setAdoptError(data.error ?? "Could not switch the tables over.");
+        setAdoptError(data.error ?? t("Could not switch the tables over."));
         return;
       }
       setMoved(data.moved ?? []);
       onAdopted?.();
     } catch {
-      setAdoptError("Could not reach the server.");
+      setAdoptError(t("Could not reach this server."));
     } finally {
       setAdopting(false);
     }
@@ -117,10 +125,10 @@ export function HarnessPictureTest({
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" className={ui.btnSmall} onClick={paint} disabled={!saved || painting} aria-busy={painting}>
           {painting ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
-          {picturesVerified ? "Paint another test picture" : "Paint a test picture"}
+          {picturesVerified ? t("Paint another test picture") : t("Paint a test picture")}
         </button>
         <span className="text-xs text-stone-500">
-          Paints one location map exactly the way a table asks for one, then checks which campaigns will use it. About a minute.
+          {t("Paints one location map exactly the way a table asks for one, then checks which campaigns will use it. About a minute.")}
         </span>
       </div>
 
@@ -143,7 +151,7 @@ export function HarnessPictureTest({
                 </span>
                 <span>
                   <span className={state === "bad" ? "text-red-300" : state === "ok" ? "text-stone-200" : "text-stone-500"}>
-                    {STAGE_LABELS[stage.id] ?? stage.id}
+                    {STAGE_KEYS[stage.id] ? t(STAGE_KEYS[stage.id]) : stage.id}
                   </span>
                   {stage.detail ? <span className="block text-xs text-stone-500">{stage.detail}</span> : null}
                 </span>
@@ -154,10 +162,10 @@ export function HarnessPictureTest({
       ) : null}
 
       {painting ? (
-        <div className="hx-picture breathe aspect-[3/2] bg-stone-900" aria-label="Painting" />
+        <div className="hx-picture breathe aspect-[3/2] bg-stone-900" aria-label={t("Painting")} />
       ) : result?.image ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img key={result.image.url} src={result.image.url} alt="The test map" className="hx-picture aspect-[3/2]" />
+        <img key={result.image.url} src={result.image.url} alt={t("The test map")} className="hx-picture aspect-[3/2]" />
       ) : null}
 
       {result && !passed && result.error ? (
@@ -172,40 +180,48 @@ export function HarnessPictureTest({
             <p role="status" className="flex items-start gap-1.5 text-emerald-400">
               <Check className="tick-in mt-0.5 size-4 shrink-0" />
               <span>
-                Painting for the tables now.
+                {t("It paints the way the tables ask.")}
                 {moved.length
-                  ? ` Moved ${moved.length} ${moved.length === 1 ? "campaign" : "campaigns"} off a backend that could not paint: ${names(moved)}${moved.some((row) => row.mapsTurnedOn) ? ", with their area maps switched back on" : ""}.`
+                  ? tp(" Moved {count} campaign off a backend that could not paint: {list}{maps}.", " Moved {count} campaigns off a backend that could not paint: {list}{maps}.", {
+                      count: moved.length,
+                      list: names(t, moved),
+                      maps: moved.some((row) => row.mapsTurnedOn) ? t(", with their area maps switched back on") : "",
+                    })
                   : ""}
               </span>
             </p>
           ) : !offerAdopt ? (
             <p className="text-stone-300">
-              It paints the way the tables ask.
+              {t("It paints the way the tables ask.")}
               {stranded.length
-                ? ` Continue, and ${stranded.length === 1 ? "the campaign" : `the ${stranded.length} campaigns`} on a backend that cannot paint right now (${names(stranded)}) move${stranded.length === 1 ? "s" : ""} to it too.`
-                : " Continue to use it for the tables' pictures."}
+                ? tp(" Continue, and the campaign on a backend that cannot paint right now ({list}) moves to it too.", " Continue, and the {count} campaigns on a backend that cannot paint right now ({list}) move to it too.", { count: stranded.length, list: names(t, stranded) })
+                : t(" Continue to use it for the tables' pictures.")}
             </p>
           ) : picturesForTables ? (
             <p className="text-stone-300">
-              The tables already paint with it{onAgent.length ? `: ${onAgent.length} ${onAgent.length === 1 ? "campaign" : "campaigns"}` : ""}.
+              {t("The tables already paint with it{list}.", {
+                list: onAgent.length ? tp(": {count} campaign", ": {count} campaigns", { count: onAgent.length }) : "",
+              })}
             </p>
           ) : (
             <div className="su-note space-y-2">
               <p>
-                It paints, but no table uses it yet.
+                {t("It paints, but no table uses it yet.")}
                 {stranded.length
-                  ? ` ${stranded.length} ${stranded.length === 1 ? "campaign is" : "campaigns are"} on a backend that cannot paint right now (${names(stranded)}); ${stranded.length === 1 ? "it moves" : "they move"} to the agent too.`
+                  ? tp(" {count} campaign is on a backend that cannot paint right now ({list}); it moves to the agent too.", " {count} campaigns are on a backend that cannot paint right now ({list}); they move to the agent too.", { count: stranded.length, list: names(t, stranded) })
                   : ""}
               </p>
               <button type="button" className={ui.btnSecondary} onClick={adopt} disabled={adopting} aria-busy={adopting}>
-                {adopting ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} Paint the tables&apos; pictures with it
+                {adopting ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} {t("Paint the tables' pictures with it")}
               </button>
             </div>
           )}
           {keeping.length ? (
             <p className="text-xs text-stone-500">
-              {keeping.length === 1 ? "1 campaign keeps its own working backend" : `${keeping.length} campaigns keep their own working backends`} (
-              {[...new Set(keeping.map((row) => BACKEND_NAMES[row.backend] ?? row.backend))].join(", ")}); a lead can switch in the campaign&apos;s Settings tab, under Story AI.
+              {tp("1 campaign keeps its own working backend ({list}); a lead can switch in the campaign's Settings tab, under Story AI.", "{count} campaigns keep their own working backends ({list}); a lead can switch in the campaign's Settings tab, under Story AI.", {
+                count: keeping.length,
+                list: [...new Set(keeping.map((row) => backendName(t, row.backend)))].join(", "),
+              })}
             </p>
           ) : null}
           {adoptError ? (

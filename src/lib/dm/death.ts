@@ -5,6 +5,7 @@ import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { recordSteadied, recordTrigger } from "@/lib/dm/last-save";
 import { currentActor } from "@/lib/dm/acting-party";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
+import { WOUND_CLOSURE, wearsWorkingItem } from "@/lib/srd/magic-items";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { triageWake } from "@/lib/dm/genre-a-dark-fantasy-vitals";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -82,7 +83,8 @@ function writeDeathState(
   }
 }
 
-function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
+// The death record every way a character dies writes (exhaustion-death.ts too).
+export function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
   // When, in the world's time: the window a revival spell holds to.
   noteDeathMoment(campaign.id, sheet.id, at);
   // On the fight's record too, as an enemy's death is (enemy-damage.ts), for
@@ -383,6 +385,19 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   if (instead) {
     tableNote(campaign, instead, "cue-heal");
     return instead;
+  }
+  // SRD 5.1, Periapt of Wound Closure: "you stabilize whenever you are
+  // dying at the start of your turn." The save this would have been is not
+  // rolled; the wearer waits out the stable creature's 1d4 hours.
+  if (wearsWorkingItem(sheet.equipment, sheet, WOUND_CLOSURE)) {
+    const wait = rollStableTimer(campaign, sheet);
+    writeDeathState(campaign, turnId, sheet, stableDeathTrack(), "death_state", WOUND_CLOSURE, {
+      conditions: wait.conditions,
+      conditionMeta: wait.conditionMeta,
+    });
+    const line = `${sheet.name}'s ${WOUND_CLOSURE} closes their wounds: they are stable (unconscious at 0 HP) and regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}.`;
+    tableNote(campaign, line, "cue-heal");
+    return line;
   }
   // A death save is a saving throw tied to no ability: it takes what every
   // save takes (exhaustion, Bless and Bane, a paladin's aura, a Ring of

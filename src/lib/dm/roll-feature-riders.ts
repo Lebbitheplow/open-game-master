@@ -22,7 +22,7 @@ import { heldCheckTraits, traitCheckRiders } from "@/lib/srd/check-traits";
 import { heldFeatChecks } from "@/lib/srd/feat-combat";
 import { unnamedRollKeys, type RollGap, type RollKey } from "@/lib/srd/roll-keys";
 import { lostSenses } from "@/lib/srd/sense-checks";
-import { itemCheckRiders } from "@/lib/srd/item-check-riders";
+import { itemCheckKeys, itemCheckRiders } from "@/lib/srd/item-check-riders";
 import { cursedAgainst } from "@/lib/srd/magic-items";
 import { heldSaveTraits, initiativeAdvantage, traitSaveAdvantages } from "@/lib/srd/trait-rules";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -64,8 +64,8 @@ function proficientIn(sheet: CharacterSheet, skill: string | undefined): boolean
 
 // Every key the roller's traits, feats and conditions hold, for the ask
 // below and for GAME STATE (prompt.ts rollKeyCue).
-export function heldRollKeys(sheet: CharacterSheet): Array<RollKey & { feat?: string }> {
-  return [...heldCheckTraits(sheet), ...authoredCheckTraits(sheet), ...authoredFloorKeys(sheet), ...lostSenses(sheet.conditions), ...heldFeatChecks(sheet), ...heldSaveTraits(sheet)];
+export function heldRollKeys(sheet: CharacterSheet): Array<RollKey & { feat?: string; rawCheck?: true }> {
+  return [...heldCheckTraits(sheet), ...authoredCheckTraits(sheet), ...authoredFloorKeys(sheet), ...lostSenses(sheet.conditions), ...heldFeatChecks(sheet), ...heldSaveTraits(sheet), ...itemCheckKeys(sheet.equipment)];
 }
 
 // The fields a model's request_roll leaves unnamed that a trait the roller
@@ -79,8 +79,9 @@ export function unnamedTraitFields(sheet: CharacterSheet, args: RollArgs): RollG
     return [];
   }
   const skill = rollSkill(args);
-  // The feats' riders ride skill checks only (rolls.ts featCheckRider).
-  const keys = heldRollKeys(sheet).filter((key) => key.roll === roll && (skill || !key.feat));
+  // The feats' riders ride skill checks only (rolls.ts featCheckRider); an
+  // item's raw-check key never a skill check.
+  const keys = heldRollKeys(sheet).filter((key) => key.roll === roll && (skill ? !key.rawCheck : !key.feat));
   return unnamedRollKeys(
     { roll, skill: skill?.id, ability: args.ability ?? skill?.ability, proficient: proficientIn(sheet, skill?.id), about: args.about, creature: args.creature, terrain: args.terrain, by: args.by, against: args.against, magical: args.magical, casterType: args.casterType },
     keys,
@@ -162,9 +163,11 @@ export function rollFeatureRiders(
   // Feral Instinct: advantage on initiative.
   const feral = sheet && derivationKind === "initiative" ? initiativeAdvantage(sheet) : null;
   // Magic items that ride checks (Stone of Good Luck, Cloak of Elvenkind).
+  // Initiative is a Dexterity check, which the Stone's "+1 bonus to ability
+  // checks" rides as well (SRD 5.1, Initiative).
   const itemChecks =
-    sheet && (derivationKind === "skill_check" || derivationKind === "ability_check")
-      ? itemCheckRiders(sheet.equipment, skillId)
+    sheet && (derivationKind === "skill_check" || derivationKind === "ability_check" || derivationKind === "initiative")
+      ? itemCheckRiders(sheet.equipment, skillId, derivationKind === "initiative" ? {} : { ability: derivationAbility, about: named(args.about) })
       : { bonus: 0, advantage: false, notes: [] };
   // The traits keyed to what a check is about (Favored Enemy, Natural
   // Explorer, Stonecunning, Artificer's Lore, Stone Camouflage, Supreme

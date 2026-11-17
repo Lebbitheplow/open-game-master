@@ -12,11 +12,12 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getMounts, setMount } from "@/lib/db/mounts";
+import { getSheetById } from "@/lib/db/sheets";
 import { insertRoll } from "@/lib/db/rolls";
-import { d20Expression, rollExpression } from "@/lib/dice";
+import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { speedToTiles } from "@/lib/battlemap/movement";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -27,7 +28,17 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { attackSight, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { attackContext, DODGING, mergeAdvantage, type AdvantageState } from "@/lib/dm/condition-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
-import { handleDismount } from "@/lib/dm/mount-tools";
+import { mountVitals } from "@/lib/dm/mount-link";
+import { handleDismount, mountFalls } from "@/lib/dm/mount-tools";
+import { applyPcDamage, type PcDamageInput } from "@/lib/dm/pc-damage";
+import { mountedPet } from "@/lib/dm/pet-mount";
+import { mountBlow, mountRider } from "@/lib/dm/mount-blow";
+import { blowByType, resolveOnHit } from "@/lib/dm/enemy-hit";
+import { hasTrait } from "@/lib/dm/monster-abilities";
+import { strikePet } from "@/lib/dm/pet-strike";
+import { enemyOpportunityRiders } from "@/lib/dm/opportunity-strike";
+import { effectOutcome } from "@/lib/dm/effect-tools";
+import { spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -89,10 +100,40 @@ export function mountTargetProblem(campaignId: string, rider: CharacterSheet): s
   if (!mount) {
     return `${rider.name} is not riding a mount.`;
   }
-  if (mount.ac === undefined || mount.hp === undefined) {
+  if (!mountVitals(mount)) {
     return `${mount.name} has no Armor Class or hit points on record (a mount written by hand); attack ${rider.name} instead.`;
   }
   return null;
+}
+
+// A blow to a mount that is a creature's sheet (mount-link.ts) lands on the
+// sheet, where it meets the creature's own resistances and temporary hit
+// points, and where 0 sends a summoned creature away (summon-store.ts).
+// Returns the hit points it has left (0 when it is gone), what landed, and
+// the defenses that changed it.
+export function hurtSteed(
+  campaign: Campaign,
+  turnId: string,
+  sheetId: string,
+  blow: Omit<PcDamageInput, "reason"> & { reason: string },
+): { hp: number; landed: number; resistance?: string } {
+  const steed = getSheetById(sheetId);
+  if (!steed) {
+    return { hp: 0, landed: 0 };
+  }
+  const applied = applyPcDamage(campaign, turnId, steed, blow);
+  const landed = typeof applied.damageApplied === "number" ? applied.damageApplied : "error" in applied ? 0 : Math.floor(blow.amount);
+  return { hp: getSheetById(sheetId)?.currentHp ?? 0, landed, ...(typeof applied.resistance === "string" ? { resistance: applied.resistance } : {}) };
+}
+
+// The mount went down under its rider, who jumps clear with their reaction or
+// falls prone (mount-tools.ts). A creature's sheet at 0 has already ended the
+// ride as it went (summon-store.ts removeSummon); a mount on record has not.
+export function riderOfDownedMount(input: { campaign: Campaign; turn: DmTurn; rider: CharacterSheet; mountName: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> }): ToolResult {
+  const { campaign, rider } = input;
+  return getMounts(campaign.id)[rider.id]
+    ? handleDismount(campaign, JSON.stringify({ characterId: rider.id, cause: "mount-prone" }), input.sheets, input.sheetsById, input.turn)
+    : mountFalls(campaign, rider, input.mountName, input.sheets, input.sheetsById, input.turn);
 }
 
 // The swings of an enemy's attack aimed at the rider's mount: its own AC
@@ -106,7 +147,8 @@ export function strikeMount(input: {
   encounterId: string;
   enemy: EncounterEnemy;
   rider: CharacterSheet;
-  swings: Array<{ attack: EnemyAttack; ranged: boolean } | { attack: EnemyAttack; skipped: string }>;
+  // `underwater`: made from the water at disadvantage (pet-underwater.ts).
+  swings: Array<{ attack: EnemyAttack; ranged: boolean; underwater?: string } | { attack: EnemyAttack; skipped: string }>;
   distance: number | null;
   cover: number;
   requested: AdvantageState;
@@ -115,10 +157,17 @@ export function strikeMount(input: {
 }): ToolResult {
   const { campaign, turn, enemy, rider } = input;
   const mount = getMounts(campaign.id)[rider.id];
-  if (!mount || mount.ac === undefined || mount.hp === undefined) {
+  // A ridden drake is struck as the drake, on its own record: its Armor
+  // Class, its Dodge, its immunity, its 0 (pet-mount.ts).
+  const drake = mountedPet(getSheetById(rider.id) ?? rider, mount);
+  if (drake) {
+    return strikePet({ campaign, turn, encounterId: input.encounterId, enemy, owner: rider, petName: drake.name, swings: input.swings, distance: input.distance, cover: input.cover, requested: input.requested });
+  }
+  const vitals = mount ? mountVitals(mount) : null;
+  if (!mount || !vitals) {
     return { error: mountTargetProblem(campaign.id, rider) ?? "No mount to strike.", retry: true };
   }
-  let hp = mount.hp;
+  let hp = vitals.hp;
   const dodging = rider.conditions.some((entry) => isConditionNamed(entry, MOUNT_DODGING));
   // The mount stands where its rider does: the same light and the same line.
   const sight = attackSight({
@@ -151,8 +200,20 @@ export function strikeMount(input: {
       attackerType: enemy.stats.type,
       targetSeesAttacker: sight?.targetSees !== false,
     });
-    const advantage = mergeAdvantage([...context.sources, ...light.sources]);
-    const toHit = rollExpression(d20Expression(attack.toHit, advantage));
+    // The creature's own state, as its swing at the rider reads it (Bane's
+    // d4 off, Bless's on, Vicious Mockery's one disadvantage, exhaustion,
+    // sunlight) and the effects on it: the swing at the mount read none.
+    const own = enemyOpportunityRiders(campaign.id, getEnemy(enemy.id) ?? enemy);
+    const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...light.sources,
+      ...own.sources,
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage || swing.underwater ? ["disadvantage" as const] : []),
+    ]);
+    const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
+    spendEnemyRiders(enemy, own.riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: rider.id,
@@ -165,10 +226,10 @@ export function strikeMount(input: {
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
     turn.rollIds.push(hitRoll.id);
-    const ac = mount.ac + input.cover;
+    const ac = vitals.ac + input.cover;
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= ac);
     if (!hit) {
-      rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false });
+      rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false, ...(swing.underwater ? { situation: swing.underwater } : {}) });
       continue;
     }
     const crit = toHit.crit === "nat20" || context.autoCrit;
@@ -187,17 +248,91 @@ export function strikeMount(input: {
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     turn.rollIds.push(damageRoll.id);
-    hp = Math.max(0, hp - damage.total);
-    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), damage: damage.total });
+    // Each type against the mount's own block and the water it stands in,
+    // and what the hit carries onto it (mount-blow.ts). A creature's sheet
+    // (a steed its rider called up) takes the blow as any sheet does
+    // (steedBlow): each type through its own defenses, and the hit's rider
+    // (its save, its damage, its condition) on that sheet.
+    const magical = hasTrait(enemy.stats, "magicWeapons") || Boolean(attack.magical);
+    const struck = mount.sheetId ? steedBlow({ ...input, sheetId: mount.sheetId, mountName: mount.name, attack, damage, crit }) : null;
+    const blow = struck ? null : mountBlow(campaign.id, rider.id, mount, attack, damage, crit, magical);
+    hp = struck ? struck.hp : Math.max(0, hp - (blow?.dealt ?? 0));
+    const carried = struck ? null : attack.onHit && hp > 0 ? mountRider(campaign, turn, rider, enemy, attack, attack.onHit, mount) : null;
+    hp = struck ? struck.hp : Math.max(0, hp - (carried?.dealt ?? 0));
+    const prone = struck ? struck.prone : Boolean(carried?.prone);
+    rows.push({
+      attack: attack.name,
+      rolled: toHit.total,
+      vsAc: ac,
+      hit: true,
+      ...(crit ? { crit: true } : {}),
+      ...(swing.underwater ? { situation: swing.underwater } : {}),
+      damage: struck ? struck.landed : (blow?.dealt ?? 0),
+      ...(blow?.defenses ? { defenses: blow.defenses } : struck?.resistance ? { defenses: struck.resistance } : {}),
+      ...(carried?.lines ?? struck?.lines ?? {}),
+    });
+    // Knocked prone, the mount throws its rider (SRD 5.1, Mounted Combat):
+    // the swings left are at a mount no longer ridden.
+    if (prone && hp > 0) {
+      if (!mount.sheetId) {
+        setMount(campaign.id, rider.id, { ...mount, hp });
+      }
+      const fall = handleDismount(campaign, JSON.stringify({ characterId: rider.id, cause: "mount-prone" }), input.sheets, input.sheetsById, turn);
+      return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountProne: `${mount.name} is knocked prone.`, fall, ...(light.notes.length || dodging ? { notes: [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])] } : {}) };
+    }
   }
   const notes = [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])];
+  // A creature's sheet keeps its own hit points; a mount on record keeps them here.
   if (hp > 0) {
-    setMount(campaign.id, rider.id, { ...mount, hp });
-    publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
-    return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountHp: `${hp}/${mount.maxHp ?? mount.hp}`, ...(notes.length ? { notes } : {}) };
+    if (!mount.sheetId) {
+      setMount(campaign.id, rider.id, { ...mount, hp });
+      publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
+    }
+    return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountHp: `${hp}/${vitals.maxHp}`, ...(notes.length ? { notes } : {}) };
   }
   // Down at 0: the rider comes off as from a mount knocked prone.
-  setMount(campaign.id, rider.id, { ...mount, hp: 0 });
-  const fall = handleDismount(campaign, JSON.stringify({ characterId: rider.id, cause: "mount-prone" }), input.sheets, input.sheetsById, turn);
+  if (!mount.sheetId) {
+    setMount(campaign.id, rider.id, { ...mount, hp: 0 });
+  }
+  const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheets: input.sheets, sheetsById: input.sheetsById });
   return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountDown: `${mount.name} drops to 0 hit points.`, fall, ...(notes.length ? { notes } : {}) };
+}
+
+// An enemy's hit on a steed that is a creature's sheet, as its hit on any
+// sheet lands (enemy-attack.ts): the blow by type (enemy-hit.ts blowByType),
+// magical where its weapons are, through the sheet's own defenses, then what
+// the hit carries (resolveOnHit: the save from the steed's own sheet, the
+// rider's damage through its defenses once, the condition laid on it). The
+// merge of the two mount doors took the blow whole as its first type and ran
+// the rider's damage through the form's resistances and the sheet's both, and
+// a steed knocked prone came back beside its rider standing.
+function steedBlow(input: {
+  campaign: Campaign;
+  turn: DmTurn;
+  enemy: EncounterEnemy;
+  sheetId: string;
+  mountName: string;
+  attack: EnemyAttack;
+  damage: RollResult;
+  crit: boolean;
+  sheets: CharacterSheet[];
+  sheetsById: Map<string, CharacterSheet>;
+}): { hp: number; landed: number; resistance?: string; prone: boolean; lines: Record<string, unknown> } {
+  const { campaign, turn, enemy, attack } = input;
+  const typed = blowByType(attack, input.damage, input.crit);
+  const struck = hurtSteed(campaign, turn.id, input.sheetId, {
+    amount: typed.amount,
+    type: typed.type,
+    ...(typed.parts ? { parts: typed.parts } : {}),
+    ...(attack.spellAttack ? { spell: true } : { attack: true }),
+    ...(hasTrait(enemy.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+    crit: input.crit,
+    reason: rollAgainst(attack.name, input.mountName),
+  });
+  const before = getSheetById(input.sheetId);
+  const wasProne = before ? before.conditions.some((entry) => isConditionNamed(entry, "prone")) : false;
+  const lines = struck.hp > 0 && attack.onHit ? (resolveOnHit(campaign, turn, enemy, attack, input.sheetId, { sheets: input.sheets, sheetsById: input.sheetsById }) ?? {}) : {};
+  const after = getSheetById(input.sheetId);
+  const prone = !wasProne && Boolean(after?.conditions.some((entry) => isConditionNamed(entry, "prone")));
+  return { hp: after?.currentHp ?? 0, landed: struck.landed, ...(struck.resistance ? { resistance: struck.resistance } : {}), prone, lines };
 }

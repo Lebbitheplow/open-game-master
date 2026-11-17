@@ -1,6 +1,11 @@
 import { currentUser } from "@/lib/auth";
 import { unauthorized } from "@/lib/auth";
 import { assessModel, findCatalogModel, providerForBaseUrl } from "@/lib/model-registry/catalog-logic";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the verdict's words are rules for now; the picker words
+// what it shows around them.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { modelCatalog } from "@/lib/model-registry/catalog";
 
 export const runtime = "nodejs";
@@ -25,5 +30,5 @@ export async function GET(request: Request) {
   }
   const { providers } = modelCatalog();
   const catalog = findCatalogModel(providers, model, providerForBaseUrl(baseUrl, providers));
-  return Response.json({ model, catalog, verdict: assessModel({ role, id: model, catalog, listed: null }) });
+  return Response.json({ model, catalog, verdict: assessModel(enT, { role, id: model, catalog, listed: null }) });
 }

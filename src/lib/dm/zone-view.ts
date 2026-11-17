@@ -38,6 +38,11 @@ export function viewZones(
 ): ViewZone[] {
   const out: ViewZone[] = [];
   for (const zone of liveZones(map, encounter)) {
+    // A trap the GM set is not on a player's board until it is noticed
+    // (src/lib/dm/set-traps.ts).
+    if (zone.hidden && viewer) {
+      continue;
+    }
     const row = zoneRowFor(zone);
     // Darkness is never "explored": the area is drawn whole where the
     // character knows it (src/lib/battlemap/zone-known.ts).

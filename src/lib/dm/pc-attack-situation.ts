@@ -34,13 +34,11 @@ import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { sheetSize } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
-import { encumbranceFor } from "@/lib/srd/encumbrance";
-import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
-import { purseCoins } from "@/lib/srd/currency";
+import { heavyLoadOnAttack } from "@/lib/dm/load-rules";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
-import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
-import { swimsFrom, type XY } from "@/lib/battlemap/types";
+import { characterSwims, isImmersed, underwaterSwing } from "@/lib/dm/underwater";
+import type { XY } from "@/lib/battlemap/types";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { footprintDistance } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
@@ -291,19 +289,10 @@ export function attackSituation(input: {
     );
   }
   // Variant: Encumbrance. A heavily loaded character swings at disadvantage
-  // like any other physical roll.
-  const load = campaign.gameSettings.variantRules.encumbrance
-    ? encumbranceFor({
-        strength: sheet.abilities.str,
-        equipment: sheet.equipment ?? [],
-        coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-        // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
-        carryFactor: authoredCarryFactor(sheet),
-        wearer: sheet,
-      })
-    : null;
-  if (load?.disadvantage && load.note) {
-    conditionContext.notes.push(load.note);
+  // like any other physical roll (load-rules.ts heavyLoadOnAttack).
+  const heavyLoad = heavyLoadOnAttack(campaign, sheet);
+  if (heavyLoad) {
+    conditionContext.notes.push(heavyLoad);
   }
   // A gale over an outdoor board: disadvantage on ranged attacks past 30 ft.
   const gale = spatials.outdoors
@@ -318,7 +307,7 @@ export function attackSituation(input: {
   }
   // Under the water: weapons not made for it (src/lib/dm/underwater.ts).
   const underwater = kind !== "spell" && isImmersed(campaign.id, sheet.id)
-    ? underwaterSwing({ weapon: profile.weapon, base: profile.base, melee: !atRange, swims: swimsFrom(undefined, sheet.features), beyondNormal: spatials.longRange })
+    ? underwaterSwing({ weapon: profile.weapon, base: profile.base, melee: !atRange, swims: characterSwims(sheet), beyondNormal: spatials.longRange })
     : null;
   if (underwater?.note) {
     conditionContext.notes.push(underwater.note);
@@ -334,7 +323,7 @@ export function attackSituation(input: {
   const sources: Advantage[] = [
     ...conditionContext.sources,
     exhaustion.advantage,
-    ...(load?.disadvantage ? ["disadvantage" as const] : []),
+    ...(heavyLoad ? ["disadvantage" as const] : []),
     ...attackRiders.advantageSources,
     ...(input.attackEffect.advantage ? ["advantage" as const] : []),
     ...(input.attackEffect.disadvantage ? ["disadvantage" as const] : []),

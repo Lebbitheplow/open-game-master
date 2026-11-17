@@ -84,7 +84,9 @@ export type LineageRoll = {
 // no known DC.
 function carriedBy(roll: LineageRoll, most: number): boolean {
   if ("ac" in roll.target) {
-    const misses = roll.natural === 1 || (roll.natural !== undefined && roll.natural < roll.target.critRange && roll.total < roll.target.ac);
+    // A face in a widened critical range misses by its total like any other
+    // (only a natural 20 hits whatever the AC), as the attack rules it.
+    const misses = roll.natural === 1 || (roll.natural !== undefined && roll.natural !== 20 && roll.total < roll.target.ac);
     return misses && roll.natural !== 1 && roll.total + most >= roll.target.ac;
   }
   const dc = roll.target.dc;

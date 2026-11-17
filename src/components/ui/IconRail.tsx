@@ -97,7 +97,7 @@ export function IconRail<T extends string>({
               // A sideways rail scrolls; its cells keep the width their
               // label needs rather than being squeezed until the text
               // spills over its neighbours. Spare width is still shared.
-              !vertical && "shrink-0 grow basis-auto",
+              vertical ? "px-1" : "shrink-0 grow basis-auto",
               // A lead who is not the active tab still reads warm, so the
               // ember cell stands out from the rest of the rail at a glance.
               ember && !active && "rail-ember text-ember-400/70 hover:text-ember-300",
@@ -105,7 +105,7 @@ export function IconRail<T extends string>({
             )}
           >
             <Icon className="size-4" aria-hidden="true" />
-            <span className="eyebrow whitespace-nowrap text-[9px] leading-none">{item.label}</span>
+            <span className={cn("eyebrow text-[9px]", vertical ? "w-full whitespace-normal text-center leading-[1.15]" : "whitespace-nowrap leading-none")}>{item.label}</span>
             {item.dot ? (
               <span
                 className={cn(

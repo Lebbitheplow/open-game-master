@@ -6,6 +6,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import type { ListedModel } from "@/lib/setup/discovery-logic";
 import type { ScanResult } from "@/lib/setup/discovery";
 import { Select } from "@/components/ui/Select";
+import { useT } from "@/lib/locale";
 
 // The furniture every setup step shares: big pick-one cards, the status
 // lamp, the found-on-this-machine rows and a model picker.
@@ -59,6 +60,7 @@ export function ChoiceCard({
   // The guided setup's suggestion (src/lib/setup/suggest.ts).
   suggested?: boolean;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -79,7 +81,7 @@ export function ChoiceCard({
         <span className="flex flex-wrap gap-1.5 self-start">
           {suggested ? (
             <span className="hx-pill reveal-pop" data-tone="ready" data-suggested="">
-              Suggested
+              {t("Suggested", { context: "setup.suggested" })}
             </span>
           ) : null}
           {badge ? (
@@ -132,10 +134,11 @@ export function ModelPicker({
   recommended: string;
   onChange: (model: string) => void;
 }) {
+  const t = useT();
   const options = [
     ...models.map((model) => ({
       value: model.id,
-      label: `${model.label}${model.id === recommended ? " (recommended)" : ""}${model.context ? ` · ${Math.round(model.context / 1000)}K` : ""}`,
+      label: `${model.label}${model.id === recommended ? t(" (recommended)") : ""}${model.context ? ` · ${Math.round(model.context / 1000)}K` : ""}`,
     })),
     ...(value && !models.some((model) => model.id === value) ? [{ value, label: value }] : []),
   ];
@@ -170,13 +173,14 @@ export function SuggestionNote({
   taken: boolean;
   onTake?: () => void;
 }) {
+  const t = useT();
   return (
     <div className="su-suggest reveal" role="note">
       <GameIcon icon={{ kind: "glyph", key: "quest-active" }} size="size-6" className="shrink-0" />
       <span className="min-w-0 flex-1 text-xs leading-5 text-stone-300">{reason}</span>
       {title && onTake && !taken ? (
         <button type="button" onClick={onTake} className="motion-press shrink-0 rounded-md border border-amber-500/40 px-2 py-1 text-xs text-amber-200 hover:bg-amber-500/10">
-          Use {title}
+          {t("Use {name}", { name: title, context: "setup.suggestion.use" })}
         </button>
       ) : null}
     </div>

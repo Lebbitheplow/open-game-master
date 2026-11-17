@@ -928,6 +928,17 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     await swing(beast, cursed, [15, 4], { weapon: "Claws" });
     const again = await spend(beast, "Infectious Fury", { variant: "attack", targetEnemyId: cursed.id, targetEnemyIds: [other.id] }, 2);
     assert.equal(again.ok, false, `a creature with no reaction left was made to attack again: ${show(again)}`);
+    // Audit 1116 D20. Out of action it has no reaction at all (SRD 5.1,
+    // Incapacitated: "can't take actions or reactions"): a held or stunned
+    // creature was made to attack with a reaction it could not take.
+    kit.freshTurn();
+    kit.saveEncounter({ ...world.encounter(), reactionsUsed: [] });
+    kit.setEnemy(cursed.id, { conditions: ["incapacitated"], conditionMeta: {} });
+    await swing(beast, cursed, [15, 4], { weapon: "Claws" });
+    const outOfAction = await spend(beast, "Infectious Fury", { variant: "attack", targetEnemyId: cursed.id, targetEnemyIds: [other.id] }, 2);
+    kit.setEnemy(cursed.id, { conditions: [], conditionMeta: {} });
+    assert.equal(outOfAction.ok, false, `an incapacitated creature was made to attack with its reaction: ${show(outOfAction)}`);
+    assert.match(String(outOfAction.error), /incapacitated/, show(outOfAction));
   });
   await probe("bestial-soul-adapt", async () => {
     await kit.endFight();

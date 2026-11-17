@@ -4,8 +4,8 @@
 // vanished, and the page's see-through gradient washed out the chronicle. On a
 // phone the story's system line kept its pale night ink on the cream too. The
 // theme is the player's saved choice, applied as the page loads, and axe reads
-// the frame and the chronicle by day. The board stays night in every seat, and
-// the enlarged board's table with it.
+// the frame and the chronicle by day. The map stays dark; a painted theme can
+// put the enlarged board's controls on its own light paper.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 // [red, green, blue, alpha] from a computed colour, the first stop of a gradient included.
@@ -79,7 +79,9 @@ export default {
     // The board's own window stays night: its gold labels sit on what shows round a small map.
     const windowFill = (await read(panel.locator(".board-view").first())).fill;
     check(solid(windowFill) && lit(windowFill) < 0.05, `the board's window stays dark by day (${windowFill})`);
-    const leaf = (await read(chronicle)).image;
+    // Painted themes can use a solid paper fill instead of a gradient.
+    const paper = await read(chronicle);
+    const leaf = paper.image ?? paper.fill;
     check(leaf && solid(leaf) && lit(leaf) > 0.7, `the chronicle is solid parchment by day (${leaf})`);
 
     const round = panel.locator("h3", { hasText: /^Round \d+/ }).first();
@@ -104,7 +106,8 @@ export default {
     }
     await t.shot("light");
 
-    // The enlarged board stands on a night table, and what is under it keeps night ink.
+    // The enlarged board's controls must read against their actual surface,
+    // whether the theme surrounds its dark map with paper or a dark table.
     await t.tap(page.getByRole("button", { name: "Enlarge battle map" }).locator("visible=true").first());
     const close = page.getByRole("button", { name: "Close the board" }).first();
     await eventually(() => close.isVisible(), { timeoutMs: 15_000, label: "the enlarged board" });
@@ -112,8 +115,10 @@ export default {
     await eventually(() => jump.isVisible(), { timeoutMs: 15_000, label: "the move row under the enlarged board" });
     await page.waitForTimeout(1500);
     await untilStill(page).catch(() => undefined);
-    const jumpInk = (await read(jump)).color;
-    check(lit(jumpInk) > 0.4, `the enlarged board's move row keeps night ink by day (${jumpInk})`);
+    const tabletop = await read(page.locator(".cine-tabletop"));
+    const jumpPaint = await read(jump);
+    const behindJump = jumpPaint.image ?? over(jumpPaint.fill, tabletop.image ?? tabletop.fill);
+    check(ratio(jumpPaint.color, behindJump) >= 4.5, `the enlarged board's move row reads by day (${jumpPaint.color} on ${behindJump})`);
     await t.shot("enlarged");
     await t.tap(close);
     await setTheme("dark");

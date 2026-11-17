@@ -3,6 +3,7 @@
 import { Link2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { CopyLine } from "@/components/CopyLine";
+import { useT } from "@/lib/locale";
 import { ui } from "@/lib/ui";
 
 // Shown with a new connection that can play one campaign, on a server whose
@@ -11,6 +12,7 @@ import { ui } from "@/lib/ui";
 // a URL). One click makes the link; like the token, it is shown once
 // (docs/player-webhooks.md).
 export function PlayerPollLinkSetup({ grantId, characterName }: { grantId: string; characterName: string }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [link, setLink] = useState("");
@@ -22,12 +24,12 @@ export function PlayerPollLinkSetup({ grantId, characterName }: { grantId: strin
       const response = await fetch(`/api/profile/agents/${encodeURIComponent(grantId)}/poll-link`, { method: "POST" });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error ?? "Could not make a poll link.");
+        setError(data.error ?? t("Could not make a poll link."));
         return;
       }
       setLink(String(data.url ?? ""));
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "poll.error.unreachable" }));
     } finally {
       setBusy(false);
     }

@@ -136,7 +136,13 @@ export function probes(rig, shared) {
   PROBES["awakened-ritual"] = async () => {
     const { getClock } = await import("../../src/lib/db/clock.ts");
     const who = scr();
-    const day = async () => assert.equal((await call("pass_time", { amount: 1, unit: "days" })).ok, true);
+    // A day awake: two half-day waits, since a whole day in one wait now ends
+    // in the night's long rest (rest-benefits.ts), which takes the mark.
+    const day = async () => {
+      for (let half = 0; half < 2; half += 1) {
+        assert.equal((await call("pass_time", { amount: 12, unit: "hours" })).ok, true);
+      }
+    };
     const marked = () => sheet(who).conditions.includes("swift ritual");
     const uses = () => counter(who, "sub_awakened_spellbook").used;
     const ritual = async () => {

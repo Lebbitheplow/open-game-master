@@ -218,7 +218,7 @@ await test("an older host, with no keep route, offers no Save to my characters a
   assert.equal(hostOffers(older, "keepCompanion"), false);
   assert.equal(hostOffers({ ...older, features: { keepCompanion: true } }, "keepCompanion"), true);
   assert.match(read("src/app/campaigns/[campaignId]/PartyPanel.tsx"), /const canKeep = hostOffers\(capabilities, "keepCompanion"\);/);
-  assert.match(read("src/app/campaigns/[campaignId]/CompanionBuilderDialog.tsx"), /const keepsCompanions = hostOffers\(useCapabilities\(\), "keepCompanion"\);[\s\S]*\{keepsCompanions \? " They are kept in your characters too/);
+  assert.match(read("src/app/campaigns/[campaignId]/CompanionBuilderDialog.tsx"), /const keepsCompanions = hostOffers\(useCapabilities\(\), "keepCompanion"\);[\s\S]*\{keepsCompanions \? ` \$\{t\("They are kept in your characters too, so another campaign can bring them along\."\)\}`/);
 });
 
 finish();

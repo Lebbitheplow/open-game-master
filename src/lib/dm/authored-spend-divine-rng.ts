@@ -9,6 +9,9 @@ import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import { giveBack, swarmDieBack } from "@/lib/dm/authored-spend-more";
 import { planFeatureMove } from "@/lib/dm/feature-move";
 import { commandPet, PET_COMMANDS } from "@/lib/dm/pet-command";
+import { petHelp } from "@/lib/dm/pet-help";
+import { incapacitatedBy } from "@/lib/dm/condition-logic";
+import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { petAttackedKey } from "@/lib/dm/pet-attack-cost";
 import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -63,15 +66,29 @@ function petCommand(ctx: SpendContext, does: Extract<SpendDoes, { kind: "pet_com
   if (companion.hp <= 0) {
     return { error: `${companion.name} is down; it cannot be commanded. Nothing was spent.`, refused: "rules" };
   }
+  // Dash, Disengage and Help are actions, and an incapacitated creature
+  // takes none (SRD 5.1, Conditions): a paralyzed companion helps no one.
+  const stopped = incapacitatedBy(companion.conditions ?? []) ?? spellTurnHold(companion.conditions ?? [], "action");
+  if (stopped) {
+    return { error: `${companion.name} is ${stopped}; it can take no action at ${ctx.sheet.name}'s command. Nothing was spent.`, refused: "rules" };
+  }
   // The turn's own marks: a bonus-action spend is handed none (authored-spends.ts).
   const live = getActiveEncounter(ctx.campaign.id);
   const marks = ctx.marks ?? (live?.turnBudget?.ownerId === ctx.sheet.id ? live.turnBudget.oncePerTurn : []);
   if (marks.includes(petAttackedKey(companion.name))) {
     return { error: `${companion.name} attacked this turn, and ${ctx.spend.name}'s command comes on a turn it does not attack. Nothing was spent.`, refused: "rules" };
   }
-  const doing = PET_COMMANDS[["dash", "disengage", "help"].indexOf(textKey(option))] ?? textKey(option);
+  const command = ["dash", "disengage", "help"].indexOf(textKey(option));
+  const doing = PET_COMMANDS[command] ?? textKey(option);
+  // Its Help lands where a character's does (pet-help.ts); asked first, so
+  // a creature out of its reach spends nothing.
+  const helping = command === PET_COMMANDS.length - 1 ? petHelp(ctx.campaign, ctx.sheet, companion, ctx.args) : null;
+  if (helping && "error" in helping) {
+    return helping;
+  }
   commandPet(ctx.campaign, ctx.sheet.id, companion.name, doing);
-  return { result: { applied: [`${companion.name} takes the ${option.charAt(0).toUpperCase()}${option.slice(1)} action at ${ctx.sheet.name}'s command.`] } };
+  const helped = helping ? [helping.lay()] : [];
+  return { result: { applied: [`${companion.name} takes the ${option.charAt(0).toUpperCase()}${option.slice(1)} action at ${ctx.sheet.name}'s command.`, ...helped] } };
 }
 
 // Gathered Swarm: "Once per turn, a hit lets your swarm ... move you 5 feet

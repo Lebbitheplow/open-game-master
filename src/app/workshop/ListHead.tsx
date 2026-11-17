@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { ListControls, useListControls, type Listed } from "@/components/ui/ListControls";
 import { compareNames } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 // The same head on every workshop list long enough to need one: the shared
 // search, tag and sort controls (src/components/ui/ListControls.tsx) and a
@@ -44,6 +45,7 @@ export function ListHead({
   placeholder?: string;
   className?: string;
 }) {
+  const t = useT();
   if (!head.active) {
     return null;
   }
@@ -53,8 +55,8 @@ export function ListHead({
       <ListControls controls={head.controls} placeholder={placeholder} />
       <p className="mt-1 text-[11px] text-stone-500" aria-live="polite">
         {count === head.total
-          ? `${head.total} ${head.total === 1 ? noun[0] : noun[1]}`
-          : `${count} of ${head.total} ${noun[1]}`}
+          ? t("{count} {noun}", { count: head.total, noun: head.total === 1 ? noun[0] : noun[1] })
+          : t("{shown} of {total} {noun}", { shown: count, total: head.total, noun: noun[1] })}
       </p>
     </div>
   );
@@ -82,6 +84,7 @@ export function ListTally({
   sort: RowSort;
   onSort: (sort: RowSort) => void;
 }) {
+  const t = useT();
   if (total < LIST_HEAD_MIN) {
     return null;
   }
@@ -99,11 +102,13 @@ export function ListTally({
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
       <span aria-live="polite">
-        {shown === total ? `${total} ${total === 1 ? noun[0] : noun[1]}` : `${shown} of ${total} ${noun[1]}`}
+        {shown === total
+          ? t("{count} {noun}", { count: total, noun: total === 1 ? noun[0] : noun[1] })
+          : t("{shown} of {total} {noun}", { shown, total, noun: noun[1] })}
       </span>
       <span data-pill-group="" className="ml-auto flex items-center gap-1">
-        {button("made", "As made")}
-        {button("name", "By name")}
+        {button("made", t("As made"))}
+        {button("name", t("By name"))}
       </span>
     </div>
   );

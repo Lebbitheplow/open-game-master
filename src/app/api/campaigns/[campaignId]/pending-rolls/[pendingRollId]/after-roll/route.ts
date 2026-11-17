@@ -14,6 +14,7 @@ import { runInTurnScope } from "@/lib/dm/job-control";
 import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,23 +43,26 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The card shows the refusal raw (AfterRollCard.tsx choose), so it answers
+  // in the asker's language.
+  const t = requestT(request);
   const parsed = choiceSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: "Invalid choice." }, { status: 400 });
+    return Response.json({ error: t("Invalid choice.") }, { status: 400 });
   }
   const choice = parsed.data;
   // A roll waits out a break with its turn, and a choice would land it.
-  const paused = refuseDuringBreak(campaignId);
+  const paused = refuseDuringBreak(campaignId, undefined, request);
   if (paused) {
     return paused;
   }
 
   const pending = getPendingRoll(pendingRollId);
   if (!pending || pending.campaignId !== campaignId) {
-    return Response.json({ error: "Roll not found." }, { status: 404 });
+    return Response.json({ error: t("Roll not found.") }, { status: 404 });
   }
   if (pending.status !== "pending" || !pending.thrown) {
-    return Response.json({ error: "That roll is not waiting on a choice." }, { status: 409 });
+    return Response.json({ error: t("That roll is not waiting on a choice.") }, { status: 409 });
   }
   const thrown = pending.thrown;
   const isRoller = pending.userId === context.user.id;
@@ -66,17 +70,17 @@ export async function POST(
   const by = "by" in choice && choice.by ? choice.by : null;
   const wizard = by ? getSheetById(by) : null;
   if (by && (!wizard || wizard.campaignId !== campaignId || wizard.userId !== context.user.id || wizard.id === pending.characterId)) {
-    return Response.json({ error: "That is not your character." }, { status: 403 });
+    return Response.json({ error: t("That is not your character.") }, { status: 403 });
   }
   if (!by && !isRoller && !("keep" in choice && steersStory(context))) {
-    return Response.json({ error: "This is not your roll." }, { status: 403 });
+    return Response.json({ error: t("This is not your roll.") }, { status: 403 });
   }
 
   // Read again as it lands: a helper's choice on a hit (Violent Attraction)
   // rides the attack's stored record.
   const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = getPendingRoll(pending.id) ?? pending) => {
     const roll = landPendingRoll(context.campaign, landed, outcome, landing);
-    return roll ? Response.json(landedBody(roll)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return roll ? Response.json(landedBody(roll)) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   };
   // A new decision gets its own time; with nothing left to decide it lands.
   const next = (fields: Partial<ThrownRoll>) => {
@@ -87,7 +91,7 @@ export async function POST(
     }
     const updated = setPendingThrown(pending.id, { ...merged, options, deadline: afterRollDeadline(campaignId, pending.userId) });
     if (!updated) {
-      return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+      return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
     }
     armAfterRollKeep(updated.id, updated.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(updated) });
@@ -109,30 +113,30 @@ export async function POST(
   }
   if ("decline" in choice) {
     if (!thrown.options.some((option) => option.by === by)) {
-      return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
+      return Response.json({ error: t("That is no longer on offer for this roll.") }, { status: 409 });
     }
     return next({ declined: [...(thrown.declined ?? []), by!] });
   }
 
   const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
   if (!sheet) {
-    return Response.json({ error: "That character is gone." }, { status: 409 });
+    return Response.json({ error: t("That character is gone.") }, { status: 409 });
   }
 
   if ("die" in choice) {
     const kept = thrown.choosing ? keepD20(thrown.outcome, choice.die) : null;
     if (!kept) {
-      return Response.json({ error: "That die is not one of this roll's." }, { status: 400 });
+      return Response.json({ error: t("That die is not one of this roll's.") }, { status: 400 });
     }
     return next({ outcome: kept, choosing: false });
   }
   if (thrown.choosing) {
-    return Response.json({ error: "Choose which die counts first." }, { status: 409 });
+    return Response.json({ error: t("Choose which die counts first.") }, { status: 409 });
   }
   // Asked again: the die may have been spent, or the rest used, since the
   // card was drawn. A refusal spends nothing.
   if (!optionsForPending(pending, thrown.outcome, thrown.spent, thrown).some((option) => option.id === choice.use && (option.by ?? null) === by)) {
-    return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
+    return Response.json({ error: t("That is no longer on offer for this roll.") }, { status: 409 });
   }
   // The bard whose die this is, read before the spend takes it off the sheet.
   const bard = choice.use === "bardic" ? bardOfHeldDie(sheet) : null;
@@ -145,7 +149,7 @@ export async function POST(
       : spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true, pending.attack ? recordTargetAc(pending.campaignId, pending.attack as AttackRecord) : pending.dc),
   );
   if (!paid) {
-    return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
+    return Response.json({ error: t("That is no longer on offer for this roll.") }, { status: 409 });
   }
   // Combat Inspiration is the bard's die on an attack's damage (after-roll.ts);
   // a monk's or a rogue's choice never carries it.

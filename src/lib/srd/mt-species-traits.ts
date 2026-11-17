@@ -10,9 +10,11 @@
 // src/lib/dm/load-rules.ts), apply_hazard (src/lib/dm/hazard-tools.ts), the
 // long rest (src/lib/dm/rest-tools.ts), a melee swing's reach and the board's
 // walking cost. Pure and database-free, like the rest of src/lib/srd.
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
+import type { WornMagicItem } from "@/lib/srd/magic-items";
 
-type Held = { features?: ReadonlyArray<{ name: string }> | null; feats?: ReadonlyArray<string> | null };
+type Held = { features?: ReadonlyArray<{ name: string }> | null; feats?: ReadonlyArray<string> | null; conditions?: ReadonlyArray<string> | null };
 // A feat that gives the body what a lineage's trait does (Dragon Hide's
 // scales and claws), as the trait lines the readers below and
 // racial-weapons.ts already read.
@@ -82,6 +84,11 @@ export function breathOf(sheet: Held | null | undefined): Breath {
   }
   if (holdsFeature(features, "amphibious")) {
     out.water = "Amphibious";
+  }
+  // A Potion of Water Breathing's hour (condition-effects-last.ts): drunk and
+  // narrated, its drinker drowned all the same.
+  if (!out.water && (sheet?.conditions ?? []).some((name) => isConditionNamed(name, "water breathing"))) {
+    out.water = "Water breathing";
   }
   return out;
 }
@@ -153,13 +160,14 @@ export type LineageRider = { feature: string; dice: string; type: string; when: 
 //     bugbear has one turn in that round.
 const REVELATION = /^celestial revelation:\s*(heavenly wings|inner radiance|necrotic shroud)$/i;
 export function lineageRiders(
-  sheet: Held & { conditions?: readonly string[]; level?: number },
+  sheet: Held & { conditions?: readonly string[]; level?: number; equipment?: WornMagicItem[] },
   target: { surprised?: boolean } = {},
 ): LineageRider[] {
   const out: LineageRider[] = [];
   const form = (sheet.conditions ?? []).map((entry) => REVELATION.exec(entry.trim())).find(Boolean);
   if (form) {
-    const bonus = 2 + Math.floor((Math.max(1, sheet.level ?? 1) - 1) / 4);
+    // "extra damage equal to your proficiency bonus" (proficiency.ts).
+    const bonus = proficiencyBonusOf({ level: sheet.level, equipment: sheet.equipment });
     out.push({ feature: "Celestial Revelation", dice: String(bonus), type: form[1].toLowerCase() === "necrotic shroud" ? "necrotic" : "radiant", when: "weapon", oncePerTurn: true });
   }
   if (target.surprised && holdsFeature({ features: sheet.features ?? [] }, "surprise attack")) {

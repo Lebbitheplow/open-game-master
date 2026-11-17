@@ -6,6 +6,11 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
+
 const {
   addCopper,
   breakdown,
@@ -66,8 +71,10 @@ test("the Market shows prices in gold and the purse in its coins", () => {
   // Windows CI checks the files out with CRLF line endings.
   const read = (file) => fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const panel = read("src/app/campaigns/[campaignId]/MarketPanel.tsx");
-  assert.match(panel, /label: `Buy for \$\{formatPrice\(line\.askingCp\)\}`/);
-  assert.match(panel, /\{formatPrice\(line\.askingCp\)\}/);
+  // The label's words are the dictionaries' (market.buyFor); the price
+  // still comes from the line's asking price through formatPrice.
+  assert.match(panel, /label: t\("Buy for \{price\}", \{ price: formatPrice\(line\.askingCp\) \}\)/);
+  assert.match(panel, /price: formatPrice\(line\.askingCp\)/);
   assert.match(panel, /coin-purse" \}\} size="size-5" \/> \{formatCopper\(purse\)\}/);
   assert.doesNotMatch(panel, /formatCopper\(line\./, "a price still counts out in platinum");
   assert.match(read("src/app/campaigns/[campaignId]/MarketShopEditor.tsx"), /value=\{draft \?\? formatPrice\(value\)\}/);
@@ -145,7 +152,7 @@ test("denominations parse by their codes", () => {
 test("a part of a coin is refused, naming the mark, never read as one table's decimal", () => {
   for (const text of ["1.5 gp", "1,5 gp", "2,50 sp"]) {
     assert.equal(parseCoins(text), null, text);
-    assert.match(unreadCoins(text), /whole numbers.*"1 gp 5 sp"/, text);
+    assert.match(unreadCoins(enT, text), /whole numbers.*"1 gp 5 sp"/, text);
   }
 });
 

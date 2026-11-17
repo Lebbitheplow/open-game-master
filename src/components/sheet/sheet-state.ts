@@ -22,9 +22,11 @@ import {
   pcResistances,
 } from "@/lib/dm/condition-logic";
 import { attunementRefusal } from "@/lib/dm/usage-rules";
-import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
-import { speedFor } from "@/lib/srd";
+import type { CharacterSheet, EquipmentItem, SheetPet } from "@/lib/schemas/sheet";
+import { effectiveAcFor, speedFor } from "@/lib/srd";
 import { UNLIMITED_USES, resourceDef } from "@/lib/srd/class-resources";
+import { resourceGuidance } from "@/lib/srd/class-resources-fr";
+import { translate, type Locale } from "@/lib/messages-logic";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/srd/item-charge-rules";
 import { gearDefFor } from "@/lib/srd/magic-gear";
 import { matchMagicItem } from "@/lib/srd/magic-items";
@@ -36,21 +38,51 @@ import { checkRidersOf } from "@/lib/srd/item-check-riders";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { magicItemBonus } from "@/lib/srd/item-row";
 import { isSpellStorer, storedSpellsSummary } from "@/lib/srd/spell-storing";
+import { pluralOf } from "@/lib/messages-logic";
+
+// The caller's translator (home/types.ts agoLabel pattern): the sentences
+// these views build follow the reader's language.
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
 
 // ---- hit points ----
 
-export function maxHpView(sheet: CharacterSheet): { max: number; stored: number; note: string | null } {
+// The sentences these views build follow the reader's language: the caller's
+// translator comes first (home/types.ts agoLabel pattern), so a test passes
+// translate("en", ...) and the sheet passes its own useT().
+export function maxHpView(t: Translator, sheet: CharacterSheet): { max: number; stored: number; note: string | null } {
   const max = effectiveMaxHp(sheet);
   const exhaustion = sheet.exhaustion ?? 0;
   const note =
     max === sheet.maxHp
       ? null
       : exhaustion >= 4 && max < sheet.maxHp
-        ? `Hit point maximum halved by exhaustion ${exhaustion} (${sheet.maxHp} without it).`
+        ? t("Hit point maximum halved by exhaustion {level} ({stored} without it).", { level: exhaustion, stored: sheet.maxHp })
         : max > sheet.maxHp
-          ? `Raised by worn, attuned gear that sets Constitution (${sheet.maxHp} without it).`
-          : `The rules put the maximum at ${max} right now (${sheet.maxHp} on the sheet).`;
+          ? t("Raised by worn, attuned gear that sets Constitution ({stored} without it).", { stored: sheet.maxHp })
+          : t("The rules put the maximum at {max} right now ({stored} on the sheet).", { max, stored: sheet.maxHp });
   return { max, stored: sheet.maxHp, note };
+}
+
+// ---- armor class ----
+
+// The AC attacks meet, as the attack engine reads it (effectiveAcFor): a beast
+// form's own AC with Barkskin's floor, Shield of Faith and Haste on it, and
+// those riders on a pinned AC. The panel and the sheet showed the wolf's bare
+// 13 under a Barkskin that held it at 16. (A curse laid with set_effect is
+// the server's alone and shows in GAME STATE.)
+export function acView(
+  sheet: CharacterSheet,
+  t: Translator = (key, vars) => translate("en", key, vars),
+): { ac: number; note: string | null } {
+  const ac = effectiveAcFor(sheet);
+  const note = sheet.wildShape
+    ? ac !== sheet.wildShape.beastAc
+      ? t("The {form}'s armor class, {beastAc} before the spells on it; {name}'s own is {ac}.", { form: sheet.wildShape.form, beastAc: sheet.wildShape.beastAc, name: sheet.name, ac: sheet.ac })
+      : t("The {form}'s armor class; {name}'s own is {ac}.", { form: sheet.wildShape.form, name: sheet.name, ac: sheet.ac })
+    : ac !== sheet.ac
+      ? t("Spells on them change it from {ac}.", { ac: sheet.ac })
+      : null;
+  return { ac, note };
 }
 
 // ---- speed ----
@@ -58,6 +90,7 @@ export function maxHpView(sheet: CharacterSheet): { max: number; stored: number;
 const ZEROING = ["grappled", "restrained", "incapacitated", "paralyzed", "stunned", "unconscious", "petrified"];
 
 export function speedView(
+  t: Translator,
   sheet: CharacterSheet,
   options: { encumbrance?: boolean } = {},
 ): { speed: number; base: number; notes: string[] } {
@@ -67,14 +100,14 @@ export function speedView(
   const speed = exhaustionSpeed(exhaustion, conditioned);
   const notes: string[] = [];
   if (worn !== sheet.speed) {
-    notes.push(`Base ${sheet.speed} ft, ${worn} ft with what they wear and carry.`);
+    notes.push(t("Base {base} ft, {worn} ft with what they wear and carry.", { base: sheet.speed, worn }));
   }
   if (conditioned !== worn) {
     const zeroing = sheet.conditions.find((entry) => ZEROING.includes(entry.trim().toLowerCase()));
-    notes.push(zeroing ? `${zeroing}: speed 0.` : `Effects on them change it to ${conditioned} ft.`);
+    notes.push(zeroing ? t("{condition}: speed 0.", { condition: zeroing }) : t("Effects on them change it to {speed} ft.", { speed: conditioned }));
   }
   if (speed !== conditioned) {
-    notes.push(`Exhaustion ${exhaustion}: ${exhaustion >= 5 ? "speed 0" : "speed halved"}.`);
+    notes.push(exhaustion >= 5 ? t("Exhaustion {level}: speed 0.", { level: exhaustion }) : t("Exhaustion {level}: speed halved.", { level: exhaustion }));
   }
   return { speed, base: sheet.speed, notes };
 }
@@ -88,37 +121,51 @@ export type StateTag = {
   note: string;
 };
 
-export function stateTags(sheet: CharacterSheet): StateTag[] {
+export function stateTags(t: Translator, sheet: CharacterSheet): StateTag[] {
+  const tp = pluralOf(t);
   const tags: StateTag[] = [];
   const saves = sheet.deathSaves;
   if (saves?.dead) {
-    tags.push({ id: "dead", label: "Dead", tone: "harm", note: "Only magic that raises the dead brings them back." });
+    tags.push({ id: "dead", label: t("Dead"), tone: "harm", note: t("Only magic that raises the dead brings them back.") });
   } else if (saves && sheet.currentHp <= 0) {
     tags.push(
       saves.stable
-        ? { id: "stable", label: "Stable", tone: "neutral", note: "Unconscious at 0 hit points, no longer rolling death saves." }
+        ? { id: "stable", label: t("Stable", { context: "sheet.state.stable" }), tone: "neutral", note: t("Unconscious at 0 hit points, no longer rolling death saves.") }
         : {
             id: "dying",
-            label: `Dying ${saves.successes}/${saves.failures}`,
+            label: t("Dying {successes}/{failures}", { successes: saves.successes, failures: saves.failures, context: "sheet.state.dying" }),
             tone: "harm",
-            note: `Death saves: ${saves.successes} success${saves.successes === 1 ? "" : "es"}, ${saves.failures} failure${saves.failures === 1 ? "" : "s"}. Three successes stabilize, three failures kill.`,
+            note: t("Death saves: {successes}, {failures}. Three successes stabilize, three failures kill.", {
+              successes: tp("{count} success", "{count} successes", { count: saves.successes }),
+              failures: tp("{count} failure", "{count} failures", { count: saves.failures }),
+            }),
           },
     );
   }
   const stopped = incapacitatedBy(sheet.conditions);
   if (stopped && sheet.currentHp > 0) {
-    tags.push({ id: "incapacitated", label: `Cannot act (${stopped})`, tone: "harm", note: `${sheet.name} can take no actions or reactions while ${stopped}.` });
+    tags.push({
+      id: "incapacitated",
+      label: t("Cannot act ({what})", { what: stopped }),
+      tone: "harm",
+      note: t("{name} can take no actions or reactions while this lasts.", { name: sheet.name }),
+    });
   }
   const exhaustion = sheet.exhaustion ?? 0;
   if (exhaustion > 0) {
-    tags.push({ id: "exhaustion", label: `Exhaustion ${exhaustion}`, tone: "harm", note: `${describeExhaustion(exhaustion)}. A long rest lowers it by one.` });
+    tags.push({
+      id: "exhaustion",
+      label: t("Exhaustion {level}", { level: exhaustion }),
+      tone: "harm",
+      note: t("{summary}. A long rest lowers it by one.", { summary: describeExhaustion(exhaustion) }),
+    });
   }
   if (sheet.concentratingOn) {
     tags.push({
       id: "concentration",
-      label: `Concentrating: ${sheet.concentratingOn}`,
+      label: t("Concentrating: {spell}", { spell: sheet.concentratingOn }),
       tone: "bless",
-      note: "Damage calls for a CON save (DC 10 or half the damage); another concentration spell, or falling unconscious, ends it.",
+      note: t("Damage calls for a CON save (DC 10 or half the damage); another concentration spell, or falling unconscious, ends it."),
     });
   }
   const readied = sheet.conditions.find((entry) => entry.trim().toLowerCase() === "readied");
@@ -126,22 +173,43 @@ export function stateTags(sheet: CharacterSheet): StateTag[] {
     const trigger = sheet.conditionMeta?.[readied]?.source;
     tags.push({
       id: "readied",
-      label: "Readied",
+      label: t("Readied", { context: "sheet.state.readied" }),
       tone: "ward",
-      note: trigger ? `When ${trigger}: the readied attack, with the reaction. It lapses when their next turn starts.` : "An action held for its trigger; it lapses when their next turn starts.",
+      note: trigger
+        ? t("When {trigger}: the readied attack, with the reaction. It lapses when their next turn starts.", { trigger })
+        : t("An action held for its trigger; it lapses when their next turn starts."),
     });
   }
   const inspiration = sheet.resources?.inspiration;
   if (inspiration && inspiration.used < inspiration.max) {
-    tags.push({ id: "inspiration", label: "Inspiration", tone: "bless", note: "Spend it for advantage on one attack, save or check." });
+    tags.push({ id: "inspiration", label: t("Inspiration"), tone: "bless", note: t("Spend it for advantage on one attack, save or check.") });
   }
   return tags;
 }
 
+const enStateT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+
 // A condition's chip tail from its metadata: "until Kael's turn", "save
 // ends (WIS 13)", "from Goblin 2", "3 rounds".
-export function conditionDetail(sheet: CharacterSheet, condition: string, nameOf: (id: string) => string | null): string {
-  return conditionNoteLine(conditionNote(condition, sheet.conditionMeta?.[condition], nameOf, sheet.id));
+export function conditionDetail(
+  sheet: CharacterSheet,
+  condition: string,
+  nameOf: (id: string) => string | null,
+  t: (key: string, vars?: Record<string, string | number>) => string = enStateT,
+): string {
+  return conditionNoteLine(conditionNote(condition, sheet.conditionMeta?.[condition], nameOf, sheet.id, t));
+}
+
+// A familiar tucked into its pocket dimension (pet-pocket.ts) is out of reach
+// of everything until summon_pet calls it back. The party panel listed it with
+// its hit points like one at its owner's side, so the player reached for it.
+export function petAwayNote(pet: Pick<SheetPet, "pocketed">): string | null {
+  return pet.pocketed === true ? "In its pocket dimension" : null;
+}
+
+// The same for a pet's condition: its turn is its owner's (pet-conditions.ts).
+export function petConditionDetail(owner: CharacterSheet, pet: SheetPet, condition: string, nameOf: (id: string) => string | null): string {
+  return conditionNoteLine(conditionNote(condition, pet.conditionMeta?.[condition], nameOf, owner.id));
 }
 
 // ---- hit dice ----
@@ -184,9 +252,9 @@ export type ItemStatus = {
   attuneRefusal: string | null;
 };
 
-export function itemStatus(sheet: CharacterSheet, item: EquipmentItem): ItemStatus {
+export function itemStatus(t: Translator, sheet: CharacterSheet, item: EquipmentItem): ItemStatus {
   const rule = chargeRuleOf(item);
-  const charges = rule ? `${chargesLeft(item, rule)}/${chargeMax(rule)} charges` : null;
+  const charges = rule ? t("{left}/{max} charges", { left: chargesLeft(item, rule), max: chargeMax(rule) }) : null;
   const cursed = Boolean(item.attuned && gearDefFor(item)?.cursed);
   const refusal = attunementRefusal(sheet, { [item.name]: { attuned: !(item.attuned || item.attuning) } });
   const stored = isSpellStorer(item) ? storedSpellsSummary(item) : null;
@@ -201,31 +269,35 @@ export function itemStatus(sheet: CharacterSheet, item: EquipmentItem): ItemStat
 // is spent by the cast itself, so the sheet offers no minus for it.
 export type CounterView = { line: string; spendable: boolean; note: string | null };
 
-export function counterView(id: string, pool: { max: number; used: number }): CounterView {
+export function counterView(t: Translator, id: string, pool: { max: number; used: number }, locale: Locale = "en"): CounterView {
+  const tp = pluralOf(t);
   const def = resourceDef(id);
-  const rest = def?.recharge === "short" ? "a short or long rest" : "a long rest";
+  const rest = def?.recharge === "short" ? t("a short or long rest") : t("a long rest");
+  // The hover note reads the reader's words where the map carries them
+  // (class-resources-fr.ts); the stored English def stays the engine's.
+  const note = resourceGuidance(id, locale) ?? def?.guidance ?? null;
   if (pool.max >= UNLIMITED_USES) {
     return {
-      line: pool.used ? `used ${pool.used} time${pool.used === 1 ? "" : "s"} since ${rest}` : `unused since ${rest}`,
+      line: pool.used ? tp("used {count} time since {rest}", "used {count} times since {rest}", { count: pool.used, rest }) : t("unused since {rest}", { rest }),
       spendable: false,
-      note: def?.guidance ?? null,
+      note,
     };
   }
   return {
     line: `${pool.max - pool.used}/${pool.max}`,
     spendable: !def?.passive,
-    note: def?.passive ? "Spent by the server when it is used; back after " + rest + "." : null,
+    note: def?.passive ? t("Spent by the server when it is used; back after {rest}.", { rest }) : null,
   };
 }
 
 // Flying, swimming and climbing speeds beside the walking one
 // (SheetDerived.speeds: Stormborn, Wind Soul, a raging eagle, Avenging
 // Angel, Winged Boots, Slippers of Spider Climbing...).
-export function otherSpeedsLine(speeds: { fly?: number; swim?: number; climb?: number } | undefined): string[] {
+export function otherSpeedsLine(t: Translator, speeds: { fly?: number; swim?: number; climb?: number } | undefined): string[] {
   const out: string[] = [];
-  if (speeds?.fly) out.push(`Fly ${speeds.fly} ft`);
-  if (speeds?.swim) out.push(`Swim ${speeds.swim} ft`);
-  if (speeds?.climb) out.push(`Climb ${speeds.climb} ft`);
+  if (speeds?.fly) out.push(t("Fly {n} ft", { n: speeds.fly }));
+  if (speeds?.swim) out.push(t("Swim {n} ft", { n: speeds.swim }));
+  if (speeds?.climb) out.push(t("Climb {n} ft", { n: speeds.climb }));
   return out;
 }
 
@@ -258,6 +330,14 @@ export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName"
   }
   const tags = item.identified === false ? [] : (item.tags ?? item.gear?.tags ?? []);
   return tags.some((tag) => HELD_FOCI.includes(tag));
+}
+
+// Whether a row offers the attune toggle. Only an item that asks for
+// attunement does; plain armor and "+1" gear work without one, and the
+// server refuses the rest (srd/magic-items.ts attunementProblem). One
+// already attuned keeps the control so it can end.
+export function isAttunable(item: Pick<EquipmentItem, "name" | "slug" | "srdName" | "attuned" | "gear">): boolean {
+  return Boolean(item.attuned) || Boolean(item.gear?.magic?.requiresAttunement) || Boolean(matchMagicItem(item)?.requiresAttunement);
 }
 
 // Where a weapon is, in the words the Hand's cards, its More sheet, its

@@ -19,6 +19,9 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { clipRecap, homeGlanceFor, partyFacesByCampaign } = await import("../src/lib/db/home-glance.ts");
 const { recapParagraphs } = await import("../src/lib/recap.ts");
 const { agoLabel, chapterLine, pickContinue, romanNumeral, seatLine, slotLine } = await import("../src/app/home/types.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// These helpers speak for the screen; the tests read them in English, the dictionary's source.
+const t = (key, vars) => translate("en", key, vars);
 const { createUser } = await import("../src/lib/db/users.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { allocateSeq, createCampaign, joinByInviteCode } = await import("../src/lib/db/campaigns.ts");
@@ -92,15 +95,15 @@ const now = Date.parse("2026-09-24T12:00:00Z");
 const iso = (offsetMs) => new Date(now + offsetMs).toISOString();
 
 test("agoLabel is coarse and readable", () => {
-  assert.equal(agoLabel(iso(-30_000), now), "just now");
-  assert.equal(agoLabel(iso(-5 * 60_000), now), "5 minutes ago");
-  assert.equal(agoLabel(iso(-3 * 3_600_000), now), "3 hours ago");
-  assert.equal(agoLabel(iso(-day), now), "yesterday");
-  assert.equal(agoLabel(iso(-5 * day), now), "5 days ago");
-  assert.equal(agoLabel(iso(-3 * 7 * day), now), "3 weeks ago");
-  assert.equal(agoLabel(iso(-400 * day), now), "a year ago");
-  assert.equal(agoLabel(null, now), "");
-  assert.equal(agoLabel("not a date", now), "");
+  assert.equal(agoLabel(t, iso(-30_000), now), "just now");
+  assert.equal(agoLabel(t, iso(-5 * 60_000), now), "5 minutes ago");
+  assert.equal(agoLabel(t, iso(-3 * 3_600_000), now), "3 hours ago");
+  assert.equal(agoLabel(t, iso(-day), now), "yesterday");
+  assert.equal(agoLabel(t, iso(-5 * day), now), "5 days ago");
+  assert.equal(agoLabel(t, iso(-3 * 7 * day), now), "3 weeks ago");
+  assert.equal(agoLabel(t, iso(-400 * day), now), "a year ago");
+  assert.equal(agoLabel(t, null, now), "");
+  assert.equal(agoLabel(t, "not a date", now), "");
 });
 
 test("romanNumeral covers the chapters a campaign reaches", () => {
@@ -139,29 +142,29 @@ test("pickContinue prefers a live table and falls back to the newest finished on
 });
 
 test("seatLine says who you are at the table", () => {
-  assert.equal(seatLine(base({ status: "lobby", playerCount: 3, maxPlayers: 4 }), "u1"), "Lobby · 3 of 4 ready");
-  assert.equal(seatLine(base({ playingAs: "Thane Ordwin" }), "u1"), "Playing as Thane Ordwin · 4 of 5 seats");
-  assert.equal(seatLine(base({ dmUserId: "u1" }), "u1"), "Running the table · 4 of 5 seats");
-  assert.equal(seatLine(base({ maxPlayers: 1, playerCount: 1, playingAs: "Sera" }), "u1"), "Playing as Sera · solo");
-  assert.equal(seatLine(base({}), "u9"), "No character yet · 4 of 5 seats");
+  assert.equal(seatLine(t, base({ status: "lobby", playerCount: 3, maxPlayers: 4 }), "u1"), "Lobby · 3 of 4 ready");
+  assert.equal(seatLine(t, base({ playingAs: "Thane Ordwin" }), "u1"), "Playing as Thane Ordwin · 4 of 5 seats");
+  assert.equal(seatLine(t, base({ dmUserId: "u1" }), "u1"), "Running the table · 4 of 5 seats");
+  assert.equal(seatLine(t, base({ maxPlayers: 1, playerCount: 1, playingAs: "Sera" }), "u1"), "Playing as Sera · solo");
+  assert.equal(seatLine(t, base({}), "u9"), "No character yet · 4 of 5 seats");
 });
 
 test("chapterLine reads the chapter, then the scene, then the description", () => {
-  assert.equal(chapterLine(base({ glance: { chapter: { index: 3, title: "The Drowned Lantern" } } })), "Chapter III · The Drowned Lantern");
-  assert.equal(chapterLine(base({ scene: "Halvord's Reach", glance: { chapter: { index: 1, title: "" } } })), "Chapter I · Halvord's Reach");
+  assert.equal(chapterLine(t, base({ glance: { chapter: { index: 3, title: "The Drowned Lantern" } } })), "Chapter III · The Drowned Lantern");
+  assert.equal(chapterLine(t, base({ scene: "Halvord's Reach", glance: { chapter: { index: 1, title: "" } } })), "Chapter I · Halvord's Reach");
   // With an act (issue #31) the act leads, and an unnamed chapter borrows the act's name before the scene.
-  assert.equal(chapterLine(base({ glance: { chapter: { index: 3, title: "The Drowned Lantern", act: 2, actTitle: "The Drowned Hymn" } } })), "Act II, Chapter III · The Drowned Lantern");
-  assert.equal(chapterLine(base({ scene: "Halvord's Reach", glance: { chapter: { index: 3, title: "", act: 2, actTitle: "The Drowned Hymn" } } })), "Act II, Chapter III · The Drowned Hymn");
-  assert.equal(chapterLine(base({ glance: { chapter: { index: 3, title: "", act: 2, actTitle: "" } } })), "Act II, Chapter III");
-  assert.equal(chapterLine(base({ scene: "Halvord's Reach" })), "Halvord's Reach");
-  assert.equal(chapterLine(base({})), "A drowned coast turned to black glass.");
+  assert.equal(chapterLine(t, base({ glance: { chapter: { index: 3, title: "The Drowned Lantern", act: 2, actTitle: "The Drowned Hymn" } } })), "Act II, Chapter III · The Drowned Lantern");
+  assert.equal(chapterLine(t, base({ scene: "Halvord's Reach", glance: { chapter: { index: 3, title: "", act: 2, actTitle: "The Drowned Hymn" } } })), "Act II, Chapter III · The Drowned Hymn");
+  assert.equal(chapterLine(t, base({ glance: { chapter: { index: 3, title: "", act: 2, actTitle: "" } } })), "Act II, Chapter III");
+  assert.equal(chapterLine(t, base({ scene: "Halvord's Reach" })), "Halvord's Reach");
+  assert.equal(chapterLine(t, base({})), "A drowned coast turned to black glass.");
 });
 
 test("slotLine states the table in a few words", () => {
-  assert.equal(slotLine(base({ status: "lobby", playerCount: 3, maxPlayers: 4 }), "u1"), "3 of 4 ready");
-  assert.match(slotLine(base({ status: "ended" }), "u1"), /^Finished /);
-  assert.equal(slotLine(base({ dmUserId: "u1" }), "u1"), "Running the table");
-  assert.match(slotLine(base({}), "u9"), /^Last played /);
+  assert.equal(slotLine(t, base({ status: "lobby", playerCount: 3, maxPlayers: 4 }), "u1"), "3 of 4 ready");
+  assert.match(slotLine(t, base({ status: "ended" }), "u1"), /^Finished /);
+  assert.equal(slotLine(t, base({ dmUserId: "u1" }), "u1"), "Running the table");
+  assert.match(slotLine(t, base({}), "u9"), /^Last played /);
 });
 
 // ---- the glance against a real table ----

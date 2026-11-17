@@ -9,6 +9,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 register("./lib/register-jsx.mjs", import.meta.url);
 const { FightSummaryCard } = await import("../src/app/campaigns/[campaignId]/FightSummaryCard.tsx");
 const { describeEncounterSummary } = await import("../src/lib/dm/encounter-summary.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The words are the dictionary's; the tests read them in English, the source.
+const t = (key, vars) => translate("en", key, vars);
 
 const summary = (patch = {}) => ({
   outcome: "victory",
@@ -29,7 +32,7 @@ const labels = tiles(spared).map(([label]) => label);
 assert.ok(labels.includes("spared"), spared);
 assert.equal(labels.indexOf("spared"), labels.indexOf("slain") + 1, "beside the slain");
 assert.deepEqual(tiles(spared).find(([label]) => label === "spared"), ["spared", "1"]);
-assert.match(describeEncounterSummary(summary({ spared: 1 })), /1 knocked out and spared/, "the same word the chapter keeps");
+assert.match(describeEncounterSummary(t, summary({ spared: 1 })), /1 knocked out and spared/, "the same word the chapter keeps");
 
 for (const card of [summary(), summary({ spared: 0 })]) {
   const html = render(card);

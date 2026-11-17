@@ -18,7 +18,12 @@ import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { chaosFaces, WILD_SURGE_TABLE } from "@/lib/srd/ar-ws-wild-surge-table";
 import { castFirstReason, levelledCastThisTurn } from "@/lib/dm/ar-ws-tempest-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { resourceDef, resourceName, type ResourceDef } from "@/lib/srd/class-resources";
 import { otherPrice } from "@/lib/srd/counter-rules";
@@ -143,15 +148,15 @@ function sightOf(does: SpendDoes, target: HandTarget): Pick<HandCard, "sight"> {
 }
 
 // The reach a spend holds its creatures to, printed on the card.
-function reachOf(does: SpendDoes): string {
+function reachOf(does: SpendDoes, t: T = enT): string {
   // Options aimed alike share one card, which says the widest reach.
   const feet = does.kind === "variants"
     ? Math.max(0, ...Object.values(does.options).map((option) => ("rangeFt" in option.does && typeof option.does.rangeFt === "number" ? option.does.rangeFt : 0))) || null
     : "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : null;
-  return feet ? `${feet} ft` : "";
+  return feet ? t("{feet} ft", { feet }) : "";
 }
 
-function linesOf(does: SpendDoes): { dice: string; condition: string } {
+function linesOf(does: SpendDoes, t: T = enT): { dice: string; condition: string } {
   switch (does.kind) {
     case "buff":
       // A buff with variants names none on its face: the player picks.
@@ -160,11 +165,11 @@ function linesOf(does: SpendDoes): { dice: string; condition: string } {
     case "save_effect":
     case "save_area":
     case "aoe_report":
-      return { dice: `${does.save.toUpperCase()} save`, condition: "condition" in does ? (does.condition ?? "") : "" };
+      return { dice: t("{ability} save", { ability: does.save.toUpperCase(), context: "table.hand.spell.saveOnly" }), condition: "condition" in does ? (does.condition ?? "") : "" };
     case "temp_hp":
-      return { dice: "temp hp", condition: "" };
+      return { dice: t("temp hp"), condition: "" };
     case "teleport":
-      return { dice: `${does.feet} ft`, condition: "" };
+      return { dice: t("{feet} ft", { feet: does.feet }), condition: "" };
     case "die_damage":
       return { dice: `+${typeof does.dice === "string" ? does.dice : "dice"} ${does.type}`, condition: "" };
     default:
@@ -217,12 +222,12 @@ function ownCounter(spend: AuthoredSpend) {
 // names the cards dealt before these (a spend with a counter of its own name
 // is dealt where that counter's card sat, counterSpendCards) so none shows
 // twice.
-export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken: Set<string>, board?: HandBoardFacts): HandCard[] {
+export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken: Set<string>, board?: HandBoardFacts, t: T = enT): HandCard[] {
   const cards: HandCard[] = [];
   for (const held of heldAuthored(sheet)) {
     for (const spend of held.entry.spends ?? []) {
       if (taken.has(textKey(spend.name))) continue;
-      const dealt = spendCards(sheet, turn, held, spend, board);
+      const dealt = spendCards(sheet, turn, held, spend, board, t);
       if (dealt.length) taken.add(textKey(spend.name));
       cards.push(...dealt);
     }
@@ -233,9 +238,9 @@ export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken:
 // The cards of the spend a counter of its own name stands for, dealt in the
 // counter's place among the feature cards (hand-spells.ts featureCards): dealt
 // after every other feature, a level 20 paladin's capstone went behind More.
-export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: string): HandCard[] {
+export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: string, t: T = enT): HandCard[] {
   const found = authoredSpendFor(sheet, name);
-  return found ? spendCards(sheet, turn, found.held, found.spend) : [];
+  return found ? spendCards(sheet, turn, found.held, found.spend, undefined, t) : [];
 }
 
 // The ways a spend aims, each its own card: one, or for a spend that either
@@ -245,15 +250,15 @@ export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: s
 // `key`: what tells two aims of one spend apart on the card's id when no variant does.
 type Aim = { variant?: string; key?: string; label?: string; target: HandTarget; dice: string; heals: boolean; afterWeaponHit?: boolean; action?: SpendAction; reach?: string };
 
-function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): Aim[] {
+function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>, t: T = enT): Aim[] {
   if (does.kind === "flames") {
     const dice = resolveFormula(does.formula, level, mods);
-    const heal = { variant: "heal", label: "healing", target: "ally" as const, dice: `heals ${dice}`, heals: true };
+    const heal = { variant: "heal", label: t("healing"), target: "ally" as const, dice: t("heals {dice}", { dice }), heals: true };
     return does.healOnly ? [{ ...heal, variant: undefined, label: undefined }] : [{ variant: "burn", label: does.type, target: "enemy", dice: `+${dice} ${does.type}`, heals: false }, heal];
   }
   // Turn the Tide, Balm of Peace: every hurt ally in reach, with no aim.
   if (does.kind === "heal_area") {
-    return [{ target: "none", dice: `heals ${resolveFormula(does.formula, level, mods)}`, heals: true }];
+    return [{ target: "none", dice: t("heals {dice}", { dice: resolveFormula(does.formula, level, mods) }), heals: true }];
   }
   // Options aimed differently (Telekinetic Adept's thrust at the creature
   // hit, its leap at the psi warrior): one card each, so each sends its aim.
@@ -272,23 +277,18 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
       });
     }
     const targets = new Set(options.map(([, option]) => targetOf(option.does)));
-    // An option whose creature then attacks another (Infectious Fury) is its
-    // own card, which takes that second creature as a pick (forcedVictim).
     if (targets.size > 1 || options.some(([, option]) => forcedVictim(option.does))) {
-      return options.map(([variant, option]) => ({ variant, label: pickLabel(variant), target: targetOf(option.does), dice: linesOf(option.does).dice, heals: false, afterWeaponHit: option.afterWeaponHit, action: option.action, reach: reachOf(option.does) }));
+      return options.map(([variant, option]) => ({ variant, label: pickLabel(variant), target: targetOf(option.does), dice: linesOf(option.does, t).dice, heals: false, afterWeaponHit: option.afterWeaponHit, action: option.action, reach: reachOf(option.does, t) }));
     }
   }
-  const lines = linesOf(does);
-  // A creature of either side (Adjust Density, src/lib/dm/ar-ws-buff-aim.ts):
-  // one card at an ally or the holder, one at a foe, so each posts the target
-  // the engine reads for it.
+  const lines = linesOf(does, t);
   if (does.kind === "buff" && does.target === "creature") {
-    return [{ target: "ally", dice: lines.dice, heals: false }, { key: "foe", label: "foe", target: "enemy", dice: lines.dice, heals: false }];
+    return [{ target: "ally", dice: lines.dice, heals: false }, { key: "foe", label: t("foe"), target: "enemy", dice: lines.dice, heals: false }];
   }
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
 }
 
-function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, spend: AuthoredSpend, board?: HandBoardFacts): HandCard[] {
+function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, spend: AuthoredSpend, board?: HandBoardFacts, t: T = enT): HandCard[] {
   const does = spend.does;
   // The counter of this spend's own name. Its card's id, cost and uses line
   // carry over, so a seat the player arranged holds and Hidden Paths, whose
@@ -312,7 +312,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;
   const left = state ? state.max - state.used : null;
-  const lines = linesOf(does);
+  const lines = linesOf(does, t);
   const perUnit = Boolean(pool?.perUnit);
   const need = pool?.optional ? 0 : pool?.amount ?? 1;
   const poolGate: Gate =
@@ -322,17 +322,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       ? {
           // A counter of the spend's own name is its uses, not a raw id.
           reason: counter
-            ? `${spend.name} has no use left (${left}/${state!.max}). It comes back after a rest.`
-            : `${spend.name} needs ${need} and ${sheet.name} has ${left} ${resourceName(pool!.id)} left. It comes back after a rest.`,
+            ? t("{spend} has no use left ({left}/{max}). It comes back after a rest.", { spend: spend.name, left, max: state!.max })
+            : t("{spend} needs {need} and {name} has {left} {pool} left. It comes back after a rest.", { spend: spend.name, need, name: sheet.name, left, pool: resourceName(pool!.id) }),
           spent: true,
         }
       : null;
-  // A variant a chosen option fixes (Lunar Phenomenon's phase) is the one card.
   const fixed = spend.variantFrom ? (heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null) : null;
-  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods)
+  const aims = aimsOf(does, held.level, formulaMods(computeSheetDerived(sheet)), t)
     .filter((aim) => !fixed || !aim.variant || textKey(aim.variant) === textKey(fixed))
-    // Release Tale aimed at a foe sent a healing tale's friend as the goblin,
-    // and the engine refused it: the tale held says which side it is told at.
     .map((aim) => (does.kind === "release_tale" ? { ...aim, target: taleAimsAt(sheet) } : aim));
   return aims.map((aim) => {
     const aimCost = aim.action ? (COST[aim.action] ?? cost) : cost;
@@ -343,14 +340,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       ...(does.kind === "save_area" && does.chosen ? { shares: CHOSEN_CREATURES } : {}),
       ...(forcedVictim(aimDoes(does, aim.variant)) ? { shares: VICTIM } : {}),
       cost: aimCost,
-      range: aim.reach || reachOf(does) || (aim.target === "self" || aim.target === "none" ? "Self" : ""),
+      range: aim.reach || reachOf(does, t) || (aim.target === "self" || aim.target === "none" ? t("Self", { context: "table.hand.range.self" }) : ""),
       // A reaction's fire is the whole of it, not a rider's extra damage.
       dice: action === "reaction" ? aim.dice.replace(/^\+/, "") : aim.dice,
-      roll: does.kind === "save_effect" || does.kind === "save_area" ? "no attack" : "no roll",
-      rules: `${held.feature}: the server resolves it.`,
+      roll: does.kind === "save_effect" || does.kind === "save_area" ? t("no attack") : t("no roll", { context: "table.hand.roll.none" }),
+      rules: t("{feature}: the server resolves it.", { feature: held.feature }),
       // The counter's reminder, which its own card used to show on hover.
       ...(counter ? { description: counter.guidance } : {}),
-      resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${resourceName(pool!.id)} ${left}/${state.max}` : "",
+      resource: counter && state && left !== null ? t("Uses {left}/{max}", { left, max: state.max }) : state && left !== null ? `${resourceName(pool!.id)} ${left}/${state.max}` : "",
       condition: lines.condition,
       // A shared pool's option with no painting of its own wears the pool's, as
       // its option card did (hand-options.ts).
@@ -394,28 +391,26 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       const options = Object.entries(does.variants).filter(([, outcome]) => !seen.has(outcome) && Boolean(seen.add(outcome)));
       card.choice = {
         arg: "variant",
-        label: "Choose",
+        label: t("Choose"),
         options: options.map(([value]) => ({ value, label: pickLabel(value) })),
       };
     }
     if (does.kind === "variants" && aims.length === 1) {
       card.choice = {
         arg: "variant",
-        label: "Choose",
-        // A Controlled Surge chooses between the numbers it rolled.
+        label: t("Choose"),
         options: Object.entries(does.options)
           .filter(([, option]) => option.does.kind !== "wild_surge" || !option.does.pick || (pendingSurge(sheet) ?? []).includes(option.does.pick) || !pendingSurge(sheet))
-          // An Arcane Shot offers the options the archer knows.
           .filter(([, option]) => option.does.kind !== "arcane_shot" || shotsKnown(sheet.features).includes(option.does.option))
           .map(([value]) => ({ value, label: pickLabel(value) })),
       };
     }
     return gated(
       card,
-      standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
+      standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action", t),
       poolGate,
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
-        ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
+        ? { reason: t("{name} rides a weapon hit: land one this turn first.", { name: spend.name }), spent: false }
         : null,
       // Cauterizing Flames answers a creature in one of the druid's flames.
       does.kind === "chaos_pick" && !chaosFaces(sheet).length
@@ -497,15 +492,14 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       // Aimed at a creature of the fight (the engine answers "there is no
       // fight" out of one): shut until a fight is on.
       inFightOf(turn) === false && (aim.afterWeaponHit || spend.afterWeaponHit || spend.afterSpellDamage || FIGHT_ONLY.has(aimDoes(does, aim.variant).kind))
-        ? { reason: `${spend.name} is used in a fight, on a creature in it.`, spent: false }
+        ? { reason: t("{name} is used in a fight, on a creature in it.", { name: spend.name }), spent: false }
         : null,
       // "A creature you can see": none while the holder is blinded.
       sightBound(aimDoes(does, aim.variant)) && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded"))
-        ? { reason: `${spend.name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
+        ? { reason: t("{name} takes a creature {who} can see, and they are blinded.", { name: spend.name, who: sheet.name }), spent: false }
         : null,
-      // What a monk's or a rogue's own spend waits for (mt-mr-hand.ts).
       mrCardGate(sheet, turn, spend, board),
-      aimCost === "free" ? null : costGate(aimCost, turn, sheet, spend.name),
+      aimCost === "free" ? null : costGate(aimCost, turn, sheet, spend.name, t),
       does.kind === "reroll_save" ? failedSaveGate(spend.name, turn) : null,
     );
   });
@@ -515,7 +509,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
 // feet, a WIS save against 8 + proficiency + CHA or frightened until the end
 // of the barbarian's next turn (use_resource with targetEnemyId; the engine's
 // combat-features.ts rolls it).
-export function intimidatingPresenceCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
+export function intimidatingPresenceCards(sheet: CharacterSheet, turn: HandTurn, t: T = enT): HandCard[] {
   if (!holdsFeature(sheet, "intimidating presence")) return [];
   const derived = computeSheetDerived(sheet);
   const dc = 8 + derived.proficiencyBonus + derived.abilityMods.cha;
@@ -524,12 +518,12 @@ export function intimidatingPresenceCards(sheet: CharacterSheet, turn: HandTurn)
     type: "control",
     name: "Intimidating Presence",
     cost: "action",
-    range: "30 ft",
-    dice: `WIS save DC ${dc}`,
-    roll: "no attack",
-    rules: "Frightened until the end of your next turn; a creature that saves cannot be frightened by it for 24 hours.",
+    range: t("{feet} ft", { feet: 30 }),
+    dice: t("{ability} save DC {dc}", { ability: "WIS", dc, context: "table.hand.spell.saveDc" }),
+    roll: t("no attack"),
+    rules: t("Frightened until the end of your next turn; a creature that saves cannot be frightened by it for 24 hours."),
     resource: "",
-    condition: "Frightened",
+    condition: t("Frightened"),
     icon: { kind: "feature", key: "Intimidating Presence", family: "class-barbarian" },
     target: "enemy",
     toHit: null,
@@ -549,11 +543,11 @@ export function intimidatingPresenceCards(sheet: CharacterSheet, turn: HandTurn)
   return [
     gated(
       card,
-      standingGate(sheet, turn, "action"),
+      standingGate(sheet, turn, "action", t),
       sheet.conditions.some((entry) => isConditionNamed(entry, "blinded"))
-        ? { reason: `Intimidating Presence takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
+        ? { reason: t("Intimidating Presence takes a creature {name} can see, and they are blinded.", { name: sheet.name }), spent: false }
         : null,
-      costGate("action", turn, sheet, "Intimidating Presence"),
+      costGate("action", turn, sheet, "Intimidating Presence", t),
     ),
   ];
 }

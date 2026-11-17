@@ -48,6 +48,8 @@ const conditionBase = {
   // [the slot level it starts at, its rounds or null for "until dispelled"], ascending (Geas).
   roundsBySlot: z.array(z.tuple([level, rounds.nullable()])).max(9).optional(),
   saveEnds: z.boolean().optional(),
+  // The save only out of the caster's sight (Fear): a workshop copy keeps it.
+  saveUnseen: z.boolean().optional(),
   also: words(4).optional(),
   variants: words(12).optional(),
   endsOnDamage: z.boolean().optional(),
@@ -112,6 +114,10 @@ export const spellMechSchema = z.object({
   ignoresCover: z.boolean().optional(),
   damageType: word().optional(),
   secondType: word().optional(),
+  // Destructive Wave's "radiant or necrotic damage (your choice)": the
+  // object strips a key it does not name, so a copy lost the choice and its
+  // second 5d6 was radiant whatever the caster named.
+  secondTypeChoice: words().optional(),
   attack: z.enum(["melee", "ranged"]).optional(),
   condition: z.object(conditionBase).optional(),
   noDamage: z.boolean().optional(),
@@ -159,14 +165,19 @@ export const spellMechSchema = z.object({
       immuneCondition: word().optional(),
       skipConditions: words(6).optional(),
       endsOnDamage: z.boolean().optional(),
+      untilCasterTurnEnd: z.boolean().optional(),
     })
     .optional(),
   targets: z.object({ count: int(1, 100), perSlotLevel: int(0, 10).optional() }).optional(),
   area: z.boolean().optional(),
   areaFeet: feet.optional(),
   repeat: z.enum(["action", "bonus", "free"]).optional(),
+  // Witch Bolt's beam on later turns: unnamed here, the parse dropped it, and
+  // a workshop copy's later turns dealt nothing.
+  repeatDice: dice.optional(),
   targetTypes: words(14).optional(),
   immuneTypes: words(14).optional(),
+  sparesIntAtMost: int(1, 30).optional(),
   immuneIfImmuneTo: word().optional(),
   revive: z
     .object({
@@ -191,6 +202,13 @@ export const spellMechSchema = z.object({
 // the two drift apart.
 const drift: SpellMech = {} as z.infer<typeof spellMechSchema>;
 void drift;
+// And the other way: a field the engine's row carries that the schema does
+// not name is dropped by the parse, so a workshop copy of the spell plays
+// without it (Destructive Wave's radiant-or-necrotic choice did). The line
+// below names any such field in the compile error.
+type UnnamedField = Exclude<keyof SpellMech, keyof z.infer<typeof spellMechSchema>>;
+const everyFieldNamed: [UnnamedField] extends [never] ? true : UnnamedField = true;
+void everyFieldNamed;
 
 // The block, or why not: the first problem, named by its field.
 export function checkSpellMech(raw: unknown): { mech: SpellMech } | { error: string } {

@@ -14,20 +14,29 @@ import type { Quest, QuestStatus } from "@/lib/dm/quest-logic";
 import { GlyphChip, KitButton, LoadFailed, panelField, PanelLoading, panelRow, Tick, TickMark } from "./PanelKit";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useT } from "@/lib/locale";
 
 // The quest log (docs/vtt-parity-implementation-plan.md 5.7): what the
 // arc compiled and what the DM wrote, with objectives the DM ticks by
 // hand. Players read the party's; the DM's own rows are marked.
 
-const STATUS_LABEL: Record<QuestStatus, string> = { active: "Active", done: "Done", failed: "Failed", hidden: "Hidden" };
+// The statuses' words by value; the keys live with the quest log group.
+const STATUS_KEYS: Record<QuestStatus, string> = {
+  active: "Active",
+  done: "Done",
+  failed: "Failed",
+  hidden: "Hidden",
+};
 const STATUS_GLYPH: Record<QuestStatus, string> = { active: "quest-active", done: "quest-done", failed: "quest-failed", hidden: "quest-hidden" };
-const STATUS_OPTIONS = (Object.keys(STATUS_LABEL) as QuestStatus[]).map((status) => ({
-  value: status,
-  label: STATUS_LABEL[status],
-  icon: { kind: "glyph" as const, key: STATUS_GLYPH[status] },
-}));
+const statusOptionsOf = (t: (key: string, vars?: Record<string, string | number>) => string) =>
+  (Object.keys(STATUS_KEYS) as QuestStatus[]).map((status) => ({
+    value: status,
+    label: t(STATUS_KEYS[status]),
+    icon: { kind: "glyph" as const, key: STATUS_GLYPH[status] },
+  }));
 
 export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignId: string; steersStory: boolean; refreshKey: number }) {
+  const t = useT();
   const [quests, setQuests] = useState<Quest[] | null>(null);
   // A refused or failed read is shown in the server's words with a way to
   // ask again, never as "nothing here yet" (issue 140).
@@ -43,7 +52,7 @@ export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignI
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<{ quests?: Quest[] }>(fetch(`/api/campaigns/${campaignId}/quests`), "The quest log").then((outcome) => {
+    readLoad<{ quests?: Quest[] }>(t, fetch(`/api/campaigns/${campaignId}/quests`), t("The quest log")).then((outcome) => {
       if (cancelled) {
         return;
       }
@@ -55,8 +64,7 @@ export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignI
     return () => {
       cancelled = true;
     };
-  }, [campaignId, refreshKey, reload, settle]);
-
+  }, [ campaignId, refreshKey, reload, settle, t ]);
   async function patch(questId: string, body: Record<string, unknown>) {
     const response = await fetch(`/api/campaigns/${campaignId}/quests/${questId}`, {
       method: "PATCH",
@@ -93,7 +101,7 @@ export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignI
   }
 
   async function remove(quest: Quest) {
-    if (!(await appConfirm(`Take "${quest.title}" off the log?`, { actionLabel: "Take it off", tone: "danger" }))) {
+    if (!(await appConfirm(t("Take \"{title}\" off the log?", { title: quest.title }), { actionLabel: t("Take it off"), tone: "danger" }))) {
       return;
     }
     await fetch(`/api/campaigns/${campaignId}/quests/${quest.id}`, { method: "DELETE" });
@@ -107,22 +115,22 @@ export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignI
   }
 
   if (quests === null) {
-    return <PanelLoading label="Opening the log..." />;
+    return <PanelLoading label={t("Opening the log...")} />;
   }
   const active = quests.filter((quest) => quest.status === "active");
   const settled = quests.filter((quest) => quest.status !== "active");
   return (
     <div className="space-y-2">
       <SectionHead
-        title="Quest log"
+        title={t("Quest log")}
         glyph="tab-quests"
         aside={
           steersStory && !adding ? (
             <KitButton onClick={() => setAdding(true)}>
-              <Plus className="size-3.5" /> Write one
+              <Plus className="size-3.5" /> {t("Write one")}
             </KitButton>
           ) : quests.length ? (
-            <span className="text-[11px] text-stone-500">{active.length} active</span>
+            <span className="text-[11px] text-stone-500">{t("{count} active", { count: active.length })}</span>
           ) : null
         }
       />
@@ -132,26 +140,26 @@ export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignI
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             maxLength={120}
-            placeholder="Find the miller's daughter"
-            aria-label="Quest title"
+            placeholder={t("Find the miller's daughter")}
+            aria-label={t("Quest title")}
             className={panelField}
           />
-          <DictateField label="Objectives" onTranscript={(text) => setLines((current) => appendDictation(current.trim() ? `${current.trimEnd()}\n` : "", text))}>
+          <DictateField label={t("Objectives")} onTranscript={(text) => setLines((current) => appendDictation(current.trim() ? `${current.trimEnd()}\n` : "", text))}>
             <textarea
               value={lines}
               onChange={(event) => setLines(event.target.value)}
               rows={3}
-              placeholder={"Objectives, one per line:\nAsk at the mill\nSearch the weir"}
-              aria-label="Objectives, one per line"
+              placeholder={t("Objectives, one per line:\nAsk at the mill\nSearch the weir")}
+              aria-label={t("Objectives, one per line")}
               className={cn(panelField, "leading-5")}
             />
           </DictateField>
           <div className="flex gap-1.5">
             <KitButton tone="primary" disabled={busy || !title.trim()} busy={busy} onClick={() => void add()}>
-              {busy ? null : <Check className="size-3.5" />} Add
+              {busy ? null : <Check className="size-3.5" />} {t("Add")}
             </KitButton>
             <KitButton onClick={() => setAdding(false)}>
-              <X className="size-3.5" /> Cancel
+              <X className="size-3.5" /> {t("Cancel")}
             </KitButton>
           </div>
         </div>
@@ -160,7 +168,7 @@ export function QuestsPanel({ campaignId, steersStory, refreshKey }: { campaignI
         loadError ? (
           <LoadFailed error={loadError} onRetry={() => setReload((current) => current + 1)} />
         ) : loaded ? (
-          <EmptyState size="sm" art="scrolls" title="Nothing on the log yet." />
+          <EmptyState size="sm" art="scrolls" title={t("Nothing on the log yet.")} />
         ) : null
       ) : null}
       <ul className="stagger space-y-1.5">
@@ -183,19 +191,20 @@ function QuestRow({
   onPatch: (body: Record<string, unknown>) => void;
   onRemove: () => void;
 }) {
+  const t = useT();
   const done = quest.objectives.filter((objective) => objective.done).length;
   // The same doors as the row's own controls, for a right-click or a long press.
   const items: ContextMenuItem[] = steersStory
     ? [
-        ...(Object.keys(STATUS_LABEL) as QuestStatus[]).map((status) => ({
+        ...(Object.keys(STATUS_KEYS) as QuestStatus[]).map((status) => ({
           id: status,
-          label: `Mark ${STATUS_LABEL[status].toLowerCase()}`,
+          label: t("Mark {status}", { status: t(STATUS_KEYS[status]) }),
           glyph: STATUS_GLYPH[status],
           disabled: quest.status === status,
           onSelect: () => onPatch({ status }),
         })),
         ...((quest.source === "dm" || !quest.sourceRef)
-          ? [{ id: "remove", label: "Take it off the log", glyph: "ui-delete", tone: "danger" as const, separated: true, onSelect: onRemove }]
+          ? [{ id: "remove", label: t("Take it off the log"), glyph: "ui-delete", tone: "danger" as const, separated: true, onSelect: onRemove }]
           : []),
       ]
     : [];
@@ -203,7 +212,7 @@ function QuestRow({
     <ContextMenu as="li" items={items} label={quest.title} className={cn(panelRow, quest.status !== "active" && "opacity-70")}>
       <div className="flex flex-wrap items-center gap-1.5">
         <GameIcon icon={{ kind: "glyph", key: STATUS_GLYPH[quest.status] }} size="size-6" className="shrink-0" />
-        {quest.visibility === "dm" ? <EyeOff className="size-3.5 shrink-0 text-violet-300" aria-label="GM only" /> : null}
+        {quest.visibility === "dm" ? <EyeOff className="size-3.5 shrink-0 text-violet-300" aria-label={t("GM only")} /> : null}
         <span className="min-w-[9rem] flex-1 text-sm font-medium leading-5 text-stone-100">{quest.title}</span>
         {quest.objectives.length ? (
           <span key={done} className="count-pop text-[11px] tabular-nums text-stone-400">
@@ -214,17 +223,17 @@ function QuestRow({
           <Select<QuestStatus>
             value={quest.status}
             onChange={(status) => onPatch({ status })}
-            options={STATUS_OPTIONS}
-            label="Status"
+            options={statusOptionsOf(t)}
+            label={t("Status")}
             size="sm"
             align="end"
             className="pk-w-26"
           />
         ) : (
-          <GlyphChip glyph={STATUS_GLYPH[quest.status]}>{STATUS_LABEL[quest.status]}</GlyphChip>
+          <GlyphChip glyph={STATUS_GLYPH[quest.status]}>{t(STATUS_KEYS[quest.status])}</GlyphChip>
         )}
         {steersStory && (quest.source === "dm" || !quest.sourceRef) ? (
-          <KitButton tone="iconDanger" always onClick={onRemove} aria-label="Take it off the log">
+          <KitButton tone="iconDanger" always onClick={onRemove} aria-label={t("Take it off the log")}>
             <Trash2 className="size-3.5" />
           </KitButton>
         ) : null}
@@ -236,7 +245,7 @@ function QuestRow({
               {steersStory ? (
                 <Tick
                   checked={objective.done}
-                  label={`Done: ${objective.text}`}
+                  label={t("Done: {text}", { text: objective.text })}
                   onChange={(checked) =>
                     onPatch({
                       objectives: quest.objectives.map((entry) => (entry.id === objective.id ? { ...entry, done: checked } : entry)),
@@ -251,7 +260,7 @@ function QuestRow({
           ))}
         </ul>
       ) : null}
-      {quest.source === "arc" && quest.sourceRef ? <p className="reveal mt-1 text-[11px] text-stone-500">From the story</p> : null}
+      {quest.source === "arc" && quest.sourceRef ? <p className="reveal mt-1 text-[11px] text-stone-500">{t("From the story")}</p> : null}
     </ContextMenu>
   );
 }

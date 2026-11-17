@@ -99,7 +99,7 @@ await test("the join page opens on the chooser, and every pick goes through the 
 
 await test("Help me build opens the quiz at the table's level, and its hero goes through the confirm sheet", () => {
   const chooser = read("src/app/campaigns/[campaignId]/HeroChooser.tsx");
-  assert.match(chooser, /onClick=\{onHelpMeBuild\}[\s\S]*Help me build/);
+  assert.match(chooser, /onClick=\{onHelpMeBuild\}[\s\S]*\{t\("Help me build"\)\}/, "the door's label reads through the dictionary (the chooser and builder i18n passes)");
   const page = read("src/app/campaigns/[campaignId]/character/page.tsx");
   // The chooser's door opens the builder on its own quiz (no second engine).
   assert.match(page, /onHelpMeBuild=\{\(\) => \{\s*setHelped\(true\);\s*setMode\("create"\);/);

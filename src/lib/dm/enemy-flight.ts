@@ -17,10 +17,11 @@ import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/ba
 import { findPath, reachableTiles } from "@/lib/battlemap/movement";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { chebyshev } from "@/lib/battlemap/types";
-import { enemyMoveTraits, fearSourceAt } from "@/lib/dm/enemy-approach";
+import { enemyMoveTraits, fearSourcesAt } from "@/lib/dm/enemy-approach";
+import type { ConditionMeta } from "@/lib/dm/condition-logic";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
-import { approachHold, farthestFrom, fleeHold, nearerSquares, TURNED } from "@/lib/dm/flee-logic";
+import { approachHold, farthestFrom, fleeHold, nearerAnySquares, TURNED } from "@/lib/dm/flee-logic";
 import { approachSourceAt } from "@/lib/dm/enemy-aggressive";
 import { canEnemyAct, markEnemyActed } from "@/lib/dm/can-act";
 import { handleMoveToken } from "@/lib/dm/map-tools";
@@ -34,7 +35,7 @@ type XY = { x: number; y: number };
 // What it runs from: the one it fears or was turned by, else the nearest
 // creature of the other side.
 function runFrom(campaignId: string, enemy: EncounterEnemy, mapId: string, at: XY): XY | null {
-  const feared = fearSourceAt(mapId, enemy.conditions, enemy.conditionMeta as Record<string, { source?: string }>);
+  const [feared] = fearSourcesAt(mapId, enemy.conditions, enemy.conditionMeta as Record<string, ConditionMeta>);
   if (feared) {
     return feared;
   }
@@ -65,9 +66,11 @@ function escapeSquare(enemy: EncounterEnemy, source: XY, extraTiles: number): XY
   const tokens = listTokens(map.id);
   const enemiesById = new Map(listEnemies(encounter.id).map((entry) => [entry.id, entry]));
   const footprints = footprintLookup(enemiesById);
-  // Never through a square nearer what it runs from: move_token takes the
-  // same way round (map-tools.ts), so the square picked is one it reaches.
-  const occupied = new Set([...occupiedTiles(map, tokens, token, footprints), ...nearerSquares(map.width, map.height, token, source)]);
+  // Never through a square nearer what it runs from, nor nearer anything
+  // else it fears: move_token takes the same way round (map-tools.ts), so
+  // the square picked is one it reaches.
+  const feared = fearSourcesAt(map.id, enemy.conditions, enemy.conditionMeta as Record<string, ConditionMeta>);
+  const occupied = new Set([...occupiedTiles(map, tokens, token, footprints), ...nearerAnySquares(map.width, map.height, token, [source, ...feared])]);
   const budget = enemyMoveBudget(encounter, enemy, token).tilesLeft + extraTiles;
   const reached = reachableTiles(map.terrain, map.width, map.height, occupied, token, budget, footprints(token), token.movement === "fly", enemyMoveTraits(map.width, tokens, token, encounter.id));
   const squares = [...reached.entries()].map(([index, cost]) => ({ x: index % map.width, y: Math.floor(index / map.width), cost }));

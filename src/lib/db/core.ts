@@ -14,6 +14,8 @@ import { extraSubclassOf, mergeExtras, type SubclassExtras } from "@/lib/srd/sub
 import { repairedTraining } from "@/lib/srd/subclass-training";
 import { keyedFeatChoices } from "@/lib/schemas/sheet";
 import { populateResources } from "@/lib/srd/class-resources";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
+import type { WornMagicItem } from "@/lib/srd/magic-items";
 import { featsAsRun, registerTableFeatReader } from "@/lib/srd/feat-effects";
 import { tableFeatsFrom } from "@/lib/db/table-feats";
 import { registerTableHazardReader } from "@/lib/srd/table-hazards";
@@ -3133,6 +3135,15 @@ function ensureSchema(db: SqliteDatabase) {
   // 731, src/lib/dm/known-before-logic.ts): {grade, how}, or '' for anyone
   // the party meets in play. A module carries it to the tables made from it.
   addColumns("npcs", [["known_before_json", `TEXT NOT NULL DEFAULT ''`]]);
+  // The NPC's body as the server keeps it: free or someone's prisoner, what
+  // holds them, standing or down, travelling with the party
+  // (src/lib/dm/npc-state-logic.ts). '' is a free, unbound, standing NPC.
+  addColumns("npcs", [["state_json", `TEXT NOT NULL DEFAULT ''`]]);
+  // The character whose fall unconscious let a dropped row go (SRD 5.1,
+  // Unconscious: "drops whatever it's holding"; src/lib/dm/fallen-gear.ts):
+  // their own pick-up and the fight's end give it back with its attunement,
+  // which dropping never ends. Null for anything put down any other way.
+  addColumns("dropped_items", [["owner_id", `TEXT`]]);
   // When the party first dealt with an NPC (src/lib/db/npcs.ts Npc.metAt),
   // which a reaction roll reads: it is for strangers. The rows already
   // played get it once, from what play recorded about them.
@@ -3774,10 +3785,12 @@ function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: n
   const sheets = db
     .prepare(
       `SELECT id, campaign_id, class, subclass, race, level, abilities_json, features_json, resources_json,
-              classes_json, feats_json, proficiencies_json
+              classes_json, feats_json, proficiencies_json, equipment_json, alignment
          FROM character_sheets`,
     )
     .all() as Array<{
+    equipment_json: string | null;
+    alignment: string | null;
     id: string;
     campaign_id: string;
     class: string;
@@ -3841,6 +3854,17 @@ function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: n
         rowFeats,
         row.campaign_id,
         { race: row.race },
+        // An Ioun Stone of Mastery's +1 (src/lib/srd/proficiency.ts): left
+        // out, every restart shrank the counters it had raised.
+        proficiencyBonusOf({
+          level: row.level,
+          class: row.class,
+          classes: multiclass ? classes : undefined,
+          race: row.race,
+          alignment: row.alignment ?? undefined,
+          features,
+          equipment: [parseJson<WornMagicItem[]>(row.equipment_json, [])].flatMap((items) => (Array.isArray(items) ? items : [])),
+        }),
       );
       const nextFeatures = JSON.stringify(features);
       const nextResources = JSON.stringify(resources);

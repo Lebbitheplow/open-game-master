@@ -17,6 +17,7 @@ import { settlePreparation } from "@/lib/srd/spell-prep";
 import { restVanished } from "@/lib/srd/ar-ws-spellbook";
 import { withoutConjuredAtLongRest } from "@/lib/srd/ar-ws-conjured";
 import { attunementProblem } from "@/lib/srd/magic-items";
+import { rechargeAtLongRest } from "@/lib/srd/item-charge-rules";
 import type { CharacterSheet, FullPatchSheetInput, HitDicePool } from "@/lib/schemas/sheet";
 
 // Pure 5e rest math, database-free so scripts/test-rest-logic.mjs can
@@ -119,10 +120,27 @@ export function longRestPatch(
   if (lasting) {
     patch.equipment = lasting;
   }
+  // What an item gives back "when you finish a long rest" (SRD 5.1, Boots of
+  // Speed's ten minutes), in the rest's own audited patch.
+  const recharged = rechargeAtLongRest(patch.equipment ?? sheet.equipment);
+  if (recharged) {
+    patch.equipment = recharged;
+  }
   // Bound creatures rest with their owner: a night restores a downed
-  // companion or drake to full (a vanished familiar is already gone).
-  if ((sheet.pets ?? []).some((pet) => pet.hp < pet.maxHp)) {
-    patch.pets = sheet.pets.map((pet) => ({ ...pet, hp: pet.maxHp }));
+  // companion or drake to full (a vanished familiar is already gone), and
+  // ends what lasts until it finishes a long rest, as below for the owner
+  // (a block's poison with no count, pet-condition-lay.ts).
+  const restedPets = (sheet.pets ?? []).map((pet) => {
+    let conditions = pet.conditions ?? [];
+    let meta = (pet.conditionMeta ?? {}) as ConditionMetaMap;
+    for (const name of conditions) {
+      ({ conditions, meta } = removeConditionInstances(conditions, meta, name, (instance) => instance.untilLongRest === true || instance.untilRestEnds === true));
+    }
+    const ended = conditions.length !== (pet.conditions ?? []).length || JSON.stringify(meta) !== JSON.stringify(pet.conditionMeta ?? {});
+    return pet.hp < pet.maxHp || ended ? { ...pet, hp: pet.maxHp, ...(ended ? { conditions, conditionMeta: meta } : {}) } : pet;
+  });
+  if (restedPets.some((pet, index) => pet !== sheet.pets[index])) {
+    patch.pets = restedPets;
   }
   if (sheet.spellcasting) {
     // Slots created by Font of Magic vanish at the end of a long rest: for
@@ -405,6 +423,13 @@ export function hitDiceHealing(
   // How many extra dice ride at the end of the expression, outside the
   // Constitution modifier: Song of Rest's, Chef's.
   extraDice: boolean | number,
+  // What a feat does to each hit die (src/lib/srd/feat-combat.ts
+  // hitDieHealingFloor): Durable's least a die heals, Stalwart's addition.
+  // Each die is held to them alone: Durable once floored the dice together,
+  // so a 1 and a 10 healed 17 where the rule's floor on the 1 heals 19.
+  // `times`: a Periapt of Wound Closure doubles what each die restores.
+  // `highest`: each die counts its top face (a Potion of Vitality's day).
+  perDie: { floor?: number; add?: number; times?: number; highest?: boolean } = {},
 ): number {
   const diceTerms = outcome.terms.filter((term) => term.kind === "dice");
   const count = typeof extraDice === "number" ? extraDice : extraDice ? 1 : 0;
@@ -414,9 +439,9 @@ export function hitDiceHealing(
     extra += term && term.kind === "dice" ? term.subtotal : 0;
   }
   const fromDice = diceTerms
-    .flatMap((term) => (term.kind === "dice" ? term.dice : []))
+    .flatMap((term) => (term.kind === "dice" ? term.dice.map((die) => ({ ...die, top: term.sides })) : []))
     .filter((die) => die.kept)
-    .reduce((sum, die) => sum + Math.max(0, die.value + conMod), 0);
+    .reduce((sum, die) => sum + (Math.max(perDie.floor ?? 0, (perDie.highest ? die.top : die.value) + conMod) + (perDie.add ?? 0)) * (perDie.times ?? 1), 0);
   return fromDice + extra;
 }
 

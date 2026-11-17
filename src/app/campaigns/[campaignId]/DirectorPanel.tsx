@@ -3,13 +3,14 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
   ONE_SHOT_EVENT_IDS,
-  oneShotLabel,
-  oneShotBlurb,
+  oneShotLabelT,
+  oneShotBlurbT,
   type OneShotEventId,
 } from "@/lib/dm/director-logic";
 
@@ -63,6 +64,7 @@ export function DirectorArmedBanner({
   // So: armed from the stream when it has spoken, content from local always.
   const [local, setLocal] = useState<ArmState | null>(null);
   const [busy, setBusy] = useState(false);
+  const t = useT();
   const isArmedNow = armed?.armed ?? local?.armed ?? false;
   const detail = local ?? EMPTY;
   const state: ArmState = {
@@ -109,8 +111,8 @@ export function DirectorArmedBanner({
       />
       <span className="min-w-0 flex-1 truncate">
         {state.absoluteCommand
-          ? `Direction armed: "${state.absoluteCommand}"`
-          : `${state.oneShot ? oneShotLabel(state.oneShot) : "Event"} armed for the next turn`}
+          ? t("Direction armed: \"{command}\"", { command: state.absoluteCommand })
+          : `${state.oneShot ? t("{name} armed for the next turn", { name: oneShotLabelT(t, state.oneShot) }) : t("{name} armed for the next turn", { name: t("Event") })}`}
       </span>
       {steersStory ? (
         <button
@@ -150,6 +152,7 @@ export function DirectorArmedBanner({
 // it the Romance cue is not offered (issue 501).
 export function DirectorPresets({ campaignId, romance = true }: { campaignId: string; romance?: boolean }) {
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   const arm = useCallback(
     async (id: OneShotEventId) => {
@@ -173,7 +176,7 @@ export function DirectorPresets({ campaignId, romance = true }: { campaignId: st
   return (
     <>
       {ONE_SHOT_EVENT_IDS.filter((id) => romance || id !== "romance").map((id) => (
-        <Tooltip key={id} content={oneShotBlurb(id)}>
+        <Tooltip key={id} content={oneShotBlurbT(t, id)}>
           <button
             type="button"
             disabled={busy} aria-busy={busy}
@@ -181,7 +184,7 @@ export function DirectorPresets({ campaignId, romance = true }: { campaignId: st
             className={cn(ui.btnSmall, "min-h-9 gap-1 py-1 pl-1.5 pr-2 text-[11px] disabled:opacity-50")}
           >
             <GameIcon icon={{ kind: "glyph", key: ONE_SHOT_GLYPH[id] }} size="size-5" />
-            {oneShotLabel(id)}
+            {oneShotLabelT(t, id)}
           </button>
         </Tooltip>
       ))}

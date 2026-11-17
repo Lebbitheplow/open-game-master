@@ -19,7 +19,7 @@
 // The actions an enemy takes through take_action. Hide is not one: the engine
 // has no hidden state for an enemy that its attacks and the party's would
 // read and end.
-export const ENEMY_TAKE_ACTIONS = ["dash", "disengage", "dodge", "escape"] as const;
+export const ENEMY_TAKE_ACTIONS = ["dash", "disengage", "dodge", "escape", "wake"] as const;
 export type EnemyTakeAction = (typeof ENEMY_TAKE_ACTIONS)[number];
 
 export function isEnemyTakeAction(action: string): action is EnemyTakeAction {
@@ -44,6 +44,16 @@ export type EnemyTurnEntry = {
   // One of its Dashes is Aggressive's bonus action (the SRD orc): that
   // speed carries it only toward a hostile creature it can see.
   aggressive?: boolean;
+  // Its action is its Multiattack, which folds in an ability (a dragon's
+  // Frightful Presence, a mummy's Dreadful Glare; monster-abilities.ts
+  // multiattackAbilities): the abilities of it used this turn, by key, and
+  // whether its attacks are made. Either may come first; each once.
+  routineUses?: string[];
+  routineSwung?: boolean;
+  // Its Charge or Pounce rode a hit this turn (once a turn), and the creature
+  // a Pounce left prone, whose bonus attack is open (enemy-charge.ts).
+  chargeUsed?: boolean;
+  pouncedOn?: string;
 };
 
 export type EnemyTurns = { round: number; byId: Record<string, EnemyTurnEntry> };
@@ -66,7 +76,24 @@ function cleanEntry(raw: unknown): EnemyTurnEntry {
     ...(count(record.carried) ? { carried: count(record.carried) } : {}),
     ...(record.hasteUsed === true ? { hasteUsed: true } : {}),
     ...(record.aggressive === true ? { aggressive: true } : {}),
+    ...(Array.isArray(record.routineUses) && record.routineUses.some((key) => typeof key === "string")
+      ? { routineUses: [...new Set(record.routineUses.filter((key): key is string => typeof key === "string"))] }
+      : {}),
+    ...(record.routineSwung === true ? { routineSwung: true } : {}),
+    ...(record.chargeUsed === true ? { chargeUsed: true } : {}),
+    ...(typeof record.pouncedOn === "string" && record.pouncedOn ? { pouncedOn: record.pouncedOn } : {}),
   };
+}
+
+// The rest of a Multiattack that folds in an ability, once one half of it
+// is taken this turn: its attacks after the ability was used, and the
+// ability (by key) after the attacks were made.
+export function routineAttacksLeft(entry: EnemyTurnEntry): boolean {
+  return Boolean(entry.routineUses?.length) && !entry.routineSwung;
+}
+
+export function routineUseLeft(entry: EnemyTurnEntry, key: string): boolean {
+  return entry.routineSwung === true && !(entry.routineUses ?? []).includes(key);
 }
 
 // The stored record, or null for nothing worth keeping. Anything unreadable
@@ -186,6 +213,7 @@ const SPENT_WORDS: Record<EnemyTakeAction, string> = {
   disengage: "took the Disengage action",
   dodge: "took the Dodge action",
   escape: "spent its action trying to escape",
+  wake: "spent its action shaking a sleeper awake",
 };
 
 // Why an enemy that spent its action on one of these makes no attack: an

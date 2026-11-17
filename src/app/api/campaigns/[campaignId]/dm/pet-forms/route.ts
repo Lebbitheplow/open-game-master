@@ -5,6 +5,7 @@ import { hasPactOfTheChain, petFormCatalogue } from "@/lib/dm/pet-build";
 import { getSheetById } from "@/lib/db/sheets";
 import { z } from "zod";
 import { compareNames } from "@/lib/language/text-logic";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,13 +33,14 @@ export async function GET(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const owner = ownerSchema.safeParse(new URL(request.url).searchParams.get("characterId") ?? undefined);
   if (!owner.success) {
-    return Response.json({ error: "Name the pet's owner by characterId." }, { status: 400 });
+    return Response.json({ error: t("Name the pet's owner by characterId.") }, { status: 400 });
   }
   const sheet = owner.data ? getSheetById(owner.data) : null;
   if (owner.data && sheet?.campaignId !== campaignId) {
-    return Response.json({ error: "That character is not at this table." }, { status: 404 });
+    return Response.json({ error: t("That character is not at this table.") }, { status: 404 });
   }
   const names = new Set<string>();
   for (const userId of spellAuthorsFor(context.campaign)) {

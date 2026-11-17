@@ -46,6 +46,8 @@ export type StoredRoll = {
   // Damage rolls only: the enemy the server applied this roll's total to,
   // set together with `applied` (the damage_enemy double-apply guard).
   targetEnemyId: string | null;
+  // Spent: the server applied its total, or the engine threw it inside a
+  // call of its own (markRollSpent), so it pays for no number sent later.
   applied: boolean;
   // Attack and damage rolls: who rolled. Null when nobody did (a fall), for
   // the roll tools' rolls, and for rolls stored before it was recorded.
@@ -107,6 +109,18 @@ export function markRollApplied(rollId: string, targetEnemyId: string) {
   getDatabase()
     .prepare(`UPDATE rolls SET applied = 1, target_enemy_id = ? WHERE id = ?`)
     .run(targetEnemyId, rollId);
+}
+
+// Stamp a damage or custom roll the engine threw and used inside one of its
+// own calls (a spell's damage, a hazard's, the dice a damage or healing tool
+// was sent) as spent, so its total never pays for a number an AI GM sends
+// later (src/lib/dm/ai-gate.ts number, src/lib/dm/held-call.ts runHeld). It
+// names no target: what the roll landed on is the call's own business, and
+// the damage_enemy guard reads only a stamp that names its enemy.
+export function markRollSpent(rollId: string) {
+  getDatabase()
+    .prepare(`UPDATE rolls SET applied = 1 WHERE id = ? AND applied = 0 AND roll_kind IN ('damage', 'custom')`)
+    .run(rollId);
 }
 
 // Lands a damage roll with its stamp already on. The blow that ends a fight
@@ -197,6 +211,16 @@ export function lastAttackDetail(campaignId: string, characterId: string): strin
     .prepare(`SELECT detail FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack' ORDER BY created_at DESC, rowid DESC LIMIT 1`)
     .get(campaignId, characterId) as { detail: string } | undefined;
   return row?.detail || null;
+}
+
+// Whether a creature has made an attack roll at this character. An enemy's
+// id is its fight's own, so its rolls are this fight's: what an undead left
+// without a command answers (src/lib/dm/undead-command.ts).
+export function attackedBy(campaignId: string, characterId: string, attackerId: string): boolean {
+  const row = getDatabase()
+    .prepare(`SELECT 1 FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack' AND json_extract(attacker_json, '$.id') = ? LIMIT 1`)
+    .get(campaignId, characterId, attackerId);
+  return Boolean(row);
 }
 
 // Every roll since a moment, oldest first: the span of one fight.

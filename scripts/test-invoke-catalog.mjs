@@ -67,6 +67,7 @@ const TOOL_SOURCES = [
   "src/lib/dm/rest-tools.ts",
   "src/lib/dm/pet-tools.ts",
   "src/lib/dm/social-tools.ts",
+  "src/lib/dm/npc-state-tools.ts",
   "src/lib/dm/relationship-tools.ts",
   "src/lib/dm/world-tools.ts",
   "src/lib/dm/party-tools.ts",
@@ -616,7 +617,7 @@ test("an older form's field names reach the names the handler reads", () => {
 test("the property scan reads the tools it is pointed at", () => {
   assert.deepEqual(toolProperties("take_action").keys.sort(), [
     "ability", "action", "bonus", "characterId", "condition", "contestSkill", "damage", "damageType", "difficulty", "distanceFt",
-    "enemyId", "item", "level", "mount", "readied", "reason", "scene", "shove", "skill", "spell", "targetCharacterId",
+    "enemyId", "item", "level", "mount", "petName", "readied", "reason", "scene", "shove", "skill", "spell", "targetCharacterId",
     "targetEnemyId", "toward", "trigger",
   ]);
   assert.ok(toolProperties("apply_damage").keys.includes("amount"));
@@ -1247,6 +1248,17 @@ test("pc_attack's Made with, travel's Days and damage_object's Blows ask for the
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*actionParts\?: boolean/);
 });
 
+// Magic ammunition (G18): an older host strips pc_attack's ammo unread and
+// fires ordinary arrows, so the console asks for the host.
+test("pc_attack's Ammunition asks for the host", () => {
+  const field = adjudication("pc_attack").fields.find((entry) => entry.name === "ammo");
+  assert.ok(field, "pc_attack has no Ammunition field");
+  assert.ok(fieldForHost(field, () => true), "Ammunition on a host that has it");
+  assert.equal(fieldForHost(field, () => false), null, "Ammunition shown to an older host");
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*magicAmmo: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*magicAmmo\?: boolean/);
+});
+
 // The console's Background and Skills for a new companion: an older host's
 // add_companion strips both unread and recruits by the class list's first
 // skills, so the app's console shows them only to a host that reads them.
@@ -1304,6 +1316,40 @@ test("cast_buff's form picks a summoning's kind and each target's form from the 
   assert.equal(consoleSummonShown("summonMix", summonCatalogue(summonSpellFor("Animate Dead"))), true);
   assert.equal(consoleSummonShown("summonMix", null), false, "no spell named yet");
   assert.deepEqual(mixRecord([{ variant: "Skeleton", count: 2 }]), { Skeleton: 2 });
+});
+
+// The 2026-11-15 rules audit's new console fields: each is one an older host
+// strips unread (a pet's save forced on its owner, enemies caught by
+// nobody, a scroll copied with no check) or refuses, so an app holding a
+// newer console hides it there.
+test("the rules audit's new console fields ask for the host", () => {
+  const field = (tool, name) => adjudication(tool).fields.find((entry) => entry.name === name);
+  for (const [tool, name, flag] of [
+    ["learn_spell", "from", "scrollCopy"],
+    ["cast_at_player", "petName", "petSaves"],
+    ["heal", "petName", "petHealing"],
+    ["take_action", "petName", "familiarHelp"],
+    ["apply_hazard", "enemyIds", "enemyHazards"],
+    ["apply_hazard", "minutes", "frigidWater"],
+    ["apply_hazard", "place", "setTraps"],
+    ["damage_object", "bound", "manaclesBound"],
+    ["enemy_attack", "charged", "chargeRuns"],
+    ["pet_attack", "charged", "chargeRuns"],
+  ]) {
+    assert.ok(field(tool, name), `${tool}.${name}`);
+    assert.ok(fieldForHost(field(tool, name), () => true), `${tool}.${name} on a host that has it`);
+    assert.equal(fieldForHost(field(tool, name), () => false), null, `${tool}.${name} hidden on an older host`);
+    assert.ok(read("src/lib/capabilities.ts").match(new RegExp(`^\\s*${flag}: true,$`, "m")), `the server flags ${flag}`);
+    assert.match(read("src/lib/use-capabilities.ts"), new RegExp(`features\\?: \\{[^}]*${flag}\\?: boolean`));
+  }
+  // pc_attack's run was Charger's alone on an older host, and reads so there.
+  const charged = field("pc_attack", "charged");
+  assert.match(fieldForHost(charged, () => true).help, /Charge or Pounce/);
+  assert.match(fieldForHost(charged, () => false).label, /Charger/);
+  assert.doesNotMatch(fieldForHost(charged, () => false).help, /Pounce/);
+  const hazardTypes = (offers) => fieldForHost(field("apply_hazard", "type"), offers).options.map((option) => option.value);
+  assert.ok(hazardTypes(() => true).includes("frigid_water"));
+  assert.ok(!hazardTypes(() => false).includes("frigid_water"), "an older host is offered no frigid water");
 });
 
 console.log(`invoke-catalog: ${passed} tests passed`);

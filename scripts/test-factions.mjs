@@ -16,6 +16,11 @@ process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
 register("./lib/register-alias.mjs", import.meta.url);
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
+
 const {
   advanceFactionGoals,
   clampReputation,
@@ -47,8 +52,8 @@ test("standing bends the DC one point per step, clamped to the ladder", () => {
   assert.equal(reputationDcOffset(-2), 2);
   assert.equal(reputationDcOffset(99), -5);
   assert.equal(clampReputation(-40), -5);
-  assert.equal(reputationLabel(5), "honoured");
-  assert.equal(reputationLabel(-5), "hunted");
+  assert.equal(reputationLabel(enT, 5), "honoured");
+  assert.equal(reputationLabel(enT, -5), "hunted");
 });
 
 test("reputation records tolerate junk", () => {

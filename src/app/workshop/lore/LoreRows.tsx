@@ -10,6 +10,7 @@ import { ui } from "@/lib/ui";
 import { ListTally, sortRows, type RowSort } from "@/app/workshop/ListHead";
 import { CATEGORY_LABELS, type LoreEntryView } from "@/app/workshop/lore/types";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 // The workshop's world lore as full-width rows: the title, whether it is
 // pinned into every DM turn, its category, its tags, and the first line of
@@ -48,6 +49,7 @@ export function LoreRows({
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<RowSort>("made");
+  const t = useT();
   const shown = sortRows(entries.filter((entry) => matches(entry, query)), sort, (entry) => entry.title);
 
   return (
@@ -57,12 +59,12 @@ export function LoreRows({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search the lore"
-          aria-label="Search the lore by title, body or tag"
+          placeholder={t("Search the lore")}
+          aria-label={t("Search the lore by title, body or tag")}
           className={`${ui.input} pl-9`}
         />
       </label>
-      <ListTally shown={shown.length} total={entries.length} noun={["entry", "entries"]} sort={sort} onSort={setSort} />
+      <ListTally shown={shown.length} total={entries.length} noun={[t("entry"), t("entries")]} sort={sort} onSort={setSort} />
 
       <ul className="stagger-up grid gap-2 lg:grid-cols-2">
         {shown.map((entry) => {
@@ -88,7 +90,7 @@ export function LoreRows({
                   {entry.pinned ? (
                     <Pin
                       className="size-3.5 shrink-0 text-amber-400"
-                      aria-label="Pinned: included in every GM turn"
+                      aria-label={t("Pinned: included in every GM turn")}
                     />
                   ) : null}
                   <span className="font-display tracking-wide text-amber-50">{entry.title}</span>
@@ -97,11 +99,11 @@ export function LoreRows({
                   </span>
                   {entry.visibility === "dm" ? (
                     <span className="flex items-center gap-1 rounded-sm border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-display text-[10px] tracking-wider text-violet-300">
-                      <EyeOff className="size-3" /> Secret
+                      <EyeOff className="size-3" /> {t("Secret")}
                     </span>
                   ) : entry.imagePath ? (
                     <span className="flex items-center gap-1 rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-display text-[10px] tracking-wider text-emerald-300">
-                      <ImageIcon className="size-3" /> Handout
+                      <ImageIcon className="size-3" /> {t("Handout")}
                     </span>
                   ) : null}
                 </span>
@@ -138,7 +140,7 @@ export function LoreRows({
                 <GameIcon icon={{ kind: "glyph", key: "system-lore" }} size="size-10" />
                 <Plus className="absolute -bottom-1 -right-1 size-4 rounded-full bg-stone-900 text-amber-300" aria-hidden="true" />
               </span>
-              <span className="font-display tracking-wide">New entry</span>
+              <span className="font-display tracking-wide">{t("New entry", { context: "workshop.lore.newEntry" })}</span>
             </button>
           </li>
         ) : null}
@@ -148,11 +150,11 @@ export function LoreRows({
         <EmptyState
           size="md"
           art="scrolls"
-          title={steersStory ? "No lore yet. Write your world's places, factions, and history; the GM treats it as canon." : "The party lead has not written any world lore yet."}
-          hint={steersStory ? "Each entry is read by players or kept from them, as you choose. Pinned ones reach the narrator every turn." : undefined}
+          title={steersStory ? t("No lore yet. Write your world's places, factions, and history; the GM treats it as canon.", { context: "workshop.lore.emptyTitle" }) : t("The party lead has not written any world lore yet.", { context: "workshop.lore.emptyTitleReadOnly" })}
+          hint={steersStory ? t("Each entry is read by players or kept from them, as you choose. Pinned ones reach the narrator every turn.") : undefined}
         />
       ) : shown.length === 0 ? (
-        <p className="live-in text-xs text-stone-500">Nothing by that title, body or tag.</p>
+        <p className="live-in text-xs text-stone-500">{t("Nothing by that title, body or tag.")}</p>
       ) : null}
     </div>
   );

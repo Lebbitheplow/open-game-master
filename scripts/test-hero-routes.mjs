@@ -12,10 +12,14 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const { test, finish } = suite("test-hero-routes");
 const { heroRouteAdvice } = await import("../src/app/campaigns/[campaignId]/hero-routes.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The library card's line comes from the dictionaries; this suite reads the
+// English ones.
+const en = (key, vars) => translate("en", key, vars);
 const read = (file) => fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 
 await test("an empty library is pointed at a ready-made hero, opened at once", () => {
-  const advice = heroRouteAdvice({ library: [], pregens: 4 });
+  const advice = heroRouteAdvice(en, { library: [], pregens: 4 });
   assert.equal(advice.suggested, "ready");
   assert.equal(advice.openReady, true);
   assert.equal(advice.library, false);
@@ -23,14 +27,14 @@ await test("an empty library is pointed at a ready-made hero, opened at once", (
 });
 
 await test("a player with heroes is pointed at their library, by name", () => {
-  const advice = heroRouteAdvice({ library: ["Ada", "Bram", "Cole"], pregens: 4 });
+  const advice = heroRouteAdvice(en, { library: ["Ada", "Bram", "Cole"], pregens: 4 });
   assert.equal(advice.suggested, "library");
   assert.equal(advice.openReady, false);
   assert.match(advice.libraryLine, /^Ada, Bram and 1 more, adapted to this table's level/);
 });
 
 await test("a server with no ready-made heroes points at the builder", () => {
-  const advice = heroRouteAdvice({ library: [], pregens: 0 });
+  const advice = heroRouteAdvice(en, { library: [], pregens: 0 });
   assert.equal(advice.suggested, "build");
   assert.equal(advice.ready, false);
 });

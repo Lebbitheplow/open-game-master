@@ -21,6 +21,15 @@ import { lowestSlot, type HandCard, type HandCardType, type HandCost } from "@/l
 import { END_TURN_ID, isUrgentCard } from "@/lib/battlemap/hand-layout";
 import { textKey } from "@/lib/language/text-logic";
 import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
+import { translate } from "@/lib/messages-logic";
+
+// The groups' own words (table.hand.group.*; the pool faces' names ride
+// table.hand.pool.*) are read with the hand's translator, so the group cards
+// the fan seats carry the reader's words already. Pure otherwise: the ids,
+// the keys and the cards are untouched, and the plain form (the suites call
+// it with no translator) reads the dictionary's English.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export const GROUP_FOLD_MIN = 4;
 // A group's own search box shows once it holds more cards than this.
@@ -32,12 +41,12 @@ const BASIC_ACTIONS = new Set(["dodge", "dash", "disengage", "help", "hide", "se
 
 // A pool's name on its group card, and the short word its count is shown
 // in. Any other pool takes the resource table's own name.
-const POOL_NAMES: Record<string, { name: string; short: string; noun: [string, string] }> = {
-  ki: { name: "Ki", short: "Ki", noun: ["technique", "techniques"] },
-  sub_superiority_dice: { name: "Superiority dice", short: "Dice", noun: ["maneuver", "maneuvers"] },
-  channel_divinity: { name: "Channel Divinity", short: "Uses", noun: ["option", "options"] },
-  sub_psionic_energy: { name: "Psionic Energy", short: "Dice", noun: ["use", "uses"] },
-  sorcery_points: { name: "Sorcery points", short: "Points", noun: ["option", "options"] },
+const POOL_NAMES: Record<string, { nameKey: string; shortKey: string; nounKeys: [string, string] }> = {
+  ki: { nameKey: "Ki", shortKey: "Ki", nounKeys: ["technique", "techniques"] },
+  sub_superiority_dice: { nameKey: "Superiority dice", shortKey: "Dice", nounKeys: ["maneuver", "maneuvers"] },
+  channel_divinity: { nameKey: "Channel Divinity", shortKey: "Uses", nounKeys: ["option", "options"] },
+  sub_psionic_energy: { nameKey: "Psionic Energy", shortKey: "Dice", nounKeys: ["use", "uses"] },
+  sorcery_points: { nameKey: "Sorcery points", shortKey: "Points", nounKeys: ["option", "options"] },
 };
 
 export type HandGroupKey = "spells" | "items" | "actions" | `pool:${string}`;
@@ -111,29 +120,32 @@ const plural = (count: number, noun: [string, string]) => `${count} ${count === 
 
 // The slots that pay for a spell of this level, as the level's header says
 // them: "1 of 3 slots", "2 of 2 pact slots (level 3)", "none left".
-export function slotNote(sheet: Pick<CharacterSheet, "spellcasting"> | null, level: number): string {
+export function slotNote(sheet: Pick<CharacterSheet, "spellcasting"> | null, level: number, t: T = enT): string {
   const casting = sheet?.spellcasting;
   if (!casting || level <= 0) return "";
   const parts: string[] = [];
   const slot = casting.slots[level];
   if (slot?.max) {
-    parts.push(`${slot.max - slot.used} of ${plural(slot.max, ["slot", "slots"])}`);
+    parts.push(t("{left} of {of} {noun}", { left: slot.max - slot.used, of: slot.max, noun: slot.max === 1 ? t("slot") : t("slots") }));
   }
   const pact = casting.pact;
   if (pact?.max && pact.level >= level) {
-    parts.push(`${pact.max - pact.used} of ${plural(pact.max, ["pact slot", "pact slots"])}${pact.level > level ? ` (level ${pact.level})` : ""}`);
+    parts.push(
+      t("{left} of {of} {noun}", { left: pact.max - pact.used, of: pact.max, noun: pact.max === 1 ? t("pact slot") : t("pact slots") }) +
+        (pact.level > level ? t(" (level {level})", { level: pact.level }) : ""),
+    );
   }
   const anyLeft = parts.length && ((slot?.max ?? 0) - (slot?.used ?? 0) > 0 || (pact && pact.level >= level && pact.max - pact.used > 0));
   if (!anyLeft) {
     // Spent at this level, or never held: a higher slot still casts it.
     const higher = lowestSlot(sheet as CharacterSheet, level);
-    if (higher) parts.push(parts.length ? `level ${higher.level} slots open` : `cast with a level ${higher.level} slot`);
-    else if (!parts.length) parts.push("no slots");
+    if (higher) parts.push(parts.length ? t("level {level} slots open", { level: higher.level }) : t("cast with a level {level} slot", { level: higher.level }));
+    else if (!parts.length) parts.push(t("no slots"));
   }
   return parts.join(", ");
 }
 
-function spellLeft(sheet: Pick<CharacterSheet, "spellcasting"> | null): string {
+function spellLeft(sheet: Pick<CharacterSheet, "spellcasting"> | null, t: T): string {
   const casting = sheet?.spellcasting;
   if (!casting) return "";
   let left = 0;
@@ -142,38 +154,47 @@ function spellLeft(sheet: Pick<CharacterSheet, "spellcasting"> | null): string {
     left += Math.max(0, slot.max - slot.used);
     max += slot.max;
   }
-  const parts = max ? [`Slots ${left}/${max}`] : [];
-  if (casting.pact?.max) parts.push(`Pact ${casting.pact.max - casting.pact.used}/${casting.pact.max}`);
+  const parts = max ? [t("Slots {left}/{max}", { left, max })] : [];
+  if (casting.pact?.max) parts.push(t("Pact {left}/{max}", { left: casting.pact.max - casting.pact.used, max: casting.pact.max }));
   return parts.join(" · ");
 }
 
-function poolInfo(pool: string) {
+function poolInfo(pool: string, t: T) {
   const known = POOL_NAMES[pool];
-  if (known) return known;
-  return { name: resourceName(pool), short: "Uses", noun: ["option", "options"] as [string, string] };
+  if (known) {
+    return { name: t(known.nameKey), short: t(known.shortKey), noun: [t(known.nounKeys[0]), t(known.nounKeys[1])] as [string, string] };
+  }
+  return { name: resourceName(pool), short: t("Uses", { context: "table.hand.pool.usesShort" }), noun: [t("option"), t("options")] as [string, string] };
 }
 
-function spellSections(cards: HandCard[], sheet: Pick<CharacterSheet, "spellcasting"> | null): HandGroupSection[] {
+function spellSections(cards: HandCard[], sheet: Pick<CharacterSheet, "spellcasting"> | null, t: T): HandGroupSection[] {
   const levels = [...new Set(cards.map((card) => card.level ?? 0))].sort((a, b) => a - b);
   return levels.map((level) => ({
     id: `level:${level}`,
-    label: level === 0 ? "Cantrips" : `Level ${level}`,
-    note: slotNote(sheet, level),
+    label: level === 0 ? t("Cantrips", { context: "table.hand.group.cantrips" }) : t("Level {level}", { level }),
+    note: slotNote(sheet, level, t),
     level,
     cards: cards.filter((card) => (card.level ?? 0) === level),
   }));
 }
 
+export function handBoardChoices(cards: HandCard[], mode: "attack" | "cast", t: T = enT): Array<Pick<HandGroupSection, "label" | "cards">> {
+  const playable = cards.filter(card => card.disabled === null && !card.spent && !card.compose &&
+    (mode === "attack" ? card.intent.card === "attack" : card.intent.card === "spell" && !card.fromItem));
+  if (mode === "cast") return spellSections(playable, null, t);
+  return playable.length ? [{ label: t("Attack"), cards: playable }] : [];
+}
+
 // Items by the item, each with what it has left, as Spells goes by level with its
 // slots: a Staff of the Magi deals 19 cards, and its charges are the choice. With
 // nothing cast from an item, the group is the one list it always was.
-function itemSections(cards: HandCard[], name: string): HandGroupSection[] {
+function itemSections(cards: HandCard[], name: string, t: T): HandGroupSection[] {
   if (!cards.some((card) => card.fromItem)) {
     return [{ id: "all", label: name, note: "", cards }];
   }
   const sections = new Map<string, HandGroupSection>();
   for (const card of cards) {
-    const { key, label, note } = card.fromItem ?? { key: "", label: "Gear", note: "" };
+    const { key, label, note } = card.fromItem ?? { key: "", label: t("Gear"), note: "" };
     const section = sections.get(key);
     if (section) section.cards.push(card);
     else sections.set(key, { id: `item:${key}`, label, note, cards: [card] });
@@ -181,39 +202,39 @@ function itemSections(cards: HandCard[], name: string): HandGroupSection[] {
   return [...sections.values()];
 }
 
-function makeGroup(key: HandGroupKey, cards: HandCard[], sheet: Pick<CharacterSheet, "spellcasting" | "resources"> | null): HandGroup {
+function makeGroup(key: HandGroupKey, cards: HandCard[], sheet: Pick<CharacterSheet, "spellcasting" | "resources"> | null, t: T = enT): HandGroup {
   let name: string;
   let noun: [string, string];
   let left = "";
   let tone: HandCardType = "basic";
   let sections: HandGroupSection[];
   if (key === "spells") {
-    name = "Spells";
-    noun = ["spell", "spells"];
-    left = spellLeft(sheet);
+    name = t("Spells");
+    noun = [t("spell"), t("spells")];
+    left = spellLeft(sheet, t);
     tone = "spell";
-    sections = spellSections(cards, sheet);
+    sections = spellSections(cards, sheet, t);
   } else {
     if (key.startsWith("pool:")) {
       const pool = key.slice("pool:".length);
-      const info = poolInfo(pool);
+      const info = poolInfo(pool, t);
       const state = sheet?.resources?.[pool];
       name = info.name;
       noun = info.noun;
-      left = state ? `${info.short} ${Math.max(0, state.max - state.used)}/${state.max}` : "";
+      left = state ? t("{short} {left}/{max}", { short: info.short, left: Math.max(0, state.max - state.used), max: state.max }) : "";
       tone = "feature";
     } else if (key === "items") {
-      name = "Items";
-      noun = ["card", "cards"];
+      name = t("Items");
+      noun = [t("card"), t("cards")];
     } else {
-      name = "Actions";
-      noun = ["action", "actions"];
+      name = t("Actions");
+      noun = [t("action", { context: "table.hand.group.action" }), t("actions")];
     }
-    sections = key === "items" ? itemSections(cards, name) : [{ id: "all", label: name, note: left, cards }];
+    sections = key === "items" ? itemSections(cards, name, t) : [{ id: "all", label: name, note: left, cards }];
   }
   const playable = cards.filter((card) => !card.disabled);
   const reasons = [...new Set(cards.map((card) => card.disabled).filter((reason): reason is string => Boolean(reason)))];
-  const disabled = playable.length ? null : reasons.length === 1 ? reasons[0] : `Nothing under ${name} can be played right now.`;
+  const disabled = playable.length ? null : reasons.length === 1 ? reasons[0] : t("Nothing under {name} can be played right now.", { name });
   return {
     id: `group:${key}`,
     key,
@@ -238,6 +259,7 @@ function makeGroup(key: HandGroupKey, cards: HandCard[], sheet: Pick<CharacterSh
 export function groupHand(
   cards: HandCard[],
   sheet: Pick<CharacterSheet, "spellcasting" | "resources"> | null,
+  t: T = enT,
 ): { units: HandUnit[]; groups: HandGroup[] } {
   const buckets = new Map<HandGroupKey, HandCard[]>();
   for (const card of cards) {
@@ -249,7 +271,7 @@ export function groupHand(
   }
   const folded = new Map<HandGroupKey, HandGroup>();
   for (const [key, members] of buckets) {
-    if (members.length >= GROUP_FOLD_MIN) folded.set(key, makeGroup(key, members, sheet));
+    if (members.length >= GROUP_FOLD_MIN) folded.set(key, makeGroup(key, members, sheet, t));
   }
   const units: HandUnit[] = [];
   const placed = new Set<HandGroupKey>();
@@ -298,7 +320,7 @@ export function filterCards(cards: HandCard[], filter: HandFilter): HandCard[] {
 // is its name in full, for a screen reader.
 export type FilterChip = { id: HandCost | "concentration"; label: string; short: string; count: number };
 
-const CHIP_LABEL: Record<"action" | "bonus" | "reaction", [string, string]> = {
+const CHIP_KEY: Record<"action" | "bonus" | "reaction", [string, string]> = {
   action: ["Action", "Action"],
   bonus: ["Bonus action", "Bonus"],
   reaction: ["Reaction", "Reaction"],
@@ -306,17 +328,17 @@ const CHIP_LABEL: Record<"action" | "bonus" | "reaction", [string, string]> = {
 
 // The filter chips worth offering for these cards: a cost or Concentration
 // only when some cards have it and some do not, so every chip narrows.
-export function filterChips(cards: HandCard[]): FilterChip[] {
+export function filterChips(cards: HandCard[], t: T = enT): FilterChip[] {
   const chips: FilterChip[] = [];
   for (const cost of PIP_COSTS) {
     const count = cards.filter((card) => card.cost === cost).length;
     if (count > 0 && count < cards.length) {
-      const [label, short] = CHIP_LABEL[cost as keyof typeof CHIP_LABEL];
-      chips.push({ id: cost, label, short, count });
+      const [labelKey, shortKey] = CHIP_KEY[cost as keyof typeof CHIP_KEY];
+      chips.push({ id: cost, label: t(labelKey), short: t(shortKey), count });
     }
   }
   const held = cards.filter((card) => card.concentration).length;
-  if (held > 0 && held < cards.length) chips.push({ id: "concentration", label: "Concentration", short: "Concentration", count: held });
+  if (held > 0 && held < cards.length) chips.push({ id: "concentration", label: t("Concentration"), short: t("Concentration"), count: held });
   return chips;
 }
 

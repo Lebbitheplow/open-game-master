@@ -109,7 +109,18 @@ const scenario = {
     check(((await tag.textContent()) ?? "").trim() === "Against the party", "the badge says it in words");
     const ring = await card.evaluate((element) => getComputedStyle(element).borderTopColor);
     const kaelRing = await page.locator(`${root}[data-party-card="${table.kael}"]`).locator("visible=true").first().evaluate((element) => getComputedStyle(element).borderTopColor);
-    check(ring !== kaelRing && /oklab\(0\.6\d* 0\.2|rgba?\(2[0-4]\d, /.test(ring), `the card wears the foes' colour (${ring}, the party's ${kaelRing})`);
+    // Chromium can serialize the same rose token as lab, oklab or rgb.
+    // Compare the painted channels, not the browser's choice of notation.
+    const [foe, party] = await page.evaluate((colors) => {
+      const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+      return colors.map((color) => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, 1, 1);
+        return [...ctx.getImageData(0, 0, 1, 1).data];
+      });
+    }, [ring, kaelRing]);
+    check(foe.join() !== party.join() && foe[0] > foe[1] * 1.5 && foe[0] > foe[2], `the card wears the foes' colour (${ring}, the party's ${kaelRing})`);
     await card.scrollIntoViewIfNeeded();
     // The badge comes in once its card is scrolled into sight.
     await upTo(async () => (await page.evaluate(() => window.__reveals)).some((entry) => entry.what === "data-side-badge"), 2_000);

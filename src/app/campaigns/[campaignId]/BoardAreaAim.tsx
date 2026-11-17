@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "@/lib/locale";
 import { area as areaPath, outline, TONE } from "@/app/campaigns/[campaignId]/BoardZoneLayer";
 import {
   HAND_AIM_ASK_EVENT,
@@ -49,6 +50,9 @@ export type AreaAimOverlay = {
 const pointOf = (layout: ZoneLayout | null) => (layout ? layout.cells.join(",") : "");
 
 export function useAreaAim(view: PlayerMapView, canDirect: boolean, hover: { x: number; y: number } | null) {
+  // pickHint's words (table.hand.area.*) read the interface's language, like
+  // every other translator-taking helper (home/types.ts's agoLabel).
+  const t = useT();
   const [aim, setAim] = useState<Aim | null>(null);
   // The creature the raised card was last aimed at, so a new aim moves the
   // area onto it once and a square tapped after it is left alone.
@@ -182,7 +186,7 @@ export function useAreaAim(view: PlayerMapView, canDirect: boolean, hover: { x: 
   const hint = !aim
     ? ""
     : aim.source === "hand"
-      ? `${aim.area.spell}: ${pickHint(aim.area, aim.pick)}`
+      ? `${aim.area.spell}: ${pickHint(t, aim.area, aim.pick)}`
       : `Tap the square for ${aim.request.label.toLowerCase()}. Esc stops.`;
 
   return { active: taking, overlay, caught, tap, hint };

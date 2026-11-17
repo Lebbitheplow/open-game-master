@@ -22,8 +22,10 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { spendHitDice } from "@/lib/dm/hit-dice";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
-import { effectiveSpeed } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
 import { characterEscape } from "@/lib/dm/grapple";
+import { callsManacles, foesManacles, manaclesUse } from "@/lib/dm/manacles";
+import { setCarriedTrap } from "@/lib/dm/set-traps";
 import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
@@ -41,12 +43,14 @@ import { readySpell } from "@/lib/dm/readied-spell";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { DODGING } from "@/lib/dm/condition-logic";
 import { handleMountAction } from "@/lib/dm/mount-combat";
+import { familiarAction } from "@/lib/dm/familiar-help";
 import { contest, help, hide } from "@/lib/dm/combat-actions";
 import { payGrapplingStrike } from "@/lib/dm/maneuver-reactions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasDestination, planActionWalk, walkActionPlan, type ActionWalk } from "@/lib/dm/action-walk";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { shakeAwake } from "@/lib/dm/shake-awake";
 
 // The rest of a 5e turn: the actions that are not attacks or spells, plus
 // reactions. Dodge, Dash, Disengage, Hide, Help, Grapple, and Shove all had
@@ -84,7 +88,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "take_action",
       description:
-        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell. Pin is the Grappler feat's, on the creature they grapple. Improvise: a fight action no other tool names, the deed in reason; never a blow at a creature (weapon, thrown thing, punch, kick), which is pc_attack. One call rolls it, a contest against targetEnemyId or a check against difficulty, and a win lands condition and damage. The server spends the action, rolls any check or contest it calls for and applies the real effect. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action (`readied`, or a spell in `spell`) to their reaction until their next turn; its result says how to release it. Call it BEFORE narrating the action; narrate exactly what it reports.",
+        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell. Pin is the Grappler feat's, on the creature they grapple. Improvise: a fight action no other tool names, the deed in reason; never a blow at a creature (weapon, thrown thing, punch, kick), which is pc_attack. One call rolls it, a contest against targetEnemyId or a check against difficulty, and a win lands condition and damage. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action (`readied`, or a spell in `spell`) to their reaction until their next turn; its result says how to release it. Call it BEFORE narrating the action; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -98,6 +102,7 @@ export const actionTools: ToolDef[] = [
             description: "As a bonus action: Cunning Action, Fast Hands, Expeditious Retreat or a monk's ki. The server checks the feature and spends the ki.",
           },
           mount: { type: "boolean", description: "The mount's own action (dash, disengage, dodge)." },
+          petName: { type: "string", description: "Help: their familiar helps instead." },
           targetEnemyId: {
             type: "string",
             description:
@@ -105,7 +110,7 @@ export const actionTools: ToolDef[] = [
           },
           targetCharacterId: {
             type: "string",
-            description: "Help only: the ally being helped, exact characterId from GAME STATE.",
+            description: "Help, Wake or manacles: the ally helped, woken or bound, exact characterId from GAME STATE.",
           },
           shove: {
             type: "string",
@@ -126,7 +131,7 @@ export const actionTools: ToolDef[] = [
           // cost the trimmed set of a 48K table its spare room, a model knows
           // them, and a wrong one is refused with the list (takeActionSchema).
           skill: { type: "string", description: "Search: perception (the default) or investigation. Improvise: the character's skill." },
-          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: an ability instead of a skill." },
+          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: an ability instead of a skill. Escape from manacles: dex slips, str breaks." },
           contestSkill: { type: "string", description: "Improvise: the creature's opposing skill or ability, if unusual." },
           difficulty: { type: "string", enum: [...DIFFICULTY_TIERS], description: "Improvise: the DC; needed with no creature." },
           condition: { type: "string", enum: [...IMPROVISED_CONDITIONS], description: "Improvise: what a win does to the creature." },
@@ -135,12 +140,12 @@ export const actionTools: ToolDef[] = [
           distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet to the thing used, as narrated, never a guess." },
           item: {
             type: "string",
-            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item.",
+            description: "Use an Object only: a carried object (consumables are use_item). Manacles or Thieves' Tools on a target bind, unlock or pick; captors out of a fight send Manacles and targetCharacterId alone.",
           },
           scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
             type: "string",
-            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId then.",
+            description: "The enemy taking Dash, Disengage, Dodge, Escape or Wake: exact enemyId from GAME STATE. Omit characterId; with Manacles it binds targetCharacterId.",
           },
           toward: { type: "string", description: "Dash or Disengage: who to move beside (id or name); the server walks them there." },
           spell: {
@@ -222,6 +227,8 @@ const takeActionSchema = z.object({
   bonus: z.coerce.boolean().optional(),
   // A controlled mount's Dash, Disengage or Dodge (SRD 5.1, Controlling a Mount).
   mount: z.coerce.boolean().optional(),
+  // A familiar's own Help (familiar-help.ts).
+  petName: z.string().trim().min(1).max(60).optional(),
   targetEnemyId: z.string().optional(),
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
@@ -321,7 +328,15 @@ function enemyActionAndWalk(
   if (plan && "error" in plan) {
     return toolError(plan);
   }
-  const acted = handleEnemyTakeAction(campaign, turn, { enemyId, action: args.action, bonus: args.bonus });
+  const acted = handleEnemyTakeAction(campaign, turn, {
+    enemyId,
+    action: args.action,
+    bonus: args.bonus,
+    ability: args.ability,
+    item: args.item,
+    targetCharacterId: args.targetCharacterId,
+    targetEnemyId: args.targetEnemyId,
+  });
   if (acted.error || !enemy || !hasDestination(args)) {
     return acted;
   }
@@ -365,6 +380,11 @@ export function handleTakeAction(
     }
     return enemyActionAndWalk(campaign, turn, args, sheets, sheetsById);
   }
+  // Captors out of a fight manacling a character, or unlocking their own
+  // set (manacles.ts): the GM's people, who are no creature on record.
+  if (!args.characterId?.trim() && args.action === "use_object" && args.targetCharacterId?.trim() && callsManacles(args.item)) {
+    return captorsManacles(campaign, turn, args);
+  }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;
   if (!sheet) {
@@ -373,6 +393,10 @@ export function handleTakeAction(
   // The controlled mount's own action, not the rider's (mount-combat.ts).
   if (args.mount) {
     return handleMountAction(campaign, sheet, args.action);
+  }
+  // The familiar's own Help, not its owner's (familiar-help.ts).
+  if (args.petName) {
+    return familiarAction(campaign, sheet, { petName: args.petName, action: args.action, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId });
   }
   const encounter = getActiveEncounter(campaign.id);
   // Revelation in Flesh's slip out of a grapple or a nonmagical restraint: 5
@@ -383,8 +407,8 @@ export function handleTakeAction(
   }
   // Off their turn, the action they readied: released with their reaction,
   // priced by nothing else (readied-release.ts). Readying is never a release.
-  // A pin is never readied (it is not among the readiable actions).
-  const readied = args.action === "ready" || args.action === "pin" ? null : readiedReleaseFor(sheet, encounter, args.action);
+  // A pin is never readied (it is not among the readiable actions), nor a wake.
+  const readied = args.action === "ready" || args.action === "pin" || args.action === "wake" ? null : readiedReleaseFor(sheet, encounter, args.action);
   if (readied && "error" in readied) {
     return toolError(readied);
   }
@@ -492,7 +516,8 @@ export function handleTakeAction(
       // "The increase equals your speed, after applying any modifiers" (SRD
       // 5.1, Dash): at speed 0 it buys nothing, as the Hand's card says, and
       // a grappled hero's action was spent on it.
-      if (inFight && effectiveSpeed(sheet.conditions, sheet.speed) === 0) {
+      // Exhaustion's 0 as well (vitals-logic.ts slowedSpeed).
+      if (inFight && slowedSpeed(sheet) === 0) {
         return { error: `${sheet.name}'s speed is 0, so a Dash goes nowhere. Nothing was spent.`, refused: "rules" };
       }
       // Each Dash adds the speed again, so a second one (Cunning Action,
@@ -566,7 +591,9 @@ export function handleTakeAction(
       return searchAction(campaign, turn, sheet, skill, { spend: () => spend() });
     }
     case "use_object":
-      return objectAction(
+      // Manacles put on, opened or picked (manacles.ts), a carried trap set
+      // on the board (set-traps.ts); else the plain use.
+      return manaclesUse(campaign, turn, sheet, args, () => spend()) ?? setCarriedTrap(campaign, turn, sheet, args.item, () => spend()) ?? objectAction(
         campaign,
         turn,
         sheet,
@@ -576,9 +603,11 @@ export function handleTakeAction(
         price.feature === "Fast Hands" ? "their bonus action (Fast Hands)" : undefined,
       );
     case "escape":
-      return characterEscape(campaign, turn, sheet, () => spend());
+      return characterEscape(campaign, turn, sheet, () => spend(), args.ability);
     case "pin":
       return pin(campaign, turn, sheet, encounter, args.targetEnemyId, () => spend());
+    case "wake":
+      return shakeAwake(campaign, sheet, args, sheets, sheetsById, () => spend());
     case "improvise":
       return improviseAction(
         campaign,
@@ -602,7 +631,17 @@ export function handleTakeAction(
   }
   };
   const outcome = resolveAction();
-  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
+  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { [slip.key]: slip.note } : {}) };
+}
+
+// In a fight a captor is a creature with a turn: its binding is its own
+// action, sent with its enemyId, so it is spent and its reach measured.
+function captorsManacles(campaign: Campaign, turn: DmTurn, args: z.infer<typeof takeActionSchema>): ToolResult {
+  const encounter = getActiveEncounter(campaign.id);
+  if (encounter && (encounter.kind ?? "fight") === "fight") {
+    return { error: "In a fight, a captor's manacles are its own Use an Object: send its enemyId with the call. Nothing was spent.", retry: true };
+  }
+  return foesManacles(campaign, turn, { kind: "captors" }, args, () => {}) ?? { error: "Manacles need targetCharacterId. Nothing was spent.", retry: true };
 }
 
 // Dwarven Fortitude: one hit die spent on the Dodge, rolled and added to

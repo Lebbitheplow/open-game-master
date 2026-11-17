@@ -24,6 +24,7 @@ import { describeAdjudicationResult, type ResultLine } from "@/lib/dm/catalog-re
 import { holdConsoleOutcome } from "@/app/campaigns/[campaignId]/ConsoleOutcomeBanner";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { useT } from "@/lib/locale";
 
 // One adjudication, rendered from its catalog entry. Nothing here knows what
 // any particular action does: the fields come from the catalog and the rules
@@ -96,6 +97,7 @@ export function DmActionForm({
   // wears the same face the row did.
   glyph?: string;
 }) {
+  const t = useT();
   const [values, setValues] = useState<Record<string, Value>>(() =>
     Object.fromEntries(
       entry.fields.map((field) => [
@@ -158,7 +160,7 @@ export function DmActionForm({
     // What cannot be taken back asks first (end the fight, dismiss a
     // companion, a death).
     const question = needsConfirm(entry, args);
-    if (question && !(await appConfirm(question, { title: entry.label, actionLabel: "Run it" }))) {
+    if (question && !(await appConfirm(question, { title: entry.label, actionLabel: t("Run it", { context: "dm.action.runIt" }) }))) {
       return;
     }
     setBusy(true);
@@ -172,10 +174,10 @@ export function DmActionForm({
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(String(body.error ?? "The engine refused that."));
+        setError(String(body.error ?? t("The engine refused that.")));
         return;
       }
-      const lines = describeAdjudicationResult(body.result);
+      const lines = describeAdjudicationResult(body.result, t);
       setOutcome(lines);
       // Starting a fight moves the panel to the board: the result waits there.
       if (entry.name === "start_encounter") holdConsoleOutcome(campaignId, entry.label, lines);
@@ -193,7 +195,7 @@ export function DmActionForm({
       );
       onRan?.();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -212,7 +214,7 @@ export function DmActionForm({
       {blocked ? (
         <p className="reveal flex items-center gap-2 rounded-lg border border-amber-500/25 bg-stone-900/60 px-2.5 py-2 text-xs text-stone-300">
           <GameIcon icon={{ kind: "glyph", key: "tab-battle" }} size="size-5" className="shrink-0" />
-          Needs a fight running. Start one first.
+          {t("Needs a fight running. Start one first.")}
         </p>
       ) : null}
 
@@ -220,7 +222,11 @@ export function DmActionForm({
           label would press the first of them (the stepper's minus) whenever
           its caption was tapped. Each control carries the field's name. */}
       <div className="stagger space-y-2.5">
-        {shown.map((field) => (
+        {shown.map((rawField) => {
+          const field = rawField.name === "meal" && rawField.variant === "supplies"
+            ? { ...rawField, label: t("Meal from the story"), placeholder: t("The host's dinner and the well"), help: t("Only when the party eats and drinks from something other than their packs. Covers the next dawn: no ration, no thirst. Scarce water still applies.") }
+            : rawField;
+          return (
           <div key={field.name} className={cn(field.kind === "boolean" && "flex flex-wrap items-center justify-between gap-x-3")}>
             <div className={cn(field.square && "flex flex-wrap items-center gap-x-2")}>
               <FieldLabel className={cn((field.kind === "boolean" || field.square) && "mb-0")}>
@@ -252,7 +258,8 @@ export function DmActionForm({
             />
             {field.help ? <span className="mt-1 block basis-full text-[11px] leading-snug text-stone-500">{field.help}</span> : null}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -264,7 +271,7 @@ export function DmActionForm({
           className={ui.btnPrimary}
         >
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-          Run
+          {t("Run")}
         </button>
         {error ? (
           <span role="alert" className="motion-shake inline-block text-xs text-red-300">

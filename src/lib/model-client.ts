@@ -51,6 +51,12 @@ import { catalogContextWindow, hostedCatalogModel, hostedContextWindow } from "@
 import { ollamaModelInfo, soleListedModel, soleModelListing } from "@/lib/model-registry/discovery";
 import { harnessConfig, harnessContextTokens } from "@/lib/harness/status";
 import { DEFAULT_WINDOW } from "@/lib/story-window";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the eligibility check asks yes/no; its reason is the admin
+// panel's to word (SpeedField, which asks the same question with its own
+// translator).
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { currentJobSignal, jobStopReason, noteJobProgress, withJobStage } from "@/lib/dm/job-control";
 import { MODEL_STAGE_GRACE_MS } from "@/lib/dm/job-stage-logic";
 import { rolesMustAlternate, withAlternatingRoles } from "@/lib/chat-roles-logic";
@@ -201,6 +207,10 @@ export type ChatRequestOptions = {
   // Which of the server's two models this call is for: the admin's Fast
   // setting is per role (issue 255). Unset reads as the story model.
   role?: "story" | "utility";
+  // The llama-server slot the call is pinned to (id_slot). Set only for a
+  // narrator that answered as a llama-server keeping prompt snapshots
+  // (src/lib/dm/prompt-snapshot.ts); no other backend is sent the field.
+  slot?: number;
   // Only read by the "harness" provider (src/lib/harness/bridge.ts). An agent
   // program reads its tool list once, when it starts, so the DM loop hands
   // over every tool the turn could offer; the bridge still refuses a call
@@ -1168,7 +1178,7 @@ async function requestCustomMessageNow(
   const speedWanted =
     (role === "utility" ? globalText.utilitySpeed : globalText.speed) === "fast" &&
     (role === "utility" ? isUtilityBackend : isGlobalBackend) &&
-    apiSpeedEligibility({ endpointKind: caps.kind, model: resolvedModel }).ok;
+    apiSpeedEligibility(enT, { endpointKind: caps.kind, model: resolvedModel }).ok;
   // Thinking runs cooler per Qwen guidance; 0.9 there makes the thought
   // ramble past the point of ever emitting the tool call.
   // Per-role sampling, resolved from the admin config
@@ -1255,6 +1265,9 @@ async function requestCustomMessageNow(
       reasoningKnobs.get(routeKey) === "effort"
     ) {
       requestPayload.reasoning_effort = options.reasoningEffort;
+    }
+    if (options.slot !== undefined) {
+      requestPayload.id_slot = options.slot;
     }
   }
 

@@ -21,12 +21,24 @@ export const SRD_LAST_ROWS: Record<string, SpellMech> = {
   "ice storm": {
     resolution: "save", save: "dex", halfOnSave: true, damageType: "bludgeoning", secondType: "cold", area: true, areaFeet: 20,
   },
+  // "5d6 thunder damage and 5d6 radiant or necrotic damage (your choice)":
+  // the prose's choice stops the dice reader at the first term, which rolled
+  // half the wave, so the row names both. Radiant is the second unless the
+  // GM rules necrotic for the caster.
+  "destructive wave": {
+    resolution: "save", save: "con", halfOnSave: true, damageType: "thunder", secondType: "radiant", secondTypeChoice: ["radiant", "necrotic"], condition: { name: "prone" },
+    dice: { base: "5d6+5d6", baseLevel: 5 },
+    note: "The second 5d6 is radiant, or necrotic if the caster chooses: name type necrotic.",
+  },
 
   // Effects on the caster or an ally, each a condition of the registry
   // (src/lib/srd/condition-effects-last.ts) that the engine reads.
   "freedom of movement": { resolution: "buff", buff: { condition: "freedom of movement", target: "ally", rounds: HOUR } },
   "spider climb": { resolution: "buff", buff: { condition: "spider climb", target: "ally", rounds: HOUR } },
   "water walk": { resolution: "buff", buff: { condition: "water walk", target: "allies", rounds: HOUR } },
+  // Up to ten willing creatures breathe underwater for 24 hours; the
+  // condition is the one a Potion of Water Breathing lays, which drowning reads.
+  "water breathing": { resolution: "buff", buff: { condition: "water breathing", target: "allies", rounds: 24 * HOUR } },
   jump: { resolution: "buff", buff: { condition: "jumping", target: "ally", rounds: MINUTE } },
   "see invisibility": { resolution: "buff", buff: { condition: "see invisibility", target: "self", rounds: HOUR } },
   "true seeing": { resolution: "buff", buff: { condition: "true seeing", target: "ally", rounds: HOUR } },
@@ -139,7 +151,7 @@ export const SRD_LAST_ROWS: Record<string, SpellMech> = {
   },
   fear: {
     resolution: "save", save: "wis", noDamage: true, area: true, areaFeet: 30,
-    condition: { name: "frightened", rounds: MINUTE, also: ["fleeing"] },
+    condition: { name: "frightened", rounds: MINUTE, also: ["fleeing"], saveEnds: true, saveUnseen: true },
     note: "A frightened creature drops what it holds and must Dash away each turn; it saves again only when it ends a turn out of the caster's sight.",
   },
 

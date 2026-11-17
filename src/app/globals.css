@@ -23,6 +23,17 @@
 @import "./styles/setup.css";
 @import "./styles/world.css";
 @import "./styles/table-layout.css";
+@import "./styles/appearance.css";
+@import "./styles/themes/arcane.css";
+@import "./styles/themes/woodland.css";
+@import "./styles/themes/gothic.css";
+@import "./styles/themes/hearth.css";
+@import "./styles/themes/tide.css";
+@import "./styles/themes/forge.css";
+@import "./styles/theme-materials.css";
+@import "./styles/theme-session.css";
+@import "./styles/theme-ornaments.css";
+@import "./styles/themes/kingdoms.css";
 
 /*
   Arcane night theme. The neutral ramp (stone-*) is redefined as deep
@@ -1749,6 +1760,9 @@ html[data-theme="light"] .kit-switch[aria-checked="true"] .kit-switch-knob {
     border-color 160ms var(--ease-snap),
     background-color 160ms var(--ease-snap);
 }
+/* An item's plate rim takes the colour of its kind; the tones and the pill's
+   tint are inline (src/lib/srd/item-category-logic.ts itemToneStyle). */
+.tone-rim { border-color: var(--rim); }
 .info-chip:hover {
   transform: translateY(-1px);
   border-color: rgba(212, 171, 58, 0.45);

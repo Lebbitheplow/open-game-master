@@ -10,6 +10,10 @@ export async function register() {
     const { installServerLog } = await import("@/lib/server-log");
     installServerLog();
 
+    // The French catalog, for whatever the server says in French outside a
+    // page or a route that imports it (src/lib/i18n/translate.ts).
+    await import("@/lib/i18n/fr-catalog");
+
     const { startJobRunner } = await import("@/lib/jobs");
     startJobRunner();
 
@@ -113,9 +117,13 @@ export async function register() {
       }
 
       try {
-        const { embedMissingVectors, reconcileEmbeddingModel } = await import(
+        const { applyServerLanguage, embedMissingVectors, reconcileEmbeddingModel } = await import(
           "@/lib/dm/embedding-reindex"
         );
+        // The server's language picks the model before the stored vectors
+        // are checked against it.
+        const { getGlobalConfig } = await import("@/lib/db/app-settings");
+        applyServerLanguage(getGlobalConfig().serverLanguage, { boot: true });
         reconcileEmbeddingModel();
         void embedMissingVectors().catch((error) => {
           console.error("[embeddings] catch-up failed", error);

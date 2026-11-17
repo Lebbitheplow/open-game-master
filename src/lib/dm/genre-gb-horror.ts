@@ -5,11 +5,11 @@
 //     reveals invisible and ethereal creatures within 10 ft"
 //
 // While the exorcist carries a lit light (src/lib/dm/light-timers.ts
-// carriedLight: a torch, a lamp, a candle), they see invisible and ethereal
+// shedLight: a torch, a lamp, a candle, lit), they see invisible and ethereal
 // creatures within 10 feet: the reach, in squares, of the truesight the SRD
 // engine holds for that sight, read beside Veilsight's by
 // src/lib/dm/attack-light.ts characterSenses. Without a light, nothing.
-import { carriedLight } from "@/lib/dm/light-timers";
+import { shedLight } from "@/lib/dm/light-timers";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 
@@ -21,5 +21,5 @@ export function candleSightTiles(sheet: Viewer): number {
   if (!sheet.class || !sheet.features || !holdsGenreFeature(sheet as Pick<CharacterSheet, "class" | "features">, "exorcist", "Light Against the Dark")) {
     return 0;
   }
-  return carriedLight({ equipment: sheet.equipment ?? [], conditions: sheet.conditions ?? [] }).radius > 0 ? 2 : 0;
+  return shedLight({ equipment: sheet.equipment ?? [], conditions: sheet.conditions ?? [] }).radius > 0 ? 2 : 0;
 }

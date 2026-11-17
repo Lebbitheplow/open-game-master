@@ -35,6 +35,7 @@ import { WorldEntryLink, useOpenOnArrival } from "@/app/workshop/world/WorldEntr
 import { useUnsavedDraft } from "@/app/workshop/unsaved";
 import { NpcEditorFields } from "@/app/workshop/cast/NpcEditorFields";
 import { compareNames, textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 // The NPC forge.
 //
@@ -73,6 +74,7 @@ export function DmNpcForgePanel({
   openId?: string | null;
   onWorldEntry?: (id: string) => void;
 }) {
+  const t = useT();
   const [npcs, setNpcs] = useState<Npc[]>([]);
   const [graph, setGraph] = useState<RelationGraph>({ nodes: [], edges: [] });
   const [showGraph, setShowGraph] = useState(false);
@@ -118,7 +120,7 @@ export function DmNpcForgePanel({
   const { loaded, loadError, settle } = useLoadStatus();
   const load = useCallback(
     () =>
-      readLoad<{ npcs: Npc[]; graph: RelationGraph; genre?: string; knownBeforeOpen?: boolean }>(fetch(`/api/campaigns/${campaignId}/dm/npcs`), "The cast").then(
+      readLoad<{ npcs: Npc[]; graph: RelationGraph; genre?: string; knownBeforeOpen?: boolean }>(t, fetch(`/api/campaigns/${campaignId}/dm/npcs`), t("The cast", { context: "load.label.cast" })).then(
         (outcome) => {
           if (outcome.payload) {
             setNpcs(outcome.payload.npcs);
@@ -129,8 +131,7 @@ export function DmNpcForgePanel({
           settle(outcome);
         },
       ),
-    [campaignId, settle],
-  );
+    [ campaignId, settle, t ],  );
 
   useEffect(() => {
     void load();
@@ -211,13 +212,13 @@ export function DmNpcForgePanel({
       const url = selected
         ? `/api/campaigns/${campaignId}/dm/npcs/${selected.id}`
         : `/api/campaigns/${campaignId}/dm/npcs`;
-      const sent = await readWrite<{ npc?: { id: string } }>(
+      const sent = await readWrite<{ npc?: { id: string } }>(t,
         fetch(url, {
           method: selected ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ draft }),
         }),
-        "That did not save.",
+        t("That did not save."),
       );
       if (sent.error !== null) {
         failed(sent);
@@ -239,13 +240,13 @@ export function DmNpcForgePanel({
     setBusy(true);
     setError("");
     try {
-      const sent = await readWrite(
+      const sent = await readWrite(t,
         fetch(`/api/campaigns/${campaignId}/dm/npcs/${selected.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         }),
-        "That did not save.",
+        t("That did not save."),
       );
       if (sent.error !== null) {
         failed(sent);
@@ -264,7 +265,7 @@ export function DmNpcForgePanel({
     setBusy(true);
     setError("");
     try {
-      const sent = await readWrite(fetch(`/api/campaigns/${campaignId}/dm/npcs/${selected.id}`, { method: "DELETE" }), "That could not be deleted.");
+      const sent = await readWrite(t, fetch(`/api/campaigns/${campaignId}/dm/npcs/${selected.id}`, { method: "DELETE" }), t("That could not be deleted."));
       if (sent.error !== null) {
         failed(sent);
         return;
@@ -289,13 +290,13 @@ export function DmNpcForgePanel({
     setError("");
     try {
       const base = draftFrom(selected as Parameters<typeof draftFrom>[0]);
-      const sent = await readWrite<{ npc?: Parameters<typeof draftFrom>[0] & { id: string } }>(
+      const sent = await readWrite<{ npc?: Parameters<typeof draftFrom>[0] & { id: string } }>(t,
         fetch(`/api/campaigns/${campaignId}/dm/npcs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ draft: { ...base, name: `${base.name} (copy)`.slice(0, 80) } }),
         }),
-        "That could not be copied.",
+        t("That could not be copied."),
       );
       if (sent.error !== null) {
         failed(sent);
@@ -369,7 +370,7 @@ export function DmNpcForgePanel({
       <button
         type="button"
         disabled={generating !== "" || busy}
-        title={`Ask the model for ${FIELD_LABELS[field].toLowerCase()}`}
+        title={t("Ask the model for {what}", { what: FIELD_LABELS[field].toLowerCase() })}
         onClick={() => void suggest(field)}
         className={cn(ui.btnSmall, "shrink-0 gap-1 px-2 py-1 text-[10px]")}
       >
@@ -429,13 +430,13 @@ export function DmNpcForgePanel({
               onClick={() => fileRef.current?.click()}
               className={cn(ui.btnSmall, "min-h-9 gap-1 px-2 py-1 text-xs")}
             >
-              <ImageIcon className="size-3" /> {selected.portraitUrl ? "Replace face" : "Add a face"}
+              <ImageIcon className="size-3" /> {selected.portraitUrl ? t("Replace face") : t("Add a face")}
             </button>
             {canPaint ? (
               <button
                 type="button"
                 disabled={busy} aria-busy={busy}
-                title="Render one on the shared media queue"
+                title={t("Render one on the shared media queue")}
                 onClick={() => void patch({ draft, generatePortrait: true })}
                 className={cn(ui.btnSmall, "min-h-9 gap-1 px-2 py-1 text-xs")}
               >
@@ -446,7 +447,7 @@ export function DmNpcForgePanel({
               <button
                 type="button"
                 disabled={busy} aria-busy={busy}
-                title="Take the picture away and show the stand-in for their role instead"
+                title={t("Take the picture away and show the stand-in for their role instead")}
                 onClick={() => void patch({ portraitUrl: "" })}
                 className={cn(ui.btnSmall, "min-h-9 gap-1 px-2 py-1 text-xs")}
               >
@@ -539,7 +540,7 @@ export function DmNpcForgePanel({
         <Sheet
           open={editorOpen}
           onOpenChange={setEditorOpen}
-          title={selected ? selected.name : "Someone new"}
+          title={selected ? selected.name : t("Someone new")}
           className="lg:w-[min(92vw,40rem)]"
         >
           {editor}

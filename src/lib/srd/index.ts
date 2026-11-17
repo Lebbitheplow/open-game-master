@@ -1,6 +1,6 @@
 import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
-import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
+import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyBonus } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
 import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
@@ -10,12 +10,13 @@ import racesJson from "@/lib/srd/races.json";
 import skillsJson from "@/lib/srd/skills.json";
 import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { CUSTOM_CLASSES, findCustomClass } from "@/lib/classes";
-import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/srd/armor";
+import { computeArmorClass, unarmoredFormulasFor, type AcBreakdown, type UnarmoredFormula } from "@/lib/srd/armor";
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
 import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise, authoredConditionalTraining } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
+import { itemProficiencyBonus, levelProficiencyBonus } from "@/lib/srd/proficiency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
@@ -41,6 +42,17 @@ import { infusionWorn } from "@/lib/srd/infusions";
 export type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 
 export const SRD_SKILLS = skillsJson.skills as SrdSkill[];
+
+// A skill's name in the reader's language. The French names come from
+// Wizards of the Coast's official French SRD 5.1 (see skills.json's fr
+// field); a name the locale does not carry stays English.
+export function skillLabel(skillId: string, locale: "en" | "fr"): string {
+  const skill = SRD_SKILLS.find((entry) => entry.id === skillId.trim().toLowerCase());
+  if (!skill) {
+    return skillId;
+  }
+  return locale === "fr" && skill.fr ? skill.fr : skill.name;
+}
 export const SRD_CLASSES = classesJson.classes as SrdClass[];
 export const SRD_RACES = racesJson.races as SrdRace[];
 export const SRD_BACKGROUNDS = backgroundsJson.backgrounds as SrdBackground[];
@@ -109,8 +121,10 @@ export function abilityMod(score: number) {
   return Math.floor((score - 10) / 2);
 }
 
+// The level's proficiency bonus alone. A character's own number, with an
+// Ioun Stone of Mastery's +1, is proficiencyBonusOf (src/lib/srd/proficiency.ts).
 export function proficiencyBonus(level: number) {
-  return 2 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4);
+  return levelProficiencyBonus(level);
 }
 
 export function formatModifier(value: number) {
@@ -190,7 +204,7 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
   // and CON that feed the AC, so the effective scores are used throughout.
   const abilities = effectiveAbilities(source.abilities, source.equipment, source);
   const magic = magicItemRiders(source.equipment, source);
-  const input = {
+  const bare = {
     equipment: source.equipment,
     race: source.race,
     armorProfs: source.proficiencies.armor,
@@ -201,11 +215,19 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
       wis: abilityMod(abilities.wis),
     },
     strength: abilities.str,
-    unarmored: unarmoredFormulaFor(
-      source.classes?.length
-        ? source.classes.map((entry) => entry.id)
-        : source.class,
-      source.features,
+  };
+  // The better of the unarmored formulas held (armor.ts unarmoredFormulasFor).
+  const formulas = unarmoredFormulasFor(
+    source.classes?.length
+      ? source.classes.map((entry) => entry.id)
+      : source.class,
+    source.features,
+  );
+  const input = {
+    ...bare,
+    unarmored: formulas.reduce<UnarmoredFormula | null>(
+      (best, formula) => (!best || computeArmorClass({ ...bare, unarmored: formula }).ac > computeArmorClass({ ...bare, unarmored: best }).ac ? formula : best),
+      null,
     ),
   };
   // The Defense fighting style only counts while actually wearing armor, so
@@ -408,6 +430,43 @@ export function speedFor(
 // will not trust an engine they cannot audit, so now they all keep it.
 export type DerivedPart = { label: string; value: number };
 
+// The parts' words are the dictionaries' (math.parts.*); the labels the math
+// builds stay the English words above, because rules code matches on them
+// (roll-feature-riders.ts) and the DM's prompt quotes them. The explain
+// builder the sheets use translates each label through here; an unknown
+// label (a pack's own) reads as it was built.
+const MATH_PART_KEYS: Record<string, string> = {
+  base: "base",
+  proficiency: "proficiency",
+  features: "features",
+  "subclass features": "subclass features",
+  "magic items": "magic items",
+  expertise: "expertise",
+  "half proficiency": "half proficiency",
+  untrained: "untrained",
+  Perception: "Perception",
+  Investigation: "Investigation",
+};
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function mathPartLabel(t: T, label: string): string {
+  const modifier = /^([A-Z]{3}) modifier$/.exec(label);
+  if (modifier) {
+    const ability = modifier[1].toLowerCase();
+    if (["str", "dex", "con", "int", "wis", "cha"].includes(ability)) {
+      // English keeps the sheet's own "DEX modifier"; a translation names
+      // the ability in full ("modificateur de Dextérité").
+      const full = ({ str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as Record<string, string>)[ability];
+      const line = t("{ability} modifier", { ability: t(full) });
+      return line === `${full} modifier` ? label : line;
+    }
+  }
+  const key = MATH_PART_KEYS[label];
+  return key ? t(key) : label;
+}
+
 // Every derived number's working. Sums are guaranteed to match the totals
 // beside them because the totals are computed BY summing these.
 export type DerivedParts = {
@@ -496,7 +555,9 @@ export function computeSheetDerived(
   // A creature Polymorph, Animal Shapes or True Polymorph made has the
   // proficiency bonus its challenge rating carries, not the character's.
   const shape = sheet.wildShape;
-  const pb = shape?.kind === "polymorph" && !shape.keepsTraining && shape.cr !== undefined ? proficiencyBonus(Math.max(1, shape.cr)) : proficiencyBonus(sheet.level);
+  // The character's own adds an attuned Ioun Stone of Mastery's +1
+  // (src/lib/srd/proficiency.ts).
+  const pb = shape?.kind === "polymorph" && !shape.keepsTraining && shape.cr !== undefined ? proficiencyBonus(Math.max(1, shape.cr)) : proficiencyBonus(sheet.level) + itemProficiencyBonus(sheet.equipment, sheet);
   // Ability-setting magic items raise the scores every other number reads.
   const withItems = sheet.equipment
     ? effectiveAbilities(sheet.abilities, sheet.equipment, sheet)
@@ -523,8 +584,8 @@ export function computeSheetDerived(
   ];
   const defense =
     sheet.class && (sheet.features || sheet.feats)
-      ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId }, abilityMods)
-      : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null };
+      ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId, proficiencyBonus: pb }, abilityMods)
+      : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null, halfScopes: [] };
 
   // Saves a feature trains on top of the class table's (Diamond Soul,
   // Slippery Mind): derived here, so no stored sheet has to change.
@@ -563,9 +624,9 @@ export function computeSheetDerived(
 
   // Jack of All Trades / Remarkable Athlete: half the proficiency bonus on
   // any covered check that does not already use it. The bard's rounds down;
-  // the Champion's, which covers the physical abilities only, rounds up.
-  const halfScope = defense.halfProficiency ?? null;
-  const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
+  // the Champion's, which covers the physical abilities only, rounds up; a
+  // sheet with both takes the better on each check.
+  const halfOf = (ability: string) => halfProficiencyBonus(defense.halfScopes ?? [], ability, pb);
   // A genre feature's doubled skill (authored-effects.ts authoredExpertise)
   // doubles a proficiency the sheet has, as Expertise does.
   const expertise = [
@@ -589,8 +650,8 @@ export function computeSheetDerived(
         ? { label: "expertise", value: pb * 2 }
         : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id) || formSkills[skill.id] !== undefined
           ? { label: "proficiency", value: pb }
-          : halfProficiencyCovers(halfScope, skill.ability)
-            ? { label: "half proficiency", value: halfPb }
+          : halfOf(skill.ability) > 0
+            ? { label: "half proficiency", value: halfOf(skill.ability) }
             : { label: "untrained", value: 0 };
       const own = keepMeaningful([
         { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
@@ -616,7 +677,7 @@ export function computeSheetDerived(
     { label: "DEX modifier", value: abilityMods.dex },
     { label: "features", value: defense.initiativeBonus },
     // Sharpened Logic's Intelligence and Wisdom half does not reach it.
-    { label: "half proficiency", value: halfScope && halfProficiencyCovers(halfScope, "dex") ? halfPb : 0 },
+    { label: "half proficiency", value: halfOf("dex") },
   ]);
   const passiveParts = keepMeaningful([
     { label: "base", value: 10 },

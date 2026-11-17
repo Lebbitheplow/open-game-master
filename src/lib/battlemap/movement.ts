@@ -304,7 +304,9 @@ export function walkPathWithBudget(
     const base = spaceStepCost(terrain, width, height, step, footprint, swims, previous);
     previous = here;
     const squeezed = Boolean(space && footprint > 1 && squeezedAt(terrain, width, space.height, space.occupied, step, footprint));
-    const cost = through || squeezed ? Math.max(base, 2) : base;
+    // A crawl pays one more for every square, as findPath priced the way
+    // (SRD 5.1, Being Prone).
+    const cost = (through || squeezed ? Math.max(base, 2) : base) + crawlExtra(swims);
     if (spent + cost > budget) {
       return { at, spent, reachedEnd: false };
     }

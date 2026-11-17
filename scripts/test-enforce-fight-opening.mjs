@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
-import { aiEngine, call, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
+import { aiEngine, call, fakeModel, held, reply, settleQueue } from "./lib/enforce-narrator.mjs";
 import { caster } from "./lib/enforce-spell-kit.mjs";
 
 const { test, finish } = suite("test-enforce-fight-opening");
@@ -221,6 +221,134 @@ await test("After a turn that starts a fight, the next turn's first message and 
     process.env.DM_TURN_WARMUP = "0";
     await kit.endFight();
   }
+});
+
+// A fight that begins with an enemy up, or ends, changes the tools in the
+// middle of a turn. They cross with their own rules: one first message, which
+// is the next turn's too, so the narrator reads the prompt once at each end of
+// a fight and nothing more is sent ahead. On a BC-250 (2026-11-14) a fight's
+// start read the prompt twice, 89 and 101 seconds, and its end twice, 123 and
+// 79: the new tools under the old rules, then the new rules as the turn ended.
+await test("A fight that begins with an enemy up, or ends, mid-turn takes its rules with its tools: the next turn starts with that first message, and nothing is sent ahead.", async () => {
+  await settleQueue(world.campaignId);
+  await kit.endFight();
+  await settleQueue(world.campaignId);
+  const names = (request) => (request.tools ?? []).map((tool) => tool.function?.name);
+  const head = (request) => request.messages[0].content;
+  const sentAhead = () => model.requests.filter((request) => request.messages.length === 2 && /The table is reading/.test(String(request.messages[1].content)));
+  // Past the turn's own end and the check the table's events schedule a
+  // moment later (scheduleNextTurnCheck), which would send ahead too.
+  const quiet = async () => {
+    await settleQueue(world.campaignId);
+    const until = Date.now() + 5_000;
+    while ((globalThis.__odmTurnHeadChecks?.size || globalThis.__odmTurnWarmups?.size) && Date.now() < until) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  };
+  process.env.DM_TURN_WARMUP = "1";
+  try {
+    // The goblin is quicker. The call after the start plays it: held until
+    // the fight exists, since its attack names the goblin by id.
+    const attack = held(reply());
+    world.dice(20, 1);
+    model.script([
+      reply({ calls: [call("start_encounter", { enemies: [{ monster: "goblin", name: "Loft Goblin" }], distanceFeet: 5 })] }),
+      attack.entry,
+      reply({ text: "The goblin's blade whistles past Alden's ear." }),
+    ]);
+    const turn = model.turn(world, "I climb into the loft.", alden.id, alden.userId);
+    const until = Date.now() + 10_000;
+    while (model.requests.length < 2 && Date.now() < until) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    const [goblin] = world.enemies();
+    assert.ok(goblin, "no fight started");
+    attack.entry.calls = [call("enemy_attack", { enemyId: goblin.id, targetCharacterId: alden.id })];
+    // The goblin misses, and the turn passes to Alden.
+    world.clearDice();
+    world.dice(2);
+    attack.release();
+    await turn;
+    world.clearDice();
+    await quiet();
+    const [opening, played, told] = model.requests;
+    assert.ok(!names(opening).includes("enemy_attack"), "the turn began in a fight");
+    assert.ok(names(played).includes("enemy_attack"), "an enemy who acts first was not offered enemy_attack");
+    assert.notEqual(head(played), head(opening), "the fight's tools went out under the rules of no fight");
+    assert.equal(head(told), head(played), "the rules changed again within the fight");
+    assert.deepEqual(sentAhead(), [], "the fight's first message was read again after the turn that sent it");
+    const exploring = head(opening);
+    const fighting = head(played);
+    const fightTools = played.tools;
+
+    model.script([reply({ text: "Alden sets his feet on the boards." })]);
+    await model.turn(world, "I square up to it.", alden.id, alden.userId);
+    await quiet();
+    assert.equal(head(model.requests[0]), fighting, "the next turn's first message is not the one the fight began with");
+    assert.deepEqual(model.requests[0].tools, fightTools, "the next turn's tools are not the ones the fight began with");
+    assert.deepEqual(sentAhead(), []);
+
+    // Alden's blow ends the fight: the call after it has the tools and the
+    // rules of no fight, and so does the turn after.
+    assert.equal(world.encounter().order[world.encounter().turnIndex]?.characterId, alden.id, "it is not Alden's turn");
+    const live = world.enemies().find((enemy) => enemy.id === goblin.id);
+    kit.setEnemy(live.id, { maxHp: 3, currentHp: 3 });
+    kit.place(alden.id, 5, 5);
+    kit.place(live.id, 5, 6);
+    world.dice(15, 4);
+    model.script([
+      reply({ calls: [call("pc_attack", { characterId: alden.id, targetEnemyId: live.id, weapon: "Longsword" })] }),
+      reply({ text: "The goblin folds over the blade and is still." }),
+    ]);
+    await model.turn(world, "I run it through.", alden.id, alden.userId);
+    world.clearDice();
+    await quiet();
+    assert.equal(world.encounter(), null, "the fight did not end");
+    const [swing, after] = model.requests;
+    assert.equal(head(swing), fighting);
+    assert.ok(!names(after).includes("enemy_attack") && names(after).includes("start_encounter"), "the call after the fight kept the fight's tools");
+    assert.equal(head(after), exploring, "the tools of no fight went out under the fight's rules");
+    assert.deepEqual(sentAhead(), [], "the first message of no fight was read again after the turn that sent it");
+    const calmTools = after.tools;
+
+    model.script([reply({ text: "Dust settles in the loft." })]);
+    await model.turn(world, "I catch my breath.", alden.id, alden.userId);
+    await quiet();
+    assert.equal(head(model.requests[0]), exploring, "the turn after the fight does not start with the first message its last call sent");
+    assert.deepEqual(model.requests[0].tools, calmTools);
+    assert.deepEqual(sentAhead(), []);
+  } finally {
+    world.clearDice();
+    await kit.endFight();
+    // No check is left waiting to fire in a later test.
+    await quiet();
+    process.env.DM_TURN_WARMUP = "0";
+  }
+});
+
+// One move_party from the first scene on (it was a shorter tool until the
+// table had a place, and the first move_party of a campaign changed the list
+// mid-turn: the opening turn read the prompt twice).
+await test("A table with no place yet is offered the same move_party as any other, and its first move reads no split into who is named.", async () => {
+  const { dmTurnTools, compactTurnTools, profileSignals } = await import("../src/lib/dm/turn.ts");
+  const fresh = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const one = fresh.addHero({ name: "Ilse", class: "fighter" });
+  fresh.addHero({ name: "Corin", class: "rogue" });
+  const moveOf = (tools) => tools.find((tool) => tool.function.name === "move_party").function.parameters.properties;
+  const before = dmTurnTools(fresh.campaign(), false, false, false);
+  assert.ok(moveOf(before).partOf && moveOf(before).characterIds, "the first scene's move_party is the shorter one");
+  // The compact set, which follows the moment anyway, keeps the shorter tool.
+  const compact = compactTurnTools(fresh.campaign(), false, false, profileSignals(fresh.campaign(), fresh.sheets(), false), []).tools;
+  assert.equal(moveOf(compact).partOf, undefined, "a 16K table's first scene carries partOf");
+  const ai = await aiEngine(fresh);
+  const first = await ai.invoke("move_party", { name: "Mill Yard", visionClear: true, layoutDescription: "A cobbled yard.", characterIds: [one.id] });
+  assert.equal(first.ok, true, first.error);
+  assert.doesNotMatch(JSON.stringify(first.result), /split up/, "the first move of a table split the party");
+  assert.deepEqual(dmTurnTools(fresh.campaign(), false, false, false), before, "the tool list changed with the table's first place");
+  const second = await ai.invoke("move_party", { name: "Mill Loft", visionClear: true, layoutDescription: "A dusty loft.", characterIds: [one.id] });
+  assert.equal(second.ok, true, second.error);
+  assert.match(JSON.stringify(second.result), /split up/, "a later move naming one of two no longer splits the party");
 });
 
 // A warm-up never holds play up: any table's turn on the same narrator stops

@@ -6,6 +6,11 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
+
 const {
   clampCoverBrief,
   clampCoverTurns,
@@ -130,18 +135,18 @@ test("a stored cover survives a round trip with its count clamped", () => {
 
 test("the table is told plainly, in the singular and the plural", () => {
   assert.match(
-    describeCover({ turnsLeft: 1, brief: "", byUserId: "u", startedAt: "t" }),
+    describeCover(enT, { turnsLeft: 1, brief: "", byUserId: "u", startedAt: "t" }),
     /one more time/,
   );
   assert.match(
-    describeCover({ turnsLeft: 4, brief: "", byUserId: "u", startedAt: "t" }),
+    describeCover(enT, { turnsLeft: 4, brief: "", byUserId: "u", startedAt: "t" }),
     /next 4 times/,
   );
   assert.equal(
-    describeCover({ turnsLeft: 0, brief: "", byUserId: "u", startedAt: "t" }),
+    describeCover(enT, { turnsLeft: 0, brief: "", byUserId: "u", startedAt: "t" }),
     "The GM has the table back.",
   );
-  assert.equal(describeCover(null), "");
+  assert.equal(describeCover(enT, null), "");
 });
 
 test("the prompt block is empty unless a cover is running", () => {

@@ -20,11 +20,13 @@ import { readiedHolder } from "@/lib/dm/readied-release";
 import { hitTraitDice } from "@/lib/dm/side-allies";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
-import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { joinRetorts, riderMarkOf, type WaitingAnswer } from "@/lib/dm/retort-logic";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import {
   getActiveEncounter,
+  getEnemy,
   recordEncounterTarget,
   saveEncounter,
 } from "@/lib/db/encounters";
@@ -46,21 +48,21 @@ import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
 import { enemyStrikesBody } from "@/lib/dm/spirit-projection";
 import { hasteActionOpen, slowedOut } from "@/lib/dm/enemy-actions";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
-import { rangedBackstop, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
+import { enemyTurnEntry, rangedBackstop, recordEnemyTurn, routineAttacksLeft } from "@/lib/dm/enemy-turn-logic";
 import { attackHold, spellAttackHold } from "@/lib/dm/spell-planes";
 import { reachThroughProblem } from "@/lib/dm/zone-rules";
 import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
-import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
+import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
 import { applyPcDamage, blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hateAuraDamage } from "@/lib/dm/divine-auras";
 import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
-import { hasTrait } from "@/lib/dm/monster-abilities";
+import { hasTrait, multiattackAbilities } from "@/lib/dm/monster-abilities";
 import { enemySwingOdds, hasFeatureNamed } from "@/lib/dm/enemy-swing-odds";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { authoredAfterHit } from "@/lib/dm/authored-hooks";
@@ -79,14 +81,21 @@ import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
+import { petTargetProblem, strikePet } from "@/lib/dm/pet-strike";
+import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
-import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
+import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
+import { landSwing, landWaits, reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetSize } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
 import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
+import { chargeAttackOf, chargeBonusOf } from "@/lib/dm/charge-logic";
+import { chargeAfterHit, chargeForHit, enemyRunFeet, withChargeDice } from "@/lib/dm/enemy-charge";
+import { conditionsOf, PRONE } from "@/lib/dm/vitals-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -101,11 +110,19 @@ const attackArgsSchema = z.object({
   // At the target's mount instead (SRD 5.1, Controlling a Mount: "the
   // attacker can target you or the mount"): mount-combat.ts.
   targetMount: z.coerce.boolean().optional(),
+  // At the target's pet instead, by its name: it stands in their square
+  // (ruling D2) and is struck at its own AC (pet-strike.ts).
+  targetPet: z.string().trim().min(1).max(60).optional(),
   // An attack-roll spell from its list (enemy-casting.ts enemySpellAttack):
   // paid as the casting is, its action, a slot or the legendary action that
   // bought it.
   spell: z.string().trim().max(80).optional(),
+  // With no board to measure it: it ran straight at the target first, for a
+  // Charge or a Pounce (enemy-charge.ts). On a board the squares decide.
+  charged: z.coerce.boolean().optional(),
 });
+
+const liesProne = (conditions: string[]) => conditions.some((entry) => isConditionNamed(entry, PRONE));
 
 // The profile the enemy walks in for: the shortest reach among the melee
 // swings it is about to make, or the shortest range when every swing is
@@ -172,6 +189,12 @@ export function handleEnemyAttack(
   // scimitar and a shortbow never lashed out).
   engine: { anySide?: boolean; pickAttack?: boolean } = {},
 ): ToolResult {
+  // An answer still waiting on the reaction to an earlier hit lands before
+  // this attack: the attack is done after the hit, so a reaction's moment has
+  // passed (retort-wait.ts), and an attacker it slays makes none. A call
+  // through the dispatch door has landed it already; the server's own plays
+  // (the backstop, a legendary option's swings) come here first.
+  landWaits(campaign, turn, { tell: true });
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: "No active encounter: enemy_attack works only in a fight. Call start_encounter first.", retry: true };
@@ -213,14 +236,24 @@ export function handleEnemyAttack(
   }
   // An attack the block prints among its Bonus Actions is the creature's
   // bonus action: one swing, beside its action, once a round.
-  const bonus = !cast && Boolean(args.attack && attackNamed(found.stats.attacks, args.attack)?.bonusAction);
+  const printedBonus = !cast && Boolean(args.attack && attackNamed(found.stats.attacks, args.attack)?.bonusAction);
+  // So is a Pounce's bite (a Trampling Charge's stomp) at the creature its
+  // charge left prone this turn: "If the target is prone, the lion can make
+  // one bite attack against it as a bonus action" (enemy-charge.ts).
+  const pouncedOn = enemyTurnEntry(encounter, found.id).pouncedOn;
+  const pounce = !cast && !printedBonus && args.attack && pouncedOn ? chargeBonusOf(found.stats, args.attack) : null;
+  const bonus = printedBonus || pounce !== null;
   // One guard for the enemy side (src/lib/dm/can-act.ts): the dead, the
   // incapacitated and the surprised do nothing, and an action is one a round.
   // Haste's extra action, once its own is spent, is one weapon attack
   // (enemy-actions.ts, issue #621).
   const allowed = cast ? ({ ok: true } as const) : canEnemyAct({ enemy: found, encounter, kind: bonus ? "bonus" : "action" });
-  const hasteSwing = !allowed.ok && !bonus && allowed.reason === "already_acted" && hasteActionOpen(encounter, found);
-  if (!allowed.ok && !hasteSwing) {
+  // Its Multiattack folds in an ability it used this turn ("The dragon can
+  // use its Frightful Presence. It then makes three attacks"): the routine's
+  // attacks are that same action (monster-abilities.ts multiattackAbilities).
+  const routineSwing = !allowed.ok && !bonus && !cast && allowed.reason === "already_acted" && routineAttacksLeft(enemyTurnEntry(encounter, found.id));
+  const hasteSwing = !routineSwing && !allowed.ok && !bonus && allowed.reason === "already_acted" && hasteActionOpen(encounter, found);
+  if (!allowed.ok && !hasteSwing && !routineSwing) {
     return toolError(allowed);
   }
   // Slow: an action or a bonus action on its turn, not both (SRD 5.1).
@@ -274,6 +307,15 @@ export function handleEnemyAttack(
     const picked = resolveCombatant(campaign.id, encounter, lash);
     return { error: `${found.displayName} is confused: this turn's attack is on ${picked?.name ?? "the creature Confusion picked"}, picked at random, and no other.`, refused: "rules" };
   }
+  if (pounce) {
+    const lying = aimed.kind === "enemy" ? aimed.enemy.conditions : conditionsOf(getSheetById(aimed.id) ?? { conditions: [], currentHp: 1 });
+    if (aimed.id !== pouncedOn || !liesProne(lying)) {
+      return {
+        error: `${found.displayName}'s ${pounce.name} gives its bonus ${args.attack} only at the creature its charge struck this turn, while it lies prone. Nothing was spent.`,
+        refused: "rules",
+      };
+    }
+  }
   if (!engine.anySide && !lash && !hostileTo(encounter, { kind: "enemy", id: found.id }, { kind: aimed.kind, id: aimed.id })) {
     return {
       error: `${aimed.name} fights on ${found.displayName}'s side: enemy_attack does not strike an ally. Pick a creature on the other side.`,
@@ -316,6 +358,7 @@ export function handleEnemyAttack(
       bonus,
       haste: hasteSwing,
       ...(swallowing ? { swallowing: { maxSize: swallowing.maxSize } } : {}),
+      ...(args.charged ? { charged: true } : {}),
       sheets,
       sheetsById,
     });
@@ -328,6 +371,11 @@ export function handleEnemyAttack(
   const unmounted = args.targetMount ? mountTargetProblem(campaign.id, target) : null;
   if (unmounted) {
     return { error: unmounted, retry: true };
+  }
+  // A pet the call names that the character does not have, or one down.
+  const noPetThere = args.targetPet ? (args.targetMount ? { error: "Name the mount or the pet, not both.", retry: true as const } : petTargetProblem(target, args.targetPet)) : null;
+  if (noPetThere) {
+    return noPetThere;
   }
   // Mounted Combatant: the rider takes the attack aimed at the mount
   // (src/lib/dm/ar-wbf-feat-doors.ts).
@@ -465,6 +513,17 @@ export function handleEnemyAttack(
   }
   // A walk that took it out of a grappled creature's reach let go.
   releaseGrapplesOutOfReach(campaign);
+  // How far it ran straight at the target this turn, the walk in included,
+  // for a Charge or a Pounce (enemy-charge.ts). A creature of one attack a
+  // turn that names none makes the one its charge rides once the run is
+  // long enough: a lion bounding at its prey claws, it does not bite.
+  const ranFeet = enemyRunFeet(encounter.id, enemy.id, target.id, args.charged === true);
+  const charging = !args.attack && !single && !found.stats.routines?.length && planned.length === 1 ? chargeAttackOf(found.stats, actionAttacks, ranFeet) : null;
+  if (charging && !planned.includes(charging)) {
+    // The routine's one swing, swapped where it stands.
+    planned.splice(0, 1, charging);
+    profiles.splice(0, 1, enemyAttackProfile(charging, found.stats.traits ?? []));
+  }
   // The walk may have drawn an opportunity attack that killed it.
   const standing = resolveEnemyRef(encounter.id, enemy.id);
   if (!standing || standing.status !== "alive") {
@@ -527,6 +586,8 @@ export function handleEnemyAttack(
     markEnemyBonus(live, enemy.id);
   } else if (hasteSwing) {
     recordEnemyTurn(live, enemy.id, { hasteUsed: true });
+  } else if (routineSwing) {
+    recordEnemyTurn(live, enemy.id, { routineSwung: true });
   } else if (single) {
     if (strike) {
       spendLegendaryStrike(live, enemy.id);
@@ -534,35 +595,54 @@ export function handleEnemyAttack(
     markEnemyActed(live, enemy.id);
   } else {
     spendEnemyAction(live, enemy.id);
+    // The ability the routine folds in is still to come in this action.
+    if (multiattackAbilities(found.stats).length) {
+      recordEnemyTurn(live, enemy.id, { routineSwung: true });
+    }
   }
   saveEncounter(live);
-  // At the mount: its own AC, hit points and Dodge (mount-combat.ts). The
-  // rider's own wards and reactions answer attacks on the rider only.
-  if (args.targetMount) {
+  // At the mount or the pet beside them, the routine's swings each from
+  // where the creature stands: its reach, its range, its bloodied blow, and
+  // its water (pet-underwater.ts), as its swing at the character reads them.
+  const swingsBeside = (what: string) => {
     const bloodied = standing.currentHp <= standing.maxHp / 2;
-    let shotsAtMount = 0;
-    const swingsAtMount = planned.map((attack, index) => {
+    let shots = 0;
+    return planned.map((attack, index) => {
       const mode = swingMode(profiles[index], spatial.distance);
       if (!mode) {
-        return { attack, skipped: `${target.name}'s mount is out of this attack's reach` };
+        return { attack, skipped: `${what} is out of this attack's reach` };
       }
-      const past = mode.ranged ? pastRangedLimit(found.stats.traits, attack, shotsAtMount) : null;
+      const past = mode.ranged ? pastRangedLimit(found.stats.traits, attack, shots) : null;
       if (past) {
         return { attack, skipped: past };
       }
-      shotsAtMount += mode.ranged ? 1 : 0;
-      return { attack: alternativeBlow(attack, { ranged: mode.ranged, bloodied }), ranged: mode.ranged };
+      shots += mode.ranged ? 1 : 0;
+      const blow = alternativeBlow(attack, { ranged: mode.ranged, bloodied });
+      const water = creatureUnderwaterSwing(campaign.id, standing, blow, mode);
+      if (water?.misses && water.note) {
+        return { attack: blow, skipped: water.note };
+      }
+      return { attack: blow, ranged: mode.ranged, ...(water?.disadvantage && water.note ? { underwater: water.note } : {}) };
     });
+  };
+  const requested = () => claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested;
+  // At the pet: its own AC, conditions, save and hit points (pet-strike.ts).
+  if (args.targetPet) {
+    return strikePet({ campaign, turn, encounterId: encounter.id, enemy: standing, owner: target, petName: args.targetPet, swings: swingsBeside(`${target.name}'s ${args.targetPet}`), distance: spatial.distance, cover, requested: requested() });
+  }
+  // At the mount: its own AC, hit points and Dodge (mount-combat.ts). The
+  // rider's own wards and reactions answer attacks on the rider only.
+  if (args.targetMount) {
     return strikeMount({
       campaign,
       turn,
       encounterId: encounter.id,
       enemy: standing,
       rider: target,
-      swings: swingsAtMount,
+      swings: swingsBeside(`${target.name}'s mount`),
       distance: spatial.distance,
       cover,
-      requested: claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested,
+      requested: requested(),
       sheets,
       sheetsById,
     });
@@ -598,9 +678,34 @@ export function handleEnemyAttack(
   // The swings made at range, held to what a Multiattack of melee attacks
   // leaves room for (enemy-profile.ts rangedSwingsAllowed).
   let shots = 0;
+  // What a waiting answer said as it landed between swings (retort-wait.ts),
+  // and why the creature swings no more once one, or an answer at once,
+  // slew it.
+  const answersLanded: string[] = [];
+  let fallen: string | null = null;
+  // Whether a reaction could still turn every hit of the attack: a
+  // retaliation for the whole of it that would slay waits then too.
+  let hitAny = false;
+  let everyHitTurnable = true;
   planned.forEach((plannedAttack: EnemyAttack, index) => {
     let attack = plannedAttack;
     if (dropped) {
+      return;
+    }
+    // The swing before is past its reaction now (SRD 5.1, Reactions: taken
+    // right after the trigger): what waited on it lands before the creature
+    // swings again, and one an answer slew makes no more attacks. Before, the
+    // routine went on swinging: a goblin Fire Shield had burnt to death, or
+    // whose death waited on Shield, still made its second attack.
+    if (index > 0 && !fallen) {
+      hitLog.rewrite((swing) => landSwing(campaign, turn, swing, answersLanded, sheets, sheetsById));
+      const now = getEnemy(enemy.id);
+      if (!now || now.status !== "alive" || now.currentHp <= 0) {
+        fallen = `${enemy.displayName} fell to what answered its earlier swing and makes no more attacks`;
+      }
+    }
+    if (fallen) {
+      swings.push({ attack: attack.name, skipped: fallen });
       return;
     }
     // Swallowed by an earlier swing of this routine (or by anything since
@@ -715,7 +820,7 @@ export function handleEnemyAttack(
     turn.rollIds.push(hitRoll.id);
 
     // Mirror Image: a duplicate may take the attack instead.
-    const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total);
+    const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total, enemy);
     if (decoy) {
       swings.push({ attack: attack.name, rolled: hitOutcome.total, hit: false, duplicate: decoy });
       return;
@@ -792,6 +897,16 @@ export function handleEnemyAttack(
       return;
     }
 
+    // The charge this hit rides, once a turn, and its extra dice on the
+    // blow (enemy-charge.ts).
+    const charge = chargeForHit(getActiveEncounter(campaign.id), standing, attack, ranFeet);
+    if (charge) {
+      attack = withChargeDice(attack, charge);
+    }
+    // Enlarge/Reduce on the creature: its weapons grew or shrank with it
+    // (enemy-hit.ts sizedAttack).
+    const sized = sizedAttack(attack, standing.conditions);
+    attack = sized.attack;
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);
@@ -828,7 +943,7 @@ export function handleEnemyAttack(
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
     // Sepulchral Aura and Numb to the Lash (genre-a-dark-fantasy-wards.ts).
-    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(blow.amount));
+    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(Math.max(sized.floor, blow.amount)));
     const dealt = warded.amount;
     notes.push(...warded.notes);
     // A critical that came only from the target lying unconscious at 0 within
@@ -865,10 +980,24 @@ export function handleEnemyAttack(
       ...(args.nonlethal && !ranged ? { nonlethal: true } : {}),
       reason: `${enemy.displayName}'s ${attack.name}`,
     });
-    // Thought Shield: the psychic damage a warlock took goes back to the creature.
-    Object.assign(applied, thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById));
+    // Thought Shield: the psychic damage a warlock took goes back to the
+    // creature, kept with the swing so a reaction that turns it into a miss
+    // takes it back (spell-retort.ts measureRetort).
+    // A reaction that could still turn this swing into a miss holds an answer
+    // that would slay the creature until the hit is settled (retort-wait.ts).
+    const waits = reactionCouldTurn(campaign.id, struck, { total: hitOutcome.total, natural20: natCrit, vsAc: targetAc(), melee: !ranged, attackerId: enemy.id });
+    hitAny = true;
+    everyHitTurnable &&= waits;
+    const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
+    Object.assign(applied, psychicBack.result);
+    // What the target took after its resistances, immunities and
+    // vulnerabilities (SRD 5.1: "If a creature or an object has resistance
+    // to a damage type, damage of that type is halved against it"). The
+    // result said the blow as rolled: a raging hero who lost 3 of a club's 6
+    // was narrated 6, and the table line read "HIT for 6".
+    const taken = dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     totalDamage += dealt;
-    takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
+    takenTotal += taken;
     previousHit = true;
     if (multiattackDefense) {
       defended = 4;
@@ -934,9 +1063,29 @@ export function handleEnemyAttack(
     const necrotic = byType
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
+    const unridden = getSheetById(target.id);
+    // A bite that may swallow ends the grapples its target holds: read first.
+    const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, target.id) : null;
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
-    // Fire Shield and Holy Aura answer the blow (spell-retort.ts).
-    const retort = spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById);
+    // What the rider laid on the target, kept with the swing: a reaction
+    // that turns it into a miss takes it off (reaction-refund.ts), a swallow
+    // with the grapples it ended (swallow.ts swallowMark).
+    const ridden = getSheetById(target.id);
+    const own = Array.isArray(onHit?.riderCondition) ? (onHit.riderCondition as string[]) : [];
+    hitLog.laid(unridden && ridden ? (onHit?.swallowed ? swallowMark(campaign.id, unridden, ridden, target.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null);
+    // Charge, Pounce, Trampling Charge: the save the run and this hit force,
+    // and a Pounce's bonus attack on a creature left prone (enemy-charge.ts).
+    const charged = charge
+      ? chargeAfterHit(campaign, standing, attack, charge, { id: target.id, name: target.name }, (ridden) => resolveOnHit(campaign, turn, standing, ridden, target.id, { sheets, sheetsById }), () => liesProne(conditionsOf(getSheetById(target.id) ?? target)))
+      : [];
+    // Fire Shield, Armor of Agathys and Holy Aura answer the blow
+    // (spell-retort.ts), kept with the swing with Thought Shield's: a hit a
+    // reaction turns into a miss never set them off (reaction-refund.ts).
+    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0, waits), (out) => out.by, (out) => out.shares);
+    // Thought Shield's line with the spells': the GM never heard it here.
+    const retort = [psychicBack.result.thoughtShield, answered.result.line].filter(Boolean).join(" ") || null;
+    hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
+    hitLog.waiting([...(psychicBack.result.waiting ? [psychicBack.result.waiting] : []), ...answered.result.waiting]);
     if (typeof onHit?.targetHp === "string") {
       targetHp = onHit.targetHp;
     }
@@ -949,9 +1098,11 @@ export function handleEnemyAttack(
       rolled: hitOutcome.total,
       hit: true,
       ...(crit ? { crit: true } : {}),
-      damage: dealt,
+      damage: taken,
+      ...(typeof applied.resistance === "string" ? { resistance: applied.resistance } : {}),
       ...(byType ? { damageByType: byType } : {}),
       ...(onHit ?? {}),
+      ...(charged.length ? { charge: charged } : {}),
       ...(retort ? { retort } : {}),
     });
   });
@@ -963,7 +1114,13 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }));
+  // A feature's retaliation for the attack as a whole, kept with its record:
+  // a reaction that leaves none of its swings a hit takes it back.
+  const retaliationWaits = hitAny && everyHitTurnable ? ([] as WaitingAnswer[]) : undefined;
+  const retaliation = measureRetort(standing.id, () => authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name, waiting: retaliationWaits }), (lines) => (lines.length > (retaliationWaits?.length ?? 0) ? ["A retaliation"] : []));
+  hitLog.afterHit(retaliation.retort);
+  hitLog.afterWaiting(retaliationWaits);
+  notes.push(...retaliation.result);
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {
@@ -976,10 +1133,11 @@ export function handleEnemyAttack(
     ...(planned.length > 1 ? { multiattack: planned.map((attack) => attack.name).join(", ") } : {}),
     swings,
     hit: swings.some((entry) => entry.hit),
-    ...(totalDamage > 0 ? { totalDamage, damageType: [...damageTypes].join("/") } : {}),
+    ...(totalDamage > 0 ? { totalDamage: takenTotal, damageType: [...damageTypes].join("/") } : {}),
     ...(notes.length ? { conditionEffects: notes } : {}),
     ...(targetHp ? { targetHp } : {}),
     ...(dropped ? { dropped: true, note: `${target.name} falls to 0 HP.` } : {}),
+    ...(answersLanded.length ? { answersLanded } : {}),
   };
 }
 

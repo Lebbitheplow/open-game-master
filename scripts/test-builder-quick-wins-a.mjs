@@ -12,6 +12,8 @@ const { renderToStaticMarkup } = await import("react-dom/server");
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const submit = await import("../src/app/characters/builder/submit.ts");
 const { owedPicks } = await import("../src/app/characters/builder/owed.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 
 const state = {
   name: "Vex",
@@ -30,10 +32,10 @@ const state = {
 // back to the list's first row (an Acolyte, who owed two languages nobody
 // asked for).
 {
-  const owed = submit.backgroundBlocks(state, undefined);
+  const owed = submit.backgroundBlocks(t, state, undefined);
   assert.deepEqual(owed.map((entry) => entry.target), ["background"]);
   assert.match(owed[0].message, /did before adventuring \(background\)/);
-  assert.equal(submit.backgroundBlocker(state, { id: "soldier", name: "Soldier", skills: [] }), null);
+  assert.equal(submit.backgroundBlocker(t, state, { id: "soldier", name: "Soldier", skills: [] }), null);
   // An unpicked background owes no languages on the next step.
   assert.equal(submit.bonusLanguageCount({ bonusLanguages: 0 }, undefined), 0);
 
@@ -78,7 +80,9 @@ const state = {
   assert.ok(!unnamed.includes("data-diamond-name"), "a wizard that does not ask for names prints none");
 
   const builder = read("src/app/characters/builder/CharacterBuilder.tsx");
-  const labelled = [...builder.matchAll(/^\s+label: "([^"]+)",\n\s+title: "([^"]+)",/gm)].map((match) => [match[1], match[2]]);
+  // The steps' names read through the dictionary (builder.shell.step.*), the
+  // i18n pass; the suite reads them in English, the source.
+  const labelled = [...builder.matchAll(/^\s+label: t\("([^"]+)"(?:, \{[^}]+\})?\),\n\s+title: t\("([^"]+)"\),/gm)].map((match) => [t(match[1]), t(match[2])]);
   // How you want to play first, the name last (backlog F4).
   assert.deepEqual(labelled, [
     ["Class", "Choose how you fight or use magic"],
@@ -87,7 +91,7 @@ const state = {
     ["Hero", "Name your hero and tell their story"],
     ["Finish", "Check your hero and finish"],
   ]);
-  assert.ok(builder.includes('label: casts ? "Spells" : "Gear"') && builder.includes('title: casts ? "Choose spells and gear" : "Choose your gear"'));
+  assert.ok(builder.includes('label: casts ? t("Spells") : t("Gear")') && builder.includes('title: casts ? t("Choose spells and gear") : t("Choose your gear")'));
   assert.ok(/variant="diamonds"\s+stepNames/.test(builder), "the builder prints its step names");
   for (const file of ["src/app/characters/builder/steps/IdentityStep.tsx", "src/app/characters/builder/steps/BackgroundPanel.tsx", "src/app/characters/builder/BackgroundKitSection.tsx"]) {
     assert.ok(!read(file).includes("Calling step"), `${file} still sends the player to the Calling step`);
@@ -99,11 +103,11 @@ const state = {
 // veteran; the "choices left" line keeps the rule word as its link.
 {
   const dwarf = { id: "hill_dwarf", name: "Hill Dwarf", toolChoice: { count: 1, options: ["Smith's tools"] }, skills: [], asi: {} };
-  const owed = submit.ancestryBlocks(state, dwarf, { id: "soldier", name: "Soldier", skills: [] });
+  const owed = submit.ancestryBlocks(t, state, dwarf, { id: "soldier", name: "Soldier", skills: [] });
   assert.deepEqual(owed.map((entry) => entry.message), ["Pick a tool your Hill Dwarf knows how to use (tool proficiency)."]);
-  assert.deepEqual(owedPicks(owed).map((pick) => pick.label), ["Tool"], "the Show me link keeps the rule's name");
-  assert.equal(submit.ancestryBlocks(state, undefined)[0].message, "Choose where your hero comes from (race).");
-  assert.equal(submit.callingBlocks(undefined)[0].message, "Choose how you fight or use magic (class).");
+  assert.deepEqual(owedPicks(t, owed).map((pick) => pick.label), ["Tool"], "the Show me link keeps the rule's name");
+  assert.equal(submit.ancestryBlocks(t, state, undefined)[0].message, "Choose where your hero comes from (race).");
+  assert.equal(submit.callingBlocks(t, undefined)[0].message, "Choose how you fight or use magic (class).");
 
   const derived = {
     toolGrants: { choices: [{ label: "musical instrument" }], left: [2] },
@@ -114,13 +118,13 @@ const state = {
     proficientSkills: [],
   };
   const fighter = { id: "fighter", name: "Fighter", skillChoices: { count: 2 } };
-  const calling = submit.callingBlocks(fighter, { ...state, chosenSkills: [], stylePicks: [], expertisePicks: [], subclass: "" }, derived);
+  const calling = submit.callingBlocks(t, fighter, { ...state, chosenSkills: [], stylePicks: [], expertisePicks: [], subclass: "" }, derived);
   assert.deepEqual(calling.map((entry) => entry.message), [
     "Pick 2 more skills your training taught you (class skills).",
     "Pick how you like to fight (fighting style).",
   ]);
   // Open tool grants are asked beside the background (backlog F4).
-  assert.deepEqual(submit.backgroundBlocks(state, { id: "soldier", name: "Soldier", skills: [] }, derived).map((entry) => entry.message), [
+  assert.deepEqual(submit.backgroundBlocks(t, state, { id: "soldier", name: "Soldier", skills: [] }, derived).map((entry) => entry.message), [
     "Pick 2 more musical instruments you know how to use (tool proficiency).",
   ]);
   // No message still leads with the rule's word alone.
@@ -178,9 +182,9 @@ const state = {
   assert.ok(!identity.includes("Their place at the table"), "the Hero step no longer asks who plays them");
   assert.ok(!identity.includes("role?:"), "the Hero step takes no role");
   const finish = read("src/app/characters/builder/steps/FinishStep.tsx");
-  assert.ok(finish.includes("Their place at the table"), "the Finish step asks who plays them");
-  assert.ok(finish.includes("Joins a campaign as yours to control."), "the player character choice is explained");
-  assert.ok(finish.includes("Nobody has to roll them up again."), "the companion choice is explained");
+  assert.ok(finish.includes('t("Their place at the table")'), "the Finish step asks who plays them");
+  assert.ok(finish.includes('t("Joins a campaign as yours to control.")'), "the player character choice is explained");
+  assert.ok(finish.includes('t("Companions are offered when a party adds one, at whatever level that table plays at. Nobody has to roll them up again.")'), "the companion choice is explained");
   const builder = read("src/app/characters/builder/CharacterBuilder.tsx");
   assert.ok(/<FinishStep[\s\S]*?role=\{role\}[\s\S]*?\/>/.test(builder), "the builder hands the role to the Finish step");
   assert.ok(!builder.match(/<IdentityStep[\s\S]*?\/>/)[0].includes("role={role}"), "and not to the Hero step");

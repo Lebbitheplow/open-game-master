@@ -81,6 +81,8 @@ const REGISTRY = {
   "model.ts:__odmUtilityBreakers": { kind: PLUMBING, what: "circuit breakers" },
   "narration-slot.ts:__odmNarrationSlots": { kind: PLUMBING, what: "narration in flight" },
   "player-word-read.ts:readings": { kind: PLUMBING, what: "a cache of a model's reading of a player's words; read again when empty" },
+  "prompt-snapshot.ts:__odmSnapshotNarrators": { kind: PLUMBING, what: "prompt snapshots: what each narrator's slots hold, restored from the saved files when forgotten" },
+  "prompt-snapshot.ts:__odmSnapshotProbes": { kind: PLUMBING, what: "prompt snapshots: a narrator being asked whether it keeps them" },
   "queue.ts:releases": { kind: PLUMBING, what: "the queue" },
   "queue.ts:__odmDmQueues": { kind: PLUMBING, what: "the queue, recovered at boot" },
   "queue.ts:__odmDmPauses": { kind: PLUMBING, what: "the queue" },

@@ -11,6 +11,9 @@ const {
   describeMount,
   DISMOUNT_SAVE_DC,
   dismountSave,
+  riderKnockedProne,
+  checkCreatureMount,
+  mountSizeOf,
   MOUNTS,
   mountCost,
   mountProfile,
@@ -128,6 +131,28 @@ test("being thrown calls for the save; choosing to get off does not", () => {
   assert.deepEqual(dismountSave("forced-move"), { dc: DISMOUNT_SAVE_DC, ability: "dex" });
   assert.deepEqual(dismountSave("rider-prone"), { dc: DISMOUNT_SAVE_DC, ability: "dex" });
   assert.equal(dismountSave("voluntary"), null);
+});
+
+test("a creature the table keeps as a sheet is a mount by the size rule, ridden as a controlled one, and its hit points stay on its sheet", () => {
+  const warhorse = checkCreatureMount({ sheetId: "s1", name: "Warhorse", speed: 60, size: "Large", riderSize: "medium" });
+  assert.equal(warhorse.ok, true);
+  assert.deepEqual(warhorse.state, { ref: "sheet:s1", name: "Warhorse", speed: 60, controlled: true, size: "large", sheetId: "s1" });
+  assert.equal(warhorse.state.hp, undefined);
+  // A mastiff carries a halfling and not a human; a wolf carries neither a human nor anything when it is Tiny.
+  assert.equal(checkCreatureMount({ sheetId: "s2", name: "Mastiff", speed: 40, size: "Medium", riderSize: "small" }).ok, true);
+  assert.match(checkCreatureMount({ sheetId: "s2", name: "Mastiff", speed: 40, size: "Medium", riderSize: "medium" }).error, /one size larger/);
+  assert.match(checkCreatureMount({ sheetId: "s3", name: "Owl", speed: 60, size: "Tiny", riderSize: "small" }).error, /one size larger/);
+  assert.equal(mountSizeOf("Gargantuan"), "huge");
+  assert.equal(mountSizeOf("tiny"), null);
+});
+
+test("a rider owes the save for being laid prone, not for lying prone", () => {
+  assert.equal(riderKnockedProne(false, true), true);
+  assert.equal(riderKnockedProne(true, true), false);
+  assert.equal(riderKnockedProne(true, false), false);
+  assert.equal(riderKnockedProne(false, false), false);
+  // The save already made for this prone is not asked again.
+  assert.equal(riderKnockedProne(false, true, true), false);
 });
 
 test("a mount describes itself with what matters at the table", () => {

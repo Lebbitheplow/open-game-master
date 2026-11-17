@@ -8,6 +8,7 @@
 // disadvantage is -5; in darkness a creature without darkvision sees nothing,
 // and darkvision turns darkness into dim light and dim light into bright.
 import { isConditionNamed } from "../srd/feature-names.ts";
+import { paceEffect, type TravelPace } from "../srd/travel.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
 export type Light = "bright" | "dim" | "dark";
@@ -145,6 +146,29 @@ export function lightSeenBy(ambient: Light, carriesLight: boolean, darkvision: b
   return light as Light;
 }
 
+// Whether a check in this light hangs on the sense it uses, so a call that
+// names none must name it before the dice roll (SRD 5.1, Vision and Light:
+// dim light costs Perception by sight disadvantage, and darkness fails any
+// check by sight): Perception in dim light or darkness, Investigation in the
+// dark. `skill` is the skill's id (srd findSkill). `spared`: dim light costs
+// this roller nothing (Skulker, dim-sight.ts).
+export function lightHangsOnSense(light: Light | null | undefined, skill: string | undefined, spared = false): boolean {
+  if (light === "dark") {
+    return skill === "perception" || skill === "investigation";
+  }
+  return light === "dim" && skill === "perception" && !spared;
+}
+
+// The march's own penalty to every passive Perception, by sight or by ear
+// (SRD 5.1, Travel Pace: a fast pace is "-5 penalty to passive Wisdom
+// (Perception) scores"). check_notice and the ambush that opens a fight
+// (encounter-open.ts decideAmbush) both read it here, from the pace table
+// (srd/travel.ts): the ambush read the passive score without it, so a party
+// racing down the road was jumped as rarely as one walking.
+export function pacePerceptionShift(pace: TravelPace | undefined): number {
+  return pace ? paceEffect(pace).passivePerceptionMod : 0;
+}
+
 // The shift to a passive Perception that relies on sight, with the reasons
 // for the result.
 // In darkness a creature that cannot see is effectively blinded, and a
@@ -161,10 +185,9 @@ export function sightPassiveShift(input: {
   byEar?: boolean;
   spared?: string | null;
 }): { shift: number; blind: boolean; disadvantage: boolean; notes: string[] } {
-  let shift = 0;
+  const shift = pacePerceptionShift(input.pace);
   const notes: string[] = [];
-  if (input.pace === "fast") {
-    shift -= 5;
+  if (shift) {
     notes.push("fast pace: -5");
   }
   if (input.byEar) {

@@ -14,6 +14,7 @@ const { test, finish } = suite("test-move-undo");
 const world = await openWorld();
 const kit = await combatKit(world);
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+const { visibleWalk } = await import("../src/lib/battlemap/confirmed-walk.ts");
 
 const fighter = world.addHero({
   name: "Fighter", class: "fighter", level: 5, abilities: { str: 16, dex: 10 }, proficiencies: TRAINED,
@@ -60,10 +61,21 @@ await test("A walk nothing answered is taken back: the figure returns and the mo
   assert.deepEqual(walked.body.view.undoMove, { feet: 10 }, "the move's own answer offers the undo");
   assert.deepEqual(view().undoMove, { feet: 10 });
   assert.deepEqual(at(fighter), { x: 6, y: 4, moved: 2 });
+  const walkPath = [{ x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }];
+  const tokenView = (mapView) => mapView.tokens.find(token => token.id === kit.token(fighter.id).id);
+  assert.deepEqual(tokenView(walked.body.view).walkPath, walkPath, "the response carries the squares actually walked");
+  assert.deepEqual(tokenView(view()).walkPath, walkPath, "a subsequent snapshot carries the same walk");
+  const { width, height } = walked.body.view;
+  const figure = kit.token(fighter.id);
+  const seen = new Set(walkPath.map(point => point.y * width + point.x));
+  assert.deepEqual(visibleWalk(figure, width, height, seen, false), walkPath);
+  seen.delete(4 * width + 5);
+  assert.equal(visibleWalk(figure, width, height, seen, false), undefined, "fog hides the whole walk if any step is unseen");
   const back = await undo();
   assert.equal(back.status, 200, JSON.stringify(back.body));
   assert.deepEqual(back.body.undone, { feet: 10 });
   assert.deepEqual(at(fighter), { x: 4, y: 4, moved: 0 });
+  assert.equal(tokenView(back.body.view).walkPath, undefined, "undo is not offered as a new walk");
   assert.equal(back.body.view.budgetLeft, view().budgetLeft);
   assert.equal(view().undoMove, undefined, "one walk is one step back");
   assert.equal((await undo()).status, 409, "a second press with nothing left to take back is refused");

@@ -17,10 +17,12 @@ import { getClock } from "@/lib/db/clock";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { withoutSourceOf } from "@/lib/dm/affliction-instances-logic";
 import { settleOnDamage } from "@/lib/dm/spell-effects";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
+import { settleExhaustionDeath } from "@/lib/dm/exhaustion-death";
 import { isGnome } from "@/lib/srd/race-id";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import {
@@ -60,7 +62,8 @@ export function afflictCondition(
   turnId: string,
   sheetId: string,
   condition: string,
-  options: { minutes?: number; rounds?: number; saveAbility?: "con" | "wis"; saveDc?: number; endsOnDamage?: boolean; source: string },
+  // `nonmagical`: a mechanical trap's hold (set-condition.ts).
+  options: { minutes?: number; rounds?: number; saveAbility?: "con" | "wis"; saveDc?: number; endsOnDamage?: boolean; source: string; nonmagical?: boolean },
 ): boolean {
   const sheet = getSheetById(sheetId);
   if (!sheet) {
@@ -77,7 +80,7 @@ export function afflictCondition(
       ...(options.saveAbility && options.saveDc ? { saveAbility: options.saveAbility, saveDc: options.saveDc } : {}),
     },
     options.source,
-    { spellEffect: { source: options.source.slice(0, 80), ...(options.endsOnDamage ? { endsOnDamage: true } : {}) } },
+    { spellEffect: { source: options.source.slice(0, 80), ...(options.endsOnDamage ? { endsOnDamage: true } : {}) }, ...(options.nonmagical ? { nonmagical: true } : {}) },
   );
   return !("error" in applied);
 }
@@ -85,12 +88,18 @@ export function afflictCondition(
 // The writes below are audited: most come as the clock moves or a rest
 // ends, and unaudited no undo or "Revert this turn" could put them back
 // (issue #622).
-export function dropConditions(campaignId: string, sheetId: string, names: string[]) {
+// `source`: the affliction's own instances only (afflictCondition's source),
+// so a poisoning or a blindness another effect laid keeps its own duration
+// (SRD 5.1, Conditions: "each instance of the condition has its own
+// duration"). Pale Tincture running its course ended a ten days' poisoning
+// with it, and sight rot cured took a Blindness spell's blindness. A
+// condition written with no instance record goes whole, as before.
+export function dropConditions(campaignId: string, sheetId: string, names: string[], source?: string) {
   const sheet = getSheetById(sheetId);
   if (!sheet || !names.length) {
     return;
   }
-  const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, names);
+  const cleared = source ? withoutSourceOf(sheet, names, source) : removeConditions(sheet.conditions, sheet.conditionMeta, names);
   patchSheetAudited(campaignId, sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, {
     kind: "clear_condition",
     reason: "the affliction ended",
@@ -102,6 +111,11 @@ export function dropConditions(campaignId: string, sheetId: string, names: strin
 function setExhaustion(campaignId: string, sheet: CharacterSheet, level: number, why: string) {
   const patch = exhaustionPatch(sheet, level);
   patchSheetAudited(campaignId, sheet.id, patch, { kind: "exhaustion", reason: why, delta: { exhaustion: patch.exhaustion } });
+  // The sixth level kills, with all a death brings (exhaustion-death.ts).
+  const campaign = getCampaignById(campaignId);
+  if (campaign) {
+    settleExhaustionDeath(campaign, null, sheet, patch.exhaustion);
+  }
 }
 
 function addExhaustion(campaignId: string, sheetId: string, levels: number) {
@@ -114,14 +128,19 @@ function addExhaustion(campaignId: string, sheetId: string, levels: number) {
 
 // ---- reading the records ----
 
+// Whether a record still holds: one whose conditions were all ended some other
+// way (Lesser Restoration ending Pale Tincture's poisoning) is over, so its
+// daily save and its hold on healing end with it.
+export function inForce(entry: Affliction, sheet: Pick<CharacterSheet, "conditions">): boolean {
+  return !entry.conditions.length ? entry.onsetAt !== undefined || entry.nextAt !== undefined : entry.conditions.some((name) => holds(sheet, name));
+}
+
 // A character's afflictions, with any whose conditions are all gone (cured
 // some other way) dropped. A disease still incubating, a scheduled poison
 // and an indefinite flaw have nothing to lose and are kept.
 export function liveAfflictions(campaignId: string, sheet: Pick<CharacterSheet, "id" | "conditions">): Affliction[] {
   const list = afflictionsOf(campaignId, sheet.id);
-  const kept = list.filter((entry) =>
-    !entry.conditions.length ? entry.onsetAt !== undefined || entry.nextAt !== undefined : entry.conditions.some((name) => holds(sheet, name)),
-  );
+  const kept = list.filter((entry) => inForce(entry, sheet));
   if (kept.length !== list.length) {
     writeAfflictions(campaignId, sheet.id, kept);
   }
@@ -238,7 +257,7 @@ function workshopDiseaseAfterRest(campaign: Campaign, sheet: CharacterSheet, ent
       const level = (sheet.exhaustion ?? 0) - 1;
       setExhaustion(campaign.id, sheet, level, `${held.name} eased after a long rest`);
       if (level < 1) {
-        dropConditions(campaign.id, sheet.id, entry.conditions);
+        dropConditions(campaign.id, sheet.id, entry.conditions, held.name);
         lines.push(`${sheet.name} recovers from ${held.name}.`);
         return null;
       }
@@ -247,7 +266,7 @@ function workshopDiseaseAfterRest(campaign: Campaign, sheet: CharacterSheet, ent
     }
     const successes = (entry.successes ?? 0) + 1;
     if (successes >= rest.successes) {
-      dropConditions(campaign.id, sheet.id, entry.conditions);
+      dropConditions(campaign.id, sheet.id, entry.conditions, held.name);
       lines.push(`${sheet.name} recovers from ${held.name}.`);
       return null;
     }
@@ -411,6 +430,13 @@ export function afflictionClockTick(campaignId: string, to: number) {
     const next: Affliction[] = [];
     let changed = false;
     for (const entry of list) {
+      // One already cured (Lesser Restoration ending a long-term madness's
+      // paranoia) ends here and says nothing more: read raw, its hours ran
+      // out later and the chronicle said the cured madness passed.
+      if (!inForce(entry, sheet)) {
+        changed = true;
+        continue;
+      }
       if (entry.kind === "disease" && entry.onsetAt !== undefined && entry.onsetAt <= to) {
         // No turn named: the symptoms belong to the turn that moved the clock
         // (src/lib/db/sheet-audit.ts). The literal "clock" these once passed
@@ -419,7 +445,7 @@ export function afflictionClockTick(campaignId: string, to: number) {
         next.push(manifest(campaign, "", sheet.id, entry));
         changed = true;
       } else if (entry.kind === "madness" && entry.id === "long" && entry.endsAt !== undefined && entry.endsAt <= to) {
-        dropConditions(campaignId, sheet.id, entry.conditions);
+        dropConditions(campaignId, sheet.id, entry.conditions, `${entry.id}-term madness`);
         tableNote(campaign, `${sheet.name}'s long-term madness passes.`, "cue-heal");
         changed = true;
       } else {
@@ -442,7 +468,9 @@ export function afflictionClockTick(campaignId: string, to: number) {
 // poison deals can't be healed by any means"; issue #570, EQP-17). It never
 // takes away hit points they already have.
 export function healCeiling(campaignId: string, sheet: CharacterSheet, max = effectiveMaxHp(sheet)): number {
-  const unhealable = afflictionsOf(campaignId, sheet.id).reduce((sum, entry) => sum + (entry.kind === "poison" ? (entry.unhealable ?? 0) : 0), 0);
+  // Read from the records still in force: a heal in the same turn as the
+  // cure found the ended poison's damage still barred.
+  const unhealable = afflictionsOf(campaignId, sheet.id).reduce((sum, entry) => sum + (entry.kind === "poison" && inForce(entry, sheet) ? (entry.unhealable ?? 0) : 0), 0);
   return unhealable ? Math.max(Math.min(sheet.currentHp, max), max - unhealable) : max;
 }
 
@@ -493,7 +521,7 @@ export function afflictionsAfterLongRest(campaign: Campaign, turnId: string, res
         if (save.success) {
           const drop = publicDie(campaign, sheet, "1d6", `${sheet.name}: cackle fever's DC drops`);
           if (dc - drop <= 0) {
-            dropConditions(campaign.id, sheet.id, entry.conditions);
+            dropConditions(campaign.id, sheet.id, entry.conditions, DISEASES.cackle_fever.name);
             lines.push(`${sheet.name} recovers from cackle fever.`);
             continue;
           }
@@ -516,7 +544,7 @@ export function afflictionsAfterLongRest(campaign: Campaign, turnId: string, res
         if (save.success) {
           setExhaustion(campaign.id, sheet, level - 1, "sewer plague eased after a long rest");
           if (level - 1 < 1) {
-            dropConditions(campaign.id, sheet.id, entry.conditions);
+            dropConditions(campaign.id, sheet.id, entry.conditions, DISEASES.sewer_plague.name);
             lines.push(`${sheet.name} recovers from sewer plague.`);
             continue;
           }
@@ -534,7 +562,7 @@ export function afflictionsAfterLongRest(campaign: Campaign, turnId: string, res
           dropConditions(campaign.id, sheet.id, ["eyebright ointment"]);
           const doses = (entry.doses ?? 0) + 1;
           if (doses >= 3) {
-            dropConditions(campaign.id, sheet.id, [...entry.conditions, "blinded"]);
+            dropConditions(campaign.id, sheet.id, [...entry.conditions, "blinded"], DISEASES.sight_rot.name);
             lines.push(`${sheet.name}'s third dose of Eyebright cures sight rot.`);
             continue;
           }
@@ -544,7 +572,7 @@ export function afflictionsAfterLongRest(campaign: Campaign, turnId: string, res
         }
         const penalty = Math.min(5, (entry.penalty ?? 1) + 1);
         const condition = sightRotCondition(penalty);
-        dropConditions(campaign.id, sheet.id, entry.conditions);
+        dropConditions(campaign.id, sheet.id, entry.conditions, DISEASES.sight_rot.name);
         afflictCondition(campaign, turnId, sheet.id, condition, { source: "Sight Rot" });
         if (penalty >= 5) {
           afflictCondition(campaign, turnId, sheet.id, "blinded", { source: "Sight Rot" });

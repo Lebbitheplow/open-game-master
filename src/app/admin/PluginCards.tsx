@@ -7,6 +7,7 @@ import { UnofficialPackNotice } from "@/components/UnofficialPackNotice";
 import { genreName } from "@/lib/worlds/plugin-filter";
 import type { RegistryEntry, WorldPackSummary } from "@/lib/worlds/types";
 import { PluginThumb } from "./PluginThumb";
+import { useT } from "@/lib/locale";
 
 // The plugin browser's two kinds of entry: a pack the registry offers, as a
 // card with its picture on top, and a pack already on this server, as a row
@@ -40,6 +41,7 @@ export function AvailablePluginCard({
   busy: boolean;
   onInstall: () => void;
 }) {
+  const t = useT();
   return (
     <li className="plate-row" data-layout="stack">
       <PluginThumb src={entry.thumbnail} genre={entry.baseGenre} seed={entry.id} className="w-full" />
@@ -53,7 +55,7 @@ export function AvailablePluginCard({
       <div className="mt-auto flex items-center gap-2 pt-1">
         <button type="button" onClick={onInstall} disabled={busy} className={cn(ui.btnSmall, "text-xs")}>
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          Install
+          {t("Install")}
         </button>
       </div>
     </li>
@@ -75,6 +77,7 @@ export function InstalledPluginRow({
   onUpdate: () => void;
   onRemove: () => void;
 }) {
+  const t = useT();
   const outdated = Boolean(update && update.version !== pack.version);
   return (
     <li className="plate-row flex-nowrap items-start">
@@ -96,7 +99,7 @@ export function InstalledPluginRow({
           {outdated ? (
             <button type="button" onClick={onUpdate} disabled={busy} className={cn(ui.btnSmall, "text-xs")}>
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-              Update to v{update?.version}
+              {t("Update to v{version}", { version: update?.version ?? "" })}
             </button>
           ) : null}
           {pack.source === "installed" ? (
@@ -107,10 +110,10 @@ export function InstalledPluginRow({
               className={cn(ui.btnSmall, "text-xs hover:border-red-500/50 hover:text-red-400")}
             >
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-              Remove
+              {t("Remove", { context: "action.remove" })}
             </button>
           ) : outdated ? null : (
-            <p className="text-[11px] text-stone-500">Ships with the app and cannot be removed.</p>
+            <p className="text-[11px] text-stone-500">{t("Ships with the app and cannot be removed.")}</p>
           )}
         </div>
       </div>

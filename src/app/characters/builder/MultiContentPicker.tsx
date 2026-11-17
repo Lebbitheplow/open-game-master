@@ -7,6 +7,7 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { describeContentEntry, spellSummary } from "@/lib/help";
 import { useContentSearch, type PickerEntry } from "./useContentSearch";
 import { textKey } from "@/lib/language/text-logic";
+import { useT, useTp } from "@/lib/locale";
 
 // `level` rides along for spells, so a cantrip picked here lands in the
 // cantrip list rather than among the levelled spells.
@@ -34,6 +35,8 @@ export default function MultiContentPicker({
   onAdd: (entries: MultiPick[]) => void;
   renderMeta?: (entry: PickerEntry) => string;
 }) {
+  const t = useT();
+  const tp = useTp();
   const { query, setQuery, results, setResults, open, setOpen, loading, unavailable, failed, unadmitted } =
     useContentSearch(kind, extraParams);
   const [pending, setPending] = useState<MultiPick[]>([]);
@@ -132,9 +135,9 @@ export default function MultiContentPicker({
                   </span>
                   <span className="shrink-0 text-xs text-stone-500">
                     {alreadyOn
-                      ? "already added"
+                      ? t("already added")
                       : entry.source === "homebrew"
-                        ? "homebrew"
+                        ? t("homebrew")
                         : (renderMeta?.(entry) ?? "")}
                   </span>
                 </button>
@@ -166,12 +169,12 @@ export default function MultiContentPicker({
             </li>
           ) : unavailable ? (
             <li className="px-3 py-1.5 text-xs text-stone-500">
-              Content pack not installed; add entries by name instead.
+              {t("Content pack not installed; add entries by name instead.")}
             </li>
           ) : null}
           {unadmitted.length ? (
             <li className="px-3 py-1.5 text-sm text-stone-500">
-              Your own {unadmitted.join(", ")} {unadmitted.length === 1 ? "is" : "are"} not offered at this table: whoever runs it (the owner, the GM or the assistant GM) keeps a copy to admit one.
+              {tp("Your own {list} is not offered at this table: whoever runs it (the owner, the GM or the assistant GM) keeps a copy to admit one.", "Your own {list} are not offered at this table: whoever runs it (the owner, the GM or the assistant GM) keeps a copy to admit one.", { count: unadmitted.length, list: unadmitted.join(", ") })}
             </li>
           ) : null}
         </ul>
@@ -189,7 +192,7 @@ export default function MultiContentPicker({
                 onClick={() =>
                   setPending((picks) => picks.filter((entry) => entry.name !== pick.name))
                 }
-                aria-label={`Remove ${pick.name}`}
+                aria-label={t("Remove {name}", { name: pick.name })}
                 className="text-stone-500 hover:text-red-400"
               >
                 <X className="size-3" />

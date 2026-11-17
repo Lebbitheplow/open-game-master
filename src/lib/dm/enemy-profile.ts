@@ -290,9 +290,13 @@ export function plannedSwings(
 // Charmed). Only a charm that names its source binds.
 export function charmedBy(
   conditions: string[],
-  meta: Record<string, { source?: string } | undefined> | undefined,
+  meta: Record<string, { source?: string; others?: Array<{ source?: string }> } | undefined> | undefined,
   sourceId: string,
 ): boolean {
   const charmed = conditions.find((entry) => entry.toLowerCase() === "charmed");
-  return Boolean(charmed && meta?.[charmed]?.source && meta[charmed]?.source === sourceId);
+  const held = charmed ? meta?.[charmed] : undefined;
+  // Every source of the charm binds (condition-logic.ts keeps a second
+  // charmer as one more instance): only the first was read, so a hero
+  // charmed by two creatures could attack the second.
+  return Boolean(held && [held, ...(held.others ?? [])].some((instance) => instance.source && instance.source === sourceId));
 }

@@ -14,6 +14,7 @@ import { LengthNote } from "@/components/ui/LengthNote";
 import type { CampaignAsk } from "@/lib/db/asks";
 import { QUESTION_MAX_CHARS, questionLength, type AskScope, type AskVisibility } from "@/lib/dm/ask-logic";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import type { CastMember } from "@/lib/dm/cast";
 import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { NameMenu, useNameMenu } from "@/app/campaigns/[campaignId]/NameMenu";
@@ -34,6 +35,8 @@ import { nameChoices } from "@/app/campaigns/[campaignId]/name-menu-logic";
 // campaign_messages row and no dm_turns row (src/lib/dm/ask.ts), and nothing
 // here is rendered into MessageList.
 
+// Scope chips carry dictionary keys (table.ask.scope.*); a scope the record
+// does not know still reads as itself.
 const SCOPE_LABELS: Record<string, string> = {
   story: "Story",
   rules: "Rules",
@@ -53,25 +56,26 @@ const SCOPE_PICKER_LABELS: Record<AskScope | "auto", string> = {
 const SCOPE_GLYPHS: Record<string, string> = { auto: "tab-reference", story: "tab-story", rules: "system-rules", sheet: "tab-characters" };
 
 function AskEntry({ ask, meUserId }: { ask: CampaignAsk; meUserId: string }) {
+  const t = useT();
   const mine = ask.userId === meUserId;
   return (
     <li className={panelRow}>
       <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-400">
         <span className="pk-chip">
           <GameIcon icon={{ kind: "glyph", key: SCOPE_GLYPHS[ask.scope] ?? "tab-reference" }} size="size-4" />
-          {SCOPE_LABELS[ask.scope] ?? ask.scope}
+          {t(SCOPE_LABELS[ask.scope] ?? ask.scope)}
         </span>
         {ask.visibility === "table" ? (
           <span className="inline-flex items-center gap-1 text-stone-400">
-            <Users className="size-3" /> {mine ? "Shared with the table" : "Asked by the table"}
+            <Users className="size-3" /> {mine ? t("Shared with the table") : t("Asked by the table")}
           </span>
         ) : (
-          <span className="text-stone-500">Only you</span>
+          <span className="text-stone-500">{t("Only you")}</span>
         )}
       </div>
       <p className="mb-1.5 text-xs font-medium leading-5 text-stone-200">{ask.question}</p>
       {ask.status === "failed" ? (
-        <p className="live-in text-xs italic text-red-400">The GM could not answer this one.</p>
+        <p className="live-in text-xs italic text-red-400">{t("The GM could not answer this one.")}</p>
       ) : (
         <p className="whitespace-pre-wrap font-serif text-xs leading-5 text-stone-300">
           <Prose text={ask.answer} />
@@ -79,7 +83,7 @@ function AskEntry({ ask, meUserId }: { ask: CampaignAsk; meUserId: string }) {
       )}
       {ask.citations.length ? (
         <div className="reveal mt-2 space-y-1">
-          <SectionHead title="From the record" glyph="tab-log" level="h4" />
+          <SectionHead title={t("From the record", { context: "table.ask.fromRecord" })} glyph="tab-log" level="h4" />
           {ask.citations.map((citation, index) => (
             <p
               key={index}
@@ -143,6 +147,8 @@ function AskDockInner({
   // rather than in the transcript and a local model can take a while; without
   // it the box just empties and nothing visibly happens.
   const [pendingQuestion, setPendingQuestion] = useState("");
+  // The strip's words follow the interface's language.
+  const t = useT();
   // The limit is said under the box from the first keystroke, and a draft
   // over it stays in the box, marked, instead of earning a bare refusal
   // after the send (issue 207). The route counts the same way.
@@ -178,19 +184,19 @@ function AskDockInner({
         });
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          setError(data.error || "The GM could not answer.");
+          setError(data.error || t("The GM could not answer."));
           return;
         }
         setQuestion("");
         await onAsked();
       } catch {
-        setError("Could not reach the server.");
+        setError(t("Could not reach the server.", { context: "table.ask.unreachable" }));
       } finally {
         setSending(false);
         setPendingQuestion("");
       }
     },
-    [campaignId, question, scope, sending, visibility, onAsked],
+    [campaignId, question, scope, sending, visibility, onAsked, t],
   );
 
   const answered = asks.length;
@@ -204,7 +210,7 @@ function AskDockInner({
         className="pk-tap flex w-full items-center gap-1.5 px-3 py-1.5 text-xs text-stone-400 transition-colors hover:text-amber-100 motion-press"
       >
         <GameIcon icon={{ kind: "glyph", key: "tab-reference" }} size="size-5" />
-        <span className="eyebrow text-[11px] text-amber-300/90">Ask the GM</span>
+        <span className="eyebrow text-[11px] text-amber-300/90">{t("Ask the GM")}</span>
         {answered ? <span key={answered} className="count-pop text-stone-500">({answered})</span> : null}
         {pendingQuestion && !open ? (
           <Loader2 className="size-3 animate-spin text-stone-500" />
@@ -220,13 +226,12 @@ function AskDockInner({
       <div className={cn("max-h-[28rem] flex-col", open ? "flex" : "hidden")}>
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-1">
           <p className="pb-2 text-xs leading-5 text-stone-500">
-            Questions about the story, the world, the rules, or your sheet. Answers come from
-            what the campaign has on record and never move the story forward.
+            {t("Questions about the story, the world, the rules, or your sheet. Answers come from what the campaign has on record and never move the story forward.")}
           </p>
           {!loaded ? (
-            <PanelLoading label="Loading..." rows={2} />
+            <PanelLoading label={t("Loading...")} rows={2} />
           ) : !asks.length && !pendingQuestion ? (
-            <EmptyState size="sm" art="scrolls" title="Nothing asked yet. Put a question to the GM below." />
+            <EmptyState size="sm" art="scrolls" title={t("Nothing asked yet. Put a question to the GM below.")} />
           ) : (
             <ul className="stagger space-y-2">
               {asks.map((ask) => (
@@ -239,7 +244,7 @@ function AskDockInner({
                   </p>
                   <p className="flex items-center gap-2 text-xs text-stone-500">
                     <Loader2 className="size-3.5 animate-spin" />
-                    Checking the record (queued behind the GM)...
+                    {t("Checking the record (queued behind the GM)...")}
                   </p>
                 </li>
               ) : null}
@@ -249,9 +254,9 @@ function AskDockInner({
 
         <form onSubmit={submit} className="border-t border-stone-800 px-3 py-2.5">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-            <span>About</span>
+            <span>{t("About", { context: "table.ask.about" })}</span>
             {/* Each choice row is its own group, so each gets its own sliding pill. */}
-            <span data-pill-group="" role="group" aria-label="About" className="inline-flex flex-wrap items-center gap-1.5">
+            <span data-pill-group="" role="group" aria-label={t("About", { context: "table.ask.aboutAria" })} className="inline-flex flex-wrap items-center gap-1.5">
             {(["auto", "story", "rules", "sheet"] as const).map((option) => (
               <button data-on={scope === option ? "" : undefined}
                 key={option}
@@ -261,20 +266,16 @@ function AskDockInner({
                 className="pk-pill pk-tap motion-press"
               >
                 <GameIcon icon={{ kind: "glyph", key: SCOPE_GLYPHS[option] }} size="size-4" />
-                {SCOPE_PICKER_LABELS[option]}
+                {t(SCOPE_PICKER_LABELS[option])}
               </button>
             ))}
             </span>
-            <span className="ml-2">Seen by</span>
-            <span data-pill-group="" role="group" aria-label="Seen by" className="inline-flex flex-wrap items-center gap-1.5">
+            <span className="ml-2">{t("Seen by")}</span>
+            <span data-pill-group="" role="group" aria-label={t("Seen by")} className="inline-flex flex-wrap items-center gap-1.5">
             {(["private", "table"] as const).map((option) => (
               <Tooltip
                 key={option}
-                content={
-                  option === "private"
-                    ? "Only you see the question and the answer."
-                    : "The whole table sees the question and the answer."
-                }
+                content={option === "private" ? t("Only you see the question and the answer.") : t("The whole table sees the question and the answer.")}
               >
                 <button data-on={visibility === option ? "" : undefined}
                   type="button"
@@ -282,12 +283,12 @@ function AskDockInner({
                   onClick={() => setVisibility(option)}
                   className="pk-pill pk-tap motion-press"
                 >
-                  {option === "private" ? "Just me" : "The table"}
+                  {option === "private" ? t("Just me") : t("The table")}
                 </button>
               </Tooltip>
             ))}
             </span>
-            <span className="ml-auto italic text-stone-500">The story does not move.</span>
+            <span className="ml-auto italic text-stone-500">{t("The story does not move.")}</span>
           </div>
           <div ref={rowRef} className="flex items-end gap-2">
             <NameMenu menu={names} anchor={rowRef} />
@@ -311,8 +312,8 @@ function AskDockInner({
                 }
               }}
               rows={2}
-              placeholder="Ask the GM about the story, the world, the rules, or your sheet"
-              aria-label="Ask the GM about the story, the world, the rules, or your sheet"
+              placeholder={t("Ask the GM about the story, the world, the rules, or your sheet")}
+              aria-label={t("Ask the GM about the story, the world, the rules, or your sheet")}
               aria-describedby={noteId}
               aria-invalid={tooLong || undefined}
               className={cn(ui.input, "resize-none text-xs leading-5", tooLong && "border-red-500/60")}
@@ -320,7 +321,7 @@ function AskDockInner({
             <button
               type="submit"
               disabled={!question.trim() || sending || tooLong}
-              title={tooLong ? `Questions can be up to ${QUESTION_MAX_CHARS.toLocaleString("en-US")} characters` : undefined}
+              title={tooLong ? t("Questions can be up to {count} characters", { count: QUESTION_MAX_CHARS.toLocaleString("en-US") }) : undefined}
               className={cn(ui.btnPrimary, "pk-tap pk-display h-9 shrink-0 px-3 text-[12px]")}
             >
               {sending ? (
@@ -328,14 +329,14 @@ function AskDockInner({
               ) : (
                 <Send className="size-3.5" />
               )}
-              Ask
+              {t("Ask")}
             </button>
           </div>
           <LengthNote
             id={noteId}
             length={length}
             max={QUESTION_MAX_CHARS}
-            idle={`Up to ${QUESTION_MAX_CHARS.toLocaleString("en-US")} characters`}
+            idle={t("Up to {count} characters", { count: QUESTION_MAX_CHARS.toLocaleString("en-US") })}
             className="mt-1"
           />
           {error ? <PanelError className="mt-1.5">{error}</PanelError> : null}

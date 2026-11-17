@@ -688,6 +688,22 @@ for (const viewport of ["desktop", "phone"]) {
         { name: "Cloak of Protection", qty: 1, equipped: true, attuned: true },
         { name: "Cloak of Elvenkind", qty: 1, equipped: false, attuned: true },
         { name: "Ring of Spell Storing", qty: 1, equipped: true, storedSpells: [{ spell: "Fireball", level: 3, saveDc: 15, attackBonus: 7 }] },
+        // For the paperdoll: a wand is held, in hand beside the weapons, and
+        // an orb has no place on the body, so it is under Other items.
+        { name: "Wand of Magic Missiles", qty: 1, equipped: false },
+        { name: "Crystal Ball", qty: 1, equipped: false },
+        { name: "Bracers of Defense", qty: 1, equipped: true, attuned: false },
+        { name: "Quiver", qty: 1 },
+        { name: "Lute", qty: 1 },
+        { name: "Drum", qty: 1 },
+        { name: "Dust of Disappearance", qty: 1 },
+        { name: "Backpack", qty: 1 },
+        { name: "Thieves' Tools", qty: 1 },
+        { name: "Holy Symbol", qty: 1 },
+        { name: "Component Pouch", qty: 1 },
+        { name: "Rations (1 day)", qty: 1 },
+        { name: "Waterskin", qty: 1 },
+        { name: "Bedroll", qty: 1 },
       ],
     }),
   );
@@ -3448,6 +3464,167 @@ for (const viewport of ["desktop", "phone"]) {
   clockTables[viewport] = { id: table.id, hero: hero.id, heroName: hero.name };
 }
 
+// The 2026-11-15 rules audit's new GM console fields and a pet's conditions
+// on the party panel (139-console-audit-fields), one table per viewport the
+// lead runs: a wizard whose cat lies restrained under a weighted net, in a
+// fight with two goblins the wizard leads off. The scenario only opens forms.
+const auditFields = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Audit Fields Table (${viewport})`,
+      description: "A wizard, her cat and two goblins in a wine cellar.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    // Seated in the lobby: a table in play turns a newcomer away.
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the player at the audit fields table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Maelis Thorn", class: "wizard", level: 5, maxHp: 30 }));
+    const run = async (name, args) => {
+      const result = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, { name, args });
+      if (!result.ok) {
+        throw new Error(`the audit fields table's ${name} failed: ${result.error}`);
+      }
+    };
+    await run("summon_pet", { characterId: hero.id, kind: "other", form: "cat", name: "Soot" });
+    // The goblins' initiative (one roll for the pair), then the wizard's.
+    clearDice();
+    dice(1, 20);
+    await run("start_encounter", { enemies: [{ monster: "goblin", count: 2 }] });
+    clearDice();
+    // DC 30 is past any cat's Dexterity save: the net holds it.
+    dice(2);
+    await run("cast_at_player", { characterId: hero.id, petName: "Soot", saveAbility: "dex", dc: 30, condition: "restrained", rounds: 10, source: "a weighted net" });
+    clearDice();
+    const soot = sheets.getSheetById(hero.id)?.pets?.find((pet) => pet.name === "Soot");
+    if (!soot?.conditions?.includes("restrained")) {
+      throw new Error(`the audit fields table's cat is not restrained: ${JSON.stringify(soot ?? null)}`);
+    }
+    auditFields[viewport] = { id: table.id, hero: hero.id, heroName: hero.name, pet: soot.name };
+  }
+}
+
+// The 2026-11-16 rules audit's new controls (142-audit-1116-controls), two
+// tables per viewport.
+// The Lantern Table, which the player runs and the lead plays: her paladin on
+// her turn with two kinds of spell slot, a longsword in hand and a hand
+// crossbow with +1 bolts in her pack (one hand each, so the crossbow can be
+// drawn beside the sword), a goblin beside her, and the companion asleep
+// from Sleep on the far side of the diagonal run of wall that pinches the
+// corner between their squares. The GM's teleports bring him beside her (the
+// Wake card) and send him off; the goblin's walk away asks Strike and smite.
+// The Owl Table, which the lead runs: the player's wizard with an owl
+// familiar, a longbow and +1 Arrows, in a fight with a goblin, for the
+// console's Ammunition, Their pet, Their familiar helps and the Wake action.
+const audit1116 = {};
+const audit1116Titles = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  const { createCompanionUser } = await import("../../src/lib/db/users.ts");
+  const ARMED = { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] };
+  const tableFor = (title, gm, seated) => {
+    const table = campaigns.createCampaign(gm.id, {
+      title,
+      description: "A cellar, a sleeping friend and a goblin.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const joined = campaigns.joinByInviteCode(seated.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in joined) {
+      throw new Error(`could not seat a player at ${title}: ${joined.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    audit1116Titles[table.id] = title;
+    return table;
+  };
+  const run = async (table, gm, name, args) => {
+    const result = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: gm.id }, { name, args });
+    if (!result.ok) {
+      throw new Error(`${audit1116Titles[table.id]}'s ${name} failed: ${result.error}`);
+    }
+    return result;
+  };
+  // A fight with one goblin on an open board; `walls` are squares from the
+  // board's middle, and the pointer is on `refId`'s turn with nothing spent.
+  const fight = async (table, gm, refId, walls = []) => {
+    await run(table, gm, "start_encounter", { enemies: [{ monster: "goblin", count: 1 }] });
+    await keepOpeningRolls(table.id);
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    const [cx, cy] = [Math.floor(board.width / 2), Math.floor(board.height / 2)];
+    const terrain = [...".".repeat(board.width * board.height)];
+    for (const [dx, dy] of walls) terrain[(cy + dy) * board.width + cx + dx] = "#";
+    maps.setBattleMapTerrain(board.id, terrain.join(""));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    // Hardy enough that nothing under the scenario ends the fight.
+    getDatabase().prepare("UPDATE encounter_enemies SET max_hp = 200, current_hp = 200 WHERE id = ?").run(goblin.id);
+    maps.listTokens(board.id).forEach((token, index) => maps.moveToken(token.id, 1 + index, board.height - 2, 0));
+    const place = (ref, dx, dy) => maps.moveToken(maps.getTokenByRef(board.id, ref).id, cx + dx, cy + dy, 0);
+    const index = encounter.order.findIndex((entry) => (entry.characterId ?? entry.enemyId) === refId);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(2, encounter.round), turnIndex: index, turnBudget: null, surprisedIds: [], reactionsUsed: [], legendary: { ...encounter.legendary, due: [] } });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    return { goblin, place, cx, cy };
+  };
+  for (const viewport of ["desktop", "phone"]) {
+    // ---- the Lantern Table ----
+    const lantern = tableFor(`Lantern Table (${viewport})`, player, world.owner);
+    const idra = sheets.createSheet(lantern.id, world.owner.id, 5, heroInput({
+      name: "Idra Vane", class: "paladin", level: 5, maxHp: 44, abilities: { str: 16, dex: 14, con: 14, int: 10, wis: 10, cha: 14 },
+      proficiencies: ARMED,
+      equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Hand Crossbow", qty: 1 }, { name: "Crossbow Bolts", qty: 20 }, { name: "+1 Crossbow Bolts", qty: 5 }],
+      spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 0 }, 2: { max: 2, used: 0 } }, known: [], prepared: [], cantrips: [] },
+    }));
+    const brynBot = createCompanionUser("Bryn Hollow");
+    const bryn = sheets.createSheet(lantern.id, brynBot.id, 5, heroInput({ name: "Bryn Hollow", class: "bard", level: 5, maxHp: 33 }));
+    sheets.markSheetAsCompanion(bryn.id, "party", "Sings badly and fights well.");
+    // Idra at the middle, the goblin on her left, Bryn diagonally below
+    // right of her with wall on the two squares that corner touches.
+    const { goblin, place, cx, cy } = await fight(lantern, player, idra.id, [[1, 0], [0, 1]]);
+    place(idra.id, 0, 0);
+    place(goblin.id, -1, 0);
+    place(bryn.id, 1, 1);
+    sheets.patchSheet(bryn.id, {
+      conditions: ["unconscious", "prone"],
+      conditionMeta: { unconscious: { spell: "Sleep", source: goblin.id, rounds: 10, endsOnDamage: true }, prone: { source: goblin.id } },
+    });
+    // ---- the Owl Table ----
+    const owl = tableFor(`Owl Table (${viewport})`, world.owner, player);
+    const odile = sheets.createSheet(owl.id, player.id, 5, heroInput({
+      name: "Odile Fenwick", class: "wizard", level: 5, maxHp: 28, abilities: { int: 16, dex: 14 },
+      // Find Familiar's 10 gp of charcoal, incense and herbs.
+      gold: 50,
+      equipment: [{ name: "Component pouch", qty: 1 }, { name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }, { name: "+1 Arrows", qty: 5 }],
+      spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Find Familiar", "Sleep"], cantrips: [], spellbook: ["Find Familiar", "Sleep"] },
+    }));
+    await run(owl, world.owner, "summon_pet", { characterId: odile.id, kind: "familiar", form: "owl", name: "Hoot" });
+    const hoot = sheets.getSheetById(odile.id)?.pets?.find((pet) => pet.name === "Hoot");
+    if (!hoot) {
+      throw new Error(`the owl table's familiar is missing: ${JSON.stringify(sheets.getSheetById(odile.id)?.pets ?? null)}`);
+    }
+    await fight(owl, world.owner, odile.id);
+    audit1116[viewport] = {
+      lantern: { id: lantern.id, hero: idra.id, sleeper: bryn.id, sleeperName: bryn.name, goblin: goblin.id, goblinName: goblin.displayName, cx, cy },
+      owl: { id: owl.id, hero: odile.id, heroName: odile.name, pet: hoot.name },
+    };
+  }
+}
+
 // Issue 685, gap 4: a table the lead runs as its GM, in a fight on the
 // player's wizard's turn, so her Web card waits in the console's "Waiting on
 // you" list and the GM resolves it as played. One per viewport, since the
@@ -4127,6 +4304,21 @@ const bench2Titles = {};
     }
     bench2[viewport] = at;
   }
+  // hand-share (140): the turn of a companion the lead commands, on the
+  // lead's own board. On a short board the turn's heading gives way, and the
+  // plate still has to say whose stats it shows.
+  {
+    const table = tableFor("Orders Table", world.owner, player, { companions: "full" });
+    const kell = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Kell Brand", class: "fighter", level: 5, maxHp: 44 }));
+    const bot = createCompanionUser("Pip Quickfoot");
+    const pip = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Pip Quickfoot", class: "rogue", level: 5, maxHp: 30, abilities: { dex: 16 } }));
+    sheets.markSheetAsCompanion(pip.id, "party", "Quick, cheerful, and never far from a joke.");
+    sheets.setCompanionCommander(pip.id, world.owner.id);
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 1 }]);
+    [[kell.id, -2, 0], [pip.id, 0, 0], [named(rows, "goblin").id, 4, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, pip.id);
+    bench2.orders = { id: table.id, pip: { id: pip.id, name: pip.name } };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a
@@ -4302,6 +4494,8 @@ const ids = {
   creatorAudit,
   fallenTables,
   clockTables,
+  auditFields,
+  audit1116,
   resolveTables,
   ringTables,
   itemTables,
@@ -4445,6 +4639,8 @@ const ids = {
     ...Object.fromEntries(Object.values(weekly).map((table) => [table.id, table.title])),
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
+    ...Object.fromEntries(Object.entries(auditFields).map(([viewport, table]) => [table.id, `Audit Fields Table (${viewport})`])),
+    ...audit1116Titles,
     ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(ringTables).flatMap(([viewport, table]) => [[table.id, `Ring Table (${viewport})`], [table.study, `Ring Study (${viewport})`]])),
     ...Object.fromEntries(Object.entries(itemTables).flatMap(([viewport, table]) => [[table.id, `Item Table (${viewport})`], [table.study, `Item Study (${viewport})`]])),

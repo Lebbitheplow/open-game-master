@@ -20,7 +20,7 @@ import { z } from "zod";
 const text = (max: number) => z.string().trim().min(1).max(max);
 const square = z.number().int().min(0).max(200).optional();
 
-export const HAND_INTENT_ACTIONS = ["search", "escape", "stand-up", "stabilize", "dismount"] as const;
+export const HAND_INTENT_ACTIONS = ["search", "escape", "stand-up", "stabilize", "dismount", "wake"] as const;
 
 // What a gear card does with an item (issue #424): handle_item's actions,
 // and use for a potion or another consumable (use_item).

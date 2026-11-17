@@ -20,10 +20,10 @@ import { addConditionInstance, instancesOf, isIncapacitated, removeConditionInst
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { settleEnemyIncapacitation } from "@/lib/dm/enemy-incapacitation";
 import { findSpellByName, spellMechanicsFor } from "@/lib/content";
-import { bakedSpellDuration } from "@/lib/content/baked-spells";
+import { bakedSlotDurations, bakedSpellDuration } from "@/lib/content/baked-spells";
 import { authoredSpellRow, durationRounds } from "@/lib/srd/spell-mechanics";
 import { roundsAtSlot, slotDurationsFromText } from "@/lib/srd/spell-duration";
-import type { SpellCondition } from "@/lib/srd/spell-mech-types";
+import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
 import { conditionEffectsFor, type SaveAbilityId } from "@/lib/srd/condition-effects";
 import { MECH_OVERRIDES } from "@/lib/srd/spell-mechanics";
 import { getDmTurn } from "@/lib/db/dm-turns";
@@ -73,8 +73,13 @@ export function lifetimeAtSlot(spell: string, base: number | null, slotLevel?: n
   }
   const row = findSpellByName(spell, authors);
   const mech = spellMechanicsFor({ spell, ...(typeof authors === "string" ? { userId: authors } : Array.isArray(authors) ? { userIds: authors } : {}) })?.mech;
-  const text = String(row?.data.higher_level ?? authoredSpellRow(spell)?.higher_level ?? "");
-  return roundsAtSlot(base, slotLevel, mech?.durationBySlot ? { at: mech.durationBySlot } : slotDurationsFromText(text));
+  const authored = authoredSpellRow(spell);
+  const text = String(row?.data.higher_level ?? authored?.higher_level ?? "");
+  // No content pack: what the SRD's text says a slot buys, baked as the
+  // base duration is. With no text to read, a 9th-level Mass Suggestion
+  // held for its 6th level's 24 hours, not a year and a day.
+  const baked = row || authored ? null : bakedSlotDurations(spell);
+  return roundsAtSlot(base, slotLevel, mech?.durationBySlot ? { at: mech.durationBySlot } : (baked ?? slotDurationsFromText(text)));
 }
 
 // The metadata one condition of a spell is stored with: its duration (the
@@ -83,7 +88,7 @@ export function lifetimeAtSlot(spell: string, base: number | null, slotLevel?: n
 // Person: "The spell ends... after 1 minute"), so a save-ends condition keeps
 // the spell's duration as its count too.
 export function spellConditionMeta(
-  condition: Pick<SpellCondition, "rounds" | "roundsBySlot" | "saveEnds" | "endsOnDamage" | "saveOnDamage">,
+  condition: Pick<SpellCondition, "rounds" | "roundsBySlot" | "saveEnds" | "saveUnseen" | "endsOnDamage" | "saveOnDamage">,
   source: SpellSource,
   save: { ability: SaveAbilityId; dc: number } | null,
   roundsOverride?: number,
@@ -96,7 +101,7 @@ export function spellConditionMeta(
   const printed = bySlot ? (bySlot[1] ?? undefined) : spellLong ? (lifetimeAtSlot(source.spell, condition.rounds ?? null, source.slotLevel) ?? undefined) : condition.rounds;
   const rounds = roundsOverride ?? printed ?? (condition.saveEnds && !bySlot ? spellDurationRounds(source.spell) ?? undefined : undefined);
   return {
-    ...(condition.saveEnds && save ? { saveEnds: { ability: save.ability, dc: save.dc } } : {}),
+    ...(condition.saveEnds && save ? { saveEnds: { ability: save.ability, dc: save.dc, ...(condition.saveUnseen ? { unseen: true } : {}) } } : {}),
     ...(rounds ? { rounds } : {}),
     spell: source.spell.slice(0, 80),
     source: source.casterId.slice(0, 80),
@@ -106,6 +111,30 @@ export function spellConditionMeta(
       ? { saveOnDamage: { ability: save.ability, dc: save.dc, ...(condition.saveOnDamage === "advantage" ? { advantage: true } : {}) } }
       : {}),
   };
+}
+
+// What a hit point pool lays on each creature it takes (Sleep, Color Spray):
+// the pool's rounds, or, for Color Spray ("blinded until the end of your next
+// turn", SRD 5.1), a tie to the end of the caster's next turn. Counted as one
+// round from the caster's turn start, the blindness ended as that next turn
+// began, and the caster's own attacks lost the advantage it gives.
+export function poolConditionMeta(pool: Pick<NonNullable<SpellMech["hitPointPool"]>, "rounds" | "endsOnDamage" | "untilCasterTurnEnd">, source: SpellSource): ConditionMeta {
+  if (pool.untilCasterTurnEnd) {
+    return {
+      spell: source.spell.slice(0, 80),
+      source: source.casterId.slice(0, 80),
+      ...(source.slotLevel ? { slotLevel: source.slotLevel } : {}),
+      ...(pool.endsOnDamage ? { endsOnDamage: true } : {}),
+      untilTurnEndOf: source.casterId.slice(0, 80),
+    };
+  }
+  return spellConditionMeta({ rounds: pool.rounds, endsOnDamage: pool.endsOnDamage }, source, null);
+}
+
+// The line a tool result gives for how long it lasts.
+export function poolDurationLine(pool: Pick<NonNullable<SpellMech["hitPointPool"]>, "rounds" | "endsOnDamage" | "untilCasterTurnEnd">, damage: string): string {
+  const span = pool.untilCasterTurnEnd ? "until the end of the caster's next turn" : `${pool.rounds} round${pool.rounds === 1 ? "" : "s"}`;
+  return `${span}${pool.endsOnDamage ? damage : ""}`;
 }
 
 // Lays a spell's conditions on a living enemy, each one it is not immune to.

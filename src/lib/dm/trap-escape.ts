@@ -7,6 +7,9 @@ import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { trapAt } from "@/lib/srd/table-hazards";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { rollCard } from "@/lib/dm/roll-card";
+import { rollOn } from "@/lib/roll-labels";
 
 // A trap's hold on a character (a falling net's restraint): a condition the
 // trap lays on everyone it catches (conditionsAlways in
@@ -19,19 +22,21 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 // (src/lib/dm/ai-gate.ts); this is the action that does, through
 // take_action escape, as a grapple and a spell's hold are escaped.
 
-type TrapHold = { condition: string; trap: string; ability: "str" | "dex"; dc: number };
+type TrapHold = { condition: string; trap: string; ability: "str" | "dex"; dc: number; hurts?: { dice: string; type: string } };
 
-export function trapHoldOn(campaign: Campaign, sheet: CharacterSheet): TrapHold | null {
-  const meta = sheet.conditionMeta as ConditionMetaMap;
-  for (const condition of sheet.conditions) {
+// A character's or an enemy's (enemy-trap.ts enemyTrapEscape).
+export function trapHoldOn(campaign: Campaign, held: { conditions: string[]; conditionMeta?: unknown }): TrapHold | null {
+  const meta = (held.conditionMeta ?? {}) as ConditionMetaMap;
+  for (const condition of held.conditions) {
     for (const instance of instancesOf(meta[condition])) {
       const found = instance.source ? trapAt(instance.source, campaign.id) : null;
-      const holds = found?.trap.conditionsAlways?.some((name) => name.toLowerCase() === condition.toLowerCase());
+      const holds = found?.trap.conditionsAlways?.some((name) => name.toLowerCase() === condition.toLowerCase())
+        || (found?.trap.heldOnFail === true && found.trap.condition?.toLowerCase() === condition.toLowerCase());
       if (found && holds) {
         // A trap that prints no escape is broken with Strength against its
         // own save DC, or DC 10 with none.
         const escape = found.trap.escape ?? { ability: "str" as const, dc: found.trap.save?.dc ?? 10 };
-        return { condition, trap: found.name, ability: escape.ability, dc: escape.dc };
+        return { condition, trap: found.name, ability: escape.ability, dc: escape.dc, ...(found.trap.escapeHurts ? { hurts: found.trap.escapeHurts } : {}) };
       }
     }
   }
@@ -59,6 +64,13 @@ export function characterTrapEscape(
     turn.rollIds.push(check.rollId);
   }
   const escaped = !check.autoFailed && check.total >= hold.dc;
+  // A hunting trap's jaws bite on each failed check (TrapSpec escapeHurts).
+  const bitten = !escaped && hold.hurts
+    ? rollCard(campaign, turn, sheet.id, "damage", rollOn(`${hold.trap} (${hold.hurts.dice} ${hold.hurts.type})`, [sheet.name]), hold.hurts.dice, null).total
+    : 0;
+  if (bitten > 0 && hold.hurts) {
+    applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: bitten, type: hold.hurts.type, noCreature: true, reason: hold.trap });
+  }
   if (escaped) {
     const fresh = getSheetById(sheet.id) ?? sheet;
     const cleared = removeConditions(fresh.conditions, fresh.conditionMeta, [hold.condition]);
@@ -74,6 +86,6 @@ export function characterTrapEscape(
     success: escaped,
     note: escaped
       ? `${sheet.name} breaks free of the ${hold.trap}.`
-      : `${sheet.name} is still ${hold.condition} by the ${hold.trap}.`,
+      : `${sheet.name} is still ${hold.condition} by the ${hold.trap}${bitten ? `, and takes ${bitten} ${hold.hurts?.type} damage from it` : ""}.`,
   };
 }

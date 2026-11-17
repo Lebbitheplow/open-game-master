@@ -5,7 +5,7 @@
 import type { Ability } from "@/lib/schemas/sheet";
 import type { SpeciesVariantGroup } from "@/lib/content/species-variants";
 
-export type SrdSkill = { id: string; name: string; ability: Ability };
+export type SrdSkill = { id: string; name: string; fr?: string; ability: Ability };
 export type SrdClass = {
   id: string;
   name: string;

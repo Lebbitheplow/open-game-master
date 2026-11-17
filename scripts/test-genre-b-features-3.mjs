@@ -16,7 +16,7 @@ import { dice, clearDice, diceLog } from "./lib/enforce-world.mjs";
 const SRC = new URL("../src/", import.meta.url);
 const { enemyAcWithEffects } = await import(new URL("lib/dm/ac-effects.ts", SRC).href);
 const encounters = await import(new URL("lib/db/encounters.ts", SRC).href);
-const { fearSourceAt } = await import(new URL("lib/dm/enemy-approach.ts", SRC).href);
+const { fearSourcesAt } = await import(new URL("lib/dm/enemy-approach.ts", SRC).href);
 
 const { test, finish } = suite("test-genre-b-features-3");
 const rig = await clausesRig();
@@ -267,7 +267,7 @@ await run("Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for
   assert.equal(beast.conditionMeta.cowering?.rounds, 10, "it does not cower for a minute");
   assert.deepEqual(kit.enemy(far.id).conditions, [], "a creature of another type cowered too");
   const at = kit.token(hero.id);
-  assert.deepEqual(fearSourceAt(kit.map().id, beast.conditions, beast.conditionMeta), { x: at.x, y: at.y, footprint: 1 }, "its walk does not keep away from the packmaster");
+  assert.deepEqual(fearSourcesAt(kit.map().id, beast.conditions, beast.conditionMeta), [{ x: at.x, y: at.y, footprint: 1 }], "its walk does not keep away from the packmaster");
   kit.place(near.id, 14, 2);
   kit.setEnemy(near.id, { conditions: [], conditionMeta: {} });
   world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, post_apocalyptic_alpha_s_roar: { ...world.sheet(hero.id).resources.post_apocalyptic_alpha_s_roar, used: 0 } } });

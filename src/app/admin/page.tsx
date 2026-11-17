@@ -14,6 +14,8 @@ import { AdminWorldsPanel } from "@/app/admin/AdminWorldsPanel";
 import { AdminAddonsPanel } from "@/app/admin/AdminAddonsPanel";
 import { AdminServerLogPanel } from "@/app/admin/AdminServerLogPanel";
 import { addonsOfferedHere } from "@/lib/addons/use-addons";
+import { useT } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 
 type Me = {
   id: string;
@@ -24,19 +26,32 @@ type Me = {
 
 type Tab = "settings" | "worlds" | "addons" | "users" | "usage" | "reports" | "log";
 
+// The tabs' labels live in the dictionaries under admin.tab.*; the ids are
+// the stable union the panels switch on.
+const TAB_KEYS: Record<Tab, MessageKey> = {
+  settings: "Server settings",
+  worlds: "Campaign plugins",
+  addons: "Addons",
+  users: "Users",
+  usage: "Usage",
+  reports: "Reports",
+  log: "Server log",
+};
+
 const TABS: SegmentedOption<Tab>[] = [
-  { value: "settings", label: "Server settings", icon: Settings2 },
-  { value: "worlds", label: "Campaign plugins", icon: Globe2 },
-  { value: "addons", label: "Addons", icon: Puzzle },
-  { value: "users", label: "Users", icon: Users },
-  { value: "usage", label: "Usage", icon: Gauge },
-  { value: "reports", label: "Reports", icon: Flag },
-  { value: "log", label: "Server log", icon: ScrollText },
+  { value: "settings", label: "", icon: Settings2 },
+  { value: "worlds", label: "", icon: Globe2 },
+  { value: "addons", label: "", icon: Puzzle },
+  { value: "users", label: "", icon: Users },
+  { value: "usage", label: "", icon: Gauge },
+  { value: "reports", label: "", icon: Flag },
+  { value: "log", label: "", icon: ScrollText },
 ];
 
 // Server control panel. The page only decides what to render; every admin
 // API route re-checks the is_admin flag server-side.
 export default function AdminPage() {
+  const t = useT();
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("settings");
@@ -62,9 +77,9 @@ export default function AdminPage() {
   if (!me?.isAdmin) {
     return (
       <PageNotice user={me ?? null}>
-        Admins only.{" "}
+        {t("Admins only.")}{" "}
         <Link href="/" className="text-amber-200 hover:text-amber-400">
-          Back to campaigns
+          {t("Back to campaigns")}
         </Link>
       </PageNotice>
     );
@@ -75,8 +90,8 @@ export default function AdminPage() {
       user={me}
       icon={PIXEL_ICONS.localData}
       glyph="tab-admin"
-      title="Admin panel"
-      blurb={`Signed in as ${me.username}`}
+      title={t("Admin panel", { context: "admin.title" })}
+      blurb={t("Signed in as {name}", { name: me.username, context: "admin.signedInAs" })}
     >
       {/* Seven long labels do not fit 360 px: the row scrolls rather than clipping the last mode. */}
       {/* The same settings, asked one question at a time, with what runs on
@@ -84,13 +99,13 @@ export default function AdminPage() {
       {deviceWorld ? null : (
       <div className="panel reveal flex flex-wrap items-center gap-3 rounded-xl px-4 py-3">
         <span className="min-w-0 flex-1 text-sm text-stone-300">
-          <span className="block text-stone-100">Guided setup</span>
+          <span className="block text-stone-100">{t("Guided setup", { context: "admin.setup.card" })}</span>
           <span className="block text-xs text-stone-500">
-            Storyteller, pictures, voice, players and your own agent, one question at a time.
+            {t("Storyteller, pictures, voice, players and your own agent, one question at a time.")}
           </span>
         </span>
         <Link href="/setup" className={ui.btnSecondary}>
-          <Wand2 className="size-4" /> Run it
+          <Wand2 className="size-4" /> {t("Run it", { context: "admin.setup.run" })}
         </Link>
       </div>
       )}
@@ -98,10 +113,13 @@ export default function AdminPage() {
       <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
         <SegmentedControl
           // The Android app does not offer addons yet (src/lib/addons/use-addons.ts).
-          options={addonsOfferedHere() ? TABS : TABS.filter((option) => option.value !== "addons")}
+          options={(addonsOfferedHere() ? TABS : TABS.filter((option) => option.value !== "addons")).map((option) => ({
+            ...option,
+            label: t(TAB_KEYS[option.value]),
+          }))}
           value={tab}
           onChange={setTab}
-          label="Admin section"
+          label={t("Admin section")}
           className="w-max"
         />
       </div>

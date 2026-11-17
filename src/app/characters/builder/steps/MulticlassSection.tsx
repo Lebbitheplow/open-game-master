@@ -2,7 +2,6 @@
 
 import { useId, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { GameTerm } from "@/components/ui/GameTerm";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
@@ -11,7 +10,10 @@ import { SRD_SKILLS } from "@/lib/srd";
 import { subclassBlurb, subclassLevelFor, subclassNamesFor } from "@/lib/srd/features";
 import { MULTICLASS_CAP, describeGrant, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { textKey } from "@/lib/language/text-logic";
+import { useLocale, useT, useTp } from "@/lib/locale";
+import { skillLabel } from "@/lib/srd";
 import { hitDieChip } from "../lineage";
+import { CardText } from "../CardText";
 import { classSplitWords, multiclassChoices } from "../multiclassBuild";
 import OptionPicker, { type PickerGroup } from "../OptionPicker";
 import { useRovingGroup } from "../roving";
@@ -54,6 +56,8 @@ export function MulticlassSection({
 }) {
   const [adding, setAdding] = useState(false);
   const [othersOpen, setOthersOpen] = useState(false);
+  const t = useT();
+  const tp = useTp();
   const listId = useId();
   const { extras, classList, primaryLevel, effectiveLevel } = derived;
   const nameOf = (id: string) => classes.find((entry) => entry.id === id)?.name ?? id;
@@ -67,6 +71,7 @@ export function MulticlassSection({
         classList,
         abilities: derived.shownAbilities,
         rowOf: (id) => classes.find((entry) => entry.id === id),
+        t,
       }),
       first: up,
     };
@@ -88,24 +93,22 @@ export function MulticlassSection({
   return (
     <StepPanel
       anchor="multiclass"
-      title={extras.length ? `Your classes: ${classSplitWords(classList, nameOf)}` : "More than one class"}
-      help={
-        <>
-          Your levels can be split between classes (multiclassing). Your {klass.name.toLowerCase()} takes level 1 and
-          the levels the others leave it, and decides your saving throws and starting gear. Each class added
-          brings some of its training and its own features at its own level. A class needs a score of 13 in its
-          main ability, and so does the class you start in; the Abilities step checks your final scores.
-        </>
-      }
+      title={extras.length ? t("Your classes: {list}", { list: classSplitWords(classList, nameOf) }) : t("More than one class")}
+      help={t("Your levels can be split between classes (multiclassing). Your {class} takes level 1 and the levels the others leave it, and decides your saving throws and starting gear. Each class added brings some of its training and its own features at its own level. A class needs a score of 13 in its main ability, and so does the class you start in; the Abilities step checks your final scores.", { class: klass.name.toLowerCase() })}
     >
       {!allowed && extras.length && !classList.every((entry) => (state.storedClassIds ?? []).includes(entry.id)) ? (
         <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          This table turns multiclassing off. Remove the classes below to make the character here.
+          {t("This table turns multiclassing off. Remove the classes below to make the character here.")}
         </p>
       ) : null}
       <p className="mb-3 text-xs text-stone-400">
-        {klass.name}: {primaryLevel} {primaryLevel === 1 ? "level" : "levels"} of {effectiveLevel}
-        {extras.length ? ", and the first levels you took." : "."}
+        {t("{class}: {level} {levelWord} of {total}", {
+          class: klass.name,
+          level: primaryLevel,
+          levelWord: t("level", { context: "builder.calling.levelWord" }),
+          total: effectiveLevel,
+        })}
+        {extras.length ? t(", and the first levels you took.") : t(".", { context: "builder.multiclass.primaryTail" })}
       </p>
       {extras.map((entry) => (
         <ExtraClassCard
@@ -127,15 +130,15 @@ export function MulticlassSection({
             data-add-class=""
             className="inline-flex min-h-11 items-center rounded-lg border border-amber-500/40 px-3 text-sm text-amber-200 transition-colors hover:bg-amber-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
           >
-            {adding ? "Close the class list" : `Add a ${next} class`}
+            {adding ? t("Close the class list") : t("Add a {ordinal} class", { ordinal: ({ "second": t("second"), "third": t("third") } as Record<string, string>)[next] ?? String(next) })}
           </button>
           <div id={listId} hidden={!adding} className="mt-2">
             <p className="mb-2 text-xs text-stone-500">
-              It takes one level from your {klass.name.toLowerCase()}; set the split once it is added.
-              {derived.shownAbilities ? "" : " Your scores are not set yet, so each class says what it needs."}
+              {t("It takes one level from your {class}; set the split once it is added.", { class: klass.name.toLowerCase() })}
+              {derived.shownAbilities ? "" : t(" Your scores are not set yet, so each class says what it needs.")}
             </p>
             <ul
-              aria-label={`Classes you could add as your ${next}`}
+              aria-label={t("Classes you could add as your {ordinal}", { ordinal: ({ "second": t("second"), "third": t("third") } as Record<string, string>)[next] ?? String(next) })}
               className="grid gap-1.5 sm:grid-cols-2"
               onKeyDown={roving.onKeyDown}
               onFocus={roving.onFocus}
@@ -164,11 +167,11 @@ export function MulticlassSection({
                   >
                     <span className="flex items-center justify-between gap-2 text-sm">
                       <span>{choice.row.name}</span>
-                      <span className="text-xs text-stone-500">{hitDieChip(classes.find((entry) => entry.id === choice.row.id)?.hitDie ?? 8, numbers)}</span>
+                      <span className="text-xs text-stone-500"><CardText text={hitDieChip(classes.find((entry) => entry.id === choice.row.id)?.hitDie ?? 8, numbers)} /></span>
                     </span>
                     <span id={`${listId}-${choice.row.id}`} className="block text-xs">
-                      {choice.ok ? `Adds ${choice.grants}.` : choice.reason}{" "}
-                      <span className="text-stone-500">Needs {choice.needs}.</span>
+                      {choice.ok ? t("Adds {grant}.", { grant: choice.grants }) : choice.reason}{" "}
+                      <span className="text-stone-500">{t("Needs {needs}.", { needs: choice.needs })}</span>
                     </span>
                   </button>
                 </li>
@@ -182,14 +185,14 @@ export function MulticlassSection({
                 data-add-class-more=""
                 className="mt-2 inline-flex min-h-11 items-center rounded-md px-2 text-sm text-sky-300 transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
               >
-                {othersOpen ? "Show fewer classes" : `Show ${folded.length} more from other books and settings`}
+                {othersOpen ? t("Show fewer classes") : t("Show {count} more from other books and settings", { count: folded.length })}
               </button>
             ) : null}
           </div>
         </div>
       ) : allowed && extras.length < MULTICLASS_CAP - 1 && extras.length ? (
         <p className="mt-3 text-xs text-stone-500">
-          Your {klass.name.toLowerCase()} has one level left, so there is no level to give a {next} class.
+          {t("Your {class} has one level left, so there is no level to give a {ordinal} class.", { class: klass.name.toLowerCase(), ordinal: ({ "second": t("second"), "third": t("third") } as Record<string, string>)[next] ?? String(next) })}
         </p>
       ) : null}
     </StepPanel>
@@ -212,6 +215,9 @@ function ExtraClassCard({
   index: number;
   numbers: boolean;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const row = entry.klass;
   const name = row.name;
   const lower = name.toLowerCase();
@@ -232,7 +238,7 @@ function ExtraClassCard({
   );
   return (
     <section
-      aria-label={`${name}, ${entry.level} ${entry.level === 1 ? "level" : "levels"}`}
+      aria-label={tp("{name}, {level} level", "{name}, {level} levels", { count: entry.level, name, level: entry.level })}
       className="mb-3 rounded-lg border border-stone-700/70 bg-stone-950/40 p-3"
       data-extra-class={row.id}
     >
@@ -240,41 +246,40 @@ function ExtraClassCard({
         <h3 className="grow text-sm text-amber-100">
           {name}{" "}
           <span className="text-xs text-stone-500">
-            {hitDieChip(row.hitDie, numbers)}
+            <CardText text={hitDieChip(row.hitDie, numbers)} />
           </span>
         </h3>
         <button
           type="button"
           onClick={() => state.removeExtraClass(index)}
-          aria-label={`Remove ${name}`}
+          aria-label={t("Remove {label}", { label: name })}
           className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
         >
           <Trash2 aria-hidden="true" className="size-4" />
-          Remove
+          {t("Remove", { context: "action.remove" })}
         </button>
       </div>
-      <Field label={`${name} levels`} className="mt-2">
+      <Field label={t("{name} levels", { name })} className="mt-2">
         <Select<string>
           value={String(entry.level)}
           onChange={(value) => state.changeExtraLevel(index, Number(value))}
-          label={`${name} levels`}
+          label={t("{name} levels", { name })}
           className="w-full"
           options={Array.from({ length: Math.max(1, most) }, (_, at) => ({ value: String(at + 1), label: String(at + 1) }))}
         />
       </Field>
-      <p className="mt-2 text-xs text-stone-400">Adds {describeGrant(grant)}. No saving throws: those are your first class&apos;s.</p>
+      <p className="mt-2 text-xs text-stone-400">{t("Adds {grant}. No saving throws: those are your first class's.", { grant: describeGrant(grant) })}</p>
       {pickLevel !== null ? (
         entry.level >= pickLevel ? (
           <ExtraSubclassField state={state} entry={entry} index={index} />
         ) : (
           <p className="mt-2 text-xs text-stone-500">
-            A {lower} chooses a <GameTerm id="subclass">subclass</GameTerm> at its level {pickLevel}; at {entry.level}{" "}
-            there is nothing to pick yet.
+            {t("A {class} chooses a subclass at its level {level}; at {current} there is nothing to pick yet.", { class: lower, level: pickLevel, current: entry.level })}
           </p>
         )
       ) : null}
       {grant.skillChoice ? (
-        <Field label={`Skill from your ${lower} levels (pick ${grant.skillChoice.count})`} className="mt-3">
+        <Field label={t("Skill from your {class} levels (pick {count})", { class: lower, count: grant.skillChoice.count })} className="mt-3">
           <div className="flex flex-wrap gap-2">
             {skillPool.map((skillId) => {
               const skill = SRD_SKILLS.find((candidate) => candidate.id === skillId);
@@ -286,7 +291,7 @@ function ExtraClassCard({
                   label={skill?.name ?? skillId}
                   selected={selected}
                   disabled={taken}
-                  info={{ text: taken ? `${skill?.name ?? skillId} is already yours from elsewhere.` : describeSkill(skillId) }}
+                  info={{ text: taken ? t("{name} is already yours from elsewhere.", { name: skillLabel(skillId, locale) }) : describeSkill(t, skillId, locale) }}
                   onClick={() => {
                     const count = grant.skillChoice?.count ?? 1;
                     const next = selected
@@ -300,7 +305,7 @@ function ExtraClassCard({
                   }}
                 >
                   {skill?.name ?? skillId}
-                  {taken ? " (yours)" : ""}
+                  {taken ? t(" (yours)") : ""}
                 </PickPill>
               );
             })}
@@ -309,7 +314,7 @@ function ExtraClassCard({
       ) : null}
       {features.length ? (
         <p className="mt-3 text-xs text-stone-400">
-          At {lower} level {entry.level}: {features.map((feature) => feature.name).join(", ")}.
+          {t("At {class} level {level}: {list}.", { class: lower, level: entry.level, list: features.map((feature) => feature.name).join(", ") })}
         </p>
       ) : null}
     </section>
@@ -320,17 +325,19 @@ function ExtraClassCard({
 // then the workshop's and the content pack's, as the first class's picker
 // offers them (usePickerGroups.ts).
 function ExtraSubclassField({ state, entry, index }: { state: BuilderState; entry: ExtraClassRow; index: number }) {
+  const t = useT();
+  const tp = useTp();
   const { archetypes } = useArchetypeOptions(entry.klass.id);
   const groups = useMemo<PickerGroup[]>(() => {
     const builtIn = subclassNamesFor(entry.klass.id);
     const known = new Set(builtIn.map(textKey));
     const others = archetypes.filter((archetype) => !known.has(textKey(archetype.name)));
     return [
-      { label: null, options: [{ id: "", name: "None yet" }] },
+      { label: null, options: [{ id: "", name: t("None yet") }] },
       ...(builtIn.length
         ? [
             {
-              label: "Full features",
+              label: t("Full features"),
               options: builtIn.map((subclassName) => ({
                 id: subclassName,
                 name: subclassName,
@@ -340,27 +347,27 @@ function ExtraSubclassField({ state, entry, index }: { state: BuilderState; entr
           ]
         : []),
       ...(others.length
-        ? [{ label: "More subclasses", options: others.map((archetype) => ({ id: archetype.name, name: archetype.name, infoText: archetype.desc })) }]
+        ? [{ label: t("More subclasses"), options: others.map((archetype) => ({ id: archetype.name, name: archetype.name, infoText: archetype.desc })) }]
         : []),
     ];
-  }, [entry.klass.id, archetypes]);
+  }, [entry.klass.id, archetypes, t]);
   const blurb = entry.subclass ? subclassBlurb(entry.klass.id, entry.subclass) : "";
   return (
-    <Field label={`${entry.klass.name} subclass`} className="mt-3">
+    <Field label={t("{class} subclass", { class: entry.klass.name })} className="mt-3">
       <OptionPicker
         value={entry.subclass}
         groups={groups}
-        placeholder="None yet"
+        placeholder={t("None yet")}
         className={inputClass}
         onChange={(name) => state.changeExtraSubclass(index, name)}
       />
       {entry.subclass ? (
         <span className="mt-1 flex items-start gap-1 text-xs text-stone-500">
-          <span className="grow">{blurb || "A specialization within the class."}</span>
+          <span className="grow">{blurb || t("A specialization within the class.")}</span>
           {blurb ? <InfoButton label={entry.subclass} text={blurb} /> : null}
         </span>
       ) : (
-        <span className="mt-1 block text-xs text-amber-300">Still to choose.</span>
+        <span className="mt-1 block text-xs text-amber-300">{t("Still to choose.")}</span>
       )}
     </Field>
   );

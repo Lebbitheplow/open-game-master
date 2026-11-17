@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
-import { askLine, waitLine } from "@/lib/dm/opportunity-ask-logic";
+import { askLine, smiteChoiceLine, waitLine } from "@/lib/dm/opportunity-ask-logic";
 
 // A finger-sized target (40px, the kit's own) with a ring for the keyboard.
 const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70";
@@ -17,19 +17,23 @@ const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-
 // to spend the reaction on a swing. The walk waits on the answer. Everyone
 // else sees why the table has paused; whoever runs the story may send it on,
 // and so may anyone once its time is up, as the clock would: the swing is
-// taken.
+// taken. A paladin's card also offers Divine Smite on the swing, at the slot
+// the Hand's smite card would spend, paid only if it hits.
 export function OpportunityCard({
   campaignId,
   pending,
   sheets,
   meUserId,
   steersStory,
+  smiteOffered = false,
 }: {
   campaignId: string;
   pending: PendingRoll;
   sheets: CharacterSheet[];
   meUserId: string;
   steersStory: boolean;
+  // The host takes `smite` on the answer (capabilities.ts opportunitySmite).
+  smiteOffered?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -46,14 +50,14 @@ export function OpportunityCard({
   const clockId = useId();
   const lineId = useId();
 
-  async function answer(strike: boolean) {
+  async function answer(strike: boolean, smite = false) {
     setBusy(true);
     setError("");
     try {
       const response = await fetch(`/api/campaigns/${campaignId}/pending-rolls/${pending.id}/opportunity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strike }),
+        body: JSON.stringify(smite ? { strike, smite } : { strike }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -114,6 +118,18 @@ export function OpportunityCard({
         >
           Strike
         </button>
+        {smiteOffered && ask.smiteSlot ? (
+          <button
+            type="button"
+            disabled={busy}
+            aria-describedby={left !== null ? clockId : undefined}
+            onClick={() => void answer(true, true)}
+            title={`Swing your ${ask.weapon} at ${ask.walker} and, if it hits, spend a level ${ask.smiteSlot} spell slot on Divine Smite for extra radiant damage. A miss keeps the slot.`}
+            className={STRIKE}
+          >
+            {smiteChoiceLine(ask.smiteSlot)}
+          </button>
+        ) : null}
         <button
           type="button"
           disabled={busy}

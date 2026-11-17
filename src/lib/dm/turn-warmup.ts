@@ -15,7 +15,6 @@
 // never competes with play: it runs as background work, and stops the moment
 // any table's turn calls the same narrator (a two-slot server shares one
 // cache, and two long prompts do not fit it together).
-import { createHash } from "node:crypto";
 import { campaignSeats, getCampaignById, listMembers } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
@@ -23,6 +22,7 @@ import { createDmJobControl, runInDmJob, type DmJobControl } from "@/lib/dm/job-
 import { interactiveInFlight } from "@/lib/dm/inference-gate";
 import { requestDmMessage, storyRouteKey } from "@/lib/dm/model";
 import { turnRulesMessage } from "@/lib/dm/prompt";
+import { keepPromptHead, keepsPromptSnapshots, notePromptReuse, promptHeadKey, readyPromptHead, type NarratorAddress } from "@/lib/dm/prompt-snapshot";
 import { relationshipRosterForPrompt } from "@/lib/dm/relationship-tools";
 import { endpointKind } from "@/lib/dm/sampling-logic";
 import { hasHumanDm } from "@/lib/dm/viewer";
@@ -64,9 +64,26 @@ function warmups() {
 // One key per narrator, model, first message and tool list: two that match
 // render the same prompt start.
 export function turnHeadKey(settings: StorySettings, rules: string, tools: readonly unknown[]): string {
-  return createHash("sha1")
-    .update(JSON.stringify([(settings.customBaseUrl || "").trim(), settings.customModel, rules, tools]))
-    .digest("hex");
+  return promptHeadKey(narratorAddress(settings), rules, tools);
+}
+
+function narratorAddress(settings: StorySettings): NarratorAddress {
+  return { baseUrl: settings.customBaseUrl || "", model: settings.customModel, apiKey: settings.customApiKey };
+}
+
+// Before a turn's call with this first message, on a narrator that keeps
+// prompt snapshots (src/lib/dm/prompt-snapshot.ts): the slot the call is
+// pinned to, with the first message restored from its snapshot when the slot
+// holds another. Undefined for every other narrator.
+export async function readyTurnHead(settings: StorySettings, campaignId: string, key: string, firstCall: boolean): Promise<number | undefined> {
+  return narratorKeepsPromptStart(settings) ? readyPromptHead(narratorAddress(settings), campaignId, key, firstCall) : undefined;
+}
+
+// After that call: how much of the prompt the narrator reused.
+export function noteTurnReuse(settings: StorySettings, campaignId: string, cachedTokens: number | undefined): void {
+  if (narratorKeepsPromptStart(settings)) {
+    notePromptReuse(narratorAddress(settings), campaignId, cachedTokens);
+  }
 }
 
 // A turn's call went out with this first message: the narrator holds it now.
@@ -135,37 +152,73 @@ export function scheduleNextTurnCheck(campaignId: string, check: () => void): vo
   timers.set(campaignId, timer);
 }
 
+// A turn's first message as the table stands now: the rules, and the
+// fight's own while one runs. What a warm-up sends ahead and what a turn
+// whose fight began or ended swaps in (rulesAcrossFight), so the two agree
+// to the letter.
+function rulesNow(campaignId: string, inFight: boolean): string | null {
+  const campaign = getCampaignById(campaignId);
+  if (!campaign) {
+    return null;
+  }
+  return turnRulesMessage({
+    campaign,
+    members: listMembers(campaignId),
+    sheets: listSheets(campaignId),
+    relationships: campaign.gameSettings.relationships === "off" ? [] : relationshipRosterForPrompt(campaignId),
+    ruleContext: null,
+    // Only whether a fight runs is read (turnRuleParts).
+    encounter: inFight ? ({} as never) : null,
+  });
+}
+
+// The rules for the side of a fight the turn's tools are now for, when its
+// first message holds the other side's: a fight that began or ended in the
+// turn. Null when the message is already right, or is neither side's as the
+// table stands (a sheet changed in the turn), which is then left alone.
+export function rulesAcrossFight(campaignId: string, current: string, inFight: boolean): string | null {
+  const wanted = rulesNow(campaignId, inFight);
+  if (!wanted || wanted === current) {
+    return null;
+  }
+  return rulesNow(campaignId, !inFight) === current ? wanted : null;
+}
+
 // After a turn: sends the next turn's first message ahead when the narrator
 // does not hold it. Never throws and is never waited on.
 export function warmNextTurn(campaignId: string, next: NextTurnCall): void {
   // DM_TURN_WARMUP=0 sends nothing ahead (the test suites' scripted models
-  // answer requests in order, and a warm-up would take a turn's reply).
-  if (serverEnv("DM_TURN_WARMUP") === "0") {
-    return;
-  }
+  // answer requests in order, and a warm-up would take a turn's reply). A
+  // narrator that keeps prompt snapshots still has the first message a turn
+  // read saved, below.
+  const sendsNothing = serverEnv("DM_TURN_WARMUP") === "0";
   try {
     const campaign = getCampaignById(campaignId);
     if (!campaign || campaign.status !== "active" || hasHumanDm(campaignSeats(campaign))) {
       return;
     }
+    if (sendsNothing && !keepsPromptSnapshots(narratorAddress(campaign.settings))) {
+      return;
+    }
     if (!warmable(campaign.settings, next)) {
       return;
     }
-    const encounter = getActiveEncounter(campaignId);
-    const rules = turnRulesMessage({
-      campaign,
-      members: listMembers(campaignId),
-      sheets: listSheets(campaignId),
-      relationships: campaign.gameSettings.relationships === "off" ? [] : relationshipRosterForPrompt(campaignId),
-      ruleContext: null,
-      encounter: encounter ? ({} as never) : null,
-    });
+    const rules = rulesNow(campaignId, Boolean(getActiveEncounter(campaignId)));
     if (!rules) {
       return;
     }
     const { tools } = next;
     const key = turnHeadKey(campaign.settings, rules, tools);
+    const address = narratorAddress(campaign.settings);
     if (heads().get(campaignId) === key || warmups().get(campaignId)?.key === key) {
+      // Held, and read by a turn's own call: a first message with no
+      // snapshot yet is saved now, while the table reads.
+      if (heads().get(campaignId) === key) {
+        void keepPromptHead(address, campaignId, key);
+      }
+      return;
+    }
+    if (sendsNothing) {
       return;
     }
     warmups().get(campaignId)?.control.controller.abort();
@@ -179,8 +232,11 @@ export function warmNextTurn(campaignId: string, next: NextTurnCall): void {
       }
     }, WATCH_MS);
     watch.unref?.();
-    entry.done = runInDmJob(control, () =>
-      requestDmMessage(
+    entry.done = runInDmJob(control, async () => {
+      // A first message read before is restored from its snapshot, and the
+      // request below then reads next to nothing.
+      const slot = await readyPromptHead(address, campaignId, key);
+      return requestDmMessage(
         campaign.settings,
         [
           { role: "system", content: rules },
@@ -194,12 +250,15 @@ export function warmNextTurn(campaignId: string, next: NextTurnCall): void {
           maxOutputTokens: 1,
           background: true,
           meta: { task: "turn_warmup" },
+          ...(slot !== undefined ? { slot } : {}),
         },
-      ),
-    )
-      .then((result) => {
+      );
+    })
+      .then(async (result) => {
         if (!result.error) {
           heads().set(campaignId, key);
+          // Kept before the turn's own call adds to the slot.
+          await keepPromptHead(address, campaignId, key);
         }
       })
       .catch((error) => {

@@ -22,7 +22,7 @@ import { publishPersisted } from "@/lib/events";
 import { tilesApart } from "@/lib/dm/board-reach";
 
 import { computeSheetDerived } from "@/lib/srd";
-import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
+import { matchResource, rechargeOf, sheetCatalog } from "@/lib/srd/class-resources";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -55,6 +55,7 @@ import { channelOptions } from "@/lib/dm/option-costs";
 import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 import { classSaveDc, controlUndead } from "@/lib/dm/command-undead";
+import { openFailedSave, turnFailedSave } from "@/lib/dm/save-turned";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -263,14 +264,14 @@ export function featureVariantSpend(
     return spend(campaign, turnId, sheet, def.id, "none", reason, () => eldritchMaster(sheet));
   }
   if (def?.id === "indomitable") {
-    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, sheet));
+    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, turnId, sheet));
   }
   if (def?.id === "ki" && isNamed(wanted, "diamond soul")) {
     // Diamond Soul (monk 14): 1 ki rerolls a failed save, as Indomitable does.
     if (!holdsFeature(sheet, "diamond soul")) {
       return { error: `${sheet.name} does not have Diamond Soul.`, refused: "rules" };
     }
-    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, sheet));
+    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, turnId, sheet));
   }
   if (def?.id === "ki" && isNamed(wanted, "empty body")) {
     // Empty Body (monk 18): 4 ki, an action, invisible for a minute and
@@ -318,7 +319,7 @@ function spend(
   }
   if (state.max - state.used < amount) {
     return {
-      error: `${sheet.name} has ${state.max - state.used}/${state.max} ${def.displayName} left and this takes ${amount}; it comes back on a ${def.recharge === "short" ? "short or long" : "long"} rest.`,
+      error: `${sheet.name} has ${state.max - state.used}/${state.max} ${def.displayName} left and this takes ${amount}; it comes back on a ${rechargeOf(def, sheet) === "short" ? "short or long" : "long"} rest.`,
       refused: "rules",
     };
   }
@@ -583,7 +584,7 @@ function preserveLife(
 // Indomitable (fighter 9): the save the fighter last failed is rolled again,
 // and the new roll stands. On a success, the conditions that failure put on
 // them (those that end on that same save) come off.
-function indomitable(campaign: Campaign, sheet: CharacterSheet): Resolution {
+function indomitable(campaign: Campaign, turnId: string, sheet: CharacterSheet): Resolution {
   const failed = listRecentRolls(campaign.id, 60).find(
     (roll) =>
       roll.characterId === sheet.id &&
@@ -603,6 +604,15 @@ function indomitable(campaign: Campaign, sheet: CharacterSheet): Resolution {
   const bulwark = bulwarkReroll(campaign, sheet, ability, dc, against);
   if (!save.success) {
     return { result: { indomitable: `The reroll fails too (${ability.toUpperCase()} ${save.total ?? "failed"} vs DC ${dc}); the failure stands.`, ...bulwark } };
+  }
+  // A made save is a made save: the damage the failure alone dealt goes too,
+  // half of it from a save-for-half spell (save-turned.ts, from the record
+  // the save left this turn). The reroll took the conditions off and left
+  // the full damage standing (finding K01 of the 2026-11-15 audit).
+  const open = openFailedSave(campaign.id, sheet.id);
+  if (open && open.ability === ability && (open.dc === undefined || open.dc === dc)) {
+    const turned = turnFailedSave(campaign, turnId, open, "Indomitable: the reroll succeeds");
+    return { result: { indomitable: `The reroll succeeds (${ability.toUpperCase()} ${save.total} vs DC ${dc}). ${turned.line}`, ...bulwark } };
   }
   const now = getSheetById(sheet.id) ?? sheet;
   const meta = now.conditionMeta as ConditionMetaMap;

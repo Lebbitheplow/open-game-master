@@ -5,6 +5,7 @@ import { HeroRoutes } from "@/app/campaigns/[campaignId]/HeroRoutes";
 import { Check, Loader2, Pencil, Play, Trash2, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import type { CampaignMember } from "@/lib/campaign-types";
 import type { LobbyNext } from "@/lib/dm/lobby-next";
 import { GameIcon } from "@/components/ui/GameIcon";
@@ -23,16 +24,17 @@ function CharacterActions({
   busy: boolean;
   onRemove: () => void;
 }) {
+  const t = useT();
   // Edit and Switch sit together; Remove stands apart at the far end, so
   // a slip off Switch cannot land on it. Each is 44 px tall to the finger.
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-3 text-xs">
       <span className="text-stone-500">{sheet.name}:</span>
       <Link href={`/campaigns/${campaignId}/character?mode=edit`} className={cn(ui.btnSmall, "min-h-11")}>
-        <Pencil className="size-3" /> Edit
+        <Pencil className="size-3" /> {t("Edit")}
       </Link>
       <Link href={`/campaigns/${campaignId}/character?mode=replace`} className={cn(ui.btnSmall, "min-h-11")}>
-        <UserRound className="size-3" /> Switch
+        <UserRound className="size-3" /> {t("Switch")}
       </Link>
       <button
         type="button"
@@ -40,7 +42,7 @@ function CharacterActions({
         disabled={busy}
         className={cn(ui.btnSmall, "ml-6 min-h-11 text-red-300")}
       >
-        <Trash2 className="size-3" /> Remove
+        <Trash2 className="size-3" /> {t("Remove", { context: "action.remove" })}
       </button>
     </div>
   );
@@ -65,11 +67,10 @@ function StartBlock({
   blocker: string;
   onStart: () => void;
 }) {
+  const t = useT();
   if (!canStart) {
     return (
-      <p className="text-center text-sm text-stone-500">
-        The owner or the GM starts the adventure once everyone is ready.
-      </p>
+      <p className="text-center text-sm text-stone-500">{t("The owner or the GM starts the adventure once everyone is ready.")}</p>
     );
   }
   return (
@@ -81,7 +82,7 @@ function StartBlock({
         disabled={busy || Boolean(blocker)}
         className={cn(ui.btnPrimary, "h-14 w-full text-[15px]", !busy && !blocker && "motion-foil begin-glow")}
       >
-        <Play className="size-5" /> Begin the adventure
+        <Play className="size-5" /> {t("Begin the adventure")}
       </button>
       {blocker ? <p className="reveal text-center text-sm text-stone-500">{blocker}</p> : null}
     </>
@@ -132,6 +133,7 @@ export function LobbyActions({
   onRemoveCharacter: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   return (
     <section className="space-y-3">
       {next ? (
@@ -147,21 +149,20 @@ export function LobbyActions({
       {isDm ? (
         <div className={cn(ui.card, "ornate flex flex-col items-center gap-2 px-6 py-6 text-center")}>
           <p className="font-display text-lg tracking-wide text-amber-50">
-            You are running this game.
+            {t("You are running this game.")}
           </p>
           <p className="max-w-sm text-balance text-sm text-stone-400">
-            No character, no party slot. Ready up when the table is set and the adventure is
-            yours to open.
+            {t("No character, no party slot. Ready up when the table is set and the adventure is yours to open.")}
           </p>
-          <button type="button" onClick={onToggleReady} className={cn(ui.btnPrimary, "mt-1 px-6")}>
-            {myMember?.ready ? "Not ready" : "Ready"}
+          <button type="button" onClick={onToggleReady} aria-pressed={Boolean(myMember?.ready)} className={cn(ui.btnPrimary, "lobby-ready mt-1 px-6")}>
+            {myMember?.ready ? t("Not ready") : t("Ready", { context: "table.lobby.ready" })}
           </button>
         </div>
       ) : isSolo ? (
         !mySheet ? (
           <div className={cn(ui.card, "ornate flex flex-col items-center gap-3 px-6 py-8 text-center")}>
             <p className="max-w-sm text-balance font-display text-xl tracking-wide text-amber-50">
-              Your adventure needs a hero.
+              {t("Your adventure needs a hero.")}
             </p>
             <HeroRoutes campaignId={campaign.id} className="w-full" />
           </div>
@@ -175,7 +176,7 @@ export function LobbyActions({
             />
             {(campaign.gameSettings?.multiCharacter ?? "off") !== "off" ? (
               <Link href={`/campaigns/${campaign.id}/character`} className="block text-center text-xs text-amber-300/80 hover:text-amber-200">
-                Add another character
+                {t("Add another character")}
               </Link>
             ) : null}
             <button
@@ -185,13 +186,13 @@ export function LobbyActions({
               className={cn(ui.btnPrimary, "w-full py-2.5")}
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-              Begin the adventure
+              {t("Begin the adventure")}
             </button>
           </>
         )
       ) : !mySheet ? (
         <div className={cn(ui.card, "ornate space-y-3 px-4 py-4")}>
-          <p className="text-center font-display text-lg tracking-wide text-amber-50">Choose your hero</p>
+          <p className="text-center font-display text-lg tracking-wide text-amber-50">{t("Choose your hero")}</p>
           <HeroRoutes campaignId={campaign.id} />
         </div>
       ) : (
@@ -199,17 +200,18 @@ export function LobbyActions({
           <button
             type="button"
             onClick={onToggleReady}
+            aria-pressed={Boolean(myMember?.ready)}
             disabled={busy}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 font-medium transition-colors disabled:opacity-60",
-              "motion-press font-display uppercase tracking-[0.12em]",
+              "lobby-ready theme-key theme-key-primary motion-press font-display uppercase tracking-[0.12em]",
               myMember?.ready
                 ? "border border-amber-500/40 bg-amber-400/10 text-amber-200 hover:bg-amber-400/15"
                 : "border border-amber-400/60 bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 text-amber-950 shadow-glow-gold hover:brightness-105",
             )}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-            {myMember?.ready ? "Un-ready" : "Ready up"}
+            {myMember?.ready ? t("Un-ready") : t("Ready up")}
           </button>
           <CharacterActions
             campaignId={campaign.id}
@@ -219,11 +221,11 @@ export function LobbyActions({
           />
           {(campaign.gameSettings?.multiCharacter ?? "off") !== "off" ? (
             <Link href={`/campaigns/${campaign.id}/character`} className="block text-center text-xs text-amber-300/80 hover:text-amber-200">
-              Add another character
+              {t("Add another character")}
             </Link>
           ) : null}
           <p className="text-center text-xs text-stone-600">
-            Changing your character clears your ready status.
+            {t("Changing your character clears your ready status.")}
           </p>
         </>
       )}
@@ -244,7 +246,7 @@ export function LobbyActions({
           disabled={busy}
           className="mx-auto flex items-center gap-1.5 pt-2 text-xs text-stone-600 transition-colors hover:text-red-400 disabled:opacity-60"
         >
-          <Trash2 className="size-3.5" /> Delete this campaign
+          <Trash2 className="size-3.5" /> {t("Delete this campaign")}
         </button>
       ) : null}
     </section>

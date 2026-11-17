@@ -4,17 +4,19 @@ import { Bot, Check, Crown, Trash2, UserPlus, Users, Volume2, VolumeX } from "lu
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { UserAvatar, ui } from "@/lib/ui";
+import { useLocale, useT, useTp } from "@/lib/locale";
 import type { CampaignMember } from "@/lib/campaign-types";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { classLevelWords, speciesAndClassWords } from "@/lib/characters/class-words";
+import { classDisplayNameFor, classLevelWords, speciesAndClassWords } from "@/lib/characters/class-words";
 
 
 // Small gold badge on a party row: DM, co-DM, party lead, owner, real dice.
 function SeatBadge({ children, tip }: { children: ReactNode; tip?: string }) {
   const badge = (
-    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-200">
+    <span className="lobby-seat-badge inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-200">
       {children}
     </span>
   );
@@ -113,14 +115,17 @@ export function LobbyParty({
   companionsClassName?: string;
   companionsStyle?: CSSProperties;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   return (
     <>
       {showParty ? (
-      <section className={cn("reveal mb-6", className)} style={style}>
+      <section className={cn("lobby-party reveal mb-6", className)} style={style}>
         <div className="lobby-head mb-3">
-          <GameIcon icon={{ kind: "glyph", key: "tab-party" }} size="size-7" />
+          <LobbyIcon glyph="tab-party" />
           <h2 className="lobby-head-title">
-            Party · {members.length}/{campaign.maxPlayers}
+            {t("Party · {count}/{max}", { count: members.length, max: campaign.maxPlayers })}
           </h2>
           <span className="lobby-head-rule motion-rule" aria-hidden="true" />
         </div>
@@ -144,7 +149,7 @@ export function LobbyParty({
                       <UserAvatar url={member.avatar?.url} userId={member.userId} size="size-full" />
                     </span>
                     {sheet ? (
-                      <span className="lobby-medallion-emblem" title={classLevelWords(sheet)}>
+                      <span className="lobby-medallion-emblem" title={classLevelWords(sheet, (id) => classDisplayNameFor(id, locale))}>
                         <GameIcon
                           icon={{ kind: "family", key: `class-${sheet.class.toLowerCase()}` }}
                           size="size-6"
@@ -156,34 +161,34 @@ export function LobbyParty({
                     <p className="flex flex-wrap items-center gap-1.5 font-medium text-stone-100">
                       <span className="truncate">{member.username}</span>
                       {humanDmTable && member.userId === campaign.dmUserId ? (
-                        <SeatBadge>GM</SeatBadge>
+                        <SeatBadge>{t("GM")}</SeatBadge>
                       ) : null}
                       {humanDmTable && member.userId === campaign.assistantDmUserId ? (
-                        <SeatBadge>co-GM</SeatBadge>
+                        <SeatBadge>{t("co-GM")}</SeatBadge>
                       ) : null}
                       {member.userId === campaign.leadUserId ? (
                         <SeatBadge>
-                          <Crown className="size-3" /> party lead
+                          <Crown className="size-3" /> {t("party lead")}
                         </SeatBadge>
                       ) : member.role === "owner" ? (
-                        <SeatBadge>owner</SeatBadge>
+                        <SeatBadge>{t("owner")}</SeatBadge>
                       ) : null}
                     </p>
                     <p className="truncate text-sm text-stone-400">
                       {sheet
-                        ? `${sheet.name} · ${speciesAndClassWords(sheet)}`
-                        : "No character yet"}
+                        ? `${sheet.name} · ${speciesAndClassWords(sheet, locale)}`
+                        : t("No character yet")}
                     </p>
                   </div>
                   <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                     {member.muted ? (
-                      <SeatBadge tip="Muted by the party lead">
-                        <VolumeX className="size-3" /> muted
+                      <SeatBadge tip={t("Muted by the party lead")}>
+                        <VolumeX className="size-3" /> {t("muted")}
                       </SeatBadge>
                     ) : null}
                     {member.useRealDice ? (
-                      <SeatBadge tip="Rolls physical dice: the GM waits for this player's attacks, damage, initiative and the checks and saves it asks for">
-                        real dice
+                      <SeatBadge tip={t("Rolls physical dice: the GM waits for this player's attacks, damage, initiative and the checks and saves it asks for")}>
+                        {t("real dice")}
                       </SeatBadge>
                     ) : null}
                     {inPlay ? null : (
@@ -199,7 +204,7 @@ export function LobbyParty({
                       )}
                     >
                       {member.ready ? <Check className="size-3" /> : null}
-                      {member.ready ? "ready" : "not ready"}
+                      {member.ready ? t("ready", { context: "table.lobby.readyBadge" }) : t("not ready")}
                     </span>
                     )}
                   </span>
@@ -215,33 +220,33 @@ export function LobbyParty({
                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-stone-700/40 pt-2.5">
                       {mayLead ? (
                         <SeatAction
-                          tip="Hand the party lead to this player"
+                          tip={t("Hand the party lead to this player")}
                           onClick={() => onMakeLead(member.userId)}
                         >
-                          <Crown className="size-3" /> make lead
+                          <Crown className="size-3" /> {t("make lead")}
                         </SeatAction>
                       ) : null}
                       {maySeat ? (
                         <>
                           <SeatAction
-                            tip="Hand this player the GM seat and the game"
+                            tip={t("Hand this player the GM seat and the game")}
                             onClick={() => onAssignSeat("dm", member.userId)}
                           >
-                            make GM
+                            {t("make GM")}
                           </SeatAction>
                           {member.userId === campaign.assistantDmUserId ? (
                             <SeatAction
-                              tip="Take back the co-GM seat"
+                              tip={t("Take back the co-GM seat")}
                               onClick={() => onAssignSeat("assistant", null)}
                             >
-                              remove co-GM
+                              {t("remove co-GM")}
                             </SeatAction>
                           ) : (
                             <SeatAction
-                              tip="Seat this player as co-GM: every GM power except handing out seats"
+                              tip={t("Seat this player as co-GM: every GM power except handing out seats")}
                               onClick={() => onAssignSeat("assistant", member.userId)}
                             >
-                              make co-GM
+                              {t("make co-GM")}
                             </SeatAction>
                           )}
                         </>
@@ -250,18 +255,18 @@ export function LobbyParty({
                         <SeatAction
                           tip={
                             member.muted
-                              ? "Let this player speak at the table again"
-                              : "Mute: this player reads along but cannot act, ask or side-chat"
+                              ? t("Let this player speak at the table again")
+                              : t("Mute: this player reads along but cannot act, ask or side-chat")
                           }
                           onClick={() => onMute(member.userId, !member.muted)}
                         >
                           {member.muted ? (
                             <>
-                              <Volume2 className="size-3" /> unmute
+                              <Volume2 className="size-3" /> {t("unmute")}
                             </>
                           ) : (
                             <>
-                              <VolumeX className="size-3" /> mute
+                              <VolumeX className="size-3" /> {t("mute")}
                             </>
                           )}
                         </SeatAction>
@@ -271,7 +276,7 @@ export function LobbyParty({
                 })()}
                 {owned.length > 1 ? (
                   <p className="mt-2 text-xs text-stone-400">
-                    Characters: {owned.map((entry) => entry.name).join(", ")}
+                    {t("Characters: {names}", { names: owned.map((entry) => entry.name).join(", ") })}
                   </p>
                 ) : null}
               </li>
@@ -281,9 +286,7 @@ export function LobbyParty({
         {/* Open seats read as an invitation rather than as nothing. */}
         {members.length < campaign.maxPlayers && (!inPlay || joinsOpen) ? (
           <p className="reveal mt-2 rounded-xl border border-dashed border-stone-700/70 px-4 py-2.5 text-center text-xs text-stone-500">
-            {campaign.maxPlayers - members.length} open{" "}
-            {campaign.maxPlayers - members.length === 1 ? "seat" : "seats"}. Share the room code to fill{" "}
-            {campaign.maxPlayers - members.length === 1 ? "it" : "them"}.
+            {tp("{count} open seat. Share the room code to fill it.", "{count} open seats. Share the room code to fill them.", { count: campaign.maxPlayers - members.length })}
           </p>
         ) : null}
         {seatError ? <p className="motion-shake mt-2 text-sm text-red-400">{seatError}</p> : null}
@@ -293,10 +296,10 @@ export function LobbyParty({
       {showCompanions ? (
         <section className={cn("reveal mb-6", companionsClassName ?? className)} style={companionsStyle ?? style}>
           <div className="lobby-head mb-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sky-500/40 bg-stone-950 text-sky-300">
+            <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sky-500/40 bg-stone-950 text-sky-300">
               {humanDmTable ? <Users className="size-3.5" /> : <Bot className="size-3.5" />}
             </span>
-            <h2 className="lobby-head-title">Companions</h2>
+            <h2 className="lobby-head-title">{t("Companions")}</h2>
             <span className="lobby-head-rule motion-rule" aria-hidden="true" />
           </div>
           {partyCompanions.length ? (
@@ -327,15 +330,15 @@ export function LobbyParty({
                     <div className="min-w-0">
                       <p className="truncate font-medium text-stone-100">{companion.name}</p>
                       <p className="truncate text-sm text-stone-400">
-                        {speciesAndClassWords(companion)}
+                        {speciesAndClassWords(companion, locale)}
                       </p>
                     </div>
                   </div>
-                  <Tooltip content="Remove this companion">
+                  <Tooltip content={t("Remove this companion")}>
                     <button
                       type="button"
                       onClick={() => onDismissCompanion(companion.id)}
-                      aria-label={`Remove ${companion.name}`}
+                      aria-label={t("Remove {name}", { name: companion.name })}
                       className="motion-nudge rounded-full border border-stone-700/70 p-2 text-stone-500 hover:border-red-500/40 hover:text-red-400"
                     >
                       <Trash2 className="size-3.5" />
@@ -351,11 +354,11 @@ export function LobbyParty({
               onClick={onBuildCompanion}
               className="motion-press flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-stone-700 px-3 py-3 text-sm text-stone-300 hover:border-sky-700/60 hover:bg-stone-900 hover:text-sky-200"
             >
-              <UserPlus className="size-4" /> Add a companion
+              <UserPlus className="size-4" /> {t("Add a companion")}
             </button>
           ) : (
             <p className="text-center text-xs text-stone-500">
-              The party has its full number of companions.
+              {t("The party has its full number of companions.")}
             </p>
           )}
         </section>

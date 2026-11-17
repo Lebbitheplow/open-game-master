@@ -21,19 +21,28 @@ import { hasSentinel } from "@/lib/srd/feat-combat";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { XY } from "@/lib/battlemap/types";
-import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
+import { closeStandInTurn, dicePreferencesOf, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
+import { parkReasonFor } from "@/lib/dice/held-rolls";
+import { damageDiceSteps } from "@/lib/dm/attack-damage-dice";
 import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
-import { d20Expression, type Advantage } from "@/lib/dice";
+import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { coverFor } from "@/lib/dm/attack-spatial";
+import { isPactWeapon } from "@/lib/srd/pact-weapon";
+import { textKey } from "@/lib/language/text-logic";
 import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
-import { adjudicateHit, weaponAttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
+import { adjudicateHit, weaponAttackProfile, type AttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
+import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
+import { weaponMaterial } from "@/lib/dm/damage-logic";
+import { lineNamed } from "@/lib/srd/item-row";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
+import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import {
   attackContext,
   exhaustionRollState,
@@ -44,12 +53,17 @@ import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-log
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { hexWarriorSwing, shillelaghSwing } from "@/lib/dm/attack-features";
-import { otherHandArmed } from "@/lib/dm/attack-rules";
+import { isUndeadOrFiend, otherHandArmed, smiteDice } from "@/lib/dm/attack-rules";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
+import { heavyLoadOnAttack } from "@/lib/dm/load-rules";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
-import { clearHitSpent } from "@/lib/dm/pc-attack-riders";
+import { clearHitSpent, spendOnHit } from "@/lib/dm/pc-attack-riders";
+import { smiteSlotOf } from "@/lib/dm/opportunity-ask-logic";
+import { opportunityTwoHanded } from "@/lib/dm/opportunity-weapon";
+import { woundOnHit } from "@/lib/dm/sword-wounding";
+import { swornElsewhere } from "@/lib/dm/oathbow";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
@@ -59,6 +73,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markOpportunityHit } from "@/lib/dm/authored-reactions-more";
 import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
+import { characterSwims, underwaterOpportunity } from "@/lib/dm/underwater";
 
 // A turn for the swing's rolls and audit rows, closed as soon as it is used
 // so nothing waits on it.
@@ -117,36 +132,65 @@ function turnUnderWay(encounter: Encounter, walkerId: string): string {
   return entry ? orderEntryId(entry) : walkerId;
 }
 
-export function pcOpportunitySwing(input: {
-  campaign: Campaign;
-  encounter: Encounter;
-  sheet: CharacterSheet;
-  enemy: EncounterEnemy;
-  resolved: ResolvedWeapon;
-  adjacent: boolean;
-  // The target's conditions as the swing meets them (a Dodge lost with its
-  // speed already left out, opportunity.ts withLiveDodge).
-  targetConditions: string[];
-  // The tile the walker left the reach from (opportunitySight).
-  moverAt: XY | null;
-}): { note: string; dropped: boolean } {
-  const { campaign, encounter, sheet, enemy, resolved } = input;
+// The profile of a weapon swung as the reaction, as the turn's swing builds
+// it (pc-attack-profile.ts).
+function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: ReturnType<typeof combatRiders>): AttackProfile {
   const derived = computeSheetDerived(sheet);
-  const riders = combatRiders(sheet);
   const shillelagh = shillelaghSwing(sheet, resolved, derived);
   // Hex Warrior's Charisma, as on the turn's swing (pc-attack-profile.ts).
   const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
-  let profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
+  // SRD 5.1, Pact of the Blade: "You are proficient with it while you wield
+  // it", on the reaction's swing as on the turn's (pc-attack-profile.ts). A
+  // warlock's pact longsword struck without the bonus.
+  const pactForm = resolved.srd && isPactWeapon(sheet, resolved.displayName, resolved.srd.kind === "melee") ? [textKey(resolved.srd.name)] : [];
+  const profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? resolved, {
     riders,
     martialArts: martialArtsApplies(sheet),
     // A worn item's bonus rides the reaction's swing as it does the turn's.
     worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
     // Dueling wants the other hand empty of weapons, here as on the turn.
     otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
+    // A versatile weapon in both hands when the other is free (opportunity-weapon.ts).
+    twoHanded: opportunityTwoHanded(sheet, resolved, riders),
   });
-  if (shillelagh) {
-    profile = { ...profile, magicWeapon: true };
-  }
+  // The blade's material (a silvered sword), for the resistances that name
+  // it, as the turn's swing carries it (pc-attack-profile.ts): the reaction
+  // left it off, and a werewolf resisted a silvered sword's opportunity
+  // attack.
+  const material = weaponMaterial(sheet.equipment[lineNamed(sheet.equipment, resolved.displayName)]);
+  return { ...profile, material, ...(shillelagh ? { magicWeapon: true } : {}) };
+}
+
+// The slot Divine Smite would spend on a character's opportunity attack, or
+// null: a paladin's swing may carry it, as the turn's melee hit may.
+export function opportunitySmiteSlot(sheet: CharacterSheet): number | null {
+  return combatRiders(sheet).canSmite ? smiteSlotOf(sheet.spellcasting) : null;
+}
+
+export function pcOpportunitySwing(input: {
+  campaign: Campaign;
+  encounter: Encounter;
+  sheet: CharacterSheet;
+  enemy: EncounterEnemy;
+  resolved: ResolvedWeapon | null;
+  // A beast form's or a summoned creature's own attack, in place of a
+  // weapon (opportunity-natural.ts).
+  natural?: AttackProfile | null;
+  adjacent: boolean;
+  // The target's conditions as the swing meets them (a Dodge lost with its
+  // speed already left out, opportunity.ts withLiveDodge).
+  targetConditions: string[];
+  // The tile the walker left the reach from (opportunitySight).
+  moverAt: XY | null;
+  // Divine Smite's slot, when the player took it on the card
+  // (opportunity-ask.ts): paid only on a hit.
+  smiteSlot?: number;
+}): { note: string; dropped: boolean } {
+  const { campaign, encounter, sheet, enemy, resolved } = input;
+  const natural = input.natural ?? null;
+  const kind = natural ? "natural" : "weapon";
+  const riders = combatRiders(sheet);
+  let profile = natural ?? weaponSwing(sheet, resolved!, riders);
   // What rides the swing, as on the character's own turn: Rage, the on-hit
   // dice of their effects (a mark only on its creature), their features.
   const marks = planMarks({ sheet, enemy, encounterEnemies: [enemy], budget: null });
@@ -155,9 +199,11 @@ export function pcOpportunitySwing(input: {
     sheet,
     profile,
     riders,
-    kind: "weapon",
+    kind,
     enemy,
     marked: marks.applies,
+    // Always on the walker's turn, never the attacker's own.
+    offTurn: true,
   });
   // A magic weapon's dice against this creature, each kept at its own type
   // (a Flame Tongue's fire), as on the character's own turn
@@ -180,15 +226,18 @@ export function pcOpportunitySwing(input: {
   });
   const light = lightOnAttack(sight, { attacker: sheet.name, target: enemy.displayName });
   const attackRiders = conditionRollRiders(sheet.conditions, "attack");
-  // What the attacker's own body and gear do to any attack roll of theirs,
-  // as pc-attack-situation.ts reads them for the turn's swing: armor worn
-  // untrained, and a heavy weapon in Small hands, each disadvantage (SRD 5.1,
-  // Armor; Weapons, Heavy). The reaction's swing skipped both.
-  const untrained = wearsUntrainedArmor(sheet);
+  // The attacker's own body and gear, as the turn's swing reads them
+  // (pc-attack-situation.ts): untrained armor, a heavy weapon in Small hands
+  // and a heavy load (load-rules.ts) are each disadvantage, skipped here once.
+  const untrained = wearsUntrainedArmor(sheet) || Boolean(heavyLoadOnAttack(campaign, sheet));
   const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
+  // Under the water, as on pc_attack (underwater.ts).
+  const underwater = underwaterOpportunity(campaign.id, sheet.id, { weapon: profile.weapon, base: profile.base, swims: characterSwims(sheet) });
   const advantage: Advantage = mergeAdvantage([
     ...context.sources,
-    ...(untrained || smallWithHeavy ? ["disadvantage" as const] : []),
+    ...(untrained || smallWithHeavy || underwater.disadvantage ? ["disadvantage" as const] : []),
+    // Another weapon than the Oathbow while its sworn enemy lives (oathbow.ts).
+    ...(swornElsewhere(sheet, profile) ? ["disadvantage" as const] : []),
     exhaustionRollState(sheet.exhaustion ?? 0, "attack").advantage,
     ...light.sources,
     ...attackRiders.advantageSources,
@@ -206,7 +255,14 @@ export function pcOpportunitySwing(input: {
     notes,
   }).profile;
 
-  const targetAc = enemyAcWithEffects(campaign.id, enemy);
+  // Cover where the walker stood as the swing was made: an ally between a
+  // glaive and a goblin 10 feet off gives half cover (SRD 5.1, Cover), as on
+  // the turn's swing (pc-attack-situation.ts). The reaction read the bare AC.
+  const cover = coverFor(encounter.id, sheet.id, enemy.id, input.moverAt ?? undefined);
+  if (cover) {
+    notes.push(`${enemy.displayName} has ${cover === 2 ? "half" : "three-quarters"} cover: +${cover} AC`);
+  }
+  const targetAc = enemyAcWithEffects(campaign.id, enemy) + cover;
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () => hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: `${profile.weapon} (opportunity attack)`, type: profile.damageType, ranged: false });
   // The character's own attack roll (src/lib/dm/character-roll.ts): on
@@ -276,18 +332,48 @@ export function pcOpportunitySwing(input: {
     profile = { ...profile, damageExpression: `${profile.damageExpression}${critGear.suffix}` };
     typedRiders.push(...critGear.typed);
   }
+  // SRD 5.1, Divine Smite: "when you hit a creature with a melee weapon
+  // attack, you can expend one spell slot", and an opportunity attack is
+  // one. Paid on the hit as the turn's swing pays it (pc-attack-riders.ts
+  // spendOnHit), its dice radiant and doubled with the rest on a critical.
+  if (input.smiteSlot && !natural) {
+    const undeadOrFiend = isUndeadOrFiend(enemy);
+    const dice = smiteDice(input.smiteSlot, undeadOrFiend);
+    const spends = { characterId: sheet.id, smite: { slot: input.smiteSlot, dice, undeadOrFiend }, baseDamage: profile.damageExpression, critExtraDice: riders.critExtraDice };
+    const paid = withOpportunityTurn(campaign.id, (turn) => {
+      const sheets = listSheets(campaign.id);
+      return spendOnHit(campaign, turn.id, spends, sheets, new Map(sheets.map((entry) => [entry.id, entry])));
+    });
+    notes.push(...paid.notes);
+    if (paid.suffix) {
+      profile = { ...profile, damageExpression: `${profile.damageExpression}${paid.suffix}` };
+      typedRiders.push({ dice: `${dice}d8`, type: "radiant" });
+      notes.push(`Divine Smite (level ${input.smiteSlot} slot): +${dice}d8 radiant${undeadOrFiend ? ", against an undead or fiend" : ""}`);
+    }
+  }
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
+  // Great Weapon Fighting rerolls the 1s and 2s of a two-handed melee
+  // weapon's damage dice, on this attack as on the turn's own swing
+  // (pc-attack-damage.ts strikeDamage): the reaction's greatsword kept them.
+  const rerollBelow = riders.greatWeaponRerollBelow && profile.twoHanded && !profile.ranged ? riders.greatWeaponRerollBelow : 0;
+  if (rerollBelow) {
+    notes.push(`Great Weapon Fighting: rerolling damage dice of ${rerollBelow} or less`);
+  }
+  const damageTag = { roller: "hero", kind: "damage", who: sheet.name } as const;
+  const damageExpression = crit
+    ? critDamageExpression(profile.damageExpression, riders.critExtraDice, {
+        powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical,
+        multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
+      })
+    : profile.damageExpression;
   const damageOutcome = rollCharacterD20(campaign, sheet, {
+    reason: opportunityDamageReason(campaign.id, sheet, profile, riders, enemy.displayName),
     kind: "damage",
-    tag: { roller: "hero", kind: "damage", who: sheet.name },
-    expression: crit
-      ? critDamageExpression(profile.damageExpression, riders.critExtraDice, {
-          powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical,
-          multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
-        })
-      : profile.damageExpression,
+    tag: damageTag,
+    expression: damageExpression,
     detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    ...(rerollBelow ? { throwIt: () => rollExpression(damageExpression, undefined, { rerollBelow, purpose: damageTag }) } : {}),
   });
   const dealt = Math.max(0, damageOutcome.total);
   return withOpportunityTurn(campaign.id, (turn) => {
@@ -315,7 +401,7 @@ export function pcOpportunitySwing(input: {
       dealt,
       crit,
       critExtraDice: riders.critExtraDice,
-      magical: strikesAsMagic({ kind: "weapon", profile, riders, sheet }),
+      magical: strikesAsMagic({ kind, profile, riders, sheet }),
       holdVictory: true,
     });
     if (!("error" in applied)) {
@@ -335,12 +421,23 @@ export function pcOpportunitySwing(input: {
       ranged: false,
       ...(normalRoll ? { normal: { raw: Math.max(0, normalRoll.total), from: dealt } } : {}),
       // As the blow met the damage path, for a reaction's replay (last-hit.ts flags).
-      flags: { ...(strikesAsMagic({ kind: "weapon", profile, riders, sheet }) ? { magical: true } : {}), ...(profile.material ?? {}) },
+      flags: { ...(strikesAsMagic({ kind, profile, riders, sheet }) ? { magical: true } : {}), ...(profile.material ?? {}) },
     });
     closeLog();
-    const after = getFoe(enemy.id);
-    const dropped = Boolean(applied.dead) || after?.status === "dead";
+    const struck = getFoe(enemy.id);
+    const dropped = Boolean(applied.dead) || struck?.status === "dead";
+    // What a natural attack's hit carries (a wolf's bite: a Strength save or
+    // prone), as the turn's swing lands it (attack-blow.ts).
+    // A Sword of Wounding's wound, once per turn (sword-wounding.ts).
     const landed = typeof applied.damageApplied === "number" ? applied.damageApplied : dealt;
+    const wound = !dropped && profile.gearWounds && !isSheetFoe(enemy) ? woundOnHit(campaign, enemy.id, sheet.id, landed) : null;
+    if (wound) {
+      notes.push(wound);
+    }
+    if (!dropped && profile.creatureOnHit && !isSheetFoe(enemy)) {
+      notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, enemyId: enemy.id, onHit: profile.creatureOnHit }));
+    }
+    const after = getFoe(enemy.id);
     return {
       note: `${sheet.name} catches ${enemy.displayName} with an opportunity attack as it breaks away: ${
         crit ? "a critical hit, " : ""
@@ -354,13 +451,16 @@ export function pcOpportunitySwing(input: {
   });
 }
 
-// What the swing uses up: the attacker's hiding and Invisibility (an attack
-// gives both away), their one-shot roll riders (True Strike), and the
+// What the swing uses up: the attacker's hiding, Invisibility and Sanctuary
+// (an attack gives them away), their one-shot roll riders (True Strike), and the
 // target's one-shot conditions (Guiding Bolt's advantage).
 function spendAttackCarriers(campaign: Campaign, sheet: CharacterSheet, enemy: EncounterEnemy, riders: string[]) {
   const fresh = getSheetById(sheet.id) ?? sheet;
   const mine = [
     ...fresh.conditions.filter((entry) => entry.trim().toLowerCase() === "hidden"),
+    // An opportunity attack is an attack, and the warded creature's own
+    // attack ends its Sanctuary (SRD 5.1), as pc_attack's does.
+    ...sanctuaryEndedByAttack(fresh),
     ...riders,
   ];
   if (mine.length) {
@@ -400,4 +500,30 @@ export function enemyOpportunityRiders(campaignId: string, enemy: EncounterEnemy
       ...(sunlit ? ["Sunlight Sensitivity: disadvantage in direct sunlight"] : []),
     ],
   };
+}
+
+// The damage card's words for a player rolling real dice: the weapon, the
+// target and what Great Weapon Fighting asks of their dice (SRD 5.1: "When
+// you roll a 1 or 2 on a damage die for an attack you make with a melee
+// weapon that you are wielding with two hands, you can reroll the die"), in
+// the words the turn's own attack card uses (attack-blow.ts
+// damageDiceSteps). The card named the weapon and the target only, so the
+// player entered their 1s and 2s as they lay. Undefined, so the card reads
+// its detail, when nothing changes the dice or the server throws them.
+function opportunityDamageReason(
+  campaignId: string,
+  sheet: CharacterSheet,
+  profile: { weapon: string; twoHanded?: boolean; ranged?: boolean },
+  riders: { greatWeaponRerollBelow?: number },
+  target: string,
+): string | undefined {
+  const rerollBelow = riders.greatWeaponRerollBelow && profile.twoHanded && !profile.ranged ? riders.greatWeaponRerollBelow : 0;
+  if (!rerollBelow) {
+    return undefined;
+  }
+  const { dicePolicy, member } = dicePreferencesOf(campaignId, sheet.userId);
+  if (parkReasonFor(dicePolicy, member) !== "real_dice") {
+    return undefined;
+  }
+  return `${profile.weapon} damage against ${target} (opportunity attack). ${damageDiceSteps({ rerollBelow })}`;
 }

@@ -95,6 +95,49 @@ await test("every item's place comes from its row, never from words in its name"
   assert.equal(countedWorn([mantello, spare]).size, 1, "two cloaks both counted at an Italian table");
 });
 
+await test("an item whose name does not say what it is has its place from its rules text", () => {
+  // SRD 5.1, Wings of Flying: "While wearing this cloak, you can use an
+  // action to speak its command word." Its name holds no word for a cloak,
+  // so it had no place and counted beside a second cloak.
+  assert.equal(wearSlotOf(row("Wings of Flying")), "cloak");
+  const wings = row("Wings of Flying", { equipped: true, attuned: true });
+  const cloak = row("Cloak of Protection", { equipped: true });
+  assert.deepEqual(names(countedWorn([wings, cloak])), ["Wings of Flying"], "the wings and a second cloak both counted");
+  assert.equal(magicItemRiders([wings, cloak]).acBonus, 0, "the Cloak of Protection's +1 AC rides beside the wings");
+  assert.deepEqual(wearConflict(cloak, [wings, cloak])?.wearing, ["Wings of Flying"]);
+  // The thing named in the opening sentence and worn as "them" after.
+  assert.equal(wearSlotOf(row("Scorpion Feet")), "feet");
+  // Rows whose text says what they are without a word for wearing them (or
+  // with it misprinted) are placed by hand in the generator.
+  const byHand = {
+    "Skullcap of Deep Wisdom": "head",
+    "Ice Riders": "feet",
+    "Stalking Cat": "neck",
+    "Secret-catching Pearls": "neck",
+    "Friendly Joybuzzer": "ring",
+    "Honey Buckle": "waist",
+  };
+  for (const [name, place] of Object.entries(byHand)) {
+    assert.equal(wearSlotOf(row(name)), place, name);
+  }
+  const skullcap = row("Skullcap of Deep Wisdom", { equipped: true, attuned: true });
+  assert.deepEqual(wearConflict(row("Hat of Disguise", { equipped: true }), [skullcap])?.wearing, ["Skullcap of Deep Wisdom"]);
+  // A carried word in a name is what the thing is of, not the thing: SRD
+  // 5.1's Belt of Giant Strength comes in a stone giant's strength too, and
+  // a Potion Belt is worn ("While wearing the belt...").
+  assert.equal(wearSlotOf(row("Belt of Stone Giant Strength")), "waist");
+  assert.equal(wearSlotOf(row("Potion Belt")), "waist");
+  // A word that owns the next names someone else: this one is a slip of
+  // parchment, and was filed as a ring.
+  assert.equal(wearSlotOf(row("Culdarath the Ninth Ring’s True Name")), null);
+  // A word that only describes the next is not the thing (a belt pouch, a
+  // belt quiver), nor is what a row says may be worn "as a brooch", nor
+  // what sits on a horse's hooves or merely "on your person".
+  for (const name of ["Assembling Armor", "Handy Scroll Quiver", "Hair Pick of Protection", "Horseshoes of Speed", "Scarab of Protection"]) {
+    assert.equal(wearSlotOf(row(name)), null, name);
+  }
+});
+
 await test("two cloaks worn and attuned: one cloak's magic, not both (the issue's example)", () => {
   const elvenFirst = [
     row("Cloak of Elvenkind", { equipped: true, attuned: true }),

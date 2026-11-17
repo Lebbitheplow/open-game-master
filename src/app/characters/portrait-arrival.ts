@@ -40,8 +40,13 @@ export function portraitsReady(
     .map((character) => ({ id: character.id, name: character.name }));
 }
 
-export function portraitReadyLine(name: string) {
-  return `${name}'s portrait is ready`;
+// Like home/types.ts's agoLabel, the reading takes the translator from the
+// component that draws it, so the toast rewords with the interface.
+export function portraitReadyLine(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  name: string,
+) {
+  return t("{name}'s portrait is ready", { name });
 }
 
 // How long the toast stays. It never takes focus, so it may leave on its own.

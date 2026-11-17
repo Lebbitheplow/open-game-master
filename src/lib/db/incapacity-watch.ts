@@ -7,6 +7,7 @@
 // the write's own handler has finished, as flight-watch.ts does for a fall.
 
 import { isIncapacitated } from "@/lib/dm/condition-logic";
+import { fellUnconscious } from "@/lib/dm/mt-srd-unconscious";
 
 type Held = { conditions: string[]; deathSaves?: { dead?: boolean } | null };
 
@@ -35,6 +36,77 @@ export function noteIncapacity(campaignId: string, sheetId: string, before: Held
     for (const listener of answers) {
       try {
         listener(campaignId, sheetId);
+      } catch {
+        // Nothing to undo: the rows are written.
+      }
+    }
+  });
+}
+
+// The same for a creature's row (patchEnemyConditions). A creature taken out
+// of action loses its concentration and lets go of whoever it grapples (SRD
+// 5.1, Conditions; Concentration), and only the lay paths that asked for
+// that ran it: another creature's hit (a ghoul's claws on a creature the
+// party dominates), a feat's or a subclass's stun, a spell's last failed
+// save each wrote the condition straight to the row, and the paralyzed
+// creature kept its spell and its hold. The rule registers itself
+// (src/lib/dm/enemy-incapacitation.ts); answering twice does nothing more.
+const creatureAnswers: Array<(enemyId: string) => void> = [];
+const creaturesDue = new Set<string>();
+
+export function onCreatureIncapacity(listener: (enemyId: string) => void) {
+  creatureAnswers.push(listener);
+}
+
+export function noteCreatureIncapacity(
+  enemyId: string,
+  before: { conditions: string[] } | null,
+  after: { conditions: string[]; status: string } | null,
+) {
+  if (!creatureAnswers.length || creaturesDue.has(enemyId) || !after || after.status !== "alive") {
+    return;
+  }
+  if (!isIncapacitated(after.conditions) || (before && isIncapacitated(before.conditions))) {
+    return;
+  }
+  creaturesDue.add(enemyId);
+  queueMicrotask(() => {
+    creaturesDue.delete(enemyId);
+    for (const listener of creatureAnswers) {
+      try {
+        listener(enemyId);
+      } catch {
+        // Nothing to undo: the rows are written.
+      }
+    }
+  });
+}
+
+// The fall unconscious itself, on a sheet or a creature's row (SRD 5.1,
+// Unconscious: "The creature drops whatever it's holding"). Every route that
+// knocks one out (damage to 0, Sleep, a poison, set_condition) writes through
+// patchSheet or patchEnemyConditions, and only a hand dropped by choice
+// (handle_item) ever let go, so a hero lay unconscious with sword and shield
+// in hand. The rule registers itself (src/lib/dm/fallen-gear.ts) and runs
+// once the write's own handler has finished.
+type Fall = { kind: "sheet"; campaignId: string; id: string } | { kind: "creature"; id: string };
+const fallAnswers: Array<(fall: Fall) => void> = [];
+const fallsDue = new Set<string>();
+
+export function onFallUnconscious(listener: (fall: Fall) => void) {
+  fallAnswers.push(listener);
+}
+
+export function noteFallUnconscious(fall: Fall, before: { conditions: string[] } | null, after: { conditions: string[] } | null) {
+  if (!fallAnswers.length || fallsDue.has(fall.id) || !after || !fellUnconscious(before?.conditions ?? [], after.conditions)) {
+    return;
+  }
+  fallsDue.add(fall.id);
+  queueMicrotask(() => {
+    fallsDue.delete(fall.id);
+    for (const listener of fallAnswers) {
+      try {
+        listener(fall);
       } catch {
         // Nothing to undo: the rows are written.
       }

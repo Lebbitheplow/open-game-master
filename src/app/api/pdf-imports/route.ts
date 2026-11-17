@@ -6,6 +6,7 @@ import { createPdfImport, listPdfImports, MAX_OPEN_IMPORTS, openImportCount } fr
 import { readingHeadSchema } from "@/lib/pdf-import/reading";
 import { resumeIfStranded } from "@/lib/pdf-import/job";
 import { importView } from "@/lib/pdf-import/view";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,9 +34,12 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await currentUser();
   if (!user) return unauthorized();
+  // The page's alerts show these raw (send-book's call, the button's json),
+  // so the refusals answer in the request's language.
+  const t = requestT(request);
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: "That book's details could not be read. Pick the PDF again." }, { status: 400 });
+    return Response.json({ error: t("That book's details could not be read. Pick the PDF again.") }, { status: 400 });
   }
   const { campaignId, ...head } = parsed.data;
   if (campaignId) {
@@ -45,10 +49,7 @@ export async function POST(request: Request) {
     return campaignCreationRefusal();
   }
   if (openImportCount(user.id) >= MAX_OPEN_IMPORTS) {
-    return Response.json(
-      { error: `You have ${MAX_OPEN_IMPORTS} imports open already. Finish or discard one where you began it (the Workshop page, or the WorldForge you began it in), then try again.` },
-      { status: 409 },
-    );
+    return Response.json({ error: t("You have {count} imports open already. Finish or discard one where you began it (the Workshop page, or the WorldForge you began it in), then try again.", { count: MAX_OPEN_IMPORTS }) }, { status: 409 });
   }
   const created = createPdfImport({ userId: user.id, campaignId: campaignId ?? null, ...head });
   return Response.json({ import: importView(created) });

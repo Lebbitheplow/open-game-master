@@ -28,6 +28,7 @@ import { SHELF_TOUR, SHELF_TOUR_ID } from "@/lib/tours/workshop";
 import { finishTour, useTourFinished } from "@/lib/tours/tour-store";
 import type { WorkshopSummary } from "@/app/workshop/types";
 import { navigateTo } from "@/lib/navigation";
+import { useT } from "@/lib/locale";
 
 // The shelf. A workshop is a place to build maps, NPCs, monsters, story and
 // rules before any table exists, and to import them into a campaign later
@@ -38,6 +39,7 @@ import { navigateTo } from "@/lib/navigation";
 // top of it as their own buttons, since a button cannot live inside a link.
 
 export default function WorkshopListPage() {
+  const t = useT();
   const [workshops, setWorkshops] = useState<WorkshopSummary[]>([]);
   const [loading, setLoading] = useState(true);
   // A refused or failed read is shown in the server's words with a way to
@@ -71,7 +73,7 @@ export default function WorkshopListPage() {
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<{ workshops?: WorkshopSummary[] }>(fetch("/api/workshops"), "Your workshops").then((outcome) => {
+    readLoad<{ workshops?: WorkshopSummary[] }>(t, fetch("/api/workshops"), t("Your workshops")).then((outcome) => {
       if (cancelled) {
         return;
       }
@@ -84,8 +86,7 @@ export default function WorkshopListPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloads, settle]);
-
+  }, [ reloads, settle, t ]);
   async function create(event: FormEvent) {
     event.preventDefault();
     if (!title.trim()) {
@@ -101,12 +102,12 @@ export default function WorkshopListPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not create that workshop.");
+        setError(data.error || t("Could not create that workshop."));
         return;
       }
       navigateTo(`/workshop/${data.workshop.id}`);
     } catch {
-      setError("Could not reach the server. Nothing was created; try again.");
+      setError(t("Could not reach the server. Nothing was created; try again."));
     } finally {
       setBusy(false);
     }
@@ -122,7 +123,7 @@ export default function WorkshopListPage() {
       const response = await fetch(`/api/campaigns/${workshop.id}/clone`, { method: "POST" }).catch(() => null);
       if (!response?.ok) {
         const data = (await response?.json().catch(() => null)) as { error?: string } | null;
-        setListError(data?.error ?? `${workshop.title} was not copied. Check the connection and try again.`);
+        setListError(data?.error ?? t("{name} was not copied. Check the connection and try again.", { name: workshop.title }));
         return;
       }
       const listed = await fetch("/api/workshops").catch(() => null);
@@ -138,7 +139,7 @@ export default function WorkshopListPage() {
   async function remove(workshop: WorkshopSummary) {
     if (
       !await appConfirm(
-        `Delete "${workshop.title}"? Every map, NPC, table and note in it is lost. Anything already imported into a campaign stays there.`,
+        t("Delete \"{name}\"? Every map, NPC, table and note in it is lost. Anything already imported into a campaign stays there.", { name: workshop.title }),
       )
     ) {
       return;
@@ -147,7 +148,7 @@ export default function WorkshopListPage() {
     const response = await fetch(`/api/workshops/${workshop.id}`, { method: "DELETE" }).catch(() => null);
     if (!response?.ok) {
       const data = (await response?.json().catch(() => null)) as { error?: string } | null;
-      setListError(data?.error ?? `${workshop.title} was not deleted. Check the connection and try again.`);
+      setListError(data?.error ?? t("{name} was not deleted. Check the connection and try again.", { name: workshop.title }));
       return;
     }
     setWorkshops((current) => current.filter((entry) => entry.id !== workshop.id));
@@ -160,16 +161,15 @@ export default function WorkshopListPage() {
         <div className="flex items-center gap-3">
           <GameIcon icon={{ kind: "glyph", key: "system-homebrew" }} size="size-12" />
           <div>
-            <h1 className="gold-title animate-fade-up font-display text-2xl">Workshop</h1>
+            <h1 className="gold-title animate-fade-up font-display text-2xl">{t("Workshop")}</h1>
             <p className="text-sm text-stone-500">
-              Build maps, NPCs, monsters, story and rules before the table exists. Import any of
-              it when you start a campaign.
+              {t("Build maps, NPCs, monsters, story and rules before the table exists. Import any of it when you start a campaign.")}
             </p>
           </div>
           <button
             type="button"
-            aria-label="How workshops work"
-            title="Guides and tours"
+            aria-label={t("How workshops work")}
+            title={t("Guides and tours")}
             onClick={() => setHelpOpen(true)}
             data-tour="shelf-help"
             className={cn(ui.iconAction, headIcon, "ml-auto self-start")}
@@ -183,8 +183,8 @@ export default function WorkshopListPage() {
         onOpenChange={setHelpOpen}
         tours={[
           {
-            label: "Tour the shelf",
-            detail: "Starting a workshop, importing a bundle, and what the tiles do.",
+            label: t("Tour the shelf"),
+            detail: t("Starting a workshop, importing a bundle, and what the tiles do."),
             onStart: () => setTouring(true),
           },
         ]}
@@ -194,34 +194,33 @@ export default function WorkshopListPage() {
       <section className="mb-6">
         {creating ? (
           <form onSubmit={create} className={`${ui.card} reveal ornate space-y-3 p-4`}>
-            <SectionHead title="New workshop" glyph="system-storyboard" />
+            <SectionHead title={t("New workshop")} glyph="system-storyboard" />
             <label className="block">
-              <span className="mb-1 block font-display text-[11px] tracking-[0.1em] text-amber-300/85">Name</span>
+              <span className="mb-1 block font-display text-[11px] tracking-[0.1em] text-amber-300/85">{t("Name")}</span>
               <input
                 autoFocus
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={80}
-                placeholder="The Saltmarch campaign, Session zero prep..."
+                placeholder={t("The Saltmarch campaign, Session zero prep...")}
                 className={ui.input}
               />
             </label>
             <div>
-              <span className="mb-1 block font-display text-[11px] tracking-[0.1em] text-amber-300/85">Building for a party of</span>
+              <span className="mb-1 block font-display text-[11px] tracking-[0.1em] text-amber-300/85">{t("Building for a party of")}</span>
               <div className="flex flex-wrap items-center gap-2">
-                <NumberStepper label="Party size" min={1} max={8} value={size} onChange={setSize} />
-                <span className="text-sm text-stone-400">heroes at level</span>
-                <NumberStepper label="Party level" min={1} max={20} value={level} onChange={setLevel} />
+                <NumberStepper label={t("Party size")} min={1} max={8} value={size} onChange={setSize} />
+                <span className="text-sm text-stone-400">{t("heroes at level")}</span>
+                <NumberStepper label={t("Party level")} min={1} max={20} value={level} onChange={setLevel} />
               </div>
               <span className="mt-1 block text-xs text-stone-500">
-                The encounter calculator and the odds preview budget against this. Change it
-                anytime.
+                {t("The encounter calculator and the odds preview budget against this. Change it anytime.")}
               </span>
             </div>
             {error ? <p className="motion-shake text-sm text-red-400">{error}</p> : null}
             <div className="flex gap-2">
               <button type="submit" disabled={busy || !title.trim()} className={ui.btnPrimary}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : null} Create
+                {busy ? <Loader2 className="size-4 animate-spin" /> : null} {t("Create")}
               </button>
               <button
                 type="button"
@@ -231,7 +230,7 @@ export default function WorkshopListPage() {
                 }}
                 className={ui.btnSecondary}
               >
-                Cancel
+                {t("Cancel")}
               </button>
             </div>
           </form>
@@ -243,7 +242,7 @@ export default function WorkshopListPage() {
               data-tour="shelf-new"
               className={ui.btnPrimary}
             >
-              <Plus className="size-4" /> New workshop
+              <Plus className="size-4" /> {t("New workshop")}
             </button>
             <div data-tour="shelf-import">
               <ImportBundleButton />
@@ -272,9 +271,9 @@ export default function WorkshopListPage() {
               label={workshop.title}
               // The tile's link and its two buttons again; both stay on the tile.
               items={[
-                { id: "open", label: "Open", glyph: "system-storyboard", onSelect: () => navigateTo(`/workshop/${workshop.id}`) },
-                { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: cloningId === workshop.id, onSelect: () => void clone(workshop) },
-                { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => void remove(workshop) },
+                { id: "open", label: t("Open", { context: "action.open" }), glyph: "system-storyboard", onSelect: () => navigateTo(`/workshop/${workshop.id}`) },
+                { id: "duplicate", label: t("Duplicate"), glyph: "ui-duplicate", disabled: cloningId === workshop.id, onSelect: () => void clone(workshop) },
+                { id: "delete", label: t("Delete"), glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => void remove(workshop) },
               ]}
             >
               <Link
@@ -296,8 +295,7 @@ export default function WorkshopListPage() {
                   {workshop.title}
                 </span>
                 <span className="text-xs text-stone-500">
-                  Party of {workshop.gameSettings.targetParty.size} at level{" "}
-                  {workshop.gameSettings.targetParty.level}
+                  {t("Party of {size} at level {level}", { size: workshop.gameSettings.targetParty.size, level: workshop.gameSettings.targetParty.level })}
                 </span>
               </Link>
               <div className="absolute right-2 top-2 flex gap-0.5">
@@ -305,8 +303,8 @@ export default function WorkshopListPage() {
                   type="button"
                   disabled={cloningId === workshop.id}
                   onClick={() => void clone(workshop)}
-                  aria-label={`Duplicate ${workshop.title}`}
-                  title="Duplicate this workshop and everything in it"
+                  aria-label={t("Duplicate {name}", { name: workshop.title })}
+                  title={t("Duplicate this workshop and everything in it")}
                   className={ui.iconAction}
                 >
                   {cloningId === workshop.id ? (
@@ -318,7 +316,7 @@ export default function WorkshopListPage() {
                 <button
                   type="button"
                   onClick={() => void remove(workshop)}
-                  aria-label={`Delete ${workshop.title}`}
+                  aria-label={t("Delete {name}", { name: workshop.title })}
                   className={ui.iconAction}
                 >
                   <Trash2 className="size-4" />
@@ -337,8 +335,8 @@ export default function WorkshopListPage() {
           ) : loaded ? (
             <EmptyState
               art="map"
-              title="No workshops yet."
-              hint="A workshop is yours alone: prep a game on your own time. Nothing in it reaches a table until a campaign brings it in, when it is created, from its lobby or from its Settings."
+              title={t("No workshops yet.")}
+              hint={t("A workshop is yours alone: prep a game on your own time. Nothing in it reaches a table until a campaign brings it in, when it is created, from its lobby or from its Settings.")}
             />
           ) : null}
         </div>

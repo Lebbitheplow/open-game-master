@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type React from "react";
 import { ui } from "@/lib/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { GameIcon } from "@/components/ui/GameIcon";
 import type { SessionUser } from "@/lib/campaign-types";
 import { HowToPlayDialog } from "@/components/HowToPlayDialog";
@@ -60,18 +61,18 @@ export default function Home() {
 // Shown when a session belongs to an account flagged by an admin password
 // reset; the server rejects campaign APIs until the password is changed.
 function ForcedPasswordChange({ onChanged }: { onChanged: () => void }) {
+  const t = useT();
   return (
     <main className="bg-starfield flex flex-1 items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-sm animate-fade-up-slow">
         <div className={cn(ui.card, "ornate texture-noise auth-card shadow-elev-2")}>
           <h1 className="gold-title mb-1 font-display text-xl tracking-wide">
-            Set a new password
+            {t("Set a new password")}
           </h1>
           <p className="mb-4 text-sm text-stone-400">
-            An admin reset your password. Enter the temporary password you were given and pick a
-            new one.
+            {t("An admin reset your password. Enter the temporary password you were given and pick a new one.")}
           </p>
-          <ChangePasswordForm submitLabel="Set new password" onChanged={onChanged} />
+          <ChangePasswordForm submitLabel={t("Set new password")} onChanged={onChanged} />
         </div>
       </div>
     </main>
@@ -106,6 +107,7 @@ function nextDoorWorld(): number {
 // The front door: on a desk the painting stands to the left and the form to
 // the right; a phone gets the form alone, as before.
 function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
+  const t = useT();
   const [howToOpen, setHowToOpen] = useState(false);
   const [world] = useState(nextDoorWorld);
   const painting = DOOR_WORLDS[world];
@@ -121,9 +123,9 @@ function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
           ))}
         </div>
         <div className="auth-door-caption">
-          <span className="eyebrow auth-door-eyebrow">Behind the door tonight</span>
-          <span className="auth-door-world font-display text-2xl tracking-wide">{painting.name}</span>
-          <span className="auth-door-line font-serif text-sm">One of seven kinds of world your table can play.</span>
+          <span className="eyebrow auth-door-eyebrow">{t("Behind the door tonight")}</span>
+          <span className="auth-door-world font-display text-2xl tracking-wide">{({ "eyebrow": t("Behind the door tonight"), "line": t("One of seven kinds of world your table can play."), "high-fantasy": t("High fantasy"), "dark-fantasy": t("Dark fantasy"), "horror": t("Horror"), "mystery": t("Mystery"), "steampunk": t("Steampunk"), "cyberpunk": t("Cyberpunk"), "post-apocalyptic": t("Post-apocalyptic") } as Record<string, string>)[painting.key] ?? String(painting.key)}</span>
+          <span className="auth-door-line font-serif text-sm">{t("One of seven kinds of world your table can play.")}</span>
         </div>
       </aside>
 
@@ -137,8 +139,7 @@ function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
                 Open Game Master
               </h1>
               <p className="mt-2 text-pretty font-serif text-sm leading-6 text-stone-400">
-                Gather your party. An AI Game Master runs the table; the dice
-                are honest and the story is yours.
+                {t("Gather your party. An AI Game Master runs the table; the dice are honest and the story is yours.")}
               </p>
             </div>
           </div>
@@ -149,21 +150,21 @@ function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
 
           <div className="mt-4 flex justify-center">
             <button type="button" onClick={() => setHowToOpen(true)} className={cn(ui.btnSmall, "min-h-10")}>
-              <GameIcon icon={{ kind: "glyph", key: "tab-story" }} size="size-6" /> How to play
+              <GameIcon icon={{ kind: "glyph", key: "tab-story" }} size="size-6" /> {t("How to play")}
             </button>
           </div>
 
           <footer className="mt-6 flex items-center justify-center gap-4 border-t border-amber-500/15 pt-4">
             <a href="/licenses" className="inline-flex min-h-10 items-center text-xs text-stone-500 hover:text-amber-200">
-              Licenses
+              {t("Licenses")}
             </a>
             <span className="text-xs text-stone-700">&middot;</span>
             <a href="/privacy" className="inline-flex min-h-10 items-center text-xs text-stone-500 hover:text-amber-200">
-              Privacy
+              {t("Privacy")}
             </a>
             <span className="text-xs text-stone-700">&middot;</span>
             <a href="/terms" className="inline-flex min-h-10 items-center text-xs text-stone-500 hover:text-amber-200">
-              Terms
+              {t("Terms")}
             </a>
           </footer>
         </div>

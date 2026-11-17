@@ -49,6 +49,14 @@ export const KIND_SINGULAR: Record<EditorKind, string> = {
 
 // One sentence per kind for the empty state, saying what the engine does
 // with the thing rather than what the form asks for.
+// The one-liner in the reader's language (homebrew.kind.*).
+export function kindBlurbT(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  kind: EditorKind,
+): string {
+  return ({ "item": t("Weapons the attack roll reads, armour the AC engine wears, magic items whose effects apply while attuned."), "spell": t("Spells the cast tools resolve: the save, the damage and the condition come from the block, not from memory."), "feat": t("Feats the character builder offers beside the SRD ones."), "background": t("Backgrounds the builder offers, with the skills it grants."), "race": t("Species the builder offers, with their speed and ability bonuses."), "class": t("Classes the builder offers beside the SRD's: the hit die, saves, training and spellcasting the engines read, and features by level."), "archetype": t("Subclasses the builder offers under a class, with their features by level."), "hazard": t("Traps, poisons and diseases the hazard and afflict tools run by name: the save, the damage and what lingers come from the block.") } as Record<string, string>)[kind] ?? String(kind);
+}
+
 export const KIND_BLURB: Record<EditorKind, string> = {
   item: "Weapons the attack roll reads, armour the AC engine wears, magic items whose effects apply while attuned.",
   spell: "Spells the cast tools resolve: the save, the damage and the condition come from the block, not from memory.",

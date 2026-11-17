@@ -36,6 +36,8 @@ import { board, holdTurn, mapOf, OPEN, place, tokenOf } from "./lib/enforce-zone
 const { sideOf } = await import("../src/lib/dm/combatant.ts");
 const { test, finish } = suite("test-enforce-summons");
 const { listTokens } = await import("../src/lib/db/battle-maps.ts");
+const { getMounts } = await import("../src/lib/db/mounts.ts");
+const { setSheetSummon } = await import("../src/lib/db/sheets.ts");
 
 const summonsOf = (world, spell) =>
   world.sheets().filter((sheet) => sheet.summon && (!spell || sheet.summon.spell === spell));
@@ -233,6 +235,293 @@ await test("Find Steed makes one steed with an Intelligence of 6; casting it aga
   assert.equal(steeds.length, 1);
   assert.equal(steeds[0].abilities.int, 6);
   assert.equal(steeds[0].maxHp, 19);
+});
+
+// Mounted Combat (SRD 5.1): "A willing creature that is at least one size
+// larger than you and that has an appropriate anatomy can serve as a mount";
+// "you can mount a creature that is within 5 feet of you"; "The initiative of
+// a controlled mount changes to match yours when you mount it"; "the attacker
+// can target you or the mount". The steed Find Steed made is that creature
+// (issue 986): one sheet, one set of hit points.
+const PALADIN = () => caster("paladin", "cha", ["Find Steed", "Cure Wounds"], [], 5);
+const orderIds = (world) => world.encounter().order.map((entry) => entry.characterId ?? entry.enemyId);
+async function strikeMount(world, enemy, rider) {
+  world.clearDice();
+  // A 15 on the d20 hits the warhorse's AC 11; a 3 on the damage die.
+  world.dice(15, 3);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: rider.id, targetMount: true });
+  world.clearDice();
+  // The attack tool answers with the strike under result.
+  return out.ok ? { ...out.result, ok: true } : out;
+}
+
+await test("Find Steed's steed, mounted by its name from within 5 feet, is the mount ridden: one creature, off the board and out of the order while it carries its maker, hurt by a blow aimed at the mount, healed by a spell sent to the steed, and beside its rider again when they get down.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  const cast = await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  assert.equal(cast.ok, true, cast.error);
+  const [steed] = summonsOf(world, "Find Steed");
+  const [enemy] = await thenFight(world, paladin.id);
+  assert.ok(orderIds(world).includes(steed.id), "setup: a steed on foot has its own place in the order");
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 9, 3);
+  const far = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(far.ok, false, "a steed 30 feet away was mounted");
+  assert.match(far.error, /within 5 feet/);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined);
+  place(world, steed.id, 4, 3);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const record = getMounts(world.campaignId)[paladin.id];
+  assert.equal(record.sheetId, steed.id, "the mount is not the steed's own sheet");
+  assert.equal(record.hp, undefined, "the record keeps hit points of its own beside the sheet's");
+  assert.equal(record.speed, 60);
+  assert.equal(summonsOf(world).length, 1, "mounting made a second creature");
+  assert.ok(!tokenOf(world, steed.id), "the ridden steed still stands on a token of its own");
+  assert.ok(!orderIds(world).includes(steed.id), "the ridden steed still takes a turn of its own");
+
+  place(world, enemy.id, 3, 4);
+  const hit = await strikeMount(world, enemy, paladin);
+  assert.equal(hit.ok, true, hit.error);
+  const dealt = hit.swings.find((swing) => swing.hit)?.damage;
+  assert.ok(dealt > 0, "setup: the blow at the mount missed");
+  assert.equal(world.sheet(steed.id).currentHp, 19 - dealt, "the blow aimed at the mount did not land on the steed's sheet");
+  assert.equal(world.sheet(paladin.id).currentHp, world.sheet(paladin.id).maxHp, "the blow aimed at the mount landed on the rider");
+  assert.equal(hit.mountHp, `${19 - dealt}/19`);
+
+  const healed = await world.invoke("heal", { characterId: steed.id, casterId: paladin.id, spell: "Cure Wounds", level: 1 });
+  assert.equal(healed.ok, true, healed.error);
+  const mended = world.sheet(steed.id).currentHp;
+  assert.ok(mended > 19 - dealt, "healing sent to the steed did not reach it");
+
+  holdTurn(world, paladin.id);
+  const down = await world.invoke("dismount", { characterId: paladin.id });
+  assert.equal(down.ok, true, down.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined);
+  const rider = tokenOf(world, paladin.id);
+  const horse = tokenOf(world, steed.id);
+  assert.ok(horse, "the steed has no token after its rider got down");
+  assert.ok(Math.max(Math.abs(horse.x - rider.x), Math.abs(horse.y - rider.y)) <= 2, "the steed did not come back beside its rider");
+  const order = orderIds(world);
+  assert.equal(order.indexOf(steed.id), order.indexOf(paladin.id) + 1, "the steed does not act right after its rider");
+});
+
+await test("An area that catches the rider catches the steed under them: its failed Dexterity save takes the blast off the steed's own sheet.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  await thenFight(world, paladin.id);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 4, 3);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  // DC 30: no d20 a warhorse rolls reaches it.
+  const blast = await world.invoke("aoe_damage", { characterIds: [paladin.id], damage: 10, type: "fire", saveAbility: "dex", dc: 30, halfOnSave: false });
+  assert.equal(blast.ok, true, blast.error);
+  assert.equal(world.sheet(steed.id).currentHp, 9, "the blast that caught the rider did not take 10 from the steed's 19 hit points");
+  assert.equal(getMounts(world.campaignId)[paladin.id]?.sheetId, steed.id, "a steed with hit points left stopped carrying its rider");
+});
+
+// The ridden steed's sheet meets a blow as any creature's sheet does: each
+// damage type of a two-type bite against its own defenses, and the water of
+// the square it shares with its rider ("Creatures and objects that are fully
+// immersed in water have resistance to fire damage", SRD 5.1, Underwater
+// Combat). The blow at a sheet steed was landed whole as its first type, and
+// the steed, off the board while ridden, stood in no water.
+async function giveAttacks(world, enemy, attacks) {
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  const stats = { ...world.enemies().find((entry) => entry.id === enemy.id).stats, attacks };
+  getDatabase().prepare("UPDATE encounter_enemies SET stat_json = ? WHERE id = ?").run(JSON.stringify(stats), enemy.id);
+}
+async function riddenSteed(rows) {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  const [enemy] = await thenFight(world, paladin.id);
+  await layMap(world, rows ?? OPEN(), { [paladin.id]: { x: 3, y: 3 }, [steed.id]: { x: 4, y: 3 }, [enemy.id]: { x: 3, y: 4 } });
+  holdTurn(world, paladin.id);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  return { world, paladin, steed, enemy };
+}
+
+await test("A blow aimed at the ridden steed meets the steed's own defenses type by type: a steed immune to poison takes only a bite's piercing.", async () => {
+  const { world, paladin, steed, enemy } = await riddenSteed();
+  setSheetSummon(steed.id, { ...world.sheet(steed.id).summon, immune: "poison" });
+  await giveAttacks(world, enemy, [{ name: "Venom Bite", toHit: 4, damage: "1d6+2d6", type: "piercing/poison" }]);
+  world.clearDice();
+  // 15 hits AC 11; 3 piercing and 2 + 2 poison.
+  world.dice(15, 3, 2, 2);
+  const bite = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: paladin.id, targetMount: true });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(world.sheet(steed.id).currentHp, 16, `a steed immune to poison took the bite's poison as piercing: ${JSON.stringify(bite.result?.swings)}`);
+});
+
+await test("A ridden steed stands in the water its rider stands in: a blow's fire on it is halved.", async () => {
+  const wet = OPEN().map((row, y) => (y === 3 ? `${row.slice(0, 3)}~${row.slice(4)}` : row));
+  const swim = await riddenSteed(wet);
+  await giveAttacks(swim.world, swim.enemy, [{ name: "Flame Bite", toHit: 4, damage: "2d6", type: "fire" }]);
+  swim.world.clearDice();
+  swim.world.dice(15, 4, 4);
+  const flame = await swim.world.invoke("enemy_attack", { enemyId: swim.enemy.id, targetCharacterId: swim.paladin.id, targetMount: true });
+  swim.world.clearDice();
+  assert.equal(flame.ok, true, flame.error);
+  assert.equal(swim.world.sheet(swim.steed.id).currentHp, 15, `8 fire on a steed in its rider's water was not halved: ${JSON.stringify(flame.result?.swings)}`);
+});
+
+// What a hit carries onto a steed with a sheet lands on that sheet: the save
+// from the steed's own block, the rider's damage through its defenses once,
+// and the condition on the creature. "If your mount is knocked prone, you can
+// use your reaction to dismount it as it falls and land on your feet" (SRD
+// 5.1, Mounted Combat): the steed is prone where it stands beside its rider.
+await test("A bite that knocks the ridden steed prone lays prone on the steed's own sheet, its fire meets the steed's resistance once, and the steed stands prone beside its rider.", async () => {
+  const { world, paladin, steed, enemy } = await riddenSteed();
+  setSheetSummon(steed.id, { ...world.sheet(steed.id).summon, resist: "fire" });
+  await giveAttacks(world, enemy, [{ name: "Bite", toHit: 4, damage: "1d6", type: "piercing", onHit: { save: "str", dc: 11, condition: "prone", damage: "2d6", damageType: "fire" } }]);
+  world.clearDice();
+  // 15 hits; 2 piercing; a 1 on the steed's Strength save; 4 + 4 fire.
+  world.dice(15, 2, 1, 4, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: paladin.id, targetMount: true });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, `the steed knocked prone kept its rider: ${JSON.stringify(out.result)}`);
+  const horse = world.sheet(steed.id);
+  assert.equal(horse.currentHp, 19 - 2 - 4, `8 fire on a steed that resists fire did not land as 4: ${JSON.stringify(out.result?.swings)}`);
+  assert.ok(horse.conditions.includes("prone"), "the steed knocked prone is not prone on its sheet");
+  const rider = tokenOf(world, paladin.id);
+  const token = tokenOf(world, steed.id);
+  assert.ok(token, "the steed that threw its rider has no token");
+  assert.ok(Math.max(Math.abs(token.x - rider.x), Math.abs(token.y - rider.y)) <= 2, "the steed did not come back beside its rider");
+});
+
+// A creature called up and ridden whose sheet keeps its form's resistances
+// (a water elemental resists acid) meets the rider's damage once: the merged
+// door halved it by the form's block and again by the sheet's.
+await test("A ridden water elemental takes a bite's acid rider at half, not a quarter, and the bite's nonmagical piercing at half.", async () => {
+  const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Conjure Elemental"])]);
+  const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Conjure Elemental", level: 5, variant: "water elemental" });
+  assert.equal(cast.ok, true, cast.error);
+  const [elemental] = summonsOf(world, "Conjure Elemental");
+  const [enemy] = await thenFight(world, wizard.id);
+  await layMap(world, OPEN(), { [wizard.id]: { x: 3, y: 3 }, [elemental.id]: { x: 4, y: 3 }, [enemy.id]: { x: 3, y: 4 } });
+  holdTurn(world, wizard.id);
+  const up = await world.invoke("mount_up", { characterId: wizard.id, mount: "Water Elemental" });
+  assert.equal(up.ok, true, up.error);
+  assert.equal(getMounts(world.campaignId)[wizard.id]?.sheetId, elemental.id);
+  const full = world.sheet(elemental.id).currentHp;
+  await giveAttacks(world, enemy, [{ name: "Bite", toHit: 9, damage: "1d6", type: "piercing", onHit: { damage: "2d6", damageType: "acid" } }]);
+  world.clearDice();
+  // 15 hits; 4 piercing; 4 + 4 acid.
+  world.dice(15, 4, 4, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: wizard.id, targetMount: true });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(elemental.id).currentHp, full - 2 - 4, `4 piercing and 8 acid on a water elemental: ${JSON.stringify(out.result?.swings)}`);
+});
+
+// An area meets the steed's sheet with the blast's own type: a steed immune
+// to fire takes nothing of a fireball it fails to dodge.
+await test("An area's fire that catches the rider meets the ridden steed's own immunity.", async () => {
+  const { world, paladin, steed } = await riddenSteed();
+  setSheetSummon(steed.id, { ...world.sheet(steed.id).summon, immune: "fire" });
+  const blast = await world.invoke("aoe_damage", { characterIds: [paladin.id], damage: 10, type: "fire", saveAbility: "dex", dc: 30, halfOnSave: false });
+  assert.equal(blast.ok, true, blast.error);
+  assert.equal(world.sheet(steed.id).currentHp, 19, "a steed immune to fire took the fire of the area");
+});
+
+await test("A paladin knocked prone who fails the save falls from the steed, which stands on the board and in the order again.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  await thenFight(world, paladin.id);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 4, 3);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  world.clearDice();
+  // A 1 on the DC 10 Dexterity save.
+  world.dice(1);
+  const prone = await world.invoke("set_condition", { characterId: paladin.id, condition: "prone", reason: "knocked down" });
+  world.clearDice();
+  assert.equal(prone.ok, true, prone.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, "the paladin who failed the save still rides");
+  assert.ok(tokenOf(world, steed.id), "the steed its rider fell from has no token");
+  assert.ok(orderIds(world).includes(steed.id), "the steed its rider fell from has no turn");
+});
+
+await test("A steed moved against its will keeps a paladin who makes the save, still ridden and off the board, and one who fails it is thrown and the steed stands beside them again.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  await thenFight(world, paladin.id);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 4, 3);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  world.clearDice();
+  // A 20 on the DC 10 Dexterity save.
+  world.dice(20);
+  const held = await world.invoke("dismount", { characterId: paladin.id, cause: "forced-move" });
+  world.clearDice();
+  assert.equal(held.ok, true, held.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id]?.sheetId, steed.id, "the paladin who made the save no longer rides the steed's own sheet");
+  assert.ok(!tokenOf(world, steed.id), "a steed still ridden stands on a token of its own");
+  assert.ok(!orderIds(world).includes(steed.id), "a steed still ridden takes a turn of its own");
+  // A 1 on the same save.
+  world.dice(1);
+  const thrown = await world.invoke("dismount", { characterId: paladin.id, cause: "forced-move" });
+  world.clearDice();
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, "the paladin who failed the save still rides");
+  const rider = tokenOf(world, paladin.id);
+  const horse = tokenOf(world, steed.id);
+  assert.ok(horse, "the steed that threw its rider has no token");
+  assert.ok(Math.max(Math.abs(horse.x - rider.x), Math.abs(horse.y - rider.y)) <= 2, "the steed did not come back beside its rider");
+  const order = orderIds(world);
+  assert.equal(order.indexOf(steed.id), order.indexOf(paladin.id) + 1, "the steed does not act right after its rider");
+});
+
+await test("A ridden steed brought to 0 hit points disappears, and its rider comes off as from a mount that went down.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  const [enemy] = await thenFight(world, paladin.id);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 4, 3);
+  place(world, enemy.id, 3, 4);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: steed.name });
+  assert.equal(up.ok, true, up.error);
+  world.patch(steed.id, { currentHp: 1 });
+  const hit = await strikeMount(world, enemy, paladin);
+  assert.equal(hit.ok, true, hit.error);
+  assert.ok(hit.mountDown, "the blow that dropped the steed did not say the mount went down");
+  assert.equal(summonsOf(world, "Find Steed").length, 0, "the steed at 0 hit points did not disappear");
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, "the paladin still rides a steed that is gone");
+  assert.match(String(hit.fall?.landed), /on their feet|prone/);
+});
+
+await test("A fight that begins with the paladin already on the steed seats no steed: it rolls no initiative and the order closes without it; a steed dismissed by a new casting leaves its rider on foot.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "warhorse" });
+  assert.equal(up.ok, true, up.error);
+  assert.equal(up.movementSpent, undefined, "mounting out of a fight charged movement");
+  await fightDummies(world, 1, { heroFaces: { [paladin.id]: 20 } });
+  const encounter = world.encounter();
+  assert.equal(encounter.orderReady, true, "the order waited on the ridden steed");
+  assert.ok(!orderIds(world).includes(steed.id), "the ridden steed was seated in the fight");
+  assert.equal(getMounts(world.campaignId)[paladin.id]?.sheetId, steed.id);
+  const ended = await world.invoke("end_encounter", { outcome: "truce" });
+  assert.equal(ended.ok, true, ended.error);
+  const recast = await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "pony" });
+  assert.equal(recast.ok, true, recast.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, "the paladin still rides the steed the new casting replaced");
 });
 
 await test("Animate Objects animates ten Tiny objects (20 hit points, AC 18, a slam at +8 for 1d4+4) or five Medium ones.", async () => {

@@ -24,8 +24,10 @@ import { conditionUntargetable } from "@/lib/srd/condition-effect-queries";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { houndAttackRefusal } from "@/lib/dm/ar-ws-hound-quarry";
+import { charmedBy } from "@/lib/dm/enemy-profile";
 import { listOpenPendingRolls } from "@/lib/db/dm-turns";
 import { attackWaitsToolLine, attackRollWithPlayer } from "@/lib/dm/open-roll-logic";
+import { uncommandedRefusal } from "@/lib/dm/undead-command";
 
 export function gatePcAttack(input: {
   campaign: Campaign;
@@ -174,10 +176,14 @@ export function gatePcAttack(input: {
   if (offQuarry) {
     return { refused: offQuarry };
   }
+  // An undead of Animate Dead or Create Undead with no command from its
+  // caster only defends itself (undead-command.ts).
+  const unordered = onTurn ? uncommandedRefusal(campaign.id, encounter.id, sheet, enemy) : null;
+  if (unordered) {
+    return { refused: unordered };
+  }
   // A charmed creature cannot attack the one who charmed it.
-  const charmedAs = sheet.conditions.find((entry) => entry.trim().toLowerCase() === "charmed");
-  const charmer = charmedAs ? (sheet.conditionMeta as ConditionMetaMap)[charmedAs]?.source : undefined;
-  if (charmer && charmer === enemy.id) {
+  if (charmedBy(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, enemy.id)) {
     return {
       refused: {
         error: `${sheet.name} is charmed by ${enemy.displayName} and cannot attack it. They can attack another target, or act once the charm ends.`,

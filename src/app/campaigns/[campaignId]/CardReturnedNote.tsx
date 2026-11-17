@@ -5,6 +5,7 @@ import { useState } from "react";
 import { askConcentrationSwap, isConcentrationQuestion } from "@/components/concentration-prompt";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
 
@@ -16,6 +17,7 @@ import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
 export function CardReturnedNote({ message, mine, name }: { message: CampaignMessage; mine: boolean; name: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
+  const t = useT();
 
   const playAgain = async () => {
     if (state !== "idle" || !message.intent) return;
@@ -40,21 +42,21 @@ export function CardReturnedNote({ message, mine, name }: { message: CampaignMes
         // A cast that ends the spell held now is asked about, as in the Hand.
         const ack = isConcentrationQuestion(response.status, data) ? await askConcentrationSwap(data) : null;
         if (!ack) {
-          setError(isConcentrationQuestion(response.status, data) ? "Kept your spell; nothing was spent." : data.error || "Could not play it again.");
+          setError(isConcentrationQuestion(response.status, data) ? t("Kept your spell; nothing was spent.") : data.error || t("Could not play it again."));
           setState("idle");
           return;
         }
         response = await post(ack);
         if (!response.ok) {
           const again = (await response.json().catch(() => ({}))) as { error?: string };
-          setError(again.error || "Could not play it again.");
+          setError(again.error || t("Could not play it again."));
           setState("idle");
           return;
         }
       }
       setState("sent");
     } catch {
-      setError("Could not reach the table.");
+      setError(t("Could not reach the table."));
       setState("idle");
     }
   };
@@ -64,13 +66,13 @@ export function CardReturnedNote({ message, mine, name }: { message: CampaignMes
       <p className="inline-flex items-start gap-1.5 text-amber-200/90">
         <Undo2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         <span>
-          {mine ? "This did not happen. It is back in your hand." : `This did not happen. It went back to ${name}'s hand.`}
+          {mine ? t("This did not happen. It is back in your hand.") : t("This did not happen. It went back to {name}'s hand.", { name })}
           {message.cardReturned ? <span className="block text-stone-400">{message.cardReturned}</span> : null}
         </span>
       </p>
       {mine && message.intent ? (
         state === "sent" ? (
-          <span className="motion-pop text-stone-400">Played again.</span>
+          <span className="motion-pop text-stone-400">{t("Played again.")}</span>
         ) : (
           <button
             type="button"
@@ -78,7 +80,7 @@ export function CardReturnedNote({ message, mine, name }: { message: CampaignMes
             disabled={state === "sending"}
             className={cn(ui.btnSmall, "motion-press min-h-10 sm:min-h-8")}
           >
-            {state === "sending" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />} Play it again
+            {state === "sending" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />} {t("Play it again")}
           </button>
         )
       ) : null}

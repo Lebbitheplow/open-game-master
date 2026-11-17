@@ -1,4 +1,5 @@
 import { canAct } from "@/lib/dm/can-act";
+import { sheetIntelligence, sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { castFromFoeSheet } from "@/lib/dm/sheet-foe-cast";
 import { hasDungeonDelver, shieldMasterSaveBonus, spellSaveAdvantageReach } from "@/lib/srd/feat-combat";
@@ -38,6 +39,7 @@ import { sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
+import { immuneLine, immuneToUse, settleSaveImmunity } from "@/lib/dm/save-immunity";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
@@ -49,6 +51,7 @@ import { tieToTurn } from "@/lib/dm/turn-tie";
 import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { authoredWardSave } from "@/lib/dm/ar-wbf-warlock-ward";
+import { castAtPet } from "@/lib/dm/pet-save";
 import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
@@ -78,10 +81,17 @@ const castAtPlayerSchema = z.object({
   // Set by apply_hazard for a trap: Dungeon Delver saves at advantage and
   // takes half (src/lib/srd/feat-combat.ts).
   hazard: z.enum(["trap"]).optional(),
+  // Set by apply_hazard for a named trap, with hazard "trap": the save and
+  // its damage are rolled here and the trap lays what a failure leaves, for
+  // its own duration and never as save-ends (src/lib/dm/trap-run.ts).
+  conditionByTrap: z.boolean().optional(),
   // Set by apply_hazard: the square a trap or hazard comes from, for the
   // cover between it and the character on a Dexterity save.
   fromX: z.coerce.number().int().min(0).optional(),
   fromY: z.coerce.number().int().min(0).optional(),
+  // The character's pet is the target instead, making its own save
+  // (src/lib/dm/pet-save.ts castAtPet).
+  petName: z.string().trim().min(1).max(60).optional(),
 });
 
 // Best-effort enemy concentration: when a tool call names the casting enemy
@@ -141,9 +151,12 @@ export function layEnemyCondition(
       { spell: use.name, casterId: use.enemy.id, slotLevel: use.slotLevel },
       { ability: save.ability, dc: save.dc },
     );
-    const first = handleSetCondition(campaign, turn.id, fresh, { condition }, reason, { spellEffect });
+    // Its caster named, so a ward against its kind holds (Protection from
+    // Evil and Good: a fiend "can't charm, frighten, or possess the
+    // target"); unnamed, a fiend's Charm Person charmed the warded paladin.
+    const first = handleSetCondition(campaign, turn.id, fresh, { condition, sourceEnemyId: use.enemy.id }, reason, { spellEffect });
     const also = (use.spellCondition.also ?? []).filter((name) => name.toLowerCase() !== condition.toLowerCase());
-    const landed = also.filter((name) => !("error" in handleSetCondition(campaign, turn.id, getSheetById(sheet.id) ?? fresh, { condition: name }, reason, { spellEffect })));
+    const landed = also.filter((name) => !("error" in handleSetCondition(campaign, turn.id, getSheetById(sheet.id) ?? fresh, { condition: name, sourceEnemyId: use.enemy.id }, reason, { spellEffect })));
     return landed.length && !("error" in first) ? { ...first, alsoApplied: landed } : first;
   }
   // The block's own words for how long it lasts (monster-abilities.ts): a
@@ -329,6 +342,13 @@ export function handleCastAtPlayer(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
+  // At the character's pet: its own save from its own block (SRD 5.1, Saving
+  // Throws), where the GM once chose the damage on apply_damage.
+  if (args.petName) {
+    const atPet = castAtPet(campaign, turn, { ...args, petName: args.petName, saveAbility: args.saveAbility as SaveAbility | undefined }, sheet);
+    const tracked = "error" in atPet ? null : trackEnemyConcentration(campaign, args.casterEnemyId, args.spell);
+    return tracked ? { ...atPet, enemyConcentration: tracked } : atPet;
+  }
   // casterEnemyId naming a character on the other side: their own cast,
   // from their sheet (sheet-foe-cast.ts, issue 503).
   const fromSheet = castFromFoeSheet(campaign, turn, sheet.id, args, sheets, sheetsById);
@@ -376,6 +396,11 @@ export function handleCastAtPlayer(
     if ("error" in prepared) {
       return prepared;
     }
+    // Withstood before, and immune to it for the while its block says
+    // (save-immunity.ts): no save is asked, and the creature keeps its action.
+    if (immuneToUse(getSheetById(sheet.id) ?? sheet, prepared)) {
+      return { error: `${immuneLine(sheet.name, prepared)} Nothing was spent; ${prepared.enemy.displayName} may target someone else or do something else.`, retry: true };
+    }
     // Sanctuary answers a harmful spell as it answers an attack; the refused
     // caster keeps its action for another target.
     const warded = sanctuaryWard(campaign.id, prepared.enemy, sheet, sanctuaryRefusal);
@@ -395,6 +420,10 @@ export function handleCastAtPlayer(
     }
     use = prepared;
   }
+  // Hideous Laughter at a character of Intelligence 4 or less (a polymorphed
+  // hero's beast mind, a beast companion): cast, spent, no effect.
+  const laughed = use?.spell ?? args.spell;
+  ward = ward ?? (laughed ? sparedByIntelligence(laughed, spellMechanicsFor({ spell: laughed, userIds: spellAuthorsFor(campaign) })?.mech.sparesIntAtMost, { name: sheet.name, int: sheetIntelligence(sheet) }) : null);
   // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:
   // "Each dart hits a creature of your choice"): no save is asked, and the
   // darts land as one hit kept for Shield to answer. It once asked for a
@@ -517,6 +546,9 @@ export function handleCastAtPlayer(
     ...(save.notes.length ? { conditionEffects: save.notes } : {}),
     ...(use?.corrections.length ? { corrected: use.corrections } : {}),
   };
+  if (use && settleSaveImmunity(campaign.id, sheet.id, use, saved) && saved) {
+    base.immune = immuneLine(sheet.name, use);
+  }
 
   if (damage) {
     // The card shows the dice as rolled; the save halves or stops what lands.
@@ -542,10 +574,13 @@ export function handleCastAtPlayer(
       : null;
     let dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : taken.damage;
     // Shield Master: a successful Dexterity save against an effect aimed at
-    // them alone costs the reaction to take no damage at all.
+    // them alone costs the reaction to take no damage at all. The caster is
+    // the creature whose turn is under way, for surprise's "no reaction until
+    // that turn ends" (can-act.ts): the pointer alone let a hero whose lost
+    // turn came after an ambusher's answer its spell in the round it lost.
     if (saved && dealt > 0 && ability === "dex" && shieldMasterSaveBonus(sheet) > 0) {
       const live = getActiveEncounter(campaign.id);
-      if (live && !live.reactionsUsed.includes(sheet.id) && canAct({ sheet, encounter: live, kind: "reaction" }).ok) {
+      if (live && !live.reactionsUsed.includes(sheet.id) && canAct({ sheet, encounter: live, kind: "reaction", actingId: use?.enemy.id ?? null }).ok) {
         markReactionUsed(live, sheet.id);
         dealt = 0;
         base.shieldMaster = `Shield Master: the reaction turns the successful save into no damage at all; ${sheet.name}'s reaction is used until their next turn.`;
@@ -636,7 +671,8 @@ export function handleCastAtPlayer(
   }
 
   const standing = getSheetById(sheet.id);
-  if (conditionName && !saved && standing && standing.currentHp > 0) {
+  const trapLays = args.hazard === "trap" && args.conditionByTrap === true;
+  if (conditionName && !saved && standing && standing.currentHp > 0 && !trapLays) {
     const condition = canonicalCondition(conditionName);
     const applied = layEnemyCondition(
       campaign,

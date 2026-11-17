@@ -6,11 +6,13 @@
 
 import { RAGING } from "@/lib/srd/class-resources";
 import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/condition-effects";
-import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
+import { benefitsFromInvisible, conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
+import type { CreatureHold } from "@/lib/bestiary/hold-text";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
+import { pluralOf } from "@/lib/messages-logic";
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 
 export {
@@ -44,12 +46,28 @@ export type ConditionMeta = {
   // "stunned for 1 round" was counted at the round's wrap, and ran out
   // before the turn it was meant to cost (audit 2026-11-13, T04).
   countsOn?: string;
+  // A condition that stacks (a Sword of Wounding's wounds): how many, and the
+  // turn (encounters.ts turnKey) the last was laid on, for a once-per-turn
+  // rider (src/lib/dm/sword-wounding.ts).
+  stacks?: number;
+  woundedOn?: string;
+  // The hit points a mark holds back from every healing but a rest (a Sword
+  // of Wounding's, src/lib/dm/sword-wounding-logic.ts).
+  heldHp?: number;
+  // An Oathbow's oath (src/lib/dm/oathbow.ts): the clock instants it was
+  // sworn at and its sworn enemy died at.
+  oath?: { swornAt: number; diedAt?: number };
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).
   // `beyondFeet`: the save comes only at the end of a turn the holder ends
   // farther than this from the source (Dreadful Aspect: 30 feet).
-  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number };
+  // `unseen`: only at the end of a turn the holder ends where it cannot see
+  // the source (Fear).
+  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number; unseen?: boolean };
+  // A turn of its holder has ended under it: off the board, an `unseen` save
+  // comes from the end of the holder's second turn (unseen-save.ts).
+  turnEnded?: boolean;
   // Who or what put the condition there: the characterId or enemyId of the
   // charmer, the grappler or the source of the fear, or an engine word
   // ("stable" on the unconscious of a stabilized creature). Optional, and
@@ -106,6 +124,16 @@ export type ConditionMeta = {
   mote?: boolean;
   // A monster's grapple: its printed escape DC (grapple.ts).
   escapeDc?: number;
+  // What holds a restrained creature: the check that breaks it and the
+  // thing as an object (a giant spider's webbing, creature-hold.ts).
+  hold?: CreatureHold;
+  // Laid by magic with no spell named (set_enemy_condition magical): its
+  // repeat saves meet Magic Resistance as the first one did
+  // (condition-tick.ts).
+  magical?: boolean;
+  // Manacles the party's foes put on: their one key is the foes', not the
+  // party's (manacles.ts).
+  keyWithFoes?: boolean;
   // The Grappler feat's pin, on the grappler's own restraint: the creature
   // they hold pinned (grappler-pin.ts).
   pinning?: string;
@@ -115,6 +143,8 @@ export type ConditionMeta = {
   // Ends when the rest it was raised for ends, short or long (Hearth of
   // Moonlight and Shadow: "until the rest ends"): src/lib/dm/rest-logic.ts.
   untilRestEnds?: boolean;
+  // A drained score's value before the first drain (creature-drain-logic.ts).
+  scoreFrom?: number;
   // Each character a creature has withstood, where one mark answers several
   // (Instinctive Charm).
   sources?: string[];
@@ -356,10 +386,47 @@ export function removeConditionInstances(
   return { conditions, meta: nextMeta, ended: false, removed: list.length - kept.length };
 }
 
-const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified"];
+// The instances that end because these combatants' turns are starting
+// (Dodge, Shield, the Protection style: untilTurnOf). A condition another
+// source still holds stays. The pointer runs it over the creatures' rows, the
+// sheets and the pets (condition-tick.ts endTurnStartHolds, pet-conditions.ts).
+export function endInstancesBoundTo(
+  conditions: string[],
+  meta: ConditionMetaMap,
+  starting: Set<string>,
+): { conditions: string[]; meta: ConditionMetaMap; ended: string[]; changed: boolean } {
+  let nextConditions = conditions;
+  let nextMeta = meta;
+  const ended: string[] = [];
+  let changed = false;
+  for (const name of conditions) {
+    const result = removeConditionInstances(nextConditions, nextMeta, name, (instance) =>
+      Boolean(instance.untilTurnOf && starting.has(instance.untilTurnOf)),
+    );
+    if (result.removed) {
+      changed = true;
+      nextConditions = result.conditions;
+      nextMeta = result.meta;
+      if (result.ended) {
+        ended.push(name);
+      }
+    }
+  }
+  return { conditions: nextConditions, meta: nextMeta, ended, changed };
+}
+
+// Banished is among them: "While there, the target is incapacitated" (SRD
+// 5.1, Banishment), and so is every banishment that borrows the word (Banishing
+// Arrow: "it is incapacitated"; Arcane Abjuration "as the banishment spell";
+// a Mortal Bulwark or a violet ray sending one home). Only the spell laid an
+// incapacitated beside it, so a creature the arrow sent off still reacted.
+const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified", "banished"];
 // Each of these says "can't move" (or speed 0) in its own text (SRD 5.1,
 // Conditions); bare "incapacitated" takes actions and reactions only.
-const SPEED_ZERO = ["grappled", "restrained", "paralyzed", "stunned", "unconscious", "petrified"];
+// A hunting trap's jaws too (src/lib/srd/trap-specs.ts): the creature
+// caught must "stop moving", held after by a chain "typically 3 feet long",
+// so it cannot leave its square; it walked off with the trap on its leg.
+const SPEED_ZERO = ["grappled", "restrained", "paralyzed", "stunned", "unconscious", "petrified", "caught in a hunting trap"];
 const AUTO_FAIL_STR_DEX = ["paralyzed", "stunned", "unconscious", "petrified"];
 // Attacks against these have advantage. Each of them says so in its own
 // text; bare "incapacitated" only takes away actions and reactions.
@@ -381,6 +448,14 @@ const BLIND = ["blinded"];
 // and they get advantage on DEX saves. Applied by take_action
 // (src/lib/dm/action-tools.ts); named here because the mechanics are here.
 export const DODGING = "dodging";
+
+// "You lose this benefit if you are incapacitated or if your speed drops to
+// 0" (SRD 5.1, Dodge). Only the enemies' swings dropped it at speed 0
+// (opportunity.ts withLiveDodge), so a goblin that dodged and was then
+// grappled still turned a hero's sword and still saved with advantage.
+function dodgeHolds(conditions: string[]): boolean {
+  return Boolean(has(conditions, [DODGING])) && !isIncapacitated(conditions) && effectiveSpeed(conditions, 30) > 0;
+}
 // Ability checks suffer disadvantage.
 const CHECK_DISADVANTAGE = ["poisoned", "frightened"];
 
@@ -424,7 +499,7 @@ export function sightBlockedBy(
   if (has(viewerConditions, ["blinded"]) && !options.blindsight) {
     return "blinded";
   }
-  if (has(seenConditions, ["invisible"]) && !seesInvisible(viewerConditions, options)) {
+  if (benefitsFromInvisible(seenConditions) && !seesInvisible(viewerConditions, options)) {
     return "invisible";
   }
   return options.hidden !== false && has(seenConditions, ["hidden"]) ? "hidden" : null;
@@ -518,7 +593,8 @@ export function attackContext(input: {
     notes.push(`attacker is ${attackerDown}: disadvantage`);
   }
   // See Invisibility and True Seeing see the invisible (condition-effects-last.ts).
-  if (has(input.attackerConditions, ["invisible"]) && !seesInvisible(input.targetConditions, targetSees)) {
+  // Outlined by Faerie Fire, invisibility counts for nothing (benefitsFromInvisible).
+  if (benefitsFromInvisible(input.attackerConditions) && !seesInvisible(input.targetConditions, targetSees)) {
     if (input.targetAlert) notes.push("attacker is invisible: no advantage against an Alert target");
     else {
       sources.push("advantage");
@@ -548,7 +624,7 @@ export function attackContext(input: {
     sources.push("advantage");
     notes.push(`target is ${targetOpen}: advantage`);
   }
-  if (has(input.targetConditions, ["invisible"]) && !seesInvisible(input.attackerConditions, attackerSees)) {
+  if (benefitsFromInvisible(input.targetConditions) && !seesInvisible(input.attackerConditions, attackerSees)) {
     sources.push("disadvantage");
     notes.push("target is invisible: disadvantage");
   }
@@ -564,12 +640,12 @@ export function attackContext(input: {
   // 5.1, Dodge): not while blinded, nor against an invisible attacker it
   // cannot see through or a hidden one, nor one the dark hides.
   const dodgerSees = !sightBlockedBy(input.targetConditions, input.attackerConditions, targetSees) && input.targetSeesAttacker !== false;
-  if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions) && dodgerSees) {
+  if (dodgeHolds(input.targetConditions) && dodgerSees) {
     sources.push("disadvantage");
     notes.push("target is dodging: disadvantage");
   }
   // Effect conditions on the target (blur, faerie fire, protected).
-  const incoming = conditionIncomingAttackState(input.targetConditions, input.attackerType);
+  const incoming = conditionIncomingAttackState(input.targetConditions, input.attackerType, Boolean(attackerSees.blindsight || attackerSees.truesight));
   sources.push(...incoming.sources);
   notes.push(...incoming.notes);
 
@@ -610,7 +686,7 @@ export function rollDerivation(
       notes.push("restrained: disadvantage on DEX saves");
     }
     // The other half of the Dodge action.
-    if (ability === "dex" && has(conditions, [DODGING]) && !isIncapacitated(conditions)) {
+    if (ability === "dex" && dodgeHolds(conditions)) {
       sources.push("advantage");
       notes.push("dodging: advantage on DEX saves");
     }
@@ -674,22 +750,32 @@ export function durationArgsFor(rounds: number): { rounds?: number; minutes?: nu
 }
 
 // Rounds left as people say them: "3 rounds", "45 min", "2 h 30 min".
-export function describeConditionDuration(rounds: number): string {
+export function describeConditionDuration(
+  rounds: number,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const tp = pluralOf(t);
   if (rounds < ROUNDS_PER_MINUTE) {
-    return `${rounds} round${rounds === 1 ? "" : "s"}`;
+    return t ? tp("{count} round", "{count} rounds", { count: rounds }) : `${rounds} round${rounds === 1 ? "" : "s"}`;
   }
   const minutes = Math.ceil(rounds / ROUNDS_PER_MINUTE);
   if (minutes < 60) {
-    return `${minutes} min`;
+    return t ? t("{minutes} min", { minutes }) : `${minutes} min`;
   }
   const hours = Math.floor(minutes / 60);
   if (hours >= 48) {
     const days = Math.floor(hours / 24);
     const leftHours = hours % 24;
-    return leftHours ? `${days} days ${leftHours} h` : `${days} days`;
+    if (leftHours) {
+      return t ? tp("{count} day {hours} h", "{count} days {hours} h", { count: days, hours: leftHours }) : `${days} days ${leftHours} h`;
+    }
+    return t ? tp("{count} day", "{count} days", { count: days }) : `${days} days`;
   }
   const rest = minutes % 60;
-  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+  if (rest) {
+    return t ? t("{hours} h {minutes} min", { hours, minutes: rest }) : `${hours} h ${rest} min`;
+  }
+  return t ? t("{hours} h", { hours }) : `${hours} h`;
 }
 
 // One tick of `by` rounds (a round wrap in combat, or the in-world clock
@@ -882,12 +968,23 @@ export function exhaustionMaxHp(level: number, maxHp: number): number {
 // stored maxHp is the character's own, and the item's share is added here
 // while it is worn and attuned. A caller without the scores or the gear to
 // hand gets the stored number.
+//
+// A drain on the maximum (a wight's Life Drain: "its hit point maximum is
+// reduced by an amount equal to the damage taken"; mummy rot, Harm) is off
+// the stored number already (maxHpRiders). Exhaustion 4 halves the maximum
+// and the drain takes its whole amount off that: halving the stored number
+// halved the drain too, so at exhaustion 4 a 10-point drain cost 5, healing
+// filled past the maximum the drain left, and a drain as large as the halved
+// maximum killed nobody. Read from the sheet's conditions; a caller without
+// them gets the stored number halved.
 export function effectiveMaxHp(sheet: {
   maxHp: number;
   exhaustion?: number | null;
   level?: number;
   abilities?: Record<"str" | "dex" | "con" | "int" | "wis" | "cha", number>;
   equipment?: Array<{ name: string; equipped?: boolean; attuned?: boolean }>;
+  conditions?: string[];
+  conditionMeta?: unknown;
 }): number {
   let max = sheet.maxHp;
   if (sheet.abilities && sheet.equipment?.length && sheet.level) {
@@ -900,7 +997,14 @@ export function effectiveMaxHp(sheet: {
   }
   // Inured to Undeath: a maximum that cannot be reduced is not halved
   // (ar-ws-inured-logic.ts).
-  return (sheet.exhaustion ?? 0) >= 4 && maxHpCannotFall(sheet) ? max : exhaustionMaxHp(sheet.exhaustion ?? 0, max);
+  const level = sheet.exhaustion ?? 0;
+  if (level < 4 || maxHpCannotFall(sheet)) {
+    return level >= 4 ? max : exhaustionMaxHp(level, max);
+  }
+  const drain = sheet.conditions ? maxHpRiders(sheet.conditions, sheet.conditionMeta as ConditionMetaMap | undefined).drain : 0;
+  // Never below 1 by the halving: the drain that takes the last of it kills,
+  // and says so itself (enemy-hit.ts drainMaxHp).
+  return drain > 0 ? Math.max(1, exhaustionMaxHp(level, max + drain) - drain) : exhaustionMaxHp(level, max);
 }
 
 // Advantage effect of exhaustion on a d20 roll: level 1+ = disadvantage on
@@ -930,6 +1034,9 @@ export function describeExhaustion(level: number): string {
     level >= 3 ? "disadvantage on attacks and saves" : null,
     level >= 4 ? "hit point maximum halved" : null,
     level >= 5 ? "speed 0" : null,
+    // SRD 5.1: "6: Death." Listed as level 5, a hero at 6 read as one who
+    // could not move.
+    level >= 6 ? "death" : null,
   ].filter(Boolean);
   return `exhaustion level ${level}${effects.length ? ` (${effects.join("; ")})` : ""}`;
 }

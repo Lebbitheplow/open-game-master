@@ -29,6 +29,8 @@ import type { ItemTag } from "@/lib/schemas/item-tags";
 import { ownBudget, refuse, retry, saveEquipment } from "@/lib/dm/gear-store";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
+import { outOfHand } from "@/lib/dm/fallen-gear-logic";
+import { capacityProblem } from "@/lib/dm/load-rules";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -94,7 +96,7 @@ export function drop(
     x: token?.x ?? null,
     y: token?.y ?? null,
     place: placeName(campaign.id),
-    item: handedOverRow(row, removal.removed),
+    item: handedOverRow(row, removal.removed, { from: sheet.id }),
     droppedBy: sheet.name,
   });
   saveEquipment(campaign, turn, sheet, removal.equipment, "drop_item", { name: row.name, dropped: removal.removed }, reason || `Dropped ${row.name}`);
@@ -138,7 +140,7 @@ export function throwToGround(campaign: Campaign, turn: DmTurn | null, sheet: Ch
     x: token?.x ?? null,
     y: token?.y ?? null,
     place: placeName(campaign.id),
-    item: handedOverRow(row, 1),
+    item: handedOverRow(row, 1, { from: sheet.id }),
     droppedBy: sheet.name,
   });
   saveEquipment(campaign, turn, fresh, equipment, "throw_item", { name: row.name, thrown: 1 }, `Threw ${row.name}`);
@@ -242,9 +244,18 @@ export function pickUp(
     cost = spent.note ?? "";
   }
   const taken = Math.min(qty, found.item.item.qty);
-  takeFromDroppedItem(found.item.id, taken);
   const fresh = getSheetById(sheet.id) ?? sheet;
-  const hold = holdIfFree(addRowMath(fresh.equipment, handedOverRow(found.item.item, taken)), found.item.item.name);
+  // A row its owner let go of as they fell comes back still attuned
+  // (fallen-gear.ts): letting go never ends an attunement; a hand-over does.
+  const row = found.item.ownerId === sheet.id ? outOfHand(found.item.item, taken) : handedOverRow(found.item.item, taken, { to: fresh.id });
+  const hold = holdIfFree(addRowMath(fresh.equipment, row), found.item.item.name);
+  // Strength x 15 is all they can carry, as a grant holds it (load-rules.ts):
+  // past it the thing stays on the ground, nothing spent.
+  const tooHeavy = capacityProblem(fresh, hold.equipment, found.item.item.name);
+  if (tooHeavy) {
+    return { ...tooHeavy, error: `${tooHeavy.error} It stays where it lies.` };
+  }
+  takeFromDroppedItem(found.item.id, taken);
   saveEquipment(campaign, turn, fresh, hold.equipment, "pick_up_item", { name: found.item.item.name, taken }, reason || `Picked up ${found.item.item.name}`);
   if (encounter && budget) {
     storeBudget(encounter, budget);

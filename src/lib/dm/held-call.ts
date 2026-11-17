@@ -44,7 +44,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { ownTurnOf } from "@/lib/dm/held-turn";
-import { getRoll, insertRoll, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import { getRoll, insertRoll, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -145,6 +145,10 @@ export function inHeldCall(): boolean {
 export function heldCallTurn(): DmTurn | null {
   return globalThis.__odmHeldTrial?.turn ?? null;
 }
+// The door a roll goes on record through reads it here (roll-record.ts,
+// which the clock's paths import and so cannot import this module): every
+// roll a call stores joins the call's turn, whatever its site was handed.
+globalThis.__odmHeldCallTurn = heldCallTurn;
 
 // The roll this character's run already has, of this kind, if any.
 export function takeDecided(characterId: string, kind: RollKind): DecidedRoll | null {
@@ -195,6 +199,18 @@ function noteRollRecorded(roll: { id: string; characterId: string | null; kind: 
   trial.recorded.set(entry.at, roll.id);
 }
 globalThis.__odmRollRecorded = noteRollRecorded;
+
+// How the dice a record is about to store came in (roll-record.ts): those of
+// the decided roll noteRollRecorded is about to match it to, the first taken
+// for that character and kind and not yet on record. Null for dice the run
+// throws itself. So a roll the player entered is on record, and sent, as
+// theirs, with nothing for its site to carry.
+function takenLanding(characterId: string | null, kind: RollKind): NonNullable<DecidedRoll["landing"]> | null {
+  const trial = globalThis.__odmHeldTrial;
+  const entry = trial && characterId ? trial.taken.find((taken) => taken.characterId === characterId && taken.kind === kind) : undefined;
+  return entry ? (trial?.decided[entry.at]?.landing ?? null) : null;
+}
+globalThis.__odmTakenLanding = takenLanding;
 
 // How many faces the run has drawn by chance so far: a park after its own
 // throw keeps only the faces before it, since the next run is handed that
@@ -271,6 +287,30 @@ function rearm(campaignId: string, armed: ReturnType<typeof armedNow>) {
     globalThis.__odmArmedShifts?.set(campaignId, armed.shifts as never);
   } else {
     globalThis.__odmArmedShifts?.delete(campaignId);
+  }
+}
+
+// The dice a call threw are the engine's own, used where they were thrown: a
+// spell's damage, a hazard's, a potion's healing. An AI GM may send a bare
+// number for damage or healing only when it is a total it asked the server
+// for this turn and nothing has spent (request_roll; src/lib/dm/ai-gate.ts
+// number). So as a call of any other name ends on an AI's turn, the damage
+// and custom rolls it added to the turn are stamped spent. Left unspent, the
+// total of a blow the engine had already landed paid for the model's own
+// apply_damage of the same number, and the blow landed twice.
+function spendOwnRolls(turn: DmTurn, call: HeldCallSpec, from: number, result: unknown) {
+  if (turn.actor !== "ai" || call.name === "request_roll") {
+    return;
+  }
+  const spend = () => {
+    for (const id of turn.rollIds.slice(from)) {
+      markRollSpent(id);
+    }
+  };
+  spend();
+  // An async handler's dice after its first wait.
+  if (result && typeof (result as { then?: unknown }).then === "function") {
+    void (result as unknown as Promise<unknown>).then(spend, () => {});
   }
 }
 
@@ -365,6 +405,7 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   }
   if (!rolledBack || (!trial.park && !trial.watchStop)) {
     deliveries.release(true);
+    spendOwnRolls(turn, call, rollIds, result);
     return result as T;
   }
   // The watch's card was opened inside the run and rolled back with it:
@@ -515,7 +556,7 @@ export function runHeldAgain(
     outcome,
     raw: !call.siteThrew,
     landing: { physical: landing.physical, source: landing.source },
-    ...(ask ? { choice: { walkerId: ask.walkerId, strike: ask.strike !== false, ...(ask.timedOut ? { timedOut: true } : {}) } } : {}),
+    ...(ask ? { choice: { walkerId: ask.walkerId, strike: ask.strike !== false, ...(ask.smite && ask.strike !== false ? { smite: true } : {}), ...(ask.timedOut ? { timedOut: true } : {}) } } : {}),
   };
   const spec = { name: call.name, rawArguments: call.rawArguments, toolCallId: call.toolCallId };
   let answer: ToolResult;

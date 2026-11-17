@@ -1,0 +1,31 @@
+{
+  "records": [
+    {
+      "viewport": "desktop",
+      "theme": "dark",
+      "images": 16,
+      "file": "extended-genre-equipment-app-desktop-dark.png"
+    },
+    {
+      "viewport": "desktop",
+      "theme": "light",
+      "images": 16,
+      "file": "extended-genre-equipment-app-desktop-light.png"
+    },
+    {
+      "viewport": "phone",
+      "theme": "dark",
+      "images": 16,
+      "file": "extended-genre-equipment-app-phone-dark.png"
+    },
+    {
+      "viewport": "phone",
+      "theme": "light",
+      "images": 16,
+      "file": "extended-genre-equipment-app-phone-light.png"
+    }
+  ],
+  "pageErrors": [],
+  "missingVariantFallback": true,
+  "scope": "Built client app shell in Chromium against the development server with synthetic local table"
+}

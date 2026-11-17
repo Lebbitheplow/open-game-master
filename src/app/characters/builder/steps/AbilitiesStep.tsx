@@ -1,8 +1,11 @@
 "use client";
 
 import { ui } from "@/lib/ui";
+import { useLocale, useT, useTp } from "@/lib/locale";
+import type { Locale } from "@/lib/messages-logic";
+import { contentName } from "@/lib/content/names";
 import { scoresFromSlots } from "../abilityDice";
-import AbilityEditor, { ABILITY_LABELS, STANDARD_ARRAY } from "../AbilityEditor";
+import AbilityEditor, { STANDARD_ARRAY } from "../AbilityEditor";
 import { abilityPriority, keyAbilities, poolSlotsFor, standardFor } from "../classAbilities";
 import type { HpExplainerInput } from "../AbilityExplainers";
 import AsiFeatEditor from "../AsiFeatEditor";
@@ -12,18 +15,31 @@ import type { BuilderDerived } from "../useBuilderDerived";
 import type { BuilderState } from "../useBuilderState";
 import { PickForMe } from "./shared";
 
+// An ability key as its name in the reader's language (sheet.ability.*).
+const ABILITY_WORDS = {
+  str: "Strength",
+  dex: "Dexterity",
+  con: "Constitution",
+  int: "Intelligence",
+  wis: "Wisdom",
+  cha: "Charisma",
+} as const;
+
 // What the health explainer works from, shared with the Max HP line on the
 // last step: both read derived.hp (builderHp.ts), the figure the server
 // saves. Null until the class and all six scores are known.
 export function hpExplainerInput(
   derived: BuilderDerived,
   klass: ClassOption | undefined,
+  locale: Locale = "en",
 ): HpExplainerInput | null {
   if (!klass || !derived.shownAbilities || !derived.hp) {
     return null;
   }
   return {
-    className: klass.name,
+    // The explainer's sentences name the class, so it reads in the reader's
+    // language (contentName).
+    className: contentName("classes", klass.name, locale),
     // The Constitution the sheet will hold, a half-feat's point included.
     con: derived.shownAbilities.con,
     level: derived.effectiveLevel,
@@ -37,15 +53,19 @@ export function hpExplainerInput(
 // fighter who cannot hit. Point buy is left to the player: it is chosen by
 // people who want the shape themselves.
 function PlaceForClass({ state, klass }: { state: BuilderState; klass: ClassOption }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const pool = state.rollPool;
   if (state.method === "pointbuy" || (state.method === "roll" && !pool)) {
     return null;
   }
-  const words = (ability: string) => ABILITY_LABELS[ability as keyof typeof ABILITY_LABELS] ?? ability;
+  const words = (ability: string) => t(ABILITY_WORDS[ability as keyof typeof ABILITY_WORDS] ?? ability);
   const keys = keyAbilities(klass);
   const named = new Set(keys.flat());
   const then = abilityPriority(klass).find((ability) => !named.has(ability));
-  const needs = keys.map((group) => group.map(words).join(" and ")).join(" or ");
+  const needs = keys.map((group) => group.map(words).join(` ${t("and")} `)).join(` ${t("or")} `);
+  const className = contentName("classes", klass.name, locale);
   const article = /^[aeiou]/i.test(klass.name) ? "An" : "A";
   function place() {
     if (state.method === "standard") {
@@ -59,11 +79,15 @@ function PlaceForClass({ state, klass }: { state: BuilderState; klass: ClassOpti
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-stone-800 bg-stone-950/40 px-3 py-2 text-xs text-stone-300">
       <span className="min-w-0 flex-1">
-        {article} {klass.name.toLowerCase()} leans on {needs}
-        {then ? `, then ${words(then)}` : ""}.
+        {t("{article} {class} leans on {needs}{then}.", {
+          article,
+          class: className.toLowerCase(),
+          needs,
+          then: then ? t(", then {ability}", { ability: words(then) }) : "",
+        })}
       </span>
       <button type="button" onClick={place} className={ui.btnSmall}>
-        Place them for {article.toLowerCase()} {klass.name}
+        {t("Place them for {article} {class}", { article: article.toLowerCase(), class: className })}
       </button>
     </div>
   );
@@ -88,6 +112,9 @@ export function AbilitiesStep({
   // the cards stay blank until it is pressed.
   onPickForMe?: (target: "asi") => void;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const { asiSlotLevels, activeAsiChoices, asiTakenInPlay, asiBaseAbilities, effectiveLevel } = derived;
   const asiToPick = asiTakenInPlay.filter((taken) => !taken).length;
   const asiOpen = activeAsiChoices.filter((choice, index) => choice === null && !asiTakenInPlay[index]).length;
@@ -110,8 +137,12 @@ export function AbilitiesStep({
         racialBonus={derived.racialBonus}
         gains={derived.abilityGains}
         asiCount={asiToPick}
-        who={race && klass ? `${race.name} ${klass.name}`.toLowerCase() : ""}
-        hp={hpExplainerInput(derived, klass)}
+        who={
+          race && klass
+            ? `${contentName("species", race.name, locale)} ${contentName("classes", klass.name, locale)}`.toLowerCase()
+            : ""
+        }
+        hp={hpExplainerInput(derived, klass, locale)}
       />
       </div>
       {asiSlotLevels.length ? (
@@ -119,10 +150,12 @@ export function AbilitiesStep({
         {onPickForMe && asiOpen > 0 ? (
           <p className="mb-2 flex flex-wrap items-center gap-2 text-xs text-stone-400">
             <span className="grow">
-              {asiOpen === 1 ? "One improvement is" : `${asiOpen} improvements are`} still to choose. Pick for me adds
-              the points to {klass ? `a ${klass.name.toLowerCase()}'s` : "the"} main scores, never a feat.
+              {t(asiOpen === 1 ? "One improvement is still to choose. Pick for me adds the points to {scores} main scores, never a feat." : "{count} improvements are still to choose. Pick for me adds the points to {scores} main scores, never a feat.", {
+                count: asiOpen,
+                scores: klass ? t("a {class}'s", { class: klass.name.toLowerCase() }) : t("the"),
+              })}
             </span>
-            <PickForMe what={asiOpen === 1 ? "the improvement" : "the improvements"} onPick={() => onPickForMe("asi")} />
+            <PickForMe what={tp("the improvement", "the improvements", { count: asiOpen })} onPick={() => onPickForMe("asi")} />
           </p>
         ) : null}
         <AsiFeatEditor

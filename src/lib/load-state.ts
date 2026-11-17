@@ -11,33 +11,36 @@ import { useCallback, useState } from "react";
 // says empty, and a reply that says no is shown in its own words with a way
 // to ask again.
 
-export type LoadOutcome<T> = { payload: T; error: null } | { payload: null; error: string };
+// Pure logic: the translator comes in as the first argument (the agoLabel
+// pattern), so the composed sentence reads in the caller's locale. The
+// caller also names its list — an already translated label, usually
+// `t("load.label.lore")` or the like.
+export type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
-export const UNREACHABLE = "The server could not be reached.";
-export const UNREADABLE = "The server's answer could not be read.";
+export type LoadOutcome<T> = { payload: T; error: null } | { payload: null; error: string };
 
 // Reads a list request to its end: the JSON payload when the server said
 // yes; otherwise one sentence, the server's own where it gave one ("Only the
 // Dungeon Master can do that."), after what did not load. Never throws, so
 // a `.then` on it is the whole handling.
-export async function readLoad<T>(request: Promise<Response>, what: string): Promise<LoadOutcome<T>> {
-  const failed = (reason: string): LoadOutcome<T> => ({ payload: null, error: `${what} did not load. ${reason}` });
+export async function readLoad<T>(t: Translate, request: Promise<Response>, what: string): Promise<LoadOutcome<T>> {
+  const failed = (reason: string): LoadOutcome<T> => ({ payload: null, error: t("{what} did not load. {reason}", { what, reason }) });
   let response: Response;
   try {
     response = await request;
   } catch {
-    return failed(UNREACHABLE);
+    return failed(t("The server could not be reached.", { context: "load.unreachable" }));
   }
   if (response.ok) {
     try {
       return { payload: (await response.json()) as T, error: null };
     } catch {
       // A 200 that is not JSON: a proxy's sign-in page, a cut-off body.
-      return failed(UNREADABLE);
+      return failed(t("The server's answer could not be read."));
     }
   }
   const body = (await response.json().catch(() => ({}))) as { error?: unknown };
-  const reason = typeof body.error === "string" && body.error.trim() ? body.error.trim() : `The server answered ${response.status}.`;
+  const reason = typeof body.error === "string" && body.error.trim() ? body.error.trim() : t("The server answered {code}.", { code: response.status });
   return failed(reason);
 }
 
@@ -52,12 +55,12 @@ export type WriteOutcome<T> =
   | { payload: T; error: null; unanswered: false }
   | { payload: null; error: string; unanswered: boolean };
 
-export async function readWrite<T = Record<string, unknown>>(request: Promise<Response>, failed: string): Promise<WriteOutcome<T>> {
+export async function readWrite<T = Record<string, unknown>>(t: Translate, request: Promise<Response>, failed: string): Promise<WriteOutcome<T>> {
   let response: Response;
   try {
     response = await request;
   } catch {
-    return { payload: null, error: `${failed} ${UNREACHABLE}`, unanswered: true };
+    return { payload: null, error: `${failed} ${t("The server could not be reached.", { context: "load.unreachable" })}`, unanswered: true };
   }
   // A yes whose body is not JSON (a 204, a cut-off body) is still a yes: the
   // change was made, and a panel that needs the row reads its list again.
@@ -65,7 +68,7 @@ export async function readWrite<T = Record<string, unknown>>(request: Promise<Re
   if (response.ok) {
     return { payload: body as T, error: null, unanswered: false };
   }
-  const reason = typeof body.error === "string" && body.error.trim() ? body.error.trim() : `${failed} The server answered ${response.status}.`;
+  const reason = typeof body.error === "string" && body.error.trim() ? body.error.trim() : `${failed} ${t("The server answered {code}.", { code: response.status })}`;
   return { payload: null, error: reason, unanswered: false };
 }
 

@@ -12,6 +12,8 @@ import { GlyphPlate, RowMenu } from "@/app/workshop/kit";
 import { LoadFailed } from "@/app/campaigns/[campaignId]/PanelKit";
 import type { RollTable } from "@/lib/db/roll-tables";
 import { textKey } from "@/lib/language/text-logic";
+import { useT, useTp } from "@/lib/locale";
+import { translate } from "@/lib/messages-logic";
 
 // The workshop's view of the DM's tables: one full-width row per table with
 // the die it rolls, how many rows it has and whether every face of that die
@@ -39,16 +41,17 @@ export function coverageOf(entries: RollTableEntry[]): TableCoverage {
 // Green when every face lands on one row; amber with the counts when a roll
 // can land nowhere or on two rows at once. Which numbers are the trouble is
 // the editor's coverage line, where the DM can fix them.
-export function coverageLabel(coverage: TableCoverage): string {
+export function coverageLabel(coverage: TableCoverage, t?: (key: string, vars?: Record<string, string | number>) => string): string {
+  const say = t ?? ((key: string, vars?: Record<string, string | number>) => translate("en", key, vars));
   if (!coverage.gaps && !coverage.overlaps) {
-    return `covers 1 to ${coverage.die}`;
+    return say("covers 1 to {die}", { die: coverage.die });
   }
   const parts: string[] = [];
   if (coverage.gaps) {
-    parts.push(`${coverage.gaps} ${coverage.gaps === 1 ? "gap" : "gaps"}`);
+    parts.push(say("workshop.tables.rows.gaps", { count: coverage.gaps }));
   }
   if (coverage.overlaps) {
-    parts.push(`${coverage.overlaps} ${coverage.overlaps === 1 ? "overlap" : "overlaps"}`);
+    parts.push(say("workshop.tables.rows.overlaps", { count: coverage.overlaps }));
   }
   return parts.join(", ");
 }
@@ -101,6 +104,8 @@ export function TableRows({
   onDelete,
 }: RowsProps) {
   const [query, setQuery] = useState("");
+  const t = useT();
+  const tp = useTp();
   const needle = textKey(query);
   const [sort, setSort] = useState<RowSort>("made");
   const shown = sortRows(
@@ -116,12 +121,12 @@ export function TableRows({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search your tables"
-          aria-label="Search your tables by name"
+          placeholder={t("Search your tables")}
+          aria-label={t("Search your tables by name")}
           className={`${ui.input} pl-9`}
         />
       </label>
-      <ListTally shown={shown.length} total={tables.length} noun={["table", "tables"]} sort={sort} onSort={setSort} />
+      <ListTally shown={shown.length} total={tables.length} noun={[t("table"), t("tables")]} sort={sort} onSort={setSort} />
 
       <ul className="stagger-up grid gap-2 lg:grid-cols-2">
         {shown.map((table) => {
@@ -130,10 +135,10 @@ export function TableRows({
           // Roll stays the row's visible button; the rest live behind the
           // kebab and the right-click or long-press menu, the same list.
           const items: ContextMenuItem[] = [
-            { id: "open", label: "Open", glyph: "system-tables", onSelect: () => onOpen(table) },
-            { id: "roll", label: "Roll", glyph: dieGlyph(coverage.die), disabled: busy === table.id, onSelect: () => onRoll(table) },
-            { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: busy === `copy-${table.id}`, onSelect: () => onDuplicate(table) },
-            { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(table) },
+            { id: "open", label: t("Open", { context: "action.open" }), glyph: "system-tables", onSelect: () => onOpen(table) },
+            { id: "roll", label: t("Roll", { context: "workshop.tables.rows.roll" }), glyph: dieGlyph(coverage.die), disabled: busy === table.id, onSelect: () => onRoll(table) },
+            { id: "duplicate", label: t("Duplicate"), glyph: "ui-duplicate", disabled: busy === `copy-${table.id}`, onSelect: () => onDuplicate(table) },
+            { id: "delete", label: t("Delete"), glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(table) },
           ];
           return (
             <ContextMenu as="li" key={table.id} label={table.name} items={items} className={cn(ui.cardHover, "min-w-0 p-3")}>
@@ -152,7 +157,7 @@ export function TableRows({
                   </span>
                   <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-stone-500">
                     <span>
-                      {coverage.rows} {coverage.rows === 1 ? "row" : "rows"}
+                      {tp("{count} row", "{count} rows", { count: coverage.rows })}
                     </span>
                     <span
                       className={cn(
@@ -160,11 +165,11 @@ export function TableRows({
                         clean ? COVERED : PATCHY,
                       )}
                     >
-                      {coverageLabel(coverage)}
+                      {coverageLabel(coverage, t)}
                     </span>
                     {table.noReplacement ? (
                       <span className="rounded-sm border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-display text-[10px] tracking-wider text-violet-300">
-                        deck, {table.drawn.length} dealt
+                        {t("deck, {count} dealt", { count: table.drawn.length })}
                       </span>
                     ) : null}
                   </span>
@@ -176,7 +181,7 @@ export function TableRows({
                     disabled={busy === table.id}
                     className={cn(ui.btnSecondary, "h-9")}
                   >
-                    {busy === table.id ? <Loader2 className="size-3.5 animate-spin" /> : "Roll"}
+                    {busy === table.id ? <Loader2 className="size-3.5 animate-spin" /> : t("Roll", { context: "workshop.tables.rows.roll" })}
                   </button>
                   <RowMenu items={items} label={table.name} />
                 </span>
@@ -186,7 +191,7 @@ export function TableRows({
                   <p>
                     <span className="text-amber-200">{result.total}:</span> {result.text}
                     {result.remaining !== null ? (
-                      <span className="ml-1 text-stone-500">({result.remaining} left)</span>
+                      <span className="ml-1 text-stone-500">{t("({count} left)", { count: result.remaining })}</span>
                     ) : null}
                   </p>
                   {result.chain.map((line, index) => (
@@ -213,7 +218,7 @@ export function TableRows({
               <GameIcon icon={{ kind: "glyph", key: "system-tables" }} size="size-10" />
               <Plus className="absolute -bottom-1 -right-1 size-4 rounded-full bg-stone-900 text-amber-300" aria-hidden="true" />
             </span>
-            <span className="font-display tracking-wide">New table</span>
+            <span className="font-display tracking-wide">{t("New table")}</span>
           </button>
         </li>
       </ul>
@@ -222,10 +227,10 @@ export function TableRows({
         <LoadFailed error={loadError} onRetry={onRetry} />
       ) : tables.length === 0 ? (
         <p className="reveal text-[11px] text-stone-500">
-          {loaded ? "No tables yet. Start one with New table, or paste one out of a book." : "Loading..."}
+          {loaded ? t("No tables yet. Start one with New table, or paste one out of a book.") : t("Loading...")}
         </p>
       ) : shown.length === 0 ? (
-        <p className="live-in text-xs text-stone-500">No table by that name.</p>
+        <p className="live-in text-xs text-stone-500">{t("No table by that name.")}</p>
       ) : null}
       {loaded && loadError ? <LoadFailed error={loadError} onRetry={onRetry} /> : null}
     </div>

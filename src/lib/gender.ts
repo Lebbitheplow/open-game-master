@@ -3,9 +3,29 @@
 // cast, the stand-in face and the speech reader's pronouns read it the same
 // way at every table, whatever language the table plays in. Pure and
 // zod-free, so the builder and the NPC form import it.
+import type { Locale } from "./messages-logic";
 
 export const GENDERS = ["Female", "Male", "Nonbinary"] as const;
 export type Gender = (typeof GENDERS)[number] | "";
+
+// The choice lists' labels, in the reader's language (the MonsterFields
+// SIZE_WORDS_FR pattern): the stored values stay the English ids; only the
+// label reads the reader's language. Neither the SRD's French nor its name
+// tables print these words (they are the table's own, adjectives agreeing
+// with the person they describe), so the FR bank carries the wording the
+// dictionary's gender questions already speak.
+const GENDER_LABELS_FR: Record<string, string> = {
+  Female: "Féminin",
+  Male: "Masculin",
+  Nonbinary: "Non binaire",
+};
+
+// A gender as the choice list prints it, or the stored word when the map
+// does not know it (a free-text value read as unspecified never lands
+// here). An empty gender reads as the label its picker gives it.
+export function genderLabel(gender: Gender, locale: Locale): string {
+  return locale === "fr" ? (GENDER_LABELS_FR[gender] ?? gender) : gender;
+}
 
 // A stored value as a choice. Sheets written through the API before the
 // field was fixed may hold free text; it reads as unspecified.

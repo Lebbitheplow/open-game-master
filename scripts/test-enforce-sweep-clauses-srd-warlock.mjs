@@ -25,6 +25,8 @@ P["warlock.dark-ones-own-luck.rest"] = async () => {
 P["warlock.fiendish-resilience.magical-weapons"] = async () => {
   const t = await rig.table();
   const who = fiend(t, 10);
+  // The type is chosen as a rest ends (SRD 5.1, Fiendish Resilience).
+  assert.equal((await t.rest("short")).ok, true);
   const chosen = await t.use(who, "Fiendish Resilience", { variant: "slashing" });
   assert.equal(chosen.ok, true, chosen.error);
   const hit = async (args) => {
@@ -54,7 +56,8 @@ const onGround = (t, name) => dropped.listDroppedItems(t.world.campaignId).filte
 
 P["warlock.pact-of-the-chain.familiar-attack"] = async () => {
   const t = await rig.table();
-  const who = boon(t, "Pact of the Chain", { equipment: [{ name: "Dagger", qty: 1, equipped: true }] });
+  // The pact's Find Familiar, Pact Magic, and the 10 gp of incense its casting burns.
+  const who = boon(t, "Pact of the Chain", { equipment: [{ name: "Dagger", qty: 1, equipped: true }], gold: 10, spellcasting: { ability: "cha", slots: { 3: { max: 2, used: 0 } }, known: ["Find Familiar"], prepared: [], cantrips: [] } });
   const called = await t.invoke("summon_pet", { characterId: who.id, kind: "familiar", form: "imp" });
   assert.equal(called.ok, true, called.error);
   const [foe] = await t.fight([who]);

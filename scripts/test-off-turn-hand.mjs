@@ -29,6 +29,8 @@ const { gmCompanionTurn } = await import("../src/lib/dm/companion-command.ts");
 const { gmTurnCompanion, offTurnReactors } = await import("../src/lib/player-characters.ts");
 const { offTurnReactionCards, reactionAim, reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { turnCharacterId, turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { initiativeCharacter } = await import("../src/lib/player-characters.ts");
 const { subscribe } = await import("../src/lib/events.ts");
 const { refreshesEncounter } = await import("../src/app/campaigns/[campaignId]/useCampaignStream.ts");
@@ -70,8 +72,9 @@ function handReactions(world, acting, multiCharacter) {
   const encounter = activePublicEncounter(world.campaignId);
   const sheets = world.sheets();
   const hits = encounter.lastHits ?? [];
-  const own = reactionCards(acting, turnFromEncounter(encounter, acting, { myTurn: true }), hits, sheets);
+  const own = reactionCards(t, acting, turnFromEncounter(encounter, acting, { myTurn: true }), hits, sheets);
   const others = offTurnReactionCards(
+    t,
     offTurnReactors(sheets, acting.userId, acting.id, multiCharacter).map((sheet) => ({
       sheet,
       turn: turnFromEncounter(encounter, sheet, { myTurn: false }),
@@ -274,6 +277,7 @@ await test("In the GM seat, a reaction card for a hero the GM plays is resolved 
   assert.ok(hurt < 30, "the goblin hit Poppy");
   const encounter = activePublicEncounter(world.campaignId);
   const [dodge] = offTurnReactionCards(
+    t,
     [{ sheet: world.sheet(poppy.id), turn: turnFromEncounter(encounter, world.sheet(poppy.id), { myTurn: false }) }],
     encounter.lastHits ?? [],
     world.sheets(),
@@ -315,8 +319,11 @@ await test("The screens wire it: the Hand offers the other heroes' reactions, an
 
 await test("The GM's box and cards are open on the companion's turn they play, and closed on another's", async () => {
   const { composerGate } = await import("../src/app/campaigns/[campaignId]/composerGate.ts");
+  const { translate } = await import("../src/lib/messages-logic.ts");
+  // The gate's sentences take the reader's translator; the test reads English.
+  const t = (key, vars) => translate("en", key, vars);
   const floor = { mode: "initiative", encounterId: "e", userIds: ["companion-user"], currentName: "Pip", round: 1 };
-  const gate = (playsTurn) => composerGate({ floor, sheets: [], meUserId: "gm", kind: "do", myName: "Pip", leadPrivate: false, openingNarrationPlaying: false, playsTurn });
+  const gate = (playsTurn) => composerGate(t, { floor, sheets: [], meUserId: "gm", kind: "do", myName: "Pip", leadPrivate: false, openingNarrationPlaying: false, playsTurn });
   assert.equal(gate(true).inputBlocked, false);
   assert.equal(gate(false).inputBlocked, true);
 });

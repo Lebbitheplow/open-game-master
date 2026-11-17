@@ -7,7 +7,10 @@
 //     three duplicates a 6 or higher, two an 8 or higher, one an 11 or
 //     higher, and the attack targets a duplicate instead (AC 10 + the
 //     caster's Dexterity modifier). A duplicate hit is destroyed; with none
-//     left the spell ends.
+//     left the spell ends. "A creature is unaffected by this spell if it
+//     can't see, if it relies on senses other than sight, such as
+//     blindsight, or if it can perceive illusions as false, as with
+//     truesight."
 //
 // Called from enemy_attack (src/lib/dm/enemy-attack.ts). The duplicates
 // left ride the condition's name: "mirror image" is three, then
@@ -23,6 +26,8 @@ import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logi
 import { tranquilityDc } from "@/lib/dm/srd-defenses";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { attackSight, characterSenses, enemySenses, sensesReaching } from "@/lib/dm/attack-light";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Why the enemy cannot attack this character now, or null.
 export function sanctuaryRefusal(campaignId: string, enemy: EncounterEnemy, targetId: string): ToolError | null {
@@ -35,19 +40,41 @@ export function sanctuaryRefusal(campaignId: string, enemy: EncounterEnemy, targ
   const caster = casterId ? getSheetById(casterId) : null;
   // Tranquility's Sanctuary is the monk's own: 8 + WIS + proficiency.
   const dc = (caster ? (tranquilityDc(caster) ?? spellSaveDcFor(caster, "Sanctuary")) : null) ?? 13;
-  const save = rollEnemySave(campaignId, enemy, "wis", dc);
+  // A save against a spell: Magic Resistance gives it advantage (SRD 5.1),
+  // which a fiend attacking the warded cleric was denied. On the record as
+  // every enemy save is.
+  const save = rollEnemySave(campaignId, enemy, "wis", dc, { magical: true, record: { detail: `${enemy.displayName}: WIS save against ${target.name}'s Sanctuary` } });
   if (save.success) {
     return null;
   }
   return { error: `${enemy.displayName} fails its WIS save (DC ${dc}) against ${target.name}'s Sanctuary and cannot attack them: it must choose another target or lose the attack.`, retry: true };
 }
 
+// Whether the attacker is past the duplicates: blinded, or its blindsight
+// or truesight reaches the caster (measured as an attack's senses are,
+// attack-light.ts). The duplicates turned a dragon's bite and a giant
+// spider's, both with blindsight, and a blinded ogre's club.
+// Or it cannot see the caster on the board, read as the attack's own roll
+// reads it (attackSight): magical darkness with no Devil's Sight, a dark
+// square past its darkvision, a cloud on the line. A goblin swinging blind
+// into the Darkness the wizard stood in was turned by duplicates it could
+// not see (Y20). Off the board nothing says it cannot see.
+function unfooledBy(campaignId: string, attacker: EncounterEnemy, target: CharacterSheet): boolean {
+  const senses = enemySenses(attacker);
+  const past = sensesReaching(attacker.encounterId, { refId: attacker.id, senses }, { refId: target.id });
+  if (past.blindsight || past.truesight || attacker.conditions.some((entry) => isConditionNamed(entry, "blinded"))) {
+    return true;
+  }
+  const sight = attackSight({ campaignId, encounterId: attacker.encounterId, attacker: { refId: attacker.id, senses }, target: { refId: target.id, senses: characterSenses(target) } });
+  return sight?.attackerSees === false;
+}
+
 // The attack's fate when the target holds Mirror Image: null when it goes
 // to the target as usual, or what happened to a duplicate.
-export function mirrorImageDecoy(campaignId: string, targetId: string, attackTotal: number): string | null {
+export function mirrorImageDecoy(campaignId: string, targetId: string, attackTotal: number, attacker: EncounterEnemy): string | null {
   const target = getSheetById(targetId);
   const held = target?.conditions.find((entry) => isConditionNamed(entry, "mirror image", "mirror images"));
-  if (!target || !held) {
+  if (!target || !held || unfooledBy(campaignId, attacker, target)) {
     return null;
   }
   const left = Number(/\((\d)\)/.exec(held)?.[1] ?? 3);

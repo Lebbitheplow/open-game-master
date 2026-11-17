@@ -1,3 +1,5 @@
+import { studiedRecords } from "@/lib/srd/studied-books";
+import { ABILITIES } from "@/lib/schemas/abilities";
 import { markPaidOption } from "@/lib/dm/mt-srd-metamagic";
 import { healerKitStabilize, healerKitUse } from "@/lib/dm/stabilize";
 import { afterCounterSpend } from "@/lib/dm/mt-fb-counter-riders";
@@ -72,9 +74,10 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import { healPet } from "@/lib/dm/pet-heal";
 import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
-import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
+import { advanceClock, getClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -82,7 +85,8 @@ import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { payToStand } from "@/lib/dm/stand-up";
-import { copyCost, learnProblem } from "@/lib/dm/learn-rules";
+import { copyCost, learnProblem, scrollCopyDc, scrollHolding, withoutOneScroll } from "@/lib/dm/learn-rules";
+import { rollScrollCopy } from "@/lib/dm/scroll-copy";
 import { getAuditPreImage, listAuditForTurn, listAuditSince } from "@/lib/db/sheet-audit";
 import { autoLevelCompanion } from "@/lib/dm/companion-tools";
 import {
@@ -94,6 +98,7 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { CASTING, castingHeldBy } from "@/lib/dm/long-casting-logic";
 import {
+  characterHealNamed,
   computePurchase,
   computeUseItem,
   computeUseResource,
@@ -112,12 +117,13 @@ import { spellRulesClassFor } from "@/lib/classes";
 import { planHealFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { checklistClassSpell, isCantripName, spellsAgainstLimit } from "@/lib/srd/spell-lists";
-import { arcanumSplit, casterViewsOf, mysticArcanumLevels, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
+import { arcanumSplit, casterViewsOf, countingScores, mysticArcanumLevels, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { worthProblem } from "@/lib/dm/trade-value";
 import { findCarriedItem, notCarried, sentItemTags, srdNameFor } from "@/lib/dm/item-logic";
+import { lightCarriedLight } from "@/lib/dm/light-timers";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { freeSlotsLine, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
@@ -130,6 +136,12 @@ import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
 import { actorOfCall, calledOnItsOwn, withActor } from "@/lib/dm/acting-party";
 import { openEffect } from "@/lib/dm/last-hit";
+
+import { translate } from "@/lib/messages-logic";
+
+// The tool refusals read the model's protocol: pinned English.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -235,6 +247,7 @@ export const mutationTools: ToolDef[] = [
       type: "boolean",
       description: "True for TEMPORARY HP instead of healing (they do not stack; the higher value wins).",
     },
+    petName: { type: "string", description: "Their pet is healed instead." },
     // Instead of characterId, so neither is required. Kept small: the
     // compact first call of a 16K window holds it beside an opened group
     // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
@@ -263,7 +276,7 @@ export const mutationTools: ToolDef[] = [
       method: {
         type: "string",
         enum: [...STABILIZE_METHODS],
-        description: "Default: 'check'.",
+        description: "Default: 'kit' when they carry a healer's kit, else 'check'.",
       },
     },
     ["healerId"],
@@ -377,6 +390,7 @@ export const mutationTools: ToolDef[] = [
     {
       action: { type: "string", enum: ["add", "remove"] },
       spell: { type: "string", description: "Exact spell name." },
+      from: { type: "string", enum: ["scroll", "book"], description: "A wizard's copy: scroll (one they carry; the server rolls the check) or book (or a teacher)." },
     },
     ["action", "spell"],
   ),
@@ -493,6 +507,8 @@ const argsSchema = z.object({
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
+  // heal: the owner's pet is healed instead (pet-heal.ts).
+  petName: z.string().trim().min(1).max(60).optional(),
   delta: z.coerce.number().int().optional(),
   // party_award: XP for each character, and gold in all.
   xp: z.coerce.number().int().optional(),
@@ -560,6 +576,8 @@ const argsSchema = z.object({
   casterId: z.string().optional(),
   // learn_spell: add|remove; purchase: buy|sell.
   action: z.enum(["add", "remove", "buy", "sell"]).optional(),
+  // learn_spell: where a wizard copies the spell from (scroll-copy.ts).
+  from: z.enum(["scroll", "book"]).optional(),
   reason: z.string().optional(),
 });
 
@@ -934,6 +952,21 @@ function dmMutation(
       if (unasked) {
         return { result: unasked };
       }
+      // The owner's familiar, companion or drake (pet-heal.ts).
+      if (args.petName) {
+        const named = args.casterId ? resolve(args.casterId) : null;
+        if (args.casterId && !named) {
+          return { result: unknownSheetRef("casterId", args.casterId, sheets) };
+        }
+        return {
+          result: healPet(
+            campaign,
+            turnId,
+            { owner: sheet, petName: args.petName, caster: named, spell: (args.spell ?? "").trim(), level: args.level, amount: args.amount ?? 0, temp: args.temp === true, reason, casting },
+            (castArgs) => applyDmMutation(campaign, turnId, "use_spell_slot", JSON.stringify(castArgs), sheets, sheetsById).result,
+          ),
+        };
+      }
       // A named healing spell is rolled by the server from the content
       // pack's own dice, exactly as a healing potion is, so the model never
       // decides how much a Cure Wounds restores.
@@ -1064,6 +1097,11 @@ function dmMutation(
       // Tincture's damage is beyond it (afflictions.ts healCeiling).
       const ceiling = healCeiling(campaign.id, target);
       const math = healMath(Math.min(target.currentHp, ceiling), ceiling, Math.min(amount, 200));
+      // What came back, the maximum capping it ("A creature can't regain more
+      // hit points than its hit point maximum"): the result said the amount
+      // asked, so a hero 5 short told of 20 was narrated 20 (and the board
+      // floated +20).
+      const restored = math.currentHp - Math.min(target.currentHp, ceiling);
       // A regained hit point ends a caltrops wound in patchSheet itself
       // (condition-logic.ts endedByRegain), whichever path healed.
       patchSheet(target.id, { currentHp: math.currentHp });
@@ -1073,10 +1111,10 @@ function dmMutation(
       publishSheet(campaign, target.id);
       {
         const pos = tokenPosition(campaign.id, target.id);
-        if (pos && amount > 0) {
+        if (pos && restored > 0) {
           publishFx(
             campaign.id,
-            planHealFx({ to: pos.at, toTokenId: pos.tokenId, amount: Math.min(amount, 200) }),
+            planHealFx({ to: pos.at, toTokenId: pos.tokenId, amount: restored }),
           );
         }
       }
@@ -1089,7 +1127,7 @@ function dmMutation(
         result: {
           ok: true,
           hp: `${math.currentHp}/${ceiling}`,
-          healed: amount,
+          healed: restored,
           ...(healNote ? { spell: healNote } : {}),
           ...(alsoHealed.length ? { alsoHealed } : {}),
           ...deathInfo,
@@ -1326,6 +1364,11 @@ function dmMutation(
       if (unreadable) {
         return { result: unreadable };
       }
+      // A torch or a candle is lit, burning on the clock (light-timers.ts).
+      const lit = target.id === sheet.id ? lightCarriedLight(campaign.id, sheet, findCarriedItem(sheet.equipment, itemName), getClock(campaign.id).instant) : null;
+      if (lit) {
+        return { result: { ...lit, ...objectCharge.commit() } };
+      }
       const outcome = computeUseItem(campaign, sheet, target, itemName);
       if ("error" in outcome) {
         return { result: outcome };
@@ -1444,6 +1487,13 @@ function dmMutation(
       const walled = swallowCoverError(sheet.id, target.id) ?? (args.targetEnemyId ? swallowCoverError(sheet.id, args.targetEnemyId.trim()) : null);
       if (walled) {
         return { result: walled };
+      }
+      // A healing feature reaches the character targetCharacterId names, and its
+      // user when none is named: aimed at a creature on the board alone, Lay on
+      // Hands healed the paladin instead, from the pool (audit 1116, A08).
+      const healer = !args.targetCharacterId && args.targetEnemyId?.trim() ? characterHealNamed(sheet, resourceName) : null;
+      if (healer) {
+        return { result: { error: `${healer} heals a character: pass their targetCharacterId from GAME STATE, or none for ${sheet.name}. It does not reach ${args.targetEnemyId}, and nobody else is healed in its place. Nothing was spent.`, retry: true } };
       }
       // Intimidating Presence, Holy Nimbus and Divine Intervention resolve in
       // the fight (src/lib/dm/combat-features.ts).
@@ -1933,6 +1983,9 @@ function dmMutation(
         const casters = sheet.spellcasting.casters ?? [];
         // Cantrips have their own list and never touch the spell allowance.
         if (spellLevel === 0 || (spellLevel === undefined && isCantripName(spell))) {
+          if (args.from === "scroll") {
+            return { result: { error: `${spell} is a cantrip, and only a spell of 1st level or higher is copied from a scroll into a spellbook. Nothing changed.`, refused: "rules" } };
+          }
           if (cantrips.length >= 40) {
             return { result: { error: `${sheet.name}'s cantrip list is full. They must give one up first: ask the player which, then call learn_spell with action=remove for it.`, retry: true } };
           }
@@ -1974,6 +2027,20 @@ function dmMutation(
             : checklistClassSpell(spell, "wizard", 9) !== null);
         const bookView = onWizardList ? views.find((view) => view.style === "spellbook") : undefined;
         if (bookView) {
+          // A copy from a scroll the wizard carries needs their Intelligence
+          // (Arcana) check against 10 + the spell's level, which the server
+          // rolls (scroll-copy.ts): left to the GM, a See Invisibility scroll
+          // was copied against DC 8, not 12. With the scroll in the pack and
+          // no source named, the GM says which, so a scroll is never used up
+          // for a copy made from a book.
+          const copyLevel = facts?.level ?? spellLevel ?? 1;
+          const scrollRow = scrollHolding(sheet.equipment, facts?.name ?? spell);
+          if (args.from === "scroll" && !scrollRow) {
+            return { result: { error: `${sheet.name} carries no Spell Scroll of ${spell} to copy from. Give them the scroll first, or name from "book" for a copy from another spellbook or a teacher. Nothing changed.`, retry: true } };
+          }
+          if (!args.from && scrollRow) {
+            return { result: { error: `${sheet.name} carries a scroll of ${spell}. Copied from the scroll, call learn_spell again with from "scroll": the server rolls their Intelligence (Arcana) check against DC ${scrollCopyDc(copyLevel)}, and the scroll is used up whatever the roll; never ask for that check yourself. From another spellbook or a teacher, from "book". Nothing changed.`, retry: true } };
+          }
           // Copying costs 50 gp and two hours a spell level, paid now; the
           // hours are not something a fight has room for.
           const cost = facts ? copyCost(facts, { features: sheet.features, school: spellSchoolFor(facts.name, spellAuthorsFor(campaign)) }) : { gold: 0, hours: 0 };
@@ -1995,6 +2062,17 @@ function dmMutation(
               },
             };
           }
+          // The check is rolled before anything is written (scroll-copy.ts).
+          // SRD 5.1: the scroll is destroyed whether the check succeeds or
+          // fails, and the time and the inks are spent in the attempt (the
+          // wizard's cost "represents material components you expend as you
+          // experiment with the spell").
+          const fromScroll = args.from === "scroll" ? scrollRow : null;
+          const check = fromScroll ? rollScrollCopy(campaign, sheet, facts?.name ?? spell, copyLevel, turn) : null;
+          if (check && "error" in check) {
+            return { result: check };
+          }
+          const copied = !check || check.passed;
           const left = fromCopper(purse - cost.gold * COPPER_PER_GOLD);
           const nextSpellcasting = withCasterViews(
             sheet.spellcasting,
@@ -2003,14 +2081,26 @@ function dmMutation(
             ),
           );
           const bookPatch = {
-            spellcasting: nextSpellcasting,
+            ...(copied ? { spellcasting: nextSpellcasting } : {}),
             ...(cost.gold ? { gold: left.gold, copper: left.copper } : {}),
+            ...(fromScroll ? { equipment: withoutOneScroll(sheet.equipment, fromScroll) } : {}),
           };
           patchSheet(sheet.id, bookPatch);
-          audit(campaign, turnId, sheet, "learn_spell", { action, spell, ...(cost.gold ? { cost } : {}) }, reason, bookPatch);
+          audit(campaign, turnId, sheet, "learn_spell", { action, spell, ...(cost.gold ? { cost } : {}), ...(check ? { from: "scroll", check } : {}) }, reason, bookPatch);
           publishSheet(campaign, sheet.id);
           if (cost.hours) {
             advanceClock(campaign.id, cost.hours, "hours");
+          }
+          if (check && !check.passed) {
+            return {
+              result: {
+                ok: true,
+                copied: false,
+                rolled: check.rolled,
+                dc: check.dc,
+                note: `${sheet.name}'s Arcana check (${check.rolled}) misses DC ${check.dc}: ${spell} is not written, and the scroll is destroyed in the attempt${cost.gold ? `, with the ${cost.gold} gp and ${cost.hours} hours of work spent` : ""}.`,
+              },
+            };
           }
           insertCharacterEvent({
             libraryCharacterId: sheet.libraryCharacterId,
@@ -2025,9 +2115,15 @@ function dmMutation(
               ok: true,
               learned: spell,
               spellbook: true,
-              note: `${spell} is written in the spellbook${cost.gold ? `, for ${cost.gold} gp and ${cost.hours} hours of work` : ""}. ${sheet.name} can prepare it after a long rest.`,
+              ...(check ? { rolled: check.rolled, dc: check.dc } : {}),
+              note: `${check ? `${sheet.name}'s Arcana check (${check.rolled}) meets DC ${check.dc}, and the scroll is used up. ` : ""}${spell} is written in the spellbook${cost.gold ? `, for ${cost.gold} gp and ${cost.hours} hours of work` : ""}. ${sheet.name} can prepare it after a long rest.`,
             },
           };
+        }
+        // Only a wizard's book takes a spell copied from a scroll; a
+        // sorcerer, a bard or a cleric learns from levels and the story.
+        if (args.from === "scroll") {
+          return { result: { error: `Only a wizard copies a scroll's spell into a spellbook, and ${sheet.name} keeps no spellbook for ${spell}. A spell the story teaches them is learned without from. Nothing changed.`, refused: "rules" } };
         }
         let targetCaster: (typeof casters)[number] | null = null;
         // The ceilings as the sheet's views read them: an Eldritch Knight's
@@ -2061,8 +2157,8 @@ function dmMutation(
             const level = classLevels[caster.classId.toLowerCase()] ?? sheet.level;
             const view = learnerViews[index];
             const cap = view
-              ? spellCapOf(view, sheet.abilities)
-              : suggestedSpellCount(spellRulesClassFor(caster.classId), level, abilityMod(sheet.abilities[caster.ability]));
+              ? spellCapOf(view, countingScores(sheet))
+              : suggestedSpellCount(spellRulesClassFor(caster.classId), level, abilityMod(countingScores(sheet)[caster.ability]));
             const classEntry = (sheet.classes ?? []).find(
               (entry) => entry.id.toLowerCase() === caster.classId.toLowerCase(),
             );
@@ -2089,8 +2185,8 @@ function dmMutation(
           }
         } else {
           const ceiling = learnerViews[0]
-            ? spellCapOf(learnerViews[0], sheet.abilities)
-            : suggestedSpellCount(spellRulesClassFor(sheet.class), sheet.level, abilityMod(sheet.abilities[sheet.spellcasting.ability]));
+            ? spellCapOf(learnerViews[0], countingScores(sheet))
+            : suggestedSpellCount(spellRulesClassFor(sheet.class), sheet.level, abilityMod(countingScores(sheet)[sheet.spellcasting.ability]));
           const arcana = arcanumFor(sheet.class, sheet.level, intoKnown ? known : prepared);
           if (arcana.taken && facts) {
             return arcanumTaken(facts.name, facts.level);
@@ -2228,6 +2324,13 @@ function dmMutation(
           return { result: refusal };
         }
       }
+      // A manual's or tome's reading, and the maximum it raised, is written
+      // only by use_item as the book is read (src/lib/srd/studied-books.ts).
+      if (patch.features && studiedRecords(patch.features).join("|") !== studiedRecords(sheet.features).join("|")) {
+        return {
+          result: { error: "A manual or tome read is recorded by use_item when the character reads the book; update_sheet neither adds nor removes that record. Nothing was changed.", refused: "rules" },
+        };
+      }
       // The ceiling is on what one story moment gives, however the edit is
       // split: it is measured from the sheet as it stood before the first
       // update_sheet of this turn, or of the last ten minutes at a console
@@ -2248,6 +2351,8 @@ function dmMutation(
           level: Math.min(sheet.level, baseline.level),
           maxHp: Math.min(sheet.maxHp, baseline.maxHp),
           gold: Math.min(sheet.gold, baseline.gold),
+          // A score already past 20 (a manual read, Primal Champion) may stay.
+          abilities: Object.fromEntries(ABILITIES.map((ability) => [ability, Math.max(sheet.abilities[ability], baseline.abilities[ability])])),
         },
         patch,
         typeof patch.xp === "number" ? levelForXp(patch.xp) : undefined,

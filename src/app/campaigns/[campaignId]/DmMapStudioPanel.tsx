@@ -6,7 +6,8 @@ import { HotkeyOverlay } from "@/components/ui/HotkeyOverlay";
 import { useMapSelection } from "@/app/campaigns/[campaignId]/useMapSelection";
 import { removeObjects, setDmOnly, type MapObjects } from "@/lib/battlemap/objects";
 import type { MapTheme } from "@/lib/battlemap/generate";
-import { BRUSH_LABELS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { BRUSH_LABEL_KEYS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { useT } from "@/lib/locale";
 import { resolveSkin, type MapSkin } from "@/lib/battlemap/skins";
 import { TERRAIN, tileAt, type AmbientLight, type MapLight } from "@/lib/battlemap/types";
 import type { Backdrop, BackdropTransform } from "@/lib/battlemap/backdrop";
@@ -102,6 +103,7 @@ export function DmMapStudioPanel({ campaignId }: { campaignId: string }) {
   const [error, setError] = useState("");
   const { toasts, push } = useMapToasts();
   const forgeRef = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   // The state lands in a .then callback rather than after an await, so the
   // refetch reads as "subscribe to an external system" to React and to the
@@ -299,7 +301,7 @@ export function DmMapStudioPanel({ campaignId }: { campaignId: string }) {
   }
 
   const held = MODES.find((entry) => entry.mode === tools.mode);
-  const holding = held ? (isPaintMode(tools.mode) ? `${held.label} · ${BRUSH_LABELS[tools.brush]}` : held.label) : "Nothing";
+  const holding = held ? (isPaintMode(tools.mode) ? `${held.label} · ${t(BRUSH_LABEL_KEYS[tools.brush])}` : held.label) : t("Nothing");
   const backdropPanel = <BackdropControls backdrop={board?.backdrop ?? null} onChange={(next) => void setBackdrop(next)} busy={busy} />;
 
   return (
@@ -314,7 +316,7 @@ export function DmMapStudioPanel({ campaignId }: { campaignId: string }) {
             ? `A fight is on the table, with ${state.enemyCount} ${state.enemyCount === 1 ? "enemy" : "enemies"}.`
             : state.board === "scene"
               ? "An exploration scene is on the table. The party can walk it freely."
-              : "Nothing is on the table. Open a scene to put the party on a map without a fight."}
+              : t("Nothing is on the table. Open a scene to put the party on a map without a fight.")}
         </p>
       </section>
 

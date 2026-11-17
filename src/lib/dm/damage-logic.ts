@@ -5,6 +5,7 @@
 // re-exports everything here for the callers that have always found it
 // there.
 import { RAGING } from "@/lib/srd/class-resources";
+import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import { isWorn, matchArmor, type SrdArmor } from "@/lib/srd/armor";
 import { hasItemTag, type TaggedItem } from "@/lib/srd/item-tags";
 
@@ -18,6 +19,52 @@ export const DAMAGE_TYPES = [
   "piercing", "poison", "psychic", "radiant", "slashing", "thunder",
 ];
 export const PHYSICAL_TYPES = ["bludgeoning", "piercing", "slashing"];
+
+// The thirteen damage types in Wizards of the Coast's official French SRD
+// 5.1 (SRD_CC_v5.1_FR.pdf), exactly as its « Types de dégâts » list (p. 106)
+// prints them; a type the list does not carry stays English.
+export const DAMAGE_TYPE_WORDS_FR: Record<string, string> = {
+  acid: "Acide",
+  bludgeoning: "Contondants",
+  cold: "Froid",
+  fire: "Feu",
+  force: "Force",
+  lightning: "Foudre",
+  necrotic: "Nécrotiques",
+  piercing: "Perforants",
+  poison: "Poison",
+  psychic: "Psychiques",
+  radiant: "Radiants",
+  slashing: "Tranchants",
+  thunder: "Tonnerre",
+};
+
+export type DamageLocale = "en" | "fr";
+
+// A damage type as a word on screen ("Slashing", « Tranchants »): the French
+// SRD's own capitalized list heading; a type the maps do not carry stays as
+// it was spelled in.
+export function damageTypeWord(type: string, locale: DamageLocale): string {
+  if (locale !== "fr") {
+    return type;
+  }
+  return DAMAGE_TYPE_WORDS_FR[type.trim().toLowerCase()] ?? type;
+}
+
+// The type word inside a damage expression ("1d6 slashing") reads in the
+// reader's language too, lowercase the way the French SRD's own weapon
+// tables write the cell (« 1d6 contondants »). English passes through. The
+// alternatives are DAMAGE_TYPES spelled out: a literal pattern, so a scan
+// sees the words it reads.
+const DAMAGE_TYPE_WORD_RE =
+  /\b(acid|bludgeoning|cold|fire|force|lightning|necrotic|piercing|poison|psychic|radiant|slashing|thunder)\b/g;
+
+export function damageWords(damage: string, locale: DamageLocale): string {
+  if (locale !== "fr") {
+    return damage;
+  }
+  return damage.replace(DAMAGE_TYPE_WORD_RE, (word) => (DAMAGE_TYPE_WORDS_FR[word] ?? word).toLowerCase());
+}
 
 const wholeWord = (text: string, word: string) =>
   new RegExp(`(^|[^a-z])${word.replace(/[^a-z ]/g, "")}([^a-z]|$)`).test(text);
@@ -173,13 +220,24 @@ export function petrifiedRefusal(conditions: string[] | undefined, incoming: str
 // Conditions, Petrified). Every path that lays a condition on an enemy row
 // (a spell and its riders, an area, a save, an on-hit, a contest) asks this
 // one question: a stone creature checked against its list alone was still
-// poisoned by a spell, a rider or a coated blade.
+// poisoned by a spell, a rider or a coated blade. What a spell on the
+// creature makes it immune to counts as on a character (set-condition.ts):
+// Heroism's fear, Mind Blank's charm, and Freedom of Movement's "magic can
+// neither ... cause the target to be paralyzed or restrained", which only a
+// magical lay meets (`magical`: false for a creature's own grip or web, a
+// mechanical trap). Before this an enemy under Heroism was frightened and one
+// under Freedom of Movement held by Hold Person.
 export function immuneToCondition(
   holder: { conditions?: string[]; stats: { conditionImmune?: string | null } },
   condition: string,
+  magical = true,
 ): boolean {
   const wanted = condition.trim().toLowerCase();
-  return String(holder.stats.conditionImmune ?? "").toLowerCase().includes(wanted) || petrifiedRefusal(holder.conditions, wanted) !== null;
+  return (
+    String(holder.stats.conditionImmune ?? "").toLowerCase().includes(wanted) ||
+    petrifiedRefusal(holder.conditions, wanted) !== null ||
+    conditionGrantedImmunity(holder.conditions ?? [], wanted, undefined, magical) !== null
+  );
 }
 
 // Whether poison cannot touch a creature: a defence line that names it (its

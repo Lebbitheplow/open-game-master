@@ -17,12 +17,13 @@ export const castAtPlayerTool: ToolDef = {
   function: {
     name: "cast_at_player",
     description:
-      "Resolve an enemy or hazard forcing a saving throw on ONE character (a hag's Hold Person, a spider's web, a trap's poison needle, a curse). The server rolls the character's save from their sheet (Evasion, Brave included) and applies the damage or condition on a failure. When an enemy does it (casterEnemyId, with enemyAbility or spell), it is the enemy's action for the round (refused if it already acted, cannot act, or is charmed by the target); the save, DC, dice and condition come from its block or the spell whatever you send, a Recharge ability must have recharged, and a spell spends its slot. Only a hazard with no creature behind it uses your own numbers. For several characters caught, use aoe_damage; never set a condition with set_condition when a save should have decided it.",
+      "Resolve an enemy or hazard forcing a saving throw on ONE character (a hag's Hold Person, a trap's needle). The server rolls the character's save from their sheet and applies the damage or condition on a failure. When an enemy does it (casterEnemyId, with enemyAbility or spell), it is the enemy's action for the round; the save, DC, dice and condition come from its block or the spell whatever you send. Only a hazard with no creature behind it uses your own numbers. For several characters caught, use aoe_damage; never set a condition with set_condition when a save should have decided it.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
-        characterId: { type: "string", description: "Exact characterId from GAME STATE." },
+        characterId: { type: "string", description: "Exact characterId from GAME STATE (with petName, the owner)." },
+        petName: { type: "string", description: "Their pet saves instead, by name." },
         source: { type: "string", description: "What forces the save ('the hag's Hold Person')." },
         saveAbility: {
           type: "string",
@@ -190,7 +191,7 @@ export const castBuffTool: ToolDef = {
         variant: {
           type: "string",
           description:
-            "A spell's choice, or the creature made ('wolf'). Enlarge or Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form; Animate Dead 'skeleton' or 'reassert control zombie', Find Steed 'fey warhorse', Find Familiar 'fiend owl' (celestial when no kind is named), Animate Objects 'tiny'.",
+            "A spell's choice, or the creature made ('wolf'). Enlarge or Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form; Animate Dead 'skeleton', 'reassert control zombie' or 'command' (bonus action), Find Steed 'fey warhorse', Find Familiar 'fiend owl' (celestial when no kind is named), Animate Objects 'tiny'.",
         },
         count: {
           type: "integer",

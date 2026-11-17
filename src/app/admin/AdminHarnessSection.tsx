@@ -9,7 +9,9 @@ import { NumberStepper } from "@/components/ui/NumberStepper";
 import { Switch } from "@/components/ui/Switch";
 import { CopyLine } from "@/components/CopyLine";
 import { Field, SelectField } from "@/app/admin/AdminSettingsFields";
-import { BLANK } from "@/app/admin/model-blanks";
+import { useT, useTp } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
+import { blanks } from "@/app/admin/model-blanks";
 import type { AdminConfigDraftPatch } from "@/app/admin/merge-config-draft";
 import { HarnessTestPanel } from "@/app/admin/HarnessTestPanel";
 import { SpeedField } from "@/app/admin/SpeedField";
@@ -27,7 +29,7 @@ type Payload = {
   recent: Array<{ tool: string; ok: boolean; ms: number; createdAt: string; campaignId: string | null }>;
 };
 
-const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk" };
+const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π" };
 
 // The efforts the chosen models offer (src/lib/harness/effort-choices.ts). A
 // saved effort they do not list, after the program's list changed, stays
@@ -41,17 +43,19 @@ function EffortField({
   draft: HarnessConfig;
   onChange: (effort: HarnessConfig["effort"]) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const offered = effortChoices(status, draft);
   const stale = !offered.includes(draft.effort);
   return (
     <SelectField
-      label="Effort"
-      hint={stale ? `The chosen models have no ${draft.effort} setting and run at their own default.` : undefined}
+      label={t("Effort")}
+      hint={stale ? t("The chosen models have no {effort} setting and run at their own default.", { effort: draft.effort, context: "admin.harness.effort.staleNamed" }) : undefined}
       value={draft.effort}
       onChange={onChange}
       options={(stale ? [...offered, draft.effort] : offered).map((effort) => ({
         value: effort,
-        label: effort ? effort[0].toUpperCase() + effort.slice(1) : "The program's own default",
+        label: effort ? effort[0].toUpperCase() + effort.slice(1) : t("The program's own default"),
       }))}
     />
   );
@@ -67,28 +71,47 @@ function UtilityEffortField({
   draft: HarnessConfig;
   onChange: (effort: HarnessConfig["utilityEffort"]) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const offered = utilityEffortChoices(status, draft);
   const stale = !offered.includes(draft.utilityEffort);
   return (
     <SelectField
-      label="Bookkeeping effort"
-      hint={stale ? `The bookkeeping model has no ${draft.utilityEffort} setting and runs at its own default.` : "Summaries, the reader and Ask rarely need the story's reasoning; a lighter effort answers sooner."}
+      label={t("Bookkeeping effort")}
+      hint={stale ? t("The bookkeeping model has no {effort} setting and runs at its own default.", { effort: draft.utilityEffort, context: "admin.harness.utilityEffort.staleNamed" }) : t("Summaries, the reader and Ask rarely need the story's reasoning; a lighter effort answers sooner.")}
       value={draft.utilityEffort}
       onChange={onChange}
       options={(stale ? [...offered, draft.utilityEffort] : offered).map((effort) => ({
         value: effort,
-        label: effort ? effort[0].toUpperCase() + effort.slice(1) : "The same as the story",
+        label: effort ? effort[0].toUpperCase() + effort.slice(1) : t("The same as the story"),
       }))}
     />
   );
 }
 
-function statusTone(status: HarnessStatus): { tone: "ready" | "warn" | "off" | "bad"; text: string } {
-  if (status.availability !== "ok") return { tone: "off", text: "Not available here" };
-  if (!status.installed) return { tone: "off", text: "Not installed" };
-  if (status.auth.state === "signed-out") return { tone: "warn", text: "Sign in needed" };
-  if (status.auth.state === "unknown") return { tone: "warn", text: "Installed" };
-  return { tone: "ready", text: "Ready" };
+// The status pill's word, keyed by the machine state the status carries;
+// its tone travels with the same branches.
+const STATUS_KEYS: Record<string, MessageKey> = {
+  notAvailable: "Not available here",
+  notInstalled: "Not installed",
+  signIn: "Sign in needed",
+  installed: "Installed",
+  ready: "Ready",
+};
+
+function statusKey(status: HarnessStatus): MessageKey {
+  if (status.availability !== "ok") return STATUS_KEYS.notAvailable;
+  if (!status.installed) return STATUS_KEYS.notInstalled;
+  if (status.auth.state === "signed-out") return STATUS_KEYS.signIn;
+  if (status.auth.state === "unknown") return STATUS_KEYS.installed;
+  return STATUS_KEYS.ready;
+}
+
+function statusTone(status: HarnessStatus): "ready" | "warn" | "off" {
+  if (status.availability !== "ok") return "off";
+  if (!status.installed) return "off";
+  if (status.auth.state === "signed-out" || status.auth.state === "unknown") return "warn";
+  return "ready";
 }
 
 // The admin's agent program (docs/archive/harness-mcp-plan.md 6): a card per program
@@ -109,6 +132,9 @@ export function AdminHarnessSection({
   // What the last Fast calls ran at (issue 255).
   speedNotes?: Partial<Record<SpeedChannel, SpeedNote>>;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const BLANK = blanks(t);
   const [data, setData] = useState<Payload | null>(null);
   const [draft, setDraft] = useState<HarnessConfig | null>(null);
   // null follows the saved default provider; a flip is held until saved.
@@ -155,8 +181,8 @@ export function AdminHarnessSection({
 
   if (!data || !draft) {
     return (
-      <PageSection id="admin-harness" heading="Agent program" glyph="ui-agent">
-        <div className="skeleton-block h-28 rounded-xl" aria-label="Looking for agent programs" />
+      <PageSection id="admin-harness" heading={t("Agent program")} glyph="ui-agent">
+        <div className="skeleton-block h-28 rounded-xl" aria-label={t("Looking for agent programs")} />
       </PageSection>
     );
   }
@@ -204,7 +230,7 @@ export function AdminHarnessSection({
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
-        setError(body?.error ?? "Could not save.");
+        setError(body?.error ?? t("Could not save."));
         return;
       }
       // Only what this save changed goes into the panel's draft (PR 221):
@@ -244,12 +270,9 @@ export function AdminHarnessSection({
   const usage = data.usage;
 
   return (
-    <PageSection id="admin-harness" heading="Agent program" glyph="ui-agent">
+    <PageSection id="admin-harness" heading={t("Agent program")} glyph="ui-agent">
       <p className="mb-3 text-xs text-stone-500">
-        Let an agent you already have, Claude Code, Codex, opencode or Grok Build, narrate the
-        tables on its own sign-in. It is started with none of its own tools: the only thing it can
-        touch is the table&apos;s rules engine, turn by turn, under the same rules and caps as the
-        built-in storyteller. ODM never asks for or stores its password or key.
+        {t("Let an agent you already have, Claude Code, Codex, opencode, Grok Build or Pi, narrate the tables on its own sign-in. It is started with none of its own tools: the only thing it can touch is the table's rules engine, turn by turn, under the same rules and caps as the built-in storyteller. ODM never asks for or stores its password or key.")}
       </p>
       {everywhereUnavailable ? (
         <p className="reveal mb-3 rounded-lg border border-amber-700/40 bg-amber-950/30 p-3 text-xs text-amber-200">
@@ -258,14 +281,15 @@ export function AdminHarnessSection({
       ) : null}
 
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-stone-400">Choose the program</span>
+        <span className="text-xs font-medium text-stone-400">{t("Choose the program")}</span>
         <button type="button" onClick={refresh} disabled={refreshing} className={ui.btnSmall} aria-busy={refreshing}>
-          <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} /> Check again
+          <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} /> {t("Check again")}
         </button>
       </div>
-      <div role="radiogroup" aria-label="Agent program" className="hx-cards stagger">
+      <div role="radiogroup" aria-label={t("Agent program")} className="hx-cards stagger">
         {data.statuses.map((status) => {
           const pill = statusTone(status);
+          const pillText = t(statusKey(status));
           const picked = draft.id === status.id;
           return (
             <button
@@ -284,22 +308,22 @@ export function AdminHarnessSection({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-stone-100">{status.label}</span>
                   <span className="block truncate text-[11px] text-stone-500">
-                    {status.version ? `v${status.version}` : status.installed ? "installed" : "—"}
+                    {status.version ? `v${status.version}` : status.installed ? t("installed") : t("—")}
                     {status.auth.plan ? ` · ${status.auth.plan}` : ""}
                   </span>
                 </span>
               </span>
-              <span key={pill.text} className="hx-pill reveal-pop self-start" data-tone={pill.tone}>
-                {pill.text}
+              <span key={pillText} className="hx-pill reveal-pop self-start" data-tone={pill}>
+                {pillText}
               </span>
               <span className="flex flex-wrap gap-x-3 gap-y-1">
                 <span className="hx-chip">
                   {status.lockdown === "removed" ? <ShieldCheck className="size-3.5" /> : <ShieldHalf className="size-3.5" />}
-                  {status.lockdown === "removed" ? "Own tools removed" : "Own tools boxed in"}
-                  {status.lockdownProven ? "" : " (untested)"}
+                  {status.lockdown === "removed" ? t("Own tools removed") : t("Own tools boxed in")}
+                  {status.lockdownProven ? "" : t(" (untested)")}
                 </span>
                 <span className="hx-chip">
-                  {status.nativeImages === "no" ? "No pictures" : status.nativeImages === "verified" ? "Paints (checked)" : "Paints (untested)"}
+                  {status.nativeImages === "no" ? t("No pictures") : status.nativeImages === "verified" ? t("Paints (checked)") : t("Paints (untested)")}
                 </span>
               </span>
             </button>
@@ -312,45 +336,45 @@ export function AdminHarnessSection({
           <div className="space-y-3">
             {chosen.message ? <p className="text-xs text-amber-300/90">{chosen.message}</p> : null}
             {chosen.availability === "ok" && !chosen.installed ? (
-              <Field label="Install it on this machine, then check again">
+              <Field label={t("Install it on this machine, then check again")}>
                 <CopyLine text={chosen.installHint ?? ""} label="install command" />
               </Field>
             ) : null}
             {chosen.installed && chosen.auth.state === "signed-out" ? (
-              <Field label="Sign it in on this machine, then check again">
+              <Field label={t("Sign it in on this machine, then check again")}>
                 <CopyLine text={chosen.signInHint ?? ""} label="sign-in command" />
               </Field>
             ) : null}
             {chosen.installed ? (
               <p className="text-xs text-stone-500">
                 {chosen.path}
-                {chosen.auth.account ? ` · signed in as ${chosen.auth.account}` : ""}
+                {chosen.auth.account ? t(" · signed in as {account}", { account: chosen.auth.account }) : ""}
               </p>
             ) : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <SelectField
-                label="Story model"
+                label={t("Story model")}
                 value={draft.model}
                 onChange={(model) => setDraft(withOfferedEffort(chosen, { ...draft, model }))}
                 options={[
                   { value: "", label: BLANK.programDefault },
-                  ...models.map((model) => ({ value: model.id, label: model.deprecated ? `${model.label} (deprecated)` : model.label })),
+                  ...models.map((model) => ({ value: model.id, label: model.deprecated ? `${model.label}${t(" (deprecated)")}` : model.label })),
                   ...(draft.model && !models.some((model) => model.id === draft.model)
                     ? [{ value: draft.model, label: draft.model }]
                     : []),
                 ]}
               />
               <SelectField
-                label="Bookkeeping model"
-                hint="Summaries, compaction and Ask. A cheaper model does these well."
+                label={t("Bookkeeping model")}
+                hint={t("Summaries, compaction and Ask. A cheaper model does these well.")}
                 value={draft.utilityModel}
                 onChange={(utilityModel) => setDraft(withOfferedEffort(chosen, { ...draft, utilityModel }))}
                 options={[
                   { value: "", label: BLANK.utility },
                   ...[...models].sort((a, b) => Number(Boolean(b.cheap)) - Number(Boolean(a.cheap))).map((model) => ({
                     value: model.id,
-                    label: `${model.cheap ? `${model.label} (light)` : model.label}${model.deprecated ? " (deprecated)" : ""}`,
+                    label: `${model.cheap ? `${model.label}${t(" (light)")}` : model.label}${model.deprecated ? t(" (deprecated)") : ""}`,
                   })),
                   ...(draft.utilityModel && !models.some((model) => model.id === draft.utilityModel)
                     ? [{ value: draft.utilityModel, label: draft.utilityModel }]
@@ -360,39 +384,39 @@ export function AdminHarnessSection({
               {chosen.id === "claude" || chosen.id === "codex" ? (
                 <>
                   <SpeedField
-                    label="Story speed"
+                    label={t("Story speed")}
                     value={draft.speed}
                     onChange={(speed) => setDraft({ ...draft, speed })}
-                    eligibility={agentSpeedEligibility({ harnessId: chosen.id, model: draft.model, models })}
+                    eligibility={agentSpeedEligibility(t, { harnessId: chosen.id, model: draft.model, models })}
                     note={speedNotes["agent-story"]}
                   />
                   <SpeedField
-                    label="Bookkeeping speed"
+                    label={t("Bookkeeping speed")}
                     value={draft.utilitySpeed}
                     onChange={(utilitySpeed) => setDraft({ ...draft, utilitySpeed })}
-                    eligibility={agentSpeedEligibility({ harnessId: chosen.id, model: draft.utilityModel || draft.model, models })}
+                    eligibility={agentSpeedEligibility(t, { harnessId: chosen.id, model: draft.utilityModel || draft.model, models })}
                     note={speedNotes["agent-utility"]}
                   />
                 </>
               ) : null}
-              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" ? (
+              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" || chosen.id === "pi" ? (
                 <>
                   <EffortField status={chosen} draft={draft} onChange={(effort) => setDraft({ ...draft, effort })} />
                   <UtilityEffortField status={chosen} draft={draft} onChange={(utilityEffort) => setDraft({ ...draft, utilityEffort })} />
                 </>
               ) : null}
               <SelectField
-                label="Who may use it"
+                label={t("Who may use it")}
                 value={draft.campaigns}
                 onChange={(campaigns) => setDraft({ ...draft, campaigns })}
                 options={[
-                  { value: "all" as const, label: "Every campaign on this server" },
-                  { value: "admins" as const, label: "Only campaigns an administrator leads" },
+                  { value: "all" as const, label: t("Every campaign on this server") },
+                  { value: "admins" as const, label: t("Only campaigns an administrator leads") },
                 ]}
               />
-              <Field group label="Tables at once" hint="Turns that run side by side; others wait their turn.">
+              <Field group label={t("Tables at once")} hint={t("Turns that run side by side; others wait their turn.")}>
                 <NumberStepper
-                  label="Tables at once"
+                  label={t("Tables at once")}
                   min={1}
                   max={8}
                   step={1}
@@ -400,13 +424,13 @@ export function AdminHarnessSection({
                   onChange={(next) => setDraft({ ...draft, maxConcurrent: Math.min(8, Math.max(1, Math.round(Number(next)) || 1)) })}
                 />
               </Field>
-              <Field group label="Longest turn (seconds)" hint="A turn that runs longer stops and can be retried.">
+              <Field group label={t("Longest turn (seconds)")} hint={t("A turn that runs longer stops and can be retried.")}>
                 <NumberStepper
-                  label="Longest turn"
+                  label={t("Longest turn")}
                   min={60}
                   max={900}
                   step={30}
-                  suffix="s"
+                  suffix={t("s")}
                   value={draft.turnTimeoutSec}
                   onChange={(next) =>
                     setDraft({ ...draft, turnTimeoutSec: Math.min(900, Math.max(60, Math.round(Number(next)) || 240)) })
@@ -417,22 +441,22 @@ export function AdminHarnessSection({
             {chosen.nativeImages !== "no" ? (
               <label className="flex items-center gap-3 text-sm text-stone-300">
                 <Switch
-                  label="Let it paint for the tables"
+                  label={t("Let it paint for the tables")}
                   on={draft.images === "native"}
                   disabled={chosen.nativeImages !== "verified"}
                   onChange={(on) => setDraft({ ...draft, images: on ? "native" : "off" })}
                 />
                 <span>
-                  Let it paint for the tables
+                  {t("Let it paint for the tables")}
                   <span className="block text-xs text-stone-500">
                     {chosen.nativeImages === "verified"
-                      ? "Tables can choose it as their image backend."
-                      : "Available once a test picture below comes back."}
+                      ? t("Tables can choose it as their image backend.")
+                      : t("Available once a test picture below comes back.")}
                   </span>
                 </span>
               </label>
             ) : null}
-            <Field label="Path to the program (advanced)" hint="Blank finds it on its own, even when the server was started without your shell's PATH.">
+            <Field label={t("Path to the program (advanced)")} hint={t("Blank finds it on its own, even when the server was started without your shell's PATH.")}>
               <input
                 className={ui.input}
                 value={draft.binaryPath}
@@ -441,11 +465,11 @@ export function AdminHarnessSection({
               />
             </Field>
             <label className="flex items-center gap-3 text-sm text-stone-300">
-              <Switch label="Narrate new campaigns with it" on={useAsDefault} onChange={setDefaultOverride} />
+              <Switch label={t("Narrate new campaigns with it")} on={useAsDefault} onChange={setDefaultOverride} />
               <span>
-                Narrate new campaigns with it
+                {t("Narrate new campaigns with it")}
                 <span className="block text-xs text-stone-500">
-                  Existing campaigns keep their storyteller; switch one in its Settings tab, under Story AI.
+                  {t("Existing campaigns keep their storyteller; switch one in its Settings tab, under Story AI.")}
                 </span>
               </span>
             </label>
@@ -455,11 +479,11 @@ export function AdminHarnessSection({
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="button" className={ui.btnPrimary} onClick={save} disabled={saving || !dirty} aria-busy={saving}>
-          {saving ? <Loader2 className="size-4 animate-spin" /> : null} Save agent settings
+          {saving ? <Loader2 className="size-4 animate-spin" /> : null} {t("Save agent settings")}
         </button>
         {saved ? (
           <span role="status" className="inline-flex items-center gap-1 text-sm text-emerald-400">
-            <Check className="tick-in size-4" /> Saved
+            <Check className="tick-in size-4" /> {t("Saved", { context: "admin.harness.savedToast" })}
           </span>
         ) : null}
         {error ? (
@@ -483,7 +507,7 @@ export function AdminHarnessSection({
       {usage ? (
         <div className="mt-4 space-y-1">
           <div className="flex items-center justify-between text-xs text-stone-400">
-            <span>Plan used{usage.window ? ` (${usage.window.replace(/_/g, " ")})` : ""}</span>
+            <span>{t("Plan used{window}", { window: usage.window ? ` (${usage.window.replace(/_/g, " ")})` : "" })}</span>
             <span key={Math.round(usage.utilization * 100)} className="count-pop">
               {Math.round(usage.utilization * 100)}%
             </span>
@@ -495,7 +519,7 @@ export function AdminHarnessSection({
       ) : null}
       {data.activeSessions > 0 ? (
         <p className="mt-2 text-xs text-stone-500">
-          <span className="breathe">Narrating {data.activeSessions} {data.activeSessions === 1 ? "table" : "tables"} now.</span>
+          <span className="breathe">{tp("Narrating 1 table now.", "Narrating {count} tables now.", { count: data.activeSessions })}</span>
         </p>
       ) : null}
     </PageSection>

@@ -7,6 +7,7 @@ import { ACTION_SURGED, spendAction, spendAttack } from "@/lib/dm/action-budget"
 import { spendCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { BONUS_SPELL, LEVELLED_SPELL } from "@/lib/dm/cast-rules";
 import type { PastSight } from "@/lib/dm/condition-logic";
+import { damageTypeWord } from "@/lib/dm/damage-logic";
 import { asPercent, averageDetail } from "@/lib/srd/odds";
 import type { TargetSight } from "@/lib/battlemap/view-tactics";
 import { attackOddsWithDice, previewAdvantage, shotRange } from "@/lib/battlemap/hand-odds";
@@ -23,10 +24,15 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@/lib/battlemap/hand-area";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
+import { conditionWord } from "@/lib/battlemap/hand-display";
 import { textKey } from "@/lib/language/text-logic";
+import { translate, type Locale } from "@/lib/messages-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { summonIntent, summonReady, summonWords, type SummonChoices } from "@/lib/battlemap/hand-summon";
 import type { BoardControlId, BoardPanel } from "@/lib/addons/board-bridge";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // Who a card is aimed at. `ac` only ever arrives in the DM's projection; a
 // player's preview works from the challenge rating, which they can see.
@@ -195,9 +201,13 @@ export function typicalAcForCr(cr: number): number {
   return 19;
 }
 
-const COST_LABEL: Record<HandCost, string> = {
+// The cost words, keyed so a French reader's preview and customize rows read
+// in their own words (the same keys the card corner's pip uses — one word
+// means one thing across the hand). The engine's own HandCost stays as the
+// data word everywhere it is sent.
+const COST_KEY: Record<HandCost, string> = {
   action: "Action",
-  bonus: "Bonus action",
+  bonus: "Bonus",
   reaction: "Reaction",
   rider: "Rider",
   free: "Free",
@@ -205,8 +215,19 @@ const COST_LABEL: Record<HandCost, string> = {
   lair: "Lair action",
 };
 
-export function costLabel(cost: HandCost): string {
-  return COST_LABEL[cost];
+export function costLabel(cost: HandCost, t: T = enT): string {
+  return t(COST_KEY[cost]);
+}
+
+// The save ability as the reader's abbreviation: the card carries the engine's
+// own (SAVE_LABEL's "WIS"); the workshop's saveAbbr keys give the reader's
+// print ("SAG"), English riding as it was spelled.
+function saveAbbr(ability: string, t: T): string {
+  const key = `workshop.bestiary.stats.saveAbbr.${ability.trim().toLowerCase()}`;
+  const word = t(key);
+  // translate() renders an unknown key as itself: a code the table does not
+  // carry keeps the card's own abbreviation.
+  return word === key ? ability : word;
 }
 
 function mean(expression: string): string | null {
@@ -216,11 +237,16 @@ function mean(expression: string): string | null {
 
 // The rows of the outcome preview. Arithmetic, not hints: the mean of the
 // dice, the real d20 odds against the armour class, the save and its DC.
+// The row labels and the frames around the numbers are keyed (the numbers
+// and the engine words ride as variables or through damageTypeWord /
+// conditionWord), so a French reader's preview reads in their own words.
 export function previewRows(
   card: HandCard,
   aim: HandAim | null,
   attackerConditions: string[] = [],
   choices: HandChoices = {},
+  t: T = enT,
+  locale: Locale = "en",
 ): PreviewRow[] {
   const rows: PreviewRow[] = [];
   // Aimed past a thrown weapon's reach, the throw rolls without the melee
@@ -230,59 +256,70 @@ export function previewRows(
   const damage = thrownNow ? card.thrownDamage! : card.damage;
   if (card.dice) {
     const dice = thrownNow ? `${card.thrownDamage} ${card.damageType}`.trim() : card.dice;
-    rows.push({ key: card.heals ? "Restores" : card.damage ? "Damage" : "Effect", value: dice, tone: card.heals ? "heal" : card.damage ? "damage" : "plain" });
+    rows.push({ key: card.heals ? t("Restores") : card.damage ? t("Damage", { context: "table.hand.preview.damage" }) : t("Effect"), value: dice, tone: card.heals ? "heal" : card.damage ? "damage" : "plain" });
   }
   if (damage) {
     const expected = mean(damage);
-    if (expected) rows.push({ key: card.heals ? "Expected" : "Expected dmg", value: card.heals ? `+${expected}` : expected, tone: "plain" });
+    if (expected) rows.push({ key: card.heals ? t("Expected") : t("Expected dmg"), value: card.heals ? `+${expected}` : expected, tone: "plain" });
   }
   if (card.save) {
-    rows.push({ key: "Save", value: card.save.dc ? `${card.save.ability} save vs DC ${card.save.dc}` : `${card.save.ability} save`, tone: "save" });
+    const ability = saveAbbr(card.save.ability, t);
+    rows.push({ key: t("Save", { context: "table.hand.preview.save" }), value: card.save.dc ? t("{ability} save vs DC {dc}", { ability, dc: card.save.dc }) : t("{ability} save", { ability, context: "table.hand.preview.saveOnly" }), tone: "save" });
   } else if (card.toHit !== null) {
     const bonus = `${card.toHit >= 0 ? `+${card.toHit}` : `${card.toHit}`}${card.toHitDice ?? ""}`;
     const enemy = aim && aim.kind === "enemy" ? aim : null;
     const known = enemy?.ac;
     const base = known ?? (enemy?.cr !== undefined ? typicalAcForCr(enemy.cr) : null);
     if (base === null) {
-      rows.push({ key: "To hit", value: bonus, tone: "plain" });
+      rows.push({ key: t("To hit"), value: bonus, tone: "plain" });
     } else {
       const edge = enemy?.edge;
       const { advantage, melee, range } = previewAdvantage(card, enemy, attackerConditions, choices);
       const cover = edge?.cover ?? 0;
       const ac = base + cover;
       const odds = attackOddsWithDice({ attackBonus: card.toHit, dice: card.toHitDice ?? "", ac, advantage });
-      const mark = advantage === "none" ? "" : ` · ${advantage}`;
+      // The mark rides its own separator, so a straight roll's frame is
+      // exactly the odds and nothing more.
+      const mark =
+        advantage === "none"
+          ? ""
+          : ` · ${t(advantage === "advantage" ? "advantage" : "disadvantage")}`;
       rows.push({
-        key: "To hit",
+        key: t("To hit"),
         value: edge?.blocked
-          ? "no line to it (total cover)"
+          ? t("no line to it (total cover)")
           : range === "beyond"
-            ? `out of range (${edge?.feet} ft, it reaches ${card.shot?.longFt} ft)`
-            : `${bonus} vs AC ${known === undefined ? "~" : ""}${ac} · ${asPercent(odds.hit)}${mark}`,
+            ? t("out of range ({feet} ft, it reaches {reach} ft)", { feet: edge?.feet ?? 0, reach: card.shot?.longFt ?? 0 })
+            : t("{bonus} vs AC {ac} · {odds}{mark}", { bonus, ac: `${known === undefined ? "~" : ""}${ac}`, odds: asPercent(odds.hit), mark }),
         tone: "plain",
       });
       if (range === "long" && !edge?.blocked) {
-        rows.push({ key: "Range", value: `${edge?.feet} ft, past ${card.shot?.normalFt}: disadvantage`, tone: "muted" });
+        rows.push({ key: t("Range"), value: t("{feet} ft, past {normal}: disadvantage", { feet: edge?.feet ?? 0, normal: card.shot?.normalFt ?? 0 }), tone: "muted" });
       }
       if (cover && !edge?.blocked) {
-        rows.push({ key: "Cover", value: `${cover === 2 ? "half" : "three-quarters"} +${cover} AC`, tone: "muted" });
+        rows.push({ key: t("Cover", { context: "table.hand.preview.cover" }), value: t(cover === 2 ? "half +{cover} AC" : "three-quarters +{cover} AC", { cover }), tone: "muted" });
       }
       if (edge?.flanking && melee) {
-        rows.push({ key: "Flanking", value: "an ally opposite: advantage", tone: "muted" });
+        rows.push({ key: t("Flanking", { context: "table.hand.preview.flanking" }), value: t("an ally opposite: advantage"), tone: "muted" });
       }
       if (enemy?.advantage?.length) {
-        rows.push({ key: "Advantage", value: enemy.advantage.join(", "), tone: "muted" });
+        rows.push({ key: t("Advantage", { context: "table.hand.preview.advantageLabel" }), value: enemy.advantage.join(", "), tone: "muted" });
       }
     }
   } else if (card.roll) {
-    rows.push({ key: "Roll", value: card.roll, tone: "muted" });
+    rows.push({ key: t("Roll", { context: "table.hand.preview.roll" }), value: card.roll, tone: "muted" });
   }
-  if (card.damageType) rows.push({ key: "Type", value: card.secondType ? `${card.damageType} and ${card.secondType}` : card.damageType, tone: "muted" });
-  if (card.condition) rows.push({ key: "Applies", value: card.condition, tone: "applies" });
+  if (card.damageType)
+    rows.push({
+      key: t("Type", { context: "table.hand.preview.type" }),
+      value: card.secondType ? t("{first} and {second}", { first: damageTypeWord(card.damageType, locale), second: damageTypeWord(card.secondType, locale) }) : damageTypeWord(card.damageType, locale),
+      tone: "muted",
+    });
+  if (card.condition) rows.push({ key: t("Applies"), value: conditionWord(card.condition, t, locale), tone: "applies" });
   // What a summoning card brings, once its creature is picked.
   const brings = card.summon ? chosenLabel(card, choices) : null;
-  if (brings) rows.push({ key: "Brings", value: brings, tone: "plain" });
-  rows.push({ key: "Cost", value: card.resource ? `${costLabel(card.cost)} · ${card.resource}` : costLabel(card.cost), tone: "cost", cost: card.cost });
+  if (brings) rows.push({ key: t("Brings"), value: brings, tone: "plain" });
+  rows.push({ key: t("Cost", { context: "table.hand.preview.cost" }), value: card.resource ? `${costLabel(card.cost, t)} · ${card.resource}` : costLabel(card.cost, t), tone: "cost", cost: card.cost });
   return rows;
 }
 
@@ -430,6 +467,8 @@ export function composeSentence(
       return "I stand up.";
     case "stabilize":
       return `I try to stabilize ${who || "my dying ally"}.`;
+    case "wake":
+      return `I shake ${who || "my ally"} awake.`;
     case "dismount":
       return "I dismount.";
   }

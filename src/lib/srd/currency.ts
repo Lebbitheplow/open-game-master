@@ -17,6 +17,9 @@
 // can load it and the client can format a purse without a request.
 
 import { writtenWholeNumber } from "../language/text-logic.ts";
+// Pure still (no request), but the unread-coins words are the dictionaries',
+// so the translate comes along for the enT default.
+import { translate } from "../messages-logic.ts";
 
 export const DENOMINATIONS = ["cp", "sp", "ep", "gp", "pp"] as const;
 export type Denomination = (typeof DENOMINATIONS)[number];
@@ -171,23 +174,31 @@ export function packCostCopper(text: string): number | null {
   });
 }
 
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
 // Why a coin amount cannot be read, for the refusal that asks for it again:
-// the mark a number was written with, else the codes.
-export function unreadCoins(text: string): string {
+// the mark a number was written with, else the codes. The words are the
+// dictionaries' (coins.unread.*); the showing surface passes its translator.
+export function unreadCoins(t: T, text: string): string {
   const number = (String(text ?? "").match(/\d(?:[\d.,'’\u00a0\u202f ]*\d)?/gu) ?? []).map(writtenWholeNumber).find((amount) => typeof amount !== "number");
   return number
-    ? `Coins come in whole numbers: ${number.unread}. Write a part of a coin in smaller coins, like "1 gp 5 sp"`
-    : `"${text}" is not an amount in the coins' codes: write it with pp, gp, ep, sp and cp, like "3 gp 4 sp"`;
+    ? t("Coins come in whole numbers: {written}. Write a part of a coin in smaller coins, like \"1 gp 5 sp\"", { written: number.unread })
+    : t("\"{text}\" is not an amount in the coins' codes: write it with pp, gp, ep, sp and cp, like \"3 gp 4 sp\"", { text });
 }
 
 // What a coin change moves, in copper, from the two ways it can be said: a
 // whole-gold delta, or coins in the codes. Coins win over the delta's size.
 // Their direction is their own written sign, else the delta's sign, and with
 // neither it is asked for again: "5 sp" with a zero delta used to pay the
-// character five silver when the fiction had them hand it over.
+// character five silver when the fiction had them hand it over. The other
+// problems are the engine's own words (the model reads them), but an
+// unparseable amount reuses unreadCoins, so it takes the translator last
+// with the English default.
 export type CoinMove = { copper: number } | { problem: string };
 
-export function coinMove(delta: unknown, coins: unknown): CoinMove {
+export function coinMove(delta: unknown, coins: unknown, t: T = enT): CoinMove {
   const whole = Number(delta ?? 0) || 0;
   const written = String(coins ?? "").trim();
   if (!written) {
@@ -198,7 +209,7 @@ export function coinMove(delta: unknown, coins: unknown): CoinMove {
   const amount = written.replace(/^[-\u2212+]\s*/u, "");
   const copper = parseCoins(amount);
   if (copper === null) {
-    return { problem: unreadCoins(amount) };
+    return { problem: unreadCoins(t, amount) };
   }
   const sign = amount === written ? Math.sign(whole) : written.startsWith("+") ? 1 : -1;
   return sign

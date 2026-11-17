@@ -88,8 +88,17 @@ export async function settleQueue(campaignId, ms = 30_000) {
 // A fake OpenAI-compatible server. Each /chat/completions request takes the
 // next scripted reply (a plain narration once the script runs out) and every
 // request body is kept, so a test can read what the turn loop sent.
-export async function fakeModel() {
+//
+// fakeModel({ slots: 2 }) is a llama-server started with --slot-save-path
+// (src/lib/dm/prompt-snapshot.ts): it answers /props and /slots, saves and
+// restores slots by file name, and keeps what was asked of it, in order with
+// the chat requests, in model.slotLog. model.slots says what the test wants
+// of it next: restart() empties the slots as a restarted server's are,
+// loseFiles() forgets the files, and cached is what each reply reports reused.
+export async function fakeModel({ slots = 0 } = {}) {
   let script = [];
+  const slotLog = [];
+  const slotState = { files: new Set(), restarted: false, cached: 20_000 };
   let served = 0;
   const requests = [];
   let readerScript = [];
@@ -122,7 +131,45 @@ export async function fakeModel() {
       res.write(`data: ${JSON.stringify({ choices: [{ index: 0, delta, finish_reason: null }] })}\n\n`);
     }
     res.write(`data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`);
+    if (slots) {
+      // What a llama-server says it reused of the prompt.
+      const usage = { prompt_tokens: 30_000, completion_tokens: 20, prompt_tokens_details: { cached_tokens: slotState.cached } };
+      res.write(`data: ${JSON.stringify({ choices: [], usage })}\n\n`);
+    }
     res.end("data: [DONE]\n\n");
+  }
+
+  // The slot endpoints of a llama-server that saves slots. An action it does
+  // not know is refused by name, which is how the app tells it offers them.
+  function slotEndpoints(req, res, body) {
+    const url = new URL(req.url, "http://fake");
+    const json = (status, value) => {
+      res.writeHead(status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(value));
+    };
+    if (req.method === "GET" && url.pathname === "/props") {
+      return json(200, { total_slots: slots, n_ctx: 65536 });
+    }
+    if (req.method === "GET" && url.pathname === "/slots") {
+      return json(200, Array.from({ length: slots }, (_, id) => ({ id, id_task: slotState.restarted ? -1 : 7, n_prompt_tokens: slotState.restarted ? 0 : 30_000 })));
+    }
+    const action = /^\/slots\/(\d+)$/.exec(url.pathname);
+    if (req.method === "POST" && action) {
+      const kind = url.searchParams.get("action");
+      const file = String(body?.filename ?? "");
+      if (kind !== "save" && kind !== "restore") {
+        return json(400, { error: { code: 400, message: "Invalid action", type: "invalid_request_error" } });
+      }
+      const known = kind === "save" || slotState.files.has(file);
+      slotLog.push({ action: kind, slot: Number(action[1]), file, ok: known, after: requests.length });
+      if (!known) {
+        return json(400, { error: { code: 400, message: "Unable to restore slot: No available space in KV cache or invalid slot save file", type: "invalid_request_error" } });
+      }
+      slotState.files.add(file);
+      slotState.restarted = false;
+      return json(200, { id_slot: Number(action[1]), filename: file, [kind === "save" ? "n_saved" : "n_restored"]: 30_000 });
+    }
+    res.writeHead(404).end();
   }
 
   // A call made without streaming (the guard's rewrite, the whisper
@@ -163,6 +210,11 @@ export async function fakeModel() {
     req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {
       if (!req.url.endsWith("/chat/completions")) {
+        if (slots) {
+          const text = Buffer.concat(chunks).toString("utf8");
+          slotEndpoints(req, res, text ? JSON.parse(text) : null);
+          return;
+        }
         res.writeHead(404).end();
         return;
       }
@@ -173,6 +225,7 @@ export async function fakeModel() {
         return;
       }
       requests.push(body);
+      slotState.restarted = false;
       const entry = script[served] ?? fallback;
       served += 1;
       if (entry.fail) {
@@ -206,6 +259,17 @@ export async function fakeModel() {
   return {
     requests,
     readerRequests,
+    slotLog,
+    slots: {
+      restart: () => {
+        slotState.restarted = true;
+      },
+      loseFiles: () => slotState.files.clear(),
+      files: () => [...slotState.files],
+      set cached(tokens) {
+        slotState.cached = tokens;
+      },
+    },
     // What the claims reader answers, one list of claims per reader call.
     claims: (entries) => {
       readerScript = [...entries];

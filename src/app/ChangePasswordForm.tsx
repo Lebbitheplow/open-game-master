@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { ui } from "@/lib/ui";
 
 // Change-password form shared by account settings and the forced flow after
@@ -10,7 +11,7 @@ import { ui } from "@/lib/ui";
 export function ChangePasswordForm({
   currentPassword: initialCurrent,
   lockCurrent = false,
-  submitLabel = "Change password",
+  submitLabel,
   onChanged,
 }: {
   currentPassword?: string;
@@ -18,6 +19,7 @@ export function ChangePasswordForm({
   submitLabel?: string;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [currentPassword, setCurrentPassword] = useState(initialCurrent ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -27,7 +29,7 @@ export function ChangePasswordForm({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (newPassword !== confirm) {
-      setError("New passwords don't match.");
+      setError(t("New passwords don't match."));
       return;
     }
     setBusy(true);
@@ -40,7 +42,7 @@ export function ChangePasswordForm({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not change the password.");
+        setError(data.error || t("Could not change the password."));
         return;
       }
       setCurrentPassword("");
@@ -48,7 +50,7 @@ export function ChangePasswordForm({
       setConfirm("");
       onChanged();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "password.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -58,7 +60,7 @@ export function ChangePasswordForm({
     <form onSubmit={submit} className="space-y-3">
       {lockCurrent ? null : (
         <label className="block text-sm">
-          <span className="mb-1 block text-stone-400">Current password</span>
+          <span className="mb-1 block text-stone-400">{t("Current password")}</span>
           <input
             type="password"
             value={currentPassword}
@@ -71,7 +73,7 @@ export function ChangePasswordForm({
         </label>
       )}
       <label className="block text-sm">
-        <span className="mb-1 block text-stone-400">New password</span>
+        <span className="mb-1 block text-stone-400">{t("New password")}</span>
         <input
           type="password"
           value={newPassword}
@@ -84,7 +86,7 @@ export function ChangePasswordForm({
         />
       </label>
       <label className="block text-sm">
-        <span className="mb-1 block text-stone-400">Confirm new password</span>
+        <span className="mb-1 block text-stone-400">{t("Confirm new password")}</span>
         <input
           type="password"
           value={confirm}
@@ -99,7 +101,7 @@ export function ChangePasswordForm({
       {error ? <p className="motion-shake text-sm text-red-400">{error}</p> : null}
       <button type="submit" disabled={busy} aria-busy={busy} className={cn(ui.btnPrimary, "w-full")}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-        {submitLabel}
+        {submitLabel ?? t("Change password")}
       </button>
     </form>
   );

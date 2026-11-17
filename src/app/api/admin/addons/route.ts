@@ -12,10 +12,11 @@ export const dynamic = "force-dynamic";
 // The addon manager behind Admin > Addons.
 //
 // GET: installed addons, the catalog, and the server-wide switches.
-// POST { do: "install", addonId }: install or update from the addon list.
-//   What is downloaded (the author's repository at the audited commit,
-//   checked against the entry's content hash) comes from the list, never
-//   from the request.
+// POST { do: "install", addonId, parts? }: install or update from the addon
+//   list. What is downloaded (the author's repository at the audited
+//   commit, checked against the entry's content hash) comes from the list,
+//   never from the request; `parts` picks which of its parts setup fetches
+//   (left out, the author's defaults, or what an update had before).
 // POST { do: "install-github", url }: install from a GitHub link (a
 //   repository, a release, or a folder at a branch). Unreviewed, so only
 //   with "Install addons from files and links" on.
@@ -30,7 +31,12 @@ export const dynamic = "force-dynamic";
 // Admin-only: every one of these writes programs onto the server.
 
 const bodySchema = z.discriminatedUnion("do", [
-  z.object({ do: z.literal("install"), addonId: z.string().min(1).max(60), replace: z.boolean().optional() }),
+  z.object({
+    do: z.literal("install"),
+    addonId: z.string().min(1).max(60),
+    replace: z.boolean().optional(),
+    parts: z.array(z.string().min(1).max(40)).max(30).optional(),
+  }),
   z.object({ do: z.literal("install-github"), url: z.string().trim().min(3).max(500), replace: z.boolean().optional() }),
   z.object({
     do: z.literal("config"),
@@ -89,5 +95,9 @@ export async function POST(request: Request) {
   if (!entry) {
     return Response.json({ error: "The catalog does not list that addon." }, { status: 404 });
   }
-  return installedResponse(await installFromRegistry(entry, { replace: body.replace }), admin);
+  const unknown = (body.parts ?? []).find((partId) => !entry.parts.some((part) => part.id === partId));
+  if (unknown) {
+    return Response.json({ error: `${entry.name} has no part "${unknown}".` }, { status: 400 });
+  }
+  return installedResponse(await installFromRegistry(entry, { replace: body.replace, parts: body.parts }), admin);
 }

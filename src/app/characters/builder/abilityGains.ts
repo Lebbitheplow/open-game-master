@@ -70,7 +70,19 @@ export function abilityGains(input: AbilityGainsInput): {
   return { gains, final };
 }
 
-// "+1 Linguist", "+2 at level 4", "+0 at level 8 (at its cap)".
-export function gainLabel(gain: AbilityGain): string {
-  return `+${gain.amount} ${gain.source}${gain.capped ? " (at its cap)" : ""}`;
+// "+1 Linguist", "+2 at level 4", "+0 at level 8 (at its cap)". A feat's
+// name reads as stored; the level and the cap say themselves in the
+// reader's language when `t` is given.
+export function gainLabel(
+  gain: AbilityGain,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const atLevel = gain.source.match(/^at level (\d+)$/);
+  const source = atLevel
+    ? t
+      ? t("at level {level}", { level: Number(atLevel[1]) })
+      : gain.source
+    : gain.source;
+  const cap = gain.capped ? (t ? t(" (at its cap)") : " (at its cap)") : "";
+  return t ? `+${gain.amount} ${source}${cap}` : `+${gain.amount} ${source}${cap}`;
 }

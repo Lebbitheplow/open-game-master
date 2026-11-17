@@ -14,12 +14,14 @@ import { addChip, rowIcon } from "@/app/workshop/kit";
 import type { Data } from "@/app/workshop/homebrew/draft";
 import { LANGUAGES, TOOL_PROFICIENCIES } from "@/lib/workshop/pickers";
 import { SKILL_IDS } from "@/lib/homebrew/item-magic-schema";
-import { DAMAGE_TYPES } from "@/lib/dm/damage-logic";
+import { DAMAGE_TYPES, damageTypeWord } from "@/lib/dm/damage-logic";
 import { raceMechanics } from "@/lib/content/mechanics";
 import { readSpeciesSpells } from "@/lib/content/species-spells";
 import { SpeciesSpellFields } from "@/app/workshop/homebrew/SpeciesSpellFields";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { ABILITIES, type Ability } from "@/lib/schemas/abilities";
+import { useLocale, useT } from "@/lib/locale";
+import type { Locale } from "@/lib/messages-logic";
 import {
   BREATH_AREAS,
   VARIANT_LIMITS,
@@ -38,11 +40,17 @@ import {
 type Props = { data: Data; set: (patch: Data) => void };
 
 const L = VARIANT_LIMITS;
-const ABILITY_WORDS: Record<Ability, string> = {
+const ABILITY_KEYS: Record<Ability, string> = {
   str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma",
 };
 const SKILL_LABELS = Object.fromEntries(SKILL_IDS.map((id) => [id, id.replace(/_/g, " ")])) as Record<(typeof SKILL_IDS)[number], string>;
 const TOOLS = TOOL_PROFICIENCIES.map((tool) => tool.toLowerCase());
+
+// The damage words in the reader's language: capitalized out of the French
+// SRD's own list (damageTypeWord's pattern, src/lib/dm/damage-logic.ts).
+// English keeps the raw term, exactly as shipped; values stay the ids.
+const capital = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const damageLabel = (type: string, locale: Locale): string => (locale === "fr" ? capital(damageTypeWord(type, locale)) : type);
 
 // An option as the draft holds it, read for its summary line.
 function readOption(raw: Data): SpeciesVariantOption {
@@ -72,13 +80,14 @@ export function withField(option: Data, key: string, value: unknown): Data {
 }
 
 function Increases({ option, put }: { option: Data; put: (asi: Data | undefined) => void }) {
+  const t = useT();
   const asi = sub(option.asi);
   const rows = Object.entries(asi).map(([ability, value]): [Ability, number] => [ability as Ability, Number(value) || 1]);
   const write = (next: Array<[Ability, number]>) => put(next.length ? Object.fromEntries(next) : undefined);
   const free = ABILITIES.filter((ability) => !(ability in asi));
   return (
     <div className="col-span-2 space-y-1.5 sm:col-span-4">
-      <span className="text-[11px] text-stone-400">Ability score increases (+3 in all at most)</span>
+      <span className="text-[11px] text-stone-400">{t("Ability score increases (+3 in all at most)")}</span>
       {rows.map(([ability, value], index) => (
         // Keyed by place, not by ability: a row keyed by the ability it
         // picks remounted with the pick, and the keyboard's focus, back on
@@ -87,13 +96,13 @@ function Increases({ option, put }: { option: Data; put: (asi: Data | undefined)
           <span className="w-44">
             <Select<Ability>
               value={ability}
-              label="Ability"
-              options={[ability, ...free].map((entry) => ({ value: entry, label: ABILITY_WORDS[entry] }))}
+              label={t("Ability")}
+              options={[ability, ...free].map((entry) => ({ value: entry, label: t(ABILITY_KEYS[entry]) }))}
               onChange={(next) => write(rows.map(([held, amount], at): [Ability, number] => [at === index ? next : held, amount]))}
             />
           </span>
           <NumberStepper
-            label={`Increase to ${ABILITY_WORDS[ability]}`}
+            label={t("Increase to {ability}", { ability: t(ABILITY_KEYS[ability]) })}
             value={value}
             min={1}
             max={2}
@@ -101,7 +110,7 @@ function Increases({ option, put }: { option: Data; put: (asi: Data | undefined)
           />
           <button
             type="button"
-            aria-label={`Remove the increase to ${ABILITY_WORDS[ability]}`}
+            aria-label={t("Remove the increase to {ability}", { ability: t(ABILITY_KEYS[ability]) })}
             onClick={() => write(rows.filter((_, at) => at !== index))}
             className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}
           >
@@ -115,7 +124,7 @@ function Increases({ option, put }: { option: Data; put: (asi: Data | undefined)
           onClick={() => write([...rows, [free[0], 1]])}
           className={cn(ui.btnSmall, addChip)}
         >
-          <Plus className="size-3" /> Add an increase
+          <Plus className="size-3" /> {t("Add an increase")}
         </button>
       ) : null}
     </div>
@@ -123,8 +132,10 @@ function Increases({ option, put }: { option: Data; put: (asi: Data | undefined)
 }
 
 function OptionFields({ option, put, spells }: { option: Data; put: (next: Data) => void; spells: boolean }) {
+  const t = useT();
+  const locale = useLocale();
   const field = (key: string, value: unknown) => put(withField(option, key, value));
-  const optionName = String(option.name ?? "").trim() || "this option";
+  const optionName = String(option.name ?? "").trim() || t("this option");
   const breath = sub(option.breath);
   const breathType = String(breath.damageType ?? "");
   const putBreath = (patch: Data) => {
@@ -134,7 +145,7 @@ function OptionFields({ option, put, spells }: { option: Data; put: (next: Data)
   return (
     <>
       <TextField
-        label="Option name"
+        label={t("Option name")}
         value={String(option.name ?? "")}
         onChange={(name) => put({ ...option, name })}
         maxLength={L.name}
@@ -142,49 +153,49 @@ function OptionFields({ option, put, spells }: { option: Data; put: (next: Data)
       />
       <div className="col-span-2 sm:col-span-4">
         <TextArea
-          label="What it says"
+          label={t("What it says")}
           value={String(option.description ?? "")}
           onChange={(description) => field("description", description)}
           maxLength={L.description}
           rows={3}
-          hint="The player reads this; the table runs only the grants below."
+          hint={t("The player reads this; the table runs only the grants below.", { context: "workshop.homebrew.speciesChoice.whatItSaysHint" })}
         />
       </div>
       <Increases option={option} put={(asi) => field("asi", asi)} />
       <div className="col-span-2 space-y-1 sm:col-span-4">
-        <span className="text-[11px] text-stone-400">Damage it resists</span>
-        <ToggleChips options={DAMAGE_TYPES} selected={list(option.resistances)} max={L.resistances} onChange={(next) => field("resistances", next)} />
+        <span className="text-[11px] text-stone-400">{t("Damage it resists")}</span>
+        <ToggleChips options={DAMAGE_TYPES} labels={Object.fromEntries(DAMAGE_TYPES.map((type) => [type, damageLabel(type, locale)]))} selected={list(option.resistances)} max={L.resistances} onChange={(next) => field("resistances", next)} />
       </div>
       <div className="col-span-2 space-y-1 sm:col-span-4">
-        <span className="text-[11px] text-stone-400">Skills it is proficient in</span>
+        <span className="text-[11px] text-stone-400">{t("Skills it is proficient in")}</span>
         <ToggleChips options={SKILL_IDS} labels={SKILL_LABELS} selected={list(option.skills)} max={L.skills} onChange={(next) => field("skills", next)} />
       </div>
       <div className="col-span-2 space-y-1">
-        <span className="text-[11px] text-stone-400">Tools it is proficient with</span>
-        <ChipList items={list(option.tools)} onChange={(next) => field("tools", next)} options={TOOLS} prompt="Add a tool" max={L.tools} />
+        <span className="text-[11px] text-stone-400">{t("Tools it is proficient with")}</span>
+        <ChipList items={list(option.tools)} onChange={(next) => field("tools", next)} options={TOOLS} prompt={t("Add a tool")} max={L.tools} />
       </div>
       <div className="col-span-2 space-y-1">
-        <span className="text-[11px] text-stone-400">Languages it speaks</span>
-        <ChipList items={list(option.languages)} onChange={(next) => field("languages", next)} options={LANGUAGES} prompt="Add a language" max={L.languages} />
+        <span className="text-[11px] text-stone-400">{t("Languages it speaks")}</span>
+        <ChipList items={list(option.languages)} onChange={(next) => field("languages", next)} options={LANGUAGES} prompt={t("Add a language")} max={L.languages} />
       </div>
       <SelectField
-        label="Breath weapon"
+        label={t("Breath weapon")}
         value={breathType}
-        options={[{ value: "", label: "none" }, ...DAMAGE_TYPES.map((type) => ({ value: type, label: type }))]}
+        options={[{ value: "", label: t("none", { context: "workshop.homebrew.hazard.none" }) }, ...DAMAGE_TYPES.map((type) => ({ value: type, label: damageLabel(type, locale) }))]}
         onChange={(damageType) => putBreath({ damageType })}
         className="col-span-2"
-        hint={breathType ? "Scales like the Dragonborn's: 2d6 to 5d6, DC 8 + Constitution + proficiency, once per short rest." : undefined}
+        hint={breathType ? t("Scales like the Dragonborn's: 2d6 to 5d6, DC 8 + Constitution + proficiency, once per short rest.") : undefined}
       />
       {breathType ? (
         <>
           <SelectField
-            label="Save"
+            label={t("Save", { context: "workshop.bestiary.attack.save" })}
             value={String(breath.save ?? "dex") as Ability}
-            options={ABILITIES.map((ability) => ({ value: ability, label: ABILITY_WORDS[ability] }))}
+            options={ABILITIES.map((ability) => ({ value: ability, label: t(ABILITY_KEYS[ability]) }))}
             onChange={(save) => putBreath({ save })}
           />
           <SelectField
-            label="Shape"
+            label={t("Shape")}
             value={String(breath.shape ?? "cone") as BreathShape}
             options={(Object.keys(BREATH_AREAS) as BreathShape[]).map((shape) => ({ value: shape, label: BREATH_AREAS[shape] }))}
             onChange={(shape) => putBreath({ shape })}
@@ -196,9 +207,9 @@ function OptionFields({ option, put, spells }: { option: Data; put: (next: Data)
         <SpeciesSpellFields
           value={option.spells}
           put={(next) => field("spells", next)}
-          title="Spells it gives"
-          hint="Only characters who pick this option cast these. A cantrip is cast at will; a spell of 1st level or higher a set number of times without a spell slot, and again after a rest."
-          pickLabel={`Find a spell ${optionName} gives`}
+          title={t("Spells it gives")}
+          hint={t("Only characters who pick this option cast these. A cantrip is cast at will; a spell of 1st level or higher a set number of times without a spell slot, and again after a rest.")}
+          pickLabel={t("Find a spell {name} gives", { name: optionName })}
         />
       ) : null}
     </>
@@ -206,18 +217,18 @@ function OptionFields({ option, put, spells }: { option: Data; put: (next: Data)
 }
 
 export function SpeciesChoiceFields({ data, set }: Props) {
+  const t = useT();
   const spells = hostOffers(useCapabilities(), "speciesSpells");
   const raw = data.variants;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return (
       <div className="space-y-1.5 text-sm" data-species-choice>
-        <SectionHead title="The player's choice" glyph="tab-characters" className="mb-1" />
+        <SectionHead title={t("The player's choice")} glyph="tab-characters" className="mb-1" />
         <p className="text-[11px] text-stone-400">
-          For a species whose players each pick one of several packages, each with its own scores, training,
-          resistances or breath.
+          {t("For a species whose players each pick one of several packages, each with its own scores, training, resistances or breath.")}
         </p>
         <button type="button" onClick={() => set({ variants: { label: "", options: [] } })} className={cn(ui.btnSmall, addChip)}>
-          <Plus className="size-3" /> Let the player choose (ancestry, lineage, bloodline)
+          <Plus className="size-3" /> {t("Let the player choose (ancestry, lineage, bloodline)")}
         </button>
       </div>
     );
@@ -228,15 +239,15 @@ export function SpeciesChoiceFields({ data, set }: Props) {
   const baseAsi = raceMechanics({ asi: data.asi }).asi;
   return (
     <div className="space-y-2 text-sm" data-species-choice>
-      <SectionHead title="The player's choice" glyph="tab-characters" className="mb-1" />
+      <SectionHead title={t("The player's choice")} glyph="tab-characters" className="mb-1" />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <TextField
-          label="What the player chooses"
+          label={t("What the player chooses")}
           value={String(group.label ?? "")}
           onChange={(label) => putGroup({ label })}
           placeholder="Draconic ancestry, Bloodline"
           maxLength={L.label}
-          hint="The builder asks for it under this name, and the sheet records the pick as it."
+          hint={t("The builder asks for it under this name, and the sheet records the pick as it.", { context: "workshop.homebrew.speciesChoice.whatPlayerChoosesHint" })}
         />
       </div>
       {/* The option rows a subclass's choice shares (ChoiceOptionList.tsx). */}
@@ -247,15 +258,15 @@ export function SpeciesChoiceFields({ data, set }: Props) {
         summary={(option) => variantSummary(readOption(option))}
         attr="species"
         limits={{ options: L.options, minOptions: L.minOptions, name: L.name }}
-        placeholder="Ashen"
+        placeholder={t("Ashen")}
       />
       {options.length ? (
         <div className="space-y-0.5" data-species-choice-preview>
-          <span className="text-[11px] text-stone-400">What each pick gives, with the species&apos; own scores</span>
+          <span className="text-[11px] text-stone-400">{t("What each pick gives, with the species' own scores")}</span>
           <ul className="space-y-0.5 text-[11px] text-stone-300">
             {options.map((option, index) => (
               <li key={String(option.id ?? "") || `at-${index}`}>
-                <span className="text-amber-200/90">{String(option.name ?? "").trim() || `Option ${index + 1}`}</span>:{" "}
+                <span className="text-amber-200/90">{String(option.name ?? "").trim() || t("Option {index}", { index: index + 1 })}</span>:{" "}
                 {variantSummary(readOption(option), baseAsi)}
               </li>
             ))}
@@ -263,7 +274,7 @@ export function SpeciesChoiceFields({ data, set }: Props) {
         </div>
       ) : null}
       <button type="button" onClick={() => set({ variants: undefined })} className={cn(ui.btnSmall, addChip, "hover:text-red-300")}>
-        <X className="size-3" /> Remove the choice
+        <X className="size-3" /> {t("Remove the choice")}
       </button>
     </div>
   );

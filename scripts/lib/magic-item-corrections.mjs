@@ -46,6 +46,14 @@ export const DROPPED = {
   "belt of giant strength": "the score is the giant's; the named belts have their own rows",
 };
 
+// SRD rows whose text prints a count that is not the row's own, keyed like
+// DROPPED: the row keeps no charges.
+export const UNCHARGED = {
+  // "The goat of traveling ... has 24 charges": one member's; each figurine
+  // has its own row below.
+  "figurine of wondrous power": "the 24 charges are the goat of traveling's; the named figurines have their own rows",
+};
+
 // Rows whose effects are replaced outright.
 export const REPLACED = {
   // Immunity while held; resistance is the nearest thing the engine has.
@@ -188,4 +196,48 @@ export const ADDED = [
   ].map(([stone, ability]) =>
     attuned(`Ioun Stone of ${stone}`, [{ kind: "increase_ability", ability, amount: 2, max: 20 }], [`Ioun Stone (${stone})`]),
   ),
+  // The other stones of the SRD's Ioun Stone entry, each attuned as the
+  // stone is. Left out, a sheet's "Ioun Stone of Regeneration" matched no
+  // row: it took no attunement and its 15 hit points an hour had nothing to
+  // read (src/lib/dm/regeneration-ring.ts). Absorption: "Once the stone has
+  // canceled 20 levels of spells, it burns out and turns dull gray, losing
+  // its magic" (50 for the greater stone), each spell spending its level.
+  ...[
+    ["Absorption", { max: 20, spentAway: true }],
+    ["Greater Absorption", { max: 50, spentAway: true }],
+    ["Awareness"],
+    ["Mastery"],
+    ["Regeneration"],
+    ["Reserve"],
+    ["Sustenance"],
+  ].map(([stone, charges]) => ({ ...attuned(`Ioun Stone of ${stone}`, [], [`Ioun Stone (${stone})`]), ...(charges ? { charges } : {}) })),
+  // SRD 5.1, Figurine of Wondrous Power: "When the creature becomes a
+  // figurine again, its property can't be used again until a certain amount
+  // of time has passed, as specified in the figurine's description": "Once
+  // it has been used, it can't be used again until 5 days have passed"
+  // (Bronze Griffon), and so on. The goat of traveling "has 24 charges, and
+  // each hour or portion thereof it spends in beast form costs 1 charge ...
+  // When it runs out of charges, it ... can't be used again until 7 days have
+  // passed, when it regains all its charges." The lions come in a pair and
+  // the goats in a set of three: each is its own figurine.
+  ...[
+    ["Bronze Griffon", 5],
+    ["Ebony Fly", 2],
+    ["Golden Lion", 7],
+    ["Goat of Traveling", 7, 24, "Ivory Goat of Traveling"],
+    ["Goat of Travail", 30, 1, "Ivory Goat of Travail"],
+    ["Goat of Terror", 15, 1, "Ivory Goat of Terror"],
+    ["Marble Elephant", 7],
+    ["Obsidian Steed", 5],
+    ["Onyx Dog", 7],
+    ["Serpentine Owl", 2],
+    ["Silver Raven", 2],
+  ].map(([figurine, days, max = 1, alias = `${figurine} Figurine`]) => ({
+    name: `Figurine of Wondrous Power (${figurine})`,
+    requiresAttunement: false,
+    effects: [],
+    aliases: [alias, `Figurine of Wondrous Power, ${figurine}`],
+    noWear: true,
+    charges: { max, regainDays: days },
+  })),
 ];

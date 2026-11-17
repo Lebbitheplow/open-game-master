@@ -13,6 +13,19 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 //
 // Returns what the DM is told, "" when the call moved the whole party.
 
+// Whether move_party's characterIds name only some of the party. Then the
+// NPCs travelling with it stay where they were (src/lib/db/locations.ts):
+// nobody tracked follows the ones who went unless the narrator says so.
+export function splitsParty(campaign: Campaign, refs: unknown): boolean {
+  if (!Array.isArray(refs) || !refs.length) {
+    return false;
+  }
+  const wanted = refs.filter((ref): ref is string => typeof ref === "string").map((ref) => ref.trim());
+  const party = fightingParty(campaign).filter((sheet) => !sheet.summon);
+  const going = party.filter((sheet) => wanted.some((ref) => ref === sheet.id || textKey(ref) === textKey(sheet.name)));
+  return going.length > 0 && going.length < party.length;
+}
+
 function names(sheets: readonly CharacterSheet[]): string {
   const list = sheets.map((sheet) => sheet.name);
   return list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : (list[0] ?? "");

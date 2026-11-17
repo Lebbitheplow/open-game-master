@@ -15,7 +15,7 @@ import {
   ROUTE_LABELS,
   ROUTE_LABEL_MAX,
   TITLE_MAX,
-  originLine,
+  originLineT,
   type Beat,
   type BeatKind,
   type BeatLinks,
@@ -27,7 +27,8 @@ import {
 import { KIND_GLYPH, LINK_FIELDS, LINK_GLYPH } from "@/app/workshop/storyboard/beat-fields";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
-import { checkProse, overflowLine } from "@/lib/workshop/prose-check";
+import { checkProseT, overflowLineT } from "@/lib/workshop/prose-check";
+import { useT } from "@/lib/locale";
 
 // One card, open for editing: its kind and title, what happens, who and
 // where it involves, and which cards it leads to and how. Split out of
@@ -71,8 +72,9 @@ export function BeatEditor({
   // held until it fits (issue #302): the server refuses it the same way.
   // The readability note is a heuristic the author may dismiss; the text
   // is never changed.
-  const overflow = overflowLine("This card's text", edit.body.trim(), BODY_MAX);
-  const prose = checkProse(edit.body);
+  const t = useT();
+  const overflow = overflowLineT(t, t("This card's text"), edit.body.trim(), BODY_MAX);
+  const prose = checkProseT(t, edit.body);
   const [dismissed, setDismissed] = useState("");
   const proseKey = prose.map((warning) => warning.kind).join(",");
   const saveButton = (
@@ -83,22 +85,22 @@ export function BeatEditor({
       className={cn(ui.btnPrimary, "w-fit")}
     >
       {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-      Save the card
+      {t("Save the card")}
     </button>
   );
 
   return (
     <>
-      <SectionHead title="The card" glyph={KIND_GLYPH[edit.kind]} className="mb-0" />
+      <SectionHead title={t("The card")} glyph={KIND_GLYPH[edit.kind]} className="mb-0" />
       {origin ? (
         <p className="text-[11px] text-stone-500" data-testid="card-origin">
-          {originLine(origin)}
+          {originLineT(t, origin)}
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         <span className="w-full sm:w-52">
           <Select<BeatKind>
-            label="Kind of card"
+            label={t("Kind of card")}
             value={edit.kind}
             onChange={(kind) => onChange({ ...edit, kind })}
             options={BEAT_KINDS.map((kind) => ({ value: kind, label: BEAT_LABELS[kind], icon: { kind: "glyph" as const, key: KIND_GLYPH[kind] } }))}
@@ -106,20 +108,20 @@ export function BeatEditor({
         </span>
         <input
           value={edit.title}
-          aria-label="Title"
+          aria-label={t("The entry")}
           onChange={(event) =>
             onChange({ ...edit, title: event.target.value.slice(0, TITLE_MAX) })
           }
           className={cn(ui.input, "min-w-40 flex-1")}
         />
       </div>
-      <DictateField label="What happens" onTranscript={(text) => onChange({ ...edit, body: appendDictation(edit.body, text) })}>
+      <DictateField label={t("What happens")} onTranscript={(text) => onChange({ ...edit, body: appendDictation(edit.body, text) })}>
         <textarea
           value={edit.body}
           onChange={(event) => onChange({ ...edit, body: event.target.value })}
           rows={3}
-          placeholder="What actually happens, and what it means if the party is not there."
-          aria-label="What happens"
+          placeholder={t("What actually happens, and what it means if the party is not there.")}
+          aria-label={t("What happens")}
           className={cn(ui.input, "resize-y")}
         />
       </DictateField>
@@ -129,24 +131,24 @@ export function BeatEditor({
         </span>
         {overflow ? (
           <span className="motion-shake w-full text-red-400" role="alert">
-            {overflow} Shorten it to save.
+            {overflow} {t("Shorten it to save.")}
           </span>
         ) : null}
         {prose.length && dismissed !== proseKey ? (
           <span className="reveal flex w-full items-start gap-1.5 text-amber-300/90" data-testid="prose-warning">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              This may read oddly: {prose.map((warning) => warning.message).join(" ")}
-              {prose[0].samples[0] ? ` For example: ${prose[0].samples[0]}` : ""} It may have been written this way; nothing is changed.{" "}
+              {t("This may read oddly:")} {prose.map((warning) => warning.message).join(" ")}
+              {prose[0].samples[0] ? ` ${t("For example: {sample}", { sample: prose[0].samples[0] })}` : ""} {t("It may have been written this way; nothing is changed.")}{" "}
               <button type="button" onClick={() => setDismissed(proseKey)} className="underline">
-                Dismiss
+                {t("Dismiss")}
               </button>
             </span>
           </span>
         ) : null}
       </div>
 
-      <SectionHead title="Who and where" glyph="system-cast" className="mb-0 pt-1" />
+      <SectionHead title={t("Who and where")} glyph="system-cast" className="mb-0 pt-1" />
       <div className="stagger-up grid gap-2 sm:grid-cols-2">
         {LINK_FIELDS.map(([field, bucket, label]) => (
           <Field key={field} label={label}>
@@ -160,21 +162,21 @@ export function BeatEditor({
                 })
               }
               options={[
-                { value: "", label: "nobody in particular" },
+                { value: "", label: t("nobody in particular") },
                 ...(broken.includes(field) && edit.links[field]
-                  ? [{ value: edit.links[field] as string, label: "Missing: no longer in this workshop or its shared one", disabled: true }]
+                  ? [{ value: edit.links[field] as string, label: t("Missing: no longer in this workshop or its shared one"), disabled: true }]
                   : []),
                 ...inventory[bucket].map((entry) => ({
                   value: entry.id,
                   label: entry.name,
                   icon: { kind: "glyph" as const, key: LINK_GLYPH[field] },
-                  ...(entry.from ? { group: `From ${entry.from}` } : {}),
+                  ...(entry.from ? { group: t("From {from}", { from: entry.from }) } : {}),
                 })),
               ]}
             />
             {broken.includes(field) ? (
               <p className="reveal mt-1 text-[11px] text-amber-300/80">
-                What this card picked is gone. Pick again, or clear it.
+                {t("What this card picked is gone. Pick again, or clear it.")}
               </p>
             ) : null}
           </Field>
@@ -182,11 +184,9 @@ export function BeatEditor({
       </div>
 
       <div className="flex flex-col gap-1">
-        <SectionHead title="Leads to" glyph="pace-normal" className="mb-1 pt-1" />
+        <SectionHead title={t("Leads to")} glyph="pace-normal" className="mb-1 pt-1" />
         <p className="text-[11px] leading-snug text-stone-500">
-          An arrow is &quot;then&quot; unless you say otherwise. Mark the routes the party chooses
-          between, or a scene that only happens if something holds; those arrive in a campaign
-          as moments the storyteller can run or drop, not as beats it waits on.
+          {t("An arrow is \"then\" unless you say otherwise. Mark the routes the party chooses between, or a scene that only happens if something holds; those arrive in a campaign as moments the storyteller can run or drop, not as beats it waits on.")}
         </p>
         <div className={cn("stagger-pop", chipRow)}>
           {others.map((other) => {
@@ -236,7 +236,7 @@ export function BeatEditor({
                   <span className="min-w-28 flex-1 truncate text-stone-300">{target.title}</span>
                   <span className="w-full sm:w-48">
                     <Select<"then" | RouteKind>
-                      label={`How "${target.title}" follows`}
+                      label={t("How \"{title}\" follows", { title: target.title })}
                       value={route?.kind ?? "then"}
                       onChange={(kind) => setRoute(kind)}
                       options={(["then", ...ROUTE_KINDS] as const).map((kind) => ({
@@ -249,8 +249,8 @@ export function BeatEditor({
                     <input
                       value={route.label}
                       onChange={(event) => setRoute(route.kind, event.target.value)}
-                      placeholder={route.kind === "choice" ? "if they side with the guild" : "if they search the cellar"}
-                      aria-label={`When the party takes the route to "${target.title}"`}
+                      placeholder={route.kind === "choice" ? t("if they side with the guild") : t("if they search the cellar")}
+                      aria-label={t("When the party takes the route to \"{title}\"", { title: target.title })}
                       className={cn(ui.input, "reveal min-w-40 flex-1 py-1 text-xs")}
                     />
                   ) : null}
@@ -268,10 +268,10 @@ export function BeatEditor({
             type="button"
             disabled={busy}
             onClick={onDelete}
-            aria-label={`Delete ${edit.title}`}
+            aria-label={t("Delete {name}", { name: edit.title })}
             className={cn(ui.btnSmall, "ml-auto hover:border-red-500/50 hover:text-red-300")}
           >
-            <Trash2 className="size-3.5" /> Delete
+            <Trash2 className="size-3.5" /> {t("Delete")}
           </button>
         </div>
       ) : (

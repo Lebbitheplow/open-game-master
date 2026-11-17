@@ -64,7 +64,7 @@ import {
   fightingStyleSlots,
   type FightingStyleId,
 } from "@/lib/srd/feature-effects";
-import { spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
+import { countingScores, spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
 import { arcanumName, arcanumSplit, mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
 import { isThirdCaster, thirdCasterRequiredCantrip } from "@/lib/srd/third-caster";
 import {
@@ -102,6 +102,7 @@ import { bundledSwapSpells, originSwapOffer, originSwapRequest } from "@/lib/dm/
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { featChoice, withFeatChoice } from "@/lib/schemas/sheet";
 import { workshopClassList } from "@/lib/classes/workshop-registry";
+import { useLocale, useT, useTp } from "@/lib/locale";
 
 
 // Guided level-up, one level at a time. The dialog gathers the CHOICES the
@@ -138,6 +139,9 @@ export function LevelUpDialog({
   worldPack?: string;
   onDone: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   // Held from the moment the dialog opens: the sheet the server sends back
   // after the level is already at it.
   const [startLevel] = useState(sheet.level);
@@ -277,7 +281,7 @@ export function LevelUpDialog({
       matching.map((entry) => ({ ...entry, id: entry.option.id })),
       ids,
     );
-    return { ...split, label: pack?.classes.length ? `Callings of ${pack.name}` : "Recommended for this setting", query };
+    return { ...split, label: pack?.classes.length ? t("Callings of {pack}", { pack: pack.name, context: "table.levelup.packClasses" }) : t("Recommended for this setting"), query };
   }, [genre, pack, classQuery, newClassOptions]);
   const classListId = useId();
 
@@ -485,7 +489,8 @@ export function LevelUpDialog({
     subclass: effectiveSubclass,
     progression,
     level: classLevelAfter,
-    abilitiesAfter: after.abilities,
+    // A worn Headband of Intellect's 19 counts (spell-prep.ts countingScores).
+    abilitiesAfter: countingScores(sheet, after.abilities),
   });
   const showSpells = caster.casts || (!isMulticlassPath && Boolean(sheet.spellcasting));
   // Magical Secrets, the Book of Shadows and Pact of the Chain's find
@@ -802,13 +807,13 @@ export function LevelUpDialog({
   function pickRefusal(name: string, level: number | null): { short: string; long: string } | null {
     if (anyGroup && anyChosenKeys.has(textKey(name))) {
       return {
-        short: "Chosen below",
-        long: `${name} is already chosen under ${anyGroup.feature}, below. Untick it there to choose it here.`,
+        short: t("Chosen below"),
+        long: t("{name} is already chosen under {feature}, below. Untick it there to choose it here.", { name, feature: anyGroup.feature }),
       };
     }
     if (level === 0) {
       if (remainingCantrips !== null && cantripPicks.length >= remainingCantrips) {
-        return { short: "Cantrips full", long: `That is every new cantrip for this level. Untick one to choose ${name}.` };
+        return { short: t("Cantrips full", { context: "sheet.spells.cantripsFull" }), long: t("That is every new cantrip for this level. Untick one to choose {name}.", { name }) };
       }
       // An Arcane Trickster's Mage Hand: the last open cantrip is kept for
       // it (src/lib/srd/third-caster.ts thirdCasterCantripProblem).
@@ -831,7 +836,7 @@ export function LevelUpDialog({
         : null;
     }
     if (remainingPicks !== null && regularPicks.length >= remainingPicks) {
-      return { short: "All new spells chosen", long: `That is every new spell for this level. Untick one to choose ${name}.` };
+      return { short: t("All new spells chosen"), long: t("That is every new spell for this level. Untick one to choose {name}.", { name }) };
     }
     if (!isThirdCaster(classChoice, effectiveSubclass, progression)) {
       return null;
@@ -846,22 +851,25 @@ export function LevelUpDialog({
       adding: name,
       schoolOf,
     });
-    return offSchool ? { short: "Outside your two schools", long: offSchool } : null;
+    return offSchool ? { short: t("Outside your two schools"), long: offSchool } : null;
   }
   function freeNote(name: string): string {
     return spellGrants.learned.some((entry) => textKey(entry) === textKey(name))
-      ? `Free with ${spellGrants.learnedFrom}`
-      : "Free with your subclass";
+      ? t("Free with {from}", { from: spellGrants.learnedFrom })
+      : t("Free with your subclass");
   }
   function anyRefusal(name: string, cantrip: boolean) {
     return anyGroup
-      ? anyListPickRefusal({
-          group: anyGroup,
-          picked: anyChosen.length,
-          cantrip,
-          cantripsOpen: (remainingCantrips ?? 0) - cantripPicks.length,
-          name,
-        })
+      ? anyListPickRefusal(
+          {
+            group: anyGroup,
+            picked: anyChosen.length,
+            cantrip,
+            cantripsOpen: (remainingCantrips ?? 0) - cantripPicks.length,
+            name,
+          },
+          t,
+        )
       : null;
   }
   // What can still be learned: the class list minus what is already held,
@@ -879,7 +887,7 @@ export function LevelUpDialog({
         name: spell.name,
         level: spell.level,
         state: granted ? ("granted" as const) : picked ? ("ready" as const) : ("available" as const),
-        note: granted ? freeNote(spell.name) : picked ? "New" : undefined,
+        note: granted ? freeNote(spell.name) : picked ? t("New", { context: "table.levelup.newNote" }) : undefined,
         blocked: granted || picked ? undefined : pickRefusal(spell.name, spell.level)?.short,
         data: spell.data,
         slug: spell.slug,
@@ -903,7 +911,7 @@ export function LevelUpDialog({
         pool: anyPool,
         held: (name) => alreadyKnown.has(textKey(name)) || grantedFree.has(textKey(name)),
         picks: anyChosen,
-        elsewhere: (name) => (classPickKeys.has(textKey(name)) ? "Chosen above" : null),
+        elsewhere: (name) => (classPickKeys.has(textKey(name)) ? t("Chosen above") : null),
         refusal: anyRefusal,
       })
     : [];
@@ -986,7 +994,7 @@ export function LevelUpDialog({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(typeof data?.error === "string" ? data.error : "The level-up was refused.");
+        setError(typeof data?.error === "string" ? data.error : t("The level-up was refused."));
         return;
       }
       setResult({
@@ -996,7 +1004,7 @@ export function LevelUpDialog({
         classLine: isMulticlassPath ? ` (${chosenKlass?.name ?? classChoice} ${classLevelAfter})` : "",
       });
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -1036,13 +1044,13 @@ export function LevelUpDialog({
   // Why this character cannot take a level now, in the rules' words.
   const reachedLevel = levelForXp(sheet.xp);
   const blocked = sheet.deathSaves?.dead
-    ? `${sheet.name} is dead, and the dead gain no levels.`
+    ? t("{name} is dead, and the dead gain no levels.", { name: sheet.name })
     : sheet.currentHp <= 0
-      ? `${sheet.name} is at 0 hit points. A character levels up once they are back on their feet.`
+      ? t("{name} is at 0 hit points. A character levels up once they are back on their feet.", { name: sheet.name })
       : startLevel >= 20
-        ? "No character passes level 20."
+        ? t("No character passes level 20.")
         : reachedLevel < targetLevel
-          ? `Level ${targetLevel} takes ${XP_THRESHOLDS[targetLevel - 1]} experience points and ${sheet.name} has ${sheet.xp}. A level is earned in play, or granted by whoever runs the table.`
+          ? t("Level {level} takes {xp} experience points and {name} has {have}. A level is earned in play, or granted by whoever runs the table.", { level: targetLevel, xp: XP_THRESHOLDS[targetLevel - 1], name: sheet.name, have: sheet.xp })
           : "";
 
   const wideStep = step !== "hp" && !blocked && !result;
@@ -1062,7 +1070,7 @@ export function LevelUpDialog({
           <div className="mb-4 flex items-center justify-between">
             <Dialog.Title className="flex items-center gap-2 font-display text-lg tracking-wide text-amber-100">
               <Sparkles className="size-5 text-amber-200" />
-              Level {targetLevel}!
+              {t("Level {level}!", { level: targetLevel })}
             </Dialog.Title>
             {/* Named, and a finger's size on a phone, as the other dialogs'
                 closes are (CharacterNotesDialog, LeadEditDialog). */}
@@ -1074,31 +1082,29 @@ export function LevelUpDialog({
           {result ? (
             <div className="reveal space-y-4 text-sm" role="status">
               <p className="text-stone-300">
-                {sheet.name} is level {targetLevel}
+                {t("{name} is level {level}", { name: sheet.name, level: targetLevel })}
                 {result.classLine}.
               </p>
               <div className="flex items-center justify-between rounded-md border border-amber-900/50 bg-stone-950/60 px-4 py-3">
                 <span className="flex items-center gap-2 text-stone-300">
                   {result.rolled !== null ? <Dices className="size-4 text-amber-300" /> : null}
                   {result.rolled !== null
-                    ? `The server rolled ${result.rolled} on the d${result.die}`
+                    ? t("The server rolled {roll} on the d{die}", { roll: result.rolled, die: result.die })
                     : hpMethod === "max"
-                      ? `The d${result.die}'s highest face`
-                      : `The d${result.die}'s average, ${fixedDieValue(result.die)}`}
+                      ? t("The d{die}'s highest face", { die: result.die })
+                      : t("The d{die}'s average, {value}", { die: result.die, value: fixedDieValue(result.die) })}
                 </span>
                 <span className="motion-pop font-mono text-lg text-amber-300">+{result.hpGained} HP</span>
               </div>
               {reachedLevel > targetLevel && targetLevel < 20 ? (
-                <p className="text-xs text-stone-400">
-                  The experience already earns level {targetLevel + 1} too; take it next, one level at a time.
-                </p>
+                <p className="text-xs text-stone-400">{t("The experience already earns level {level} too; take it next, one level at a time.", { level: targetLevel + 1 })}</p>
               ) : null}
               <button
                 type="button"
                 onClick={onDone}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-200 px-4 py-2.5 text-sm font-medium text-stone-950 hover:bg-amber-100"
               >
-                Done
+                {t("Done", { context: "action.done" })}
               </button>
             </div>
           ) : blocked ? (
@@ -1111,7 +1117,7 @@ export function LevelUpDialog({
                 onClick={onDone}
                 className="w-full rounded-md border border-stone-700 px-4 py-2.5 text-sm text-stone-300 hover:bg-stone-900"
               >
-                Close
+                {t("Close", { context: "table.levelup.close" })}
               </button>
             </div>
           ) : (
@@ -1121,19 +1127,23 @@ export function LevelUpDialog({
               {step === "hp" ? (
                 <>
                   <p className="text-stone-300">
-                    {sheet.name} advances to level {targetLevel}
                     {isMulticlassPath
-                      ? ` as a ${chosenKlass?.name ?? classChoice} (${chosenKlass?.name ?? classChoice} level ${classLevelAfter})`
-                      : ""}
+                      ? t("{name} advances to level {level} as a {class} ({class} level {classLevel})", {
+                          name: sheet.name,
+                          level: targetLevel,
+                          class: chosenKlass?.name ?? classChoice,
+                          classLevel: classLevelAfter,
+                        })
+                      : t("{name} advances to level {level}", { name: sheet.name, level: targetLevel })}
                     .
                   </p>
                   {newFeatureNames.length ? (
                     <div className="reveal rounded-md border border-amber-900/50 bg-stone-950/60 px-3 py-2">
-                      <p className="mb-1 text-xs text-amber-200">New at level {targetLevel}:</p>
+                      <p className="mb-1 text-xs text-amber-200">{t("New at level {level}:", { level: targetLevel })}</p>
                       <InfoChipList
                         items={newFeatureNames.map((name) => ({
                           name,
-                          text: describeFeature(classChoice, effectiveSubclass, name),
+                          text: describeFeature(classChoice, effectiveSubclass, name, locale),
                         }))}
                       />
                     </div>
@@ -1141,14 +1151,16 @@ export function LevelUpDialog({
                   {hpMethod === "rolled" ? (
                     <>
                       <p className="text-stone-300">
-                        Hit points: this table rolls them. The server rolls the d{hitDie} when you
-                        confirm{conMod ? `, and adds ${conMod > 0 ? "+" : ""}${conMod} for Constitution` : ""}; every level adds at least 1.
+                        {t("Hit points: this table rolls them. The server rolls the d{die} when you confirm{con}; every level adds at least 1.", {
+                          die: hitDie,
+                          con: conMod ? t(", and adds {con} for Constitution", { con: `${conMod > 0 ? "+" : ""}${conMod}` }) : "",
+                        })}
                       </p>
-                      <div className="stagger space-y-1.5" role="radiogroup" aria-label="Hit points">
+                      <div className="stagger space-y-1.5" role="radiogroup" aria-label={t("Hit points")}>
                         {(
                           [
-                            ["roll", `Roll the d${hitDie}`, `${hpPreview.min} to ${hpPreview.max} HP`],
-                            ["average", "Take the average instead", `+${fixedGain} HP`],
+                            ["roll", t("Roll the d{die}", { die: hitDie }), t("{min} to {max} HP", { min: hpPreview.min, max: hpPreview.max })],
+                            ["average", t("Take the average instead"), `+${fixedGain} HP`],
                           ] as const
                         ).map(([value, label, note]) => (
                           <button
@@ -1177,9 +1189,9 @@ export function LevelUpDialog({
                     <div className="flex items-center justify-between rounded-md border border-stone-700 px-4 py-2.5">
                       <span className="text-stone-300">
                         {hpMethod === "max"
-                          ? `Hit points: the d${hitDie}'s highest face, as this table plays`
-                          : `Hit points: the d${hitDie}'s average, ${fixedDieValue(hitDie)}, as this table plays`}
-                        {conMod ? `, ${conMod > 0 ? "+" : ""}${conMod} Constitution` : ""}
+                          ? t("Hit points: the d{die}'s highest face, as this table plays", { die: hitDie })
+                          : t("Hit points: the d{die}'s average, {value}, as this table plays", { die: hitDie, value: fixedDieValue(hitDie) })}
+                        {conMod ? t(", {con} Constitution", { con: `${conMod > 0 ? "+" : ""}${conMod}` }) : ""}
                       </span>
                       <span className="font-mono text-amber-400">+{fixedGain} HP</span>
                     </div>
@@ -1187,12 +1199,12 @@ export function LevelUpDialog({
                   {hpPreview.extras.length || after.primalChampion ? (
                     // What rides on top of the die, each counted in the
                     // numbers above as the server counts it.
-                    <ul className="stagger space-y-0.5 text-xs text-stone-400" aria-label="Also added">
+                    <ul className="stagger space-y-0.5 text-xs text-stone-400" aria-label={t("Also added")}>
                       {hpPreview.extras.map((line) => (
                         <li key={line}>{line}</li>
                       ))}
                       {after.primalChampion ? (
-                        <li className="text-amber-200">Primal Champion: +4 Strength and Constitution (to 24)</li>
+                        <li className="text-amber-200">{t("Primal Champion: +4 Strength and Constitution (to 24)")}</li>
                       ) : null}
                     </ul>
                   ) : null}
@@ -1201,8 +1213,7 @@ export function LevelUpDialog({
               {step === "class" ? (
                 <>
                   <p className="text-stone-300">
-                    Which class takes level {targetLevel}? Advance one {sheet.name} already has,
-                    or multiclass into a new one.
+                    {t("Which class takes level {level}? Advance one {name} already has, or multiclass into a new one.", { level: targetLevel, name: sheet.name })}
                   </p>
                   <div className="stagger space-y-1.5">
                     {classList.map((entry) => {
@@ -1241,27 +1252,26 @@ export function LevelUpDialog({
                   {newClassOptions.length ? (
                     <>
                       <p className="text-xs uppercase tracking-wide text-amber-200/80">
-                        Multiclass into a new class
+                        {t("Multiclass into a new class")}
                       </p>
-                      <p className="text-xs text-stone-500">
-                        A new class starts at level 1 with SOME of its training: no saving
-                        throws, and only the proficiencies the multiclass rules grant.
-                      </p>
+                      <p className="text-xs text-stone-500">{t("A new class starts at level 1 with SOME of its training: no saving throws, and only the proficiencies the multiclass rules grant.")}</p>
                       <label className="relative block">
                         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" aria-hidden="true" />
                         <input
                           type="search"
                           value={classQuery}
                           onChange={(event) => setClassQuery(event.target.value)}
-                          placeholder={`Search ${newClassOptions.length} classes`}
-                          aria-label="Search classes"
+                          placeholder={t("Search {count} classes", { count: newClassOptions.length })}
+                          aria-label={t("Search classes")}
                           aria-describedby={`${classListId}-hint`}
                           className={cn(ui.input, "pl-8")}
                         />
                         <span id={`${classListId}-hint`} className="sr-only" aria-live="polite">
                           {classGroups.query
-                            ? `${classGroups.setting.length + classGroups.other.length} ${classGroups.setting.length + classGroups.other.length === 1 ? "class matches" : "classes match"}.`
-                            : "Searches the class names."}
+                            ? tp("{count} class matches.", "{count} classes match.", {
+                                count: classGroups.setting.length + classGroups.other.length,
+                              })
+                            : t("Searches the class names.")}
                         </span>
                       </label>
                       <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
@@ -1284,7 +1294,7 @@ export function LevelUpDialog({
                           classGroups.query || !classGroups.setting.length ? (
                             <>
                               {classGroups.setting.length ? (
-                                <p className="pt-1 text-[11px] uppercase tracking-wide text-stone-500">Other settings</p>
+                                <p className="pt-1 text-[11px] uppercase tracking-wide text-stone-500">{t("Other settings", { context: "table.levelup.otherSettingsHead" })}</p>
                               ) : null}
                               {classGroups.other.map(({ option, check }) => (
                                 <NewClassButton
@@ -1308,7 +1318,7 @@ export function LevelUpDialog({
                                 onClick={() => setOtherOpen((open) => !open)}
                                 className="flex min-h-10 w-full items-center justify-between rounded-lg border border-dashed border-stone-700 px-3 text-left text-xs text-stone-400 hover:border-amber-800 hover:text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
                               >
-                                <span>Other settings ({classGroups.other.length})</span>
+                                <span>{t("Other settings ({count})", { count: classGroups.other.length })}</span>
                                 <ChevronDown className={cn("size-3.5 transition-transform duration-200", otherOpen && "rotate-180")} aria-hidden="true" />
                               </button>
                               {otherOpen ? (
@@ -1331,7 +1341,7 @@ export function LevelUpDialog({
                           )
                         ) : null}
                         {classGroups.query && !classGroups.setting.length && !classGroups.other.length ? (
-                          <p className="reveal text-xs text-stone-500">No class by that name.</p>
+                          <p className="reveal text-xs text-stone-500">{t("No class by that name.")}</p>
                         ) : null}
                       </div>
                     </>
@@ -1339,7 +1349,7 @@ export function LevelUpDialog({
                   {needsSkillPick ? (
                     <>
                       <p className="text-stone-300">
-                        {chosenKlass?.name ?? classChoice} grants one new skill. Pick it:
+                        {t("{class} grants one new skill. Pick it:", { class: chosenKlass?.name ?? classChoice })}
                       </p>
                       <div className="stagger-pop flex flex-wrap gap-1.5">
                         {skillOptions.map((skillId) => {
@@ -1362,7 +1372,7 @@ export function LevelUpDialog({
                               >
                                 {name}
                               </button>
-                              <InfoButton label={name} text={describeSkill(skillId)} />
+                              <InfoButton label={name} text={describeSkill(t, skillId, locale)} />
                             </span>
                           );
                         })}
@@ -1419,9 +1429,9 @@ export function LevelUpDialog({
               {step === "asi" ? (
                 <>
                   <p className="text-stone-300">
-                    {sheet.name} is owed
-                    {asiLevels.length === 1 ? " an ability score improvement" : ` ${asiLevels.length} ability score improvements`}
-                    {" "}by {klass?.name ?? classChoice} level {classLevelAfter}: two points, or a feat, each.
+                    {asiLevels.length === 1
+                      ? t("{name} is owed an ability score improvement by {class} level {level}: two points, or a feat, each.", { name: sheet.name, class: klass?.name ?? classChoice, level: classLevelAfter })
+                      : t("{name} is owed {count} ability score improvements by {class} level {level}: two points, or a feat, each.", { name: sheet.name, count: asiLevels.length, class: klass?.name ?? classChoice, level: classLevelAfter })}
                   </p>
                   <AsiFeatEditor
                     slotLevels={asiLevels}
@@ -1447,8 +1457,10 @@ export function LevelUpDialog({
               {step === "expertise" ? (
                 <>
                   <p className="text-stone-300">
-                    Expertise: pick {Math.min(expertiseToPick, expertiseOptions.length)} of{" "}
-                    {sheet.name}&apos;s proficient skills to DOUBLE their proficiency bonus in:
+                    {t("Expertise: pick {count} of {name}'s proficient skills to DOUBLE their proficiency bonus in:", {
+                      count: Math.min(expertiseToPick, expertiseOptions.length),
+                      name: sheet.name,
+                    })}
                   </p>
                   <div className="stagger-pop flex flex-wrap gap-1.5">
                     {expertiseOptions.map((skillId) => {
@@ -1479,7 +1491,7 @@ export function LevelUpDialog({
                           >
                             {name}
                           </button>
-                          <InfoButton label={name} text={describeSkill(skillId)} />
+                          <InfoButton label={name} text={describeSkill(t, skillId, locale)} />
                         </span>
                       );
                     })}
@@ -1490,8 +1502,7 @@ export function LevelUpDialog({
               {step === "options" ? (
                 <>
                   <p className="text-stone-300">
-                    New abilities for {sheet.name} to choose. These are real powers, not flavour,
-                    so read them before picking.
+                    {t("New abilities for {name} to choose. These are real powers, not flavour, so read them before picking.", { name: sheet.name })}
                   </p>
                   {choicesDue.map((slot) => (
                     <SubclassChoicePick key={slot.label} slot={slot} picked={choicePicked(slot.label)} onPick={(name) => pickChoice(slot.label, name)} />
@@ -1515,7 +1526,7 @@ export function LevelUpDialog({
                     .map((slot) => (
                       <div key={slot.kind}>
                         <p className="mb-1 mt-2 text-xs uppercase tracking-wide text-amber-200/80">
-                          {slot.label}: {slot.total - slot.remaining}/{slot.total} chosen
+                          {t("{label}: {chosen}/{total} chosen", { label: slot.label, chosen: slot.total - slot.remaining, total: slot.total })}
                         </p>
                         {/* A pick of spells says its rule once; each spell's
                             info opens the spell (as on the builder's class step). */}
@@ -1548,8 +1559,8 @@ export function LevelUpDialog({
                                   <span className="block">{option.n}</span>
                                   {already || option.req || !optionPicksSpells(slot.kind) ? (
                                     <span className="block text-[11px] text-stone-500">
-                                      {already ? "Already known. " : ""}
-                                      {option.req ? `Requires ${option.req}. ` : ""}
+                                      {already ? t("Already known. ") : ""}
+                                      {option.req ? t("Requires {req}. ", { req: option.req }) : ""}
                                       {optionPicksSpells(slot.kind) ? "" : option.d}
                                     </span>
                                   ) : null}
@@ -1559,7 +1570,7 @@ export function LevelUpDialog({
                                 ) : (
                                   <InfoButton
                                     label={option.n}
-                                    meta={option.req ? `Requires ${option.req}` : undefined}
+                                    meta={option.req ? t("Requires {req}", { req: option.req }) : undefined}
                                     text={option.d}
                                   />
                                 )}
@@ -1575,8 +1586,7 @@ export function LevelUpDialog({
               {step === "style" ? (
                 <>
                   <p className="text-stone-300">
-                    Fighting Style: pick {stylesToPick} for {sheet.name}. The server applies it
-                    to every attack from here on.
+                    {t("Fighting Style: pick {count} for {name}. The server applies it to every attack from here on.", { count: stylesToPick, name: sheet.name })}
                   </p>
                   <div className="stagger space-y-1.5">
                     {styleOptions.map((style) => {
@@ -1613,13 +1623,13 @@ export function LevelUpDialog({
               {step === "subclass" ? (
                 <>
                   <p className="text-stone-300">
-                    At level {subclassLevel}, every {klass?.name ?? sheet.class} chooses a
-                    specialization. Pick one for {sheet.name}:
+                    {t("At level {level}, every {class} chooses a specialization. Pick one for {name}:", {
+                      level: subclassLevel ?? 0,
+                      class: klass?.name ?? sheet.class,
+                      name: sheet.name,
+                    })}
                   </p>
-                  <p className="text-xs text-stone-500">
-                    This choice shapes how {sheet.name} plays for the rest of the campaign. Read
-                    each one before deciding.
-                  </p>
+                  <p className="text-xs text-stone-500">{t("This choice shapes how {name} plays for the rest of the campaign. Read each one before deciding.", { name: sheet.name })}</p>
                   <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
                     {subclassOptions.map((name) => {
                       const archetype = archetypes.find(
@@ -1644,13 +1654,13 @@ export function LevelUpDialog({
                             {builtInSubclasses.some(
                               (entry) => textKey(entry) === textKey(name),
                             ) ? (
-                              <span className="text-xs text-stone-500">full features</span>
+                              <span className="text-xs text-stone-500">{t("full features")}</span>
                             ) : archetype?.workshop ? (
                               // A workshop subclass is granted feature by
                               // feature as its author wrote it.
-                              <span className="text-xs text-stone-500">Homebrew, its features as written</span>
+                              <span className="text-xs text-stone-500">{t("Homebrew, its features as written")}</span>
                             ) : (
-                              <span className="text-xs text-stone-600">description only</span>
+                              <span className="text-xs text-stone-600">{t("description only")}</span>
                             )}
                           </button>
                           <InfoButton
@@ -1664,10 +1674,7 @@ export function LevelUpDialog({
                       );
                     })}
                     {!subclassOptions.length ? (
-                      <p className="reveal text-xs text-stone-500">
-                        No known specializations for this class; the party lead can set one on
-                        the sheet later.
-                      </p>
+                      <p className="reveal text-xs text-stone-500">{t("No known specializations for this class; the party lead can set one on the sheet later.")}</p>
                     ) : null}
                   </div>
                   <TableScopeNote noun="subclasses" unadmitted={subclassList.unadmitted} failed={subclassList.failed} onRetry={subclassList.retry} />
@@ -1677,7 +1684,7 @@ export function LevelUpDialog({
               {step === "training" ? (
                 <>
                   <p className="text-stone-300">
-                    {effectiveSubclass || "The subclass"} trains {sheet.name} in more at this level.
+                    {t("{subclass} trains {name} in more at this level.", { subclass: effectiveSubclass || t("The subclass"), name: sheet.name })}
                   </p>
                   {freshTraining.map((grant) => (
                     <FeatChoicesFields
@@ -1702,31 +1709,30 @@ export function LevelUpDialog({
 
               {step === "spells" ? (
                 <>
-                  <p className="text-stone-300">New spells for {sheet.name} at level {classLevelAfter}:</p>
+                  <p className="text-stone-300">{t("New spells for {name} at level {level}:", { name: sheet.name, level: classLevelAfter })}</p>
                   <ul className="space-y-1 text-xs text-stone-400">
                     {remainingCantrips ? (
                       <li>
-                        <span className="text-amber-200">Cantrips: choose {remainingCantrips}.</span>{" "}
-                        Small spells you know for good and cast as often as you like.
+                        <span className="text-amber-200">{t("Cantrips: choose {count}.", { count: remainingCantrips })}</span>{" "}
+                        {t("Small spells you know for good and cast as often as you like.")}
                       </li>
                     ) : null}
                     {remainingPicks ? (
                       <li>
                         {bookGain !== null ? (
                           <>
-                            <span className="text-amber-200">Spellbook: write {remainingPicks} new spells.</span>{" "}
-                            They are prepared right away while your limit has room; the rest you
-                            prepare from your sheet, ready after a long rest.
+                            <span className="text-amber-200">{t("Spellbook: write {count} new spells.", { count: remainingPicks })}</span>{" "}
+                            {t("They are prepared right away while your limit has room; the rest you prepare from your sheet, ready after a long rest.")}
                           </>
                         ) : levelStyle === "known" ? (
                           <>
-                            <span className="text-amber-200">Spells known: choose up to {remainingPicks}.</span>{" "}
-                            You keep them for good and always have them ready.
+                            <span className="text-amber-200">{t("Spells known: choose up to {count}.", { count: remainingPicks })}</span>{" "}
+                            {t("You keep them for good and always have them ready.")}
                           </>
                         ) : (
                           <>
-                            <span className="text-amber-200">Prepared spells: prepare up to {remainingPicks} more.</span>{" "}
-                            They are ready now; after any long rest you can swap them from your sheet.
+                            <span className="text-amber-200">{t("Prepared spells: prepare up to {count} more.", { count: remainingPicks })}</span>{" "}
+                            {t("They are ready now; after any long rest you can swap them from your sheet.")}
                           </>
                         )}
                       </li>
@@ -1740,25 +1746,23 @@ export function LevelUpDialog({
                     ))}
                     {anyGroup ? (
                       <li>
-                        <span className="text-amber-200">{anyGroup.title}.</span> They have their own list,
-                        below your {ownListName} spells.
+                        <span className="text-amber-200">{anyGroup.title}.</span>{" "}
+                        {t("They have their own list, below your {list} spells.", { list: ownListName })}
                       </li>
                     ) : null}
                     {learnedNew.length ? (
                       <li>
-                        <span className="text-amber-200">{spellGrants.learnedFrom}:</span> you learn{" "}
-                        {learnedNew.join(", ")}, free of your spells known, and can cast it as a ritual.
+                        <span className="text-amber-200">{spellGrants.learnedFrom}:</span>{" "}
+                        {t("you learn {spells}, free of your spells known, and can cast it as a ritual.", { spells: learnedNew.join(", ") })}
                       </li>
                     ) : null}
                     {!remainingCantrips && !remainingPicks && !anyGroup && !heldArcana.open.length ? (
-                      <li>Nothing new to choose at this level: your spells stay as they are.</li>
+                      <li>{t("Nothing new to choose at this level: your spells stay as they are.")}</li>
                     ) : null}
                   </ul>
                   {levelStyle === "known" && !isNewClass && knownList.length ? (
                     <div className="reveal">
-                      <p className="mb-1 text-xs text-stone-400">
-                        Optional: give up one spell you know to learn another in its place.
-                      </p>
+                      <p className="mb-1 text-xs text-stone-400">{t("Optional: give up one spell you know to learn another in its place.")}</p>
                       <div className="stagger-pop flex flex-wrap gap-1.5">
                         {knownList
                           // A Mystic Arcanum is not a spell known, so it is
@@ -1802,12 +1806,12 @@ export function LevelUpDialog({
                     maxLevel={maxCastable ?? 0}
                     counters={[
                       ...(remainingCantrips
-                        ? [{ label: "Cantrips", value: cantripPicks.length, max: remainingCantrips }]
+                        ? [{ label: t("Cantrips", { context: "sheet.spells.cantrips" }), value: cantripPicks.length, max: remainingCantrips }]
                         : []),
                       ...(remainingPicks !== 0
                         ? [
                             {
-                              label: bookGain !== null ? "Spellbook" : levelStyle === "known" ? "Known" : "Prepared",
+                              label: bookGain !== null ? t("Spellbook") : levelStyle === "known" ? t("Known", { context: "sheet.spells.known" }) : t("Prepared"),
                               value: regularPicks.length,
                               max: remainingPicks,
                             },
@@ -1837,8 +1841,8 @@ export function LevelUpDialog({
                       toggleSpell(tile.name, tile.level ?? undefined);
                     }}
                     notice={spellNote || undefined}
-                    emptyText={poolLoading ? "Loading the spell list..." : "No new spells at this level."}
-                    searchLabel={anyGroup ? `Find a ${ownListName} spell` : undefined}
+                    emptyText={poolLoading ? t("Loading the spell list...") : t("No new spells at this level.")}
+                    searchLabel={anyGroup ? t("Find a {list} spell", { list: ownListName }) : undefined}
                   />
                   {anyGroup ? (
                     <AnyListSpellGroup
@@ -1853,12 +1857,12 @@ export function LevelUpDialog({
                   ) : null}
                   {spellPicks.length || cantripPicks.length || anyChosen.length ? (
                     <p className="reveal text-xs text-stone-400">
-                      Learning:{" "}
+                      {t("Learning:")}{" "}
                       <span className="text-amber-200">
                         {[
-                          ...cantripPicks.map((name) => `${name} (cantrip)`),
+                          ...cantripPicks.map((name) => `${name} ${t("(cantrip)")}`),
                           ...spellPicks,
-                          ...anyChosen.map((name) => `${name} (${anyGroup?.feature})`),
+                          ...anyChosen.map((name) => t("{name} ({feature})", { name, feature: anyGroup?.feature ?? "" })),
                         ].join(", ")}
                       </span>
                     </p>
@@ -1867,9 +1871,7 @@ export function LevelUpDialog({
               ) : null}
 
               {stepOpen ? (
-                <p className="reveal text-xs text-stone-500">
-                  You can leave this open and take the level now; it stays open for a later level.
-                </p>
+                <p className="reveal text-xs text-stone-500">{t("You can leave this open and take the level now; it stays open for a later level.")}</p>
               ) : null}
               <div className="flex gap-2">
                 <button
@@ -1878,7 +1880,7 @@ export function LevelUpDialog({
                   onClick={() => setStepIndex(Math.max(0, stepIndex - 1))}
                   className="rounded-md border border-stone-700 px-4 py-2.5 text-sm text-stone-300 hover:bg-stone-900 disabled:opacity-50"
                 >
-                  Back
+                  {t("Back")}
                 </button>
                 <button
                   type="button"
@@ -1889,9 +1891,9 @@ export function LevelUpDialog({
                   {busy ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : lastStep ? (
-                    "Confirm level up"
+                    t("Confirm level up")
                   ) : (
-                    "Next"
+                    t("Next")
                   )}
                 </button>
               </div>
@@ -1923,6 +1925,8 @@ function NewClassButton({
   chosen: string;
   onPick: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const picked = chosen.toLowerCase() === option.id.toLowerCase();
   return (
     <button
@@ -1947,9 +1951,9 @@ function NewClassButton({
         <span className="text-xs text-stone-500">d{option.hitDie}</span>
       </span>
       <span className="block text-xs text-stone-400">
-        {check.ok ? `Grants: ${describeGrant(multiclassGrantsFor(option.id))}` : check.error}
+        {check.ok ? t("Grants: {grant}", { grant: describeGrant(multiclassGrantsFor(option.id)) }) : check.error}
       </span>
-      <span className="block text-[11px] text-stone-600">Requires {describePrereq(option.id)}</span>
+      <span className="block text-[11px] text-stone-600">{t("Requires {prereq}", { prereq: describePrereq(option.id) })}</span>
     </button>
   );
 }

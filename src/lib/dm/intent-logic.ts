@@ -244,6 +244,8 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
           targetEnemyId: intent.targetId,
           ...(intent.weapon ? { weapon: intent.weapon } : {}),
           ...(intent.offHand ? { offHand: true } : {}),
+          // The magic ammunition the card picked (hand-ammo.ts).
+          ...(intent.item ? { ammo: intent.item } : {}),
           ...(intent.attack ?? {}),
           ...riders,
         },
@@ -355,6 +357,8 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
           return { name: "clear_condition", args: { characterId, condition: "prone" } };
         case "stabilize":
           return intent.targetId ? { name: "stabilize", args: { characterId: intent.targetId, healerId: characterId } } : null;
+        case "wake":
+          return intent.targetId ? { name: "take_action", args: { characterId, action: "wake", targetCharacterId: intent.targetId } } : null;
         case "dismount":
           return { name: "dismount", args: { characterId } };
         case "end-turn":

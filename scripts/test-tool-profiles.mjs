@@ -104,6 +104,9 @@ await test("the table's state and the players' words open groups without being a
   assert.ok(offered({ englishPlayerText: "I try to jump the chasm." }).has("apply_hazard"));
   assert.ok(!offered({ englishPlayerText: "I ask the innkeeper about the missing girl." }).has("travel"), "ordinary talk opens nothing");
   assert.deepEqual([...profiles.autoGroups({ inEncounter: true, legendary: true })], ["legendary"]);
+  // Someone tracked out of a fight: npc_state rides, and its rule with it.
+  assert.deepEqual([...profiles.autoGroups({ inEncounter: false, trackedNpcs: true })], ["custody"]);
+  assert.deepEqual(profiles.TOOL_GROUPS.custody.tools, ["npc_state"]);
 });
 
 await test("a compacted tool keeps its name, kinds, enums and what is required; more_tools returns the rest", () => {
@@ -393,6 +396,8 @@ await test("the players' words open the group the move needs on the first call",
   const first = requests.find((body) => Array.isArray(body.tools));
   assert.ok(first.tools.some((tool) => tool.function.name === "haggle"), "the shop group rides from the start");
   assert.ok(first.tools.some((tool) => tool.function.name === "purchase"), "and the trade itself is in the exploring core");
+  const heal = first.tools.find((tool) => tool.function.name === "heal");
+  assert.ok(heal && !("petName" in heal.function.parameters.properties), "a table with no pet is not offered heal's petName, which a 16K window has no room for");
   const turn = getDmTurn(getLatestDmTurnId(campaign.id));
   assert.deepEqual(turn.contextTrace.profile.intent, ["shop"]);
 });

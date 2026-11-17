@@ -16,6 +16,9 @@ export type SpellCondition = {
   roundsBySlot?: Array<[number, number | null]>;
   // A repeat save at the end of each round ends it (Hold Person).
   saveEnds?: boolean;
+  // That save comes only at the end of a turn the creature ends where it
+  // cannot see the caster (Fear: "doesn't have line of sight to you").
+  saveUnseen?: boolean;
   // Conditions that land with it and end with it: Hypnotic Pattern's
   // charmed creature is also incapacitated, Hideous Laughter's is prone.
   also?: string[];
@@ -138,6 +141,10 @@ export type SpellMech = {
   // cold): the last dice of the damage expression deal this type, the rest
   // `damageType`, and each meets its own resistance (src/lib/dm/aoe-parts.ts).
   secondType?: string;
+  // The types the caster picks the second one from, `secondType` when none is
+  // named (Destructive Wave: "radiant or necrotic damage (your choice)"); the
+  // cast names it as its damage type (aoe-spell.ts).
+  secondTypeChoice?: string[];
   // A melee or ranged spell attack (Inflict Wounds is melee, Fire Bolt is
   // ranged): a melee one is made at touch reach.
   attack?: "melee" | "ranged";
@@ -193,6 +200,10 @@ export type SpellMech = {
     // skips the unconscious and the blinded).
     skipConditions?: string[];
     endsOnDamage?: boolean;
+    // Lasts until the end of the caster's next turn, not a count of rounds
+    // (Color Spray): a round counted at the caster's turn start ended it as
+    // that turn began.
+    untilCasterTurnEnd?: boolean;
   };
   // How many creatures one casting may affect, and how many more each slot
   // level above the spell's own adds. Absent means one, or with `area` every
@@ -217,6 +228,9 @@ export type SpellMech = {
   targetTypes?: string[];
   // Creature types it has no effect on (Command: undead).
   immuneTypes?: string[];
+  // A creature whose Intelligence score is this or lower is not affected
+  // (Hideous Laughter: 4).
+  sparesIntAtMost?: number;
   // A creature immune to this condition is immune to the spell (Suggestion
   // and Irresistible Dance: charmed).
   immuneIfImmuneTo?: string;

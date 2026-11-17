@@ -29,7 +29,7 @@ import type {
 } from "@/lib/schemas/sheet";
 import { ABILITIES } from "@/lib/schemas/sheet";
 import { XP_THRESHOLDS, findSkill, levelForXp } from "@/lib/srd";
-import { ABILITY_SCORE_CAP, applyAsiChoices, earnedAsiCountFor } from "@/lib/srd/asi";
+import { ABILITY_SCORE_CAP, applyAsiChoices, earnedAsiCountFor, raisedTowardCap } from "@/lib/srd/asi";
 import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassGrants, withSubclassChoiceRecords } from "@/lib/srd/subclass-training";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { asiTaken, withAsiLedger } from "@/lib/srd/asi-ledger";
@@ -62,7 +62,7 @@ import {
   multiclassGrantsFor,
 } from "@/lib/srd/multiclass";
 import { hpBonusPerLevel } from "@/lib/srd/race-id";
-import { casterViewsOf, dedupeNames, withCasterViews, type CasterView } from "@/lib/srd/spell-prep";
+import { casterViewsOf, countingScores, dedupeNames, withCasterViews, type CasterView } from "@/lib/srd/spell-prep";
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/trait-rules";
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
@@ -80,6 +80,7 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants, toolPickProblem } from "@/lib/srd/tool-choices";
 import { carrySwapRecords } from "@/lib/dm/ar-ws-spell-swap-record";
+import { petsAtLevel } from "@/lib/dm/pet-level-logic";
 import { featChoice } from "@/lib/schemas/sheet";
 
 export type LevelUpContext = {
@@ -147,6 +148,8 @@ function improvementsAsked(
           error: `An Ability Score Improvement raises scores; it cannot lower ${ABILITY_NAMES[ability]} from ${sheet.abilities[ability]} to ${request.abilities[ability]}.`,
         };
       }
+      // Held at 20 even where a manual or tome raised the maximum: SRD 5.1,
+      // "you can't increase an ability score above 20 using this feature".
       if (request.abilities[ability] > ABILITY_SCORE_CAP && delta > 0) {
         return {
           error: `An Ability Score Improvement cannot raise ${ABILITY_NAMES[ability]} above ${ABILITY_SCORE_CAP}.`,
@@ -180,7 +183,7 @@ export function applyChoices(scores: AbilityScores, choices: AsiChoice[]): Abili
   const next = { ...scores };
   for (const choice of choices) {
     if (choice.mode === "plus1x2" && choice.abilities[0] === choice.abilities[1]) {
-      next[choice.abilities[0]] = Math.min(ABILITY_SCORE_CAP, next[choice.abilities[0]] + 1);
+      next[choice.abilities[0]] = raisedTowardCap(next[choice.abilities[0]], 1);
     } else {
       Object.assign(next, applyAsiChoices(next, [choice]));
     }
@@ -674,7 +677,8 @@ export function buildLevelUp(
         subclass: leveled.subclass,
         list: mine.list,
         firstLevel: leveled.level === 1 || !views.some((view) => view.classId.toLowerCase() === classId),
-        abilities,
+        // The new scores as worn items leave them (spell-prep.ts countingScores).
+        abilities: countingScores(sheet, abilities),
         freeCantrips: context.racialCantrips,
         // A pact boon picked with this level widens its lists now.
         features,
@@ -756,6 +760,11 @@ export function buildLevelUp(
     ...(spellcasting !== sheet.spellcasting ? { spellcasting } : {}),
     ...(multiclass ? { classes } : { level: target, subclass: classes[0].subclass }),
   };
+  // A companion's and a drake's numbers follow the ranger's level (pet-level-logic.ts).
+  const pets = petsAtLevel(sheet, { ...sheet, ...patch, level: target, ...(sheet.classes?.length || multiclass ? { classes } : {}) } as CharacterSheet);
+  if (pets !== sheet.pets) {
+    patch.pets = pets;
+  }
   return { patch, hpGained, ...(rolls ? { rolled: { hp: face } } : {}) };
 }
 

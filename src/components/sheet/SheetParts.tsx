@@ -12,11 +12,16 @@ import { describeConditionDuration } from "@/lib/dm/condition-logic";
 import { backgroundFeatureReference, contentSlug, describeFeature } from "@/lib/help";
 import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { ABILITIES } from "@/lib/schemas/sheet";
-import { formatModifier, SRD_SKILLS } from "@/lib/srd";
+import { formatModifier, skillLabel, SRD_SKILLS } from "@/lib/srd";
+import { useLocale, useT } from "@/lib/locale";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
-import { rowName, srdNameWithBonus } from "@/lib/srd/item-row";
+import { magicItemBonus, rowName, srdNameWithBonus } from "@/lib/srd/item-row";
+import { backgroundFeatureName, classFeatureName, contentName, speciesTraitName } from "@/lib/content/names";
 import { matchWeapon } from "@/lib/srd/weapons";
+import { cardArtwork } from "@/lib/battlemap/card-art";
+import { ITEM_CATEGORY_LABEL, itemCategory, itemToneStyle, type CategoryItem } from "@/lib/srd/item-category-logic";
+import { inventoryItemIcon } from "@/lib/inventory-art-logic";
 
 // The pieces of the character sheet (docs/visual-overhaul-plan.md 8b.5), one
 // implementation drawn by both the session's sheet dialog and the character
@@ -27,7 +32,9 @@ import { matchWeapon } from "@/lib/srd/weapons";
 
 type Ability = (typeof ABILITIES)[number];
 
-const ABILITY_NAMES: Record<Ability, string> = {
+// The abilities' names as message keys (sheet.ability.*), read with the
+// component's own translator; the tile's eyebrow keeps the short code.
+const ABILITY_KEYS: Record<Ability, string> = {
   str: "Strength",
   dex: "Dexterity",
   con: "Constitution",
@@ -111,6 +118,7 @@ export function AbilityTiles({
   saveProficiencies?: string[];
   explainSave?: (ability: Ability) => string;
 }) {
+  const t = useT();
   return (
     <div className="stagger-up grid grid-cols-3 gap-2 sm:grid-cols-6">
       {ABILITIES.map((ability, index) => {
@@ -121,7 +129,7 @@ export function AbilityTiles({
             className="sheet-ability motion-card"
             data-tier={scoreTier(abilities[ability])}
             style={{ animationDelay: `${index * 45}ms` }}
-            title={ABILITY_NAMES[ability]}
+            title={t(ABILITY_KEYS[ability])}
           >
             <GameIcon icon={{ kind: "glyph", key: `ability-${ability}` }} size="size-9" className="mx-auto" />
             <p className="eyebrow mt-1 text-[10px] text-stone-400">{ability}</p>
@@ -133,7 +141,7 @@ export function AbilityTiles({
                 title={explainSave ? explainSave(ability) : undefined}
               >
                 <span className={cn("sheet-pip", proficient && "sheet-pip-on")} aria-hidden="true" />
-                Save {formatModifier(saves[ability])}
+                {t("Save {mod}", { mod: formatModifier(saves[ability]) })}
               </p>
             ) : null}
           </div>
@@ -211,10 +219,14 @@ export function HpBar({
   // Why the maximum is not the sheet's own (exhaustion, an item).
   note?: string | null;
 }) {
+  const t = useT();
   const span = Math.max(1, max + temp);
   const width = (value: number) => `${Math.max(0, Math.min(100, (value / span) * 100))}%`;
   return (
-    <div className="sheet-hp" title={`${current}${temp ? ` +${temp} temporary` : ""} of ${max} hit points${note ? `. ${note}` : ""}`}>
+    <div
+      className="sheet-hp"
+      title={`${current}${temp ? ` ${t("+{temp} temporary", { temp })}` : ""} ${t("of {max} hit points", { max })}${note ? `. ${note}` : ""}`}
+    >
       <GameIcon icon={{ kind: "glyph", key: "rest-hp" }} size="size-7" />
       <div className="min-w-0 grow">
         <div className="flex items-baseline justify-between gap-2">
@@ -256,32 +268,42 @@ export function TrainingLines({
   // Metal (Juggernaut)", marked when it holds now.
   conditional?: Array<{ skill: string; by: string; while: string; active: boolean }>;
 }) {
+  const t = useT();
   const nice = (value: string) =>
     // A word's first letter, or the letter after a quote that opens one: never
     // the "s" after a possessive's apostrophe ("Alchemist'S Supplies").
     value.replace(/[-_]/g, " ").replace(/(^|\s)(['‘]?)([a-z])/g, (_, before: string, quote: string, letter: string) => `${before}${quote}${letter.toUpperCase()}`);
+  const localizeValue = (value: string) => {
+    const title = nice(value);
+    const hit = t(title);
+    if (hit !== title) return hit;
+    const capFirst = value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : value;
+    const capHit = t(capFirst);
+    if (capHit !== capFirst) return capHit;
+    return title;
+  };
   const rows: Array<[string, string[]]> = [
-    ["Languages", proficiencies.languages],
-    ["Tools", proficiencies.tools],
-    ["Armor", proficiencies.armor],
-    ["Weapons", proficiencies.weapons],
+    [t("Languages"), proficiencies.languages],
+    [t("Tools"), proficiencies.tools],
+    [t("Armor"), proficiencies.armor],
+    [t("Weapons", { context: "sheet.training.weapons" }), proficiencies.weapons],
   ];
   return (
     <dl className="stagger-up grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
       {rows.map(([label, values]) => (
         <div key={label} className="contents">
           <dt className="text-stone-500">{label}</dt>
-          <dd className="text-stone-200">{values.length ? [...new Set(values.map(nice))].join(", ") : <span className="text-stone-600">none</span>}</dd>
+          <dd className="text-stone-200">{values.length ? [...new Set(values.map(localizeValue))].join(", ") : <span className="text-stone-400">{t("none", { context: "sheet.training.none" })}</span>}</dd>
         </div>
       ))}
       {conditional.length ? (
         <div className="contents">
-          <dt className="text-stone-500">Conditional</dt>
+          <dt className="text-stone-500">{t("Conditional")}</dt>
           <dd className="text-stone-200">
             {conditional.map((entry, at) => (
               <span key={`${entry.by}-${entry.skill}`}>
                 {at ? ", " : ""}
-                {nice(entry.skill)} {entry.while} ({entry.by}){entry.active ? ": holds now" : ": not now"}
+                {localizeValue(entry.skill)} {entry.while} ({entry.by}){entry.active ? t(": holds now") : t(": not now")}
               </span>
             ))}
           </dd>
@@ -300,6 +322,9 @@ export function SkillRows({
   proficient: string[];
   explain?: (skillId: string) => string;
 }) {
+  // The skill's name follows the reader's language; the glyph stays keyed by
+  // the English name, which is what the art is filed under.
+  const locale = useLocale();
   return (
     <div className="stagger-up grid grid-cols-1 gap-x-3 gap-y-0.5 min-[420px]:grid-cols-2">
       {SRD_SKILLS.map((skill) => {
@@ -307,7 +332,7 @@ export function SkillRows({
         return (
           <span key={skill.id} className={cn("sheet-skill", on && "sheet-skill-on")} title={explain?.(skill.id)}>
             <GameIcon icon={{ kind: "glyph", key: `skill-${skill.name}` }} size="size-5" />
-            <span className="grow truncate">{skill.name}</span>
+            <span className="grow truncate">{skillLabel(skill.id, locale)}</span>
             <span className={cn("sheet-pip", on && "sheet-pip-on")} aria-hidden="true" />
             <span className="w-7 text-right font-mono">{formatModifier(skills[skill.id] ?? 0)}</span>
           </span>
@@ -319,42 +344,52 @@ export function SkillRows({
 
 // Every carried thing as an icon chip that opens its entry in the library,
 // so a rope and a Flame Tongue both say what they are. Worn and attuned gear
-// is marked on the chip.
+// is marked on the chip. The chip uses the circular inventory painting;
+// the hover keeps the Hand's rectangular painting where the item has one.
 export function EquipmentChips({
   equipment,
   extra,
 }: {
-  equipment: Array<{ name: string; qty: number; equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean }>;
+  equipment: Array<{ name: string; qty: number; equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean } & CategoryItem>;
   // More for a row's note, by its index: its charges ("4/7 charges").
   extra?: (index: number) => string | null | undefined;
 }) {
   // A worn second cloak (or pair of boots...) is marked as not in effect
   // (src/lib/srd/wear-slots.ts); one the DM let stand beside another says so.
+  const t = useT();
+  const locale = useLocale();
   const explicit = wearingIsExplicit(equipment);
   const wornNote = (item: (typeof equipment)[number]) => {
     const idle = explicit ? wornButIdle(item, equipment) : null;
-    if (idle) return `worn, not in effect: ${oneOfKind(idle) ?? "one of its kind"} at a time`;
-    if (item.equipped && item.layered) return "worn beside another, on the GM's say";
-    // A weapon is held, in the words the Hand and the sheet's toggle use.
-    return item.equipped ? (matchWeapon(item) ? "in hand" : "worn") : null;
+    if (idle) return t("worn, not in effect: {kind} at a time", { kind: oneOfKind(idle) ?? t("none", { context: "sheet.training.none" }) });
+    if (item.equipped && item.layered) return t("worn beside another, on the GM's say");
+    return item.equipped ? (matchWeapon(item) ? "in hand" : t("worn")) : null;
   };
   return (
     <InfoChipList
-      items={equipment.map((item, index) => ({
-        name: item.qty > 1 ? `${item.name} x${item.qty}` : item.name,
-        icon: { kind: "item" as const, key: item.name, family: "item-gear" },
-        note:
-          [
-            wornNote(item),
-            item.attuned ? "attuned" : item.attuning ? "attunes at the next rest" : null,
-            extra?.(index) ?? null,
-          ]
-            .filter(Boolean)
-            .join(", ") || undefined,
-        // The card is the row's (src/lib/srd/item-row.ts), with the bonus the
-        // item's own name declares.
-        reference: { kind: "items", slug: contentSlug(rowName(item)), name: srdNameWithBonus(item) },
-      }))}
+      items={equipment.map((item, index) => {
+        const category = itemCategory(item);
+        return {
+          name: (() => {
+            const shown = contentName("items", rowName(item), locale);
+            const bonus = magicItemBonus(item.name);
+            return `${bonus ? `${shown} +${bonus}` : shown}${item.qty > 1 ? ` x${item.qty}` : ""}`;
+          })(),
+          icon: cardArtwork({ kind: "item" as const, key: item.name, family: "item-gear" }),
+          lead: { icon: inventoryItemIcon(item), label: ITEM_CATEGORY_LABEL[category], tone: category, style: itemToneStyle(category, "chip") },
+          note:
+            [
+              wornNote(item),
+              item.attuned ? t("attuned") : item.attuning ? t("attuning") : null,
+              extra?.(index) ?? null,
+            ]
+              .filter(Boolean)
+              .join(", ") || undefined,
+          // The card is the row's (src/lib/srd/item-row.ts), with the bonus the
+          // item's own name declares.
+          reference: { kind: "items", slug: contentSlug(rowName(item)), name: srdNameWithBonus(item) },
+        };
+      })}
     />
   );
 }
@@ -364,6 +399,7 @@ export function FeatureChips({
   classId,
   subclass,
   background,
+  raceId,
 }: {
   features: Array<{ name: string; source?: string; level?: number; classId?: string }>;
   classId: string;
@@ -371,17 +407,31 @@ export function FeatureChips({
   // The sheet's background id: a content-pack background's feature opens
   // its row for the text the bundled tables lack.
   background?: string | null;
+  // The sheet's species, so its racial traits read in the reader's language.
+  raceId?: string;
 }) {
   // A genre class's feature text arrives on demand (issue 411).
+  const t = useT();
+  const locale = useLocale();
   useClassFeatureText([classId, ...features.map((feature) => feature.classId)]);
   return (
     <InfoChipList
       items={features.map((feature) => ({
-        name: feature.name,
+        // The class's own features read in the reader's language, as do the
+        // species' trait lines and the background's granted feature; a story
+        // feature stays as the DM wrote it.
+        name:
+          feature.source === "story"
+            ? feature.name
+            : feature.source === "race" && raceId
+              ? speciesTraitName(raceId, feature.name, locale)
+              : feature.source === "background"
+                ? backgroundFeatureName(feature.name, locale)
+                : classFeatureName(feature.classId ?? classId, feature.name, locale),
         icon: { kind: "feature" as const, key: feature.name, family: `class-${classId.toLowerCase()}` },
-        note: feature.source === "story" ? "(story)" : undefined,
-        meta: feature.level ? `Level ${feature.level}` : undefined,
-        text: describeFeature(classId, subclass ?? "", feature.name) ?? undefined,
+        note: feature.source === "story" ? t("(story)") : undefined,
+        meta: feature.level ? t("Level {level}", { level: feature.level }) : undefined,
+        text: describeFeature(classId, subclass ?? "", feature.name, locale) ?? undefined,
         reference: backgroundFeatureReference(feature, background, classId, subclass ?? "") ?? undefined,
       }))}
     />
@@ -389,12 +439,15 @@ export function FeatureChips({
 }
 
 export function FeatChips({ feats, classId, subclass }: { feats: string[]; classId: string; subclass?: string | null }) {
+  const locale = useLocale();
   return (
     <InfoChipList
       items={feats.map((feat) => ({
-        name: feat,
+        // The stored English name reads in the reader's language (the
+        // official maps); the reference lookup stays the stored name.
+        name: contentName("feats", feat, locale),
         icon: { kind: "feat" as const, key: feat },
-        text: describeFeature(classId, subclass ?? "", feat) ?? undefined,
+        text: describeFeature(classId, subclass ?? "", feat, locale) ?? undefined,
         reference: { kind: "feats", slug: contentSlug(feat), name: feat },
       }))}
     />
@@ -414,6 +467,7 @@ export function ConditionChips({
   // replaces the rounds tail, which it already includes.
   detail?: (condition: string) => string;
 }) {
+  const locale = useLocale();
   return (
     <div className="stagger-pop flex flex-wrap gap-1.5">
       {conditions.map((condition) => {
@@ -421,7 +475,7 @@ export function ConditionChips({
         return (
           <span key={condition} className="sheet-condition motion-pop" title={said || undefined}>
             <GameIcon icon={{ kind: "condition", key: conditionIconKey(condition) }} size="size-5" />
-            {condition}
+            {contentName("conditions", condition, locale)}
             {detail
               ? said
                 ? ` (${said})`

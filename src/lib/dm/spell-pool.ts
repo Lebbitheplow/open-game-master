@@ -16,7 +16,7 @@ import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { addDice } from "@/lib/srd/spell-scaling";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { laySpellConditionsOnEnemy, spellConditionMeta } from "@/lib/dm/spell-effects";
+import { laySpellConditionsOnEnemy, poolConditionMeta, poolDurationLine } from "@/lib/dm/spell-effects";
 import type { AoeSpellPlan } from "@/lib/dm/aoe-spell";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -113,7 +113,7 @@ export function sleepPool(
   const landed = laySpellConditionsOnEnemy(
     enemy.id,
     [pool.condition],
-    spellConditionMeta({ rounds: pool.rounds, endsOnDamage: pool.endsOnDamage }, input.source, null),
+    poolConditionMeta(pool, input.source),
   );
   keep(rolled - enemy.currentHp);
   if (landed.length) {
@@ -124,7 +124,7 @@ export function sleepPool(
     ...out,
     conditionApplied: pool.condition,
     poolLeft: rolled - enemy.currentHp,
-    duration: `${pool.rounds} round${pool.rounds === 1 ? "" : "s"}${pool.endsOnDamage ? ", or until it takes damage or is shaken awake" : ""}`,
+    duration: poolDurationLine(pool, ", or until it takes damage or is shaken awake"),
   };
 }
 

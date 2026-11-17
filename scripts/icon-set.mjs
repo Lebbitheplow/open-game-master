@@ -426,6 +426,31 @@ export async function buildIconList() {
     list.push(entry("action", id, label, subject, { genre, externalArt: true }));
   }
 
+  // Named setting equipment is authored in both card and inventory sizes.
+  // Replace the table's square entry as well, so a rebuild keeps the painting.
+  for (const { id, cardId, label, subject, kind, genre } of readJson("scripts/genre-equipment-subjects.json")) {
+    const item = entry("item", id, label, subject, { kind, genre, externalArt: true, width: 256, height: 256 });
+    const existing = list.findIndex((icon) => icon.id === item.id);
+    if (existing >= 0) list[existing] = item;
+    else list.push(item);
+    list.push(entry("action", cardId, label, subject, { genre, externalArt: true, width: 256, height: 128 }));
+  }
+
+  // Shared gear has separate genre exports so the fantasy set stays intact.
+  for (const { id, cardId, label, subject, kind, genre } of [
+    ...readJson("scripts/shared-genre-equipment-subjects.json"),
+    ...readJson("scripts/extended-genre-equipment-subjects.json"),
+  ]) {
+    list.push(entry("item", id, label, subject, { kind, genre, externalArt: true, width: 256, height: 256 }));
+    list.push(entry("action", cardId, label, subject, { genre, externalArt: true, width: 256, height: 128 }));
+  }
+
+  // Approved circular exports are independent of both item hover art and
+  // rectangular action cards; generator runs must preserve them.
+  for (const { id, label } of readJson("docs/art/inventory-2026-11-16.json").records) {
+    list.push(entry("inventory", id, label, label, { externalArt: true, width: 256, height: 256 }));
+  }
+
   // Damage types, for the log and the delivery table's chips.
   for (const [type, subject] of Object.entries({
     fire: "a flame", cold: "a snowflake of ice", lightning: "a lightning bolt", acid: "a dripping green drop", poison: "a skull and a green vial",

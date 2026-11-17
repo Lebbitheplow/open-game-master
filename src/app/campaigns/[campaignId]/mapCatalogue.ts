@@ -83,13 +83,23 @@ export type MaterialGroup = { group: string; tiles: TileEntry[] };
 // The materials that may paint one terrain character (3.11): the campaign's
 // own setting first, then the fantasy set every setting can wear, then the
 // other settings'. Within a group, the ones made for the map's theme lead.
+// The group words are the dictionaries' (maptools.group.*); the picker
+// passes its translator, and the pinned English below is what tests see.
+const GROUP_EN: Record<string, string> = {
+  "This setting": "This setting",
+  "Fantasy": "Fantasy",
+  "Other settings": "Other settings",
+};
+
 export function materialChoices(
   tiles: readonly TileEntry[],
   char: SkinChar,
   genre: string | null | undefined,
   theme: string,
   query: string,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
 ): MaterialGroup[] {
+  const word = (key: string): string => (t ? t(key) : GROUP_EN[key] ?? key);
   const setting = (genre || "").toLowerCase().replace(/-/g, "_");
   const own = GENRES.includes(setting) ? setting : null;
   const needle = textKey(query);
@@ -106,9 +116,9 @@ export function materialChoices(
     );
   const groups: MaterialGroup[] = [];
   if (own) {
-    groups.push({ group: "This setting", tiles: order(allowed.filter((tile) => tile.genre === own)) });
+    groups.push({ group: word("This setting"), tiles: order(allowed.filter((tile) => tile.genre === own)) });
   }
-  groups.push({ group: own ? "Fantasy" : "This setting", tiles: order(allowed.filter((tile) => !tile.genre)) });
-  groups.push({ group: "Other settings", tiles: order(allowed.filter((tile) => tile.genre && tile.genre !== own)) });
+  groups.push({ group: word(own ? "Fantasy" : "This setting"), tiles: order(allowed.filter((tile) => !tile.genre)) });
+  groups.push({ group: word("Other settings"), tiles: order(allowed.filter((tile) => tile.genre && tile.genre !== own)) });
   return groups.filter((entry) => entry.tiles.length > 0);
 }

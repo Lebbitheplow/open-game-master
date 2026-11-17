@@ -16,8 +16,14 @@ import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { DerivedLine } from "./derivedReasons";
 import OptionPicker from "./OptionPicker";
 import { PickPill, inputClass } from "./steps/shared";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
+import { damageWords } from "@/lib/dm/damage-logic";
 
 const LETTERS = "abcdef";
+
+// This module's words, in the reader's language. A plain helper since the
+// section is one component; `t` arrives from the hook below.
 const damageOf = new Map(SRD_WEAPONS.map((weapon) => [weapon.name, weapon.damage]));
 const capital = (text: string) => text.replace(/^./, (first) => first.toUpperCase());
 
@@ -44,14 +50,16 @@ export default function KitChoicesSection({
   onOption: (line: number, option: number) => void;
   onPick: (slot: number, name: string) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const slotLines = kitSlotsByLine(kit, choices.options);
   const captionId = useId();
   return (
     <div className="mb-3 space-y-2.5">
       <p className="text-xs text-stone-500">
         {kit.source === "odm"
-          ? `The ${className}'s kit, free. Remove what you will not carry.`
-          : `The ${className}'s starting equipment, free. Where the book offers a choice, pick one.`}
+          ? t("The {klass}'s kit, free. Remove what you will not carry.", { klass: className })
+          : t("The {klass}'s starting equipment, free. Where the book offers a choice, pick one.", { klass: className })}
       </p>
       {kit.lines.map((line, lineIndex) => {
         const chosen = choices.options[lineIndex] ?? 0;
@@ -59,7 +67,7 @@ export default function KitChoicesSection({
         return (
           <div key={lineIndex} className="space-y-1.5">
             {line.options.length > 1 ? (
-              <div role="group" aria-label={`Equipment choice ${lineIndex + 1}`} className="flex flex-wrap gap-1.5">
+              <div role="group" aria-label={t("Equipment choice {n}", { n: lineIndex + 1 })} className="flex flex-wrap gap-1.5">
                 {line.options.map((option, optionIndex) => {
                   const allowed = optionAllowed(option, training);
                   return (
@@ -69,19 +77,21 @@ export default function KitChoicesSection({
                       disabled={!allowed}
                       onClick={() => onOption(lineIndex, optionIndex)}
                     >
-                      <span className="text-stone-500">({LETTERS[optionIndex]})</span> {option.label}
+                      <span className="text-stone-500">({LETTERS[optionIndex]})</span> {t(option.label)}
                     </PickPill>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-xs text-stone-300">{capital(line.options[0].label)}</p>
+              <p className="text-xs text-stone-300">{capital(t(line.options[0].label))}</p>
             )}
             {slots.length ? (
               <div key={`${lineIndex}-${chosen}`} className="reveal grid gap-1.5 sm:grid-cols-2">
                 {slots.map((slot, at) => (
                   <div key={at}>
-                    <span id={`${captionId}-${start + at}`} className="mb-1 block text-sm text-stone-400">{capital(describeSlot(slot))}</span>
+                    <span id={`${captionId}-${start + at}`} className="mb-1 block text-sm text-stone-400">
+                      {capital(describeSlot(slot, t, (name) => contentName("items", name, locale)))}
+                    </span>
                     <OptionPicker
                       labelledBy={`${captionId}-${start + at}`}
                       value={choices.picks[start + at] ?? slot.default}
@@ -92,8 +102,8 @@ export default function KitChoicesSection({
                           label: null,
                           options: slotChoices(slot).map((name) => ({
                             id: name,
-                            name,
-                            meta: damageOf.get(name) ?? "",
+                            name: contentName("items", name, locale),
+                            meta: damageWords(damageOf.get(name) ?? "", locale),
                             reference: { kind: "items" as const, slug: contentSlug(name), name },
                           })),
                         },
@@ -108,7 +118,7 @@ export default function KitChoicesSection({
       })}
       <div className="flex items-baseline gap-2">
         <Shield className="size-3.5 self-center text-amber-300/80" aria-hidden="true" />
-        <span className="text-xs text-stone-400">Armor class with this kit</span>
+        <span className="text-xs text-stone-400">{t("Armor class with this kit")}</span>
         <span key={armorClass.value} className="reveal font-mono text-sm text-amber-200">
           {armorClass.value}
         </span>

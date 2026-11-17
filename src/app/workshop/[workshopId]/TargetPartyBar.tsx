@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 import { ui } from "@/lib/ui";
 import { thresholdsForParty } from "@/lib/srd/encounter-math";
 import { TARGET_PARTY_LIMITS, targetPartyLevels, type TargetParty } from "@/lib/workshop/kind";
+import { useT, useTp } from "@/lib/locale";
 
 // The party a workshop is building for, declared once and read by every tool
 // that needs numbers before any character sheet exists.
@@ -42,6 +43,8 @@ export function TargetPartyBar({
   // Something small for the far end of the row (the command palette's chip).
   aside?: ReactNode;
 }) {
+  const t = useT();
+  const tp = useTp();
   const [size, setSize] = useState(targetParty.size);
   const [level, setLevel] = useState(targetParty.level);
   const [busy, setBusy] = useState(false);
@@ -73,7 +76,7 @@ export function TargetPartyBar({
     <div className={`${ui.card} p-3`}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
         <GameIcon icon={{ kind: "glyph", key: "system-party" }} size="size-8" />
-        <span className="text-sm text-stone-400">Building for</span>
+        <span className="text-sm text-stone-400">{t("Building for")}</span>
         <span className="w-20">
           <Select
             value={String(size)}
@@ -81,12 +84,12 @@ export function TargetPartyBar({
               setSize(Number(next));
               setSaved(false);
             }}
-            label="Party size"
+            label={t("Party size")}
             options={SIZE_OPTIONS}
             size="sm"
           />
         </span>
-        <span className="text-sm text-stone-400">{size === 1 ? "hero" : "heroes"} at level</span>
+        <span className="text-sm text-stone-400">{tp("hero at level", "heroes at level", { count: size })}</span>
         <span className="w-20">
           <Select
             value={String(level)}
@@ -94,26 +97,24 @@ export function TargetPartyBar({
               setLevel(Number(next));
               setSaved(false);
             }}
-            label="Party level"
+            label={t("Party level")}
             options={LEVEL_OPTIONS}
             size="sm"
           />
         </span>
         {dirty ? (
           <button type="button" onClick={save} disabled={busy} className={ui.btnSmall}>
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null} Save
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null} {t("Save", { context: "workshop.party.save" })}
           </button>
         ) : saved ? (
           <span className="live-in inline-flex items-center gap-1 text-xs text-emerald-400">
-            <Check className="size-3.5" /> Saved
+            <Check className="size-3.5" /> {t("Saved", { context: "workshop.party.saved" })}
           </span>
         ) : null}
         {aside ? <span className="ml-auto flex items-center">{aside}</span> : null}
       </div>
       <p className="mt-2 text-xs text-stone-500">
-        One fight is easy up to {budget.easy.toLocaleString()} XP, medium to{" "}
-        {budget.medium.toLocaleString()}, hard to {budget.hard.toLocaleString()}, deadly beyond{" "}
-        {budget.deadly.toLocaleString()}. Adjusted for how many creatures you field.
+        {t("One fight is easy up to {easy} XP, medium to {medium}, hard to {hard}, deadly beyond {deadly}. Adjusted for how many creatures you field.", { easy: budget.easy.toLocaleString(), medium: budget.medium.toLocaleString(), hard: budget.hard.toLocaleString(), deadly: budget.deadly.toLocaleString() })}
       </p>
     </div>
   );

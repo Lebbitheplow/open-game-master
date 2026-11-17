@@ -121,6 +121,23 @@ export function readBindings(value: unknown): Binding[] {
 
 export const VERACITIES = ["known", "hidden", "believed"] as const;
 export type Veracity = (typeof VERACITIES)[number];
+// The picker's words are the dictionaries' (world.link.veracity.*); the
+// editor passes its translator. The stored value stays the raw kind.
+export const VERACITY_KEYS: Record<Veracity, string> = {
+  known: "Common knowledge",
+  hidden: "Hidden truth: real, but the world does not know",
+  believed: "False belief: the world thinks so, but it is not true",
+};
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function veracityLabel(t: T, veracity: Veracity): string {
+  return t(VERACITY_KEYS[veracity] ?? "Common knowledge");
+}
+
+// The veracities' English words, pinned, for wherever the stored data quotes
+// them back.
 export const VERACITY_LABELS: Record<Veracity, string> = {
   known: "Common knowledge",
   hidden: "Hidden truth: real, but the world does not know",

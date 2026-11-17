@@ -60,7 +60,11 @@ await test("A check contested by a creature rolls the creature's own check from 
   assert.equal(out.result.success, true, "12 + 4 = 16 beats the creature's 15");
 });
 
-await test("A hidden creature is noticed against its own Stealth check: a passive Perception 15 misses an enemy with Stealth +6 that rolls 10 (16), and catches it when it rolls 8 (14).", async () => {
+// SRD 5.1, Contests: "If the contest results in a tie, the situation remains
+// the same as it was before the contest", so a hider whose Stealth ties the
+// passive score stays hidden (as the Hide action and the ambush read it): the
+// DC is its total + 1.
+await test("A hidden creature is noticed against its own Stealth check: a passive Perception 15 misses an enemy with Stealth +6 that rolls 10 (16), and catches it when it rolls 8 (14); a tie keeps it hidden.", async () => {
   const lookout = world.addHero({ class: "ranger", level: 1, abilities: { wis: 16 }, proficiencies: profs({ skills: ["perception"] }) });
   await kit.fight(1, { heroFaces: { [lookout.id]: 19 } });
   const [enemy] = world.enemies();
@@ -73,9 +77,9 @@ await test("A hidden creature is noticed against its own Stealth check: a passiv
   world.clearDice();
   await kit.endFight();
   assert.equal(hidden.ok, true, hidden.error);
-  assert.equal(hidden.result.dc, 16);
+  assert.equal(hidden.result.dc, 17);
   assert.deepEqual(hidden.result.noticedBy, []);
-  assert.equal(seen.result.dc, 14);
+  assert.equal(seen.result.dc, 15);
   assert.equal(seen.result.noticedBy.length, 1);
 });
 
@@ -145,7 +149,8 @@ await test("Off the board the light is the place's, by its scene, not the sky's:
   await at(12);
   withScene(upsertCurrentLocation({ campaignId: world.campaignId, name: "Goblin Cave", layoutDescription: "a damp cavern under the hill" }), "cave");
   assert.equal(await notices(), false, "a cave at noon was bright");
-  world.patch(scout.id, { equipment: [{ name: "Torch", qty: 1 }] });
+  // A lit one: a torch still in the pack lights nothing (W07).
+  world.patch(scout.id, { equipment: [{ name: "Torch", qty: 1, litAt: clockOf(world) }] });
   assert.equal(await notices(), true, "a torch in the cave gave no light");
   world.patch(scout.id, { equipment: [] });
   upsertCurrentLocation({ campaignId: world.campaignId, name: "Kingsroad", layoutDescription: "an open road" });
@@ -230,17 +235,24 @@ await test("Under the supplies variant a character already exhausted takes two l
 
 await test("Under the supplies variant, a day on half the water a character needs is a DC 15 CON save or a level of exhaustion, and a day with none is a level whatever they carry.", async () => {
   const thirsty = fed.addHero({ class: "fighter", level: 3, maxHp: 30, abilities: { con: 10 }, equipment: [{ name: "Rations (1 day)", qty: 4 }, { name: "Waterskin", qty: 1 }] });
+  // A day in two halves: a whole day waited out ends in a night's long rest,
+  // which takes a level off a hero who ate and drank.
+  const day = async (water) => {
+    const first = await fed.invoke("pass_time", { amount: 12, unit: "hours", ...(water ? { water } : {}) });
+    await fed.invoke("pass_time", { amount: 12, unit: "hours" });
+    return first;
+  };
   fed.clearDice();
   fed.dice(5);
-  const half = await fed.invoke("pass_time", { amount: 1, unit: "days", water: "half" });
+  const half = await day("half");
   fed.clearDice();
   assert.equal(half.ok, true, half.error);
   assert.equal(fed.sheet(thirsty.id).exhaustion, 1, "a failed DC 15 save on half water cost no exhaustion");
   fed.dice(18);
-  await fed.invoke("pass_time", { amount: 1, unit: "days" });
+  await day();
   fed.clearDice();
   assert.equal(fed.sheet(thirsty.id).exhaustion, 1, "a made save on half water still cost exhaustion");
-  await fed.invoke("pass_time", { amount: 1, unit: "days", water: "none" });
+  await day("none");
   assert.equal(fed.sheet(thirsty.id).exhaustion, 3, "a day with no water, already exhausted, is two levels");
   await fed.invoke("pass_time", { amount: 1, unit: "hours", water: "plenty" });
 });

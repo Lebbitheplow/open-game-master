@@ -100,6 +100,7 @@ export type ToolGroupId =
   | "scenes"
   | "sound"
   | "mounts"
+  | "custody"
   | "gear"
   | "pets"
   | "relationships"
@@ -144,6 +145,10 @@ export const TOOL_GROUPS: Record<ToolGroupId, { summary: string; tools: readonly
   scenes: { summary: "chases, heists, skill challenges", tools: ["start_scene", "scene_check", "end_scene"] },
   sound: { summary: "the table's music and sound stings", tools: ["set_ambience", "play_sting"] },
   mounts: { summary: "mounting and dismounting", tools: ["mount_up", "dismount"] },
+  // Opened by itself out of a fight while anyone is tracked
+  // (ProfileSignals.trackedNpcs): a table with nobody to hold has no use for
+  // it, and its tokens would crowd a small window.
+  custody: { summary: "captives, escorts", tools: ["npc_state"] },
   gear: { summary: "drawing, donning, dropping, picking up or handing over an item", tools: ["handle_item"] },
   // A pet's damage is apply_damage's (issue #471), which a table with pets
   // is offered with this group.
@@ -212,6 +217,8 @@ export type ProfileSignals = {
   // A shop is open where the party stands.
   shopOpen?: boolean;
   mounts?: boolean;
+  // Out of a fight, someone is tracked whose body npc_state records.
+  trackedNpcs?: boolean;
   pets?: boolean;
   scene?: boolean;
   quests?: boolean;
@@ -243,6 +250,7 @@ const ENGLISH_INTENT: Array<[ToolGroupId, RegExp]> = [
   ["explore", /\b(craft|crafting|downtime|research|train(?:ing)?|lifestyle|carouse|lift|drag|push|haul|disease|poison(?:ed)?|madness)\b/i],
   ["hazards", /\b(trap|traps|fall|falls|jump|leap|climb|drown|swim|lava|fire|burning|freezing|suffocat\w*)\b/i],
   ["mounts", /\b(horse|horses|mount|mounts|saddle|steed|pony)\b/i],
+  ["custody", /\b(prisoners?|captives?|tie (?:him|her|them) up|bind (?:him|her|them)|untie|shackles?|knock (?:him|her|them) out)\b/i],
   ["gear", /\b(drops?|dropping|draws?|drawing|sheathes?|stows?|shield|picks? up|(?:hand|give)(?:s|ed)? (?:it|him|her|them|over|my|the|his|their))\b/i],
   ["relationships", /\b(romance|kiss|flirt|court|befriend|friendship)\b/i],
   ["pets", /\b(familiar|pet|animal companion)\b/i],
@@ -257,6 +265,7 @@ export function autoGroups(signals: ProfileSignals): Set<ToolGroupId> {
   const groups = new Set<ToolGroupId>();
   if (signals.shopOpen) groups.add("shop");
   if (signals.mounts) groups.add("mounts");
+  if (signals.trackedNpcs) groups.add("custody");
   if (signals.pets) groups.add("pets");
   if (signals.scene) groups.add("scenes");
   if (signals.quests) groups.add("binder");
@@ -353,6 +362,24 @@ export const COMPACT_OMITS: Record<string, string[]> = {
   // Champion Challenge, Conquering Presence, Dreadful Aspect); without it, every foe in reach.
   use_resource: ["targetEnemyIds"],
 };
+
+// Arguments only a table with a pet can use (ProfileSignals.pets): a compact
+// call to a table with none leaves them off. heal's petName alone is about 20
+// tokens, and the 16K core had less than that to spare once it came (a shop
+// turn's group no longer fitted beside it).
+export const COMPACT_PET_FIELDS: Record<string, string[]> = {
+  heal: ["petName"],
+};
+
+// `tool` as a table with no pet is offered it in a compact call.
+export function withoutPetFields<T extends ToolDefLike>(tool: T): T {
+  const omit = COMPACT_PET_FIELDS[tool.function.name];
+  const schema = tool.function.parameters as { properties?: Record<string, unknown> } | undefined;
+  if (!omit || !schema?.properties) {
+    return tool;
+  }
+  return { ...tool, function: { ...tool.function, parameters: { ...schema, properties: Object.fromEntries(Object.entries(schema.properties).filter(([key]) => !omit.includes(key))) } } };
+}
 
 function withoutOmitted(name: string, parameters: unknown): unknown {
   const omit = COMPACT_OMITS[name];

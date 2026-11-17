@@ -12,6 +12,7 @@ import { KitButton, LoadFailed, PanelError, PanelLoading } from "./PanelKit";
 import { WorldEntryLink, useOpenOnArrival } from "@/app/workshop/world/WorldEntryLink";
 import { useUnsavedDraft } from "@/app/workshop/unsaved";
 import { findLostCreate, readLoad, readWrite, useLoadStatus } from "@/lib/load-state";
+import { useT } from "@/lib/locale";
 import { LoreEntryActions } from "@/app/workshop/lore/LoreEntryActions";
 import { LoreEditorForm } from "@/app/workshop/lore/LoreEditorForm";
 import { LoreEntryRow, MentionedIn } from "@/app/workshop/lore/LoreEntryRow";
@@ -54,6 +55,7 @@ export function LorePanel({
   onWorldEntry?: (id: string) => void;
 }) {
   const [loading, setLoading] = useState(true);
+  const t = useT();
   // Whether a load has landed and what the last one said (issue 140): a
   // refused list is shown in the server's words, never as "no lore yet".
   const { loaded, loadError, settle } = useLoadStatus();
@@ -77,7 +79,7 @@ export function LorePanel({
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<{ entries?: LoreEntryView[] }>(fetch(`/api/campaigns/${campaignId}/lore`), "The lore").then((outcome) => {
+    readLoad<{ entries?: LoreEntryView[] }>(t, fetch(`/api/campaigns/${campaignId}/lore`), t("The lore")).then((outcome) => {
       if (cancelled) {
         return;
       }
@@ -90,7 +92,7 @@ export function LorePanel({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, reload, refreshKey, settle]);
+  }, [ campaignId, reload, refreshKey, settle, t ]);
   const retry = () => {
     setLoading(true);
     setReload((current) => current + 1);
@@ -175,13 +177,13 @@ export function LorePanel({
         attachmentPath: draft.attachmentPath,
         style: draft.style,
       };
-      const sent = await readWrite<{ entry?: LoreEntryView }>(
+      const sent = await readWrite<{ entry?: LoreEntryView }>(t,
         fetch(editingId ? `/api/campaigns/${campaignId}/lore/${editingId}` : `/api/campaigns/${campaignId}/lore`, {
           method: editingId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         }),
-        "That entry could not be saved.",
+        t("That entry could not be saved."),
       );
       if (sent.error !== null) {
         // A new entry whose answer was lost is looked for before anything is
@@ -196,12 +198,12 @@ export function LorePanel({
           }
           setSaveError(
             found === "missing"
-              ? "The server did not answer and the entry is not in the list, so it was not added. Your words are kept; press Add again."
-              : "The server could not be reached, so it is not known yet whether the entry was added. Your words are kept. Check the list before adding it again.",
+              ? t("The server did not answer and the entry is not in the list, so it was not added. Your words are kept; press Add again.")
+              : t("The server could not be reached, so it is not known yet whether the entry was added. Your words are kept. Check the list before adding it again."),
           );
           return;
         }
-        setSaveError(sent.unanswered ? `${sent.error} Your words are kept here.` : sent.error);
+        setSaveError(sent.unanswered ? `${sent.error} ${t("Your words are kept here.")}` : sent.error);
         return;
       }
       const saved = sent.payload.entry;
@@ -220,7 +222,7 @@ export function LorePanel({
   // The list read again outside the load effect, for a create whose answer
   // was lost: the entries it found, or null when it could not read them.
   const reread = () =>
-    readLoad<{ entries?: LoreEntryView[] }>(fetch(`/api/campaigns/${campaignId}/lore`), "The lore").then((outcome) => {
+    readLoad<{ entries?: LoreEntryView[] }>(t, fetch(`/api/campaigns/${campaignId}/lore`), t("The lore")).then((outcome) => {
       if (!outcome.payload || !Array.isArray(outcome.payload.entries)) {
         return null;
       }
@@ -232,13 +234,13 @@ export function LorePanel({
   // not reached, where the editor's own refusals show.
   async function togglePin(entry: LoreEntryView) {
     setSaveError("");
-    const sent = await readWrite<{ entry?: LoreEntryView }>(
+    const sent = await readWrite<{ entry?: LoreEntryView }>(t,
       fetch(`/api/campaigns/${campaignId}/lore/${entry.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pinned: !entry.pinned }),
       }),
-      "That entry could not be pinned.",
+      t("That entry could not be pinned."),
     );
     if (sent.error !== null) {
       setSaveError(sent.error);
@@ -253,7 +255,7 @@ export function LorePanel({
 
   async function remove(entryId: string): Promise<boolean> {
     setSaveError("");
-    const sent = await readWrite(fetch(`/api/campaigns/${campaignId}/lore/${entryId}`, { method: "DELETE" }), "That entry could not be deleted.");
+    const sent = await readWrite(t, fetch(`/api/campaigns/${campaignId}/lore/${entryId}`, { method: "DELETE" }), t("That entry could not be deleted."));
     if (sent.error !== null) {
       setSaveError(sent.error);
       if (sent.unanswered) void reread();
@@ -269,8 +271,8 @@ export function LorePanel({
     setBusy(true);
     setSaveError("");
     try {
-      const title = `${entry.title} (copy)`;
-      const sent = await readWrite<{ entry?: LoreEntryView }>(
+      const title = `${entry.title} ${t("(copy)")}`;
+      const sent = await readWrite<{ entry?: LoreEntryView }>(t,
         fetch(`/api/campaigns/${campaignId}/lore`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -286,7 +288,7 @@ export function LorePanel({
             style: entry.style ?? "plain",
           }),
         }),
-        "That entry could not be copied.",
+        t("That entry could not be copied."),
       );
       if (sent.error !== null) {
         if (sent.unanswered) {
@@ -294,8 +296,8 @@ export function LorePanel({
           if (found !== "made") {
             setSaveError(
               found === "missing"
-                ? "The server did not answer and the copy is not in the list, so it was not made. Duplicate it again."
-                : "The server could not be reached, so it is not known yet whether the copy was made. Check the list before duplicating it again.",
+                ? t("The server did not answer and the copy is not in the list, so it was not made. Duplicate it again.", { context: "table.lore.lostCopy.missing" })
+                : t("The server could not be reached, so it is not known yet whether the copy was made. Check the list before duplicating it again.", { context: "table.lore.lostCopy.unsure" }),
             );
           }
           return;
@@ -352,9 +354,9 @@ export function LorePanel({
   const linkable = [
     ...entries
       .filter((entry) => entry.id !== editingId)
-      .map((entry) => ({ value: entry.title, label: `Lore: ${entry.title}` })),
-    ...(linkTargets?.cast ?? []).map((name) => ({ value: name, label: `Cast: ${name}` })),
-    ...(linkTargets?.monsters ?? []).map((name) => ({ value: name, label: `Monster: ${name}` })),
+      .map((entry) => ({ value: entry.title, label: t("Lore: {title}", { title: entry.title }) })),
+    ...(linkTargets?.cast ?? []).map((name) => ({ value: name, label: t("Cast: {name}", { name }) })),
+    ...(linkTargets?.monsters ?? []).map((name) => ({ value: name, label: t("Monster: {name}", { name }) })),
   ];
   const knownTags = collectTags(entries);
 
@@ -362,16 +364,16 @@ export function LorePanel({
   // refusal, or a request that never arrived, is said rather than dropped.
   async function showNow(entry: LoreEntryView) {
     setSaveError("");
-    const sent = await readWrite(
+    const sent = await readWrite(t,
       fetch(`/api/campaigns/${campaignId}/dm/invoke`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "show_handout", args: { lore: entry.id } }),
       }),
-      "That handout could not be shown.",
+      t("That handout could not be shown."),
     );
     if (sent.error !== null) {
-      setSaveError(sent.unanswered ? `${sent.error} The party may have it already; look at the table before showing it again.` : sent.error);
+      setSaveError(sent.unanswered ? `${sent.error} ${t("The party may have it already; look at the table before showing it again.")}` : sent.error);
     }
   }
 
@@ -392,7 +394,7 @@ export function LorePanel({
       {saveError ? <PanelError className="text-[11px]">{saveError}</PanelError> : null}
       <div className="flex gap-1.5" data-tour="lore-save">
         <KitButton tone="primary" onClick={submitDraft} disabled={busy || !draft.title.trim() || !draft.body.trim()} busy={busy}>
-          {editingId ? "Save" : "Add"}
+          {editingId ? t("Save", { context: "table.notes.save" }) : t("Add")}
         </KitButton>
         <KitButton
           onClick={() => {
@@ -400,7 +402,7 @@ export function LorePanel({
             setEditingId(null);
           }}
         >
-          <X className="size-3.5" /> Cancel
+          <X className="size-3.5" /> {t("Cancel")}
         </KitButton>
       </div>
     </>
@@ -414,7 +416,7 @@ export function LorePanel({
         {loaded && loadError ? <LoadFailed error={loadError} onRetry={retry} /> : null}
         {saveError && !editorOpen ? <PanelError>{saveError}</PanelError> : null}
         {loading ? (
-          <PanelLoading label="Loading..." />
+          <PanelLoading label={t("Loading...")} />
         ) : !loaded && loadError ? (
           <LoadFailed error={loadError} onRetry={retry} />
         ) : (
@@ -432,7 +434,7 @@ export function LorePanel({
               closeEditor();
             }
           }}
-          title={editing?.title || reading?.title || "New entry"}
+          title={editing?.title || reading?.title || t("New entry", { context: "table.lore.newEntry" })}
           className="lg:w-[min(92vw,40rem)]"
         >
           {editorOpen ? (
@@ -465,23 +467,23 @@ export function LorePanel({
   return (
     <div className="panel rounded-lg p-3">
       <SectionHead
-        title="World lore"
+        title={t("World lore")}
         glyph="system-lore"
         aside={
           steersStory && !editorOpen ? (
             <KitButton onClick={startAdd}>
-              <Plus className="size-3.5" /> Add entry
+              <Plus className="size-3.5" /> {t("Add entry")}
             </KitButton>
           ) : null
         }
       />
       {loading ? (
-        <PanelLoading label="Loading..." />
+        <PanelLoading label={t("Loading...")} />
       ) : null}
       {!loading && loadError ? <LoadFailed error={loadError} onRetry={retry} /> : null}
       {saveError && !editorOpen ? <PanelError className="mb-2">{saveError}</PanelError> : null}
       {!loading && loaded && !entries.length && !editorOpen ? (
-        <EmptyState size="sm" art="scrolls" title={steersStory ? "No lore yet. Write your world's places, factions, and history; the GM treats it as canon." : "The party lead has not written any world lore yet."} />
+        <EmptyState size="sm" art="scrolls" title={steersStory ? t("No lore yet. Write your world's places, factions, and history; the GM treats it as canon.", { context: "table.lore.empty.lead" }) : t("The party lead has not written any world lore yet.", { context: "table.lore.empty.player" })} />
       ) : null}
       {editorOpen ? (
         <div className="reveal mb-2 space-y-1.5 rounded-lg border border-amber-500/20 bg-stone-950/60 p-2.5">

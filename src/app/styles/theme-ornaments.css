@@ -1,0 +1,69 @@
+/* Shared geometry. Assets come from appearance-themes.ts, not theme names.
+   An absent slot is explicitly `none`, including inside picker previews. */
+.theme-table, .theme-lobby-shell { position: relative; }
+.theme-ornaments {
+  display: none;
+  position: absolute;
+  pointer-events: none;
+  /* Only the rails and corners paint. The full-screen empty container must
+     not count as a foreground surface when text contrast is measured. */
+  visibility: hidden;
+}
+html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
+.theme-ornaments > span {
+  visibility: visible;
+  position: absolute;
+  background: var(--theme-art-corner, none) var(--theme-corner-background-position, center) / var(--theme-corner-background-size, contain) no-repeat;
+}
+.theme-ornaments > :nth-child(1) { top: 0; left: 0; }
+.theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: rotate(90deg); }
+.theme-ornaments > :nth-child(3) { bottom: 0; right: 0; transform: rotate(180deg); }
+.theme-ornaments > :nth-child(4) { bottom: 0; left: 0; transform: rotate(270deg); }
+.theme-ornaments[data-surface="lobby"] {
+  inset: var(--theme-lobby-ornament-inset, -34px);
+  z-index: 2;
+}
+.theme-ornaments[data-surface="lobby"] > span {
+  width: var(--theme-lobby-corner-size, 196px);
+  height: var(--theme-lobby-corner-size, 196px);
+  filter: drop-shadow(0 3px 3px #0006);
+}
+.theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) {
+  inset: var(--theme-table-ornament-inset, -10px);
+  z-index: 21;
+}
+.theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before {
+  visibility: visible;
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 12px solid transparent;
+  border-image: var(--theme-art-frame, none) var(--theme-frame-slice, 22%) / var(--theme-table-frame-width, 40px) / 0 round;
+}
+.theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) > span {
+  width: var(--theme-table-corner-size, 128px);
+  height: var(--theme-table-corner-size, 128px);
+  filter: drop-shadow(0 2px 3px #0005);
+}
+/* Below 1024px the table's text and controls sit 8 to 17px from the screen's
+   edge (the bottom bar's first label, the session title), and a 28px rail
+   with 84px corners painted over them on a 390px phone. These sizes keep the
+   art clear of them; scenario phone-frame reads every painted theme. */
+@media (max-width: 1023px) {
+  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) { inset: var(--theme-table-ornament-inset-small, -4px); }
+  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 20px); }
+  .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) > span {
+    width: var(--theme-table-corner-size-small, 56px);
+    height: var(--theme-table-corner-size-small, 56px);
+  }
+}
+@media (max-width: 540px) {
+  .theme-ornaments[data-surface="lobby"] { inset: var(--theme-lobby-ornament-inset-small, -16px); }
+  .theme-ornaments[data-surface="lobby"] > span {
+    width: var(--theme-lobby-corner-size-small, 112px);
+    height: var(--theme-lobby-corner-size-small, 112px);
+  }
+}
+@media (forced-colors: active) {
+  html[data-theme-ornaments] .theme-ornaments { display: none; }
+}

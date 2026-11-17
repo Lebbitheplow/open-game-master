@@ -167,6 +167,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
       pressure_json: "the agency model's running pressure, rebuilt in play",
       arc_cast_id: "the source campaign's arc",
       archived: "archived NPCs are not exported",
+      state_json: "who is a prisoner, bound or down is play: a new table starts with everyone free and standing",
     },
   },
   lore_entries: {

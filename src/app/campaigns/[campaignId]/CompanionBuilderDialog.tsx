@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { escapeIsOwned } from "@/lib/owned-escape";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import CharacterBuilder, {
   type BuilderResult,
 } from "@/app/characters/builder/CharacterBuilder";
@@ -43,6 +44,7 @@ export function CompanionBuilderDialog({
   onCreated?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const t = useT();
   const keepsCompanions = hostOffers(useCapabilities(), "keepCompanion");
   const [error, setError] = useState("");
   // Companions filed in this user's own library. An ally worth writing once
@@ -67,12 +69,12 @@ export function CompanionBuilderDialog({
       const response = await fetch(`/api/characters/${encodeURIComponent(id)}`);
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.character?.sheet) {
-        setError(refusalText(data, "Could not open that companion."));
+        setError(refusalText(data, t("Could not open that companion.")));
         return;
       }
       setTweaking({ id, sheet: data.character.sheet, level: data.character.level });
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setOpening("");
     }
@@ -109,14 +111,14 @@ export function CompanionBuilderDialog({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(refusalText(data, "Could not create the companion."));
+        setError(refusalText(data, t("Could not create the companion.")));
         return;
       }
       clearBuilderDraft(builderDraftKey("companion", campaignId));
       onCreated?.();
       onClose();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -157,25 +159,23 @@ export function CompanionBuilderDialog({
               ) : (
                 <Bot className="size-4 text-sky-300" />
               )}{" "}
-              Build a companion
+              {t("Build a companion")}
             </Dialog.Title>
-            <Dialog.Close aria-label="Close" className="-m-2 p-2 text-stone-500 hover:text-stone-300">
+            <Dialog.Close aria-label={t("Close", { context: "action.close" })} className="-m-2 p-2 text-stone-500 hover:text-stone-300">
               <X className="size-5 sm:size-4" aria-hidden="true" />
             </Dialog.Close>
           </div>
           <p className="mb-3 text-xs text-stone-500">
-            {humanDm
-              ? "This ally joins the party as a character you play from the GM console. In combat their turn waits for you: act for them, then end the turn. They start at the party's level."
-              : "This ally joins the party as an AI companion the GM plays. They start at the party's level."}
+            {humanDm ? t("This ally joins the party as a character you play from the GM console. In combat their turn waits for you: act for them, then end the turn. They start at the party's level.") : t("This ally joins the party as an AI companion the GM plays. They start at the party's level.")}
             {/* Said only where the host keeps them (an app's screens may be
                 newer than the host they are opened on). */}
-            {keepsCompanions ? " They are kept in your characters too, so another campaign can bring them along." : null}
+            {keepsCompanions ? ` ${t("They are kept in your characters too, so another campaign can bring them along.")}` : null}
           </p>
 
           {library.length && !tweaking ? (
             <div className="reveal mb-4 space-y-1.5 rounded-lg border border-stone-800 bg-stone-950/40 px-2.5 py-2">
               <p className="text-[11px] uppercase tracking-wide text-stone-500">
-                From your library
+                {t("From your library", { context: "table.companion.fromLibrary" })}
               </p>
               <div className="stagger-pop flex flex-wrap gap-1">
                 {library.map((companion) => (
@@ -188,28 +188,28 @@ export function CompanionBuilderDialog({
                       className="px-2 py-1 text-xs text-stone-300 hover:bg-stone-900 disabled:opacity-50 aria-pressed:bg-stone-900"
                     >
                       {companion.name}
-                      <span className="ml-1 text-stone-600">level {companion.level}</span>
+                      <span className="ml-1 text-stone-600">{t("level {n}", { n: companion.level })}</span>
                     </button>
                     <button
                       type="button"
                       disabled={busy || Boolean(opening)}
                       aria-busy={opening === companion.id}
-                      aria-label={`Change ${companion.name} before adding`}
+                      aria-label={t("Change {name} before adding", { name: companion.name })}
                       onClick={() => void tweak(companion.id)}
                       className="border-l border-stone-700 px-2 py-1 text-xs text-stone-400 hover:bg-stone-900 hover:text-stone-200 disabled:opacity-50"
                     >
-                      Change first
+                      {t("Change first")}
                     </button>
                   </span>
                 ))}
               </div>
               {pending ? (
-                <div role="group" aria-label={`Add ${pending.name}`} className="reveal flex flex-wrap items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/5 px-2.5 py-2">
+                <div role="group" aria-label={t("Add {name}", { name: pending.name })} className="reveal flex flex-wrap items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/5 px-2.5 py-2">
                   <p className="min-w-0 flex-1 text-xs text-stone-300">
-                    Add {pending.name} to the party at level {level}?
+                    {t("Add {name} to the party at level {level}?", { name: pending.name, level })}
                   </p>
                   <button type="button" onClick={() => setConfirming(null)} disabled={busy} className={ui.btnSmall}>
-                    Not yet
+                    {t("Not yet")}
                   </button>
                   <button
                     type="button"
@@ -218,7 +218,7 @@ export function CompanionBuilderDialog({
                     onClick={() => void post({ libraryCharacterId: pending.id })}
                     className={cn(ui.btnSmall, "border-sky-500/50 text-sky-100")}
                   >
-                    Add {pending.name}
+                    {t("Add {name}", { name: pending.name })}
                   </button>
                   {/* The builder shows its error on its last step; a refused
                       add from here is said here, where it was asked for. */}
@@ -230,15 +230,13 @@ export function CompanionBuilderDialog({
                 </div>
               ) : null}
               <p className="text-[10px] text-stone-600">
-                They arrive at level {level}, adapted the same way a player character is. Change first
-                opens one in the builder; your library copy stays as it is until you save them from the
-                party.
+                {t("They arrive at level {level}, adapted the same way a player character is. Change first opens one in the builder; your library copy stays as it is until you save them from the party.", { level })}
               </p>
             </div>
           ) : null}
           {tweaking ? (
             <button type="button" onClick={() => setTweaking(null)} className={cn(ui.btnSmall, "mb-3")}>
-              Build a new one instead
+              {t("Build a new one instead")}
             </button>
           ) : null}
           <CharacterBuilder
@@ -255,7 +253,7 @@ export function CompanionBuilderDialog({
             // is added, so an Escape or a stray click on the overlay costs
             // nothing; one changed from the library is not.
             draftKey={tweaking ? undefined : builderDraftKey("companion", campaignId)}
-            submitLabel="Add companion"
+            submitLabel={t("Add companion")}
             // The quick companion: "Help me build" asks what the party
             // needs, and fills a legal ally at the table's level.
             quizVoice="party"

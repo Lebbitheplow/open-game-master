@@ -23,20 +23,27 @@
 //     else here offers it.
 //   - Any other OpenAI-compatible server, a local one, OpenRouter, opencode
 //     and Grok: no Fast tier ODM can ask for, so none is sent.
+//
+// The refusal reasons are full sentences the admin panel shows; they live
+// in the dictionaries (admin.speed.*), and each builder takes the
+// translator from the surface that asks, as home/types.ts's agoLabel does.
 
 export type Speed = "" | "fast";
 
 export type SpeedEligibility = { ok: true } | { ok: false; reason: string };
 
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 // Whether a direct API connection may ask for Fast: OpenAI's own host and a
 // named model. The admin's choice is for the server's own backend; a
 // campaign's own key is never spent at a premium on it.
-export function apiSpeedEligibility(input: { endpointKind: string; model: string }): SpeedEligibility {
+export function apiSpeedEligibility(t: T, input: { endpointKind: string; model: string }): SpeedEligibility {
   if (input.endpointKind !== "openai") {
-    return { ok: false, reason: "Fast is offered on OpenAI's own API (api.openai.com). Other OpenAI-compatible servers, OpenRouter and local models have no Fast tier ODM can ask for." };
+    return { ok: false, reason: t("Fast is offered on OpenAI's own API (api.openai.com). Other OpenAI-compatible servers, OpenRouter and local models have no Fast tier ODM can ask for.") };
   }
   if (!input.model.trim()) {
-    return { ok: false, reason: "Name the model first; Fast depends on it." };
+    return { ok: false, reason: t("Name the model first; Fast depends on it.") };
   }
   return { ok: true };
 }
@@ -44,22 +51,25 @@ export function apiSpeedEligibility(input: { endpointKind: string; model: string
 // Whether the agent program may run its model at Fast. Codex and Claude Code
 // both say per model (Codex's model/list service tiers, Claude Code's
 // supportsFastMode), carried as `fast` on the probed model.
-export function agentSpeedEligibility(input: {
-  harnessId: string;
-  model: string;
-  models: ReadonlyArray<{ id: string; fast?: boolean }>;
-}): SpeedEligibility {
+export function agentSpeedEligibility(
+  t: T,
+  input: {
+    harnessId: string;
+    model: string;
+    models: ReadonlyArray<{ id: string; fast?: boolean }>;
+  },
+): SpeedEligibility {
   if (input.harnessId === "claude" || input.harnessId === "codex") {
     const program = input.harnessId === "claude" ? "Claude Code" : "Codex";
     if (!input.model.trim()) {
-      return { ok: false, reason: `Pick the model first; ${program} offers Fast per model.` };
+      return { ok: false, reason: t("Pick the model first; {program} offers Fast per model.", { program }) };
     }
     const listed = input.models.find((model) => model.id === input.model);
     return listed?.fast
       ? { ok: true }
-      : { ok: false, reason: `${program} does not list a Fast tier for ${input.model} on this sign-in.` };
+      : { ok: false, reason: t("{program} does not list a Fast tier for {model} on this sign-in.", { program, model: input.model }) };
   }
-  return { ok: false, reason: "This agent program has no Fast setting ODM can choose." };
+  return { ok: false, reason: t("This agent program has no Fast setting ODM can choose.") };
 }
 
 // What a provider's reply says ran, in words: OpenAI answers "priority" for
@@ -74,7 +84,3 @@ export function effectiveSpeedWord(tier: string | null | undefined): "fast" | "s
   }
   return value ? "standard" : null;
 }
-
-// The cost note the admin reads before turning Fast on.
-export const FAST_COST_NOTE =
-  "Fast answers sooner for about twice the price per token (2x to 2.5x of a Codex or Claude plan's usage, paid from usage credits on Claude). It applies to every campaign this setting serves.";

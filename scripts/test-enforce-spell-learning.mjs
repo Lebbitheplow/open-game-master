@@ -18,7 +18,7 @@
 // through the spells route is scripts/test-enforce-player-patch.mjs, and a
 // multiclass level-up's picks are scripts/test-enforce-multiclass-levelup.mjs.
 import assert from "node:assert/strict";
-import { openWorld } from "./lib/enforce-world.mjs";
+import { dice, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { cleric, sorcerer, warlock, wizard } from "./lib/enforce-spells.mjs";
 
@@ -27,6 +27,7 @@ const world = await openWorld();
 const sheetRoute = await world.route("campaigns/[campaignId]/sheet");
 const spellsRoute = await world.route("campaigns/[campaignId]/sheet/spells");
 const { subclassSpellsFor } = await import("../src/lib/srd/features.ts");
+const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 
 async function call(mod, method, userId, campaignId, body) {
   world.signIn({ id: userId });
@@ -328,6 +329,79 @@ await test("the console's Spend a slot checks the spell named", async () => {
   const out = await table.invoke("use_spell_slot", { characterId: mage.id, level: 1, spell: "Cure Wounds" });
   assert.equal(out.ok, false, "a wizard spent a slot on Cure Wounds");
   assert.equal(JSON.stringify(table.sheet(mage.id).spellcasting.slots), before);
+});
+
+// ---- copying a spell scroll ----
+
+// SRD 5.1, Spell Scroll: "When a spell is copied from a spell scroll, the
+// copier must succeed on an Intelligence (Arcana) check with a DC equal to
+// 10 + the spell's level. ... Whether the check succeeds or fails, the spell
+// scroll is destroyed." A player copying See Invisibility (2nd level) was
+// told DC 8 by a GM left to choose the number; it is 12.
+const SEE_INVISIBILITY_SCROLL = { name: "Spell Scroll (See Invisibility)", qty: 1, tags: ["consumable", "scroll", "carried"], spell: "See Invisibility" };
+const scrollsOf = (table, id) => table.sheet(id).equipment.filter((item) => item.spell === "See Invisibility").reduce((sum, item) => sum + item.qty, 0);
+
+await test("copying a scroll rolls Intelligence (Arcana) against 10 + the spell's level, and uses the scroll up", async () => {
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  // A 5th level wizard with Intelligence 16 and no Arcana proficiency: +3.
+  const table = await openWorld();
+  const mage = table.addHero(wizard(5, { gold: 300, equipment: [{ ...SEE_INVISIBILITY_SCROLL }] }));
+  const clockBefore = JSON.stringify(getClock(table.campaignId));
+  dice(9); // 9 + 3 = 12 meets DC 12
+  const copied = await table.invoke("learn_spell", { characterId: mage.id, action: "add", spell: "See Invisibility", from: "scroll" });
+  assert.equal(copied.ok, true, copied.error);
+  assert.equal(copied.result.dc, 12, `the check's DC was ${copied.result.dc}`);
+  assert.equal(copied.result.rolled, 12);
+  const after = table.sheet(mage.id);
+  assert.ok(after.spellcasting.spellbook.includes("See Invisibility"), "the spell is in the book");
+  assert.equal(scrollsOf(table, mage.id), 0, "the scroll is used up");
+  assert.equal(after.gold, 200, "50 gp a level");
+  assert.notEqual(JSON.stringify(getClock(table.campaignId)), clockBefore, "four hours pass");
+  const card = listRecentRolls(table.campaignId, 50).find((roll) => roll.characterId === mage.id && roll.dc === 12);
+  assert.ok(card, "the check is on the table's roll log with its DC");
+});
+
+await test("a failed copy writes nothing, and the scroll, the gold and the hours are spent anyway", async () => {
+  const table = await openWorld();
+  const mage = table.addHero(wizard(5, { gold: 300, equipment: [{ ...SEE_INVISIBILITY_SCROLL }] }));
+  dice(8); // 8 + 3 = 11 misses DC 12
+  const failed = await table.invoke("learn_spell", { characterId: mage.id, action: "add", spell: "See Invisibility", from: "scroll" });
+  assert.equal(failed.ok, true, failed.error);
+  assert.equal(failed.result.learned, undefined, "nothing was learned");
+  assert.equal(failed.result.dc, 12);
+  const after = table.sheet(mage.id);
+  assert.equal(after.spellcasting.spellbook.includes("See Invisibility"), false, "the failed copy is not written");
+  assert.equal(scrollsOf(table, mage.id), 0, "the scroll is destroyed whatever the roll");
+  assert.equal(after.gold, 200, "the inks and the experiments are spent in the attempt");
+});
+
+await test("a wizard carrying the scroll is asked where the spell is copied from, and a copy from a book leaves the scroll", async () => {
+  const table = await openWorld();
+  const mage = table.addHero(wizard(5, { gold: 300, equipment: [{ ...SEE_INVISIBILITY_SCROLL }] }));
+  const before = JSON.stringify(table.sheet(mage.id));
+  const asked = await table.invoke("learn_spell", { characterId: mage.id, action: "add", spell: "See Invisibility" });
+  assert.equal(asked.ok, false, "a copy with the scroll in the pack and no source named went ahead");
+  assert.equal(asked.retry, true);
+  assert.match(asked.error, /DC 12/);
+  assert.equal(JSON.stringify(table.sheet(mage.id)), before, "nothing changed");
+  const fromBook = await table.invoke("learn_spell", { characterId: mage.id, action: "add", spell: "See Invisibility", from: "book" });
+  assert.equal(fromBook.ok, true, fromBook.error);
+  assert.equal(scrollsOf(table, mage.id), 1, "a copy from another book keeps the scroll");
+  assert.ok(table.sheet(mage.id).spellcasting.spellbook.includes("See Invisibility"));
+});
+
+await test("a copy from a scroll needs the scroll, and only a wizard's book takes one", async () => {
+  const table = await openWorld();
+  const mage = table.addHero(wizard(5, { gold: 300 }));
+  const before = JSON.stringify(table.sheet(mage.id));
+  const none = await table.invoke("learn_spell", { characterId: mage.id, action: "add", spell: "See Invisibility", from: "scroll" });
+  assert.equal(none.ok, false, "copied from a scroll nobody carries");
+  assert.equal(JSON.stringify(table.sheet(mage.id)), before);
+  const sorc = table.addHero(sorcerer(5, { equipment: [{ ...SEE_INVISIBILITY_SCROLL }] }));
+  const sorcBefore = JSON.stringify(table.sheet(sorc.id));
+  const out = await table.invoke("learn_spell", { characterId: sorc.id, action: "add", spell: "See Invisibility", from: "scroll" });
+  assert.equal(out.ok, false, "a sorcerer learned a spell by copying a scroll");
+  assert.equal(JSON.stringify(table.sheet(sorc.id)), sorcBefore);
 });
 
 world.close();

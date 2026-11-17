@@ -26,6 +26,10 @@ import {
   unconfirmedOrder,
   withSequence,
 } from "../src/lib/dm/coordination-logic.ts";
+import { translate } from "../src/lib/messages-logic.ts";
+
+// The dictionaries' English, for the worded builders under test.
+const t = (key, vars) => translate("en", key, vars);
 
 const { test, finish } = suite("test-coordination");
 
@@ -86,8 +90,8 @@ await test("An ordered plan: the steps every seat reads, the DM's block step by 
   const ordered = { ...plan, entries: withSequence(plan.entries, [["n"], ["t", "b"], ["m"]]) };
   assert.deepEqual(sequenceOf(ordered), [["n"], ["t", "b"], ["m"]]);
   assert.deepEqual(ordered.entries.map((item) => item.name), ["Nysa", "Tavi", "Brann", "Mara"], "the entries are kept in the plan's order");
-  assert.equal(placeWords(ordered, "t"), "step 2 of 3, after Nysa, at the same time as Brann");
-  assert.equal(placeWords(ordered, "n"), "step 1 of 3, first");
+  assert.equal(placeWords(t, ordered, "t"), "step 2 of 3, after Nysa, at the same time as Brann");
+  assert.equal(placeWords(t, ordered, "n"), "step 1 of 3, first");
 
   let staged = stagePlan(ordered, { characterId: "n", userId: "u2", text: "I knock the guard's lantern over.", state: "ready", orderSeen: orderKey(ordered) }, "t").phase;
   staged = stagePlan(staged, { characterId: "t", userId: "u1", text: "In the dark, I slip through the gate.", state: "ready" }, "t").phase;

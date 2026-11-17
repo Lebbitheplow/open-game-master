@@ -52,6 +52,8 @@ const { worldPackDraftSchema } = await import("../src/lib/worlds/draft.ts");
 const { layOver, parseKeepingValid } = await import("../src/lib/schemas/parse-keeping-valid.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { abilitiesBlocker, buildBuilderResult } = await import("../src/app/characters/builder/submit.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { asiSlotsTakenInPlay } = await import("../src/lib/srd/asi.ts");
 
 // A URL, not a template literal: Vitest would read the literal as a one-level
@@ -449,9 +451,9 @@ await test("improvements a hero took in play are not asked for again", () => {
     activeAsiChoices: [null, null],
     asiTakenInPlay: [true, true],
   };
-  assert.equal(abilitiesBlocker(derived), null);
+  assert.equal(abilitiesBlocker(t, derived), null);
   assert.equal(
-    abilitiesBlocker({ ...derived, asiTakenInPlay: [true, false] })?.message,
+    abilitiesBlocker(t, { ...derived, asiTakenInPlay: [true, false] })?.message,
     "Choose what your hero gains at level 8: higher scores or a feat (ability score improvement).",
   );
   // Nothing is added for them: the scores that already carry them are kept.

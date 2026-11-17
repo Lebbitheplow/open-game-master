@@ -5,19 +5,20 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { woundOnHit } from "@/lib/dm/sword-wounding";
+import { tallyHit } from "@/lib/dm/ammo-tally";
 import { goreDrift } from "@/lib/dm/genre-gb-gore-drift";
 import { hookDrag } from "@/lib/dm/genre-gb-hook";
 import { darkFantasyCritMarks } from "@/lib/dm/genre-cc-a-dark-fantasy";
 import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { runPush } from "@/lib/dm/genre-run-hits";
-import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
 import { horrorOnHit } from "@/lib/dm/genre-a-horror-hits";
 import { genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
 import { insertRoll, landRoll, type StoredRoll } from "@/lib/db/rolls";
-import { rollExpression, type DiceTerm, type RollResult } from "@/lib/dice";
+import type { RollResult } from "@/lib/dice";
 import type { RollVisibility } from "@/lib/battlemap/fx-plan";
 import { hurlThroughHell, HURL_THROUGH_HELL, openHandOnHit, poisonOnHit, spendFeatureUse } from "@/lib/dm/attack-onhit";
 import type { AttackRecord, DamageAsk } from "@/lib/dm/attack-record";
@@ -38,6 +39,7 @@ import { pushTokenAway } from "@/lib/dm/map-tools";
 import { bulwarkBanish } from "@/lib/dm/mortal-bulwark";
 import { apexAttack, kineticShove } from "@/lib/dm/genre-a-cyberpunk-hits";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
+import { partyChargeAfterHit } from "@/lib/dm/party-charge";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -48,77 +50,7 @@ import { brawlerUnarmed, CRUSHER_USED, GREAT_WEAPON_MASTER_READY, SLASHER_USED, 
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { grantedStrikeMark } from "@/lib/dm/ar-wbf-warlock-strike";
-
-// The server's dice for a damage roll, with the feats the hit spent on them:
-// Brutal Attack rolls it twice and keeps the better, Savage Attacker the
-// weapon's own dice, Piercer rerolls the lowest die.
-export function throwDamage(ask: DamageAsk, who: string, notes: string[]): RollResult {
-  let outcome = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow, ...(ask.empower ? { empower: ask.empower } : {}), purpose: { roller: "hero", kind: "damage", who } });
-  if (ask.empower) {
-    notes.push(empoweredLine(ask.empower));
-  }
-  if (ask.feats.brutal) {
-    const again = rollExpression(ask.expression, undefined, { rerollBelow: ask.rerollBelow });
-    notes.push(`Brutal Attack: the damage rolled twice (${outcome.total} and ${again.total}), the better kept`);
-    outcome = again.total > outcome.total ? again : outcome;
-  }
-  if (ask.feats.savage) {
-    const weapon = outcome.terms.find((term): term is DiceTerm => term.kind === "dice");
-    const kept = weapon ? weapon.dice.filter((die) => die.kept) : [];
-    if (weapon && kept.length) {
-      const first = kept.reduce((sum, die) => sum + die.value, 0);
-      const again = rollExpression(`${kept.length}d${kept[0].sides}`, undefined, { rerollBelow: ask.rerollBelow });
-      const fresh = again.terms.find((term): term is DiceTerm => term.kind === "dice");
-      notes.push(`Savage Attacker: the weapon's dice rolled twice (${first} and ${again.total}), the better kept`);
-      if (fresh && again.total > first) {
-        kept.forEach((die, index) => {
-          die.value = fresh.dice[index]?.value ?? die.value;
-        });
-        weapon.subtotal += again.total - first;
-        outcome = { ...outcome, total: outcome.total - first + again.total };
-      }
-    }
-  }
-  if (ask.feats.piercer) {
-    const dice = outcome.terms.find((term): term is DiceTerm => term.kind === "dice");
-    const lowest = dice ? dice.dice.filter((die) => die.kept).sort((a, b) => a.value - b.value)[0] : undefined;
-    if (dice && lowest) {
-      const fresh = rollExpression(`1d${lowest.sides}`).total;
-      notes.push(`Piercer: a ${lowest.value} on a d${lowest.sides} is rerolled to ${fresh}`);
-      dice.subtotal += fresh - lowest.value;
-      outcome = { ...outcome, total: outcome.total - lowest.value + fresh };
-      lowest.value = fresh;
-    }
-  }
-  return outcome;
-}
-
-// The same feats for a player rolling at the table: what they do with the dice
-// before entering the total.
-export function damageDiceNote(ask: DamageAsk): string {
-  return [
-    ask.rerollBelow ? `, rerolling any die of ${ask.rerollBelow} or less once for Great Weapon Fighting` : "",
-    ask.feats.brutal ? ", rolling the damage a second time and keeping the better total (Brutal Attack)" : "",
-    ask.feats.savage ? ", rolling the weapon's dice a second time and keeping the better total (Savage Attacker)" : "",
-    ask.feats.piercer ? ", rerolling the lowest damage die once and keeping the new roll (Piercer)" : "",
-    ask.empower ? `, rerolling up to ${ask.empower} of the damage dice and keeping the new rolls (Empowered Spell)` : "",
-  ].join("");
-}
-
-// The same steps said to the player on their damage roll card. The model's
-// note above is not enough: the feat is spent the moment the hit parks the
-// roll, and a GM who does not pass the note on leaves the player entering
-// dice the feat never touched. Empty when no feat changes the dice.
-export function damageDiceSteps(ask: DamageAsk): string {
-  const steps = [
-    ask.rerollBelow ? `reroll any die of ${ask.rerollBelow} or less once (Great Weapon Fighting)` : "",
-    ask.feats.brutal ? "roll the damage a second time and keep the better total (Brutal Attack)" : "",
-    ask.feats.savage ? "roll the weapon's dice a second time and keep the better total (Savage Attacker)" : "",
-    ask.feats.piercer ? "reroll the lowest damage die once and keep the new roll (Piercer)" : "",
-    ask.empower ? `reroll up to ${ask.empower} of the damage dice and keep the new rolls (Empowered Spell)` : "",
-  ].filter(Boolean);
-  return steps.length ? `Before you enter your dice: ${steps.join(", then ")}.` : "";
-}
+import { conditionDamageFloor } from "@/lib/srd/condition-effect-queries";
 
 // A rolled damage roll landing on the target, and what the blow leaves.
 // `toHit` is the d20 the blow followed (null for a roll parked by an older
@@ -170,13 +102,19 @@ export function landSwingBlow(
   }
   const crit = ask.crit;
   const critExtraDice = record.critExtraDice ?? 0;
-  // A penalty can bring a hit's damage to 0, never below it.
-  const dealt = Math.max(0, damageOutcome.total);
+  // A penalty can bring a hit's damage to 0, never below it; Reduce's die
+  // never below 1 ("this can't reduce the damage below 1", SRD 5.1), which a
+  // reduced rogue's dagger did.
+  const dealt = Math.max(record.spell ? 0 : conditionDamageFloor(sheet.conditions), damageOutcome.total);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   emitAttackFx(campaign.id, attackStage(campaign.id, sheet, enemy), { hit: true, crit, ranged: record.ranged === true, damage: dealt, damageType: record.damageType ?? "", visibility });
   // Death Strike: a surprised creature's failed save doubles the blow.
   const doubled = deathStrikeDoubles({ campaignId: campaign.id, turn: scene.turn, encounter, sheet, enemy, notes });
   const applied = land(dealt, ask.riders, crit, critExtraDice, doubled);
+  // A magic arrow that hits is magic no more (ammo-tally.ts).
+  if (record.magicAmmo) {
+    tallyHit(campaign.id, sheet.id, record.magicAmmo);
+  }
   if (hitLog && toHit) {
     // A critical that came only from the character it struck lying unconscious
     // at 0 within 5 ft keeps its ordinary damage from the same dice, for a
@@ -266,7 +204,7 @@ export function landSwingBlow(
   if (ask.stunDc !== undefined && !over) {
     out.stunningStrike = stunningStrikeSave(campaign, enemy.encounterId, enemy.id, sheet.id, ask.stunDc);
   }
-  Object.assign(out, hitExtras(scene, record, dead, over));
+  Object.assign(out, hitExtras(scene, record, dead, over, Number(applied.damageApplied ?? dealt) || 0));
   // Dark One's Blessing: a kill gives a Fiend warlock temporary hit points.
   const blessing = dead ? darkOnesBlessing(campaign, sheet.id) : null;
   if (blessing) {
@@ -336,7 +274,7 @@ function bonusActionsOpened(scene: SwingScene, record: AttackRecord, crit: boole
 // poison, a creature's natural attack rider, Open Hand Technique, Hurl Through
 // Hell (attack-onhit.ts, natural-onhit.ts). A kill or the fight's end leaves
 // nothing to land the riders on.
-function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over: boolean): Record<string, unknown> {
+function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over: boolean, lost: number): Record<string, unknown> {
   const { campaign, sheet, enemy } = scene;
   const extras = record.extras ?? {};
   const out: Record<string, unknown> = {};
@@ -349,8 +287,20 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
       out.poison = line;
     }
   }
+  // A form's or a summoned creature's charge (party-charge.ts): spent on this
+  // hit, a kill too; then the save the run forces, its push, and the bonus
+  // attack a pounce opens on a creature left prone.
+  const charged = () =>
+    extras.charge && !over
+      ? partyChargeAfterHit(campaign, scene.turn, { attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, ownerId: sheet.id, pusherId: sheet.id, who: sheet.name, enemyId: enemy.id, trait: extras.charge, bonusCall: "pc_attack weapon" })
+      : [];
   if (over || dead) {
-    return out;
+    const spent = charged();
+    return spent.length ? { ...out, charge: spent } : out;
+  }
+  const wound = extras.wounds ? woundOnHit(campaign, enemy.id, sheet.id, lost) : null;
+  if (wound) {
+    out.wound = wound;
   }
   if (extras.creature) {
     const lines = landNaturalOnHit(campaign, {
@@ -364,6 +314,10 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
     if (lines.length) {
       out.onHit = lines;
     }
+  }
+  const charge = charged();
+  if (charge.length) {
+    out.charge = charge;
   }
   if (extras.openHand) {
     out.openHand = openHandOnHit(campaign, sheet.id, enemy.id, extras.openHand.choice, extras.openHand.dc);

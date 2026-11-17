@@ -6,6 +6,7 @@
 import {
   effectiveMaxHp,
   effectiveSpeed,
+  exhaustionSpeed,
   removeConditionInstances,
   removeConditions,
   ROUNDS_PER_MINUTE,
@@ -16,6 +17,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import { LANCED } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { textKey } from "@/lib/language/text-logic";
+import { speedCannotBeReduced } from "@/lib/srd/genre-b-post-apocalyptic";
 
 export const UNCONSCIOUS = "unconscious";
 export const PRONE = "prone";
@@ -88,6 +90,36 @@ export function wakeConditions(held: Held): { conditions: string[]; conditionMet
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
+// What a sheet with hit points keeps of a death-save track: nothing. SRD 5.1,
+// Death Saving Throws: "The number of both is reset to zero when you regain
+// any hit points", and the Unconscious of the drop ends with the dying.
+// Whatever put the hit points back (a heal, an undo of the blow, a turn's
+// revert writing the sheet's row as it was), the track goes with it: a
+// revert gave a fallen fighter his hit points back and left the track, and
+// his sheet read "Dying" at full health (issue 968). Death stays death. Null
+// when there is nothing to settle.
+export function regainedSettle(sheet: Held & { currentHp: number; deathSaves?: { dead: boolean } | null }): { deathSaves: null; conditions: string[]; conditionMeta: ConditionMetaMap } | null {
+  if (sheet.currentHp <= 0 || !sheet.deathSaves || sheet.deathSaves.dead) {
+    return null;
+  }
+  return { deathSaves: null, ...wakeConditions(sheet) };
+}
+
+// A character's speed with what slows them: their conditions, and
+// exhaustion (SRD 5.1: "2: Speed halved", "5: Speed reduced to 0"), as the
+// board's walk counts it (battlemap/view.ts pcMoveBudget). GAME STATE
+// printed the sheet's whole speed, and the Dash and time's standing up read
+// the conditions alone. Unstoppable keeps it whole while held conditions
+// still stop it (genre-b-post-apocalyptic.ts).
+export function slowedSpeed(
+  sheet: Parameters<typeof speedCannotBeReduced>[0] & { conditions: string[]; exhaustion?: number | null; speed: number },
+  base = sheet.speed,
+): number {
+  return speedCannotBeReduced(sheet)
+    ? effectiveSpeed(sheet.conditions, base, true)
+    : exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, base));
+}
+
 // Time passing out of a fight is time enough to get up. Standing costs half
 // a move (SRD 5.1, Being Prone), and outside a fight there is no turn to pay
 // it from, so nothing ever stood a character who woke on the ground: the
@@ -97,15 +129,15 @@ export function wakeConditions(held: Held): { conditions: string[]; conditionMet
 // which a rest, travel and pass_time all run). Still asleep (stable and not
 // yet woken, a Sleep spell) or held at speed 0 (grappled, restrained), they
 // stay down. Null when nothing changes.
-export function standAsTimePasses(sheet: Held & {
+export function standAsTimePasses(sheet: Held & Parameters<typeof slowedSpeed>[0] & {
   currentHp: number;
-  speed: number;
   deathSaves?: { dead: boolean } | null;
 }): { conditions: string[]; conditionMeta: ConditionMetaMap } | null {
   if (sheet.deathSaves?.dead || sheet.currentHp <= 0 || !sheet.conditions.some((entry) => isConditionNamed(entry, PRONE))) {
     return null;
   }
-  if (effectiveSpeed(sheet.conditions, sheet.speed) <= 0) {
+  // Exhaustion 5 too: standing costs movement there is none of.
+  if (slowedSpeed(sheet) <= 0) {
     return null;
   }
   // Only prone's own note goes with it; the others' notes stay as written.

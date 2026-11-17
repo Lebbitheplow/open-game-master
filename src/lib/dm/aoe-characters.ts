@@ -1,7 +1,8 @@
 // aoe_damage on the characters an area catches: each rolls their own save
 // from the real sheet (a published dice card), a failure lays the player
 // spell's conditions and its riders, Evasion and Sculpt Spells apply, and the damage rides
-// apply_damage so audit, undo and the death engine all run. Split from
+// apply_damage so audit, undo and the death engine all run; the mount and the
+// pets beside each character make their own saves. Split from
 // aoe-damage.ts, which rolls the blast once and calls this with it.
 
 import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
@@ -28,6 +29,9 @@ import { saveAgainst } from "@/lib/dm/roll-about";
 import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { areaOnMount } from "@/lib/dm/mount-area";
+import { immuneLine, immuneToUse, settleSaveImmunity } from "@/lib/dm/save-immunity";
+import { areaOnPets } from "@/lib/dm/pet-save";
+import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 export function aoeOnCharacters(input: {
   campaign: Campaign;
@@ -50,6 +54,10 @@ export function aoeOnCharacters(input: {
   sheetsById: Map<string, CharacterSheet>;
   // The cover each character has against the area's origin, for a DEX save.
   coverOf?: (refId: string) => number;
+  // The condition the caller named for an effect with no spell and no
+  // creature (a net, a gas), with its rounds: aoe-damage.ts lays it on the
+  // characters who failed, and the pets beside them take it the same way.
+  named?: { condition: string; rounds?: number } | null;
 }): Array<Record<string, unknown>> {
   const { campaign, turn, pcTargets, plan, enemyUse, conditionMeta, ability, halfOnSave, blast, sheets, sheetsById } = input;
   const results: Array<Record<string, unknown>> = [];
@@ -63,6 +71,12 @@ export function aoeOnCharacters(input: {
     const gasRow = input.spell ? zoneRowFor(input.spell) : null;
     if (gasRow && maskKeepsOut(sheet, gasRow.gas === true, input.type ?? gasRow.trigger?.type, gasRow.trigger?.condition, gasRow.trigger?.losesAction)) {
       results.push({ target: sheet.name, success: true, damage: 0, masked: `${sheet.name}'s beaked mask keeps out ${input.spell}.` });
+      continue;
+    }
+    // Withstood this creature's use before: immune to it for the while its
+    // block says, so no save is asked and nothing lands (save-immunity.ts).
+    if (enemyUse && immuneToUse(getSheetById(sheet.id) ?? sheet, enemyUse)) {
+      results.push({ target: sheet.name, success: true, damage: 0, immune: immuneLine(sheet.name, enemyUse) });
       continue;
     }
     // The save a requested roll would be: conditions, a paladin's aura,
@@ -97,6 +111,7 @@ export function aoeOnCharacters(input: {
     // An automatic failure (a paralyzed creature's DEX save) is settled as
     // any failure: the spell's conditions land and Evasion still halves.
     const success = save.autoFailed ? false : save.success;
+    const immune = enemyUse && !careful ? settleSaveImmunity(campaign.id, sheet.id, enemyUse, success) && success : false;
     // A player's spell that binds lays its conditions on a character who
     // fails, recorded with the spell (an ally caught in a Slow).
     // What landed and what a trait refused are both reported, so the
@@ -135,6 +150,7 @@ export function aoeOnCharacters(input: {
       ...(evasion ? { evasion: success ? "no damage" : "half damage" } : {}),
       ...(bound.length ? { conditionApplied: bound.join(", ") } : {}),
       ...(refused.length ? { conditionRefused: refused.join(" ") } : {}),
+      ...(immune && enemyUse ? { immune: immuneLine(sheet.name, enemyUse) } : {}),
     };
     const hpBefore = getSheetById(sheet.id)?.currentHp ?? sheet.currentHp;
     const landing = taken.filter((entry) => entry.amount > 0);
@@ -182,6 +198,10 @@ export function aoeOnCharacters(input: {
       if (applied.damageByType) {
         row.damageByType = applied.damageByType;
       }
+      // Why it differs: the GM narrated the save's figure with no word of it.
+      if (typeof applied.resistance === "string") {
+        row.resistance = applied.resistance;
+      }
       if (applied.dying) {
         row.dying = applied.dying;
       }
@@ -224,11 +244,43 @@ export function aoeOnCharacters(input: {
       }
     }
     // The mount under them stands in the same square (mount-area.ts).
-    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), reason, sheets, sheetsById });
+    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), parts: blast, spell: Boolean(input.spell), magical: Boolean(enemyUse?.magical), reason, sheets, sheetsById });
     if (ridden) {
       row.mount = ridden;
     }
     results.push(row);
+  }
+  // Their pets stand with them (ruling D2), so an area that caught a
+  // character caught their familiar or companion too, each making its own
+  // save (pet-save.ts). Not a spell that names its targets (Chain
+  // Lightning's four): only an area. Every character above left one row, in
+  // order, sculpted and masked ones included: the evoker's choice and the
+  // mask spare the character, not the creature beside them.
+  const area = !input.spell || Boolean(spellAreaShape(input.spell, spellAuthorsFor(campaign)));
+  if (area) {
+    pcTargets.forEach((sheet, index) => {
+      const pets = areaOnPets({
+        campaign,
+        turn,
+        owner: sheet,
+        ability,
+        dc: input.dc,
+        halfOnSave,
+        blast,
+        magical: Boolean(input.spell) || Boolean(enemyUse?.magical),
+        source: (input.reason ?? input.spell ?? enemyUse?.name ?? "the area").slice(0, 120),
+        spell: input.spell,
+        // What a failure lays, as on the character beside them.
+        lays: {
+          spell: plan?.conditions.length && conditionMeta ? { conditions: plan.conditions, meta: conditionMeta } : null,
+          use: plan ? null : enemyUse,
+          named: input.named ?? null,
+        },
+      });
+      if (pets && results[index]) {
+        results[index].pets = pets;
+      }
+    });
   }
   return results;
 }

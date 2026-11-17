@@ -1,3 +1,4 @@
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 import { configValue, getGlobalConfig } from "@/lib/app-config";
 import { comfyModelPicked } from "@/lib/comfyui";
 import { openAiImagesConfigured, openAiImagesNeedModel } from "@/lib/openai-images";
@@ -49,6 +50,9 @@ export type Capabilities = {
   // What this server's routes offer beyond its backends, one flag per
   // control an older host lacks (SERVER_FEATURES below).
   features: ServerFeatures;
+  // The server's language (global config serverLanguage): new campaigns
+  // start in it. Absent on a host older than the language picker.
+  language?: TableLanguage;
 };
 
 // The apps' own screens can be newer than the host they are opened on. A
@@ -58,6 +62,7 @@ export type Capabilities = {
 // dropping it to its own pages over one button. Constant per release: a flag
 // only ever says this server's code has the thing.
 export const SERVER_FEATURES = {
+  appearanceThemes: true,
   // The level-up's "change a choice": PATCH sheet's `levelUpChanges`, which
   // an older host drops unread (Storm Aura's environment, an invocation).
   levelUpChanges: true,
@@ -133,6 +138,10 @@ export const SERVER_FEATURES = {
   // beside someone in the same call. The console shows the fields only on a host
   // that reads them; an older one drops them unread.
   moveWithAction: true,
+  // take_action's wake (audit 2026-11-16, Y17): a creature within 5 feet
+  // shaken out of Sleep or Hypnotic Pattern. The Hand's Wake card and the
+  // console's "Shake awake" ask for it; an older host refuses the action.
+  shakeAwake: true,
   // An improvised action in a fight (take_action improvise): the console's
   // Improvise, the improvised action Ready holds, and every skill for its
   // check. An older host refuses the action and takes only Perception or
@@ -187,6 +196,52 @@ export const SERVER_FEATURES = {
   // or one blow where many were asked), so they stay hidden there, and the
   // attack's field is that host's bonusAttack.
   actionParts: true,
+  // damage_object's `bound` (the console's "Manacles on"): whose set of
+  // manacles is struck when several creatures are bound. An older host
+  // strips it unread and refuses the blow, so the field stays hidden there.
+  manaclesBound: true,
+  // enemy_attack's and pet_attack's `charged`, and pc_attack's for a form's
+  // or summoned creature's Charge or Pounce (the console's "Ran straight at
+  // the target first"): with no board, the run a charge rides. An older
+  // host strips the first two unread and reads pc_attack's for Charger
+  // alone, so the two stay hidden there and pc_attack's reads as Charger's.
+  chargeRuns: true,
+  // apply_hazard's `place` (the console hazard form's "Set it on the board"
+  // and its square): a named trap set hidden on the board. An older host
+  // strips it unread and springs the trap at once, so the fields stay
+  // hidden there.
+  setTraps: true,
+  // learn_spell's `from` (the console's "A wizard copies it from"): a copy
+  // from a scroll rolls the Arcana check and uses the scroll up. An older
+  // host strips it unread and copies with no check, so it stays hidden there.
+  scrollCopy: true,
+  // cast_at_player's `petName` (the console's "Their pet"): the pet makes the
+  // save. An older host strips it unread and forces the save on the owner,
+  // so it stays hidden there.
+  petSaves: true,
+  // heal's `petName` (the console's "Their pet"): the pet is healed. An
+  // older host strips it unread and heals the owner, so it stays hidden there.
+  petHealing: true,
+  // take_action's `petName` (the console's "Their familiar helps"): the
+  // familiar takes the Help action. An older host strips it unread and the
+  // character helps with their own action, so it stays hidden there.
+  familiarHelp: true,
+  // enemy_attack's `targetPet` (the console's "At their pet"): the creature
+  // strikes the pet at its own AC and conditions. An older host strips it
+  // unread and strikes the owner, so it stays hidden there.
+  petStrikes: true,
+  // apply_hazard's `enemyIds` (the console's "Enemies caught in it"): each
+  // enemy saves from its stat block. An older host strips it unread and
+  // catches nobody, so it stays hidden there.
+  enemyHazards: true,
+  // apply_hazard's frigid_water type and its `minutes`: an older host knows
+  // no such hazard and refuses it, so the choice stays hidden there.
+  frigidWater: true,
+  // A workshop item's checks.lockBonus (the item editor's "picking locks"
+  // chip under "A bonus to these checks", Gloves of Thievery's lock pick).
+  // An older host's item schema strips it unread, so the bonus an author set
+  // would be gone on save without a word: the chip stays hidden there.
+  itemLockBonus: true,
   // A test fight's moment saved as its prepared fight's set-up (issue 685):
   // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
   // and "Remove its set-up" on the fight, which an older host answers with
@@ -246,6 +301,15 @@ export const SERVER_FEATURES = {
   // Strike or Let it go on POST /api/campaigns/[id]/pending-rolls/[id]/opportunity.
   // An older host never asks (it takes the swing), so the card never draws there.
   opportunityAsk: true,
+  // Divine Smite on that card (G10): the ask's `smiteSlot`, answered with
+  // `smite: true` beside `strike`. An older host's route refuses the field,
+  // so the app draws the smite button only where the host offers it.
+  opportunitySmite: true,
+  // Magic ammunition (G18): pc_attack's `ammo`, the console's Ammunition
+  // field and a weapon card's pick of the +1 arrows it can fire (hand-ammo.ts).
+  // An older host strips `ammo` unread and fires ordinary arrows, so the app
+  // offers the pick only where the host reads it.
+  magicAmmo: true,
   // Watching a fight for Portent (src/lib/dm/foresight.ts): POST
   // /api/campaigns/[id]/foresight turns the stops on, and a stop's card
   // answers on pending-rolls/[id]/watch. An older host answers 404, so the
@@ -320,6 +384,14 @@ export const SERVER_FEATURES = {
   // PATCH sheet's `levelUpTools`, the tool a new class's grant leaves to the
   // player (a bard's instrument); an older host drops it unread.
   multiclassTools: true,
+  // The warning that the embedding model cannot read a table's language
+  // (issue #984): GET /api/embeddings/language, which an older host answers
+  // with a 404, so the screens ask nothing there.
+  embeddingLanguage: true,
+  // Take back and rewrite the newest move: POST
+  // /api/campaigns/[id]/messages/[messageId]/take-back, which an older host
+  // answers with a 404, so the screens offer nothing there.
+  takeBackMove: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
@@ -739,6 +811,7 @@ export async function capabilitiesSnapshot(): Promise<Capabilities> {
   const dictation = await sttInputs(async () => sttReachable);
 
   return {
+    language: cfg.serverLanguage,
     story: {
       configured: storyReady,
       reachable: storyReachable,

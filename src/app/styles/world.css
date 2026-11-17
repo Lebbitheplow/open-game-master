@@ -1533,6 +1533,11 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
   transform: translateX(-50%);
   animation: cine-roll-in 420ms var(--ease-spring) both, cine-roll-out 400ms var(--ease-snap) 4.8s forwards;
 }
+@media (max-width: 639px) {
+  .cine-roll {
+    top: calc(7.25rem + env(safe-area-inset-top));
+  }
+}
 .cine-roll[data-crit="nat1"] { border-color: rgba(224, 112, 58, 0.6); box-shadow: 0 0 18px rgba(224, 112, 58, 0.3), 0 10px 24px rgba(4, 2, 12, 0.6); }
 .cine-roll[data-crit="nat20"] { border-color: rgba(244, 224, 166, 0.9); box-shadow: 0 0 26px rgba(212, 171, 58, 0.55), 0 10px 24px rgba(4, 2, 12, 0.6); }
 .cine-roll-die { width: 30px; height: 30px; flex: none; }
@@ -1861,9 +1866,13 @@ html[data-theme="light"] .cine-quest-body { color: #2d2419; }
 html[data-theme="light"] .cine-board-frame { box-shadow: 0 0 30px rgba(122, 88, 20, 0.2), 0 18px 40px rgba(60, 44, 16, 0.3); }
 html[data-theme="light"] .cine-board-frame > :not(.board-view) { background: #f1ebde; border-color: rgba(122, 88, 20, 0.5); }
 html[data-theme="light"] .board-panel > .board-view { background: #0d0b1c; }
-/* The enlarged board is a night table by day too: what stands on its starfield
-   keeps the night's ink. */
-html[data-theme="light"] .cine-tabletop {
+/* The starfield board keeps night ink. Painted themes give the surrounding
+   dialog its own day materials, so restrict this palette to the board itself.
+   A card laid on the title screen's painting keeps it too (ts-night: the
+   setup card). */
+html[data-theme="light"]:not([data-theme-ornaments="true"]) .cine-tabletop,
+html[data-theme="light"][data-theme-ornaments="true"] .cine-tabletop .board-view,
+html[data-theme="light"] .ts-night {
   --color-stone-950: #0d0b1c;
   --color-stone-900: #151229;
   --color-stone-800: #211b3a;
@@ -2951,6 +2960,103 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-fight-board[data-hand-on-board] .board-corner { bottom: max(0px, calc(var(--hand-foot, 0px) - 0.75rem)); transition: bottom var(--dur-move) var(--ease-settle); }
   .cine-fight-board[data-hand-on-board] .board-keys-strip,
   .cine-fight-board[data-hand-on-board] .board-foot-note { bottom: calc(var(--hand-foot, 0px) - 0.25rem); transition: bottom var(--dur-move) var(--ease-settle); }
+  /* On a laptop the strip of board above the cards is low (data-foot-band,
+     useBoardCamera.ts). The camera's column, or End turn over the camera's
+     row, stood on the turn's own plate there or was cut by the board's top
+     edge: the camera's buttons lie in a row and End turn takes its place in
+     it, to the row's left. */
+  .cine-fight-board[data-foot-band] .board-corner { display: flex; justify-content: flex-end; align-items: flex-end; gap: 0.5rem; padding: 0 0.5rem 0.125rem; }
+  .cine-fight-board[data-foot-band] .board-corner > * { position: relative; inset: auto; }
+  .cine-fight-board[data-foot-band] .board-cam { flex-direction: row-reverse; }
+  .cine-fight-board[data-foot-band] .board-keys-card { right: 0; bottom: calc(100% + 0.4rem); }
+  /* Lower still the row shares its one line with the turn's heading and
+     plate at the right, so it stands to their left (--turn-hud-room). A
+     margin, not the corner's padding: the corner is a container, and a
+     padding narrowed it under @md, where End turn takes a finger's 40px and
+     stood over the board's top edge. */
+  .cine-fight-board[data-foot-band="tight"] .board-corner > :last-child { margin-right: calc(var(--turn-hud-room, 0.5rem) - 0.5rem); }
+  /* That line is one row: on the lead's turn at 1280x720 the strip is 48px,
+     the turn's plate under its heading stood on the Hand's heading, and the
+     row found no room beside the two and lay over them. On your own turn the
+     heading gives way, as the Hand's own "Your hand" says it, and the plate
+     takes its line. Another's turn keeps its heading, which is all it has. */
+  .cine-fight-board[data-foot-band="tight"] .board-turn-hud > .board-eyebrow:not(:only-child) { display: none; }
+  /* A companion's heading named whose stats the plate shows, so the plate
+     says it there. The plate stands 6px higher, centred on the round's
+     line: a taller strip (the GM's own board, 77px) holds the row under it,
+     and at 14px they touched. The row's words give way to what still says
+     them: Undo move keeps its arrow (its name and title say the rest) and
+     the round's line its number. After a walk the row was 127px wider and
+     lay over the round's line. */
+  .cine-fight-board[data-foot-band="tight"] .turn-hud-who { display: inline; }
+  .cine-fight-board[data-foot-band="tight"] .board-turn-hud { top: 0.5rem; }
+  .cine-fight-board[data-foot-band="tight"] :is(.board-undo-word, [data-tour="battle-initiative"] > .board-eyebrow > span) { display: none; }
+  /* The Hand's hint is a second sentence beside its heading. On a narrow
+     board it pushed the pips and Hide to a second row, and the Hand stood
+     21px further up the map for it. */
+  .cine-fight-hand .hand > :first-child { container: hand-head / inline-size; }
+  @container hand-head (max-width: 46rem) {
+    .cine-fight-hand .hand-hint { display: none; }
+  }
+  /* The Hand keeps to its share of the board (--hand-share, useBoardCamera.ts,
+     issue 992). A picked card's aim panel was as tall as what it held, 281px
+     for an attack, and on a laptop covered the board to its top edge. The
+     Hand is held to the share and scrolls what is past it. The panel takes
+     the pointer, so the wheel scrolls it and does not zoom the map under it. */
+  .cine-fight-board[data-hand-on-board] > .cine-fight-hand .hand[data-aim] { max-height: calc(var(--hand-share) - 0.65rem); overflow-y: auto; overscroll-behavior: contain; }
+  /* A painted appearance holds every Hand to 28% of the window in a box that
+     scrolls (theme-session.css). On the board that box cut the cards' feet
+     and the details that rise over a card, and hid a picked card's buttons
+     under its scroll. On the board the share is the Hand's limit, and the
+     cards are never in a box that scrolls. An open group keeps the
+     appearance's box. */
+  .cine-fight-board[data-hand-on-board] > .cine-fight-hand .hand:not([data-aim], [data-group-open]) { max-height: none; overflow: visible; }
+  .cine-fight-hand .hand-aim { pointer-events: auto; }
+  /* Where the share is short (data-hand-share) the panel is laid in fewer
+     rows. The Hand's heading gives way to the panel's own, which names the
+     card and has Back where Hide stood. The numbers are one line, each
+     still under its name for a screen reader, and stay at the Hand's foot
+     beside the buttons: the chance to hit changes with the target, and is
+     read while one is chosen. They ask for 1px, so they start a row of their
+     own and do not close up at the end of the row before. The rules line
+     and the full text come last, under the scroll. */
+  .cine-fight-board[data-hand-share] .hand[data-aim] > :first-child { display: none; }
+  .cine-fight-board[data-hand-share] .hand[data-aim] > .hand-aim { display: flex; flex-wrap: wrap; margin-top: 0; padding-block: 0.375rem 0; }
+  .cine-fight-board[data-hand-share] .hand-aim :is(.hand-aim-foot, .hand-aim-say) { display: contents; }
+  .cine-fight-board[data-hand-share] .hand-aim > *,
+  .cine-fight-board[data-hand-share] .hand-aim-say > p { flex: 0 0 100%; }
+  .cine-fight-board[data-hand-share] .hand-aim-say > p { margin-top: 0.375rem; }
+  .cine-fight-board[data-hand-share] .hand-aim :is(.hand-aim-rules, .hand-full-text) { order: 1; }
+  .cine-fight-board[data-hand-share] .hand-aim :is(.hand-rows-box, .hand-aim-send) { order: 2; position: sticky; bottom: 0; border: 0; border-radius: 0; padding: 0.25rem 0 0.375rem; background: var(--hand-panel), var(--color-stone-950); }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-rows-box { display: flex; flex: 1 1 1px; align-items: center; min-width: 0; }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-aim-send { flex: none; padding-left: 0.75rem; }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-rows { flex-flow: row wrap; column-gap: 0.35rem; }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-row { gap: 0.35rem; border: 0; padding: 0; }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-row[data-said] { display: none; }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-row-key { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .cine-fight-board[data-hand-share] .hand-aim .hand-row:not(:first-child)::before { content: "\00b7"; color: var(--color-stone-500); }
+  /* A held card's read panel (HandReadPanel) stood under the cards and made
+     the Hand taller by its own height: 407px on a laptop's 409px board, on
+     the turn's plate, with End turn over the board's top edge. On a short
+     share the panel and the reason said under it lie over the cards' feet
+     instead, from the Hand's foot, so the Hand is no taller for them and
+     the cards do not move. Together they are held to the height the cards
+     show above the edge (down to their names, useBoardCamera.ts), so they
+     never reach the Hand's heading or a reaction offered over the cards;
+     the panel scrolls what is past that, under its heading, which keeps
+     Close in view. */
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) > .hand-read-seat { position: absolute; inset: auto 0 var(--hand-tuck, 0px); z-index: 3; display: flex; flex-direction: column; max-height: 10.25rem; border-radius: 0.75rem; background: var(--hand-panel), var(--color-stone-950); }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-read { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-top: 0; padding-top: 0; background: none; }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-read-seat > p { flex: none; padding-bottom: 0.25rem; }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-read-head { position: sticky; top: 0; z-index: 1; padding-block: 0.375rem 0.125rem; background: var(--hand-panel), var(--color-stone-950); }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-full-text-body { max-height: none; overflow: visible; }
+  /* The cards at rest give way the same: they slide under the frame's lower
+     edge by what the Hand is over its share (--hand-tuck), never so far that
+     a name goes under it, and a card under the pointer or the keyboard's
+     focus rises whole, its details with it. */
+  .cine-fight-board[data-hand-tuck] .hand-fan { margin-bottom: calc(-1 * var(--hand-tuck)); clip-path: inset(-40rem -4rem var(--hand-tuck)); }
+  .cine-fight-board[data-hand-tuck] .hand-card.motion-card:is(:hover, :focus-visible) { --lift: calc(-40px - var(--hand-tuck)); }
+  .cine-fight-board[data-hand-tuck] .hand-slot:has(> .hand-card:is(:hover, :focus-visible)) > .hand-preview { transform: rotate(calc(var(--rot, 0deg) * -1)) translateY(calc(-1 * var(--hand-tuck))); }
   @media (prefers-reduced-motion: reduce) {
     .cine-fight-board[data-hand-on-board] :is(.board-corner, .board-keys-strip, .board-foot-note),
     .cine-fight-hand::before,
@@ -2963,6 +3069,11 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
    are the one place the order is in words. */
 @media (min-width: 1180px) {
   .cine-stage:has(.cine-ribbon) .cine-chat-staged .cine-fight-board .board-order-strip { display: none; }
+  /* The board's own plates are those faces a third time. Where the strip
+     above the cards is too low to hold them they lay under the Hand's
+     heading, so the ribbon shows the faces there and the board keeps the
+     round's line, which is still the button that opens the order. */
+  .cine-stage:has(.cine-ribbon) .cine-fight-board[data-foot-band="tight"] .board-view [data-tour="battle-initiative"] > :last-child { display: none; }
 }
 .cine-fight-controls { display: contents; }
 .cine-fight { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px 12px 4px; }

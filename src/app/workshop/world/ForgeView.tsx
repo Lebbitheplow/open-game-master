@@ -9,6 +9,7 @@ import { KitButton, PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import { forgeReport, type ForgeApplied, type ForgeEntity, type ForgeLink, type ForgePreview } from "@/lib/worldforge/forge";
 import type { WorldApi, WorldState } from "./useWorld";
 import { TypeChip, typeOf } from "./world-ui";
+import { useT } from "@/lib/locale";
 
 // The forge, after WorldForge's: paste notes (a session recap, a page of a
 // setting, another tool's brainstorm) and the model lists what in them
@@ -25,6 +26,7 @@ type Row = ForgeEntity & { keep: boolean };
 type LinkRow = ForgeLink & { keep: boolean };
 
 export function ForgeView({ api, world, onOpen }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void }) {
+  const t = useT();
   const { doc, entities } = world;
   const [text, setText] = useState("");
   const [hint, setHint] = useState("");
@@ -69,12 +71,12 @@ export function ForgeView({ api, world, onOpen }: { api: WorldApi; world: WorldS
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-stone-400">Paste notes about the world and the forge lists what deserves an entry, and how those things stand with each other. You choose what to keep.</p>
-      <textarea className={cn(ui.input, "min-h-36")} placeholder="The warden Ivo keeps the sea wall at Gullhaven. Nobody knows he sold the sluice codes to the Grey Lantern smugglers..." aria-label="Notes to forge" maxLength={20_000} value={text} onChange={(event) => setText(event.target.value)} />
+      <p className="text-sm text-stone-400">{t("Paste notes about the world and the forge lists what deserves an entry, and how those things stand with each other. You choose what to keep.")}</p>
+      <textarea className={cn(ui.input, "min-h-36")} placeholder={t("The warden Ivo keeps the sea wall at Gullhaven. Nobody knows he sold the sluice codes to the Grey Lantern smugglers...")} aria-label={t("Notes to forge")} maxLength={20_000} value={text} onChange={(event) => setText(event.target.value)} />
       <div className="flex flex-wrap items-center gap-2">
-        <input className={cn(ui.input, "max-w-md flex-1 text-xs")} placeholder="Steer it (optional): only the people, say" aria-label="Steer the forge" maxLength={300} value={hint} onChange={(event) => setHint(event.target.value)} />
+        <input className={cn(ui.input, "max-w-md flex-1 text-xs")} placeholder={t("Steer it (optional): only the people, say")} aria-label={t("Steer the forge")} maxLength={300} value={hint} onChange={(event) => setHint(event.target.value)} />
         <KitButton tone="primary" busy={busy && !rows} disabled={busy || !text.trim()} onClick={forge} data-tour="world-forge">
-          {busy && !rows ? null : <Sparkles className="size-3.5" />} Forge
+          {busy && !rows ? null : <Sparkles className="size-3.5" />} {t("Forge")}
         </KitButton>
       </div>
       {api.error ? <PanelError>{api.error}</PanelError> : null}

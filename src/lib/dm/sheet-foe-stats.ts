@@ -45,12 +45,19 @@ function weaponAttack(sheet: CharacterSheet, derived: ReturnType<typeof computeS
       martialArts: martialArtsApplies(sheet),
       worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
     });
+    // The weapon's reach and range in feet, as a block prints them: without
+    // them every reader of a foe's block (an opportunity attack's reach,
+    // Confusion's creature in reach, a ranged swing's range) saw a glaive
+    // reach 5 feet and a longbow shoot no farther than a block with no range.
+    const shoots = profile.ranged || profile.thrown;
     return {
       name: profile.weapon,
       toHit: profile.toHit,
       damage: profile.damageExpression,
       type: profile.damageType,
       mode: profile.ranged ? "ranged" : profile.thrown ? "both" : "melee",
+      reach: profile.ranged ? 5 : profile.reachTiles * 5,
+      ...(shoots ? { range: { normal: profile.rangeTiles * 5, long: (profile.longRangeTiles ?? profile.rangeTiles * 2) * 5 } } : {}),
     };
   } catch {
     const str = derived.abilityMods.str;

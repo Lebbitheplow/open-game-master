@@ -1,6 +1,7 @@
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import { startMummyRot } from "@/lib/dm/mummy-rot";
+import { infectHitDisease } from "@/lib/dm/hit-disease";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
@@ -14,9 +15,11 @@ import { allocateSeq } from "@/lib/db/campaigns";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
+import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
-import { asleepOnFailure } from "@/lib/bestiary/attack-text";
-import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { conditionWeaponSize } from "@/lib/srd/condition-effect-queries";
+import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
+import { durationArgsFor, effectiveMaxHp, instancesOf, maxHpRiders, packInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { swallowCreature } from "@/lib/dm/swallow";
 import { swallowRuleOf } from "@/lib/dm/swallow-logic";
@@ -25,6 +28,11 @@ import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import type { ScoreDrain } from "@/lib/bestiary/score-drain-text";
+import { drainConditionName, drainOf } from "@/lib/srd/ability-drain-logic";
+import { effectiveAbilities } from "@/lib/srd/magic-items";
+import { dmRoll } from "@/lib/dm/roll-card";
+import { withHold } from "@/lib/dm/creature-hold";
 
 // What an enemy's hit does once it lands (SRD 5.1): each damage type in the
 // blow meets the target's resistances on its own ("piercing plus fire"
@@ -52,6 +60,15 @@ export function legacyRiders(attack: Pick<EnemyAttack, "damage" | "type">): Type
     return [];
   }
   return types.slice(1).map((type, index) => ({ dice: dice[index + 1], type }));
+}
+
+// A creature's weapon attack as Enlarge/Reduce leaves it (condition-effect-
+// queries.ts conditionWeaponSize): the die appended to its damage, as the
+// traits' dice are, and the least the hit deals. A spell attack is no
+// weapon's and stays as printed.
+export function sizedAttack(attack: EnemyAttack, conditions: string[]): { attack: EnemyAttack; floor: number } {
+  const size = attack.spellAttack ? { term: "", floor: 0 } : conditionWeaponSize(conditions);
+  return { attack: size.term ? { ...attack, damage: `${attack.damage}${size.term}` } : attack, floor: size.floor };
 }
 
 // The blow's damage by type, as rolled. The attack rolled one expression;
@@ -122,6 +139,12 @@ export function resolveOnHit(
   if (rider.maxSize && sizeRank(characterSize(target)) > sizeRank(rider.maxSize)) {
     return { rider: `${target.name} is too large for ${attack.name}'s rider.` };
   }
+  // "If the target is a creature other than an elf or undead" (a ghoul's
+  // claws): an elf is not asked the save and is not paralyzed.
+  const spared = riderSpares(rider, [target.race ?? "", sheetCreatureType(target)]);
+  if (spared) {
+    return { rider: `${attack.name}'s rider passes over ${target.name} (${spared}): its text spares that kind of creature.` };
+  }
   const out: Record<string, unknown> = {};
   let saved = false;
   let saveTotal: number | null = null;
@@ -188,7 +211,8 @@ export function resolveOnHit(
     }
   }
   const asleep = Boolean(rider.save && rider.dc) && asleepOnFailure(rider, saveTotal);
-  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
+  // A disease's poisoning is the disease's to lay (below), under its name.
+  const conditions = rider.condition && !saved && !rider.disease ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
   const standing = getSheetById(target.id);
   for (const condition of conditions) {
     if (!standing || (standing.currentHp <= 0 && condition === "prone")) {
@@ -249,6 +273,28 @@ export function resolveOnHit(
       }
     }
   }
+  // A disease with a save every 24 hours (an otyugh's bite): poisoned until
+  // cured, its days on the clock (hit-disease.ts).
+  if (rider.disease && !saved && standing && !standing.deathSaves?.dead) {
+    const infected = infectHitDisease(campaign, turn.id, getSheetById(target.id) ?? target, { creature: enemy.displayName, ability: rider.save ?? "con", dc: rider.dc ?? 10, dice: rider.disease.dice });
+    out.disease = infected.line;
+    if (infected.conditions.length) {
+      out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), ...infected.conditions];
+    }
+  }
+  // What holds the restrained target and how it breaks (a giant spider's
+  // webbing): kept on the instance the hit laid (creature-hold.ts).
+  if (rider.hold && ((out.riderCondition as string[] | undefined) ?? []).includes("restrained")) {
+    const held = getSheetById(target.id);
+    const key = Object.keys(held?.conditionMeta ?? {}).find((name) => name.toLowerCase() === "restrained");
+    if (held && key) {
+      const updated = patchSheet(held.id, { conditionMeta: withHold(held.conditionMeta as ConditionMetaMap, key, enemy.id, rider.hold) });
+      if (updated) {
+        publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+      }
+      out.escape = `${rider.hold.check.ability.toUpperCase()} check DC ${rider.hold.check.dc} as an action (take_action escape)${rider.hold.ac ? `, or destroy the ${rider.hold.name} (damage_object name "${rider.hold.name}", AC ${rider.hold.ac}, ${rider.hold.hp} HP)` : ""}`;
+    }
+  }
   if (rider.escapeDc && ((out.riderCondition as string[] | undefined) ?? []).includes("grappled")) {
     out.escapeDc = rider.escapeDc;
     // The printed escape DC is what the escape is rolled against
@@ -257,7 +303,12 @@ export function resolveOnHit(
     const key = Object.keys(held?.conditionMeta ?? {}).find((name) => name.toLowerCase() === "grappled") ?? "grappled";
     if (held) {
       const meta = { ...(held.conditionMeta as ConditionMetaMap) };
-      meta[key] = { ...meta[key], source: enemy.id, escapeDc: rider.escapeDc };
+      // On this grappler's own instance: a second crab's DC was written over
+      // the first crab's grip, which then named the second crab and was gone.
+      const grips = instancesOf(meta[key]);
+      const mine = grips.findIndex((entry) => entry.source === enemy.id);
+      const at = mine >= 0 ? mine : grips.findIndex((entry) => !entry.source);
+      meta[key] = packInstances(at >= 0 ? grips.map((entry, index) => (index === at ? { ...entry, source: enemy.id, escapeDc: rider.escapeDc } : entry)) : [...grips, { source: enemy.id, escapeDc: rider.escapeDc }]) ?? { source: enemy.id, escapeDc: rider.escapeDc };
       const updated = patchSheet(held.id, { conditionMeta: meta });
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
@@ -282,6 +333,13 @@ export function resolveOnHit(
       }
     }
   }
+  // A drained score (a shadow's Strength Drain): src/lib/srd/ability-drain-logic.ts.
+  if (rider.scoreDrain && !saved) {
+    const drained = drainScore(campaign, turn, enemy, attack.name, target.id, rider.scoreDrain);
+    if (drained) {
+      out.scoreDrained = drained;
+    }
+  }
   // Swallowed whole: blinded, restrained and swallowed, held by the
   // creature, and from here on its acid, the cover, the regurgitation and its
   // corpse are the engine's (src/lib/dm/swallow.ts), read from the block.
@@ -300,6 +358,41 @@ export function resolveOnHit(
   return Object.keys(out).length ? out : null;
 }
 
+// Lowers one of a character's ability scores by the drain's dice, all of a
+// score's drains folded into one condition; the rest it names ends it, and a
+// score brought to 0 kills when the block says so.
+function drainScore(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, attackName: string, targetId: string, drain: ScoreDrain): string | null {
+  const sheet = getSheetById(targetId);
+  if (!sheet || sheet.deathSaves?.dead || !isValidExpression(drain.dice)) {
+    return null;
+  }
+  const rolled = Math.max(0, dmRoll(campaign.id, turn, "custom", `${enemy.displayName}'s ${attackName}: ${drain.ability.toUpperCase()} drained from ${sheet.name}`, drain.dice).total);
+  const meta = { ...(sheet.conditionMeta as ConditionMetaMap) };
+  const before = drainOf(sheet.conditions, drain.ability);
+  const kept = before ? sheet.conditions.filter((name) => name !== before.name) : sheet.conditions;
+  // A long rest's drain beside a short rest's: the whole waits for the long rest.
+  const shortOnly = drain.until === "short" && (!before || meta[before.name]?.untilRestEnds === true);
+  if (before) {
+    delete meta[before.name];
+  }
+  const name = drainConditionName(drain.ability, Math.min(30, (before?.total ?? 0) + rolled));
+  const updated = patchSheet(sheet.id, {
+    conditions: [...kept, name],
+    conditionMeta: { ...meta, [name]: { source: enemy.id, ...(shortOnly ? { untilRestEnds: true } : { untilLongRest: true }) } },
+  });
+  if (!updated) {
+    return null;
+  }
+  const score = effectiveAbilities(updated.abilities, updated.equipment ?? [], updated)[drain.ability];
+  if (drain.diesAtZero && score <= 0) {
+    const dead = patchSheet(updated.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+    publishPersisted(campaign.id, "sheet_updated", { sheet: dead ?? updated });
+    return `${updated.name}'s ${drain.ability.toUpperCase()} is drained by ${rolled} to 0: they die.`;
+  }
+  publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  return `${updated.name}'s ${drain.ability.toUpperCase()} is reduced by ${rolled} (now ${score}) until they finish a ${shortOnly ? "short or long" : "long"} rest.`;
+}
+
 // Lowers a character's hit point maximum by `amount` until a long rest, all
 // drains folded into one line; a maximum brought to 0 kills.
 function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amount: number): string | null {
@@ -316,7 +409,8 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   const before = maxHpRiders(sheet.conditions, meta).drain;
   // No more than the maximum there is to take: the record stays exact, so a
   // long rest gives back what was taken and not a point more.
-  const taken = Math.min(amount, Math.max(0, effectiveMaxHp(sheet)));
+  const had = Math.max(0, effectiveMaxHp(sheet));
+  const taken = Math.min(amount, had);
   const kept = sheet.conditions.filter((name) => !/^max hp reduced \(-\d+\)$/i.test(name.trim()));
   for (const name of sheet.conditions.filter((entry) => !kept.includes(entry))) {
     delete meta[name];
@@ -326,7 +420,9 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   if (!updated) {
     return null;
   }
-  if (effectiveMaxHp(updated) <= 0) {
+  // "The target dies if this effect reduces its hit point maximum to 0":
+  // all of it taken, whatever the halved maximum's floor shows after.
+  if (taken >= had) {
     const dead = patchSheet(updated.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
     publishPersisted(campaign.id, "sheet_updated", { sheet: dead ?? updated });
     return `${updated.name}'s hit point maximum falls to 0: they die.`;

@@ -182,6 +182,11 @@ await test("The page's own errors are kept cut to size, without the address's qu
   assert.equal(withErrors.pageErrors.length, bundle.PAGE_ERROR_LIMIT);
   assert.ok(!JSON.stringify(withErrors).includes("abcdefghijklmnop"));
   assert.deepEqual(withErrors.included, ["setup", "pageErrors"]);
+  // A ring kept before the ResizeObserver notices were dropped (issue 965's
+  // report: twenty of them and nothing else) sends none of them.
+  const notice = { at: "2026-11-14T04:23:16.646Z", kind: "error", message: "ResizeObserver loop completed with undelivered notifications.", where: "/index.html" };
+  const stale = bundle.withPageErrors(base, [notice, notice, { ...notice, message: "TypeError: x is undefined" }], true);
+  assert.deepEqual(stale.pageErrors.map((entry) => entry.message), ["TypeError: x is undefined"]);
   const fromApp = bundle.cleanPageError({
     message: "TypeError: failed to fetch https://table.private-domain.test/api/campaigns/abc/state?invite=CODE123",
     stack: "TypeError\n    at run (https://table.private-domain.test/_next/static/chunks/page.js?dpl=dpl_secret_build:1:2345)",

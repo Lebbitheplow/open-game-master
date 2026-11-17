@@ -24,8 +24,8 @@ import { budgetApplies } from "@/lib/dm/action-budget";
 import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { removeConditions } from "@/lib/dm/condition-logic";
-import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
+import { removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
+import { awayFromFear, fearSourcesAt } from "@/lib/dm/enemy-approach";
 import { abilityNames } from "@/lib/dm/monster-abilities";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { characterDrag, dragLandings } from "@/lib/dm/drag-move";
@@ -265,13 +265,13 @@ export function walkCharacter(
   if (!path) {
     return { error: `No path to (${destination.x},${destination.y}); walls block the way.`, retry: true };
   }
-  const fear = fearSourceAt(map.id, sheet.conditions, sheet.conditionMeta as Record<string, { source?: string }>);
+  const fear = fearSourcesAt(map.id, sheet.conditions, sheet.conditionMeta as Record<string, ConditionMeta>);
   const steps = awayFromFear(token, path, fear);
   const walk = here
     ? { at: { x: token.x, y: token.y }, spent: 0, reachedEnd: true }
     : walkPathWithBudget(map.terrain, map.width, steps, Math.floor((fullTiles - standCost) / factor), traits, token);
   if (!walk.at) {
-    const why = fear ? `${sheet.name} is frightened and cannot move closer to what it fears.` : `${sheet.name} has no movement left for that.`;
+    const why = fear.length ? `${sheet.name} is frightened and cannot move closer to what it fears.` : `${sheet.name} has no movement left for that.`;
     return { error: `${why}${stillAt(listTokens(map.id), token)}`, refused: "rules" };
   }
   if (options.whole && !walk.reachedEnd) {
@@ -289,7 +289,8 @@ export function walkCharacter(
     return { error: `There is no room beside (${walk.at.x},${walk.at.y}) to set down the creature ${sheet.name} drags. Choose another square.`, retry: true };
   }
   const spent = walk.spent * factor + standCost;
-  moveToken(token.id, walk.at.x, walk.at.y, token.movedThisRound + (readied ? 0 : spent));
+  moveToken(token.id, walk.at.x, walk.at.y, token.movedThisRound + (readied ? 0 : spent),
+    token.movement === "walk" ? [origin, ...walkedSquares] : undefined);
   // The run a charge is measured from begins where they stood (mt-fb-charge.ts).
   if (!readied) {
     noteRun(campaign.id, sheet, origin);

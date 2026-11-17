@@ -413,6 +413,10 @@ export type CampaignClock = {
   // asks this before it restores anything (src/lib/dm/rest-tools.ts).
   // Absent on a clock written before it was kept, which reads as "never".
   longRests?: Record<string, Instant>;
+  // The instant each character's last rest, short or long, ended: what is
+  // chosen "when you finish a short or long rest" (Fiendish Resilience) is
+  // chosen while the clock still stands there (src/lib/dm/feature-hooks.ts).
+  restEnds?: Record<string, Instant>;
   // The instant each druid's Wild Shape runs out, by characterId. The clock
   // reverts the form when it passes (src/lib/db/clock.ts).
   shapeEnds?: Record<string, Instant>;
@@ -532,12 +536,14 @@ export function normalizeClock(raw: unknown): CampaignClock {
   const stored = normalizeCalendarDefinition(record.calendar);
   const calendar = stored ? renamedLegacyWeekdays(stored) : defaultClock().calendar;
   const longRests = normalizeInstants(record.longRests);
+  const restEnds = normalizeInstants(record.restEnds);
   const shapeEnds = normalizeInstants(record.shapeEnds);
   return {
     calendar,
     instant: clampInstant(Number(record.instant) || 0),
     weather: normalizeWeather(record.weather),
     ...(longRests ? { longRests } : {}),
+    ...(restEnds ? { restEnds } : {}),
     ...(shapeEnds ? { shapeEnds } : {}),
     // The march and its supplies (march-state.ts); lifestyles, downtime and
     // afflictions (between-state.ts).

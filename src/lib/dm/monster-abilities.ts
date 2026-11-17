@@ -1,7 +1,9 @@
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { containsPhrase, textKey } from "@/lib/language/text-logic";
 import { REGENERATION_NAME } from "@/lib/dm/regeneration-text";
 import { parseSaveEffect, type SaveEffect } from "@/lib/dm/save-effect";
+import { woundHeldHp } from "@/lib/dm/sword-wounding-logic";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 
 // A monster's special actions as numbers the engine runs (SRD 5.1,
 // Monsters): the save, DC and dice an ability prints, whether it recharges
@@ -172,6 +174,22 @@ export function abilityNames(stats: AbilityHolder): string[] {
     ...(stats.traits ?? []).map(abilityFromLine).filter((entry): entry is MonsterAbility => entry !== null).map((entry) => entry.name),
   ];
   return [...new Set(names)];
+}
+
+// The abilities a block's Multiattack folds into its one action, by key:
+// "The dragon can use its Frightful Presence. It then makes three attacks",
+// "The mummy can use its Dreadful Glare and makes one attack with its
+// rotting fist" (SRD 5.1). Using one of them and making the routine's
+// attacks is the one action, in either order (enemy-casting.ts,
+// enemy-attack.ts): before this, a dragon's Frightful Presence spent the
+// action and its bite and claws were refused.
+export function multiattackAbilities(stats: AbilityHolder & { fullTraits?: string[] }): string[] {
+  const line = [...(stats.fullTraits ?? []), ...(stats.traits ?? [])].find((entry) => /^multiattack\s*[:.]/i.test(entry.trim()));
+  if (!line) {
+    return [];
+  }
+  const text = line.replace(/^multiattack\s*[:.]\s*/i, "");
+  return abilityNames(stats).filter((name) => containsPhrase(text, name)).map(abilityKey);
 }
 
 // ---- the per-fight ledger ----
@@ -366,9 +384,16 @@ export function exhaustedTiles(conditions: string[], tiles: number): number {
   return level >= 5 ? 0 : level >= 2 ? Math.floor(tiles / 2) : tiles;
 }
 
-// The most hit points a creature may have: halved from level 4.
-export function enemyHpCap(enemy: { maxHp: number; conditions: string[] }): number {
-  return enemyExhaustion(enemy.conditions) >= 4 ? Math.floor(enemy.maxHp / 2) : enemy.maxHp;
+// The most hit points a creature may have: halved from level 4, never below
+// 1 by the halving, as a hero's maximum (condition-logic.ts exhaustionMaxHp):
+// a 1 hit point creature at exhaustion 4 was capped at 0 and left alive at 0.
+// Every way a creature regains hit points reads it, so the hit points a Sword
+// of Wounding took stay lost to all of them (sword-wounding-logic.ts); never
+// below what it has now, which no healing takes away.
+export function enemyHpCap(enemy: { maxHp: number; conditions: string[]; conditionMeta?: ConditionMetaMap; currentHp?: number }): number {
+  const cap = enemyExhaustion(enemy.conditions) >= 4 ? Math.max(1, Math.floor(enemy.maxHp / 2)) : enemy.maxHp;
+  const held = woundHeldHp(enemy);
+  return held > 0 ? Math.min(cap, Math.max(enemy.currentHp ?? 0, enemy.maxHp - held)) : cap;
 }
 
 // ---- traits the engine reads ----
@@ -389,6 +414,9 @@ const TRAIT_FLAGS = {
   regeneration: REGENERATION_NAME,
   // Tome of Beasts prints it in the singular ("Magic Weapon").
   magicWeapons: /^magic weapons?\b/i,
+  // An owl's, a pteranodon's, a flying snake's: no opportunity attack when it
+  // flies out of a reach (opportunity.ts).
+  flyby: /^flyby\b/i,
 } as const;
 
 export type TraitFlag = keyof typeof TRAIT_FLAGS;

@@ -7,6 +7,7 @@ import { answerWatch } from "@/lib/dm/foresight-release";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { canHelpSaveNow, canReactNow, canShiftNow } from "@/lib/dm/chronal-shift";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
+import { requestT } from "@/lib/request-locale";
 import { canTurnFate } from "@/lib/dm/fate-turn";
 import { isFatePower } from "@/lib/dm/fate-turn-logic";
 import { canLineageWatchNow, isLineageWatch } from "@/lib/dm/lineage-watch";
@@ -65,20 +66,23 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The card shows the refusal raw (WatchCard.tsx answer), so it answers in
+  // the asker's language.
+  const t = requestT(request);
   const parsed = choiceSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: "Invalid choice." }, { status: 400 });
+    return Response.json({ error: t("Invalid choice.") }, { status: 400 });
   }
-  const paused = refuseDuringBreak(campaignId);
+  const paused = refuseDuringBreak(campaignId, undefined, request);
   if (paused) {
     return paused;
   }
   const pending = getPendingRoll(pendingRollId);
   if (!pending || pending.campaignId !== campaignId || pending.parkedFor !== "watch" || !pending.watch) {
-    return Response.json({ error: "Roll not found." }, { status: 404 });
+    return Response.json({ error: t("Roll not found.") }, { status: 404 });
   }
   if (pending.status !== "pending") {
-    return Response.json({ error: "That roll has already gone ahead." }, { status: 409 });
+    return Response.json({ error: t("That roll has already gone ahead.") }, { status: 409 });
   }
   const isWatcher = pending.userId === context.user.id;
   const due = Date.now() >= new Date(pending.watch.deadline).getTime();
@@ -89,32 +93,32 @@ export async function POST(
   let chosen: number | undefined;
   if ("value" in data || "shift" in data) {
     if (!isWatcher) {
-      return Response.json({ error: `Only the watcher's own player uses their ${feature}.` }, { status: 403 });
+      return Response.json({ error: t("Only the watcher's own player uses their {feature}.", { feature }) }, { status: 403 });
     }
     // `shift`: use it if the roll goes wrong, whichever feature the stop is for.
     if (("value" in data && power !== "portent") || ("shift" in data && power === "portent")) {
-      return Response.json({ error: `This stop is for ${feature}.` }, { status: 409 });
+      return Response.json({ error: t("This stop is for {feature}.", { feature }) }, { status: 409 });
     }
     // Whose roll: asked for when there is more than one to answer.
     if (choices.length > 1 && data.choice === undefined) {
-      return Response.json({ error: "Choose whose roll it answers first." }, { status: 400 });
+      return Response.json({ error: t("Choose whose roll it answers first.") }, { status: 400 });
     }
     if (data.choice !== undefined && data.choice >= Math.max(1, choices.length)) {
-      return Response.json({ error: "That creature is not one of this roll's." }, { status: 400 });
+      return Response.json({ error: t("That creature is not one of this roll's.") }, { status: 400 });
     }
     chosen = data.choice;
     const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
     if ("value" in data && (!sheet || !foretoldLeft(sheet).includes(data.value))) {
-      return Response.json({ error: `You hold no foretold ${data.value}.` }, { status: 409 });
+      return Response.json({ error: t("You hold no foretold {value}.", { value: data.value }) }, { status: 409 });
     }
     if ("shift" in data && (!sheet || !canAnswerNow(campaignId, sheet, power))) {
-      return Response.json({ error: watchWords(power).spentError }, { status: 409 });
+      return Response.json({ error: t(watchWords(power).spentError) }, { status: 409 });
     }
   } else if (!isWatcher && !due && !steersStory(context)) {
-    return Response.json({ error: "This is not your choice yet." }, { status: 403 });
+    return Response.json({ error: t("This is not your choice yet.") }, { status: 403 });
   }
   const face = "value" in data ? data.value : null;
   return answerWatch(pending.id, face, { ...(chosen !== undefined ? { chosen } : {}), ...("shift" in data ? { shift: true } : {}) })
     ? Response.json({ ok: true })
-    : Response.json({ error: "That roll has already gone ahead." }, { status: 409 });
+    : Response.json({ error: t("That roll has already gone ahead.") }, { status: 409 });
 }

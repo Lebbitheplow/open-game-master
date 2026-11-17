@@ -14,6 +14,8 @@ const { createElement, isValidElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const submit = await import("../src/app/characters/builder/submit.ts");
 const { summaryRows, summaryOwedCount, someNames } = await import("../src/app/characters/builder/summary.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { SummaryPanel } = await import("../src/app/characters/builder/steps/SummaryPanel.tsx");
 const { Wizard } = await import("../src/components/ui/Wizard.tsx");
 
@@ -61,7 +63,7 @@ function walk(node, out = []) {
 
 // The class first, the name and story last (backlog F4).
 await test("one row per step, in step order, in plain words", () => {
-  const rows = summaryRows(complete);
+  const rows = summaryRows(t, complete);
   assert.deepEqual(rows.map((row) => row.key), ["calling", "ancestry", "abilities", "spells-gear", "identity"]);
   assert.deepEqual(rows.map((row) => row.label), ["Class", "Ancestry and background", "Ability scores", "Spells and gear", "Name and story"]);
   assert.deepEqual(rows[0].lines, ["Wizard, level 3", "School of Evocation"]);
@@ -79,7 +81,7 @@ await test("one row per step, in step order, in plain words", () => {
 });
 
 await test("an empty build says what is not chosen, and a fighter's row is Gear", () => {
-  const rows = summaryRows({ ...complete, name: " ", background: undefined, race: undefined, klass: undefined, abilities: null, casts: false, gear: [] });
+  const rows = summaryRows(t, { ...complete, name: " ", background: undefined, race: undefined, klass: undefined, abilities: null, casts: false, gear: [] });
   assert.deepEqual(rows[0].lines, ["No class chosen"]);
   assert.deepEqual(rows[1].lines, ["No ancestry chosen", "No background chosen"]);
   assert.deepEqual(rows[2].lines, ["Not set yet"]);
@@ -92,12 +94,12 @@ await test("each row lists what its step still owes, from the same blocks the ga
   const state = { name: "", backgroundSkills: [], bonusLanguages: [], racialAsi: [], racialSkills: [], feats: [], repeatSkills: [] };
   const owed = {
     ...none,
-    identity: submit.identityBlocks(state),
-    ancestry: [...submit.ancestryBlocks(state, undefined), ...submit.backgroundBlocks(state, undefined)],
-    calling: submit.callingBlocks(undefined),
-    abilities: submit.abilitiesBlocks({ abilities: null }),
+    identity: submit.identityBlocks(t, state),
+    ancestry: [...submit.ancestryBlocks(t, state, undefined), ...submit.backgroundBlocks(t, state, undefined)],
+    calling: submit.callingBlocks(t, undefined),
+    abilities: submit.abilitiesBlocks(t, { abilities: null }),
   };
-  const rows = summaryRows({ ...complete, owed });
+  const rows = summaryRows(t, { ...complete, owed });
   assert.deepEqual(rows[0].owed.map((pick) => pick.label), ["Class"]);
   assert.deepEqual(rows[1].owed.map((pick) => [pick.target, pick.message]), [
     ["race", "Choose where your hero comes from (race)."],
@@ -111,7 +113,7 @@ await test("each row lists what its step still owes, from the same blocks the ga
 
 await test("the panel has a heading per row and says a missing pick in words, with a Fix", () => {
   const owed = { ...none, calling: [{ target: "subclass", message: "Pick a subclass for your Wizard." }] };
-  const rows = summaryRows({ ...complete, subclass: undefined, owed });
+  const rows = summaryRows(t, { ...complete, subclass: undefined, owed });
   const markup = renderToStaticMarkup(createElement(SummaryPanel, { rows, onEdit: () => {}, onFix: () => {} }));
   const headings = [...markup.matchAll(/<h4[^>]*>([^<]+)<\/h4>/g)].map((match) => match[1]);
   assert.deepEqual(headings, rows.map((row) => row.label), "each row is a heading under the step's own");
@@ -128,21 +130,22 @@ await test("the panel has a heading per row and says a missing pick in words, wi
   assert.equal(edits[2][1], "Edit Ability scores");
   assert.match(markup, /sm:flex-row/, "a row stacks on a phone and sits in a line from sm up");
 
-  const done = renderToStaticMarkup(createElement(SummaryPanel, { rows: summaryRows(complete), onEdit: () => {}, onFix: () => {} }));
+  const done = renderToStaticMarkup(createElement(SummaryPanel, { rows: summaryRows(t, complete), onEdit: () => {}, onFix: () => {} }));
   assert.match(done, /Every step is complete\. Edit any row to change it\./);
   assert.doesNotMatch(done, /Still to choose|data-summary-fix/);
 });
 
 await test("Edit goes to its row's step and Fix to the owed pick", () => {
   const owed = { ...none, spells: [{ target: "spells", message: "Pick 2 more spells." }, { target: "gear", message: "Too much to carry." }] };
-  const rows = summaryRows({ ...complete, owed });
-  const edited = [];
-  const fixed = [];
-  const tree = walk(SummaryPanel({ rows, onEdit: (key) => edited.push(key), onFix: (target) => fixed.push(target) }));
-  const buttons = tree.filter((node) => node.type === "button");
-  for (const button of buttons) button.props.onClick();
-  assert.deepEqual(edited, ["calling", "ancestry", "abilities", "spells-gear", "identity"]);
-  assert.deepEqual(fixed, ["spells", "gear"]);
+  const rows = summaryRows(t, { ...complete, owed });
+  // The panel reads its own translator (useT), so it renders through
+  // react-dom; the dispatch the buttons wire is read off their data
+  // attributes, which carry exactly the key and the target.
+  const markup = renderToStaticMarkup(createElement(SummaryPanel, { rows, onEdit: () => {}, onFix: () => {} }));
+  const edits = [...markup.matchAll(/data-summary-edit="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(edits, ["calling", "ancestry", "abilities", "spells-gear", "identity"]);
+  const fixes = [...markup.matchAll(/data-summary-fix="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(fixes, ["spells", "gear"]);
 });
 
 await test("an edit opens on the summary, and every step offers the way back once it is seen", () => {
@@ -150,7 +153,8 @@ await test("an edit opens on the summary, and every step offers the way back onc
   assert.match(builder, /useState\(initial \? STEP_ORDER\.length - 1 : 0\)/, "an edit's first step is the last, the summary");
   assert.match(builder, /useState\(Boolean\(initial\)\)/, "an edit has seen the summary from the start");
   assert.match(builder, /if \(step === STEP_ORDER\.length - 1 && !summarySeen\) \{\n\s+setSummarySeen\(true\);/, "a new build sees it on arrival");
-  assert.match(builder, /secondary: \{ label: "Back to summary", onClick: \(\) => backToSummary\(entry\.key\) \}/);
+  // The label reads through the dictionary (builder.shell.backToSummary), the i18n pass.
+  assert.match(builder, /secondary: \{ label: t\("Back to summary"\), onClick: \(\) => backToSummary\(entry\.key\) \}/);
   assert.match(builder, /index === STEP_ORDER\.length - 1\n\s+\? entry/, "the summary itself has no Back to summary");
   assert.match(builder, /steps=\{flow\}/);
   assert.match(builder, /summary=\{summary\}/);
@@ -164,7 +168,7 @@ await test("an edit opens on the summary, and every step offers the way back onc
   assert.match(builder, /finishFromAnyStep=\{Boolean\(initial\)\}/);
   assert.match(builder, /jumpAhead\n/);
   assert.match(builder, /variant="diamonds"\s+stepNames/);
-  assert.match(builder, /title: "Check your hero and finish"/);
+  assert.match(builder, /title: t\("Check your hero and finish"\)/, "the summary step's title reads through the dictionary");
   // The quiz's character still ends on the summary.
   assert.match(builder, /setStep\(STEP_ORDER\.length - 1\);\n\s+\}\n\s+\},\n\s+\}\);/);
 
@@ -195,9 +199,11 @@ await test("the step names keep their own row above the step heading", () => {
 });
 
 await test("the edit page's level-up note points to the summary", () => {
+  // The note reads through the dictionary (characters.edit.levelOpens), the
+  // i18n pass; the sentences it pins live in the English dictionary now.
   const page = read("src/app/characters/[characterId]/edit/page.tsx");
-  assert.match(page, /on its summary/);
-  assert.match(page, /with a Fix that goes to it/);
+  assert.match(page, /t\("The build opens at level \{level\}, on its summary\. Hit points come with the level; anything it lets \{name\} choose \(an ability score improvement, a subclass, new spells\) is listed there as still to choose, with a Fix that goes to it\. Save changes takes the build once nothing is owed\.", \{ level: nextLevel, name: character\.name \}\)/);
+  assert.match(page, /t\("Only what level \{level\} brings is asked here; the rest of \{name\}'s build stays as it is\."/);
 });
 
 console.log(`test-builder-summary: ${passed} passed`);

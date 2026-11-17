@@ -8,6 +8,7 @@ import { reportFileName, withPageErrors, type OfferedPart, type ReportBundle } f
 import { bugReportUrl } from "@/lib/report-setup";
 import { saveReportFile, withShellFacts, type ReportSaved } from "@/lib/shell-report";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 
 // "Report a problem" (issue #459), for the server's admin: they pick what
 // goes in the report file, save it to this device, and the bug report form
@@ -30,6 +31,7 @@ export function ReportProblemDialog({
   // The table's /api/campaigns/<id>/report-bundle, or Admin's.
   endpoint: string;
 }) {
+  const t = useT();
   const [parts, setParts] = useState<OfferedPart[] | null>(null);
   const [ticked, setTicked] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
@@ -47,14 +49,14 @@ export function ReportProblemDialog({
         const data = (await response.json().catch(() => ({}))) as { parts?: OfferedPart[]; checkFirst?: string[]; error?: string };
         if (!live) return;
         if (!response.ok || !Array.isArray(data.parts)) {
-          setError(data.error || "The report options could not be loaded.");
+          setError(data.error || t("The report options could not be loaded."));
           return;
         }
         setParts(data.parts);
         setTicked(Object.fromEntries(data.parts.map((part) => [part.id, part.defaultOn])));
         setCheckFirst(Array.isArray(data.checkFirst) ? data.checkFirst.filter((line) => typeof line === "string") : []);
       })
-      .catch(() => live && setError("The report options could not be loaded."));
+      .catch(() => live && setError(t("The report options could not be loaded.")));
     return () => {
       live = false;
     };
@@ -83,7 +85,7 @@ export function ReportProblemDialog({
       });
       const data = (await response.json().catch(() => null)) as (ReportBundle & { error?: string }) | null;
       if (!response.ok || !data || data.kind !== "odm-report") {
-        setError(data?.error || "The report could not be made.");
+        setError(data?.error || t("The report could not be made."));
         return;
       }
       // Inside an app, the app's own facts go in before the file is saved,
@@ -94,7 +96,7 @@ export function ReportProblemDialog({
       try {
         result = await saveReportFile(bundle, reportFileName());
       } catch {
-        setError("The report could not be saved.");
+        setError(t("The report could not be saved."));
         return;
       }
       // Backing out of the app's save dialog or share sheet leaves the
@@ -108,43 +110,39 @@ export function ReportProblemDialog({
       // pop-up leaves the link below to do the same.
       window.open(url, "_blank", "noopener,noreferrer");
     } catch {
-      setError("The report could not be made.");
+      setError(t("The report could not be made."));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={change} title="Report a problem" icon={<Bug className="size-4 text-amber-300" />}>
+    <Dialog open={open} onOpenChange={change} title={t("Report a problem")} icon={<Bug className="size-4 text-amber-300" />}>
       {saved ? (
         <div className="reveal space-y-4" data-report-saved>
           <p className="text-sm leading-6 text-stone-300">
-            Saved <span className="font-code text-amber-200">{saved.name}</span> to {saved.where || "this device"}. Add it
-            to the last box of the form: drop it there, or click the box and pick it. Open the file first if you want to
-            see what it holds.
+            {t("Saved", { context: "report.savedLine.pre" })} <span className="font-code text-amber-200">{saved.name}</span>{" "}
+            {t("to {where}. Add it to the last box of the form: drop it there, or click the box and pick it. Open the file first if you want to see what it holds.", { where: saved.where || t("this device") })}
           </p>
           <div className="flex flex-wrap justify-end gap-2">
             <a href={formUrl} target="_blank" rel="noopener noreferrer" className={ui.btnSmall} data-report-form-link>
-              <ExternalLink className="size-3.5" /> Open the bug report form
+              <ExternalLink className="size-3.5" /> {t("Open the bug report form")}
             </a>
             <button type="button" onClick={() => change(false)} className={ui.btnPrimary}>
-              Done
+              {t("Done", { context: "action.done" })}
             </button>
           </div>
         </div>
       ) : (
         <div className="space-y-4" data-report-problem-dialog>
           <p className="text-sm leading-6 text-stone-400">
-            This saves a report file to this device for you to attach to a bug report on GitHub. Nothing is sent anywhere.
-            It never holds other players&apos; lines, whispers, passwords or keys. With Version and setup ticked, the
-            form&apos;s Your setup box is filled in from it: versions, how it was installed and the models, never
-            addresses or keys.
+            {t("This saves a report file to this device for you to attach to a bug report on GitHub. Nothing is sent anywhere. It never holds other players' lines, whispers, passwords or keys. With Version and setup ticked, the form's Your setup box is filled in from it: versions, how it was installed and the models, never addresses or keys.")}
           </p>
           {checkFirst.length ? (
             <div className="reveal rounded-lg border border-amber-700/60 bg-amber-950/30 p-3 text-sm text-amber-100" role="note" data-report-check-first>
               <p className="flex items-start gap-2 font-medium">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-300" aria-hidden="true" />
-                Check these first
+                {t("Check these first")}
               </p>
               <ul className="mt-1 list-disc space-y-1 pl-5 text-amber-100/90">
                 {checkFirst.map((line) => (
@@ -152,13 +150,12 @@ export function ReportProblemDialog({
                 ))}
               </ul>
               <p className="mt-1.5 text-xs text-amber-200/80">
-                These cause most reported problems and are not bugs. Fix them and try again; if the problem stays,
-                save the report. They go in it too.
+                {t("These cause most reported problems and are not bugs. Fix them and try again; if the problem stays, save the report. They go in it too.")}
               </p>
             </div>
           ) : null}
           <fieldset className="space-y-2">
-            <legend className="mb-1 text-xs uppercase tracking-wide text-stone-500">What goes in the file</legend>
+            <legend className="mb-1 text-xs uppercase tracking-wide text-stone-500">{t("What goes in the file")}</legend>
             {parts ? (
               parts.map((part) => (
                 <label key={part.id} className="flex cursor-pointer items-start gap-2 text-sm text-stone-300" data-report-part={part.id}>
@@ -175,13 +172,13 @@ export function ReportProblemDialog({
                 </label>
               ))
             ) : error ? null : (
-              <Loader2 className="size-4 animate-spin text-stone-500" aria-label="Loading" />
+              <Loader2 className="size-4 animate-spin text-stone-500" aria-label={t("Loading")} />
             )}
           </fieldset>
           {error ? <p className="motion-shake text-sm text-red-400">{error}</p> : null}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => change(false)} className={ui.btnSmall} disabled={busy}>
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="button"
@@ -192,7 +189,7 @@ export function ReportProblemDialog({
               data-report-save
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Bug className="size-4" />}
-              Save the report
+              {t("Save the report")}
             </button>
           </div>
         </div>

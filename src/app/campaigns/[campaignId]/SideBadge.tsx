@@ -5,6 +5,11 @@ import { cn } from "@/lib/cn";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { dominatorOf, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { useT } from "@/lib/locale";
+
+// The translator's shape, for the pure helpers below: `t` comes in first
+// (src/lib/story-window.ts).
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 // A combatant fighting on the side its kind does not (issue 503): a
 // character against the party in the foes' red, a creature the party
@@ -25,12 +30,13 @@ export function offSide(encounter: Pick<PublicEncounter, "sides"> | null | undef
   return side !== (kind === "pc" ? "party" : "foe") ? side : null;
 }
 
-export function sideWords(side: CombatSide): string {
-  return side === "foe" ? "against the party" : "with the party";
+export function sideWords(t: T, side: CombatSide): string {
+  return side === "foe" ? t("against the party") : t("with the party");
 }
 
 // The pill beside a name: the words, in the side's colours.
 export function SideBadge({ side, className }: { side: CombatSide | null; className?: string }) {
+  const t = useT();
   if (!side) {
     return null;
   }
@@ -44,14 +50,15 @@ export function SideBadge({ side, className }: { side: CombatSide | null; classN
         className,
       )}
     >
-      {side === "foe" ? "Against the party" : "With the party"}
+      {side === "foe" ? t("Against the party") : t("With the party")}
     </span>
   );
 }
 
 // The words alone, for a screen reader beside a name.
 export function SideSr({ side }: { side: CombatSide | null }) {
-  return side ? <span className="sr-only">, {sideWords(side)}</span> : null;
+  const t = useT();
+  return side ? <span className="sr-only">, {sideWords(t, side)}</span> : null;
 }
 
 // The side's colour across the top of an initiative plate (BoardChrome.tsx).
@@ -64,11 +71,11 @@ export function SidePlateBand({ side }: { side: CombatSide | null }) {
 
 // "Sable fights against the party. " for each such combatant, for a name a
 // whole order is read by.
-export function sidesLine(encounter: PublicEncounter): string {
+export function sidesLine(t: T, encounter: PublicEncounter): string {
   return encounter.order
     .flatMap((entry) => {
       const side = offSide(encounter, entry.id, entry.kind);
-      return side ? [`${entry.name} fights ${sideWords(side)}. `] : [];
+      return side ? [t("{name} fights {side}. ", { name: entry.name, side: sideWords(t, side) })] : [];
     })
     .join("");
 }
@@ -97,6 +104,7 @@ export function SideNotice({ encounter, sheets, meUserId }: { encounter: PublicE
     return () => window.clearTimeout(timer);
   }, [seen.freed]);
   const freed = mine.filter((sheet) => seen.freed.includes(sheet.id));
+  const t = useT();
   if (!held.length && !freed.length) {
     return null;
   }
@@ -105,13 +113,13 @@ export function SideNotice({ encounter, sheets, meUserId }: { encounter: PublicE
       {held.map((sheet) => (
         <p key={sheet.id} data-side-notice="foe" className="side-badge rounded-lg border border-red-500/60 bg-red-950/70 px-3 py-1.5 text-xs text-red-100">
           {dominatorOf(sheet.conditions, sheet.conditionMeta as Record<string, { spell?: unknown; source?: unknown }>)
-            ? `${sheet.name} is dominated: the GM plays ${sheet.name} until the charm ends.`
-            : `${sheet.name} fights ${sideWords("foe")}.`}
+            ? t("{name} is dominated: the GM plays {name} until the charm ends.", { name: sheet.name })
+            : t("{name} fights against the party.", { name: sheet.name })}
         </p>
       ))}
       {freed.map((sheet) => (
         <p key={sheet.id} data-side-notice="party" className="side-badge rounded-lg border border-stone-500 bg-stone-800 px-3 py-1.5 text-xs text-stone-100">
-          {sheet.name} is yours again.
+          {t("{name} is yours again.", { name: sheet.name })}
         </p>
       ))}
     </div>

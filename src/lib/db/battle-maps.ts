@@ -1,4 +1,5 @@
 import { resolveOutdoors } from "@/lib/battlemap/daylight";
+import { forgetWalk, rememberWalk } from "@/lib/battlemap/confirmed-walk";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { keepNew, keepRow, keepRowsWhere } from "@/lib/db/turn-rows";
 import type {
@@ -489,7 +490,7 @@ export function squaresStoodIn(tokenId: string): Array<{ x: number; y: number }>
   return stoodIn().get(tokenId) ?? [];
 }
 
-export function moveToken(tokenId: string, x: number, y: number, movedThisRound: number) {
+export function moveToken(tokenId: string, x: number, y: number, movedThisRound: number, walk?: readonly { x: number; y: number }[]) {
   // A move that spends nothing of the turn (a token set down, the round's
   // movement begun again) starts the record over.
   const was = getToken(tokenId);
@@ -502,6 +503,7 @@ export function moveToken(tokenId: string, x: number, y: number, movedThisRound:
   getDatabase()
     .prepare(`UPDATE battle_tokens SET x = ?, y = ?, moved_this_round = ?, updated_at = ? WHERE id = ?`)
     .run(x, y, movedThisRound, nowIso(), tokenId);
+  rememberWalk(tokenId, was, { x, y }, walk);
 }
 
 export function getToken(tokenId: string): BattleToken | null {
@@ -521,6 +523,7 @@ export function placeToken(tokenId: string, x: number, y: number) {
   getDatabase()
     .prepare(`UPDATE battle_tokens SET x = ?, y = ?, updated_at = ? WHERE id = ?`)
     .run(x, y, nowIso(), tokenId);
+  forgetWalk(tokenId);
 }
 
 // Under the sky or a roof. Null hands the decision back to the theme.

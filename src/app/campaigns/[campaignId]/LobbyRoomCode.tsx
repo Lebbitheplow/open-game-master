@@ -6,8 +6,9 @@ import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/clipboard";
 import { buildShareLinks } from "@/lib/share-link";
 import { CopyTick, InviteQr, InviteShareDialog, RoomCodeHeldNotice, RoomCodeSigils } from "@/components/InviteShareDialog";
-import { GameIcon } from "@/components/ui/GameIcon";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 
 // The room code card: the QR on the card itself (scanning is the fastest way
 // in, so it is not one click away), the code in sigil lettering, copy code,
@@ -41,6 +42,7 @@ export function LobbyRoomCode({
   const [linkCopied, setLinkCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [publicOrigin, setPublicOrigin] = useState("");
+  const t = useT();
 
   // Same reason as InviteShareDialog: a host sharing their world through a
   // tunnel plays on 127.0.0.1, an address guests cannot reach, so links
@@ -86,14 +88,14 @@ export function LobbyRoomCode({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/ui/wax-seal-gold.webp" alt="" className="lobby-code-seal" />
       <div className="lobby-head mb-3 pr-12">
-        <GameIcon icon={{ kind: "glyph", key: "tab-friends" }} size="size-7" />
-        <h2 className="lobby-head-title">Room code</h2>
+        <LobbyIcon glyph="tab-friends" />
+        <h2 className="lobby-head-title">{t("Room code")}</h2>
         <span className="lobby-head-rule motion-rule" aria-hidden="true" />
       </div>
       <div className="flex flex-col items-center gap-4 min-[420px]:flex-row min-[420px]:items-start">
         <div className="flex flex-col items-center gap-1">
           <InviteQr url={shareLinks.appUrl} />
-          <p className="eyebrow text-[9px] text-stone-500">Scan to join</p>
+          <p className="eyebrow text-[9px] text-stone-500">{t("Scan to join")}</p>
         </div>
         <div className="flex min-w-0 flex-1 flex-col items-center gap-3 min-[420px]:items-start">
           <RoomCodeSigils code={inviteCode} />
@@ -105,7 +107,7 @@ export function LobbyRoomCode({
               className={cn(ui.btnSmall, "lobby-copy")}
             >
               {copied ? <CopyTick /> : <Copy className="size-4" />}
-              {copied ? "Copied" : "Code"}
+              {copied ? t("Copied") : t("Code")}
             </button>
             <button
               type="button"
@@ -114,10 +116,10 @@ export function LobbyRoomCode({
               className={cn(ui.btnSmall, "lobby-copy")}
             >
               {linkCopied ? <CopyTick /> : <LinkIcon className="size-4" />}
-              {linkCopied ? "Copied" : "Link"}
+              {linkCopied ? t("Copied") : t("Link")}
             </button>
             <button type="button" onClick={() => setSharing(true)} className={ui.btnSmall}>
-              <QrCode className="size-4" /> Share
+              <QrCode className="size-4" /> {t("Share", { context: "action.share" })}
             </button>
           </div>
           <p className="break-all text-center font-code text-xs text-stone-500 min-[420px]:text-left">
@@ -129,7 +131,7 @@ export function LobbyRoomCode({
         <RoomCodeHeldNotice onNewCode={canRegenerate ? () => setSharing(true) : undefined} className="mt-4" />
       ) : null}
       <p role="status" className="sr-only">
-        {copied ? "Room code copied." : linkCopied ? "Invite link copied." : ""}
+        {copied ? t("Room code copied.") : linkCopied ? t("Invite link copied.") : ""}
       </p>
       <InviteShareDialog
         open={sharing}

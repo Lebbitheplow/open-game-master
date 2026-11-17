@@ -18,6 +18,7 @@ import { regenerationTurnStart } from "@/lib/dm/regeneration-turn";
 import { sunlightTurnStart } from "@/lib/dm/sunlight-turn";
 import { beginTurns, endTurns } from "@/lib/dm/turn-end";
 import { burningTurnStart } from "@/lib/dm/gear-weapon-hit";
+import { swordWoundTurnStart } from "@/lib/dm/sword-wounding";
 import { laughterTurnStart } from "@/lib/dm/afflictions";
 import { swallowTurnStart, swallowTurnsStarted } from "@/lib/dm/swallow";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
@@ -59,6 +60,10 @@ export function turnStartEffects(
     const before = enemiesById.get(id);
     // Alchemist's fire burns the creature whose turn starts (gear-weapon-hit.ts).
     turnStartLines.push(...burningTurnStart(campaign, encounter, id, now(before)));
+    // A Sword of Wounding's wounds bleed, then a save may close them (sword-wounding.ts).
+    if (before) {
+      turnStartLines.push(...swordWoundTurnStart(campaign, encounter, now(before)));
+    }
     // Read again after the fire: each hook works from the hit points the
     // creature has now. The rows of `enemiesById` were read before this turn's
     // start dealt anything (Spirit Guardians, a zone, the fire above), and a

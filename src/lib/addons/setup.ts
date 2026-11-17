@@ -1,15 +1,16 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { toolPayload } from "@/lib/addons/contracts";
 import { downloadToFile, removeQuietly } from "@/lib/addons/download";
 import { findInstalledAddon, hostFacts, needsSetup, readyAddon, type InstalledAddon } from "@/lib/addons/installed";
-import { ADDON_API_VERSION, type AddonManifest } from "@/lib/addons/manifest";
+import { ADDON_API_VERSION, type AddonManifest, type SetupDownload } from "@/lib/addons/manifest";
+import { fetchFolderDownload, installableParts } from "@/lib/addons/parts";
 import { addonDataDir, resolveInside } from "@/lib/addons/paths";
 import { checkRequirement, pythonRequirement } from "@/lib/addons/requirements";
 import { addonLog, callAddonTool, stopAddon, venvPython } from "@/lib/addons/runtime";
-import { cleanSettings, downloadApplies, effectiveSettings, setupSettingKeys } from "@/lib/addons/settings";
+import { chosenParts, cleanSettings, downloadApplies, effectiveSettings, setupSettingKeys } from "@/lib/addons/settings";
 import { addonState, setAddonState, type AddonState } from "@/lib/addons/store";
 import { unzipFile } from "@/lib/addons/unzip";
 import { cancelTask, createTask, finishTask, getTask, reportProgress, type AddonTask } from "@/lib/addons/tasks";
@@ -91,29 +92,70 @@ async function setupPython(addon: { id: string; dir: string; manifest: AddonMani
   await runLogged(addon.id, task, venv, ["-m", "pip", "install", "-r", requirements], { cwd: addon.dir, env });
 }
 
-async function setupDownloads(id: string, manifest: AddonManifest, saved: AddonState["settings"], task: AddonTask, dataDir: string) {
+type SetupAddon = InstalledAddon & { manifest: AddonManifest };
+
+async function setupDownloads(addon: SetupAddon, task: AddonTask, dataDir: string, parts: string[]) {
+  const { id, manifest } = addon;
   const facts = hostFacts();
   const platformKey = `${facts.platform}-${facts.arch}`;
-  // This computer's downloads, for the settings the admin chose (a `when`
-  // reads them as the addon will, defaults filled in).
-  const settings = effectiveSettings(manifest.settings, saved);
-  const downloads = (manifest.setup?.downloads ?? []).filter((download) => downloadApplies(download, platformKey, settings));
+  // This computer's downloads, for the settings and parts the admin chose
+  // (a `when` reads the settings as the addon will, defaults filled in).
+  const settings = effectiveSettings(manifest.settings, addon.state.settings);
+  const all = manifest.setup?.downloads ?? [];
+  const downloads = all.filter((download) => downloadApplies(download, platformKey, settings, parts));
   const markers = path.join(dataDir, ".setup");
   await mkdir(markers, { recursive: true });
+  // A part gives its disk back when the admin leaves it out, or when a newer
+  // version drops it or moves its folder: setup keeps a record of every
+  // part folder it fetched (parts.json), since the current manifest no
+  // longer names a dropped one.
+  const ledgerFile = path.join(markers, "parts.json");
+  const ledger = await readPartLedger(ledgerFile);
+  await releaseParts(id, all, parts, ledger, dataDir, markers);
+  await writeFile(ledgerFile, JSON.stringify(ledger));
+  const fetchedPart = async (download: (typeof all)[number]) => {
+    if (!download.part) return;
+    ledger[download.id] = { part: download.part, to: download.to };
+    await writeFile(ledgerFile, JSON.stringify(ledger));
+  };
   for (const [index, download] of downloads.entries()) {
     const target = resolveInside(dataDir, download.to);
     if (!target || target === dataDir) throw new Error(`Download ${download.id} names a place outside its data folder.`);
     const marker = path.join(markers, `${download.id}.sha256`);
     const done = await readFile(marker, "utf8").catch(() => "");
-    if (done.trim() === download.sha256 && existsSync(target)) {
+    const part = path.join(markers, `${download.id}.part`);
+    const label = `Downloading ${download.id} (${index + 1} of ${downloads.length})`;
+    if (download.github) {
+      // A folder of a repository at a commit, file by file (parts.ts).
+      const fetched = await fetchFolderDownload(addon, { ...download, github: download.github }, target, part, done.trim(), {
+        signal: task.controller.signal,
+        onProgress: (files, total) => reportProgress(task, { progress: files, total, message: label }),
+      }).catch(async (error) => {
+        await rm(part, { recursive: true, force: true });
+        throw error;
+      });
+      if (fetched === null) {
+        await fetchedPart(download);
+        addonLog(id, `[setup] ${download.id} is already here`);
+        continue;
+      }
+      await rm(target, { recursive: true, force: true, maxRetries: 3 });
+      await mkdir(path.dirname(target), { recursive: true });
+      await rename(part, target);
+      await writeFile(marker, fetched);
+      await fetchedPart(download);
+      addonLog(id, `[setup] ${download.id} ready`);
+      continue;
+    }
+    const sha256 = download.sha256 ?? "";
+    if (done.trim() === sha256 && existsSync(target)) {
+      await fetchedPart(download);
       addonLog(id, `[setup] ${download.id} is already here`);
       continue;
     }
-    const part = path.join(markers, `${download.id}.part`);
-    const label = `Downloading ${download.id} (${index + 1} of ${downloads.length})`;
-    const fetched = await downloadToFile(download.url, part, {
+    const fetched = await downloadToFile(download.url ?? "", part, {
       bytes: download.bytes,
-      sha256: download.sha256,
+      sha256,
       signal: task.controller.signal,
       onProgress: (received, total) => reportProgress(task, { progress: received, total, message: label }),
     });
@@ -144,8 +186,67 @@ async function setupDownloads(id: string, manifest: AddonManifest, saved: AddonS
         await removeQuietly(part);
       }
     }
-    await writeFile(marker, download.sha256);
+    await writeFile(marker, sha256);
+    await fetchedPart(download);
     addonLog(id, `[setup] ${download.id} ready`);
+  }
+}
+
+// What setup fetched for parts, by download id: the part and the folder it
+// landed in. Kept in the data folder, which the addon can write too, so
+// every folder read from it is held inside the data folder again.
+type PartLedger = Record<string, { part: string; to: string }>;
+
+async function readPartLedger(file: string): Promise<PartLedger> {
+  try {
+    const raw = JSON.parse(await readFile(file, "utf8")) as unknown;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const ledger: PartLedger = {};
+    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+      const entry = value as { part?: unknown; to?: unknown };
+      if (typeof entry?.part === "string" && typeof entry?.to === "string") ledger[key] = { part: entry.part, to: entry.to };
+    }
+    return ledger;
+  } catch {
+    return {};
+  }
+}
+
+const KEPT_FOLDERS = new Set([".setup", ".venv", "public"]);
+const overlaps = (a: string, b: string) => {
+  const [x, y] = [a.replace(/\/+$/, ""), b.replace(/\/+$/, "")];
+  return x === y || x.startsWith(`${y}/`) || y.startsWith(`${x}/`);
+};
+
+// Removes what setup fetched for a part that is no longer wanted here: left
+// out by the admin, gone from this version, or moved to another folder.
+// A folder another of this version's downloads still uses is left alone.
+async function releaseParts(
+  id: string,
+  all: SetupDownload[],
+  parts: string[],
+  ledger: PartLedger,
+  dataDir: string,
+  markers: string,
+) {
+  const current = new Map(all.filter((download) => download.part).map((download) => [download.id, download]));
+  // A part fetched before this record existed counts as fetched where the
+  // manifest says, when its marker is there.
+  for (const download of current.values()) {
+    if (!ledger[download.id] && existsSync(path.join(markers, `${download.id}.sha256`))) ledger[download.id] = { part: download.part!, to: download.to };
+  }
+  for (const [downloadId, entry] of Object.entries(ledger)) {
+    const now = current.get(downloadId);
+    if (now && parts.includes(now.part!) && now.to === entry.to) continue;
+    delete ledger[downloadId];
+    await removeQuietly(path.join(markers, `${downloadId}.sha256`));
+    const target = resolveInside(dataDir, entry.to);
+    if (!target || target === dataDir || KEPT_FOLDERS.has(entry.to.replace(/\/+$/, ""))) continue;
+    const others = all.filter((download) => download.id !== downloadId || (now && download.to !== entry.to));
+    if (others.some((download) => overlaps(download.to, entry.to))) continue;
+    await rm(target, { recursive: true, force: true, maxRetries: 3 });
+    const why = !now ? "this version no longer has it" : now.to !== entry.to ? `it moved to ${now.to}` : "its part is not chosen";
+    addonLog(id, `[setup] removed ${entry.to} (${downloadId}): ${why}`);
   }
 }
 
@@ -159,11 +260,12 @@ async function runSetup(task: AddonTask, id: string) {
     await mkdir(path.join(dataDir, "public"), { recursive: true });
     await stopAddon(id);
     addonLog(id, `[setup] starting setup for ${manifest.version}`);
+    const facts = hostFacts();
+    const parts = installableParts({ ...addon, manifest }, `${facts.platform}-${facts.arch}`);
     await setupPython({ id, dir: addon.dir, manifest, settings: addon.state.settings }, task, dataDir);
-    await setupDownloads(id, manifest, addon.state.settings, task, dataDir);
+    await setupDownloads({ ...addon, manifest }, task, dataDir, parts);
     if (manifest.setup?.tool) {
       reportProgress(task, { progress: 0, message: "Running its own setup" });
-      const facts = hostFacts();
       const raw = await callAddonTool(
         id,
         manifest.setup.tool,
@@ -171,6 +273,7 @@ async function runSetup(task: AddonTask, id: string) {
           dataDir,
           publicDir: path.join(dataDir, "public"),
           packageDir: addon.dir,
+          parts,
           host: { serverVersion: facts.serverVersion, apiVersion: ADDON_API_VERSION, platform: facts.platform },
         },
         {
@@ -274,6 +377,33 @@ export function settingsEdit(
   if (touched && addon.manifest.setup) {
     if (setupRunning(addon.id)) {
       return { ok: false, status: 409, error: "Its setup is running. Change this once it has finished, or stop it first." };
+    }
+    patch.setupVersion = "";
+    patch.setupError = "";
+  }
+  return { ok: true, patch };
+}
+
+// An admin's choice of parts, as the change it makes to the addon's state:
+// held to the parts it declares and can fetch here, and the setup made due
+// again when the choice changed (it fetches what was added and removes what
+// was left out).
+export function partsEdit(
+  addon: InstalledAddon & { manifest: AddonManifest },
+  wanted: string[],
+  problemOf: (partId: string) => string,
+): { ok: true; patch: Partial<AddonState> } | { ok: false; status: number; error: string } {
+  for (const partId of wanted) {
+    const part = addon.manifest.parts.find((entry) => entry.id === partId);
+    if (!part) return { ok: false, status: 400, error: `${addon.manifest.name} has no part "${partId}".` };
+    const problem = problemOf(partId);
+    if (problem) return { ok: false, status: 409, error: `${part.title} cannot be fetched here: ${problem}` };
+  }
+  const next = chosenParts(addon.manifest, wanted);
+  const patch: Partial<AddonState> = { parts: next };
+  if (next.join("|") !== chosenParts(addon.manifest, addon.state.parts).join("|") && addon.manifest.setup) {
+    if (setupRunning(addon.id)) {
+      return { ok: false, status: 409, error: "Its setup is running. Change its parts once it has finished, or stop it first." };
     }
     patch.setupVersion = "";
     patch.setupError = "";

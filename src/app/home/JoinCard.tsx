@@ -2,6 +2,7 @@
 
 import { type FormEvent, type RefObject, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { navigateTo } from "@/lib/navigation";
 
 // Joining someone else's table by its invite code: "join by sigil". The
@@ -9,6 +10,7 @@ import { navigateTo } from "@/lib/navigation";
 // inputRef, so the panel stays where a friend's "type it in at the bottom"
 // points.
 export function JoinCard({ inputRef }: { inputRef: RefObject<HTMLInputElement | null> }) {
+  const t = useT();
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [joining, setJoining] = useState(false);
@@ -27,7 +29,7 @@ export function JoinCard({ inputRef }: { inputRef: RefObject<HTMLInputElement | 
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setJoinError(data.error || "Could not join.");
+        setJoinError(data.error || t("Could not join."));
         setShakeKey((n) => n + 1);
         return;
       }
@@ -38,11 +40,11 @@ export function JoinCard({ inputRef }: { inputRef: RefObject<HTMLInputElement | 
   }
 
   return (
-    <section id="join" className="ts-join ts-panel scroll-mt-6" aria-label="Join with a room code">
+    <section id="join" className="ts-join ts-panel scroll-mt-6" aria-label={t("Join with a room code")}>
       <span className="ts-bracket ts-bracket-tl" aria-hidden="true" />
       <span className="ts-bracket ts-bracket-br" aria-hidden="true" />
-      <h2 className="ts-below-eyebrow">Join by sigil</h2>
-      <p className="ts-below-lede">A friend running a table gives you an eight-letter sigil.</p>
+      <h2 className="ts-below-eyebrow">{t("Join by sigil")}</h2>
+      <p className="ts-below-lede">{t("A friend running a table gives you an eight-letter sigil.")}</p>
       <form onSubmit={join} className="ts-join-form">
         {/* One real field does the typing, the pasting and the submitting; the
             boxes over it are only how the sigil is shown, so a keyboard, a
@@ -50,7 +52,7 @@ export function JoinCard({ inputRef }: { inputRef: RefObject<HTMLInputElement | 
         <label
           key={joinError ? `refused-${shakeKey}` : "calm"}
           className={cn("ts-sigil", joinError && "motion-shake")}
-          aria-label="Room code"
+          aria-label={t("Room code")}
         >
           <input
             ref={inputRef}
@@ -78,7 +80,7 @@ export function JoinCard({ inputRef }: { inputRef: RefObject<HTMLInputElement | 
           })}
         </label>
         <button type="submit" disabled={joining} className="ts-ghost motion-press">
-          {joining ? "Joining..." : "Join"}
+          {joining ? t("Joining...") : t("Join")}
         </button>
         {joinCode.length >= 8 ? (
           // eslint-disable-next-line @next/next/no-img-element

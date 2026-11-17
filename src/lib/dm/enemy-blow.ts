@@ -18,6 +18,7 @@ import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
 import { meetEnemyPart, type EnemyPartFlags } from "@/lib/dm/enemy-defenses";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { enemyHpCap } from "@/lib/dm/monster-abilities";
+import { scaledParts } from "@/lib/dm/enemy-hit";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // How a parked attack's damage roll is resolved (carried on the pending
@@ -49,7 +50,14 @@ function applyBlow(
   damageType: string | undefined,
   blow: DamageBlow | undefined,
 ): Record<string, unknown> {
-  const amount = Math.max(1, roll.total);
+  // No floor of 1 (SRD 5.1 gives damage none): a total a penalty brings to 0
+  // or less deals nothing, as pc_attack and every attack door deal it. A
+  // GM's "1d4-2" that rolled a 1 took a hit point, and so did a player's
+  // physical damage die landed through here.
+  const amount = Math.max(0, roll.total);
+  if (amount === 0) {
+    return { ok: true, name: enemy.displayName, hp: `${enemy.currentHp}/${enemy.maxHp}`, damageApplied: 0 };
+  }
   const magical = blow?.magical === true;
   const material = blow?.material ?? {};
   const parts =
@@ -185,6 +193,48 @@ export function landTypedParts(input: {
       (part) => `${part.amount} ${part.type || "untyped"}${part.note ? ` (${part.note})` : ""}`,
     ),
   };
+}
+
+// A creature's blow (enemy-hit.ts blowByType) landing on another creature: a
+// creature fighting for the party (Dominate Person) or a faction's at its
+// rival, on enemy_attack and on an opportunity attack. A blow of several
+// types meets the target's defences part by part (SRD 5.1, Damage
+// Resistance), as a character's blow does; it landed untyped, so a
+// dominated hell hound's fire went whole through a fire-resistant creature.
+// `dealt` is the blow after what shrinks it (Ray of Enfeeblement).
+export function landCreatureBlow(input: {
+  campaign: Campaign;
+  turn: DmTurn;
+  encounter: Encounter;
+  target: EncounterEnemy;
+  dealt: number;
+  blow: { type: string | undefined; parts: Array<{ amount: number; type: string }> | null };
+  sheets: CharacterSheet[];
+  sheetsById: Map<string, CharacterSheet>;
+  crit: boolean;
+  magical: boolean;
+  holdVictory?: boolean;
+}): Record<string, unknown> {
+  const { campaign, turn, encounter, target, dealt, blow, sheets, sheetsById } = input;
+  if (blow.parts) {
+    return landTypedParts({
+      campaign,
+      turn,
+      encounter,
+      enemy: target,
+      parts: scaledParts(blow.parts, dealt),
+      sheets,
+      sheetsById,
+      weapon: { magical: input.magical },
+      crit: input.crit,
+      ...(input.holdVictory ? { holdVictory: true } : {}),
+    });
+  }
+  return applyEnemyDamage(campaign, turn, encounter, target, dealt, sheets, sheetsById, blow.type, {
+    crit: input.crit,
+    ...(input.magical ? { magical: true } : {}),
+    ...(input.holdVictory ? { holdVictory: true } : {}),
+  });
 }
 
 // A resolved damage roll that names its target: apply it before the model

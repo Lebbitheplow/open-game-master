@@ -12,6 +12,9 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { lobbyBlocker, partySlotCount } = await import("../src/lib/dm/viewer.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The gate's words come from the dictionaries; this suite reads the English ones.
+const en = (key, vars) => translate("en", key, vars);
 const { gameSettingsSchema, resolveCompanionMode } = await import(
   "../src/lib/schemas/game-settings.ts"
 );
@@ -30,21 +33,21 @@ const seat = (userId, ready, hasSheet) => ({ userId, ready, hasSheet });
 
 test("an AI table opens once every player is ready with a sheet", () => {
   assert.equal(
-    lobbyBlocker(aiSeats, [seat("p1", true, true), seat("p2", true, true)]),
+    lobbyBlocker(en, aiSeats, [seat("p1", true, true), seat("p2", true, true)]),
     "",
   );
 });
 
 test("a player without a character blocks the start", () => {
   assert.equal(
-    lobbyBlocker(aiSeats, [seat("p1", true, true), seat("p2", true, false)]),
+    lobbyBlocker(en, aiSeats, [seat("p1", true, true), seat("p2", true, false)]),
     "Every player needs a character before the adventure starts.",
   );
 });
 
 test("a player who has not readied up blocks the start", () => {
   assert.equal(
-    lobbyBlocker(aiSeats, [seat("p1", true, true), seat("p2", false, true)]),
+    lobbyBlocker(en, aiSeats, [seat("p1", true, true), seat("p2", false, true)]),
     "Waiting for everyone to ready up.",
   );
 });
@@ -52,26 +55,26 @@ test("a player who has not readied up blocks the start", () => {
 // The regression. One DM, one player: the smallest human-run table there is,
 // and the one a first test of the app is most likely to be.
 test("a DM and one player can start, though the DM has no character", () => {
-  assert.equal(lobbyBlocker(humanSeats, [seat("gm", true, false), seat("p1", true, true)]), "");
+  assert.equal(lobbyBlocker(en, humanSeats, [seat("gm", true, false), seat("p1", true, true)]), "");
 });
 
 test("the DM still has to ready up", () => {
   assert.equal(
-    lobbyBlocker(humanSeats, [seat("gm", false, false), seat("p1", true, true)]),
+    lobbyBlocker(en, humanSeats, [seat("gm", false, false), seat("p1", true, true)]),
     "Waiting for everyone to ready up.",
   );
 });
 
 test("the player at a human-run table still needs a character", () => {
   assert.equal(
-    lobbyBlocker(humanSeats, [seat("gm", true, false), seat("p1", true, false)]),
+    lobbyBlocker(en, humanSeats, [seat("gm", true, false), seat("p1", true, false)]),
     "Every player needs a character before the adventure starts.",
   );
 });
 
 test("a co-DM is exempt from a character too, in assisted mode as in human", () => {
   assert.equal(
-    lobbyBlocker(assistedSeats, [
+    lobbyBlocker(en, assistedSeats, [
       seat("gm", true, false),
       seat("gm2", true, false),
       seat("p1", true, true),
@@ -86,7 +89,7 @@ test("a co-DM is exempt from a character too, in assisted mode as in human", () 
 // and is never any member's.
 test("one player's character cannot stand in for another's", () => {
   assert.equal(
-    lobbyBlocker(humanSeats, [
+    lobbyBlocker(en, humanSeats, [
       seat("gm", true, false),
       seat("p1", true, true),
       seat("p2", true, false),
@@ -96,7 +99,7 @@ test("one player's character cannot stand in for another's", () => {
 });
 
 test("an empty lobby says so rather than opening", () => {
-  assert.equal(lobbyBlocker(aiSeats, []), "The table is empty.");
+  assert.equal(lobbyBlocker(en, aiSeats, []), "The table is empty.");
 });
 
 // The other half of "a DM seat is not a player": companion room is measured in
