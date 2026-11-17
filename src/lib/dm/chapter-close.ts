@@ -48,6 +48,7 @@ import { indexChapter } from "@/lib/dm/memory-index";
 import { actRecapFor, actTitle, arcExhausted, currentAct, sagaIndexOf } from "@/lib/dm/arc-logic";
 import {
   completeActiveBeat,
+  fallenPlannedBosses,
   judgeBeatCompleted,
   planExhaustedArc,
   publishActEndCard,
@@ -151,8 +152,10 @@ const JUDGE_EVERY = Number(process.env.DM_BEAT_JUDGE_EVERY || 6);
 // story. lastBeatSeq is where the arc last advanced (tool or judge), so the
 // spacing rule and the judge's reading window both start after it. In
 // memory rather than columns: losing it to a restart only means the chapter
-// closes on a later beat or the hard cap, never a wrong close.
-type ChapterPacing = { beats: number; lastBeatSeq: number | null; lastJudgedAt: number };
+// closes on a later beat or the hard cap, never a wrong close. bossFell is
+// set once a boss the plan was saving for a later act has died in this
+// chapter (see maybeCloseChapter).
+type ChapterPacing = { beats: number; lastBeatSeq: number | null; lastJudgedAt: number; bossFell: boolean };
 declare global {
   var __odmChapterPacing: Map<string, ChapterPacing> | undefined;
 }
@@ -160,7 +163,7 @@ const pacingByCampaign = (globalThis.__odmChapterPacing ??= new Map<string, Chap
 function pacingFor(campaignId: string): ChapterPacing {
   let pacing = pacingByCampaign.get(campaignId);
   if (!pacing) {
-    pacing = { beats: 0, lastBeatSeq: null, lastJudgedAt: 0 };
+    pacing = { beats: 0, lastBeatSeq: null, lastJudgedAt: 0, bossFell: false };
     pacingByCampaign.set(campaignId, pacing);
   }
   return pacing;
@@ -319,6 +322,24 @@ export async function maybeCloseChapter(
   };
   if (signals.beatCompleted) {
     recordBeat(Boolean(signals.beatGated));
+  }
+  // The party killed a boss the plan was saving for a later act, the saga's
+  // villain perhaps. The [NOW] beat was not written for that and may never
+  // land now, and a chapter that waited for it ran to the cap with the GM
+  // steering at a plan the table had already ended. The death is this
+  // chapter's turning point: it fills the beat quota, so the chapter closes
+  // once it is long enough and the refresh re-plans from what happened.
+  // Only where the engine keeps the plan: a person in the seat is never
+  // re-planned for (arc.ts refreshStoryArc), so their chapter is not cut.
+  if (
+    !pacing.bossFell &&
+    campaign.storyArc &&
+    narratorIsAi(campaign.gameSettings.dmMode) &&
+    !hasHumanDm(campaignSeats(campaign)) &&
+    fallenPlannedBosses(campaignId, campaign.storyArc, chapter.createdAt).length
+  ) {
+    pacing.bossFell = true;
+    pacing.beats = Math.max(pacing.beats, CHAPTER_BEATS);
   }
   const exhausted = campaign.storyArc ? arcExhausted(campaign.storyArc) : false;
   const limits = { min: CHAPTER_MIN, max: CHAPTER_MAX, beatsRequired: CHAPTER_BEATS };
@@ -573,7 +594,7 @@ export async function maybeCloseChapter(
 
   // Chapter boundaries are the arc's heartbeat: mark beats the chapter
   // accomplished, settle or open sub-arcs. Never throws (arc.ts swallows).
-  await refreshStoryArc(campaignId, result.closed, { endAnnounced: endsAct });
+  await refreshStoryArc(campaignId, result.closed, { endAnnounced: endsAct, since: chapter.createdAt });
   // The opened chapter starts in whatever act the refreshed arc is in.
   const arcAfter = getCampaignById(campaignId)?.storyArc ?? null;
   if (arcAfter) {

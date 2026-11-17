@@ -13,8 +13,11 @@ Back to the [README](../README.md).
   to spotlight specific players for input.
 - **It follows a secret story arc.** Every campaign gets a hidden spine generated at
   start and refreshed with a small clamped delta each time a chapter closes, so the
-  plot advances without the model rewriting history. Player-safe pieces surface as
-  the quest log; GM-only hooks stay hidden.
+  plot advances without the model rewriting history. The plan follows the table:
+  each close also checks whether what lies ahead still fits what was played, plots
+  the rest of the saga again when the party has overtaken it, and moves straight to
+  a sequel when the party ends the central conflict early. Player-safe pieces
+  surface as the quest log; GM-only hooks stay hidden.
 
 The authoritative ledger of exactly what is enforced, what is guidance, and what is
 out of scope is [docs/rules-coverage.md](rules-coverage.md).
@@ -87,7 +90,7 @@ and clamped by code.
 
 ### Narrative
 
-- **Story arc and saga engine** - a three-tier secret spine (campaign-spanning saga, current-act beats, quest-scale sub-arcs) refreshed with clamped deltas and sequel chaining.
+- **Story arc and saga engine** - a three-tier secret spine (campaign-spanning saga, current-act beats, quest-scale sub-arcs) plotted as a plan and then its opening act, refreshed with clamped deltas, re-plotted when play overtakes it, and chained into a sequel when it ends, early or not.
 - **Chapter engine** - chapters close on completed story beats rather than message volume, triggering XP, fact extraction, NPC agency, memory indexing, and a snapshot.
 - **Recap and compaction** - a rolling campaign summary and history compaction that keep prompts bounded.
 - **Chapter rewind and snapshots** - a full world-state snapshot at each chapter open; a lead-confirmed rewind restores a boundary after taking a safety copy.

@@ -220,10 +220,12 @@ const CLASSIFIED = {
   // A delegated monster turn's narration (buildDmSystem) and its decision,
   // a JSON pick of action and target.
   "src/lib/dm/delegate.ts": { prose: 1, machine: 1 },
-  // The saga, the arc passes (arcModelCall: its declaration, its one model
-  // call and its seven callers) and the act recap; the beat judge answers
+  // The saga's plan, the arc passes (arcModelCall: its declaration, its one
+  // model call and its thirteen callers, the course check among them: its
+  // answers are listed values, and its note is read at the table when an
+  // act's recap falls back on it) and the act recap; the beat judge answers
   // YES or NO.
-  "src/lib/dm/arc.ts": { prose: 11, machine: 1 },
+  "src/lib/dm/arc.ts": { prose: 17, machine: 1 },
   "src/lib/dm/ask.ts": { prose: 2, machine: 0 },
   "src/lib/dm/assist.ts": { prose: 2, machine: 0 },
   "src/lib/dm/beats.ts": { prose: 1, machine: 0 },
