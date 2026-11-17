@@ -22,7 +22,9 @@ import { requestDmMessage } from "@/lib/dm/model";
 import { handleNpcSpeak, npcMindsOn, tierOfNpc } from "@/lib/dm/npc-mind";
 import { recipientsOf } from "@/lib/dm/npc-mind-logic";
 import { heroLineVolume, perceivedLine, readEventShape, type SceneEvent } from "@/lib/dm/scene-events-logic";
-import { perceive, type Observer } from "@/lib/dm/senses-logic";
+import { perceive, type Observer, type Perception } from "@/lib/dm/senses-logic";
+import { ensureZones, moveTo, senseScene, whereEveryoneIs, zoneOf } from "@/lib/dm/scene-place";
+import { CONTACT_VERBS } from "@/lib/dm/zones-logic";
 import { describeDuration } from "@/lib/dm/calendar";
 import {
   STAGE_REFEREE_SYSTEM,
@@ -114,7 +116,10 @@ function placeHere(campaign: Campaign): string {
   return [
     `${place.name}${place.layoutDescription ? `: ${clipText(place.layoutDescription, 600)}` : ""}`,
     `Hour ${String(scene.hour).padStart(2, "0")}:00, ${scene.dayPart}${scene.isDark ? ", dark" : ""}${scene.summary ? `; ${scene.summary}` : ""}.`,
-  ].join(" ");
+    whereEveryoneIs(campaign),
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 // What lies loose here, by name and count, for the referee: a thing taken
@@ -134,17 +139,40 @@ export function witness(campaign: Campaign, input: WitnessedEvent): SceneEvent |
   if (!npcMindsOn(campaign)) {
     return null;
   }
-  const observers: Observer[] = onStage(campaign).map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition }));
+  // Where it happened: a move takes the actor to its zone, and a hand laid on
+  // someone in another part of the place takes the actor to them first.
+  const from = zoneOf(campaign, input.actor);
+  let to = input.zoneTo ? moveTo(campaign, input.actor, input.zoneTo) : "";
+  const reached = input.targets[0] ? zoneOf(campaign, input.targets[0]) : "";
+  if (!to && success(input) && CONTACT_VERBS.has(input.verb) && reached && reached !== from) {
+    to = moveTo(campaign, input.actor, reached);
+  }
+  const observers: Observer[] = onStage(campaign).map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition, zone: zoneOf(campaign, npc.name) }));
   const event: Omit<SceneEvent, "seq"> = {
     ...input,
+    zoneTo: to,
     turnId: currentTurnId() ?? "",
     instant: getClock(campaign.id).instant,
     place: getCurrentLocation(campaign.id)?.name ?? "",
-    zoneFrom: "",
+    zoneFrom: from,
     stealth: null,
-    success: input.success ?? true,
+    success: success(input),
   };
-  return recordSceneEvent(campaign.id, event, perceive(event, observers), observers);
+  // A move is seen where it left and where it arrived.
+  const perceived = mergePerceptions(perceive(event, observers, senseScene(campaign, to || from)), to && from && to !== from ? perceive(event, observers, senseScene(campaign, from)) : []);
+  return recordSceneEvent(campaign.id, event, perceived, observers);
+}
+
+function success(input: WitnessedEvent): boolean {
+  return input.success ?? true;
+}
+
+function mergePerceptions(a: readonly Perception[], b: readonly Perception[]): Perception[] {
+  const out = new Map(a.map((entry) => [entry.observerId, [...entry.channels]]));
+  for (const entry of b) {
+    out.set(entry.observerId, [...new Set([...(out.get(entry.observerId) ?? []), ...entry.channels])]);
+  }
+  return [...out].map(([observerId, channels]) => ({ observerId, channels }));
 }
 
 export async function runStage(
@@ -157,6 +185,9 @@ export async function runStage(
     return null;
   }
   const present = onStage(campaign);
+  // The place's zones, made once from its description, and everyone here
+  // placed in one (docs/specs/ogm-npc-perception.md §6).
+  await ensureZones(campaign, [...listSheets(campaign.id).filter((sheet) => !sheet.isCompanion).map((sheet) => sheet.name), ...present.map((npc) => npc.name)], narration);
   const touched = new Set(
     calls
       .filter((call) => call.name === "npc_speak" || call.name === "npc_inform")

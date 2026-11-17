@@ -961,6 +961,23 @@ function ensureSchema(db: SqliteDatabase) {
       instant INTEGER NOT NULL DEFAULT 0
     );
 
+    -- The zones of a place and where each person stands in it
+    -- (docs/specs/ogm-npc-perception.md §6), by name: heroes and NPCs alike.
+    CREATE TABLE IF NOT EXISTS place_zones (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      place TEXT NOT NULL,
+      zones_json TEXT NOT NULL DEFAULT '[]',
+      PRIMARY KEY (campaign_id, place)
+    );
+    CREATE TABLE IF NOT EXISTS scene_positions (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      name_key TEXT NOT NULL,
+      name TEXT NOT NULL,
+      place TEXT NOT NULL,
+      zone TEXT NOT NULL,
+      PRIMARY KEY (campaign_id, name_key)
+    );
+
     -- A seat from which someone outside the table plays a first-tier mind
     -- through their own agent (docs/specs/ogm-mind-seats.md): the code the
     -- lead shares, who claimed it ('' until then) and the mind the server

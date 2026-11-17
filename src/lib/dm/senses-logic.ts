@@ -2,10 +2,10 @@
 // place took in an event, and by which channel. Rules over the event and the
 // observer's state; no model reads prose to decide who noticed. Pure.
 //
-// Distance by zone, light, weather and stealth narrow these channels in
-// later slices; today everyone awake in the place sees and hears what is not
-// done covertly, and a body touched always feels it.
+// Distance by zone (zones-logic), light and weather narrow sight and hearing;
+// a body touched always feels it. Stealth against each watcher comes later.
 import { PHYSICAL_VERBS, type SceneEvent, type SenseChannel } from "@/lib/dm/scene-events-logic";
+import { distance, type Distance, type PlaceZones } from "@/lib/dm/zones-logic";
 import { textKey } from "@/lib/language/text-logic";
 
 export type Observer = {
@@ -14,11 +14,30 @@ export type Observer = {
   // up, wounded, unconscious, dead (npc-state-logic NpcCondition)
   condition: string;
   asleep?: boolean;
+  // Where they stand in the place; "" when not known.
+  zone?: string;
 };
+
+// What the place lets through: its zones, where the event happened, how far
+// the weather lets one see (0 the same zone, 1 next to it, 2 the whole
+// place), whether it is dark with no light, and how much wind and rain
+// cover voices (each step takes a zone off what a voice reaches).
+export type SenseScene = { zones: PlaceZones | null; eventZone: string; sightRange: Distance; dark: boolean; noise: 0 | 1 };
+
+const OPEN_SCENE: SenseScene = { zones: null, eventZone: "", sightRange: 2, dark: false, noise: 0 };
+
+const VOICE_REACH: Record<string, number> = { silent: -1, whisper: 0, normal: 1, shout: 2, noise: 2 };
+
+// The farthest zone a sound of this volume reaches through this weather; a
+// whisper still reaches the one leaning in.
+export function voiceReach(volume: string, noise: 0 | 1): number {
+  const reach = VOICE_REACH[volume] ?? 1;
+  return reach <= 0 ? reach : Math.max(0, reach - noise);
+}
 
 export type Perception = { observerId: string; channels: SenseChannel[] };
 
-export function perceive(event: Pick<SceneEvent, "actor" | "verb" | "targets" | "volume" | "covert">, observers: readonly Observer[]): Perception[] {
+export function perceive(event: Pick<SceneEvent, "actor" | "verb" | "targets" | "volume" | "covert">, observers: readonly Observer[], scene: SenseScene = OPEN_SCENE): Perception[] {
   const out: Perception[] = [];
   for (const observer of observers) {
     if (observer.condition === "dead") {
@@ -37,12 +56,13 @@ export function perceive(event: Pick<SceneEvent, "actor" | "verb" | "targets" | 
     }
     // A covert act is seen by its target alone until stealth is rolled
     // against each watcher (slice 7).
-    if (awake && (!event.covert || onMe)) {
+    const far = observer.zone && scene.eventZone ? distance(scene.zones, observer.zone, scene.eventZone) : 0;
+    const seen = far <= scene.sightRange && (!scene.dark || far === 0);
+    const heard = far <= voiceReach(event.volume, scene.noise);
+    if (awake && seen && (!event.covert || onMe)) {
       channels.push("sight");
-      if (event.volume !== "silent") {
-        channels.push("hearing");
-      }
-    } else if (observer.asleep && (event.volume === "shout" || event.volume === "noise")) {
+    }
+    if ((awake && heard) || (observer.asleep && observer.condition !== "unconscious" && heard && (event.volume === "shout" || event.volume === "noise"))) {
       channels.push("hearing");
     }
     if (channels.length) {

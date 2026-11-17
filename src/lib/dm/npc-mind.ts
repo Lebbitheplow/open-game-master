@@ -11,6 +11,7 @@ import { listRelationships } from "@/lib/db/relationships";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { recordSceneEvent, speechHeardInTurn } from "@/lib/db/scene-events";
 import { perceive, type Observer } from "@/lib/dm/senses-logic";
+import { senseScene, whereEveryoneIs, zoneOf } from "@/lib/dm/scene-place";
 import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
 import { recordExtractedFacts } from "@/lib/db/facts";
@@ -351,6 +352,7 @@ function whereYouStand(campaign: Campaign, npc: Npc): string {
     `Where you are now: ${place.name}.`,
     place.layoutDescription ? `What it looks like around you: ${clipText(place.layoutDescription, 600)}` : "",
     `The hour: ${hour}.${scene.summary ? ` The sky: ${scene.summary}.` : ""}`,
+    whereEveryoneIs(campaign, npc.name),
   ]
     .filter(Boolean)
     .join(" ");
@@ -855,7 +857,7 @@ export function everyoneHears(campaign: Campaign, turnId: string, lines: readonl
       continue;
     }
     seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
-    listeners.push({ id: npc.id, name: npc.name, condition: npc.state.condition });
+    listeners.push({ id: npc.id, name: npc.name, condition: npc.state.condition, zone: zoneOf(campaign, npc.name) });
   }
   if (!listeners.length) {
     return;
@@ -869,7 +871,7 @@ export function everyoneHears(campaign: Campaign, turnId: string, lines: readonl
       continue;
     }
     const event = { turnId, instant: now, place, actor: line.speaker, verb: "speak" as const, targets: [], object: "", zoneFrom: "", zoneTo: "", volume: "normal" as const, covert: false, stealth: null, success: true, speech: line.words.slice(0, 1200), outcome: "" };
-    recordSceneEvent(campaign.id, event, perceive(event, listeners), listeners);
+    recordSceneEvent(campaign.id, { ...event, zoneFrom: zoneOf(campaign, line.speaker) }, perceive(event, listeners, senseScene(campaign, zoneOf(campaign, line.speaker))), listeners);
   }
 }
 const informSchema = z.object({

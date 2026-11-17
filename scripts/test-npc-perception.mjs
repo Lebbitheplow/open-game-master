@@ -62,4 +62,46 @@ await test("the stage frame: time, what the senses took in, and the narration on
   assert.equal(frame, stage.stageFrame({ perceived: ["You saw: Kaku mangia una galletta."], elapsed: "2 hours passed", atmosphere: "x".repeat(900) }), "same inputs, same text");
 });
 
+const zones = await import("../src/lib/dm/zones-logic.ts");
+
+await test("zones: a proposal is kept only if it makes a place; neighbours are symmetric; distance 0/1/2", () => {
+  const raft = zones.validateZones([
+    { name: "prua", adjacent: ["centro", "nowhere"] },
+    { name: "centro", adjacent: ["poppa"] },
+    { name: "poppa", adjacent: [] },
+    { name: "Prua", adjacent: [] },
+  ]);
+  assert.deepEqual(raft.zones.map((zone) => zone.name), ["prua", "centro", "poppa"], "duplicates dropped");
+  assert.deepEqual(raft.zones.find((zone) => zone.name === "poppa").adjacent, ["centro"], "adjacency made symmetric, unknown names dropped");
+  assert.equal(zones.distance(raft, "prua", "PRUA"), 0);
+  assert.equal(zones.distance(raft, "prua", "centro"), 1);
+  assert.equal(zones.distance(raft, "prua", "poppa"), 2);
+  assert.equal(zones.distance(raft, "prua", "the mast"), 1, "an unknown zone hides nothing");
+  assert.equal(zones.validateZones([{ name: "a", adjacent: [] }, { name: "b", adjacent: [] }]), null, "unreachable parts are not a place");
+  assert.equal(zones.validateZones([{ name: "solo", adjacent: [] }]), null, "one zone is no zones");
+  const proposal = zones.parseZoneProposal('{"zones":[{"name":"prua","adjacent":["poppa"]},{"name":"poppa","adjacent":[]}],"placements":{"kaku":"poppa","Brakk":"the sea"}}', ["Kaku", "Brakk"]);
+  assert.deepEqual(proposal.placements, { Kaku: "poppa", Brakk: "prua" }, "unknown zones fall to the first");
+});
+
+await test("senses by distance: a whisper reaches the same zone, a voice the next, a shout across; fog and dark narrow sight; wind covers voices", () => {
+  const raft = zones.validateZones([{ name: "prua", adjacent: ["centro"] }, { name: "centro", adjacent: ["poppa"] }, { name: "poppa", adjacent: [] }]);
+  const at = [
+    { id: "k", name: "Kaku", condition: "up", zone: "prua" },
+    { id: "m", name: "Mairon", condition: "up", zone: "centro" },
+    { id: "o", name: "Ottone Kranz", condition: "up", zone: "poppa" },
+  ];
+  const clear = { zones: raft, eventZone: "prua", sightRange: 2, dark: false, noise: 0 };
+  const said = (volume, scene) => Object.fromEntries(senses.perceive({ actor: "Brakk", verb: "speak", targets: [], volume, covert: false }, at, scene).map((entry) => [entry.observerId, entry.channels]));
+  assert.ok(said("whisper", clear).k.includes("hearing"));
+  assert.ok(!said("whisper", clear).m?.includes("hearing"), "a whisper does not reach the next zone");
+  assert.ok(said("normal", clear).m.includes("hearing"));
+  assert.ok(!said("normal", clear).o?.includes("hearing"), "a voice does not cross the raft");
+  assert.ok(said("shout", clear).o.includes("hearing"));
+  assert.ok(said("normal", clear).o.includes("sight"), "but it is seen on a clear day");
+  assert.ok(!said("shout", { ...clear, noise: 1 }).o?.includes("hearing"), "a gale covers even a shout two zones off");
+  assert.ok(!said("normal", { ...clear, sightRange: 0 }).m?.includes("sight"), "fog hides the next zone");
+  assert.ok(!said("normal", { ...clear, dark: true }).m?.includes("sight"), "the dark hides all but one's own zone");
+  assert.ok(said("normal", { ...clear, dark: true }).k.includes("sight"));
+});
+
 finish();

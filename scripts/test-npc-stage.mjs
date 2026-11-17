@@ -270,5 +270,26 @@ await test("a hero's thing changing hands is an event the minds here see (percep
   assert.ok(kept.some((line) => line.startsWith("Brakk, a hero, in their own words") && line.includes("Poso la corda")), "the hero's line, as an attempt");
 });
 
+await test("zones: a hero's whisper at the bow reaches the one beside them, not the stern; a shove across takes the actor there (perception slice 3)", async () => {
+  const { upsertCurrentLocation } = await import("../src/lib/db/locations.ts");
+  const { setPlaceZones, setPosition, positionOf } = await import("../src/lib/db/scene-zones.ts");
+  const { witness } = await import("../src/lib/dm/npc-stage.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "La zattera" });
+  setPlaceZones(world.campaignId, "La zattera", { zones: [{ name: "prua", adjacent: ["centro"] }, { name: "centro", adjacent: ["prua", "poppa"] }, { name: "poppa", adjacent: ["centro"] }] });
+  npc("Kaku");
+  for (const [name, zone] of [["Brakk", "prua"], ["Kaku", "prua"], ["Mairon", "poppa"]]) {
+    setPosition(world.campaignId, "La zattera", name, zone);
+  }
+  const campaign = getCampaignById(world.campaignId);
+  const kept = (name) => minds.listNpcMemories(world.campaignId, getNpcByName(world.campaignId, name).id).map((entry) => entry.content);
+  witness(campaign, { actor: "Brakk", verb: "other", targets: [], object: "", zoneTo: "", volume: "whisper", covert: false, speech: "", outcome: "Sussurro a Kaku: il rum è mio.", ownWords: true });
+  assert.ok(kept("Kaku").some((line) => line.includes("il rum è mio")), "the one beside hears the whisper");
+  assert.ok(!kept("Mairon").some((line) => line.includes("il rum è mio")), "the stern does not");
+  witness(campaign, { actor: "Kaku", verb: "push", targets: ["Mairon"], object: "", zoneTo: "", volume: "normal", covert: false, speech: "", outcome: "Kaku spinge Mairon contro il bordo." });
+  assert.equal(positionOf(world.campaignId, "La zattera", "Kaku"), "poppa", "laying hands on someone at the stern takes the actor there");
+  assert.ok(kept("Mairon").some((line) => line.includes("spinge Mairon")), "the target feels and sees it");
+});
+
 model.close();
 finish();
