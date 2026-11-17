@@ -158,3 +158,19 @@ export function planItemMove(move: ItemMove, people: readonly ItemPerson[], keyO
   }
   return { kind: "hand", thing: move.thing, from, to };
 }
+
+// A move the owner applied, as a scene event (docs/specs/ogm-npc-perception.md
+// §5.3): who did what with which thing, in plain words the senses can pass on.
+export function itemEvent(plan: Exclude<ItemPlan, { kind: "refused" }>, thing: string) {
+  const base = { object: thing, zoneTo: "", volume: "normal" as const, covert: false, speech: "" };
+  switch (plan.kind) {
+    case "hand":
+      return { ...base, actor: plan.from, verb: "give" as const, targets: [plan.to], outcome: `${plan.from} gives ${thing} to ${plan.to}.` };
+    case "drop":
+      return { ...base, actor: plan.from, verb: "put_down" as const, targets: [], outcome: `${plan.from} puts ${thing} down here.` };
+    case "pickup":
+      return { ...base, actor: plan.to, verb: "take" as const, targets: [], outcome: `${plan.to} picks up ${thing} from the ground.` };
+    case "lose":
+      return { ...base, actor: plan.from, verb: "other" as const, targets: [], outcome: `${plan.from} no longer has ${thing}: it is used up or gone.` };
+  }
+}

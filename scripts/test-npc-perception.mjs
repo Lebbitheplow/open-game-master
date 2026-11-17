@@ -52,15 +52,14 @@ await test("a perceived event reads as the observer took it in, and only by the 
   assert.equal(events.perceivedLine(event, "Gruoch", ["hearing"]), "You heard Ottone Kranz's voice say «Spostati.»");
 });
 
-await test("the stage frame: time, what the senses took in, the heroes' words, and the narration only as a short mood line", () => {
-  const frame = stage.stageFrame({ heroes: [{ name: "Brakk", text: "Resto immobile." }], perceived: ["You saw: Kaku mangia una galletta."], elapsed: "2 hours passed", atmosphere: "x".repeat(900) });
+await test("the stage frame: time, what the senses took in, and the narration only as a short mood line", () => {
+  const frame = stage.stageFrame({ perceived: ["You saw: Kaku mangia una galletta."], elapsed: "2 hours passed", atmosphere: "x".repeat(900) });
   assert.match(frame, /^Since your last turn: 2 hours passed\./);
   assert.match(frame, /What you took in with your own senses since your last turn \(it already happened\):\n- You saw: Kaku mangia una galletta\./);
-  assert.match(frame, /- Brakk: Resto immobile\./);
   const mood = frame.split("an impression, not a fact you witnessed): ")[1];
   assert.ok(mood.length <= stage.ATMOSPHERE_CHARS);
-  assert.equal(stage.stageFrame({ heroes: [], perceived: [], elapsed: "", atmosphere: "" }), "");
-  assert.equal(frame, stage.stageFrame({ heroes: [{ name: "Brakk", text: "Resto immobile." }], perceived: ["You saw: Kaku mangia una galletta."], elapsed: "2 hours passed", atmosphere: "x".repeat(900) }), "same inputs, same text");
+  assert.equal(stage.stageFrame({ perceived: [], elapsed: "", atmosphere: "" }), "");
+  assert.equal(frame, stage.stageFrame({ perceived: ["You saw: Kaku mangia una galletta."], elapsed: "2 hours passed", atmosphere: "x".repeat(900) }), "same inputs, same text");
 });
 
 finish();

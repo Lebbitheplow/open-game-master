@@ -9,6 +9,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { listSheets, getSheetById } from "@/lib/db/sheets";
 import { listRelationships } from "@/lib/db/relationships";
 import { listDroppedItems } from "@/lib/db/dropped-items";
+import { recordSceneEvent, speechHeardInTurn } from "@/lib/db/scene-events";
+import { perceive, type Observer } from "@/lib/dm/senses-logic";
 import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
 import { recordExtractedFacts } from "@/lib/db/facts";
@@ -93,7 +95,6 @@ import {
   type NpcMemory,
   type NpcProposal,
   firstTierLimit,
-  heardMemory,
   MAX_FIRST_TIER_NPCS,
   ON_STAGE_SOURCE,
   wornWords,
@@ -828,9 +829,11 @@ function bringToScene(campaign: Campaign, npc: Npc) {
 }
 
 // Everyone in the scene hears what was said aloud in it (turn.ts, at the
-// end of every DM turn): each first-tier mind here with the party, awake and
-// not apart, keeps the words, save its own. No dice and no note: where the
-// scene's edge lies is the narrator's to tell (npc_inform for news from afar).
+// end of every DM turn), as a speech event each mind's senses take in
+// (docs/specs/ogm-npc-perception.md): each first-tier mind here with the
+// party, not apart, keeps the words as it heard them, save its own. Words
+// already heard as events this turn (the stage's, the heroes' own lines on a
+// staged table) are not heard again from the narrator's retelling.
 export function everyoneHears(campaign: Campaign, turnId: string, lines: readonly { speaker: string; words: string }[]) {
   if (!npcMindsOn(campaign) || !turnId || !lines.length) {
     return;
@@ -838,6 +841,7 @@ export function everyoneHears(campaign: Campaign, turnId: string, lines: readonl
   const here = textKey(getCurrentLocation(campaign.id)?.name ?? "");
   const now = nowInstant(campaign.id);
   const place = getCurrentLocation(campaign.id)?.name ?? "";
+  const listeners: Observer[] = [];
   for (const npc of listNpcs(campaign.id)) {
     // Where the NPC is, not whether it travels with the party: one left in
     // the courtyard while some of the party went on hears nothing said there.
@@ -850,19 +854,22 @@ export function everyoneHears(campaign: Campaign, turnId: string, lines: readonl
     if (tierOfNpc(npc) !== "primary" || npc.archived || !present || elsewhere || npcSilencedBy(npc.state)) {
       continue;
     }
-    const heard = lines.filter((line) => textKey(line.speaker) !== textKey(npc.name)).slice(0, 12);
-    if (!heard.length) {
+    seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
+    listeners.push({ id: npc.id, name: npc.name, condition: npc.state.condition });
+  }
+  if (!listeners.length) {
+    return;
+  }
+  const staged = Boolean(campaign.gameSettings.npcStage);
+  const heroes = new Set(heroesOf(campaign.id).map((hero) => textKey(hero.name)));
+  const heard = speechHeardInTurn(campaign.id, turnId).map(textKey);
+  const already = (words: string) => heard.some((speech) => speech.includes(textKey(words)) || textKey(words).includes(speech));
+  for (const line of lines.slice(0, 24)) {
+    if ((staged && heroes.has(textKey(line.speaker))) || already(line.words)) {
       continue;
     }
-    seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
-    for (const line of heard) {
-      addNpcMemories(
-        campaign.id,
-        [npc.id],
-        { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: heardMemory(line.speaker, line.words.slice(0, 1200), place), learnedAt: now },
-        turnId,
-      );
-    }
+    const event = { turnId, instant: now, place, actor: line.speaker, verb: "speak" as const, targets: [], object: "", zoneFrom: "", zoneTo: "", volume: "normal" as const, covert: false, stealth: null, success: true, speech: line.words.slice(0, 1200), outcome: "" };
+    recordSceneEvent(campaign.id, event, perceive(event, listeners), listeners);
   }
 }
 const informSchema = z.object({

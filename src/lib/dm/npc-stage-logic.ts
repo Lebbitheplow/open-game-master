@@ -32,22 +32,6 @@ function heroLinesBlock(lines: readonly HeroLine[], heading: string): string {
   return kept.length ? `${heading}\n${kept.map((line) => `- ${line.name}: ${clipText(line.text, 500)}`).join("\n")}` : "";
 }
 
-// What a mind perceives at its turn: what the heroes did and asked, what the
-// table was just told, and what the minds before it did, as it ended.
-export function stageSenses(narration: string, facts: readonly string[], heroes: readonly HeroLine[] = []): string {
-  return [
-    heroLinesBlock(
-      heroes,
-      "What the heroes just did and said, in their own words (what they attempt; how it ended is told below, or is yours to answer if it was asked of you or done to you or your things):",
-    ),
-    narration ? `What just happened around you:\n${clipText(narration, heroes.length ? 1000 : 1200)}` : "",
-    facts.length ? `Since then, in this same moment (it already happened):\n${facts.map((fact) => `- ${fact}`).join("\n")}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n")
-    .slice(0, 1990);
-}
-
 export type StagePerson = { name: string; state: string; carries: string[]; hero?: boolean };
 
 export const STAGE_REFEREE_SYSTEM = [
@@ -204,14 +188,10 @@ export const STAGE_RULES =
 // mind knows happened.
 export const ATMOSPHERE_CHARS = 300;
 
-export function stageFrame(input: { heroes: readonly HeroLine[]; perceived: readonly string[]; elapsed: string; atmosphere: string }): string {
+export function stageFrame(input: { perceived: readonly string[]; elapsed: string; atmosphere: string }): string {
   return [
     input.elapsed ? `Since your last turn: ${input.elapsed}.` : "",
     input.perceived.length ? `What you took in with your own senses since your last turn (it already happened):\n${input.perceived.map((line) => `- ${line}`).join("\n")}` : "",
-    heroLinesBlock(
-      input.heroes,
-      "What the heroes just did and said, in their own words (what they attempt; how it ended is told below, or is yours to answer if it was asked of you or done to you or your things):",
-    ),
     input.atmosphere ? `The mood of the moment, as the narrator tells it (an impression, not a fact you witnessed): ${clipText(input.atmosphere, ATMOSPHERE_CHARS)}` : "",
   ]
     .filter(Boolean)

@@ -545,7 +545,7 @@ await test("everyone in the scene hears what is said aloud in it: no dice and no
     await model.turn(world, '"Who are you?" I whisper to the farmer.', aria.id);
     assert.equal(notes() - before, 0, "no note asks who heard");
     assert.ok(memories("Healer Imre").some((entry) => /The bridge is out since dawn/.test(entry.content)), "the narrator's voiced line");
-    assert.ok(memories("Healer Imre").some((entry) => /Aria say: «Who are you\?»/.test(entry.content)), "the hero's own whispered words: everyone hears");
+    assert.ok(memories("Healer Imre").some((entry) => /Aria said «Who are you\?»/.test(entry.content)), "the hero's own words, heard as a speech event (one zone yet: everyone here hears)");
     assert.ok(!memories("Patient Ost").some((entry) => /bridge is out/.test(entry.content)), "the unconscious hear nothing");
     assert.ok(!memories("Clerk Bede").some((entry) => /bridge is out/.test(entry.content)), "someone elsewhere hears nothing");
     const { npcMindTools } = await import("../src/lib/dm/npc-mind-tools.ts");

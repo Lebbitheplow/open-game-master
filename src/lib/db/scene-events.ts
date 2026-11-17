@@ -25,6 +25,7 @@ type EventRow = {
   success: number;
   speech: string;
   outcome: string;
+  own_words: number;
 };
 
 function eventOf(row: EventRow): SceneEvent {
@@ -45,6 +46,7 @@ function eventOf(row: EventRow): SceneEvent {
     success: row.success === 1,
     speech: row.speech,
     outcome: row.outcome,
+    ownWords: row.own_words === 1,
   };
 }
 
@@ -57,8 +59,8 @@ export function recordSceneEvent(
   const db = getDatabase();
   const result = db
     .prepare(
-      `INSERT INTO scene_events (campaign_id, turn_id, instant, place, actor, verb, targets_json, object, zone_from, zone_to, volume, covert, stealth, success, speech, outcome, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO scene_events (campaign_id, turn_id, instant, place, actor, verb, targets_json, object, zone_from, zone_to, volume, covert, stealth, success, speech, outcome, own_words, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       campaignId,
@@ -77,6 +79,7 @@ export function recordSceneEvent(
       event.success ? 1 : 0,
       event.speech,
       event.outcome,
+      event.ownWords ? 1 : 0,
       nowIso(),
     );
   const seq = Number(result.lastInsertRowid);
@@ -125,4 +128,11 @@ export function setPerceptionCursor(campaignId: string, npcId: string, cursor: P
 export function lastSceneEventSeq(campaignId: string): number {
   const row = getDatabase().prepare(`SELECT MAX(seq) AS seq FROM scene_events WHERE campaign_id = ?`).get(campaignId) as { seq: number | null } | undefined;
   return row?.seq ?? 0;
+}
+
+// The words already heard as events this turn, so the narrator's retelling
+// of them is not heard a second time.
+export function speechHeardInTurn(campaignId: string, turnId: string): string[] {
+  const rows = getDatabase().prepare(`SELECT speech FROM scene_events WHERE campaign_id = ? AND turn_id = ? AND speech <> ''`).all(campaignId, turnId) as Array<{ speech: string }>;
+  return rows.map((row) => row.speech);
 }

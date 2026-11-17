@@ -138,11 +138,11 @@ await test("next turn each mind is handed what its senses took in since its last
   }
 });
 
-await test("pure rules: a thing is named by its words; the heroes' own words reach every mind", () => {
+await test("pure rules: a thing is named by its words; the heroes' own words reach every mind", async () => {
   assert.equal(logic.thingNamed(["una bottiglia di rum", "un remo"], "la bottiglia di rum", italian), "una bottiglia di rum", "the article does not hide a thing");
-  const senses = logic.stageSenses("La zattera dondola. ".repeat(120), [], [{ name: "Brakk", text: "Mairon, passami il rum. Divido il pesce in sette pezzi." }]);
-  assert.match(senses, /^What the heroes just did and said, in their own words[^\n]*\n- Brakk: Mairon, passami il rum\. Divido il pesce in sette pezzi\./, "the hero's own words come first and whole");
-  assert.ok(senses.length <= 2000, "it still fits npc_speak's perceives");
+  const events = await import("../src/lib/dm/scene-events-logic.ts");
+  const own = events.perceivedLine({ actor: "Brakk", targets: [], speech: "", verb: "other", ownWords: true, outcome: "Mairon, passami il rum. Divido il pesce in sette pezzi." }, "Mairon", ["sight", "hearing"]);
+  assert.match(own, /^Brakk, a hero, in their own words \(what they attempt[^)]*\): Mairon, passami il rum\. Divido il pesce in sette pezzi\./, "the hero's own words reach a mind whole, as an attempt");
   const prompt = logic.renderRefereePrompt({ actor: "Mairon", intent: "porgo il rum", speech: "", people: [], scene: "", facts: [], heroLines: [{ name: "Brakk", text: "Mairon, passami il rum." }] });
   assert.match(prompt, /What the heroes did and said this turn, in their own words:\n- Brakk: Mairon, passami il rum\./);
   const note = logic.stageNote([{ actor: "Mairon", speech: "", outcome: "Mairon getta il remo.", roll: "", hero: "" }], []);
@@ -178,7 +178,7 @@ await test("the rum: a hero asks a mind for its thing; the mind hears the hero's
   const asked = model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You are one character"));
   assert.equal(asked.length, 1, "the one mind on stage was asked");
   for (const request of asked) {
-    assert.match(textOf(request), /- Brakk: Mairon, passami il rum: ne ho bisogno\. Poi divido il pesce in sette pezzi\./, "every mind hears the hero's own words, not only the retelling");
+    assert.match(textOf(request), /- Brakk, a hero, in their own words [^\n]*: Mairon, passami il rum: ne ho bisogno\. Poi divido il pesce in sette pezzi\./, "every mind hears the hero's own words, not only the retelling");
   }
   const referee = model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You are the referee"));
   assert.match(textOf(referee[0]), /- Brakk \(a hero\); has: [^\n]*Pesce/, "the referee sees what the hero really carries: the fish");
@@ -256,6 +256,18 @@ await test("where they stand and what lies there, as nobody's, are seen by every
   // And where they stand: the place, the hour, the sky (2026-11-17).
   assert.match(textOf(mind), /Where you are now: La zattera\. .*The hour: \d\d:00/s);
   assert.match(textOf(sentTo("You are the referee").at(-1)), /Where this happens: La zattera.*Hour \d\d:00/s);
+});
+
+await test("a hero's thing changing hands is an event the minds here see (perception slice 2)", async () => {
+  const own = listSheets(world.campaignId).find((sheet) => sheet.name === "Brakk");
+  writeItems(own.id, { equipment: grantItemMath(own.equipment, "Corda", 1, { identified: true }).equipment });
+  const look = json({ uncertain: false, dc: 5, modifier: 0, hero: "", success: { outcome: "Mairon guarda la corda.", changes: [], event: { verb: "watch", targets: [], object: "", volume: "silent", covert: false } }, failure: { outcome: "", changes: [] } });
+  model.script([reply({ text: "Brakk posa la Corda sulle assi." }), ego("Guardo la corda."), look, reply({ text: "Mairon guarda la corda." })]);
+  model.items([json({ moves: [{ thing: "Corda", from: "Brakk", to: "ground" }] })]);
+  await model.turn(world, "Poso la corda sulle assi.", brakk.id);
+  const kept = minds.listNpcMemories(world.campaignId, getNpcByName(world.campaignId, "Mairon").id).map((entry) => entry.content);
+  assert.ok(kept.includes("You saw: Brakk puts Corda down here."), kept.slice(-4).join(" | "));
+  assert.ok(kept.some((line) => line.startsWith("Brakk, a hero, in their own words") && line.includes("Poso la corda")), "the hero's line, as an attempt");
 });
 
 model.close();

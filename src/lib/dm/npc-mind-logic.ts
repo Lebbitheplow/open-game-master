@@ -706,11 +706,6 @@ export function sceneMindsPrompt(names: readonly string[], timeSkipped = false):
   ].join(" ");
 }
 
-// What a mind keeps of words said aloud in its scene (npc-mind.ts
-// everyoneHears): everyone there hears them.
-export function heardMemory(speaker: string, words: string, place: string): string {
-  return `${place ? `${place}: ` : ""}you heard ${speaker} say: «${words}»`;
-}
 
 // First-tier NPCs besides the party's companions: each is a mind the table
 // pays for every time they act. The table sets the ceiling

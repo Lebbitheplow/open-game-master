@@ -65,6 +65,8 @@ export type SceneEvent = EventShape & {
   success: boolean;
   speech: string;
   outcome: string;
+  // A hero's line in their own words: what they attempt, not how it ended.
+  ownWords?: boolean;
 };
 
 export type SenseChannel = "sight" | "hearing" | "touch";
@@ -96,7 +98,12 @@ export function readEventShape(record: Record<string, unknown>, people: readonly
 // theirs or done to them. Only the channels it reached are told: seen
 // without being heard, the words stay out; heard without being seen, the
 // deed does.
-export function perceivedLine(event: Pick<SceneEvent, "actor" | "targets" | "speech" | "outcome" | "verb">, observer: string, channels: readonly SenseChannel[]): string {
+export function perceivedLine(event: Pick<SceneEvent, "actor" | "targets" | "speech" | "outcome" | "verb" | "ownWords">, observer: string, channels: readonly SenseChannel[]): string {
+  if (event.ownWords) {
+    return channels.includes("sight") || channels.includes("hearing")
+      ? `${event.actor}, a hero, in their own words (what they attempt; how it ended is told elsewhere, or is yours to answer if it was asked of you or done to you or your things): ${clipText(event.outcome, 500)}`
+      : "";
+  }
   const mine = textKey(event.actor) === textKey(observer);
   const onMe = event.targets.some((name) => textKey(name) === textKey(observer));
   const sees = channels.includes("sight");
@@ -128,4 +135,17 @@ function sentences(parts: readonly string[]): string {
     .filter(Boolean)
     .map((part) => (/[.!?…»"]$/.test(part.trim()) ? part.trim() : `${part.trim()}.`))
     .join(" ");
+}
+
+// The volume of a hero's own line, from its words: a whisper or a shout is
+// said so, in the table's language or English.
+export function heroLineVolume(text: string): SceneVolume {
+  const words = textKey(text);
+  if (/\b(sussurr|bisbigli|mormor|whisper|murmur)/.test(words)) {
+    return "whisper";
+  }
+  if (/\b(grid|url|strill|shout|yell|scream)/.test(words)) {
+    return "shout";
+  }
+  return "normal";
 }

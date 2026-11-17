@@ -21,7 +21,7 @@ import { currentTurnId } from "@/lib/dm/job-control";
 import { requestDmMessage } from "@/lib/dm/model";
 import { handleNpcSpeak, npcMindsOn, tierOfNpc } from "@/lib/dm/npc-mind";
 import { recipientsOf } from "@/lib/dm/npc-mind-logic";
-import { perceivedLine, readEventShape } from "@/lib/dm/scene-events-logic";
+import { heroLineVolume, perceivedLine, readEventShape, type SceneEvent } from "@/lib/dm/scene-events-logic";
 import { perceive, type Observer } from "@/lib/dm/senses-logic";
 import { describeDuration } from "@/lib/dm/calendar";
 import {
@@ -126,6 +126,27 @@ function groundHere(campaign: Campaign): string[] {
     .map((entry) => `${entry.item.name}${(entry.item.qty ?? 1) > 1 ? ` x${entry.item.qty}` : ""}`);
 }
 
+// One event in the party's place, recorded with who of the minds here took
+// it in and by which channel (senses-logic), each left a line of it.
+export type WitnessedEvent = Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "zoneTo" | "volume" | "covert" | "speech" | "outcome"> & { success?: boolean; ownWords?: boolean };
+
+export function witness(campaign: Campaign, input: WitnessedEvent): SceneEvent | null {
+  if (!npcMindsOn(campaign)) {
+    return null;
+  }
+  const observers: Observer[] = onStage(campaign).map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition }));
+  const event: Omit<SceneEvent, "seq"> = {
+    ...input,
+    turnId: currentTurnId() ?? "",
+    instant: getClock(campaign.id).instant,
+    place: getCurrentLocation(campaign.id)?.name ?? "",
+    zoneFrom: "",
+    stealth: null,
+    success: input.success ?? true,
+  };
+  return recordSceneEvent(campaign.id, event, perceive(event, observers), observers);
+}
+
 export async function runStage(
   campaign: Campaign,
   calls: ReadonlyArray<{ name: string; args: Record<string, unknown>; result?: Record<string, unknown> | null }>,
@@ -145,7 +166,6 @@ export async function runStage(
   if (!order.length) {
     return null;
   }
-  const turnId = currentTurnId() ?? "";
   const heroSheets = () => listSheets(campaign.id).filter((sheet) => !sheet.isCompanion);
   const heroes = heroSheets().map((sheet) => sheet.name);
   const facts: StageFact[] = [];
@@ -158,6 +178,11 @@ export async function runStage(
   // other minds' deeds among them), not the narrator's retelling
   // (docs/specs/ogm-npc-perception.md §12). The frame is not kept as a
   // memory: every event in it already left its own line.
+  // The heroes' own lines are events too, taken in by each mind's senses: a
+  // whisper to one is not every mind's to answer.
+  for (const line of heroLines.filter((entry) => entry.name.trim() && entry.text.trim())) {
+    witness(campaign, { actor: line.name, verb: "other", targets: [], object: "", zoneTo: "", volume: heroLineVolume(line.text), covert: false, speech: "", outcome: line.text, ownWords: true });
+  }
   const frameNow = getClock(campaign.id).instant;
   const frameSeq = lastSceneEventSeq(campaign.id);
   const frames = order.map((actor) => {
@@ -167,7 +192,7 @@ export async function runStage(
       .filter(Boolean);
     const elapsed = cursor && frameNow > cursor.instant ? `${describeDuration(frameNow - cursor.instant)} passed` : "";
     setPerceptionCursor(campaign.id, actor.id, { seq: frameSeq, instant: frameNow });
-    return stageFrame({ heroes: heroLines, perceived, elapsed, atmosphere: narration }) || "Nothing new.";
+    return stageFrame({ perceived, elapsed, atmosphere: narration }) || "Nothing new.";
   });
   const answers = await Promise.all(
     order.map(async (actor, index) => (await handleNpcSpeak(campaign, JSON.stringify({ name: actor.name, perceives: frames[index] }), { remember: false })) as Record<string, unknown>),
@@ -218,11 +243,7 @@ export async function runStage(
     // answered, so each reads it in its frame next turn: the first to act
     // used never to learn what the six after it did (2026-11-17).
     const shape = readEventShape(chosen?.event ?? {}, people.map((person) => person.name), speech);
-    const observers: Observer[] = cast
-      .filter((npc) => present.some((entry) => entry.id === npc.id))
-      .map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition }));
-    const event = { ...shape, turnId, instant: now, place: getCurrentLocation(campaign.id)?.name ?? "", actor: actor.name, zoneFrom: "", stealth: null, success: succeeded, speech, outcome: fact.outcome };
-    recordSceneEvent(campaign.id, event, perceive(event, observers), observers);
+    witness(campaign, { ...shape, actor: actor.name, success: succeeded, speech, outcome: fact.outcome });
   }
   return { note: stageNote(facts, silent), heroFacts: facts.filter((fact) => fact.hero).length };
 }

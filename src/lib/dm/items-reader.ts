@@ -16,10 +16,10 @@ import { handleItemCall } from "@/lib/dm/gear-tool";
 import { requestDmMessage } from "@/lib/dm/model";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { egoChoice } from "@/lib/dm/npc-mind";
-import { npcStageOn, onStage, sheetOf } from "@/lib/dm/npc-stage";
+import { npcStageOn, onStage, sheetOf, witness } from "@/lib/dm/npc-stage";
 import { thingNamed } from "@/lib/dm/npc-stage-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
-import { ITEMS_READER_SYSTEM, parseItemMoves, planItemMove, renderItemsReaderPrompt, storyNamesThing, wholeThingNamed, type ItemMove, type ItemPerson } from "@/lib/dm/items-reader-logic";
+import { ITEMS_READER_SYSTEM, itemEvent, parseItemMoves, planItemMove, renderItemsReaderPrompt, storyNamesThing, wholeThingNamed, type ItemMove, type ItemPerson } from "@/lib/dm/items-reader-logic";
 import { withoutLeadingStopWords } from "@/lib/language/language";
 import { italianName } from "@/lib/language/srd-names-it";
 import { textKey } from "@/lib/language/text-logic";
@@ -194,5 +194,14 @@ function makeMove(campaign: Campaign, turn: DmTurn, move: ItemMove, people: read
       turn,
     ) as Record<string, unknown>;
   }
-  return result && "error" in result && result.error ? { ok: false, why: String(result.error) } : { ok: true };
+  if (result && "error" in result && result.error) {
+    return { ok: false, why: String(result.error) };
+  }
+  // A hero's thing changing hands is an event the minds here see; theirs
+  // already are, as the stage's own (docs/specs/ogm-npc-perception.md §5.3).
+  const actor = plan.kind === "pickup" ? plan.to : plan.from;
+  if (people.some((person) => person.hero && textKey(person.name) === textKey(actor))) {
+    witness(campaign, itemEvent(plan, line));
+  }
+  return { ok: true };
 }

@@ -942,6 +942,7 @@ function ensureSchema(db: SqliteDatabase) {
       success INTEGER NOT NULL DEFAULT 1,
       speech TEXT NOT NULL DEFAULT '',
       outcome TEXT NOT NULL DEFAULT '',
+      own_words INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_scene_events ON scene_events(campaign_id, seq);
@@ -1546,6 +1547,9 @@ function ensureSchema(db: SqliteDatabase) {
     // settles (src/lib/table-delivery.ts).
     ["owner_only", `INTEGER NOT NULL DEFAULT 0`],
   ]);
+
+  // A hero's own line on the stage (docs/specs/ogm-npc-perception.md).
+  addColumns("scene_events", [["own_words", `INTEGER NOT NULL DEFAULT 0`]]);
 
   addColumns("npcs", [
     // The round a lasting companion last tried to recruit another into a
