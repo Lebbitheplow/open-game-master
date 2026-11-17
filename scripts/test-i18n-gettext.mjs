@@ -22,7 +22,7 @@ for (const file of ["../src/lib/request-locale.ts", "../src/app/layout.tsx", "..
 }
 await import("../src/lib/i18n/fr-catalog.ts");
 assert.equal(catalogInstalled("fr"), true);
-const { localeFromAcceptLanguage, resolveLocale, resolveRequestLocale } = await import("../src/lib/i18n/locale.ts");
+const { localeFromAcceptLanguage, localeOfServerLanguage, resolveLocale, resolveRequestLocale } = await import("../src/lib/i18n/locale.ts");
 const frCatalog = JSON.parse(fs.readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8"));
 
 // 1. English returns the source string verbatim with interpolation
@@ -48,6 +48,15 @@ assert.equal(resolveLocale({ savedLocale: "fr", cookieHeader: "odm_locale=en", a
 assert.equal(resolveLocale({ cookieHeader: "foo=1; odm_locale=fr", acceptLanguage: "en-US" }), "fr");
 assert.equal(resolveLocale({ acceptLanguage: "fr-CA,fr;q=0.9,en;q=0.8" }), "fr");
 assert.equal(localeFromAcceptLanguage("de-DE,es;q=0.8"), "en");
+// A French server opens in French for a reader who chose nothing; their own
+// choice still wins, and an English server (every server's default) leaves
+// it to the browser.
+assert.equal(localeOfServerLanguage("french"), "fr");
+assert.equal(localeOfServerLanguage("english"), null);
+assert.equal(localeOfServerLanguage("italian"), null);
+assert.equal(resolveLocale({ serverLocale: "fr", acceptLanguage: "en-US" }), "fr");
+assert.equal(resolveLocale({ cookieHeader: "odm_locale=en", serverLocale: "fr", acceptLanguage: "fr-FR" }), "en");
+assert.equal(resolveLocale({ serverLocale: localeOfServerLanguage("english"), acceptLanguage: "fr-FR" }), "fr");
 assert.equal(localeFromAcceptLanguage("en-US;q=0.5,fr;q=0.9"), "fr");
 assert.equal(localeFromAcceptLanguage("fr;q=0,en;q=0.8"), "en");
 assert.equal(

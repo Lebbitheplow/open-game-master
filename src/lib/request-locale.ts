@@ -2,7 +2,8 @@
 // header first (X-Odm-Locale), then the odm_locale cookie (so EventSource and
 // SSR requests carry the user's choice), then Accept-Language. Routes answer
 // their refusals in this language, falling back to English.
-import { localeFromAcceptLanguage, resolveRequestLocale } from "@/lib/i18n/locale";
+import { getGlobalConfig } from "@/lib/db/app-settings";
+import { localeFromAcceptLanguage, localeOfServerLanguage, resolveRequestLocale } from "@/lib/i18n/locale";
 import { translate, translatePlural, type Locale, type TranslateVars } from "@/lib/i18n/translate";
 // Routes answer in French with the catalog installed (translate.ts).
 import "@/lib/i18n/fr-catalog";
@@ -15,7 +16,7 @@ export function bookLocaleOf(request: Request): BookLocale {
   if (own === "fr" || own === "en") {
     return own;
   }
-  return resolveRequestLocale(request);
+  return resolveRequestLocale(request, null, localeOfServerLanguage(getGlobalConfig().serverLanguage));
 }
 
 export function requestT(request: Request): ((english: string, vars?: TranslateVars) => string) & { locale: Locale } {

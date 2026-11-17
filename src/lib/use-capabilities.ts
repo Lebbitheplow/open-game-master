@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { localeOfServerLanguage } from "@/lib/i18n/locale";
+import { setServerLocale } from "@/lib/locale";
 
 // What this server can do, as the UI sees it. One fetch per page load is
 // shared by every panel that asks (the campaign creator, the character
@@ -12,6 +14,9 @@ import { useEffect, useState } from "react";
 // hide a working feature. Only a positive "not configured" hides a control.
 
 export type ClientCapabilities = {
+  // The server's own language (global config serverLanguage), from hosts
+  // newer than 0.36.0.
+  language?: string;
   story: { configured: boolean; reachable: boolean; model?: string };
   utility: { configured: boolean };
   // needsModel (images and tts) arrives from servers newer than 0.26.4.
@@ -49,6 +54,9 @@ function load(force = false): Promise<ClientCapabilities | null> {
       if (data && typeof data === "object" && data.story && data.images) {
         cached = data;
         fetchedAt = Date.now();
+        // The host's language is the menus' default for a reader who chose
+        // none: the apps have no root layout to hand it over (locale.tsx).
+        setServerLocale(localeOfServerLanguage(data.language));
         for (const listener of listeners) {
           listener(cached);
         }

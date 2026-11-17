@@ -7,6 +7,14 @@ export function parseLocale(raw: string | null | undefined): Locale | null {
   return null;
 }
 
+// The menus' language a server's own language asks for (global config
+// serverLanguage, set by its admin): French, the one translation the menus
+// have besides English. English is every server's default and says nothing
+// about its readers, so it leaves the choice to them and their browser.
+export function localeOfServerLanguage(language: string | null | undefined): Locale | null {
+  return language === "french" ? "fr" : null;
+}
+
 export function localeFromAcceptLanguage(header: string | null | undefined): Locale {
   if (!header) return "en";
   const tags = header
@@ -41,24 +49,28 @@ function cookieValue(cookieHeader: string | null, name: string): string | null {
 // Server-side locale resolution (per @mcerina's design in #919):
 // 1. User's saved profile setting (when signed in)
 // 2. `odm_locale` cookie (set by the client when switching language / pre-login)
-// 3. `Accept-Language` header
-// 4. Default `"en"`
+// 3. the server's own language, where the menus have it (localeOfServerLanguage)
+// 4. `Accept-Language` header
+// 5. Default `"en"`
 export function resolveLocale(options: {
   savedLocale?: string | null;
   cookieHeader?: string | null;
+  serverLocale?: Locale | null;
   acceptLanguage?: string | null;
 }): Locale {
   return (
     parseLocale(options.savedLocale) ??
     parseLocale(cookieValue(options.cookieHeader ?? null, LOCALE_COOKIE)) ??
+    options.serverLocale ??
     localeFromAcceptLanguage(options.acceptLanguage)
   );
 }
 
-export function resolveRequestLocale(request: Request, savedLocale?: string | null): Locale {
+export function resolveRequestLocale(request: Request, savedLocale?: string | null, serverLocale?: Locale | null): Locale {
   return resolveLocale({
     savedLocale,
     cookieHeader: request.headers.get("cookie"),
+    serverLocale,
     acceptLanguage: request.headers.get("accept-language"),
   });
 }

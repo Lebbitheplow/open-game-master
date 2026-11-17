@@ -31,7 +31,10 @@ function CatalogGate({ locale, children }: { locale: Locale; children: ReactNode
   return <>{children}</>;
 }
 
-export function LocaleProvider({ initialLocale, children }: { initialLocale: Locale; children: ReactNode }) {
+export function LocaleProvider({ initialLocale, serverLocale = null, children }: { initialLocale: Locale; serverLocale?: Locale | null; children: ReactNode }) {
+  // Read by "auto" before the browser's languages (resolveLocale), as the
+  // server's own render read it (layout.tsx).
+  serverDefault = serverLocale;
   return (
     <ServerLocaleContext.Provider value={initialLocale}>
       {initialLocale === "en" ? (
@@ -46,6 +49,23 @@ export function LocaleProvider({ initialLocale, children }: { initialLocale: Loc
 }
 
 const listeners = new Set<() => void>();
+
+// The server's language where the menus have it (i18n/locale.ts
+// localeOfServerLanguage): "auto" takes it before the browser's. The root
+// layout hands it over on the website; in the apps, which have no layout,
+// the host's capabilities do (use-capabilities.ts).
+let serverDefault: Locale | null = null;
+
+export function setServerLocale(locale: Locale | null) {
+  if (locale === serverDefault) {
+    return;
+  }
+  serverDefault = locale;
+  if (typeof window !== "undefined") {
+    applyLocale();
+    emit();
+  }
+}
 function emit() {
   for (const listener of listeners) {
     listener();
@@ -82,6 +102,9 @@ export function odmLocaleHeaders(): Record<string, string> {
 export function resolveLocale(choice: LocaleChoice): Locale {
   if (choice !== "auto") {
     return choice;
+  }
+  if (serverDefault) {
+    return serverDefault;
   }
   if (typeof navigator === "undefined") {
     return "en";

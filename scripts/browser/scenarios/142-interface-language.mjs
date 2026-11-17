@@ -2,7 +2,7 @@
 // the French catalog as its own chunk (src/lib/i18n/catalog-loader.ts, kept
 // out of every page's first load) and the page switches over; a reload is
 // rendered in French by the server from the cookie and hydrates without React
-// throwing the French HTML away (locale.tsx CatalogGate); Follow the browser
+// throwing the French HTML away (locale.tsx CatalogGate); Automatic
 // brings English back. In the apps the shell applies the device's choice.
 import { check, eventually } from "../lib.mjs";
 
@@ -31,8 +31,8 @@ export default {
     }
     const hydration = errors.filter((text) => /hydrat|did not match|Minified React error #4(18|19|23|25)/i.test(text));
     check(hydration.length === 0, `no hydration error: ${hydration.join(" | ")}`);
-    const auto = page.locator(`${root}button[aria-pressed]`).filter({ hasText: /Suivre le navigateur|Follow the browser/ }).first();
+    const auto = page.locator(`${root}button[aria-pressed]`).filter({ hasText: /Automatique|Automatic/ }).first();
     await t.tap(auto);
-    await eventually(async () => /^en/.test(await page.evaluate(() => document.documentElement.lang)), { timeoutMs: 20_000, label: "English back on Follow the browser" });
+    await eventually(async () => /^en/.test(await page.evaluate(() => document.documentElement.lang)), { timeoutMs: 20_000, label: "English back on Automatic" });
   },
 };

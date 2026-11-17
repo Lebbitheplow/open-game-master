@@ -1,7 +1,8 @@
 import { LocaleApplier, LocaleProvider } from "@/lib/locale";
 // The server renders a French page with the catalog in hand (translate.ts).
 import "@/lib/i18n/fr-catalog";
-import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n/locale";
+import { getGlobalConfig } from "@/lib/db/app-settings";
+import { LOCALE_COOKIE, localeOfServerLanguage, resolveLocale } from "@/lib/i18n/locale";
 import { ThemeApplier } from "@/lib/theme-mode";
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
@@ -77,8 +78,11 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const headerStore = await headers();
+  // A French server opens in French for a reader who chose nothing.
+  const serverLocale = localeOfServerLanguage(getGlobalConfig().serverLanguage);
   const initialLocale = resolveLocale({
     savedLocale: cookieStore.get(LOCALE_COOKIE)?.value ?? null,
+    serverLocale,
     acceptLanguage: headerStore.get("accept-language"),
   });
   return (
@@ -99,7 +103,7 @@ export default async function RootLayout({
         {/* Dust motes first, so the contour canvas is drawn over them. */}
         <div className="ambient-dust" aria-hidden="true" />
         <TopoBackground />
-        <LocaleProvider initialLocale={initialLocale}>
+        <LocaleProvider initialLocale={initialLocale} serverLocale={serverLocale}>
           {children}
           {/* Every page: the QR and address a friend scans to add this server
               in the app or open it in a browser on the same network. */}
