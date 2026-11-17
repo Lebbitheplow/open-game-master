@@ -11,8 +11,11 @@
 // card's panel is held to the share: the target chips, the numbers (the
 // chance to hit among them) and the row of buttons are in view without a
 // scroll, the turn's plate shows above, and the buttons stay at the Hand's
-// foot when the rest is scrolled. A desktop's board has room for the whole
-// panel, and is left as it was.
+// foot when the rest is scrolled. At 1280x720 the strip above the cards at
+// rest is one row, and the turn's plate and the camera's row are whole in
+// it and apart, after a walk with Undo move in the row too, and on the turn
+// of a companion the lead commands the strip names it. A desktop's board has
+// room for the whole panel, and is left as it was.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const SHARE = 0.55;
@@ -21,7 +24,7 @@ export default {
   name: "hand-share",
   viewports: ["desktop", "laptop"],
   async run(t) {
-    const { page, root, ids, viewport } = t;
+    const { page, root, ids, viewport, api, base } = t;
     await t.open(`/campaigns/${ids.campaignId}`);
     const cards = page.locator(`${root}.cine-fight-hand .hand-fan .hand-card`).locator("visible=true");
     await eventually(() => cards.count(), { timeoutMs: 30_000, label: "the Hand's cards on the board" });
@@ -148,5 +151,86 @@ export default {
     await untilStill(page);
     const back = await stage();
     check(back.tuck === marks.tuck, `the cards come back tucked as they were (${back.tuck}px, ${marks.tuck}px before)`);
+
+    // ---- 1280x720: the strip above the cards holds its row whole and apart ----
+    // The lead's board there is 213px and the strip above the cards at rest
+    // 48px, one row: the turn's plate under its heading stood on the Hand's
+    // heading, and the camera's row, with no room beside the two, lay over
+    // the heading and touched the plate. After a walk Undo move made the row
+    // 127px wider and it lay over the round's line. On a companion's turn the
+    // heading that named it gave way, and nothing on the board said whose
+    // stats the plate showed.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await eventually(async () => (await rect(".cine-fight-board .board-view")).height < view.height - 20, { label: "the board at 1280x720" });
+    const strip = async (when, named) => {
+      await untilStill(page);
+      const low = await rect(".cine-fight-board .board-view");
+      const top = (await rect(".cine-fight-hand")).top;
+      const parts = await page.evaluate((root) => {
+        const box = (el) => {
+          if (!el?.getClientRects().length) return null;
+          const { left, top, right, bottom } = el.getBoundingClientRect();
+          return { left, top, right, bottom, text: el.innerText };
+        };
+        const hud = document.querySelector(`${root}.cine-fight-board .board-turn-hud`);
+        return {
+          band: document.querySelector(`${root}.cine-fight-board`)?.getAttribute("data-foot-band") ?? null,
+          heading: box(hud?.querySelector(":scope > .board-eyebrow")),
+          plate: box(hud?.querySelector(".board-glass")),
+          round: box(document.querySelector(`${root}.cine-fight-board .board-view [data-tour='battle-initiative']`)),
+          row: [...document.querySelectorAll(`${root}.cine-fight-board .board-corner > *`)].map((el) => ({ name: el.className.split(" ")[0], ...box(el) })).filter((part) => part.left !== undefined),
+        };
+      }, root);
+      const said = (part) => (part ? `${px(part.left)},${px(part.top)} to ${px(part.right)},${px(part.bottom)}` : "none");
+      const whole = (part) => part && part.top >= low.top - 1 && part.bottom <= top + 1;
+      check(whole(parts.plate), `${when} the turn's plate is whole between the board's top (${px(low.top)}) and the Hand (${px(top)}): ${said(parts.plate)}, the strip ${px(top - low.top)}px, band ${parts.band}`);
+      if (named) {
+        const says = [parts.heading, parts.plate].some((part) => whole(part) && part.text.includes(named));
+        check(says, `${when} the strip names ${named} (the heading "${parts.heading?.text ?? ""}", the plate "${parts.plate?.text ?? ""}")`);
+      }
+      for (const part of parts.row) {
+        check(whole(part), `${when} the camera's row is whole in the strip (${part.name} at ${said(part)}, the board from ${px(low.top)}, the Hand from ${px(top)})`);
+        for (const [name, other] of [["the turn's heading", parts.heading], ["the turn's plate", parts.plate], ["the round's line", parts.round]]) {
+          check(apart(part, other), `${when} the camera's row keeps off ${name} (${part.name} at ${said(part)}, ${name} at ${said(other)})`);
+        }
+      }
+    };
+    await strip("at 1280x720");
+    await t.shot("rest-1280x720");
+
+    // A walk of one square by the board's own move route, beside the goblin
+    // so nothing answers it, then taken back by its undo route.
+    const mapApi = `${base}/api/campaigns/${ids.campaignId}/battle-map`;
+    const map = async () => {
+      const data = await (await api.get(mapApi)).json();
+      return data.view ?? data;
+    };
+    const board = await map();
+    const me = board.tokens.find((token) => token.id === board.myTokenId);
+    const goblin = board.tokens.find((token) => token.kind === "enemy");
+    const cost = new Map(board.reachable.map((cell, index) => [cell, board.reachableCost?.[index] ?? 1]));
+    const square = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]
+      .map(([dx, dy]) => ({ x: me.x + dx, y: me.y + dy }))
+      .find((spot) => cost.get(spot.y * board.width + spot.x) === 1 && (!goblin || Math.max(Math.abs(spot.x - goblin.x), Math.abs(spot.y - goblin.y)) === 1));
+    check(Boolean(square), `a lit square beside the lead's figure (${me.x},${me.y}) that keeps it beside the goblin`);
+    const walked = await api.post(`${mapApi}/move`, { data: square });
+    check(walked.ok(), `the walk to (${square.x},${square.y}) is taken (${walked.status()})`);
+    const undo = page.getByRole("button", { name: /^Undo move, 5 feet$/ }).locator("visible=true").first();
+    await eventually(() => undo.count(), { label: "Undo move offered after the walk" });
+    await undo.evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
+    await strip("after a walk at 1280x720");
+    const button = await undo.boundingBox();
+    check(Boolean(button && button.width >= 26 && button.height >= 26), `Undo move is a whole button in the row (${JSON.stringify(button)})`);
+    await t.shot("walked-1280x720");
+    const taken = await api.post(`${mapApi}/undo`, { data: {} });
+    check(taken.ok(), `the walk is taken back (${taken.status()})`);
+    await eventually(async () => (await undo.count()) === 0, { label: "Undo move gone with the walk taken back" });
+
+    // A companion the lead commands, on the Orders Table (seed.mjs).
+    const orders = ids.bench2.orders;
+    await t.open(`/campaigns/${orders.id}`);
+    await eventually(() => cards.count(), { timeoutMs: 30_000, label: "Pip's cards on the Orders Table's board" });
+    await strip("on a commanded companion's turn at 1280x720", orders.pip.name);
+    await t.shot("orders-1280x720");
   },
 };

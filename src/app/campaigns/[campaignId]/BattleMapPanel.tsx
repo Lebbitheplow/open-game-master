@@ -1587,7 +1587,7 @@ export function BattleMapPanel({
               className={cn(TURN_BUTTON, "motion-pop inline-flex items-center gap-1.5")}
             >
               <Undo2 className="size-3.5" aria-hidden="true" />
-              <span className="block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">Undo move</span>
+              <span className="board-undo-word block font-display text-[10px] font-semibold uppercase tracking-[0.16em]">Undo move</span>
             </button>
           ) : null}
           <button

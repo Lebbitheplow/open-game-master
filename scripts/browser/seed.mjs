@@ -4180,6 +4180,21 @@ const bench2Titles = {};
     }
     bench2[viewport] = at;
   }
+  // hand-share (140): the turn of a companion the lead commands, on the
+  // lead's own board. On a short board the turn's heading gives way, and the
+  // plate still has to say whose stats it shows.
+  {
+    const table = tableFor("Orders Table", world.owner, player, { companions: "full" });
+    const kell = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Kell Brand", class: "fighter", level: 5, maxHp: 44 }));
+    const bot = createCompanionUser("Pip Quickfoot");
+    const pip = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Pip Quickfoot", class: "rogue", level: 5, maxHp: 30, abilities: { dex: 16 } }));
+    sheets.markSheetAsCompanion(pip.id, "party", "Quick, cheerful, and never far from a joke.");
+    sheets.setCompanionCommander(pip.id, world.owner.id);
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 1 }]);
+    [[kell.id, -2, 0], [pip.id, 0, 0], [named(rows, "goblin").id, 4, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, pip.id);
+    bench2.orders = { id: table.id, pip: { id: pip.id, name: pip.name } };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a

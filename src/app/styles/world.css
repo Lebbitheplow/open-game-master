@@ -2965,8 +2965,27 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-fight-board[data-foot-band] .board-cam { flex-direction: row-reverse; }
   .cine-fight-board[data-foot-band] .board-keys-card { right: 0; bottom: calc(100% + 0.4rem); }
   /* Lower still the row shares its one line with the turn's heading and
-     plate at the right, so it stands to their left (--turn-hud-room). */
-  .cine-fight-board[data-foot-band="tight"] .board-corner { padding-right: var(--turn-hud-room, 0.5rem); }
+     plate at the right, so it stands to their left (--turn-hud-room). A
+     margin, not the corner's padding: the corner is a container, and a
+     padding narrowed it under @md, where End turn takes a finger's 40px and
+     stood over the board's top edge. */
+  .cine-fight-board[data-foot-band="tight"] .board-corner > :last-child { margin-right: calc(var(--turn-hud-room, 0.5rem) - 0.5rem); }
+  /* That line is one row: on the lead's turn at 1280x720 the strip is 48px,
+     the turn's plate under its heading stood on the Hand's heading, and the
+     row found no room beside the two and lay over them. On your own turn the
+     heading gives way, as the Hand's own "Your hand" says it, and the plate
+     takes its line. Another's turn keeps its heading, which is all it has. */
+  .cine-fight-board[data-foot-band="tight"] .board-turn-hud > .board-eyebrow:not(:only-child) { display: none; }
+  /* A companion's heading named whose stats the plate shows, so the plate
+     says it there. The plate stands 6px higher, centred on the round's
+     line: a taller strip (the GM's own board, 77px) holds the row under it,
+     and at 14px they touched. The row's words give way to what still says
+     them: Undo move keeps its arrow (its name and title say the rest) and
+     the round's line its number. After a walk the row was 127px wider and
+     lay over the round's line. */
+  .cine-fight-board[data-foot-band="tight"] .turn-hud-who { display: inline; }
+  .cine-fight-board[data-foot-band="tight"] .board-turn-hud { top: 0.5rem; }
+  .cine-fight-board[data-foot-band="tight"] :is(.board-undo-word, [data-tour="battle-initiative"] > .board-eyebrow > span) { display: none; }
   /* The Hand's hint is a second sentence beside its heading. On a narrow
      board it pushed the pips and Hide to a second row, and the Hand stood
      21px further up the map for it. */

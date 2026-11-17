@@ -284,6 +284,9 @@ export function TurnHud({
       ) : null}
       {mine && stats.length ? (
         <div className={cn("board-glass rounded-lg px-[9px] py-1 font-mono text-[9px] @md:mt-0 @md:text-[10px]", !budget && "mt-[42px]")}>
+          {/* Where a short board hides the heading (world.css), the plate
+              names the companion whose stats these are. */}
+          {commanded ? <span className="turn-hud-who hidden">{actorName} · </span> : null}
           {stats.join(" · ")}
         </div>
       ) : null}
