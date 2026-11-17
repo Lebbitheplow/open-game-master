@@ -21,10 +21,26 @@ export const ITEMS_READER_SYSTEM = [
   "A move is {thing, from, to}. from is the person who held it, or \"ground\" for a thing picked up from where it lay. to is the person who now holds it, \"ground\" for a thing put down, dropped or left lying here, or \"\" for a thing gone for good (eaten, drunk up, thrown into the sea, burnt, broken beyond use).",
   "Use the people's names exactly as listed and the thing's words as listed with its holder. One move per thing; a thing split or shared among several people is one move for each piece that changed hands.",
   "Only what happened: a thing offered and refused, held out and kept, promised, asked for or merely shown did not move. A theft or a grab that failed did not move. A thing handed over and given back in the same turn is two moves.",
+  "Drinking from a skin, bottle or barrel, or taking some out of a sack or a box, moves nothing: the container stays with its holder. Only the whole thing gone (the last of it eaten or drunk, the thing itself thrown away, burnt or broken) is a loss; when unsure whether all of it is gone, it is not.",
   "Never a thing that was not held by someone listed or lying on the ground listed: a thing caught, found or made for the first time is not yours to record.",
   "Already recorded this turn means already done: do not repeat it.",
   'Answer with ONE JSON object and nothing else: {"moves": [{"thing": "...", "from": "...", "to": "..."}]}. No move: {"moves": []}.',
 ].join("\n");
+
+// The line a loss removes: one whose words the move names whole. A move
+// naming fewer words than the line (the biscuits, of a sack of biscuits) or
+// several lines at once removes nothing.
+export function wholeThingNamed(things: readonly string[], words: string, keyOf: (text: string) => string): string | null {
+  const key = keyOf(words);
+  if (!key) {
+    return null;
+  }
+  const fits = things.filter((thing) => {
+    const held = keyOf(thing);
+    return Boolean(held) && (held === key || key.includes(held));
+  });
+  return fits.length === 1 ? fits[0] : (fits.find((thing) => keyOf(thing) === key) ?? null);
+}
 
 export function renderItemsReaderPrompt(input: {
   people: readonly ItemPerson[];

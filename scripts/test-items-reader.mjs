@@ -98,5 +98,16 @@ await test("what the story cannot have done is refused, and nothing is made", as
   assert.deepEqual(brakkHas(), before);
 });
 
+await test("a few biscuits eaten never take the sack, and a drink never takes the skin", async () => {
+  assert.equal(logic.wholeThingNamed(["il sacco delle gallette"], "gallette", italian), null, "fewer words than the line: not the whole thing");
+  assert.equal(logic.wholeThingNamed(["una bottiglia di rum"], "la bottiglia di rum", italian), "una bottiglia di rum", "the whole thing, with its article, is found");
+  assert.equal(logic.wholeThingNamed(["Pane", "Pane di segale"], "pane", italian), "Pane", "the exact line wins over a longer one");
+  assert.match(logic.ITEMS_READER_SYSTEM, /Drinking from a skin, bottle or barrel, or taking some out of a sack or a box, moves nothing/);
+  writeItems(brakk.id, { equipment: [...sheets.getSheetById(brakk.id).equipment, { name: "il sacco delle gallette", qty: 1 }] });
+  const out = await endOfTurn([{ thing: "gallette", from: "Brakk", to: "" }], "Brakk apre il sacco e mangia due gallette.");
+  assert.equal(out.applied.length, 0);
+  assert.ok(brakkHas().includes("il sacco delle gallette"), "the sack is still Brakk's");
+});
+
 model.close();
 finish();

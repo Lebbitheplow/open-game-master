@@ -19,7 +19,7 @@ import { egoChoice } from "@/lib/dm/npc-mind";
 import { npcStageOn, onStage, sheetOf } from "@/lib/dm/npc-stage";
 import { thingNamed } from "@/lib/dm/npc-stage-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
-import { ITEMS_READER_SYSTEM, parseItemMoves, planItemMove, renderItemsReaderPrompt, type ItemMove, type ItemPerson } from "@/lib/dm/items-reader-logic";
+import { ITEMS_READER_SYSTEM, parseItemMoves, planItemMove, renderItemsReaderPrompt, wholeThingNamed, type ItemMove, type ItemPerson } from "@/lib/dm/items-reader-logic";
 import { withoutLeadingStopWords } from "@/lib/language/language";
 import { textKey } from "@/lib/language/text-logic";
 import { resolveTextTimeoutMs } from "@/lib/model-client";
@@ -117,7 +117,9 @@ export async function recordStoryItems(
       { meta: { task: "items_reader" }, timeoutMs: resolveTextTimeoutMs(undefined, "NPC_MIND_TIMEOUT_MS", 120_000), mindChoice: egoChoice() },
     );
     if (result.error) {
-      console.warn(`[items-reader] turn ${turn.id}: the reader did not answer: ${result.error}`);
+      const error: unknown = result.error;
+      const why = error instanceof Response ? `HTTP ${error.status} ${(await error.text().catch(() => "")).slice(0, 300)}` : String(error);
+      console.warn(`[items-reader] turn ${turn.id}: the reader did not answer: ${why}`);
       return null;
     }
     const parsed = parseItemMoves(stripReasoningArtifacts(String(result.message?.content ?? "")));
@@ -157,7 +159,14 @@ function makeMove(campaign: Campaign, turn: DmTurn, move: ItemMove, people: read
   if (plan.kind === "hand" && !taker) {
     return { ok: false, why: `no sheet for ${plan.to}` };
   }
-  const line = plan.kind === "pickup" ? plan.thing : thingNamed(holder.equipment.map((item) => item.name), plan.thing, keyOf);
+  // A loss is the whole thing gone: its words must name all of it, so a few
+  // biscuits eaten never take the sack they came from.
+  const line =
+    plan.kind === "pickup"
+      ? plan.thing
+      : plan.kind === "lose"
+        ? wholeThingNamed(holder.equipment.map((item) => item.name), plan.thing, keyOf)
+        : thingNamed(holder.equipment.map((item) => item.name), plan.thing, keyOf);
   if (!line) {
     return { ok: false, why: `${holder.name} has no ${plan.thing}` };
   }
