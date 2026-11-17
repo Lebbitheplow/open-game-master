@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { openWorld, dice } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
+import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-npc-stage");
 const logic = await import("../src/lib/dm/npc-stage-logic.ts");
@@ -197,6 +197,22 @@ await test("a thing nobody has does not exist for the referee, and a mind hears 
   assert.deepEqual(worn.slice(0, 2).sort(), ["giuramento", "mare"], JSON.stringify(worn));
   assert.ok(!worn.includes("ogni") && !worn.includes("dettaglio"), JSON.stringify(worn));
   assert.deepEqual(wornWords(["Ho sete.", "Dammi da bere."], textKey), []);
+});
+
+// The observer Zattera, 2026-11-17: after the stage's note the narrator
+// asked the player a question with a call, said nothing more, and the turn
+// closed on the hero's part alone: seven characters' turns never told.
+await test("the stage's outcomes handed over and never told are narrated with tools closed", async () => {
+  const hand = ego("Mi siedo accanto a Brakk.", "Bel silenzio.");
+  const ruling = json({ uncertain: false, dc: 5, modifier: 0, hero: "", success: { outcome: "Mairon si siede accanto a Brakk.", changes: [] }, failure: { outcome: "", changes: [] } });
+  const ask = reply({ calls: [call("request_player_input", { characterIds: [brakk.id], prompt: "Brakk, che fai?" })] });
+  model.script([reply({ text: "Brakk resta in disparte." }), hand, ruling, ask, reply({ text: "«Bel silenzio» dice Mairon, sedendosi accanto a Brakk." })]);
+  model.items([json({ moves: [] })]);
+  const before = model.requests.length;
+  await model.turn(world, "Brakk osserva in silenzio.", brakk.id);
+  const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+  const told = listRecentMessages(world.campaignId, 4).filter((message) => message.authorType === "dm").map((message) => message.content).join("\n");
+  assert.match(told, /Mairon, sedendosi accanto a Brakk/, `the stage was told (${model.requests.length - before} calls)`);
 });
 
 model.close();

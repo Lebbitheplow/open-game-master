@@ -2097,6 +2097,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a turn that closed without the turn owed to a first-tier
   // mind still on stage (npc-mind.ts mindsAwaitingTurn, design §9).
   let sceneMindsNudged = false;
+  // How many narration parts stood when the stage's outcomes were handed to
+  // the narrator: they are owed in a later part (null: no stage this turn).
+  let stagedFrom: number | null = null;
   // The NPC state guard sends the narrator back once (npc-state-guard.ts).
   let stateNudged = false;
   // What the current call streamed to the draft, and how many narration
@@ -2979,6 +2982,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       const staged = asksMinds && npcStageOn(campaign) ? await runStage(campaign, callsSoFar, turn.narrationParts.join("\n\n"), heroLinesOf(context)) : null;
       if (staged) {
         sceneMindsNudged = true;
+        stagedFrom = turn.narrationParts.length;
         tableNoteCalls(staged.heroFacts ? 2 : 1);
         turn.conversation.push({
           role: "assistant",
@@ -3204,6 +3208,12 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     (finalCallLeaked || finalRepeated || (lastReplyEmpty && !turn.playerWhisperIds.length))
   ) {
     failed = await narrateAfterToolLeak(context, turn, finalRepeated);
+  } else if (!failed && stagedFrom !== null && turn.narrationParts.length === stagedFrom) {
+    // The stage's outcomes were handed over and never told: the narrator
+    // rolled and asked the player instead, and the turn closed on the hero's
+    // part alone (the observer Zattera, 2026-11-17). They are told now.
+    console.warn(`[dm-turn] turn ${turn.id}: the stage's outcomes were never narrated; asked with tools closed.`);
+    failed = await narrateAfterToolLeak(context, turn, false);
   } else if (!failed && !turn.narrationParts.length && !turn.playerWhisperIds.length) {
     // Named in the log: on the Zattera two turns that ran pass_time and
     // take_rest reached the table as "The GM had no answer" (2026-11-17).
