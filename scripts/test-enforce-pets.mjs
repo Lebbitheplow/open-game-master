@@ -127,7 +127,8 @@ await test("A pet's attack meets its target's conditions: a paralyzed creature b
 // touch spell is measured from its caster).
 await test("An ordinary familiar cannot attack, and its refusal promises no touch spell the server will not deliver.", async () => {
   const world = await openWorld();
-  const wizard = world.addHero({ class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, known: [], prepared: ["Find Familiar"], cantrips: [] } });
+  // The 10 gp of incense Find Familiar burns.
+  const wizard = world.addHero({ class: "wizard", level: 3, maxHp: 20, gold: 10, abilities: { int: 16 }, spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, known: [], prepared: ["Find Familiar"], cantrips: [] } });
   const summoned = await world.invoke("summon_pet", { characterId: wizard.id, kind: "familiar", form: "cat" });
   assert.equal(summoned.ok, true, summoned.error);
   const swing = await world.invoke("pet_attack", { characterId: wizard.id, targetEnemyId: "nobody" });
@@ -140,7 +141,7 @@ await test("An ordinary familiar cannot attack, and its refusal promises no touc
 await test("An imp familiar takes no fire or poison, half of cold, and half of a nonmagical blow but all of a magical one.", async () => {
   const world = await openWorld();
   const warlock = world.addHero({ class: "warlock", level: 3, maxHp: 30, abilities: { cha: 16 } });
-  world.patch(warlock.id, { features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  world.patch(warlock.id, { gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
   const summoned = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "imp" });
   assert.equal(summoned.ok, true, summoned.error);
   assert.match(summoned.result.defenses, /immune to fire, poison/);
@@ -164,7 +165,7 @@ await test("An imp familiar takes no fire or poison, half of cold, and half of a
 await test("A familiar or beast companion stored before pets kept defenses has its form's when it is read.", async () => {
   const world = await openWorld();
   const warlock = world.addHero({ class: "warlock", level: 3, maxHp: 30 });
-  world.patch(warlock.id, { features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  world.patch(warlock.id, { gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
   await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "imp" });
   const stored = { ...pet(world, warlock) };
   delete stored.resist;

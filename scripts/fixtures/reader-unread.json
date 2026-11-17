@@ -3,9 +3,9 @@
   "counts": {
     "spell": {
       "entries": 1795,
-      "hand-written": 460,
+      "hand-written": 462,
       "parsed": 746,
-      "missing": 589,
+      "missing": 587,
       "with unread": 208,
       "unread": {
         "buff": 155,

@@ -27,6 +27,7 @@ import { rollExpression } from "@/lib/dice";
 import { getSheetById } from "@/lib/db/sheets";
 import { hurtSteed, riderOfDownedMount } from "@/lib/dm/mount-combat";
 import { mountVitals } from "@/lib/dm/mount-link";
+import { mountedPet } from "@/lib/dm/pet-mount";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -53,6 +54,11 @@ export function areaOnMount(input: {
   const mount = getMounts(campaign.id)[rider.id];
   const vitals = mount ? mountVitals(mount) : null;
   if (input.ability !== "dex" || input.total <= 0 || !mount || !vitals || vitals.hp <= 0) {
+    return null;
+  }
+  // A ridden drake is the rider's pet, which the area strikes as a pet
+  // (pet-save.ts areaOnPets): struck here too, it took the blast twice.
+  if (mountedPet(rider, mount)) {
     return null;
   }
   const steed = mount.sheetId ? getSheetById(mount.sheetId) : null;

@@ -258,6 +258,12 @@ export function turnStillOwes(campaignId: string, characterId: string): { swings
   if (!encounter || !sheet || !budgetApplies(budget, characterId, encounter.round)) {
     return { swings: 0, bonusSwing: null };
   }
+  // A hero dropped or stunned mid-turn makes no more of it ("An
+  // incapacitated creature can't take actions or reactions"): the second
+  // swing of Extra Attack held the turn open for an unconscious fighter.
+  if (!canAct({ sheet, encounter, kind: "action" }).ok) {
+    return { swings: 0, bonusSwing: null };
+  }
   const bonusSwing = canAct({ sheet, encounter, kind: "bonus" }).ok
     ? earnedBonusSwing({
         who: sheet.name,

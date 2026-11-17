@@ -52,6 +52,7 @@ const route = {
 const karaUser = world.addUser("kara");
 const anaUser = world.addUser("ana");
 const orinUser = world.addUser("orin");
+const pellUser = world.addUser("pell");
 const kara = world.addHero({
   user: karaUser, name: "Kara", class: "fighter", level: 5, maxHp: 80, proficiencies: TRAINED,
   abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
@@ -66,6 +67,14 @@ const orin = world.addHero({
   user: orinUser, name: "Orin", class: "fighter", level: 4, maxHp: 40, proficiencies: TRAINED,
   abilities: { str: 16, dex: 10, con: 14, int: 10, wis: 10, cha: 10 },
   equipment: [{ name: "Mace", qty: 1, equipped: true }],
+});
+// A paladin, for the smite on an opportunity attack (G10).
+const PELL_SLOTS = { 1: { max: 4, used: 0 }, 2: { max: 2, used: 0 } };
+const pell = world.addHero({
+  user: pellUser, name: "Pell", class: "paladin", level: 5, maxHp: 44, proficiencies: TRAINED,
+  abilities: { str: 16, dex: 10, con: 14, int: 10, wis: 10, cha: 14 },
+  equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+  spellcasting: { ability: "cha", slots: PELL_SLOTS, prepared: [], known: [], cantrips: [] },
 });
 
 // Who is at the table: an open stream for the player, as the table's page
@@ -87,19 +96,21 @@ let seenRolls = new Set();
 async function stage({ hp = 40, present = [karaUser], count = 1 } = {}) {
   getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(world.campaignId);
   await kit.endFight();
-  for (const hero of [kara, ana, orin]) {
+  for (const hero of [kara, ana, orin, pell]) {
     world.patch(hero.id, { currentHp: hero.maxHp, conditions: [], conditionMeta: {} });
     companion(hero, false);
     setMemberRealDice(world.campaignId, hero.userId, false);
   }
-  leave(karaUser, anaUser, orinUser);
+  leave(karaUser, anaUser, orinUser, pellUser);
   arrive(...present);
-  await kit.fight(count, { heroFaces: { [kara.id]: 20, [ana.id]: 18, [orin.id]: 16 } });
+  world.patch(pell.id, { spellcasting: { ...world.sheet(pell.id).spellcasting, slots: structuredClone(PELL_SLOTS) } });
+  await kit.fight(count, { heroFaces: { [kara.id]: 20, [ana.id]: 18, [orin.id]: 16, [pell.id]: 14 } });
   const [goblin] = world.enemies();
   kit.setEnemy(goblin.id, { stats: { ...DUMMY }, maxHp: 40, currentHp: hp });
   kit.place(kara.id, 19, 0);
   kit.place(ana.id, 19, 14);
   kit.place(orin.id, 19, 4);
+  kit.place(pell.id, 19, 10);
   kit.place(goblin.id, 5, 7);
   const encounter = world.encounter();
   saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((slot) => slot.enemyId === goblin.id), turnBudget: null, reactionsUsed: [], legendary: { ...encounter.legendary, due: [goblin.id], acted: null } });
@@ -298,6 +309,37 @@ await test("A seat on real dice that strikes rolls the swing's own dice, as any 
   assert.equal(dice[0].parkedFor, "real_dice");
 });
 
+// Audit 1116 D17. SRD 5.1, Great Weapon Fighting: "When you roll a 1 or 2 on
+// a damage die for an attack you make with a melee weapon that you are
+// wielding with two hands, you can reroll the die and must use the new
+// roll." The turn's own attack card tells a player rolling real dice to do
+// it (attack-blow.ts damageDiceSteps); the opportunity attack's damage card
+// named the weapon and the target only, so the player entered their 1s and
+// 2s as they lay.
+await test("D17: a seat on real dice with Great Weapon Fighting is told on the opportunity attack's damage card to reroll 1s and 2s", async () => {
+  const goblin = await stage();
+  setMemberRealDice(world.campaignId, karaUser.id, true);
+  const own = world.sheet(kara.id);
+  world.patch(kara.id, {
+    equipment: [{ name: "Greatsword", qty: 1, equipped: true }],
+    features: [...own.features, { name: "Fighting Style: Great Weapon Fighting", source: "choice" }],
+  });
+  kit.place(kara.id, 6, 7);
+  await walk(goblin, 2, 7);
+  const [ask] = asks();
+  assert.ok(ask, "no card asked Kara's player");
+  await answer(ask, { strike: true }, karaUser);
+  const [swing] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.characterId === kara.id && pending.kind === "attack");
+  assert.ok(swing, "Strike parked no attack roll for the seat on real dice");
+  world.signIn(karaUser);
+  const rolled = await call(route.submit, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: swing.id });
+  await settleQueue(world.campaignId);
+  const [damage] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.characterId === kara.id && pending.kind === "damage");
+  world.patch(kara.id, { equipment: own.equipment, features: own.features });
+  assert.ok(damage, `the hit asked for no damage dice: ${JSON.stringify(rolled.json)}`);
+  assert.match(String(damage.reason), /reroll any die of 2 or less once \(Great Weapon Fighting\)/, `the damage card says: ${damage.reason}`);
+});
+
 await test("A screen that knows nothing of the card answers it as a roll: that is a Strike.", async () => {
   const goblin = await stage();
   kit.place(kara.id, 6, 7);
@@ -310,6 +352,62 @@ await test("A screen that knows nothing of the card answers it as a roll: that i
   assert.equal(out.status, 200, JSON.stringify(out.json));
   assert.equal(reacted(kara), true);
   assert.deepEqual(at(goblin.id), { x: 2, y: 7 });
+});
+
+// ---- G10: Divine Smite on an opportunity attack ----
+
+// SRD 5.1, Paladin, Divine Smite: "when you hit a creature with a melee
+// weapon attack, you can expend one spell slot to deal radiant damage". An
+// opportunity attack is one. The turn's swing takes the smite as a rider
+// named before the roll and paid only on a hit (pc_attack smite, the Hand's
+// Divine Smite card at the lowest open slot); the opportunity card had no
+// smite at all.
+await test("G10: a paladin's opportunity card offers Divine Smite at the lowest open slot; a hit spends it and adds 2d8 radiant", async () => {
+  const goblin = await stage({ present: [pellUser] });
+  kit.place(pell.id, 6, 7);
+  await walk(goblin, 2, 7);
+  const [ask] = asks();
+  assert.ok(ask, "no card asked Pell's player");
+  assert.equal(ask.carry?.ask?.smiteSlot, 1, `the card offered no smite: ${JSON.stringify(ask.carry?.ask)}`);
+  // 15 + 3 + 3 hits AC 13; the longsword's d8 of 3 (+3), the smite's 2d8 of 4s.
+  world.dice(15, 3, 4, 4);
+  const out = await answer(ask, { strike: true, smite: true }, pellUser);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(reacted(pell), true);
+  assert.equal(40 - kit.enemy(goblin.id).currentHp, 3 + 3 + 8, `the smite's dice did not land: ${JSON.stringify(answered(ask))}`);
+  assert.equal(world.sheet(pell.id).spellcasting.slots[1].used, 1, "the smite spent no slot");
+  assert.match(JSON.stringify(answered(ask).opportunityAttacks ?? []), /Divine Smite/, JSON.stringify(answered(ask)));
+});
+
+await test("G10: a smite named on an opportunity attack that misses keeps its slot, as the turn's does", async () => {
+  const goblin = await stage({ present: [pellUser] });
+  kit.place(pell.id, 6, 7);
+  await walk(goblin, 2, 7);
+  const [ask] = asks();
+  assert.ok(ask);
+  world.dice(2, 3, 4, 4);
+  await answer(ask, { strike: true, smite: true }, pellUser);
+  assert.equal(reacted(pell), true);
+  assert.equal(kit.enemy(goblin.id).currentHp, 40);
+  assert.equal(world.sheet(pell.id).spellcasting.slots[1].used, 0, "a miss spent the smite's slot");
+});
+
+await test("G10: no smite is offered to a character without Divine Smite, nor to a paladin with no slot left", async () => {
+  let goblin = await stage({ present: [karaUser] });
+  kit.place(kara.id, 6, 7);
+  await walk(goblin, 2, 7);
+  let [ask] = asks();
+  assert.ok(ask);
+  assert.equal(ask.carry?.ask?.smiteSlot, undefined, "a fighter was offered a smite");
+  const refused = await answer(ask, { strike: true, smite: true }, karaUser);
+  assert.equal(refused.status, 400, `a smite with none offered was taken: ${JSON.stringify(refused.json)}`);
+  goblin = await stage({ present: [pellUser] });
+  world.patch(pell.id, { spellcasting: { ...world.sheet(pell.id).spellcasting, slots: { 1: { max: 4, used: 4 }, 2: { max: 2, used: 2 } } } });
+  kit.place(pell.id, 6, 7);
+  await walk(goblin, 2, 7);
+  [ask] = asks();
+  assert.ok(ask);
+  assert.equal(ask.carry?.ask?.smiteSlot, undefined, "a paladin with no slot was offered a smite");
 });
 
 // ---- every door ----
@@ -400,7 +498,7 @@ await test("A creature's skipped turn the server plays (running in fear) asks to
   assert.ok(now && Math.max(Math.abs(now.x - 6), Math.abs(now.y - 7)) > 1, `the goblin never ran from Kara: ${JSON.stringify(now)}`);
 });
 
-leave(karaUser, anaUser, orinUser);
+leave(karaUser, anaUser, orinUser, pellUser);
 await kit.endFight();
 model.close();
 world.close();

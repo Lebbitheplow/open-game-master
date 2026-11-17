@@ -12,7 +12,7 @@ import { publishWithSeq } from "@/lib/events";
 import { asSentence, textKey } from "@/lib/language/text-logic";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { resolveSheetRef } from "@/lib/dm/rolls";
-import { hourlyConSaves, type HourSave } from "@/lib/dm/endurance";
+import { exhaustionDeaths, hourlyConSaves, type HourSave } from "@/lib/dm/endurance";
 import {
   hoardItemCount,
   treasureGoldRoll,
@@ -33,7 +33,8 @@ import { publishTitleCard } from "@/lib/dm/scene-state";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { describeWeather, weatherExposure, weatherTravelFactor } from "@/lib/srd/weather";
 import type { Weather } from "@/lib/scene/state";
-import { ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
+import { advance, ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
+import { passRestingDays, restingDaysLine, restingDaysResult } from "@/lib/dm/rest-benefits";
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -151,7 +152,7 @@ export const worldTools: ToolDef[] = [
           bound: { type: "string", description: "Manacles: the creature they bind, exact characterId or enemyId from GAME STATE. Needed when several are bound." },
           characterId: { type: "string", description: "The character striking it with a weapon: exact characterId from GAME STATE." },
           weapon: { type: "string", description: "The weapon they strike with, from their equipment." },
-          improvised: { type: "boolean", description: "True when weapon names an object that is no weapon on their sheet (a chair, a bottle). It strikes as an improvised weapon." },
+          improvised: { type: "boolean", description: "weapon names an object that is no weapon (a chair, a bottle): an improvised weapon." },
           damageType: { type: "string", description: "Damage type, for damage you pass yourself." },
           material: { type: "string", enum: MATERIALS, description: "What the object is made of. Default: wood." },
           size: { type: "string", enum: SIZES, description: "Its size class. Default: medium." },
@@ -227,7 +228,7 @@ export const worldTools: ToolDef[] = [
     function: {
       name: "pass_time",
       description:
-        "Move the in-world clock forward when time passes and nothing else accounts for it: waiting out a storm, a night at an inn, a week of downtime, a long conversation. Travel and rests already advance the clock themselves, so do not call it alongside them. Time only moves forward.",
+        "Move the in-world clock forward when nothing else accounts for the time (waiting out a storm, a long conversation); a night's sleep is take_rest. Travel, rests and downtime already advance the clock themselves, so do not call it alongside them. Time only moves forward.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -579,7 +580,9 @@ function passVerb(minutes: number): string {
 
 export function handlePassTime(
   campaign: Campaign,
+  turnId: string,
   rawArguments: string,
+  sheets: CharacterSheet[],
 ): ToolResult {
   let args: z.infer<typeof passTimeSchema>;
   try {
@@ -588,6 +591,10 @@ export function handlePassTime(
     const refused = badArguments(`Invalid arguments: pass_time needs an amount and a unit.`, error, rawArguments);
     return { ...refused, error: `${refused.error}${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}` };
   }
+  const span = advance(0, args.amount, args.unit);
+  if ("error" in span) {
+    return span;
+  }
   if (args.water) {
     setWaterRation(campaign.id, args.water);
   }
@@ -595,7 +602,10 @@ export function handlePassTime(
   // Every character's lifestyle is charged for the dawns below, so those
   // dawns feed whoever keeps one up.
   const lifestyle = Object.fromEntries(listSheets(campaign.id).map((sheet) => [sheet.id, 0]));
-  const moved = advanceClock(campaign.id, args.amount, args.unit, { meal: Boolean(args.meal), lifestyle });
+  // A whole day waited out is a day slept through: each ends in the night's
+  // long rest for the party (rest-benefits.ts), with no more time and no
+  // second lifestyle. A night alone is take_rest.
+  const moved = passRestingDays(campaign, turnId, sheets, span.minutes, { meal: Boolean(args.meal), lifestyle }, args.reason?.trim() || "the days waited out");
   if ("error" in moved) {
     return moved;
   }
@@ -615,7 +625,7 @@ export function handlePassTime(
   const sky = refreshSky(campaign.id, { before, minutes: moved.minutes });
   tableNote(
     campaign,
-    `${describeDuration(moved.minutes)} ${passVerb(moved.minutes)}${args.reason?.trim() ? `: ${asSentence(args.reason)}` : "."} It is now ${describeInstant(moved.clock.calendar, moved.clock.instant)}.`,
+    `${describeDuration(moved.minutes)} ${passVerb(moved.minutes)}${args.reason?.trim() ? `: ${asSentence(args.reason)}` : "."} It is now ${describeInstant(moved.clock.calendar, moved.clock.instant)}.${restingDaysLine(moved.rests)}`,
   );
   return {
     ok: true,
@@ -623,6 +633,7 @@ export function handlePassTime(
     now: describeInstant(moved.clock.calendar, moved.clock.instant),
     ...(sky?.summary ? { weather: sky.summary } : {}),
     ...(living.length ? { lifestyle: living } : {}),
+    ...restingDaysResult(moved.rests),
     // Rolled by the server as the time passed; narrate what they decided.
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
     // A commanded undead's hourly save (ar-ws-command-hours.ts), rolled the same way.
@@ -963,7 +974,7 @@ function travelStretch(
     ...(disturbed ? { disturbed } : {}),
     note:
       (worn.length
-        ? `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).`
+        ? `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).${exhaustionDeaths(results)}`
         : `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): everyone holds up.`) + ` ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
   };
 }

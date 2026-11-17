@@ -43,7 +43,7 @@ import { speciesSpellsShown } from "@/lib/srd/species-spell-view";
 import { SummonDoor } from "@/app/campaigns/[campaignId]/SummonDoor";
 import { DefensesLine, HitDiceSpend, StateTags } from "@/components/sheet/SheetState";
 import { SheetBetween } from "@/components/sheet/SheetBetween";
-import { conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
+import { acView, conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
 import { FeatureChoicePicker, OtherSpeeds } from "@/components/sheet/SheetChoices";
 import { OwedPicks } from "@/components/sheet/OwedPicks";
 import type { PendingWear } from "@/components/sheet/SheetGearRow";
@@ -272,8 +272,8 @@ export function CharacterSheetDialog({
                 {
                   glyph: "rest-ac",
                   label: <GameTerm id="armor_class">Armor class</GameTerm>,
-                  value: sheet.ac,
-                  title: sheet.acOverride ? "Set by hand; armor does not change it." : armor.parts.join(" + "),
+                  value: acView(sheet).ac,
+                  title: acView(sheet).note ?? (sheet.acOverride ? "Set by hand; armor does not change it." : armor.parts.join(" + ")),
                 },
                 {
                   glyph: "rest-speed",

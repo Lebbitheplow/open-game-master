@@ -294,6 +294,10 @@ export function applyPcDamage(
   const arcaneWard = absorbByWard(campaign, sheet, amount);
   const { met, ...adjusted } = meetDefenses(blowDefenses(campaign.id, sheet, input), amount, input.type, input.parts, arcaneWard?.absorbed ?? 0);
   const byType = met ? { damageByType: met.map((part) => `${part.amount} ${part.type}${part.note ? ` (${part.note})` : ""}`) } : {};
+  // What landed when the defenses (or a ward) changed the amount: a result
+  // with only the note and the hit points left an area's row saying the 20 a
+  // raging hero halved to 10 (aoe-characters.ts reads this).
+  const landedInfo = adjusted.amount !== amount ? { damageApplied: adjusted.amount } : {};
   if (adjusted.amount <= 0) {
     return {
       ok: true,
@@ -364,6 +368,7 @@ export function applyPcDamage(
       return {
         ok: true,
         form: `${form}: ${shape.beastHp}/${sheet.wildShape.beastMaxHp} HP`,
+        ...landedInfo,
         ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
         ...(shape.absorbed ? { tempHpAbsorbed: shape.absorbed } : {}),
         ...proneInfo,
@@ -440,6 +445,7 @@ export function applyPcDamage(
       ...ritualInfo,
       ...shapeInfo,
       ...proneInfo,
+      ...landedInfo,
       ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
       ...byType,
       ...(math.absorbed ? { tempHpAbsorbed: math.absorbed } : {}),
@@ -617,6 +623,7 @@ export function applyPcDamage(
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,
+    ...landedInfo,
     ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
     ...byType,
     ...(math.absorbed ? { tempHpAbsorbed: math.absorbed } : {}),

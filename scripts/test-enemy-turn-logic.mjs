@@ -106,7 +106,7 @@ test("Aggressive's speed takes only steps that do not end farther from the neare
 });
 
 test("only Dash, Disengage, Dodge and Escape are an enemy's take_action", () => {
-  assert.deepEqual([...turns.ENEMY_TAKE_ACTIONS], ["dash", "disengage", "dodge", "escape"]);
+  assert.deepEqual([...turns.ENEMY_TAKE_ACTIONS], ["dash", "disengage", "dodge", "escape", "wake"]);
   assert.equal(turns.isEnemyTakeAction("dash"), true);
   assert.equal(turns.isEnemyTakeAction("help"), false);
   assert.equal(turns.isEnemyTakeAction("hide"), false);

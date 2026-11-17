@@ -6,13 +6,13 @@
 // Each reacting creature makes the opportunity attack its block makes
 // (enemy-profile.ts opportunityWeapon), once, spending its reaction: an
 // attack roll against the walker's Armor Class with both sides' conditions,
-// and the damage through applyEnemyDamage, the fight left open for the next
+// and the damage through landCreatureBlow, the fight left open for the next
 // turn to end (holdVictory, as every opportunity attack leaves it). It
 // carries what the same swing at a character carries (opportunity.ts):
 // Pack Tactics and the Flanking variant on the square the walker left from,
 // a spell on the reactor (Bless, Bane), exhaustion, sunlight, an active
-// effect, Magic Weapons against a resistance to nonmagical blows, Ray of
-// Enfeeblement, and the rider its attack prints. It read conditions alone,
+// effect, Magic Weapons against a resistance to nonmagical blows,
+// Enlarge/Reduce, Ray of Enfeeblement, and the rider its attack prints. It read conditions alone,
 // so a wolf's bite at a dominated goblin walking off its packmate rolled one
 // d20 and never knocked it down.
 
@@ -27,13 +27,14 @@ import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
 import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/condition-logic";
 import { attackSenses, attackSight, enemySenses, fearAsRolled, sensesReaching } from "@/lib/dm/attack-light";
-import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
-import { blowByType } from "@/lib/dm/enemy-hit";
-import { opportunityWeapon } from "@/lib/dm/enemy-profile";
+import { landCreatureBlow } from "@/lib/dm/enemy-blow";
+import { blowByType, sizedAttack } from "@/lib/dm/enemy-hit";
+import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
@@ -42,7 +43,7 @@ import { enemyOpportunityRiders, withOpportunityTurn } from "@/lib/dm/opportunit
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
-import { enemyFlanks } from "@/lib/dm/attack-spatial";
+import { coverFor, enemyFlanks, reachWalled } from "@/lib/dm/attack-spatial";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 
@@ -83,10 +84,15 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     if (encounter.reactionsUsed.includes(reactor.id)) {
       continue;
     }
+    // A charmed creature makes no attack at its charmer (SRD 5.1, Charmed).
+    if (charmedBy(reactor.conditions, reactor.conditionMeta, walkerId)) {
+      continue;
+    }
     const token = getTokenByRef(map.id, reactor.id);
     const weapon = opportunityWeapon(reactor.stats);
     const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(reactor.stats.size), walkerFootprint) : null;
-    if (!weapon || !leftFrom || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!weapon || !leftFrom || reachWalled(encounter.id, reactor.id, walker.id, leftFrom) || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
       continue;
     }
     // Fear only with its source in sight, a Dodge only against an attacker
@@ -104,7 +110,10 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactor.id];
     saveEncounter(encounter);
-    const { attack } = weapon;
+    // Enlarge/Reduce on the reactor: its weapon grew or shrank with it
+    // (enemy-hit.ts sizedAttack), as on its swing at a character.
+    const sized = sizedAttack(weapon.attack, reactor.conditions);
+    const attack = sized.attack;
     const context = attackContext({
       ...attackSenses(encounter.id, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id, senses: enemySenses(walker), at: leftFrom }),
       attackerConditions: fearAsRolled(encounter.id, reactor.id, reactor.conditions, reactor.conditionMeta),
@@ -125,15 +134,18 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       ...(effect.advantage ? ["advantage" as const] : []),
       ...(effect.disadvantage ? ["disadvantage" as const] : []),
     ]);
-    const vsAc = enemyAcWithEffects(campaign.id, walker);
+    // Cover where the walker stood as it swung (SRD 5.1, Cover).
+    const vsAc = enemyAcWithEffects(campaign.id, walker) + coverFor(encounter.id, reactor.id, walker.id, leftFrom);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
     spendEnemyRiders(reactor, own.riders);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
     const hitRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: hitRoll, source: "digital" });
-    const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= vsAc);
-    if (!hit) {
-      notes.push(`${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away and misses (${toHit.total} vs AC ${vsAc}).`);
+    const struck = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= vsAc);
+    // The walker's Parry or Shield, as on every other door (enemy-reactions.ts).
+    const parry = struck && toHit.crit !== "nat20" ? tryParry({ encounter, enemy: walker, total: toHit.total, natural20: false, ac: vsAc, melee: true, attackerUnseen: attackerUnseen(reactor.conditions, walker.conditions, sight) }) : null;
+    if (!struck || parry) {
+      notes.push(`${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away and misses (${toHit.total} vs AC ${vsAc}${parry ? `; ${parry.note}` : ""}).`);
       continue;
     }
     const crit = toHit.crit === "nat20" || context.autoCrit;
@@ -149,12 +161,14 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const damageRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
-    const dealt = Math.max(1, enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount)));
+    // No floor of 1: a penalty can bring a blow to nothing (SRD 5.1), as on
+    // every other door; only Reduce's own "can't reduce below 1" holds one.
+    const dealt = enfeebledBlow(reactor, attack, false, Math.max(sized.floor, blow.amount));
     const sheets = listSheets(campaignId);
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     const magical = hasTrait(reactor.stats, "magicWeapons") || attack.magical === true;
     const { landed, rider } = withOpportunityTurn(campaignId, (turn) => {
-      const hit = applyEnemyDamage(campaign, turn, encounter, walker, dealt, sheets, sheetsById, blow.type, { crit, holdVictory: true, ...(magical ? { magical: true } : {}) });
+      const hit: Record<string, unknown> = dealt > 0 ? landCreatureBlow({ campaign, turn, encounter, target: walker, dealt, blow, sheets, sheetsById, crit, magical, holdVictory: true }) : {};
       const necrotic = /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
       return { landed: hit, rider: hit.dead ? null : resolveRowOnHit(campaign, turn, reactor, attack, walker.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } }) };
     });

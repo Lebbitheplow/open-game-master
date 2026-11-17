@@ -157,9 +157,12 @@ export function passWaits(
 
 // Inserts new initiative entries into an existing sorted order without
 // moving the pointer off the current combatant. Each entry slots by
-// descending initiative (after existing equal counts); insertions at or
-// before the pointer bump turnIndex, so reinforcements landing "above" the
-// current turn act when their count comes up next round.
+// descending initiative (after existing equal counts, except that a
+// character goes ahead of a creature on its count, the tie buildOrder
+// breaks the same way: a hero joining on a goblin's count went after it
+// while the opening order put heroes first); insertions at or before the
+// pointer bump turnIndex, so reinforcements landing "above" the current
+// turn act when their count comes up next round.
 export function spliceIntoOrder(
   order: OrderEntry[],
   turnIndex: number,
@@ -171,7 +174,8 @@ export function spliceIntoOrder(
   for (const entry of sorted) {
     let at = nextOrder.length;
     for (let index = 0; index < nextOrder.length; index += 1) {
-      if (nextOrder[index].initiative < entry.initiative) {
+      const there = nextOrder[index];
+      if (there.initiative < entry.initiative || (there.initiative === entry.initiative && entry.kind === "pc" && there.kind !== "pc")) {
         at = index;
         break;
       }

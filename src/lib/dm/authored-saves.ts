@@ -29,6 +29,7 @@ import { sightTerrainFor } from "@/lib/dm/zone-rules";
 import { characterSenses, enemySenses, sensesReaching } from "@/lib/dm/attack-light";
 
 import type { Advantage } from "@/lib/dice";
+import type { Senses } from "@/lib/srd/senses";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
 import { removeConditions, sightBlockedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -69,20 +70,29 @@ export function withinFeet(encounterId: string, fromRef: string, toRef: string, 
 // for a reaction whose text says "a creature you can see". Off the board, or
 // with a token missing, it is open: nothing says they cannot.
 export function seesOnBoard(encounterId: string, fromRef: string, toRef: string): boolean {
-  const map = getBattleMapForEncounter(encounterId);
-  if (!map || fromRef === toRef) {
+  const placed = fromRef === toRef ? null : bothOnBoard(encounterId, fromRef, toRef);
+  if (!placed) {
     return true;
+  }
+  const { map, from, to } = placed;
+  // `self`: an area its own caster sees through does not stand in their way (zones.ts seenThroughBy).
+  return hasLineOfSightBetween(sightTerrainFor(map, { self: fromRef }), map.width, spaceOf(from), spaceOf(to));
+}
+
+// The board and both tokens, when both creatures stand on it; null when the
+// fight has no board or either is missing from it. A token off the board's
+// edge (a creature parked out of the scene) is not on it: nothing on the
+// board stands between. A rule that needs the board's answer asks first
+// whether it can give one (Fear's save, unseen-save.ts).
+export function bothOnBoard(encounterId: string, fromRef: string, toRef: string) {
+  const map = getBattleMapForEncounter(encounterId);
+  if (!map) {
+    return null;
   }
   const from = getTokenByRef(map.id, fromRef);
   const to = getTokenByRef(map.id, toRef);
-  // A token off the board's edge (a creature parked out of the scene) is not
-  // judged: nothing on the board stands between.
   const off = (token: { x: number; y: number }) => token.x < 0 || token.y < 0 || token.x >= map.width || token.y >= map.height;
-  if (!from || !to || off(from) || off(to)) {
-    return true;
-  }
-  // `self`: an area its own caster sees through does not stand in their way (zones.ts seenThroughBy).
-  return hasLineOfSightBetween(sightTerrainFor(map, { self: fromRef }), map.width, spaceOf(from), spaceOf(to));
+  return !from || !to || off(from) || off(to) ? null : { map, from, to };
 }
 
 // Why a character cannot see a creature for a feature whose text says "you
@@ -94,9 +104,13 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
 // and Plants asks whether the beast can see the cleric). Blindsight or
 // truesight that reaches the other sees past invisibility (attack-light.ts
 // sensesReaching, the rule an attack roll reads too).
-type Looker = { id: string; conditions: string[]; name?: string; displayName?: string } & (
+// A pet looks too (Fear's save, unseen-save.ts): it has no token, so its id
+// is its owner's, whose square it stands in (pet-place.ts), and its senses
+// are its block's (pet-save-roll.ts petSenses).
+export type Looker = { id: string; conditions: string[]; name?: string; displayName?: string } & (
   | Pick<CharacterSheet, "features" | "race">
   | Pick<EncounterEnemy, "stats">
+  | { ownSenses: Senses }
 );
 
 const lookerName = (looker: Looker) => looker.displayName ?? looker.name ?? "";
@@ -107,7 +121,7 @@ export function unseenBecause(encounterId: string, viewer: Looker, seen: Looker,
 
 // The conditions' part alone: blinded, invisible, hidden, and the senses that see past them.
 export function unseenByConditions(encounterId: string | null, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
-  const senses = "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
+  const senses = "ownSenses" in viewer ? viewer.ownSenses : "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
   const reach = sensesReaching(encounterId, { refId: viewer.id, senses }, { refId: seen.id });
   const blocked = sightBlockedBy(viewer.conditions, seen.conditions, { ...reach, hidden: options.hidden });
   if (!blocked) {

@@ -11,6 +11,7 @@ import { getActiveEncounter, listEnemies, setEnemyConcentration, setEnemyConcent
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { breakConcentration, clearSpellConditionsByName, settleFullDuration } from "@/lib/dm/concentration";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
+import { banishedHome } from "@/lib/dm/full-duration-settle";
 
 // Counts every running concentration clock that `counts` picks down by `by`
 // rounds, ending the ones that run out. Returns the table lines. The count
@@ -42,7 +43,7 @@ export function tickConcentrationClocks(
       continue;
     }
     // Held to the end: what the spell leaves for good stays (full-duration.ts).
-    lines.push(...settleFullDuration(campaign, sheet.concentratingOn, sheet.id));
+    lines.push(...settleFullDuration(campaign, sheet.concentratingOn, sheet.id), ...banishedHome(campaign, sheet.concentratingOn, sheet.id));
     const spell = breakConcentration(campaign, null, sheet.id, "the spell's duration ran out");
     if (spell) {
       lines.push(`${sheet.name}'s ${spell} has run its course; their concentration on it ends.`);
@@ -59,7 +60,7 @@ export function tickConcentrationClocks(
       continue;
     }
     const spell = enemy.concentration;
-    lines.push(...settleFullDuration(campaign, spell, enemy.id));
+    lines.push(...settleFullDuration(campaign, spell, enemy.id), ...banishedHome(campaign, spell, enemy.id));
     setEnemyConcentration(enemy.id, null);
     clearSpellConditionsByName(campaign, spell, undefined, enemy.id);
     lines.push(`${enemy.displayName}'s ${spell} has run its course; the spell's effects end.`);

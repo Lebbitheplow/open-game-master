@@ -18,7 +18,7 @@ import { getClock } from "@/lib/db/clock";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { breakDown } from "@/lib/dm/calendar";
-import { carriedLight } from "@/lib/dm/light-timers";
+import { shedLight } from "@/lib/dm/light-timers";
 import { lightSeenBy, offBoardLight, type Light } from "@/lib/dm/notice-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -27,14 +27,15 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // is not dark at midnight), or at an English table by the words of a place
 // with no scene, else the sky's by the hour. Null on a board, or where
 // neither settles it.
-export function offBoardAmbient(campaignId: string, named: Light | null = null): Light | null {
+// `hourAt`: the clock's instant whose hour the sky follows (now, unsaid).
+export function offBoardAmbient(campaignId: string, named: Light | null = null, hourAt?: number): Light | null {
   if (getActiveBattleMap(campaignId)) {
     return null;
   }
   const clock = getClock(campaignId);
   const place = getCurrentLocation(campaignId);
   return offBoardLight({
-    hour: breakDown(clock.calendar, clock.instant).hour,
+    hour: breakDown(clock.calendar, hourAt ?? clock.instant).hour,
     named,
     place: place
       ? {
@@ -48,10 +49,10 @@ export function offBoardAmbient(campaignId: string, named: Light | null = null):
   });
 }
 
-// What one character sees by in that light: their own lit torch or lantern,
-// then darkvision on top.
+// What one character sees by in that light: their own lit torch or lantern
+// (one still in the pack lights nothing), then darkvision on top.
 export function lightForSheet(ambient: Light, sheet: CharacterSheet): Light {
-  return lightSeenBy(ambient, carriedLight(sheet).radius > 0, sheetDarkvisionTiles(sheet) > 0);
+  return lightSeenBy(ambient, shedLight(sheet).radius > 0, sheetDarkvisionTiles(sheet) > 0);
 }
 
 // The light on a character's own square of the battle map as they see by

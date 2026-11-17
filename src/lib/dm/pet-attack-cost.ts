@@ -19,7 +19,8 @@ export const petAttackedKey = (name: string) => `pet-attacked:${textKey(name)}`;
 
 // What commanding a pet's attack costs its owner in a fight (SRD 5.1 and
 // the subclasses' own text): a Beast Master's companion takes the ranger's
-// action, a drake the bonus action, a Pact of the Chain familiar attacks
+// action (one swing of their Attack action once they have Extra Attack), a
+// drake the bonus action, a Pact of the Chain familiar attacks
 // with its reaction in place of one of the warlock's attacks of the Attack
 // action (once a turn), and a story pet the owner's action. The owner must
 // be able to act, on their own turn. Out of a fight there is no turn to
@@ -61,6 +62,30 @@ export function petAttackCost(
     }
     spent = spendAttack(once, sheet.name, { hasteOk: false });
     economy = `${pet.name} attacked with its reaction in place of one of ${sheet.name}'s attacks.`;
+  } else if (pet.kind === "beast_companion" && budget.attacksAllowed > 1) {
+    // Ranger's Companion: "Once you have the Extra Attack feature, you can
+    // make one weapon attack yourself when you command the beast to take
+    // the Attack action." The command is a swing of the ranger's Attack
+    // action; it took the whole action, and the 5th-level ranger's own
+    // attack beside it was refused. It is still one command a turn (the
+    // second swing is the ranger's, Bestial Fury's above).
+    if (budget.oncePerTurn.includes(attacked)) {
+      return { error: `${pet.name} already attacked at ${sheet.name}'s command this turn; the Attack action's other swing is ${sheet.name}'s own.`, refused: "limit" };
+    }
+    // One weapon attack of the ranger's own, however many the Attack action
+    // holds: a ranger with a third attack from another class (a fighter's
+    // Extra Attack (2)) kept two beside the command. Swings already made in
+    // this Attack action are the ranger's own (a second command is refused).
+    const ownSoFar = budget.actionUsed && budget.attacksMade < budget.attacksAllowed ? budget.attacksMade : 0;
+    if (ownSoFar > 1) {
+      return { error: `${sheet.name} has made ${ownSoFar} weapon attacks of their own this Attack action, and commanding ${pet.name} leaves them one. Nothing was spent.`, refused: "limit" };
+    }
+    spent = spendAttack(budget, sheet.name, { hasteOk: false });
+    if (spent.ok && spent.budget.attacksAllowed > 2) {
+      const ownLeft = Math.max(0, 1 - (spent.budget.attacksMade - 1));
+      spent = { ...spent, budget: { ...spent.budget, attacksMade: Math.max(spent.budget.attacksMade, spent.budget.attacksAllowed - ownLeft) } };
+    }
+    economy = `Commanding ${pet.name} took ${sheet.name}'s Attack action; one weapon attack of their own goes with it.`;
   } else if (pet.kind === "drake") {
     spent = spendAction(budget, "bonus", `commanding ${pet.name}`, sheet.name);
     economy = `Commanding ${pet.name} used ${sheet.name}'s bonus action.`;

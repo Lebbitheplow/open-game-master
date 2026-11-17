@@ -16,6 +16,7 @@ import {
   gearRidersActive,
   type GearDef,
   type GearDice,
+  type GearOnHit,
   type WeaponRiders,
 } from "@/lib/srd/magic-gear";
 import { matchWeapon, weaponNamed, type SrdWeapon } from "@/lib/srd/weapons";
@@ -113,9 +114,15 @@ export function gearProfileParts(
       ...(waiting.length ? { gearDice: waiting } : {}),
       ...(riders.critExtra?.length ? { gearCritDice: riders.critExtra } : {}),
       ...(riders.bonusVs ? { gearBonusVs: riders.bonusVs } : {}),
+      ...(riders.onHit?.length ? { gearOnHit: riders.onHit } : {}),
+      ...(riders.wounds ? { gearWounds: true } : {}),
+      ...(riders.oath ? { gearOath: true } : {}),
     },
   };
 }
+
+// An on-hit save's ability in the words a note uses.
+const SAVE_WORDS: Record<GearOnHit["save"], string> = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
 
 // Whether a magic weapon's dice apply to this target: its creature type is
 // one the dice name (or they name none), is not one they spare, and the
@@ -165,6 +172,19 @@ export function itemRidersAgainst(
       riderNotes: [...next.riderNotes, `${profile.weapon}: +${entry.dice} ${type}${entry.vs ? ` against a ${kind}` : ""}`],
     };
     typed.push({ dice: entry.dice, type });
+  }
+  // What the weapon's hit asks of the creatures it names (Giant Slayer: a
+  // giant's DC 15 Strength save or prone), landed after the damage as a
+  // natural attack's rider is (natural-onhit.ts), on the turn's swing and
+  // the opportunity attack alike. Wired nowhere, a giant struck by a Giant
+  // Slayer never fell.
+  const rider = (profile.gearOnHit ?? []).find((entry) => !entry.vs || entry.vs.some((wanted) => kind.includes(wanted)));
+  if (rider && !next.creatureOnHit) {
+    next = {
+      ...next,
+      creatureOnHit: { save: rider.save, dc: rider.dc, condition: rider.condition },
+      riderNotes: [...next.riderNotes, `${profile.weapon}: a DC ${rider.dc} ${SAVE_WORDS[rider.save]} save or ${rider.condition}`],
+    };
   }
   return { profile: next, typed };
 }

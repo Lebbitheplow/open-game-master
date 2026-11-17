@@ -38,6 +38,7 @@ import {
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
 import { tickConcentrationClocks } from "@/lib/dm/concentration-clock";
+import { settleRunningOut } from "@/lib/dm/full-duration-settle";
 import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, endLethargicConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
@@ -62,7 +63,7 @@ import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { markTurnEnded, saveHoldAtTurnEnd, type UnseenHold } from "@/lib/dm/unseen-save";
 
 // Condition upkeep: timed conditions count down and expire, save-ends
 // conditions get their re-save rolled server-side (enemy saves from stat
@@ -111,6 +112,9 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
     counts: (source) => !source || !inOrder.has(source),
     saves: (holderId) => !inOrder.has(holderId),
   };
+  // A spell held to its end leaves what it leaves before the count ends what
+  // it holds (full-duration-settle.ts).
+  lines.push(...settleRunningOut(campaign, 1, (casterId) => !inOrder.has(casterId)));
   tickEnemyConditions(campaign, encounter, 1, lines, outside);
   tickSheetConditions(campaign, 1, lines, { encounter, ...outside });
   rollEffectSaves(campaign, encounter, (holderId) => !inOrder.has(holderId), lines);
@@ -160,6 +164,7 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   // How long each creature lies senseless into the stretch, read before the
   // stretch runs: one that wakes on its last round has had no time to get up.
   const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
+  lines.push(...settleRunningOut(campaign, rounds, () => true));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
   // Full Throttle that the stretch ended burns its knight (genre-b-steampunk-ends.ts).
   lines.push(...settleFullThrottle(campaign));
@@ -344,6 +349,10 @@ export function countTurnStarts(campaign: Campaign, encounter: Encounter, ids: s
   const starting = new Set(ids);
   const counted: string[] = [];
   const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
+  // Settled before the conditions count: a banished fiend or a creature
+  // held by Flesh to Stone, its own minute run out first, was gone from the
+  // spell when the clock asked what it held (full-duration-settle.ts).
+  counted.push(...settleRunningOut(campaign, 1, (casterId) => starting.has(casterId)));
   tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
   tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
   counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
@@ -547,14 +556,12 @@ export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): str
   return walked.filter((id) => turnHoldKeys(campaign, encounter.id, [id]).some((hold) => !recorded || recorded.has(hold)));
 }
 
-// A hold saved against only far from its source (Dreadful Aspect: a creature
-// that ends its turn more than 30 feet away). Measured on the board as reach
-// is (authored-saves.ts): off the board it counts as close, as the fear's
-// reach did; a source no longer on the board is far.
-function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): boolean {
-  const feet = instance?.saveEnds?.beyondFeet;
-  if (!feet || !encounter || !instance?.source) return false;
-  return withinFeet(encounter.id, instance.source, holderId, feet);
+// A hold saved against only far from its source (Dreadful Aspect) or only out
+// of its sight (Fear: "If the creature ends its turn in a location where it
+// doesn't have line of sight to you, the creature can make a Wisdom saving
+// throw"): unseen-save.ts, the one rule a pet's clock reads too.
+function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): UnseenHold {
+  return encounter ? saveHoldAtTurnEnd(encounter.id, holderId, instance) : null;
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {
@@ -605,7 +612,11 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       // Each source's hold asks its own save; this is one of them.
       const holds = (instance: ConditionMeta) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc;
       const instance = instancesOf((meta as ConditionMetaMap)[due.name]).find(holds);
-      if (!instance || heldClose(encounter, enemy.id, instance)) {
+      const held = instance ? heldClose(encounter, enemy.id, instance) : "held";
+      if (held === "first") {
+        meta = markTurnEnded(meta, due.name, holds);
+      }
+      if (!instance || held) {
         continue;
       }
       // The creature's full save (src/lib/dm/forced-save.ts), as the first
@@ -736,8 +747,13 @@ function tickSheetConditions(
       }
       // A hold that lets the character pick its save (Nature's Wrath).
       const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => computeSheetDerived(sheet).saves[each]) } : listed;
-      const holding = instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc);
-      if (heldClose(options?.encounter, sheet.id, holding)) {
+      const holds = (instance: ConditionMeta) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc;
+      const holding = instancesOf((meta as ConditionMetaMap)[due.name]).find(holds);
+      const held = heldClose(options?.encounter, sheet.id, holding);
+      if (held === "first") {
+        meta = markTurnEnded(meta, due.name, holds);
+      }
+      if (held) {
         continue;
       }
       const effect = effectOf(listed);
@@ -854,6 +870,7 @@ function tickSheetConditions(
   // the same counts, and their saves as their owner's turn ends. Before, a
   // condition on a pet had no clock at all.
   tickPetConditions(campaign, by, lines, {
+    encounterId: options?.encounter?.id,
     endTurnBound: options?.endTurnBound,
     counts: options?.counts,
     saves: options?.saves,

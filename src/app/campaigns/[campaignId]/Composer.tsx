@@ -336,6 +336,7 @@ function ComposerInner({
             sheets={sheets}
             meUserId={meUserId}
             steersStory={steersStory}
+            smiteOffered={hostOffers(capabilities, "opportunitySmite")}
           />
         ) : pending.parkedFor === "watch" ? (
           <WatchCard

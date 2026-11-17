@@ -782,7 +782,11 @@ await test("what time does to a sheet on its own is filed under the turn and com
   world.clearDice();
   assert.equal(infected.ok, true, infected.error);
   const at = instant();
+  // Each whole day ends in a night's long rest, which takes the symptoms'
+  // level off and asks the plague's save: failed both nights, it puts it back.
+  world.dice(1, 1);
   const out = await world.invoke("pass_time", { amount: 2, unit: "days" });
+  world.clearDice();
   assert.equal(out.ok, true, out.error);
   assert.ok(!world.sheet(hero.id).conditions.includes("poisoned"), "the poison outlasted its ten minutes");
   assert.ok(world.sheet(hero.id).conditions.includes("sewer plague"), "the symptoms never showed");

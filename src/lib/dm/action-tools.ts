@@ -22,7 +22,7 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { spendHitDice } from "@/lib/dm/hit-dice";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
-import { effectiveSpeed } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
 import { characterEscape } from "@/lib/dm/grapple";
 import { callsManacles, foesManacles, manaclesUse } from "@/lib/dm/manacles";
 import { setCarriedTrap } from "@/lib/dm/set-traps";
@@ -43,12 +43,14 @@ import { readySpell } from "@/lib/dm/readied-spell";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { DODGING } from "@/lib/dm/condition-logic";
 import { handleMountAction } from "@/lib/dm/mount-combat";
+import { familiarAction } from "@/lib/dm/familiar-help";
 import { contest, help, hide } from "@/lib/dm/combat-actions";
 import { payGrapplingStrike } from "@/lib/dm/maneuver-reactions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasDestination, planActionWalk, walkActionPlan, type ActionWalk } from "@/lib/dm/action-walk";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { shakeAwake } from "@/lib/dm/shake-awake";
 
 // The rest of a 5e turn: the actions that are not attacks or spells, plus
 // reactions. Dodge, Dash, Disengage, Hide, Help, Grapple, and Shove all had
@@ -100,6 +102,7 @@ export const actionTools: ToolDef[] = [
             description: "As a bonus action: Cunning Action, Fast Hands, Expeditious Retreat or a monk's ki. The server checks the feature and spends the ki.",
           },
           mount: { type: "boolean", description: "The mount's own action (dash, disengage, dodge)." },
+          petName: { type: "string", description: "Help: their familiar helps instead." },
           targetEnemyId: {
             type: "string",
             description:
@@ -107,7 +110,7 @@ export const actionTools: ToolDef[] = [
           },
           targetCharacterId: {
             type: "string",
-            description: "Help or manacles: the ally helped or bound, exact characterId from GAME STATE.",
+            description: "Help, Wake or manacles: the ally helped, woken or bound, exact characterId from GAME STATE.",
           },
           shove: {
             type: "string",
@@ -142,7 +145,7 @@ export const actionTools: ToolDef[] = [
           scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
             type: "string",
-            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId; with Manacles it binds targetCharacterId.",
+            description: "The enemy taking Dash, Disengage, Dodge, Escape or Wake: exact enemyId from GAME STATE. Omit characterId; with Manacles it binds targetCharacterId.",
           },
           toward: { type: "string", description: "Dash or Disengage: who to move beside (id or name); the server walks them there." },
           spell: {
@@ -224,6 +227,8 @@ const takeActionSchema = z.object({
   bonus: z.coerce.boolean().optional(),
   // A controlled mount's Dash, Disengage or Dodge (SRD 5.1, Controlling a Mount).
   mount: z.coerce.boolean().optional(),
+  // A familiar's own Help (familiar-help.ts).
+  petName: z.string().trim().min(1).max(60).optional(),
   targetEnemyId: z.string().optional(),
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
@@ -389,6 +394,10 @@ export function handleTakeAction(
   if (args.mount) {
     return handleMountAction(campaign, sheet, args.action);
   }
+  // The familiar's own Help, not its owner's (familiar-help.ts).
+  if (args.petName) {
+    return familiarAction(campaign, sheet, { petName: args.petName, action: args.action, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId });
+  }
   const encounter = getActiveEncounter(campaign.id);
   // Revelation in Flesh's slip out of a grapple or a nonmagical restraint: 5
   // feet of movement, no action and no check (ar-ws-squeeze.ts).
@@ -398,8 +407,8 @@ export function handleTakeAction(
   }
   // Off their turn, the action they readied: released with their reaction,
   // priced by nothing else (readied-release.ts). Readying is never a release.
-  // A pin is never readied (it is not among the readiable actions).
-  const readied = args.action === "ready" || args.action === "pin" ? null : readiedReleaseFor(sheet, encounter, args.action);
+  // A pin is never readied (it is not among the readiable actions), nor a wake.
+  const readied = args.action === "ready" || args.action === "pin" || args.action === "wake" ? null : readiedReleaseFor(sheet, encounter, args.action);
   if (readied && "error" in readied) {
     return toolError(readied);
   }
@@ -507,7 +516,8 @@ export function handleTakeAction(
       // "The increase equals your speed, after applying any modifiers" (SRD
       // 5.1, Dash): at speed 0 it buys nothing, as the Hand's card says, and
       // a grappled hero's action was spent on it.
-      if (inFight && effectiveSpeed(sheet.conditions, sheet.speed) === 0) {
+      // Exhaustion's 0 as well (vitals-logic.ts slowedSpeed).
+      if (inFight && slowedSpeed(sheet) === 0) {
         return { error: `${sheet.name}'s speed is 0, so a Dash goes nowhere. Nothing was spent.`, refused: "rules" };
       }
       // Each Dash adds the speed again, so a second one (Cunning Action,
@@ -596,6 +606,8 @@ export function handleTakeAction(
       return characterEscape(campaign, turn, sheet, () => spend(), args.ability);
     case "pin":
       return pin(campaign, turn, sheet, encounter, args.targetEnemyId, () => spend());
+    case "wake":
+      return shakeAwake(campaign, sheet, args, sheets, sheetsById, () => spend());
     case "improvise":
       return improviseAction(
         campaign,

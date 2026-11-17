@@ -27,7 +27,7 @@ export const SPELL_GLYPH_NAMES: Partial<Record<SpellGlyph, string[]>> = {
   buff: [
     "Alter Self", "Awaken", "Beast Bond", "Borrowed Knowledge", "Darkvision", "Fortune's Favor", "Friends",
     "Glibness", "Mass Polymorph", "Rary's Telepathic Bond", "Seeming", "Skill Empowerment",
-    "Sudden Awakening", "Tongues", "Water Breathing",
+    "Sudden Awakening", "Tongues",
   ],
   choice: [
     "Chaos Bolt", "Chromatic Orb", "Dragon's Breath", "Elemental Weapon", "Forbiddance", "Glyph of Warding",

@@ -67,6 +67,11 @@ export function nearerSquares(width: number, height: number, from: XY, source: S
   return out;
 }
 
+// The same for every source it fears at once: a square nearer any of them.
+export function nearerAnySquares(width: number, height: number, from: XY, sources: readonly Source[]): number[] {
+  return [...new Set(sources.flatMap((source) => nearerSquares(width, height, from, source)))];
+}
+
 // Where a fleeing creature runs to: of the squares it can reach this turn,
 // the one farthest from what it flees, the cheaper walk on a tie, and never
 // a square nearer than where it stands. Null when nowhere is farther (it is
@@ -93,7 +98,7 @@ export const HALTED = "halted";
 export const GROVELING = "groveling";
 
 // What a creature under one of these may still do on that turn.
-export type HeldAct = "attack" | "use" | "dash" | "disengage" | "dodge" | "escape";
+export type HeldAct = "attack" | "use" | "dash" | "disengage" | "dodge" | "escape" | "wake";
 
 const DUTIES: Record<string, { word: string; duty: string; moves: boolean }> = {
   [APPROACHING]: { word: "approach", duty: "it moves toward its caster by the most direct route, and its turn ends once within 5 feet", moves: true },
@@ -109,6 +114,7 @@ const ACT_WORDS: Record<HeldAct, string> = {
   disengage: "Disengage with its action",
   dodge: "Dodge",
   escape: "escape attempt",
+  wake: "shake to wake a sleeper",
 };
 
 // The refusal for an act a creature's turn is spent away from (issue #621):

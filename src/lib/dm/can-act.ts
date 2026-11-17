@@ -51,7 +51,7 @@ export type ActingEncounter = Pick<
 > & {
   kind?: Encounter["kind"];
   status?: Encounter["status"];
-  legendary?: { acted?: EnemyActedLedger; turns?: EnemyTurns };
+  legendary?: { acted?: EnemyActedLedger; turns?: EnemyTurns; ambushed?: string[] };
 };
 
 export type ActingEnemy = Pick<EncounterEnemy, "id" | "displayName" | "status" | "conditions">;
@@ -107,15 +107,21 @@ export function actingCombatantId(encounter: ActingEncounter | null): string | n
 
 // Surprise costs the first turn, and the reaction until that turn has
 // ended. `forReaction` asks the second question: a surprised combatant whose
-// place in the order the pointer has already gone by has had its (lost)
-// turn, and reacts again.
+// place in the order the turn under way has gone by has had its (lost)
+// turn, and reacts again. `actingId`: the creature whose turn is under way,
+// when the caller knows it (the attacker a reaction answers, the walker an
+// opportunity attack meets).
 export function isSurprised(
   encounter: ActingEncounter | null,
   combatantId: string,
   forReaction = false,
+  actingId: string | null = null,
 ): boolean {
-  if (!isRunningFight(encounter) || encounter.round > 1) {
+  if (!isRunningFight(encounter)) {
     return false;
+  }
+  if (encounter.round > 1) {
+    return forReaction && lostRoundReaction(encounter, combatantId, actingId);
   }
   if (!encounter.surprisedIds.includes(combatantId)) {
     return false;
@@ -123,14 +129,50 @@ export function isSurprised(
   if (!forReaction || !encounter.orderReady) {
     return true;
   }
-  const place = encounter.order.findIndex((entry) => entryRef(entry) === combatantId);
-  return place < 0 || place >= encounter.turnIndex;
+  const place = placeOf(encounter, combatantId);
+  return place < 0 || place >= passPlace(encounter, actingId);
+}
+
+function placeOf(encounter: ActingEncounter, id: string): number {
+  return encounter.order.findIndex((entry) => entryRef(entry) === id);
+}
+
+// Where the round has got to in the order: the place of the creature acting
+// now, when the caller names one in the order, else the pointer's. The
+// pointer rests on characters only, so it alone misplaced the turn under
+// way (SRD 5.1, Surprise: no reaction "until that turn ends"): while the
+// enemies at the end of round 1 took their turns it already named round 2's
+// first character, and a surprised rogue whose lost turn had come before
+// theirs was refused Uncanny Dodge against them.
+function passPlace(encounter: ActingEncounter, actingId: string | null): number {
+  const acting = actingId ? placeOf(encounter, actingId) : -1;
+  return acting >= 0 ? acting : encounter.turnIndex;
+}
+
+// The round a wholly surprised party lost, which the ambushers play after
+// the order opened on round 2 (encounter-tools.ts openAfterAmbush): a hero
+// whose own lost turn comes after the ambusher's in the order has no
+// reaction to that action. Once the ambusher has spent its round-2 action
+// (the ledger's ids) the lost round is behind it. Before this every hero
+// reacted to the ambush as if it were round 2.
+function lostRoundReaction(encounter: ActingEncounter, combatantId: string, actingId: string | null): boolean {
+  if (encounter.round !== 2 || !actingId || !(encounter.legendary?.ambushed ?? []).includes(combatantId)) {
+    return false;
+  }
+  const ledger = encounter.legendary?.acted;
+  if (ledger?.round === 2 && ledger.ids.includes(actingId)) {
+    return false;
+  }
+  const acting = placeOf(encounter, actingId);
+  return acting >= 0 && placeOf(encounter, combatantId) > acting;
 }
 
 export function canAct(input: {
   sheet: ActingSheet;
   encounter: ActingEncounter | null;
   kind: ActKind;
+  // For a reaction: the creature whose turn is under way (isSurprised).
+  actingId?: string | null;
 }): CanActResult {
   const { sheet, kind } = input;
   const encounter = isRunningFight(input.encounter) ? input.encounter : null;
@@ -177,7 +219,7 @@ export function canAct(input: {
         : `${sheet.name} is surprised: Feral Instinct lets them act this turn only if they enter their rage before anything else (use_resource rage). They cannot ${what} first.`, refused: "rules" },
     );
   }
-  if (isSurprised(encounter, sheet.id, kind === "reaction")) {
+  if (isSurprised(encounter, sheet.id, kind === "reaction", input.actingId ?? null)) {
     return refuse(
       "surprised",
       { error: kind === "reaction"

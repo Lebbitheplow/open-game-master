@@ -617,7 +617,7 @@ test("an older form's field names reach the names the handler reads", () => {
 test("the property scan reads the tools it is pointed at", () => {
   assert.deepEqual(toolProperties("take_action").keys.sort(), [
     "ability", "action", "bonus", "characterId", "condition", "contestSkill", "damage", "damageType", "difficulty", "distanceFt",
-    "enemyId", "item", "level", "mount", "readied", "reason", "scene", "shove", "skill", "spell", "targetCharacterId",
+    "enemyId", "item", "level", "mount", "petName", "readied", "reason", "scene", "shove", "skill", "spell", "targetCharacterId",
     "targetEnemyId", "toward", "trigger",
   ]);
   assert.ok(toolProperties("apply_damage").keys.includes("amount"));
@@ -1248,6 +1248,17 @@ test("pc_attack's Made with, travel's Days and damage_object's Blows ask for the
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*actionParts\?: boolean/);
 });
 
+// Magic ammunition (G18): an older host strips pc_attack's ammo unread and
+// fires ordinary arrows, so the console asks for the host.
+test("pc_attack's Ammunition asks for the host", () => {
+  const field = adjudication("pc_attack").fields.find((entry) => entry.name === "ammo");
+  assert.ok(field, "pc_attack has no Ammunition field");
+  assert.ok(fieldForHost(field, () => true), "Ammunition on a host that has it");
+  assert.equal(fieldForHost(field, () => false), null, "Ammunition shown to an older host");
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*magicAmmo: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*magicAmmo\?: boolean/);
+});
+
 // The console's Background and Skills for a new companion: an older host's
 // add_companion strips both unread and recruits by the class list's first
 // skills, so the app's console shows them only to a host that reads them.
@@ -1316,6 +1327,8 @@ test("the rules audit's new console fields ask for the host", () => {
   for (const [tool, name, flag] of [
     ["learn_spell", "from", "scrollCopy"],
     ["cast_at_player", "petName", "petSaves"],
+    ["heal", "petName", "petHealing"],
+    ["take_action", "petName", "familiarHelp"],
     ["apply_hazard", "enemyIds", "enemyHazards"],
     ["apply_hazard", "minutes", "frigidWater"],
     ["apply_hazard", "place", "setTraps"],

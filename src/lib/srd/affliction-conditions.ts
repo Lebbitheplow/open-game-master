@@ -23,6 +23,12 @@ export const AFFLICTION_CONDITION_EFFECTS: ConditionEffectRow[] = [
       "Cackle Fever: a level of exhaustion no rest removes; great stress (a fight, damage) is a DC 13 CON save or 1d10 psychic and a minute of mad laughter; a DC 13 CON save after each long rest lowers the DC by 1d6, cured at 0.",
   },
   {
+    id: "nightmare_curse",
+    match: ["cursed (nightmares)"],
+    summary:
+      "Cursed (a rakshasa's claw): horrible images and dreams at every rest, and no benefit from finishing a short or long rest. Lasts until Remove Curse or similar magic lifts it.",
+  },
+  {
     id: "sewer_plague",
     match: ["sewer plague"],
     summary:

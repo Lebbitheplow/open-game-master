@@ -1,0 +1,383 @@
+// GM rules audit 2026-11-16, conditions lens follow-up (D11 and on): the
+// leftovers the first pass named, with the lead's rulings. Each test failed
+// before its fix.
+//
+// SRD 5.1 as printed. Dice forced; every check reads a stored row.
+import assert from "node:assert/strict";
+import { openWorld } from "./lib/enforce-world.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
+import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
+
+const { test, finish } = suite("test-audit1116-conditions2");
+const encounters = await import("../src/lib/db/encounters.ts");
+const dropped = await import("../src/lib/db/dropped-items.ts");
+
+// A board: dummies (AC 13, 40 hp) and Kara with an attuned Frost Brand and a
+// shield.
+const field = await openWorld();
+const board = await combatKit(field);
+const KARA_GEAR = [
+  { name: "Frost Brand", qty: 1, equipped: true, attuned: true },
+  { name: "Shield", qty: 1, equipped: true },
+  { name: "Dagger", qty: 2, equipped: false },
+];
+const kara = field.addHero({
+  name: "Kara", class: "fighter", level: 5, maxHp: 40, proficiencies: TRAINED, acOverride: false,
+  abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+  equipment: KARA_GEAR,
+});
+async function stage(count = 1) {
+  await board.endFight();
+  field.patch(kara.id, { equipment: KARA_GEAR });
+  await board.fight(count, { heroFaces: { [kara.id]: 20 } });
+  const foes = field.enemies();
+  for (const foe of foes) {
+    board.setEnemy(foe.id, { stats: { ...DUMMY }, maxHp: 40 });
+  }
+  board.place(kara.id, 6, 7);
+  board.place(foes[0].id, 5, 7);
+  return foes;
+}
+const ground = () => dropped.listDroppedItems(field.campaignId);
+const row = (sheet, name) => sheet.equipment.find((item) => item.name === name);
+
+// D11. SRD 5.1, Unconscious: "The creature drops whatever it's holding and
+// falls prone." A hero dropped to 0 hit points kept the sword and the shield
+// in hand: GAME STATE and the Hand showed them held, the shield still counted
+// in the armor class, and nothing lay on the board. The ruling: what is held
+// lies in the creature's square, attunement kept; picking it back up is the
+// free object interaction; what still lies there when the fight ends goes
+// back into its owner's pack.
+await test("D11: a hero who falls unconscious drops the sword and the shield in their square, attunement kept", async () => {
+  const [foe] = await stage();
+  field.patch(kara.id, { currentHp: 3 });
+  const ac = field.sheet(kara.id).ac;
+  board.enemyTurn(foe.id);
+  // The club's d20 and its 1d6.
+  field.dice(19, 6);
+  const club = await field.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: kara.id });
+  field.clearDice();
+  assert.equal(club.ok, true, club.error);
+  const down = field.sheet(kara.id);
+  assert.ok(down.conditions.includes("unconscious"), JSON.stringify(club.result));
+  assert.equal(row(down, "Frost Brand"), undefined, `the sword is still on the sheet: ${JSON.stringify(down.equipment)}`);
+  assert.equal(row(down, "Shield"), undefined, "the shield is still on the sheet");
+  assert.equal(row(down, "Dagger")?.qty, 2, "the packed daggers fell too");
+  assert.equal(down.ac, ac - 2, "the shield still counts in the armor class");
+  const lying = ground();
+  const sword = lying.find((entry) => entry.item.name === "Frost Brand");
+  assert.ok(sword, `nothing lies on the board: ${JSON.stringify(lying)}`);
+  assert.deepEqual([sword.x, sword.y], [6, 7], "the sword is not in Kara's square");
+  assert.equal(sword.item.attuned, true, "the sword on the ground lost its attunement");
+  assert.equal(sword.item.equipped, undefined);
+  assert.ok(lying.some((entry) => entry.item.name === "Shield"), "the shield is not on the ground");
+});
+
+await test("D11: the hero picks the sword back up with the free object interaction, still attuned", async () => {
+  // Woken by healing on the same board.
+  const healed = await field.invoke("heal", { characterId: kara.id, amount: 5 });
+  assert.equal(healed.ok, true, healed.error);
+  board.giveTurn(kara.id);
+  const pick = await field.invoke("handle_item", { characterId: kara.id, action: "pick_up", item: "Frost Brand" });
+  assert.equal(pick.ok, true, pick.error);
+  assert.match(String(pick.result.cost ?? ""), /free object interaction/, JSON.stringify(pick.result));
+  const sword = row(field.sheet(kara.id), "Frost Brand");
+  assert.ok(sword, "the sword is not back on the sheet");
+  assert.equal(sword.equipped, true, "the sword is not in hand");
+  assert.equal(sword.attuned, true, "picking it back up cost the attunement");
+});
+
+await test("D11: what still lies there when the fight ends goes back into its owner's pack", async () => {
+  // The shield was left lying from the last test.
+  assert.ok(ground().some((entry) => entry.item.name === "Shield"), "the shield is not lying there");
+  const ended = await field.invoke("end_encounter", { outcome: "truce" });
+  assert.equal(ended.ok, true, ended.error);
+  assert.equal(ground().length, 0, `still on the ground: ${JSON.stringify(ground())}`);
+  const shield = row(field.sheet(kara.id), "Shield");
+  assert.ok(shield, "the shield did not go back to Kara");
+  assert.equal(shield.equipped, false, "the shield went back on the arm, not into the pack");
+});
+
+await test("D11: a hero put to sleep off the board lets go too, and draws the sword again", async () => {
+  await board.endFight();
+  field.patch(kara.id, { equipment: KARA_GEAR });
+  await field.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [kara.id]: 20 } });
+  // No token on the board: Kara has no square for it to lie in.
+  const maps = await import("../src/lib/db/battle-maps.ts");
+  for (const token of maps.listTokens(board.map().id)) {
+    maps.deleteToken(token.id);
+  }
+  const slept = await field.invoke("set_condition", { characterId: kara.id, condition: "unconscious", reason: "Sleep", rounds: 10 });
+  assert.equal(slept.ok, true, slept.error);
+  const asleep = field.sheet(kara.id);
+  assert.equal(row(asleep, "Frost Brand")?.equipped, false, `the sleeper still holds the sword: ${JSON.stringify(asleep.equipment)}`);
+  assert.equal(row(asleep, "Frost Brand")?.attuned, true);
+  assert.equal(ground().length, 0, "a board-less fall left something on a board");
+});
+
+// An enemy holds only what the engine knows it took up (handle_item pick_up
+// for an enemy): that falls with it as it falls asleep.
+await test("D11: a creature that falls asleep drops what it picked up", async () => {
+  const [foe] = await stage();
+  const theirs = dropped.insertDroppedItem({ campaignId: field.campaignId, mapId: board.map().id, x: 5, y: 7, place: "", item: { name: "Lantern key", qty: 1 }, droppedBy: "", heldByEnemy: foe.id });
+  const laid = await field.invoke("set_condition", { enemyId: foe.id, condition: "unconscious", reason: "Sleep", rounds: 10 });
+  assert.equal(laid.ok, true, laid.error);
+  const key = dropped.getDroppedItem(theirs.id);
+  assert.equal(key.heldByEnemy, null, "the sleeping creature still holds the key");
+  assert.deepEqual([key.x, key.y], [5, 7]);
+  void encounters;
+});
+
+// D12. SRD 5.1, Frightened: "The creature can't willingly move closer to the
+// source of its fear." Two fears are two instances, each with its own source
+// (condition-logic.ts); every walk read the first source only, so a hero
+// frightened by two goblins walked straight at the second one.
+const sources = (entry) => (entry ? [entry, ...(entry.others ?? [])].map((instance) => instance.source) : []);
+async function twoFears() {
+  const foes = await stage(2);
+  board.place(foes[0].id, 2, 7);
+  board.place(foes[1].id, 12, 7);
+  board.place(kara.id, 7, 7);
+  for (const foe of foes) {
+    const scared = await field.invoke("set_condition", { characterId: kara.id, condition: "frightened", reason: "a dreadful howl", rounds: 10, sourceEnemyId: foe.id });
+    assert.equal(scared.ok, true, scared.error);
+  }
+  assert.deepEqual(sources(field.sheet(kara.id).conditionMeta.frightened).sort(), foes.map((foe) => foe.id).sort());
+  return foes;
+}
+
+await test("D12: a hero frightened by two creatures walks closer to neither", async () => {
+  await twoFears();
+  board.giveTurn(kara.id);
+  // East: away from the first goblin, toward the second. The walk a
+  // companion, a typed move and pc_attack's approach all take
+  // (token-rules.ts walkCharacter).
+  const { walkCharacter } = await import("../src/lib/dm/token-rules.ts");
+  const out = walkCharacter(field.campaign(), field.encounter(), board.map(), field.sheet(kara.id), board.token(kara.id), { x: 10, y: 7 });
+  const at = board.token(kara.id);
+  assert.deepEqual([at.x, at.y], [7, 7], `the frightened hero walked toward the second goblin: ${JSON.stringify(out)}`);
+  assert.match(String(out.error ?? ""), /frightened/, JSON.stringify(out));
+});
+
+await test("D12: the player's own walk is refused the same", async () => {
+  await twoFears();
+  board.giveTurn(kara.id);
+  field.signIn(field.owner);
+  const moveRoute = await field.route("campaigns/[campaignId]/battle-map/move");
+  const response = await moveRoute.POST(
+    new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x: 10, y: 7 }) }),
+    { params: Promise.resolve({ campaignId: field.campaignId }) },
+  );
+  assert.equal(response.status, 409, await response.text());
+});
+
+await test("D12: a creature frightened by two heroes walks closer to neither", async () => {
+  const [foe] = await stage(1);
+  const brin = field.sheets().find((sheet) => sheet.name === "Brin") ?? field.addHero({ name: "Brin", class: "fighter", level: 5, maxHp: 40 });
+  await board.endFight();
+  await board.fight(1, { heroFaces: { [kara.id]: 20, [brin.id]: 19 } });
+  const [goblin] = field.enemies();
+  void foe;
+  board.place(kara.id, 2, 7);
+  board.place(brin.id, 12, 7);
+  board.place(goblin.id, 7, 7);
+  for (const hero of [kara, brin]) {
+    const scared = await field.invoke("set_condition", { enemyId: goblin.id, condition: "frightened", reason: "a war cry", rounds: 10, sourceCharacterId: hero.id });
+    assert.equal(scared.ok, true, scared.error);
+  }
+  assert.equal(sources(board.enemy(goblin.id).conditionMeta.frightened).length, 2, JSON.stringify(board.enemy(goblin.id).conditionMeta));
+  board.enemyTurn(goblin.id);
+  const out = await field.invoke("move_token", { token: goblin.id, x: 10, y: 7 });
+  const at = board.token(goblin.id);
+  assert.ok(at.x <= 7, `the frightened goblin walked toward Brin to (${at.x},${at.y}): ${JSON.stringify(out)}`);
+});
+
+// D13. SRD 5.1, Heal: "This spell also ends blindness, deafness, and any
+// diseases affecting the target." Mass Heal: "Each creature healed by this
+// spell is also cured of all diseases and any effect making it blinded or
+// deafened." Both only healed: a blinded, plague-sick hero got 70 hit points
+// and stayed blind and sick.
+const { caster } = await import("./lib/enforce-spell-kit.mjs");
+async function ailing(world, name) {
+  const hero = world.addHero({ name, class: "fighter", level: 5, maxHp: 120 });
+  world.patch(hero.id, { currentHp: 20, conditions: ["blinded", "deafened"], conditionMeta: { blinded: { minutes: 600 }, deafened: { minutes: 600 } } });
+  world.dice(1);
+  const sick = await world.invoke("afflict", { characterId: hero.id, kind: "disease", name: "Sewer Plague", save: false, symptomsNow: true });
+  world.clearDice();
+  assert.equal(sick.ok, true, sick.error);
+  assert.ok(world.sheet(hero.id).conditions.includes("sewer plague"), JSON.stringify(world.sheet(hero.id).conditions));
+  return hero;
+}
+const cured = (sheet) => ["blinded", "deafened", "sewer plague"].filter((name) => sheet.conditions.includes(name));
+
+await test("D13: Heal ends blindness, deafness and the disease", async () => {
+  const temple = await openWorld();
+  const priest = temple.addHero(caster("cleric", "wis", ["Heal", "Mass Heal"], [], 17));
+  const hero = await ailing(temple, "Wren");
+  const out = await temple.invoke("heal", { characterId: hero.id, casterId: priest.id, spell: "Heal", level: 6 });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(temple.sheet(hero.id).currentHp, 90, JSON.stringify(out.result));
+  assert.deepEqual(cured(temple.sheet(hero.id)), [], `Heal left ${cured(temple.sheet(hero.id))}: ${JSON.stringify(out.result)}`);
+});
+
+await test("D13: Mass Heal does the same for each creature it heals", async () => {
+  const temple = await openWorld();
+  const priest = temple.addHero(caster("cleric", "wis", ["Heal", "Mass Heal"], [], 17));
+  const hero = await ailing(temple, "Ostra");
+  const out = await temple.invoke("heal", { characterId: hero.id, casterId: priest.id, spell: "Mass Heal", level: 9, amount: 50 });
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(cured(temple.sheet(hero.id)), [], `Mass Heal left ${cured(temple.sheet(hero.id))}: ${JSON.stringify(out.result)}`);
+});
+
+// D14. SRD 5.1, Exhaustion: "6: Death"; Concentration: "You lose
+// concentration on a spell if you ... die." set_condition's level 6 broke
+// the spell and wrote the death; a day without water, a frenzy outliving its
+// rage and a disease's toll wrote only the dead sheet: the spell stayed up on
+// a corpse, and Revivify found no moment of death to measure its minute from.
+const { minutesSinceDeath } = await import("../src/lib/dm/revival.ts");
+const { listRecentCampaignEvents } = await import("../src/lib/db/character-events.ts");
+function diedProperly(world, hero) {
+  const sheet = world.sheet(hero.id);
+  assert.equal(sheet.deathSaves?.dead, true, "not dead at exhaustion 6");
+  assert.equal(sheet.concentratingOn ?? null, null, `the dead still concentrate on ${JSON.stringify(sheet.concentratingOn)}`);
+  assert.notEqual(minutesSinceDeath(world.campaignId, hero.id), null, "no moment of death was written");
+  assert.ok(listRecentCampaignEvents(world.campaignId).some((event) => event.kind === "death" && event.campaignCharacterId === hero.id), "no death in the character's story");
+}
+
+await test("D14: a frenzy that takes a barbarian to exhaustion 6 ends their spell and writes the death", async () => {
+  const camp = await openWorld();
+  const berserker = camp.addHero({ name: "Hrolf", class: "barbarian", level: 6, maxHp: 60 });
+  camp.patch(berserker.id, { exhaustion: 5, conditions: ["frenzied"], conditionMeta: {}, concentratingOn: "Bless" });
+  const { settleFrenzies } = await import("../src/lib/dm/frenzy.ts");
+  settleFrenzies(camp.campaign());
+  diedProperly(camp, berserker);
+});
+
+await test("D14: a day without water that takes a hero to exhaustion 6 ends their spell and writes the death", async () => {
+  const RULES = { flanking: false, criticalFumbles: false, encumbrance: false, lingeringInjuries: false, powerfulCritical: false, criticalDamageMods: false, ammunition: false, restVariant: "standard", supplies: true };
+  const desert = await openWorld({ gameSettings: { variantRules: RULES } });
+  const walker = desert.addHero({ name: "Sefa", class: "cleric", level: 5, maxHp: 40, equipment: [{ name: "Rations (1 day)", qty: 5 }] });
+  desert.patch(walker.id, { exhaustion: 5, concentratingOn: "Bless" });
+  const out = await desert.invoke("pass_time", { amount: 1, unit: "days", water: "none" });
+  assert.equal(out.ok, true, out.error);
+  diedProperly(desert, walker);
+});
+
+// D15. SRD 5.1, Exhaustion: "4: Hit point maximum halved"; a wight's Life
+// Drain: "its hit point maximum is reduced by an amount equal to the damage
+// taken ... The target dies if this effect reduces its hit point maximum to
+// 0." The stored maximum carried the drain and the halving was taken of it,
+// so at exhaustion 4 a 10-point drain cost 5 (20 to 15), healing filled to
+// 15, and a drain equal to the whole halved maximum left 10 and killed
+// nobody.
+const { table } = await import("./lib/enforce-spell-kit.mjs");
+const { effectiveMaxHp } = await import("../src/lib/dm/condition-logic.ts");
+const DRAIN = { name: "Life Drain", toHit: 8, damage: "2d10", type: "necrotic", onHit: { save: "con", dc: 13, drainMaxHp: "total" } };
+const { FIGHTER: SPELL_FIGHTER } = await import("./lib/enforce-spell-kit.mjs");
+
+await test("D15: at exhaustion 4 a drain takes its whole amount off the halved maximum, and healing stops there", async () => {
+  const { world, sheets: [hero], enemies: [wight] } = await table([{ ...SPELL_FIGHTER, maxHp: 40 }], 1, { attacks: [DRAIN] });
+  world.patch(hero.id, { exhaustion: 4, tempHp: 30 });
+  assert.equal(effectiveMaxHp(world.sheet(hero.id)), 20);
+  world.dice(15, 5, 5, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: wight.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(effectiveMaxHp(world.sheet(hero.id)), 10, `the 10-point drain took ${20 - effectiveMaxHp(world.sheet(hero.id))}: ${JSON.stringify(out.result.maxHpDrained ?? out.result)}`);
+  const healed = await world.invoke("heal", { characterId: hero.id, amount: 30 });
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(world.sheet(hero.id).currentHp, 10, "healing went past the drained maximum");
+  world.patch(hero.id, { exhaustion: 3 });
+  assert.equal(effectiveMaxHp(world.sheet(hero.id)), 30, "out of exhaustion 4 the drain still takes 10 of the 40");
+});
+
+await test("D15: at exhaustion 4 a drain as large as the halved maximum kills", async () => {
+  const { world, sheets: [hero], enemies: [wight] } = await table([{ ...SPELL_FIGHTER, maxHp: 40 }], 1, { attacks: [DRAIN] });
+  world.patch(hero.id, { exhaustion: 4, tempHp: 30 });
+  world.dice(15, 10, 10, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: wight.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(hero.id).deathSaves?.dead, true, `a 20-point drain on a halved 20 left them alive: ${JSON.stringify(out.result.maxHpDrained ?? out.result)}`);
+});
+
+// D16. SRD 5.1, Mounted Combat: "you can ... use the mount's speed"; the
+// rider's exhaustion is the rider's ("2: Speed halved" is their own speed).
+// The board took the mount's 60 feet through the rider's exhaustion, so a
+// tired knight's warhorse walked 30.
+await test("D16: a rider's exhaustion does not slow the mount", async () => {
+  const { setMount } = await import("../src/lib/db/mounts.ts");
+  const { pcMoveBudget } = await import("../src/lib/battlemap/view.ts");
+  await stage();
+  board.giveTurn(kara.id);
+  setMount(field.campaignId, kara.id, { ref: "warhorse", name: "Warhorse", speed: 60, controlled: false, size: "Large" });
+  field.patch(kara.id, { exhaustion: 2 });
+  const budget = pcMoveBudget(field.campaignId, field.encounter(), board.map(), field.sheet(kara.id), board.token(kara.id));
+  setMount(field.campaignId, kara.id, null);
+  field.patch(kara.id, { exhaustion: 0 });
+  assert.equal(budget.speed, 60, `the warhorse moved at ${budget.speed} under a tired rider`);
+});
+
+// D18. SRD 5.1, Exhaustion: "4: Hit point maximum halved", a creature's as a
+// hero's. The console's correction of a creature's hit points (the human GM's
+// "set its hit points", catalog-enemy-hp.ts) allowed up to the stored
+// maximum: an ogre at exhaustion 4 (59, halved to 29) could be set to 59.
+await test("D18: the console corrects a creature at exhaustion 4 to its halved maximum at most", async () => {
+  const { enemyHpCorrection } = await import("../src/lib/dm/catalog-enemy-hp.ts");
+  const ogre = { displayName: "Ogre", status: "alive", currentHp: 20, maxHp: 59, conditions: ["exhaustion 4"] };
+  const over = enemyHpCorrection(ogre, 59);
+  assert.match(String(over.error ?? ""), /29 hit points at most/, `a tired ogre was set to ${JSON.stringify(over)}`);
+  assert.deepEqual(enemyHpCorrection(ogre, 29), { currentHp: 29, wakes: false });
+});
+
+// D19. The halving never leaves a living creature no maximum at all, as a
+// hero's never does (condition-logic.ts exhaustionMaxHp keeps 1): a 1 hit
+// point creature at exhaustion 4 was capped at 0 and left "alive" at 0.
+await test("D19: a creature's halved maximum is never below 1", async () => {
+  const { enemyHpCap } = await import("../src/lib/dm/monster-abilities.ts");
+  assert.equal(enemyHpCap({ maxHp: 1, conditions: ["exhaustion 4"] }), 1);
+  assert.equal(enemyHpCap({ maxHp: 7, conditions: ["exhaustion 4"] }), 3);
+});
+
+// D22. SRD 5.1, Incapacitated: "can't take actions or reactions". The
+// Drakewarden's drake (Infused Strikes, its reaction) checked only that it
+// was above 0 hit points, so a drake held by Hold Monster still infused the
+// ranger's hit.
+await test("D22: a drake out of action takes no Infused Strikes reaction", async () => {
+  const { petReaction } = await import("../src/lib/dm/summon-reactions.ts");
+  const ranger = { ...field.sheet(kara.id), pets: [{ kind: "drake", name: "Ember", hp: 20, conditions: ["paralyzed"] }] };
+  const out = petReaction({ campaign: field.campaign(), sheet: ranger, args: { feature: "Infused Strikes" } });
+  assert.equal(out?.refused, "rules", JSON.stringify(out));
+  assert.match(String(out.error), /paralyzed/, `the held drake was refused for something else: ${out.error}`);
+});
+
+// D23. SRD 5.1, Dodge: "You lose this benefit if you are incapacitated or if
+// your speed drops to 0." The steel defender dodges unless commanded, and a
+// stunned or grappled defender still turned every attack at it to
+// disadvantage.
+await test("D23: a steel defender out of action or held at speed 0 is not dodging", async () => {
+  const { defenderDodging } = await import("../src/lib/dm/defender-dodge.ts");
+  const defender = { name: "Defender", summon: { form: "Steel Defender" }, conditions: [] };
+  assert.ok(defenderDodging(defender), "the uncommanded defender is not dodging at all");
+  assert.equal(defenderDodging({ ...defender, conditions: ["stunned"] }), null, "a stunned defender still dodges");
+  assert.equal(defenderDodging({ ...defender, conditions: ["grappled"] }), null, "a grappled defender still dodges");
+});
+
+// D24. The lair rule of the books that print lair actions (SRD 5.1 prints
+// none): the creature "can't do so while incapacitated or otherwise unable to
+// take actions". A stunned dragon's lair still acted on initiative 20.
+await test("D24: a lair whose creature is stunned takes no lair action, and the GM's lair card says so", async () => {
+  const [foe] = await stage();
+  board.setEnemy(foe.id, { stats: { ...DUMMY, lairOptions: ["Stalactites fall on one creature the lair can see."] }, conditions: ["stunned"], conditionMeta: {} });
+  const encounter = field.encounter();
+  encounters.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, lair: true, lairDue: encounter.round } });
+  const { lairChoices } = await import("../src/lib/dm/legendary-logic.ts");
+  const [card] = lairChoices(field.enemies(), field.encounter().legendary) ?? [];
+  const out = await field.invoke("lair_action", { action: "1" });
+  board.setEnemy(foe.id, { conditions: [], conditionMeta: {} });
+  assert.equal(out.ok, false, `the stunned creature's lair acted: ${JSON.stringify(out.result)}`);
+  assert.match(String(out.error), /stunned/, out.error);
+  assert.match(String(card?.refusal ?? ""), /stunned/, `the lair card offered it: ${JSON.stringify(card)}`);
+});
+
+finish();

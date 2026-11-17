@@ -198,6 +198,10 @@ export function aoeOnCharacters(input: {
       if (applied.damageByType) {
         row.damageByType = applied.damageByType;
       }
+      // Why it differs: the GM narrated the save's figure with no word of it.
+      if (typeof applied.resistance === "string") {
+        row.resistance = applied.resistance;
+      }
       if (applied.dying) {
         row.dying = applied.dying;
       }
@@ -265,6 +269,7 @@ export function aoeOnCharacters(input: {
         blast,
         magical: Boolean(input.spell) || Boolean(enemyUse?.magical),
         source: (input.reason ?? input.spell ?? enemyUse?.name ?? "the area").slice(0, 120),
+        spell: input.spell,
         // What a failure lays, as on the character beside them.
         lays: {
           spell: plan?.conditions.length && conditionMeta ? { conditions: plan.conditions, meta: conditionMeta } : null,

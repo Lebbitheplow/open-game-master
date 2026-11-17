@@ -26,7 +26,7 @@ import { lightTiles, MOONLIGHT, shedsMoonlight } from "@/lib/dm/ar-ws-moonlight-
 import { standsInDarkness } from "@/lib/dm/attack-light";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { carriedLight } from "@/lib/dm/light-timers";
+import { shedLight } from "@/lib/dm/light-timers";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { offBoardAmbient } from "@/lib/dm/place-light";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -100,6 +100,6 @@ export function darkVeil(campaignId: string, encounterId: string, target: Charac
     return null;
   }
   const onBoard = standsInDarkness(campaignId, encounterId, target.id);
-  const dark = onBoard ?? (offBoardAmbient(campaignId) === "dark" && carriedLight(target).radius <= 0);
+  const dark = onBoard ?? (offBoardAmbient(campaignId) === "dark" && shedLight(target).radius <= 0);
   return dark ? `${row.held.feature}: ${target.name} is entirely in darkness, so attack rolls against them have disadvantage` : null;
 }

@@ -3139,6 +3139,11 @@ function ensureSchema(db: SqliteDatabase) {
   // holds them, standing or down, travelling with the party
   // (src/lib/dm/npc-state-logic.ts). '' is a free, unbound, standing NPC.
   addColumns("npcs", [["state_json", `TEXT NOT NULL DEFAULT ''`]]);
+  // The character whose fall unconscious let a dropped row go (SRD 5.1,
+  // Unconscious: "drops whatever it's holding"; src/lib/dm/fallen-gear.ts):
+  // their own pick-up and the fight's end give it back with its attunement,
+  // which dropping never ends. Null for anything put down any other way.
+  addColumns("dropped_items", [["owner_id", `TEXT`]]);
   // When the party first dealt with an NPC (src/lib/db/npcs.ts Npc.metAt),
   // which a reaction roll reads: it is for strangers. The rows already
   // played get it once, from what play recorded about them.

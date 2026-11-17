@@ -62,7 +62,10 @@ export function attackOdds(input: {
   // what clamping the needed roll to 2..20 expresses.
   const needed = Math.max(2, Math.min(20, input.ac - input.attackBonus));
   const hit = withAdvantage(singleRoll(needed), advantage);
-  const crit = withAdvantage(singleRoll(critRange), advantage);
+  // A face in a widened critical range crits only once it hits (a Champion's
+  // 19 against an AC only a 20 reaches misses), so the chance is the roll
+  // that both hits and crits.
+  const crit = withAdvantage(singleRoll(Math.max(critRange, needed)), advantage);
   return { hit, crit, miss: 1 - hit };
 }
 

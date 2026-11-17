@@ -556,7 +556,7 @@ export function runHeldAgain(
     outcome,
     raw: !call.siteThrew,
     landing: { physical: landing.physical, source: landing.source },
-    ...(ask ? { choice: { walkerId: ask.walkerId, strike: ask.strike !== false, ...(ask.timedOut ? { timedOut: true } : {}) } } : {}),
+    ...(ask ? { choice: { walkerId: ask.walkerId, strike: ask.strike !== false, ...(ask.smite && ask.strike !== false ? { smite: true } : {}), ...(ask.timedOut ? { timedOut: true } : {}) } } : {}),
   };
   const spec = { name: call.name, rawArguments: call.rawArguments, toolCallId: call.toolCallId };
   let answer: ToolResult;

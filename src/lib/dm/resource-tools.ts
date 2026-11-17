@@ -13,6 +13,7 @@ import { formulaMods } from "@/lib/srd/proficiency";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
+import { canRegain, regainRoom } from "@/lib/dm/regain";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, rechargeOf, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms, sheetCatalog } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
@@ -405,6 +406,14 @@ function reachRefusal(
   return null;
 }
 
+// The display name of a feature whose spend heals a character (Lay on Hands,
+// a pool of healing dice, a feature's healing roll), or null. Its target is a
+// character named by targetCharacterId, and the user when none is named.
+export function characterHealNamed(sheet: CharacterSheet, resourceName: string): string | null {
+  const def = matchResource(resourceName, sheetCatalog(sheet));
+  return def && (def.effect.kind === "heal_pool" || def.effect.kind === "heal_dice_pool" || def.effect.kind === "heal_target") ? def.displayName : null;
+}
+
 export function computeUseResource(
   campaign: Campaign,
   sheet: CharacterSheet,
@@ -542,6 +551,21 @@ export function computeUseResource(
     };
   }
 
+  // Lay on Hands draws "from the pool to restore a number of hit points"
+  // (SRD 5.1), point for point, and nobody regains past their maximum: the
+  // pool paid whatever the call named, so 20 drawn for an ally 5 short spent
+  // 20 and told the table 20 were healed, and a full ally took 5 for nothing.
+  const asked = amount;
+  if (def.effect.kind === "heal_pool" && !target.deathSaves?.dead) {
+    const room = regainRoom(campaign.id, target);
+    if (room <= 0) {
+      return {
+        error: `${target.name} ${canRegain(target) ? "is at full hit points" : "cannot regain hit points right now"}, so ${def.displayName} would restore nothing. Nothing was spent.`,
+        refused: "rules",
+      };
+    }
+    amount = Math.min(amount, room);
+  }
   // Elemental Wild Shape spends two uses at once, or is refused before
   // anything is spent (src/lib/dm/wild-shape-use.ts).
   const elementalAsk = def.effect.kind === "wild_shape" ? elementalWildShape(sheet, form?.name) : null;
@@ -685,6 +709,9 @@ export function computeUseResource(
       }
       outcome.healTarget = { characterId: target.id, amount };
       outcome.result.healed = `${amount} HP to ${target.name}`;
+      if (amount < asked) {
+        outcome.result.drawn = `${amount} of the ${asked} asked: ${target.name} was ${amount} short of their maximum, and the pool keeps the rest.`;
+      }
       return outcome;
     }
     case "heal_dice_pool": {

@@ -26,6 +26,7 @@ import { normalizeClock } from "@/lib/dm/calendar";
 import { getClock } from "@/lib/db/clock";
 import { lightHangsOnSense, sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
 import { boardLightFor, lightForSheet, offBoardAmbient, rollerLight } from "@/lib/dm/place-light";
+import { unlitLightNote } from "@/lib/dm/light-timers";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { contestOpponent, marchStealthProblem, rollContest } from "@/lib/dm/roll-gates";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
@@ -520,8 +521,10 @@ export function handleCheckNotice(
             ...(seenBy ? { light: seenBy } : {}),
           })
         : { shift: 0, blind: false, disadvantage: false, notes: [] };
+    // In the dark with a torch unlit in the pack: said, so the GM can light it.
+    const unlit = sight.blind ? unlitLightNote(fresh) : null;
     if (sight.notes.length) {
-      shifts.push(`${sheet.name}: ${sight.notes.join(", ")}`);
+      shifts.push(`${sheet.name}: ${sight.notes.join(", ")}${unlit ? ` (${unlit})` : ""}`);
     }
     if (sight.blind) {
       missedBy.push(sheet.name);

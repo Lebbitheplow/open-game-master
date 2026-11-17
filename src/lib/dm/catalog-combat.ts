@@ -209,6 +209,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       ...advantageFields(),
       { name: "twoHanded", label: "In both hands", kind: "boolean", help: "A versatile weapon rolls its bigger die in melee. Not with a shield on the arm. Not for an off-hand attack." },
       { name: "smite", label: "Divine Smite slot", kind: "number", min: 1, max: 9, help: "Paladin only. The slot is spent if the attack hits." },
+      // An older host strips it unread and fires ordinary ammunition.
+      { name: "ammo", label: "Ammunition", kind: "text", help: "Magic ammunition the shot fires, as on their sheet (+1 Arrows): its bonus on the attack and damage, and one is spent. Blank fires ordinary ammunition.", host: { feature: "magicAmmo" } },
       { name: "maneuver", label: "Maneuver", kind: "text", help: "Battle Master only. The Superiority Die is spent on a hit (on the roll for Precision Attack)." },
       { name: "stunningStrike", label: "Stunning Strike", kind: "boolean", help: "Monk 5+. One ki on a melee hit; the target saves CON or is stunned." },
       { name: "powerAttack", label: "Power attack", kind: "boolean", help: "Great Weapon Master (heavy melee) or Sharpshooter (ranged): -5 to hit for +10 damage. Powerful Attacker: disadvantage for +10. Deadeye: the proficiency bonus off the roll for twice it on the damage." },
@@ -424,11 +426,14 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "escape", label: "Escape a grapple or a spell's hold" },
           { value: "pin", label: "Pin the creature they grapple (Grappler feat)" },
           { value: "improvise", label: "Improvise", host: IMPROVISED },
+          // An older host refuses it (capabilities.ts shakeAwake).
+          { value: "wake", label: "Shake a sleeper awake (Sleep, Hypnotic Pattern)", host: "shakeAwake" },
         ],
       },
       { name: "bonus", label: "As a bonus action", kind: "boolean", help: "Cunning Action, Step of the Wind, Patient Defense." },
       { name: "targetEnemyId", label: "Enemy", kind: "enemy" },
       { name: "targetCharacterId", label: "Ally", kind: "character" },
+      { name: "petName", label: "Their familiar helps", kind: "text", help: "Help only: the character's familiar takes it with its own action, by name.", host: { feature: "familiarHelp" } },
       { name: "trigger", label: "Readied trigger", kind: "text", placeholder: "when the ogre comes through the door" },
       {
         name: "readied",
@@ -511,7 +516,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         name: "enemyId",
         label: "Enemy acting",
         kind: "enemy",
-        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
+        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), Wake for an ally beside it, or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
         // Sent under the name that server reads: it knows escapingEnemyId,
         // and dropped enemyId, so an escape from the console failed there.
         host: {

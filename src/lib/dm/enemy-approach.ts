@@ -8,14 +8,15 @@ import { findPath, reachableTiles, walkPathWithBudget } from "@/lib/battlemap/mo
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import { bestFiringPosition } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
-import { climbsFrom, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
+import { climbsFrom, crawlingTraits, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { footprintDistance, footprintForSize, nearestFootprintTile, type Footprint } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 
 import { passableTiles } from "@/lib/battlemap/passage";
 import { getSheetById } from "@/lib/db/sheets";
 import { sheetSize } from "@/lib/srd";
-import { removeConditions } from "@/lib/dm/condition-logic";
+import { instancesOf, removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { publishEphemeral } from "@/lib/events";
 import { swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -52,35 +53,41 @@ export type Approach = {
   distance: number | null;
 };
 
-// Where the creature it fears stands, when it fears one on the board: the
-// source of its frightened, the cleric who turned it, or the caster it flees
-// at Command's word (none of them walks closer, SRD 5.1; issue #621), or the
-// packmaster whose Alpha's Roar it cowers from ("no move toward you").
-export function fearSourceAt(
+export type FearSource = XY & { footprint?: number };
+
+// Where the creatures it fears stand, those on the board: the source of each
+// frightened it holds, the cleric who turned it, or the caster it flees at
+// Command's word (none of them walks closer, SRD 5.1; issue #621), or the
+// packmaster whose Alpha's Roar it cowers from ("no move toward you"). Every
+// instance counts (condition-logic.ts instancesOf): frightened by two
+// goblins, a hero read only the first and walked straight at the second
+// (SRD 5.1, Frightened: it "can't willingly move closer to the source of its
+// fear", and each instance of a condition holds on its own). The first is
+// the one it runs from (enemy-flight.ts).
+export function fearSourcesAt(
   mapId: string,
   conditions: string[],
-  meta: Record<string, { source?: string } | undefined>,
-): (XY & { footprint?: number }) | null {
+  meta: Record<string, ConditionMeta | undefined>,
+): FearSource[] {
   const held = ["frightened", TURNED, FLEEING, COWERING].map((name) => conditions.find((entry) => entry.toLowerCase() === name)).filter((entry): entry is string => Boolean(entry));
-  const source = held.map((name) => meta?.[name]?.source).find(Boolean);
-  if (!source) {
-    return null;
-  }
-  const token = getTokenByRef(mapId, source);
-  // Its size goes with it: fear is measured to the nearest square it fills.
-  return token ? { x: token.x, y: token.y, footprint: tokenFootprint(token) } : null;
+  const ids = [...new Set(held.flatMap((name) => instancesOf(meta?.[name]).map((instance) => instance.source)).filter((id): id is string => Boolean(id)))];
+  return ids.flatMap((id) => {
+    const token = getTokenByRef(mapId, id);
+    // Its size goes with it: fear is measured to the nearest square it fills.
+    return token ? [{ x: token.x, y: token.y, footprint: tokenFootprint(token) }] : [];
+  });
 }
 
 // The steps of a walk a frightened creature may take: it stops before the
-// first square that is closer to the source of its fear than where it began.
-export function awayFromFear(from: XY, steps: XY[], source: (XY & { footprint?: number }) | null): XY[] {
-  if (!source) {
+// first square that is closer to any source of its fear than where it began.
+export function awayFromFear(from: XY, steps: XY[], sources: readonly FearSource[]): XY[] {
+  if (!sources.length) {
     return steps;
   }
-  const start = fearDistance(from, source);
+  const starts = sources.map((source) => fearDistance(from, source));
   const allowed: XY[] = [];
   for (const step of steps) {
-    if (fearDistance(step, source) < start) {
+    if (sources.some((source, at) => fearDistance(step, source) < starts[at])) {
       break;
     }
     allowed.push(step);
@@ -239,7 +246,7 @@ export function approachTarget(
   // stood, fell short and never drew its bow.
   const standing = options.dryRun ? (standUpCost(encounterId, enemy) ?? 0) : 0;
   const budget = Math.max(0, move.tilesLeft - standing);
-  const fear = fearSourceAt(map.id, enemy.conditions, enemy.conditionMeta as Record<string, { source?: string }>);
+  const fear = fearSourcesAt(map.id, enemy.conditions, enemy.conditionMeta as Record<string, ConditionMeta>);
   // Every square of a large creature on the board is taken, not its corner.
   const occupied = occupiedTiles(map, listTokens(map.id), attacker, tokenFootprint);
   let landing: XY = origin;
@@ -248,7 +255,12 @@ export function approachTarget(
   if (budget > 0 && profile.melee) {
     // Toward the target, stopping at the first square its reach covers.
     // Through its allies' spaces, and a character's two sizes apart.
-    const swims = enemyMoveTraits(map.width, listTokens(map.id), attacker, enemy.encounterId);
+    // Still prone once it tried to stand (standUpIfProne, or a dry run's
+    // standUpCost), it had too little movement to stand and crawls, every
+    // square one more (SRD 5.1, Being Prone), as move_token walks it.
+    const crawls = enemy.conditions.some((entry) => isConditionNamed(entry, "prone")) && (!options.dryRun || standUpCost(encounterId, enemy) === null);
+    const walking = enemyMoveTraits(map.width, listTokens(map.id), attacker, enemy.encounterId);
+    const swims = crawls ? crawlingTraits(walking) : walking;
     // A creature larger than a square walks as its whole space: it squeezes
     // a one-square gap at double cost and stops where all of it fits, as
     // move_token walks it. Walked as one square, an ogre slipped through a
@@ -272,7 +284,7 @@ export function approachTarget(
       bestFiringPosition(map.terrain, map.width, map.height, occupied, attacker, target, budget, profile.rangeTiles) ??
       bestFiringPosition(map.terrain, map.width, map.height, occupied, attacker, target, budget, profile.longRangeTiles);
     const allowed =
-      spot && (!fear || fearDistance(spot.at, fear) >= fearDistance(origin, fear));
+      spot && fear.every((source) => fearDistance(spot.at, source) >= fearDistance(origin, source));
     const route = spot && allowed ? (findPath(map.terrain, map.width, map.height, occupied, attacker, spot.at) ?? []) : [];
     // A firing position Aggressive's speed would carry it away from a hostile to is not taken.
     const live = getEncounter(encounterId);
@@ -330,14 +342,14 @@ export function approachTarget(
   }
   const why = stoppedBySwing
     ? `${attacker.name} was stopped at (${landing.x},${landing.y}) by an opportunity attack, its speed 0 for the rest of the turn: it is ${distance * 5} ft from ${target.name} and cannot reach them this turn`
-    : fear
+    : fear.length
     ? `${attacker.name} is frightened and will not move closer to what it fears`
     : profile.melee
       ? `${attacker.name} is ${distance * 5} ft from ${target.name} and cannot reach them this turn`
       : sightFrom(landing)
         ? `${attacker.name} is ${distance * 5} ft from ${target.name}, beyond this attack's ${profile.longRangeTiles * 5} ft range, and cannot close the gap this turn`
         : `${attacker.name} has no line of sight to ${target.name} and cannot reach a firing position this turn`;
-  const stop: AttackStop = fear ? "fear" : profile.melee ? "reach" : sightFrom(landing) ? "range" : "sight";
+  const stop: AttackStop = fear.length ? "fear" : profile.melee ? "reach" : sightFrom(landing) ? "range" : "sight";
   // The game saying no, not a mistake in the call: the walk was made, its
   // movement spent and its opportunity attacks rolled, so a retry told the
   // model nothing had happened (issue #666).

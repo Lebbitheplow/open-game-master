@@ -16,19 +16,47 @@ export type OpportunityTrigger = "leaves" | "enters" | "within" | "echo";
 // `walker` is the walker's name as the table sees it, `weapon` the one the
 // swing would use. `deadline` only while another player is at the table
 // (after-roll-timer.ts afterRollDeadline). `strike` and `timedOut` are the
-// answer, written as the card lands.
+// answer, written as the card lands. `smiteSlot` is the slot a paladin's
+// Divine Smite would spend on this swing (smiteSlotOf), offered only when
+// the swing is a melee weapon attack and a slot is open; `smite` is the
+// answer that takes it.
 export type OpportunityAsk = {
   walkerId: string;
   walker: string;
   weapon: string;
   trigger: OpportunityTrigger;
   deadline?: string;
+  smiteSlot?: number;
   strike?: boolean;
+  smite?: boolean;
   timedOut?: boolean;
 };
 
 // The answer, as the walk's call reads it when it runs again (held-call.ts).
-export type OpportunityChoice = { walkerId: string; strike: boolean; timedOut?: boolean };
+export type OpportunityChoice = { walkerId: string; strike: boolean; smite?: boolean; timedOut?: boolean };
+
+// The slot a smite on the opportunity attack spends: the lowest one open,
+// a pact slot among them, as the Hand's Divine Smite card picks it
+// (hand-core.ts lowestSlot). Null with none left.
+export function smiteSlotOf(casting: { slots?: Record<string, { max: number; used: number }>; pact?: { level: number; max: number; used: number } | null } | null | undefined): number | null {
+  if (!casting) {
+    return null;
+  }
+  const open = Object.entries(casting.slots ?? {})
+    .filter(([, slot]) => slot.max - slot.used > 0)
+    .map(([level]) => Number(level));
+  if (casting.pact && casting.pact.max - casting.pact.used > 0) {
+    open.push(casting.pact.level);
+  }
+  const levels = open.filter((level) => Number.isFinite(level) && level >= 1);
+  return levels.length ? Math.min(...levels) : null;
+}
+
+// The card's smite choice in words: "Strike and smite (1st-level slot)".
+export function smiteChoiceLine(slot: number): string {
+  const suffix = slot === 1 ? "st" : slot === 2 ? "nd" : slot === 3 ? "rd" : "th";
+  return `Strike and smite (${slot}${suffix}-level slot)`;
+}
 
 const MOVES: Record<OpportunityTrigger, (whose: string) => string> = {
   leaves: (whose) => `is moving out of ${whose} reach`,

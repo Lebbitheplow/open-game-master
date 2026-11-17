@@ -24,6 +24,8 @@ import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaign
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
+import { wakeableSpells } from "@/lib/dm/shake-awake-logic";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { feetForHost } from "@/lib/battlemap/zone-feet";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
@@ -299,6 +301,10 @@ function HandInner({
         : [],
     [sheet, hits, sheets, meUserId, multiCharacter, encounter, floorName, companionsReact, runsTable, reactionsSent],
   );
+  // The allies Sleep or Hypnotic Pattern holds, for the Wake card: only from
+  // a host that resolves it (src/lib/capabilities.ts shakeAwake), with the
+  // board's feet to each where it measures this character.
+  const wakes = hostOffers(capabilities, "shakeAwake");
   const gear = useMemo<HandGearContext | undefined>(
     () =>
       sheet
@@ -309,9 +315,16 @@ function HandInner({
             dying: sheets
               .filter((entry) => entry.currentHp <= 0 && !entry.deathSaves?.dead && !entry.deathSaves?.stable)
               .map((entry) => ({ id: entry.id, name: entry.name })),
+            ...(wakes
+              ? {
+                  sleepers: sheets
+                    .filter((entry) => entry.id !== sheet.id && wakeableSpells(entry.conditions, entry.conditionMeta as ConditionMetaMap).length)
+                    .map((entry) => ({ id: entry.id, name: entry.name, ...(ownFeet?.[entry.id] !== undefined ? { feet: ownFeet[entry.id] } : {}) })),
+                }
+              : {}),
           }
         : undefined,
-    [sheet, sheets, drops, mounts],
+    [sheet, sheets, drops, mounts, wakes, ownFeet],
   );
   // A host too old to catch the creatures in a laid blast keeps its blasts
   // aimed at one enemy (src/lib/capabilities.ts handBlasts).
@@ -325,6 +338,9 @@ function HandInner({
   // A wand's, a staff's or a scroll's spell as a card: a host that cannot
   // resolve one leaves them typed.
   const items = hostOffers(capabilities, "handItemCasts");
+  // Magic ammunition on a weapon's card: a host that does not read the pick
+  // would fire ordinary arrows, so the card does not offer it there.
+  const magicAmmo = hostOffers(capabilities, "magicAmmo");
   const turnHeld = useTurnHeld(encounter);
   const squareLight = hostOffers(capabilities, "handSquareLight");
   const cards = useMemo(() => {
@@ -335,13 +351,13 @@ function HandInner({
     // The light on the square is read only from a host that says it sends it
     // (src/lib/capabilities.ts handSquareLight).
     const ownBoard = sheet.userId === meUserId ? boardFactsForHost(board, squareLight) : undefined;
-    const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, board: ownBoard })), waiting)];
+    const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, magicAmmo, board: ownBoard })), waiting)];
     // Their End Turn is in and the move waits on a watcher's stop
     // (turn-hold.ts): the turn takes nothing more but a reaction, and every
     // other card says why, End turn's own included.
     const ending = turnHeld?.characterId === sheet.id ? turnHeldLine(turnHeld, true) : null;
     return ending ? dealt.map((card) => (card.cost === "reaction" ? card : { ...card, disabled: ending })) : dealt;
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId, turnHeld, squareLight]);
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, magicAmmo, waiting, board, meUserId, turnHeld, squareLight]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).

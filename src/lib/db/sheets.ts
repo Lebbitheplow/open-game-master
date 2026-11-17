@@ -5,7 +5,7 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
-import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, proneAsItFalls, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
@@ -16,6 +16,7 @@ import { guessStands } from "@/lib/dm/gear-hands";
 import { lastAttackDetail } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { endedByDonning } from "@/lib/dm/armor-donned-logic";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
 import { normalizeSpellcasting } from "@/lib/srd/spell-lists";
 import { settleAttunement, type Wearer } from "@/lib/srd/magic-items";
@@ -39,7 +40,7 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
-import { noteIncapacity } from "@/lib/db/incapacity-watch";
+import { noteFallUnconscious, noteIncapacity } from "@/lib/db/incapacity-watch";
 import { repairedPets } from "@/lib/srd/familiar-forms";
 import { rowName } from "@/lib/srd/item-row";
 
@@ -1060,6 +1061,8 @@ export function patchSheet(
   }
   // A fall unconscious ends a rage and a sacred weapon, whichever route laid
   // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  // And the one who falls unconscious falls prone, whichever route laid it.
+  next.conditions = proneAsItFalls(existing.conditions, next.conditions) ?? next.conditions;
   const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
   if (asleep.length) {
     const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
@@ -1084,6 +1087,11 @@ export function patchSheet(
   noteGrounding(existing.campaignId, existing, next);
   // Falling incapacitated is answered by Faithful Summons (incapacity-watch.ts).
   noteIncapacity(existing.campaignId, sheetId, existing, next);
+  // And falling unconscious lets go of what is in hand (fallen-gear.ts); an
+  // undo putting the fall back is no new fall.
+  if (!options.restoring) {
+    noteFallUnconscious({ kind: "sheet", campaignId: existing.campaignId, id: sheetId }, existing, next);
+  }
 
   // Temporary hit points a spell granted for its duration go when it ends
   // (False Life, Heroism): the instance that granted them carries the claim.
@@ -1112,6 +1120,13 @@ export function patchSheet(
     ? next.equipment
     : wearGained(existing.equipment, next.equipment, hydrateHomebrewGear(existing.userId, next.equipment, { campaignId: existing.campaignId }));
   next.equipment = capAttunement(keepHeldGuess(existing.equipment, gained, options.guessing || options.restoring), next);
+  // Mage Armor ends when its creature dons armor (armor-donned-logic.ts); an
+  // undo puts back the sheet as it was.
+  const doffed = options.restoring ? null : endedByDonning(existing, { ...next, conditionMeta: next.conditionMeta as ConditionMetaMap });
+  if (doffed) {
+    next.conditions = doffed.conditions;
+    next.conditionMeta = doffed.conditionMeta as typeof next.conditionMeta;
+  }
   if (!next.acOverride) {
     next.ac = deriveAc({
       class: next.class,

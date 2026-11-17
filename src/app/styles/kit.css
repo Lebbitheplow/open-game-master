@@ -80,6 +80,12 @@
 .kit-select-row[data-highlighted] { background: rgba(212, 171, 58, 0.12); color: var(--color-amber-100); translate: 3px 0; }
 .kit-select-row[data-state="checked"] { color: var(--color-amber-200); }
 .kit-select-row[data-disabled] { opacity: 0.4; cursor: not-allowed; }
+/* A row is drawn 33px tall for a mouse; a finger gets 40 (AGENTS.md), or a
+   pick from a long menu on a phone (the console's Action) lands on the row
+   beside it. */
+@media (pointer: coarse) {
+  .kit-select-row { min-height: 2.5rem; }
+}
 
 /* ---- number stepper ---- */
 .kit-stepper {

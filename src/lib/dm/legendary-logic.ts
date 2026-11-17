@@ -7,7 +7,7 @@ import type { TurnBudget } from "@/lib/dm/action-budget";
 import { legendaryRoutes, type LegendaryRoute } from "@/lib/dm/legendary-route-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
-import { lairForbidsRepeat, lairRepeatRefusal, type LairHolder } from "@/lib/dm/lair-logic";
+import { lairForbidsRepeat, lairHolderRefusal, lairRepeatRefusal, type LairHolder } from "@/lib/dm/lair-logic";
 
 // The lair's own readers live in lair-logic.ts; callers keep importing them here.
 export { lairCountPassed, lairForbidsRepeat, lairRepeatRefusal, lairResolution, lairSave, pickLairOption, type LairSave } from "@/lib/dm/lair-logic";
@@ -133,6 +133,11 @@ export type LegendaryState = {
   // settleTurn) still shows the action it paid, read where the live budget
   // has gone to the next creature.
   endedTurn?: TurnBudget;
+  // The characters of a wholly surprised party, while the ambushers play the
+  // round they lost after the order opened on round 2 (encounter-tools.ts
+  // openAfterAmbush): each has no reaction to an attack made before their
+  // own lost turn (can-act.ts isSurprised). Cleared as round 2 turns over.
+  ambushed?: string[];
 };
 
 export type LegendaryPurchaseRecord = {
@@ -253,6 +258,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(record.endedTurn && typeof record.endedTurn === "object" && typeof (record.endedTurn as { ownerId?: unknown }).ownerId === "string"
       ? { endedTurn: record.endedTurn as TurnBudget }
       : {}),
+    ...(stringList(record.ambushed).length ? { ambushed: stringList(record.ambushed) } : {}),
   };
 }
 
@@ -524,7 +530,7 @@ export function lairChoices(
   return enemies.flatMap((enemy) =>
     legendaryLairLines([enemy]).map((line) => {
       number += 1;
-      return { number, line, enemyId: enemy.id, refusal: lairRepeatRefusal(options, line, legendary, due, noRepeat) };
+      return { number, line, enemyId: enemy.id, refusal: lairHolderRefusal(enemy) ?? lairRepeatRefusal(options, line, legendary, due, noRepeat) };
     }),
   );
 }

@@ -16,7 +16,7 @@ import {
 } from "@/lib/dm/gear-attack";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
-import type { GearDice } from "@/lib/srd/magic-gear";
+import type { GearDice, GearOnHit } from "@/lib/srd/magic-gear";
 import type { WornWeaponRider } from "@/lib/srd/magic-items";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { rageDamageBonus } from "@/lib/srd/class-resources";
@@ -120,6 +120,13 @@ export type AttackProfile = {
   gearDice?: GearDice[];
   gearCritDice?: GearDice[];
   gearBonusVs?: { types: string[]; bonus: number };
+  // The save a magic weapon's hit asks of the creatures it names (Giant
+  // Slayer's prone), laid as creatureOnHit by itemRidersAgainst.
+  gearOnHit?: GearOnHit[];
+  // A Sword of Wounding's hit wounds the creature (sword-wounding.ts).
+  gearWounds?: boolean;
+  // An Oathbow's sworn enemy (oathbow.ts).
+  gearOath?: boolean;
   // A creature's natural attack (a beast form, a summoned creature): what
   // its hit does besides the damage (src/lib/dm/natural-onhit.ts), and the
   // "one prone creature" its hooves and stomps strike only.
@@ -367,6 +374,9 @@ export type AttackStance = {
   // modifier when it is higher, and the damage dealt in place of bludgeoning
   // (Arms of the Astral Self, Draconic Strike; src/lib/srd/mt-mr-unarmed.ts).
   unarmedForm?: { mod?: number; ability?: string; damageType?: string; source: string };
+  // The magic ammunition a shot fires (SRD 5.1, Ammunition, +1, +2, or +3):
+  // its bonus on the attack and the damage, on top of the weapon's own.
+  ammo?: { name: string; bonus: number };
 };
 
 // SRD 5.1 monk weapons: shortswords and any simple melee weapon that has
@@ -519,9 +529,11 @@ export function weaponAttackProfile(
   const ranged = srd.kind === "ranged";
   const str = derived.abilityMods.str;
   const dex = derived.abilityMods.dex;
-  // Ranged-kind weapons shoot with DEX; thrown ranged-kind (darts, vials)
-  // and melee weapons use STR, with finesse taking the better of the two.
-  const mod = finesse ? Math.max(str, dex) : ranged && !thrown ? dex : str;
+  // Ranged weapons use DEX, thrown or not, and melee weapons STR, with
+  // finesse taking the better of the two. SRD 5.1's Thrown property keeps the
+  // melee ability only for a melee weapon thrown; the net, a ranged weapon,
+  // was thrown with Strength.
+  const mod = finesse ? Math.max(str, dex) : ranged ? dex : str;
   // SRD 5.1, Bracers of Archery: "you have proficiency with the longbow and
   // shortbow, and you gain a +2 bonus to damage rolls on ranged attacks made
   // with such weapons".
@@ -537,6 +549,12 @@ export function weaponAttackProfile(
   const magicBonus = Math.max(magicItemBonus(resolved.displayName), resolved.gear?.riders.bonus ?? 0);
   const gearParts = gearProfileParts(resolved.gear, resolved.displayName, type);
   notes.push(...gearParts.notes);
+  // A +1 arrow's bonus rides a shot of the weapon that fires it, and makes
+  // the shot magical against resistance to nonmagical attacks.
+  const ammoBonus = stance.ammo && properties.includes("ammunition") ? stance.ammo.bonus : 0;
+  if (ammoBonus > 0) {
+    notes.push(`${stance.ammo?.name}: +${ammoBonus} to hit and damage`);
+  }
 
   const inherentlyTwoHanded = properties.includes("two-handed");
   const versatile = properties.includes("versatile");
@@ -587,8 +605,8 @@ export function weaponAttackProfile(
   return {
     weapon: resolved.displayName,
     base: srd.name,
-    toHit: mod + magicBonus + toHitBonus + (proficient ? derived.proficiencyBonus : 0),
-    damageExpression: `${withModifier(damageDice, abilityToDamage + magicBonus + damageBonus)}${gearParts.suffix}`,
+    toHit: mod + magicBonus + ammoBonus + toHitBonus + (proficient ? derived.proficiencyBonus : 0),
+    damageExpression: `${withModifier(damageDice, abilityToDamage + magicBonus + ammoBonus + damageBonus)}${gearParts.suffix}`,
     damageType: type,
     ranged,
     thrown,
@@ -597,7 +615,7 @@ export function weaponAttackProfile(
     proficient,
     improvised: false,
     // Mirrors the `mod` choice above; a tie counts as Strength.
-    ability: finesse ? (dex > str ? "dex" : "str") : ranged && !thrown ? "dex" : "str",
+    ability: finesse ? (dex > str ? "dex" : "str") : ranged ? "dex" : "str",
     magicBonus,
     twoHanded,
     // Sneak Attack rides on finesse and ranged weapons only; a monk weapon
@@ -611,7 +629,7 @@ export function weaponAttackProfile(
     ...(monkWeapon ? { martialArts: true } : {}),
     riderNotes: notes,
     ...gearParts.fields,
-    ...(magicBonus > 0 || wornTotals.attack > 0 || (kensei && stance.kensei?.magical) || wornRiders.some((rider) => rider.magical) ? { magicWeapon: true } : {}),
+    ...(magicBonus > 0 || ammoBonus > 0 || wornTotals.attack > 0 || (kensei && stance.kensei?.magical) || wornRiders.some((rider) => rider.magical) ? { magicWeapon: true } : {}),
   };
 }
 

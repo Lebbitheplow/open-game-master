@@ -4144,6 +4144,16 @@
               "giant"
             ]
           }
+        ],
+        "onHit": [
+          {
+            "vs": [
+              "giant"
+            ],
+            "save": "str",
+            "dc": 15,
+            "condition": "prone"
+          }
         ]
       }
     },
@@ -6435,7 +6445,9 @@
         "kind": "weapon",
         "name": "Longbow"
       },
-      "weapon": {}
+      "weapon": {
+        "oath": true
+      }
     },
     {
       "name": "Obsidian Butterfly Knife",
@@ -10386,7 +10398,9 @@
         "name": "Longsword",
         "any": "any sword"
       },
-      "weapon": {}
+      "weapon": {
+        "wounds": true
+      }
     },
     {
       "name": "Tailored Suit of Armor",

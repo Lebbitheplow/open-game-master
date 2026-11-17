@@ -12,15 +12,15 @@
 // unseen) strikes the pet whose walk left its reach. What the pet's own
 // rules say holds: Flyby (an owl familiar, flying out of reach), and its own
 // Disengage (a companion commanded to Disengage, pet-command.ts). The
-// damage goes to the pet's own pool through damage_pet's door
-// (pet-tools.ts handleDamagePet), its defences and its end at 0 included.
+// damage goes to the pet's own pool as damage_pet's does (pet-tools.ts
+// hurtPet), its defences and its end at 0 included.
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, saveEncounter } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { insertRoll } from "@/lib/db/rolls";
-import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { footprintForSize } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -31,14 +31,16 @@ import { attackContext, effectiveSpeed, mergeAdvantage } from "@/lib/dm/conditio
 import { fearAsRolled } from "@/lib/dm/attack-light";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import { blowByType } from "@/lib/dm/enemy-hit";
+import { blowByType, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
+import { reachWalled } from "@/lib/dm/attack-spatial";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { enemyOpportunityRiders, opportunitySight } from "@/lib/dm/opportunity-strike";
-import { handleDamagePet } from "@/lib/dm/pet-tools";
-import { spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { hurtPet } from "@/lib/dm/pet-tools";
+import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
+import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { SheetPet } from "@/lib/schemas/sheet";
@@ -57,7 +59,8 @@ export function petProvokes(pet: SheetPet): boolean {
   if (effectiveSpeed(pet.conditions ?? [], Math.max(pet.speed, pet.fly ?? 0, 5), true) === 0) {
     return false;
   }
-  return pet.hp > 0 && !(pet.conditions ?? []).some((entry) => isConditionNamed(entry, "disengaging"));
+  // A familiar in its pocket dimension walks nowhere (pet-pocket.ts).
+  return pet.hp > 0 && !pet.pocketed && !(pet.conditions ?? []).some((entry) => isConditionNamed(entry, "disengaging"));
 }
 
 // The swings at the owner's pets over the walk; the lines posted.
@@ -89,7 +92,8 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     const token = getTokenByRef(map.id, enemy.id);
     const weapon = opportunityWeapon(enemy.stats);
     const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(enemy.stats.size)) : null;
-    if (!weapon || !leftFrom) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!weapon || !leftFrom || reachWalled(encounter.id, enemy.id, ownerId, leftFrom)) {
       continue;
     }
     // The light where the two of them were (the pet stands with its owner).
@@ -99,7 +103,11 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
     saveEncounter(encounter);
-    const { attack } = weapon;
+    // Enlarge/Reduce on the creature (enemy-hit.ts sizedAttack) and Ray of
+    // Enfeeblement (below), as on its swing at a character: the pet took the
+    // blow as printed.
+    const sized = sizedAttack(weapon.attack, enemy.conditions);
+    const attack = sized.attack;
     const context = attackContext({
       attackerConditions: fearAsRolled(encounter.id, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: pet.conditions ?? [],
@@ -109,7 +117,14 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     });
     const own = enemyOpportunityRiders(campaign.id, enemy);
     const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
-    const advantage = mergeAdvantage([...context.sources, ...own.sources, ...(effect.advantage ? ["advantage" as const] : []), ...(effect.disadvantage ? ["disadvantage" as const] : [])]);
+    // A melee swing from the water, as its turn's own swing (pet-underwater.ts).
+    const water = creatureUnderwaterSwing(campaign.id, enemy, attack, { ranged: false, longRange: false });
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...own.sources,
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage || water?.disadvantage ? ["disadvantage" as const] : []),
+    ]);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, pet.name);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
@@ -129,15 +144,18 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     const damageRoll = insertRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
-    const sheets = listSheets(campaign.id);
-    const struck = handleDamagePet(
-      campaign,
-      JSON.stringify({ characterId: ownerId, petName: pet.name, amount: Math.max(0, blow.amount), ...(blow.type ? { type: blow.type } : {}), ...(hasTrait(enemy.stats, "magicWeapons") || attack.magical ? { magical: true } : {}) }),
-      sheets,
-      new Map(sheets.map((sheet) => [sheet.id, sheet])),
-    );
-    const after = "error" in struck ? "" : String(struck.vanished ?? struck.down ?? (struck.hp ? `${pet.name} is at ${struck.hp}` : ""));
-    notes.push(`${enemy.displayName} takes an opportunity attack as ${pet.name} pulls away with ${live.name}: ${crit ? "a critical hit for " : "hit for "}${"error" in struck ? blow.amount : struck.damage} damage.${after ? ` ${after}` : ""}`);
+    // Enlarge/Reduce's floor and Ray of Enfeeblement's halving on the whole
+    // blow, then a blow of two types (a hell hound's piercing and fire) meets
+    // the pet's defences part by part, each part its share of what is left,
+    // as enemy_attack's at a pet does (pet-strike.ts): landed as one type, an
+    // imp took the fire it is immune to.
+    const amount = enfeebledBlow(enemy, attack, false, Math.max(sized.floor, blow.amount));
+    const struck = hurtPet(campaign, live, pet, {
+      parts: blow.parts ? scaledParts(blow.parts, amount) : [{ amount, type: blow.type }],
+      magical: hasTrait(enemy.stats, "magicWeapons") || attack.magical === true,
+    });
+    const after = String(struck.vanished ?? struck.down ?? (struck.hp ? `${pet.name} is at ${struck.hp}` : ""));
+    notes.push(`${enemy.displayName} takes an opportunity attack as ${pet.name} pulls away with ${live.name}: ${crit ? "a critical hit for " : "hit for "}${String(struck.damage ?? 0)} damage.${after ? ` ${after}` : ""}`);
   }
   for (const content of notes) {
     const seq = allocateSeq(campaign.id);

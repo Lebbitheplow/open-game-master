@@ -41,6 +41,7 @@ import {
   spendResistance,
   type LegendaryPool,
 } from "@/lib/dm/legendary-logic";
+import { lairHolderRefusal } from "@/lib/dm/lair-logic";
 import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -451,6 +452,12 @@ export function handleLairAction(campaign: Campaign, turn: DmTurn | null, rawArg
   const picked = options.length ? pickLairOption(options, args.action) : args.action;
   if (!picked) {
     return { error: `The lair's options are printed in its block; send one's number (or its whole line): ${options.map((line, at) => `${at + 1}. ${line}`).join(" ")}`, retry: true };
+  }
+  // Its creature out of action (lair-logic.ts lairHolderRefusal).
+  const holder = enemies.find((enemy) => legendaryLairLines([enemy]).includes(picked));
+  const unable = holder ? lairHolderRefusal(holder) : null;
+  if (unable) {
+    return { error: `${unable} Nothing was done.`, refused: "rules" };
   }
   const repeated = lairRepeatRefusal(options, picked, encounter.legendary, due, lairForbidsRepeat(enemies));
   if (repeated) {

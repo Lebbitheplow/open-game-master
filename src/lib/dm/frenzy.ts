@@ -15,6 +15,7 @@ import { listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
+import { settleExhaustionDeath } from "@/lib/dm/exhaustion-death";
 import { RAGING } from "@/lib/srd/class-resources";
 
 export const FRENZIED = "frenzied";
@@ -53,6 +54,8 @@ export function settleFrenzies(campaign: Campaign): string[] {
     if (updated) {
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
     }
+    // The sixth level kills, with all a death brings (exhaustion-death.ts).
+    settleExhaustionDeath(campaign, null, sheet, patch.exhaustion);
     lines.push(
       patch.exhaustion >= 6
         ? `${sheet.name}'s frenzy burns out with the rage: exhaustion level 6, and they die.`

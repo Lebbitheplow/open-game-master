@@ -45,7 +45,7 @@ export type DamageAsk = {
   // A spell's half damage on a miss (Acid Arrow): half the total lands.
   half?: boolean;
   // The once-a-turn feats that change the dice, already spent: the server
-  // rolls them, a player is told how to (attack-blow.ts damageDiceNote).
+  // rolls them, a player is told how to (attack-damage-dice.ts damageDiceNote).
   feats: { brutal?: boolean; savage?: boolean; piercer?: boolean };
   rerollBelow: number;
   // Empowered Spell on a spell attack's damage: how many low dice are thrown
@@ -82,6 +82,9 @@ export type AttackRecord = PendingAttack & {
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.
   base?: string;
+  // The magic ammunition line the shot spent, as the fight's tally names it:
+  // a hit is counted there (ammo-tally.ts tallyHit).
+  magicAmmo?: string;
   special?: "net" | "lance";
   gearWeapon?: GearWeapon;
   material?: WeaponMaterial;
@@ -145,6 +148,8 @@ export type AttackRecord = PendingAttack & {
     poison?: boolean;
     tempHp?: { amount: number; feature: string };
     creature?: CreatureOnHit;
+    // A Sword of Wounding's wound (sword-wounding.ts).
+    wounds?: boolean;
     // A form's or a summoned creature's charge this hit rides (party-charge.ts).
     charge?: ChargeTrait;
   };
@@ -188,6 +193,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(extras.poison ? { poison: true } : {}),
     ...(extras.tempHp ? { tempHp: extras.tempHp } : {}),
     ...(profile.creatureOnHit ? { creature: profile.creatureOnHit } : {}),
+    ...(profile.gearWounds ? { wounds: true } : {}),
     ...(extras.charge ? { charge: extras.charge } : {}),
   };
   return {
@@ -209,6 +215,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(profile.unarmed ? { unarmed: true } : {}),
     ...(profile.improvised ? { improvised: true } : {}),
     ...(profile.base ? { base: profile.base } : {}),
+    ...(plan.magicAmmo ? { magicAmmo: plan.magicAmmo } : {}),
     ...(plan.special ? { special: plan.special } : {}),
     ...(profile.gearWeapon ? { gearWeapon: profile.gearWeapon } : {}),
     ...(profile.material ? { material: profile.material } : {}),

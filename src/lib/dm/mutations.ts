@@ -74,9 +74,10 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import { healPet } from "@/lib/dm/pet-heal";
 import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
-import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
+import { advanceClock, getClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -97,6 +98,7 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { CASTING, castingHeldBy } from "@/lib/dm/long-casting-logic";
 import {
+  characterHealNamed,
   computePurchase,
   computeUseItem,
   computeUseResource,
@@ -121,6 +123,7 @@ import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { worthProblem } from "@/lib/dm/trade-value";
 import { findCarriedItem, notCarried, sentItemTags, srdNameFor } from "@/lib/dm/item-logic";
+import { lightCarriedLight } from "@/lib/dm/light-timers";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { freeSlotsLine, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
@@ -238,6 +241,7 @@ export const mutationTools: ToolDef[] = [
       type: "boolean",
       description: "True for TEMPORARY HP instead of healing (they do not stack; the higher value wins).",
     },
+    petName: { type: "string", description: "Their pet is healed instead." },
     // Instead of characterId, so neither is required. Kept small: the
     // compact first call of a 16K window holds it beside an opened group
     // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
@@ -266,7 +270,7 @@ export const mutationTools: ToolDef[] = [
       method: {
         type: "string",
         enum: [...STABILIZE_METHODS],
-        description: "Default: 'check'.",
+        description: "Default: 'kit' when they carry a healer's kit, else 'check'.",
       },
     },
     ["healerId"],
@@ -497,6 +501,8 @@ const argsSchema = z.object({
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
+  // heal: the owner's pet is healed instead (pet-heal.ts).
+  petName: z.string().trim().min(1).max(60).optional(),
   delta: z.coerce.number().int().optional(),
   // party_award: XP for each character, and gold in all.
   xp: z.coerce.number().int().optional(),
@@ -940,6 +946,21 @@ function dmMutation(
       if (unasked) {
         return { result: unasked };
       }
+      // The owner's familiar, companion or drake (pet-heal.ts).
+      if (args.petName) {
+        const named = args.casterId ? resolve(args.casterId) : null;
+        if (args.casterId && !named) {
+          return { result: unknownSheetRef("casterId", args.casterId, sheets) };
+        }
+        return {
+          result: healPet(
+            campaign,
+            turnId,
+            { owner: sheet, petName: args.petName, caster: named, spell: (args.spell ?? "").trim(), level: args.level, amount: args.amount ?? 0, temp: args.temp === true, reason, casting },
+            (castArgs) => applyDmMutation(campaign, turnId, "use_spell_slot", JSON.stringify(castArgs), sheets, sheetsById).result,
+          ),
+        };
+      }
       // A named healing spell is rolled by the server from the content
       // pack's own dice, exactly as a healing potion is, so the model never
       // decides how much a Cure Wounds restores.
@@ -1070,6 +1091,11 @@ function dmMutation(
       // Tincture's damage is beyond it (afflictions.ts healCeiling).
       const ceiling = healCeiling(campaign.id, target);
       const math = healMath(Math.min(target.currentHp, ceiling), ceiling, Math.min(amount, 200));
+      // What came back, the maximum capping it ("A creature can't regain more
+      // hit points than its hit point maximum"): the result said the amount
+      // asked, so a hero 5 short told of 20 was narrated 20 (and the board
+      // floated +20).
+      const restored = math.currentHp - Math.min(target.currentHp, ceiling);
       // A regained hit point ends a caltrops wound in patchSheet itself
       // (condition-logic.ts endedByRegain), whichever path healed.
       patchSheet(target.id, { currentHp: math.currentHp });
@@ -1079,10 +1105,10 @@ function dmMutation(
       publishSheet(campaign, target.id);
       {
         const pos = tokenPosition(campaign.id, target.id);
-        if (pos && amount > 0) {
+        if (pos && restored > 0) {
           publishFx(
             campaign.id,
-            planHealFx({ to: pos.at, toTokenId: pos.tokenId, amount: Math.min(amount, 200) }),
+            planHealFx({ to: pos.at, toTokenId: pos.tokenId, amount: restored }),
           );
         }
       }
@@ -1095,7 +1121,7 @@ function dmMutation(
         result: {
           ok: true,
           hp: `${math.currentHp}/${ceiling}`,
-          healed: amount,
+          healed: restored,
           ...(healNote ? { spell: healNote } : {}),
           ...(alsoHealed.length ? { alsoHealed } : {}),
           ...deathInfo,
@@ -1332,6 +1358,11 @@ function dmMutation(
       if (unreadable) {
         return { result: unreadable };
       }
+      // A torch or a candle is lit, burning on the clock (light-timers.ts).
+      const lit = target.id === sheet.id ? lightCarriedLight(campaign.id, sheet, findCarriedItem(sheet.equipment, itemName), getClock(campaign.id).instant) : null;
+      if (lit) {
+        return { result: { ...lit, ...objectCharge.commit() } };
+      }
       const outcome = computeUseItem(campaign, sheet, target, itemName);
       if ("error" in outcome) {
         return { result: outcome };
@@ -1450,6 +1481,13 @@ function dmMutation(
       const walled = swallowCoverError(sheet.id, target.id) ?? (args.targetEnemyId ? swallowCoverError(sheet.id, args.targetEnemyId.trim()) : null);
       if (walled) {
         return { result: walled };
+      }
+      // A healing feature reaches the character targetCharacterId names, and its
+      // user when none is named: aimed at a creature on the board alone, Lay on
+      // Hands healed the paladin instead, from the pool (audit 1116, A08).
+      const healer = !args.targetCharacterId && args.targetEnemyId?.trim() ? characterHealNamed(sheet, resourceName) : null;
+      if (healer) {
+        return { result: { error: `${healer} heals a character: pass their targetCharacterId from GAME STATE, or none for ${sheet.name}. It does not reach ${args.targetEnemyId}, and nobody else is healed in its place. Nothing was spent.`, retry: true } };
       }
       // Intimidating Presence, Holy Nimbus and Divine Intervention resolve in
       // the fight (src/lib/dm/combat-features.ts).

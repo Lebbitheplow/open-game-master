@@ -6,6 +6,7 @@
 // registry file so it does not grow past reading. Pure and database-free.
 
 import { activeConditionEffects } from "@/lib/srd/condition-effects";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 // The conditions on a TARGET that the next attack against it spends
 // (Guiding Bolt's advantage).
@@ -67,6 +68,38 @@ export function conditionBlocksAttacks(conditions: string[]): string | null {
 // truesight in feet the holder's effects give (0 for none).
 export function conditionSeesInvisible(conditions: string[]): string | null {
   return activeConditionEffects(conditions).find(({ row }) => row.seesInvisible)?.condition ?? null;
+}
+
+// Whether the holder's invisibility counts: invisible, and nothing on it
+// that keeps it from benefiting (Faerie Fire: "can't benefit from being
+// invisible", SRD 5.1). Outlined, an invisible imp still cancelled the
+// advantage Faerie Fire gives against it, and kept its own on its attacks.
+export function benefitsFromInvisible(conditions: string[]): boolean {
+  return conditions.some((entry) => isConditionNamed(entry, "invisible")) && !activeConditionEffects(conditions).some(({ row }) => row.revealsInvisible);
+}
+
+// What Enlarge/Reduce does to the holder's weapon attacks, for a creature
+// whose attacks are stat-block lines (a character's ride conditionOnHitDice):
+// the die as a term to append ("+1d4", "-1d4") and the least the hit deals.
+// SRD 5.1, Enlarge/Reduce: "the target's attacks with them deal 1d4 extra
+// damage" / "1d4 less damage (this can't reduce the damage below 1)". A
+// reduced ogre's greatclub hit as hard as ever.
+export function conditionWeaponSize(conditions: string[]): { term: string; floor: number } {
+  let term = "";
+  let floor = 0;
+  for (const { row } of activeConditionEffects(conditions)) {
+    if (row.sizesWeapons && row.onHitDice) {
+      term += row.onHitDice.dice.startsWith("-") ? row.onHitDice.dice : `+${row.onHitDice.dice}`;
+    }
+    floor = Math.max(floor, row.damageFloor ?? 0);
+  }
+  return { term, floor };
+}
+
+// The least a hit with a weapon deals while the holder's conditions set a
+// floor (Reduce: 1), else 0.
+export function conditionDamageFloor(conditions: string[]): number {
+  return conditionWeaponSize(conditions).floor;
 }
 
 export function conditionTruesightFeet(conditions: string[]): number {

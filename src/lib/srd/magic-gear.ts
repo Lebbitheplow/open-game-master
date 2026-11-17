@@ -39,7 +39,17 @@ export type WeaponRiders = {
   dropProperties?: string[];
   extra?: GearDice[];
   critExtra?: GearDice[];
+  // A save the creature hit makes or falls to a condition (Giant Slayer: a
+  // giant's DC 15 Strength save or prone), against these creature types.
+  onHit?: GearOnHit[];
+  // Sword of Wounding: a hit wounds the creature once per turn
+  // (src/lib/dm/sword-wounding.ts).
+  wounds?: boolean;
+  // Oathbow: its sworn enemy (src/lib/dm/oathbow.ts).
+  oath?: boolean;
 };
+
+export type GearOnHit = { vs?: string[]; save: Ability; dc: number; condition: string };
 
 export type ArmorRiders = {
   bonus?: number;

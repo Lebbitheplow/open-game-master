@@ -30,7 +30,7 @@ export type HandCardType = "attack" | "rider" | "spell" | "control" | "mend" | "
 export type HandTarget = "enemy" | "ally" | "self" | "none";
 export type BasicActionId =
   | "dodge" | "dash" | "disengage" | "help" | "hide" | "ready" | "grapple" | "shove" | "use-object" | "end-turn"
-  | "search" | "escape" | "stand-up" | "stabilize" | "dismount";
+  | "search" | "escape" | "stand-up" | "stabilize" | "dismount" | "wake";
 
 // What the structured commit carries beside the sentence. An optional extra
 // field on the action body: a server that does not know it drops it. The
@@ -324,6 +324,8 @@ export type HandTurn = {
   marks?: string[];
   // Flurry of Blows strikes bought and not made.
   flurryStrikes?: number;
+  // Slow: an action or a bonus action, one attack, no reaction.
+  slowed?: boolean;
   // This turn's action went on an attack-roll spell, so Extra Attack is gone.
   castThisAction?: boolean;
   // What the Attack action was made with, for the off-hand swing (issue
@@ -399,6 +401,10 @@ export type HandOptions = {
   // for a host too old to resolve them (src/lib/capabilities.ts
   // handItemCasts). Absent means they are.
   items?: boolean;
+  // Whether a weapon's card offers the magic ammunition it can fire
+  // (hand-ammo.ts): false for a host that does not read the pick
+  // (src/lib/capabilities.ts magicAmmo). Absent means it does.
+  magicAmmo?: boolean;
   // What the board says of the character's own square (PlayerMapView.self).
   board?: HandBoardFacts;
 };
@@ -415,7 +421,10 @@ export type HandOptions = {
 // `attackAura`: what an ally's aura adds to this character's attack rolls
 // where they stand (src/lib/dm/genre-b-auras.ts genreBAuraAttack: Warlord of
 // the Wastes), which pc_attack adds and the attack cards print.
-export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string; attackAura?: { bonus: number; features: string[] } };
+// `walled`: the creatures within 5 feet a wall stands between, by id
+// (attack-spatial.ts wallsBeside): take_action refuses to shake one awake
+// through it, so the Wake card is not dealt for them.
+export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string; attackAura?: { bonus: number; features: string[] }; walled?: string[] };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,
@@ -425,6 +434,11 @@ export type HandGearContext = {
   mount?: string | null;
   allies?: number;
   dying?: Array<{ id: string; name: string }>;
+  // Allies held by Sleep or Hypnotic Pattern (shake-awake-logic.ts), with
+  // their feet from this character where the board measures them: the Wake
+  // card. Absent from a host that does not resolve it (capabilities.ts
+  // shakeAwake).
+  sleepers?: Array<{ id: string; name: string; feet?: number }>;
 };
 
 // The fan's seats, End turn's included (src/lib/battlemap/hand-layout.ts).
@@ -551,6 +565,7 @@ export function budgetOf(turn: HandTurn, sheet: Pick<CharacterSheet, "id">, allo
     ...(turn.extraActions ? { extraActions: turn.extraActions } : {}),
     ...(turn.grantedActions ? { grantedActions: turn.grantedActions } : {}),
     ...(turn.flurryStrikes ? { flurryStrikes: turn.flurryStrikes } : {}),
+    ...(turn.slowed ? { slowed: true } : {}),
     ...(turn.castThisAction ? { castThisAction: true } : {}),
     ...(turn.lightMeleeAttack ? { lightMeleeAttack: true } : {}),
     ...(turn.oneHandMeleeAttack ? { oneHandMeleeAttack: true } : {}),

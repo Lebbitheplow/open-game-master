@@ -84,6 +84,23 @@ await test("Freedom of Movement: a spell cannot restrain the creature (Entangle'
   assert.ok(!has(world.sheet(fighter.id).conditions, "restrained"), "Entangle restrained a creature under Freedom of Movement");
 });
 
+// SRD 5.1, Water Breathing: "This spell grants up to ten willing creatures
+// you can see within range the ability to breathe underwater until the spell
+// ends" (24 hours). The spell had no row, so cast_buff laid nothing and the
+// drowning hazard drowned its targets; the potion's condition (rules audit
+// 2026-11-16, I04) is the one the drowning reads.
+await test("Water Breathing: its targets breathe underwater and do not drown.", async () => {
+  const { world, sheets: [wizard, fighter] } = await table([caster("wizard", "int", ["Water Breathing"]), FIGHTER]);
+  const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Water Breathing", level: 3, targetCharacterIds: [wizard.id, fighter.id] });
+  assert.equal(cast.ok, true, cast.error);
+  for (const hero of [wizard, fighter]) {
+    assert.ok(has(world.sheet(hero.id).conditions, "water breathing"), `${hero.name}: ${world.sheet(hero.id).conditions.join(", ")}`);
+  }
+  const hazard = await world.invoke("apply_hazard", { type: "drowning", characterIds: [fighter.id], roundsWithoutAir: 99 });
+  assert.equal(hazard.ok, true, hazard.error);
+  assert.equal(world.sheet(fighter.id).currentHp, world.sheet(fighter.id).maxHp, "the fighter drowned under Water Breathing");
+});
+
 await test("Spider Climb: climbing costs the creature no extra movement.", async () => {
   assert.equal(await walkStrip("^", "Spider Climb", "wizard", "int", 2), 2);
 });

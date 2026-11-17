@@ -1,4 +1,5 @@
 import { canAct } from "@/lib/dm/can-act";
+import { sheetIntelligence, sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { castFromFoeSheet } from "@/lib/dm/sheet-foe-cast";
 import { hasDungeonDelver, shieldMasterSaveBonus, spellSaveAdvantageReach } from "@/lib/srd/feat-combat";
@@ -150,9 +151,12 @@ export function layEnemyCondition(
       { spell: use.name, casterId: use.enemy.id, slotLevel: use.slotLevel },
       { ability: save.ability, dc: save.dc },
     );
-    const first = handleSetCondition(campaign, turn.id, fresh, { condition }, reason, { spellEffect });
+    // Its caster named, so a ward against its kind holds (Protection from
+    // Evil and Good: a fiend "can't charm, frighten, or possess the
+    // target"); unnamed, a fiend's Charm Person charmed the warded paladin.
+    const first = handleSetCondition(campaign, turn.id, fresh, { condition, sourceEnemyId: use.enemy.id }, reason, { spellEffect });
     const also = (use.spellCondition.also ?? []).filter((name) => name.toLowerCase() !== condition.toLowerCase());
-    const landed = also.filter((name) => !("error" in handleSetCondition(campaign, turn.id, getSheetById(sheet.id) ?? fresh, { condition: name }, reason, { spellEffect })));
+    const landed = also.filter((name) => !("error" in handleSetCondition(campaign, turn.id, getSheetById(sheet.id) ?? fresh, { condition: name, sourceEnemyId: use.enemy.id }, reason, { spellEffect })));
     return landed.length && !("error" in first) ? { ...first, alsoApplied: landed } : first;
   }
   // The block's own words for how long it lasts (monster-abilities.ts): a
@@ -416,6 +420,10 @@ export function handleCastAtPlayer(
     }
     use = prepared;
   }
+  // Hideous Laughter at a character of Intelligence 4 or less (a polymorphed
+  // hero's beast mind, a beast companion): cast, spent, no effect.
+  const laughed = use?.spell ?? args.spell;
+  ward = ward ?? (laughed ? sparedByIntelligence(laughed, spellMechanicsFor({ spell: laughed, userIds: spellAuthorsFor(campaign) })?.mech.sparesIntAtMost, { name: sheet.name, int: sheetIntelligence(sheet) }) : null);
   // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:
   // "Each dart hits a creature of your choice"): no save is asked, and the
   // darts land as one hit kept for Shield to answer. It once asked for a
@@ -566,10 +574,13 @@ export function handleCastAtPlayer(
       : null;
     let dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : taken.damage;
     // Shield Master: a successful Dexterity save against an effect aimed at
-    // them alone costs the reaction to take no damage at all.
+    // them alone costs the reaction to take no damage at all. The caster is
+    // the creature whose turn is under way, for surprise's "no reaction until
+    // that turn ends" (can-act.ts): the pointer alone let a hero whose lost
+    // turn came after an ambusher's answer its spell in the round it lost.
     if (saved && dealt > 0 && ability === "dex" && shieldMasterSaveBonus(sheet) > 0) {
       const live = getActiveEncounter(campaign.id);
-      if (live && !live.reactionsUsed.includes(sheet.id) && canAct({ sheet, encounter: live, kind: "reaction" }).ok) {
+      if (live && !live.reactionsUsed.includes(sheet.id) && canAct({ sheet, encounter: live, kind: "reaction", actingId: use?.enemy.id ?? null }).ok) {
         markReactionUsed(live, sheet.id);
         dealt = 0;
         base.shieldMaster = `Shield Master: the reaction turns the successful save into no damage at all; ${sheet.name}'s reaction is used until their next turn.`;

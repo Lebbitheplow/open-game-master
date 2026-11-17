@@ -1,7 +1,7 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
-import { carriedLight, lightPlacement } from "@/lib/dm/light-timers";
+import { boardLight } from "@/lib/dm/light-timers";
 import { getClock } from "@/lib/db/clock";
 import { getDatabase } from "@/lib/db/core";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -44,6 +44,7 @@ import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
 
 import {
   blocksMove,
+  crawlingTraits,
 
   tileAt,
   tileIndex,
@@ -59,17 +60,18 @@ import { publishEphemeral } from "@/lib/events";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
-import { isIncapacitated } from "@/lib/dm/condition-logic";
+import { isIncapacitated, type ConditionMeta } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 import { afterMoveLeashes, leashRefusal } from "@/lib/dm/condition-leash";
 import { auraMenaceAsk } from "@/lib/dm/aura-menace";
-import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
+import { awayFromFear, enemyMoveTraits, fearSourcesAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
 import { picketHolds } from "@/lib/dm/genre-b-mystery-enforcer";
 import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-turn-logic";
-import { nearerSquares } from "@/lib/dm/flee-logic";
+import { nearerAnySquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
@@ -112,9 +114,10 @@ export function publishBattleMapUpdate(campaignId: string) {
   publishEphemeral(campaignId, "battle_map_updated", {});
 }
 
-// The token fields for that light, lit as the party steps onto the board.
+// The token fields for that light as the party steps onto the board: lit
+// now, or carried with the burn it has left (light-timers.ts boardLight).
 export function carriedLightFields(campaignId: string, sheet: CharacterSheet) {
-  return lightPlacement(carriedLight(sheet), getClock(campaignId).instant);
+  return boardLight(campaignId, sheet, getClock(campaignId).instant);
 }
 
 export function createBattleMapForEncounter(
@@ -722,12 +725,12 @@ export function handleMoveToken(
   // it fears, when there is one: the cheapest path stepped closer first, and
   // the walk stopped there (issue #621, a turned zombie that could not run).
   const feared = resolved.kind === "enemy" && resolved.enemy && !args.forced
-    ? fearSourceAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, { source?: string }>)
-    : null;
+    ? fearSourcesAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, ConditionMeta>)
+    : [];
   const pathAvoiding = (blocked: Set<number>) =>
     findPath(map.terrain, map.width, map.height, blocked, resolved.token, { x: args.x, y: args.y }, moverFootprint, resolved.token.movement === "fly" || Boolean(allowance?.fly), traits);
   const path =
-    (feared ? pathAvoiding(new Set([...occupied, ...nearerSquares(map.width, map.height, resolved.token, feared)])) : null) ??
+    (feared.length ? pathAvoiding(new Set([...occupied, ...nearerAnySquares(map.width, map.height, resolved.token, feared)])) : null) ??
     pathAvoiding(occupied);
   if (!path) {
     return {
@@ -775,12 +778,18 @@ export function handleMoveToken(
     // a refused walk stood the creature up all the same.
     let steps = path;
     let fearCut = false;
+    // Prone with less than half its speed left, it cannot stand and only
+    // crawls, every square costing one more (SRD 5.1, Being Prone): it
+    // walked at full cost, still prone.
+    let crawls = false;
     if (walking && resolved.enemy) {
-      standCost = standUpCost(encounter.id, resolved.enemy) ?? 0;
+      const stand = standUpCost(encounter.id, resolved.enemy);
+      crawls = stand === null && resolved.enemy.conditions.some((entry) => isConditionNamed(entry, "prone"));
+      standCost = stand ?? 0;
       steps = awayFromFear(
         resolved.token,
         path,
-        fearSourceAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, { source?: string }>),
+        feared,
       );
       fearCut = steps.length < path.length;
       // Aggressive's speed goes only toward a hostile it can see, and
@@ -792,7 +801,7 @@ export function handleMoveToken(
       approachCut = drawn.cut;
     }
     const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
-    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
+    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, crawls ? crawlingTraits(traits) : traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
     if (!walk.at && allowance) {
       return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
     }
@@ -993,6 +1002,12 @@ export function pushTokenAway(
     return { moved: false, reason: "someone stands behind it" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A push is forced movement, and "the condition also ends if an effect
+  // removes the grappled creature from the reach of the grappler ... such
+  // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,
+  // Grappled). Only a walk asked this, so a hero who shoved the goblin
+  // holding them 5 feet back stayed grappled.
+  releaseGrapplesOutOfReach(campaign);
   publishBattleMapUpdate(campaign.id);
   return { moved: true, at };
 }
@@ -1027,6 +1042,12 @@ export function pullTokenToward(
     return { moved: false, reason: "someone stands in the way" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A push is forced movement, and "the condition also ends if an effect
+  // removes the grappled creature from the reach of the grappler ... such
+  // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,
+  // Grappled). Only a walk asked this, so a hero who shoved the goblin
+  // holding them 5 feet back stayed grappled.
+  releaseGrapplesOutOfReach(campaign);
   publishBattleMapUpdate(campaign.id);
   return { moved: true, at };
 }

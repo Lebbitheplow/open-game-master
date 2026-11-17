@@ -434,7 +434,10 @@ await test("R12 an item property usable once a dawn or until a long rest has a c
   assert.equal((await use("Iron Bands of Binding")).refused, "rules", "the bands wait for dawn");
 
   // Past a dawn the staff's and the pearl's uses are back, the boots' not.
-  await table.invoke("pass_time", { amount: 1, unit: "days" });
+  // Two waits of half a day: a whole day waited out is slept through, and
+  // its night's long rest would bring the boots back too.
+  await table.invoke("pass_time", { amount: 12, unit: "hours" });
+  await table.invoke("pass_time", { amount: 12, unit: "hours" });
   assert.equal((await use("Staff of Thunder and Lightning", { spell: "Thunderclap" })).ok, true, "the thunderclap is back at dawn");
   assert.equal((await use("Pearl of Power")).ok, true, "the pearl is back at dawn");
   assert.equal((await use("Boots of Speed")).refused, "rules", "a dawn is not a long rest");

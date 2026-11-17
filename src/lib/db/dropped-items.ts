@@ -24,6 +24,9 @@ export type DroppedItem = {
   droppedBy: string;
   // The enemy holding it (encounter_enemies.id), or null on the ground.
   heldByEnemy: string | null;
+  // The sheet it fell from as they fell unconscious (src/lib/dm/fallen-gear.ts),
+  // which takes it back attuned; null for anything put down another way.
+  ownerId: string | null;
   createdAt: string;
 };
 
@@ -37,6 +40,7 @@ type Row = {
   item_json: string;
   dropped_by: string;
   held_by_enemy: string | null;
+  owner_id?: string | null;
   created_at: string;
 };
 
@@ -51,6 +55,7 @@ function mapRow(row: Row): DroppedItem {
     item: parseJson<EquipmentItem>(row.item_json, { name: "something", qty: 1 }),
     droppedBy: row.dropped_by,
     heldByEnemy: row.held_by_enemy,
+    ownerId: row.owner_id ?? null,
     createdAt: row.created_at,
   };
 }
@@ -76,12 +81,13 @@ export function insertDroppedItem(input: {
   item: EquipmentItem;
   droppedBy: string;
   heldByEnemy?: string | null;
+  ownerId?: string | null;
 }): DroppedItem {
   const id = crypto.randomUUID();
   getDatabase()
     .prepare(
-      `INSERT INTO dropped_items (id, campaign_id, map_id, x, y, place, item_json, dropped_by, held_by_enemy, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO dropped_items (id, campaign_id, map_id, x, y, place, item_json, dropped_by, held_by_enemy, owner_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -93,6 +99,7 @@ export function insertDroppedItem(input: {
       JSON.stringify(input.item),
       input.droppedBy.slice(0, 80),
       input.heldByEnemy ?? null,
+      input.ownerId ?? null,
       nowIso(),
     );
   // An item a GM turn dropped is picked back up by its revert (issue 685).

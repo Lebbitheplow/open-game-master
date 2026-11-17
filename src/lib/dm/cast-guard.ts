@@ -470,6 +470,12 @@ export function castSpell(
   if (fromItem) {
     let itemCast = castFromItem(campaign, turnId, sheet, facts, name, fromItem, input);
     if (!input.dryRun) {
+      // A wand's or a scroll's spell at an enemy is a spell that affects an
+      // enemy creature, and Sanctuary ends (SRD 5.1); this path returns before
+      // the slot's cast below ends it, so the ward outlived the blast.
+      if (via === "enemy" || via === "aoe" || via === "attack") {
+        endSanctuaryOnHarm(campaign.id, sheet.id);
+      }
       const live = inFight ? getActiveEncounter(campaign.id) : null;
       if (live) {
         itemCast = { ...itemCast, ...openItemShares(live, sheet, name, mech, facts, fromItem, input, via) };

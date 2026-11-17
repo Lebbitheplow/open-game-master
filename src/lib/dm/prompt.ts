@@ -36,6 +36,8 @@ import { authoredFeatureTags } from "@/lib/srd/authored-effects";
 import { rollKeyCue } from "@/lib/srd/roll-keys";
 import { heldRollKeys } from "@/lib/dm/roll-feature-riders";
 import { describeConditionDuration, describeExhaustion, effectiveMaxHp } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
+import { acWithEffects } from "@/lib/dm/ac-effects";
 import { describeConditionEffects } from "@/lib/srd/condition-effects";
 import { presetFor, packFor } from "@/lib/worlds/preset";
 import { nameRegisterHint } from "@/lib/genres";
@@ -726,9 +728,13 @@ export function describeSheet(
   // The maximum the hero really has (exhaustion 4 halves it, an Amulet of
   // Health raises it), as the sheet and heal read it: the stored one told the
   // storyteller a halved hero at full health was badly hurt.
+  // The AC attacks meet (ac-effects.ts): a beast form's with Barkskin's floor
+  // or Shield of Faith, an effect's change. The stored one told the GM a
+  // Barkskinned wolf druid was AC 12.
+  const ac = acWithEffects(sheet.campaignId, sheet);
   const lines = [
     `- ${sheet.name} (${sheetSize(sheet)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
-    `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
+    `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${ac} | Speed ${slowedSpeed(sheet, speedFor(sheet, { encumbrance: options.encumbrance }))} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
     `  ${abilities} | Save proficiencies: ${sheet.proficiencies.saves.map((save) => save.toUpperCase()).join(", ") || "none"}`,
     `  Skill proficiencies: ${proficientSkills || "none"}`,
     `  Languages (complete list; they cannot speak, read, or understand any other language): ${sheet.proficiencies.languages.join(", ") || "Common only"} | Tool proficiencies: ${sheet.proficiencies.tools.join(", ") || "none"} | Armor training: ${sheet.proficiencies.armor.join(", ") || "none"} | Weapon training: ${sheet.proficiencies.weapons.join(", ") || "none"}`,
@@ -776,6 +782,11 @@ export function describeSheet(
     lines.push(foretold);
   }
   for (const pet of sheet.pets ?? []) {
+    // Out of reach until called back (pet-pocket.ts).
+    if (pet.pocketed) {
+      lines.push(`  Pet: ${pet.name} (${pet.form} familiar): in its pocket dimension; summon_pet calls it back (an action).`);
+      continue;
+    }
     const attacks = pet.attacks.length
       ? ` Attacks (pet_attack): ${pet.attacks
           .map((attack) => `${attack.name} +${attack.toHit} (${attack.damage} ${attack.type})`)
@@ -816,7 +827,7 @@ export function describeSheet(
     const kind = shape.type && shape.type !== "beast" ? ` (${shape.type})` : "";
     const defenses = [shape.resist ? `resists ${shape.resist}` : "", shape.immune ? `immune to ${shape.immune}` : "", shape.vulnerable ? `vulnerable to ${shape.vulnerable}` : ""].filter(Boolean).join("; ");
     lines.push(
-      `  ${label} a ${shape.form}${kind}: ${shape.beastHp}/${shape.beastMaxHp} beast HP, AC ${shape.beastAc}${shape.speed !== undefined ? `, speed ${shape.speed} ft` : ""}.${stats}${defenses ? ` The form ${defenses}.` : ""}${attacks} Damage hits the beast pool first and their own hit points above are untouched until the form breaks. They fight with the beast's natural weapons and cannot cast spells${shape.kind === "polymorph" ? " or speak" : ""}.`,
+      `  ${label} a ${shape.form}${kind}: ${shape.beastHp}/${shape.beastMaxHp} beast HP, AC ${ac}${shape.speed !== undefined ? `, speed ${shape.speed} ft` : ""}.${stats}${defenses ? ` The form ${defenses}.` : ""}${attacks} Damage hits the beast pool first and their own hit points above are untouched until the form breaks. They fight with the beast's natural weapons and cannot cast spells${shape.kind === "polymorph" ? " or speak" : ""}.`,
     );
   }
   if ((sheet.exhaustion ?? 0) > 0) {
@@ -878,10 +889,13 @@ export function describeSheet(
       );
     }
   }
+  // The spell-slot line names a caster's concentration; one with no slots (a
+  // tiefling's Darkness, a wand's Web) held it unseen by the GM.
+  const held = !sheet.spellcasting && sheet.concentratingOn ? ` | Concentrating on: ${sheet.concentratingOn}` : "";
   if (racialSpells) {
-    lines.push(`  ${racialSpells}`);
+    lines.push(`  ${racialSpells}${held}`);
   } else if (!sheet.spellcasting) {
-    lines.push(`  Spellcasting: none (cannot cast any spells)`);
+    lines.push(`  Spellcasting: none (cannot cast any spells)${held}`);
   }
   // The purse always prints, even with an empty pack: the model cannot keep a
   // purse it never sees (missed modify_gold calls on purchases). All of it, so

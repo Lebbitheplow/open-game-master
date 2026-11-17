@@ -138,6 +138,10 @@ export const SERVER_FEATURES = {
   // beside someone in the same call. The console shows the fields only on a host
   // that reads them; an older one drops them unread.
   moveWithAction: true,
+  // take_action's wake (audit 2026-11-16, Y17): a creature within 5 feet
+  // shaken out of Sleep or Hypnotic Pattern. The Hand's Wake card and the
+  // console's "Shake awake" ask for it; an older host refuses the action.
+  shakeAwake: true,
   // An improvised action in a fight (take_action improvise): the console's
   // Improvise, the improvised action Ready holds, and every skill for its
   // check. An older host refuses the action and takes only Perception or
@@ -215,6 +219,13 @@ export const SERVER_FEATURES = {
   // save. An older host strips it unread and forces the save on the owner,
   // so it stays hidden there.
   petSaves: true,
+  // heal's `petName` (the console's "Their pet"): the pet is healed. An
+  // older host strips it unread and heals the owner, so it stays hidden there.
+  petHealing: true,
+  // take_action's `petName` (the console's "Their familiar helps"): the
+  // familiar takes the Help action. An older host strips it unread and the
+  // character helps with their own action, so it stays hidden there.
+  familiarHelp: true,
   // enemy_attack's `targetPet` (the console's "At their pet"): the creature
   // strikes the pet at its own AC and conditions. An older host strips it
   // unread and strikes the owner, so it stays hidden there.
@@ -290,6 +301,15 @@ export const SERVER_FEATURES = {
   // Strike or Let it go on POST /api/campaigns/[id]/pending-rolls/[id]/opportunity.
   // An older host never asks (it takes the swing), so the card never draws there.
   opportunityAsk: true,
+  // Divine Smite on that card (G10): the ask's `smiteSlot`, answered with
+  // `smite: true` beside `strike`. An older host's route refuses the field,
+  // so the app draws the smite button only where the host offers it.
+  opportunitySmite: true,
+  // Magic ammunition (G18): pc_attack's `ammo`, the console's Ammunition
+  // field and a weapon card's pick of the +1 arrows it can fire (hand-ammo.ts).
+  // An older host strips `ammo` unread and fires ordinary arrows, so the app
+  // offers the pick only where the host reads it.
+  magicAmmo: true,
   // Watching a fight for Portent (src/lib/dm/foresight.ts): POST
   // /api/campaigns/[id]/foresight turns the stops on, and a stop's card
   // answers on pending-rolls/[id]/watch. An older host answers 404, so the

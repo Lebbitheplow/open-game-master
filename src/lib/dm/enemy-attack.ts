@@ -55,7 +55,7 @@ import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-log
 import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
-import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
+import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
 import { applyPcDamage, blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { effectOutcome } from "@/lib/dm/effect-tools";
@@ -82,6 +82,7 @@ import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options"
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { petTargetProblem, strikePet } from "@/lib/dm/pet-strike";
+import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
@@ -601,7 +602,8 @@ export function handleEnemyAttack(
   }
   saveEncounter(live);
   // At the mount or the pet beside them, the routine's swings each from
-  // where the creature stands: its reach, its range, its bloodied blow.
+  // where the creature stands: its reach, its range, its bloodied blow, and
+  // its water (pet-underwater.ts), as its swing at the character reads them.
   const swingsBeside = (what: string) => {
     const bloodied = standing.currentHp <= standing.maxHp / 2;
     let shots = 0;
@@ -615,7 +617,12 @@ export function handleEnemyAttack(
         return { attack, skipped: past };
       }
       shots += mode.ranged ? 1 : 0;
-      return { attack: alternativeBlow(attack, { ranged: mode.ranged, bloodied }), ranged: mode.ranged };
+      const blow = alternativeBlow(attack, { ranged: mode.ranged, bloodied });
+      const water = creatureUnderwaterSwing(campaign.id, standing, blow, mode);
+      if (water?.misses && water.note) {
+        return { attack: blow, skipped: water.note };
+      }
+      return { attack: blow, ranged: mode.ranged, ...(water?.disadvantage && water.note ? { underwater: water.note } : {}) };
     });
   };
   const requested = () => claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested;
@@ -813,7 +820,7 @@ export function handleEnemyAttack(
     turn.rollIds.push(hitRoll.id);
 
     // Mirror Image: a duplicate may take the attack instead.
-    const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total);
+    const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total, enemy);
     if (decoy) {
       swings.push({ attack: attack.name, rolled: hitOutcome.total, hit: false, duplicate: decoy });
       return;
@@ -896,6 +903,10 @@ export function handleEnemyAttack(
     if (charge) {
       attack = withChargeDice(attack, charge);
     }
+    // Enlarge/Reduce on the creature: its weapons grew or shrank with it
+    // (enemy-hit.ts sizedAttack).
+    const sized = sizedAttack(attack, standing.conditions);
+    attack = sized.attack;
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);
@@ -932,7 +943,7 @@ export function handleEnemyAttack(
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
     // Sepulchral Aura and Numb to the Lash (genre-a-dark-fantasy-wards.ts).
-    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(blow.amount));
+    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(Math.max(sized.floor, blow.amount)));
     const dealt = warded.amount;
     notes.push(...warded.notes);
     // A critical that came only from the target lying unconscious at 0 within
@@ -979,8 +990,14 @@ export function handleEnemyAttack(
     everyHitTurnable &&= waits;
     const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
     Object.assign(applied, psychicBack.result);
+    // What the target took after its resistances, immunities and
+    // vulnerabilities (SRD 5.1: "If a creature or an object has resistance
+    // to a damage type, damage of that type is halved against it"). The
+    // result said the blow as rolled: a raging hero who lost 3 of a club's 6
+    // was narrated 6, and the table line read "HIT for 6".
+    const taken = dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     totalDamage += dealt;
-    takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
+    takenTotal += taken;
     previousHit = true;
     if (multiattackDefense) {
       defended = 4;
@@ -1081,7 +1098,8 @@ export function handleEnemyAttack(
       rolled: hitOutcome.total,
       hit: true,
       ...(crit ? { crit: true } : {}),
-      damage: dealt,
+      damage: taken,
+      ...(typeof applied.resistance === "string" ? { resistance: applied.resistance } : {}),
       ...(byType ? { damageByType: byType } : {}),
       ...(onHit ?? {}),
       ...(charged.length ? { charge: charged } : {}),
@@ -1115,7 +1133,7 @@ export function handleEnemyAttack(
     ...(planned.length > 1 ? { multiattack: planned.map((attack) => attack.name).join(", ") } : {}),
     swings,
     hit: swings.some((entry) => entry.hit),
-    ...(totalDamage > 0 ? { totalDamage, damageType: [...damageTypes].join("/") } : {}),
+    ...(totalDamage > 0 ? { totalDamage: takenTotal, damageType: [...damageTypes].join("/") } : {}),
     ...(notes.length ? { conditionEffects: notes } : {}),
     ...(targetHp ? { targetHp } : {}),
     ...(dropped ? { dropped: true, note: `${target.name} falls to 0 HP.` } : {}),

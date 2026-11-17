@@ -98,6 +98,17 @@ function shieldSpell(input: DefenseInput): { bonus: number; note: string } | nul
   if (!cost) {
     return null;
   }
+  raiseShield(encounter, enemy, cost);
+  return {
+    bonus: 5,
+    note: `${enemy.displayName} casts Shield (its reaction${cost.slot ? `, a level-${cost.slot} slot` : ""}): +5 AC until its next turn turns ${input.total} against AC ${input.ac} into a miss`,
+  };
+}
+
+// The reaction and the slot spent, and the +5 AC laid until the start of the
+// creature's next turn (condition-effects.ts "shielded", ended by
+// condition-logic.ts at that turn's start), for every attack until then.
+function raiseShield(encounter: Encounter, enemy: EncounterEnemy, cost: { ledger: AbilityLedger }) {
   encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
   encounter.legendary.abilities = { ...(encounter.legendary.abilities ?? {}), [enemy.id]: cost.ledger };
   saveEncounter(encounter);
@@ -108,10 +119,28 @@ function shieldSpell(input: DefenseInput): { bonus: number; note: string } | nul
       shielded: { untilTurnOf: enemy.id, spell: "Shield", source: enemy.id },
     } as typeof fresh.conditionMeta);
   }
-  return {
-    bonus: 5,
-    note: `${enemy.displayName} casts Shield (its reaction${cost.slot ? `, a level-${cost.slot} slot` : ""}): +5 AC until its next turn turns ${input.total} against AC ${input.ac} into a miss`,
-  };
+}
+
+// Shield against Magic Missile. SRD 5.1, Shield: "Reaction, which you take
+// when you are hit by an attack or targeted by the magic missile spell ...
+// you take no damage from magic missile." A Shield already up takes every
+// dart; a creature that lists the spell, with its reaction and a slot,
+// casts it now, as a GM running it would. Returns the note, or null when
+// the darts land. A hero's Magic Missile at a mage struck it whole: the
+// creature's Shield answered only an attack roll.
+export function shieldAgainstMagicMissile(encounter: Encounter, enemy: EncounterEnemy): string | null {
+  if (enemy.conditions.some((entry) => isConditionNamed(entry, "shielded"))) {
+    return `${enemy.displayName}'s Shield is up: it takes no damage from Magic Missile.`;
+  }
+  if (!reactionFree(encounter, enemy)) {
+    return null;
+  }
+  const cost = spellCost(enemy, encounter, "Shield", 1);
+  if (!cost) {
+    return null;
+  }
+  raiseShield(encounter, enemy, cost);
+  return `${enemy.displayName} casts Shield (its reaction${cost.slot ? `, a level-${cost.slot} slot` : ""}) as the darts fly: it takes no damage from Magic Missile, and has +5 AC until its next turn.`;
 }
 
 // Counterspell (its block lists it) against a spell of 1st level or higher

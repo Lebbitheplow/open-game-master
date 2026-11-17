@@ -100,7 +100,9 @@ await test("Damage ends a spell's conditions together, while a sleep with no spe
     spellEffectsOnEnemyDamage(foe.id);
   }
   assert.deepEqual(enemyOf(world, charmed.id).conditions, [], "the pattern's charm goes with its incapacitation");
-  assert.deepEqual(enemyOf(world, poisoned.id).conditions, ["poisoned"], "the sleeper wakes still poisoned");
+  // And on the ground: an unconscious creature falls prone, and waking does
+  // not stand it up (SRD 5.1, Unconscious).
+  assert.deepEqual(enemyOf(world, poisoned.id).conditions, ["poisoned", "prone"], "the sleeper wakes still poisoned");
   assert.deepEqual(enemyOf(world, turned.id).conditions, ["grappled"], "the priest's grapple is not part of the turning");
 });
 

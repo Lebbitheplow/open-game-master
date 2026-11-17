@@ -30,6 +30,7 @@ import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
 import { mendedHide } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
+import { endHealCures } from "@/lib/dm/heal-cures";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
@@ -92,6 +93,9 @@ export function castHealingSpell(
     reason: string;
     // The casting a heal list's entries share (action-parts-logic.ts).
     casting?: OneCasting;
+    // The target stands in for a pet of its owner (pet-heal.ts): the reach
+    // is the owner's, and nothing below writes to the owner's sheet.
+    pet?: boolean;
   },
   cast: Cast,
 ): HealSpellOutcome | null {
@@ -213,16 +217,20 @@ export function castHealingSpell(
   // The casting at the creature it heals, on record (last-save.ts): what
   // answers a spell aimed at an ally (Voice of Authority) reads it.
   recordCast(campaign.id, { id: caster.id, name: caster.name }, name, slotLevel ?? 0, [target.id]);
+  // What it ends besides (Heal's and Mass Heal's blindness, deafness and
+  // diseases: heal-cures.ts).
+  const ended = mech?.cures ? endHealCures(campaign, turnId, { caster, target, spell: name, cures: mech.cures }) : [];
+  const ends = ended.length ? ` It also ends ${ended.join(", ")} on ${target.name}.` : "";
   if (mech?.healPool) {
     // What is left of the pool bounds this share (cast-guard.ts open casts).
     const amount = typeof paid.uses === "number" ? paid.uses : (input.amount ?? 0);
-    return { amount, note: `${name}: ${amount} of its ${mech.healPool} hit points.` };
+    return { amount, note: `${name}: ${amount} of its ${mech.healPool} hit points.${ends}` };
   }
   const shared = `${paid.continuing ? ` ${String(paid.continuing)}` : paid.shares ? ` ${String(paid.shares)}` : ""}${paid.metamagic ? ` ${String(paid.metamagic)}` : ""}`;
 
   if (mech?.healing) {
     const amount = mech.healing.flat + (mech.healing.perSlotLevel ?? 0) * Math.max(0, slotLevel - facts.level);
-    return { amount, note: `${name}: ${amount} hit points.${shared}` };
+    return { amount, note: `${name}: ${amount} hit points.${shared}${ends}` };
   }
   if (!readable) {
     return { amount: input.amount ?? 0, note: `${name}: ${input.amount} hit points as sent.${shared}` };
@@ -279,18 +287,18 @@ export function castHealingSpell(
       mayWait: !casting || casting.creatures < 2 || casting.oneCall === true,
     });
     // The dice Empowered Healing may roll again (ar-ws-empowered-healing.ts).
-    if (roll) noteHealingRoll(campaign, { roll, caster, target, spell: name });
+    if (roll && !input.pet) noteHealingRoll(campaign, { roll, caster, target, spell: name });
     amount = outcome.total;
   }
   // Regenerate goes on healing at the start of each of the target's turns
   // (src/lib/dm/spell-aura.ts reads the mark).
-  if (mech?.regainEachTurn) {
+  if (mech?.regainEachTurn && !input.pet) {
     markRegenerating(campaign, target.id, name, caster.id);
     riders.push(`${mech.regainEachTurn} more at the start of each of their turns for an hour`);
   }
   // Blessed Healer (Life 6): healing another creature with a slot heals the
   // cleric 2 + the slot's level.
-  if (slotLevel >= 1 && target.id !== caster.id && holdsFeature(caster, "blessed healer")) {
+  if (slotLevel >= 1 && (input.pet || target.id !== caster.id) && holdsFeature(caster, "blessed healer")) {
     const self = getSheetById(caster.id) ?? caster;
     // Through the healing door (regain.ts): a cursed or chilled cleric
     // regains nothing.
@@ -300,14 +308,14 @@ export function castHealingSpell(
     }
   }
   // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.
-  const broken = spellBreaker(campaign, caster, target.id, slotLevel);
+  const broken = input.pet ? null : spellBreaker(campaign, caster, target.id, slotLevel);
   if (broken) {
     riders.push(broken);
   }
   // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
-  riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
+  if (!input.pet) riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
   // Controlled Dosage: a plague doctor's remedy cures a poison or a disease too.
-  const dosed = controlledDosage(campaign, caster, target);
+  const dosed = input.pet ? null : controlledDosage(campaign, caster, target);
   if (dosed) {
     riders.push(dosed);
   }

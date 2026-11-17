@@ -166,6 +166,8 @@ await test("a class feature comes back at its rest and never at the player's han
     assert.equal(rage.ok, true, rage.error);
     await table.invoke("pass_time", { amount: 1, unit: "minutes" });
   }
+  // Hurt first: the pool pays only the hit points it restores (A03).
+  table.patch(paladin.id, { currentHp: 5 });
   await table.invoke("use_resource", {
     characterId: paladin.id,
     resource: "Lay on Hands",

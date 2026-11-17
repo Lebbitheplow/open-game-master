@@ -24,7 +24,7 @@ import { afterToHitLanded, runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import { rollExpression, type RollResult } from "@/lib/dice";
 import { heroRollTag } from "@/lib/dice-script-logic";
-import { throwDamage } from "@/lib/dm/attack-blow";
+import { throwDamage } from "@/lib/dm/attack-damage-dice";
 import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
@@ -124,7 +124,7 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   // (after-roll.ts): the die is theirs, and stays held if they keep the roll.
   const attacker = pending.kind === "attack" && pending.attack && pending.characterId ? getSheetById(pending.characterId) : null;
   const decides = Boolean(pending.thrown) || rollsCanWait(attacker);
-  const outcome = attacker && pending.attack && !decides ? settleAttackDie(campaignId, attacker, thrown, parkedTargetAc(campaignId, pending.attack), pending.attack.critRange ?? 20) : thrown;
+  const outcome = attacker && pending.attack && !decides ? settleAttackDie(campaignId, attacker, thrown, parkedTargetAc(campaignId, pending.attack)) : thrown;
   if (outcome !== thrown) {
     // The server threw that die: the roll is no longer the player's alone.
     landing = { ...landing, physical: false };

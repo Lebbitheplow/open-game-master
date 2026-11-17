@@ -114,7 +114,7 @@ export const SUMMON_SPELLS: SummonSpell[] = [
   {
     name: "Animate Dead", school: "necromancy", level: 3, concentration: false, rounds: DAY, forms: ["Skeleton", "Zombie"], perTarget: true,
     base: 1, perSlotLevel: 2, initiative: "group", controlExpires: true, reassert: 4, reassertPerSlot: 2,
-    note: "A skeleton or zombie under the caster's command for 24 hours (two more for each slot level above 3rd); a bonus action commands them all.",
+    note: "A skeleton or zombie under the caster's command for 24 hours (two more for each slot level above 3rd); a bonus action commands them all (cast_buff, variant 'command'), and uncommanded they only defend themselves.",
   },
   {
     name: "Create Undead", school: "necromancy", level: 6, concentration: false, rounds: DAY, forms: ["Ghoul", "Ghast", "Wight", "Mummy"],
@@ -127,7 +127,7 @@ export const SUMMON_SPELLS: SummonSpell[] = [
     ],
     options: [["Ghoul"], ["Ghast", "Wight"], ["Mummy"]],
     initiative: "group",
-    note: "Ghouls under the caster's command for 24 hours; from 8th level ghasts or wights, from 9th mummies.",
+    note: "Ghouls under the caster's command for 24 hours; from 8th level ghasts or wights, from 9th mummies. A bonus action commands them all (cast_buff, variant 'command'), and uncommanded they only defend themselves.",
   },
   {
     name: "Giant Insect", school: "transmutation", level: 4, concentration: true, rounds: 100,

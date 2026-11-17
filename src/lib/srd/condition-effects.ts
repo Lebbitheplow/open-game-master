@@ -147,12 +147,14 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     match: ["blurred", "blur"],
     summary: "Blur: attack rolls against them are made at disadvantage unless the attacker sees through illusions.",
     attacksAgainstDisadvantage: true,
+    sightOnly: true,
   },
   {
     id: "faerie_fire",
     match: ["faerie fire", "outlined in faerie fire"],
     summary: "Faerie Fire: attack rolls against them have advantage, and they cannot benefit from being invisible.",
     attacksAgainstAdvantage: true,
+    revealsInvisible: true,
   },
   {
     id: "guidance",
@@ -210,6 +212,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     ],
     onHitDice: { dice: "1d4", type: "" },
     weaponOnly: true,
+    sizesWeapons: true,
   },
   {
     id: "reduced",
@@ -222,6 +225,8 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     ],
     onHitDice: { dice: "-1d4", type: "" },
     weaponOnly: true,
+    sizesWeapons: true,
+    damageFloor: 1,
   },
   ...STRIKE_CONDITION_EFFECTS,
   {
@@ -1117,6 +1122,12 @@ export function conditionIncomingAttackState(
   // The attacker's creature type, when an enemy attacks: Protection from
   // Evil and Good turns away only fiends, undead and their kin.
   attackerType?: string,
+  // The attacker's blindsight or truesight reaches the target: an illusion
+  // that fools the eyes does nothing to it. SRD 5.1, Blur: "An attacker is
+  // immune to this effect if it doesn't rely on sight, as with blindsight,
+  // or can see through illusions, as with truesight." A dragon's bite at a
+  // blurred wizard was rolled at disadvantage.
+  attackerSeesTrue = false,
 ): {
   sources: Array<"advantage" | "disadvantage">;
   notes: string[];
@@ -1125,7 +1136,7 @@ export function conditionIncomingAttackState(
   const notes: string[] = [];
   const type = (attackerType ?? "").toLowerCase();
   for (const { row, condition } of activeConditionEffects(targetConditions)) {
-    if (row.attacksAgainstDisadvantage) {
+    if (row.attacksAgainstDisadvantage && !(row.sightOnly && attackerSeesTrue)) {
       sources.push("disadvantage");
       notes.push(`target is ${condition}: disadvantage`);
     }

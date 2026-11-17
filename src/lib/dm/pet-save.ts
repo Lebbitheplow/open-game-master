@@ -19,6 +19,7 @@
 // failed save's condition is laid on the pet as on a character
 // (pet-condition-lay.ts) and ends on the pet's clock (pet-conditions.ts).
 
+import { sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { RollAttacker } from "@/lib/db/rolls";
@@ -36,7 +37,7 @@ import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { petCreatureType } from "@/lib/dm/pet-build";
 import { layPetFailedSave, layPetSpellConditions, type PetLaid } from "@/lib/dm/pet-condition-lay";
 import { petDamageShare } from "@/lib/dm/pet-save-logic";
-import { rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
+import { petIntelligence, rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
 import { findPet, hurtPet, noPet } from "@/lib/dm/pet-tools";
 import { rollCard } from "@/lib/dm/roll-card";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -88,6 +89,8 @@ export function areaOnPets(input: {
   magical: boolean;
   source: string;
   lays?: AreaLays;
+  // The spell the area is, when it is one: its rules for whom it passes over.
+  spell?: string;
 }): Array<Record<string, unknown>> | null {
   // A net, a web or a dragon's paralyzing breath deals nothing and binds:
   // before, a pet caught in one rolled no save and stayed free.
@@ -95,11 +98,21 @@ export function areaOnPets(input: {
     return null;
   }
   const owner = getSheetById(input.owner.id) ?? input.owner;
-  const standing = owner.pets.filter((pet) => pet.hp > 0);
+  // A familiar in its pocket dimension is not in the area (pet-pocket.ts).
+  const standing = owner.pets.filter((pet) => pet.hp > 0 && !pet.pocketed);
   if (!standing.length) {
     return null;
   }
+  // An area that spares an Intelligence of 4 or less (a workshop spell that
+  // keeps Hideous Laughter's rule) passes over a wolf or an owl, as it passes
+  // over the creatures and characters it reaches (aoe-damage.ts, Y14): the pet
+  // made the save and took what it laid whatever its mind.
+  const intFloor = input.spell ? spellMechanicsFor({ spell: input.spell, userIds: spellAuthorsFor(input.campaign) })?.mech.sparesIntAtMost : undefined;
   return standing.map((pet) => {
+    const spared = input.spell ? sparedByIntelligence(input.spell, intFloor, { name: pet.name, int: petIntelligence(input.campaign, pet) }) : null;
+    if (spared) {
+      return { pet: pet.name, success: true, damage: 0, spared };
+    }
     const save = rollPetSave(input.campaign, input.turn, owner, pet, { ability: input.ability, dc: input.dc, magical: input.magical, source: input.source });
     const share = petDamageShare({ saved: save.success, halfOnSave: input.halfOnSave, ability: input.ability, evasion: save.evasion });
     const parts = partsTaken(input.blast, share).filter((part) => part.amount > 0);
@@ -179,6 +192,9 @@ export function castAtPet(campaign: Campaign, turn: DmTurn, args: CastAtPetArgs,
     ward = spellWardOn({ encounterId: prepared.enemy.encounterId, casterId: prepared.enemy.id, targetId: owner.id, targetName: pet.name, facts: args.spell ? spellFactsFor(args.spell, authors) : null });
     use = prepared;
   }
+  // Hideous Laughter at a wolf or an owl (Intelligence 4 or less): cast, spent, no effect.
+  const laughed = use?.spell ?? args.spell;
+  ward = ward ?? (laughed ? sparedByIntelligence(laughed, spellMechanicsFor({ spell: laughed, userIds: authors })?.mech.sparesIntAtMost, { name: pet.name, int: petIntelligence(campaign, pet) }) : null);
   const castName = use?.name || args.spell;
   if (use?.hitPointPool) {
     return { error: `${castName} counts hit points across the creatures it reaches, with no save to make; resolve it with aoe_damage. Nothing was spent.`, retry: true };

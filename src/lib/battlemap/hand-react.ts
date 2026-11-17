@@ -377,7 +377,8 @@ export function reactionCards(
       if (holdsFeature(sheet, "uncanny dodge") && !hidden(unseen, hit.attackerId)) {
         feature(hit, "Uncanny Dodge", prompt, "Halve the damage of the attack that hit you.");
       }
-      if (hit.ranged && holdsFeature(sheet, "deflect missiles")) {
+      // A spell's ranged attack throws no missile (reaction-tools.ts deflectMissiles).
+      if (hit.ranged && !hit.spell && holdsFeature(sheet, "deflect missiles")) {
         feature(hit, "Deflect Missiles", prompt, "Take 1d10 + DEX + monk level off a ranged weapon hit.");
       }
       // Lucky (src/lib/dm/feat-reactions.ts lucky): a luck point and no

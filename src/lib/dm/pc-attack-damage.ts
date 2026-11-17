@@ -68,6 +68,8 @@ export function foldDamageRiders(input: {
   surprised?: boolean;
   // Thrown past its reach (attack-damage-riders.ts).
   atRange?: boolean;
+  // Made off the attacker's own turn (attack-damage-riders.ts).
+  offTurn?: boolean;
 }) {
   const { campaignId, sheet } = input;
   // Gutter Fighting's "a creature that has not acted yet this combat".
@@ -506,6 +508,9 @@ export function landBlow(input: {
       ...(nonlethal ? { nonlethal: true } : {}),
     }, sheets, sheetsById, holdVictory);
   } else if (parts.length < 2) {
+    // The critical rides along: Undead Fortitude gives no save "from a
+    // critical hit" (SRD 5.1, Zombie). Only the two-type path passed it, so a
+    // longsword's critical let a zombie roll to stay up.
     applied = applyEnemyDamage(
       campaign,
       turn,
@@ -515,7 +520,7 @@ export function landBlow(input: {
       sheets,
       sheetsById,
       profile.damageType,
-      { magical, nonlethal, holdVictory, ...material, ...input.blow, ...(input.ignoreResistance ? { ignoreResistance: true, ignoreResistanceBy: input.ignoreResistanceBy } : {}), ...(input.concentrationDisadvantage ? { concentrationDisadvantage: true } : {}) },
+      { magical, nonlethal, holdVictory, ...material, ...input.blow, ...(crit ? { crit: true } : {}), ...(input.ignoreResistance ? { ignoreResistance: true, ignoreResistanceBy: input.ignoreResistanceBy } : {}), ...(input.concentrationDisadvantage ? { concentrationDisadvantage: true } : {}) },
     );
   } else {
     // Two damage types in one blow: each meets the creature's resistances

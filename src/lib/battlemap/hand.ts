@@ -14,12 +14,13 @@ import { dualWields, handsRuling, offHandProblem } from "@/lib/dm/attack-rules";
 import { shillelaghSwing } from "@/lib/dm/attack-features";
 import { magicWeaponOfRow, type WeaponGear } from "@/lib/dm/gear-attack";
 import { bonusRouteFor, kiLeft, usesLeft, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-routes";
-import { effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { attackOptionsFor, bonusStrikeCards, fastHandsCards, kiCards } from "@/lib/battlemap/hand-class";
 import { beastAttackIcon } from "@/lib/battlemap/attack-art";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
+import { ammoChoice } from "@/lib/battlemap/hand-ammo";
 import { AMMO_LABELS, ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
 import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { grappleHandsProblem } from "@/lib/dm/cast-rules";
@@ -192,6 +193,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       notes.push(profile.thrown ? "Versatile: say two hands in melee for the bigger die." : "Versatile: say two hands for the bigger die.");
     }
     const ammoKind = srd?.properties?.includes("ammunition") ? ammoKindForWeapon(srd.name) : null;
+    const ammoPick = ammoKind && !offHand && options.magicAmmo !== false ? ammoChoice(sheet.equipment, srd?.name) : null;
     const ammo = ammoKind ? findAmmo(sheet.equipment, ammoKind) : null;
     const empty = ammoKind !== null && ammo === null;
     const card: HandCard = {
@@ -218,6 +220,9 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       ...(wield ? { wield } : {}),
       intent: { card: "attack", weapon: name, ...(offHand ? { offHand: true } : {}) },
       ...(offHand ? {} : { options: attackOptionsFor(sheet, turn, profile, derived, { allowed }) }),
+      // Magic ammunition the weapon can fire, picked per shot (hand-ammo.ts),
+      // from a host that reads the pick (capabilities.ts magicAmmo).
+      ...(ammoPick ? { choice: ammoPick } : {}),
     };
     const ammoGate: Gate =
       empty && options.trackAmmo ? { reason: `Out of ${AMMO_LABELS[ammoKind!]}.`, spent: true } : null;
@@ -490,7 +495,7 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
       // Movement, not an action (SRD 5.1, Being Prone): no standing at speed
       // 0, whether a condition or exhaustion stops them.
       const still: Gate =
-        exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, sheet.speed)) === 0
+        slowedSpeed(sheet) === 0
           ? { reason: "Your speed is 0, so you cannot stand up.", spent: false }
           : null;
       cards.push(gated(card, standingGate(sheet, turn, "move"), still));
@@ -503,7 +508,7 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     }
     const contest = basic.id === "grapple" || basic.id === "shove";
     const still: Gate =
-      basic.id === "dash" && effectiveSpeed(sheet.conditions, sheet.speed) === 0
+      basic.id === "dash" && slowedSpeed(sheet) === 0
         ? { reason: "Your speed is 0, so a Dash goes nowhere.", spent: false }
         : null;
     cards.push(
@@ -571,7 +576,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...featureDoorCards(sheet, turn, spells),
     ...kiCards(sheet, turn),
     ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
-    ...gearCards(sheet, turn, options.gear),
+    ...gearCards(sheet, turn, options.gear, options.board?.walled),
     ...fastHandsCards(sheet, turn),
   ];
 }

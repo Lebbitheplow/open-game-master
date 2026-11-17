@@ -1,6 +1,7 @@
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import { startMummyRot } from "@/lib/dm/mummy-rot";
+import { infectHitDisease } from "@/lib/dm/hit-disease";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
@@ -16,8 +17,9 @@ import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
+import { conditionWeaponSize } from "@/lib/srd/condition-effect-queries";
 import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
-import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { durationArgsFor, effectiveMaxHp, instancesOf, maxHpRiders, packInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { swallowCreature } from "@/lib/dm/swallow";
 import { swallowRuleOf } from "@/lib/dm/swallow-logic";
@@ -58,6 +60,15 @@ export function legacyRiders(attack: Pick<EnemyAttack, "damage" | "type">): Type
     return [];
   }
   return types.slice(1).map((type, index) => ({ dice: dice[index + 1], type }));
+}
+
+// A creature's weapon attack as Enlarge/Reduce leaves it (condition-effect-
+// queries.ts conditionWeaponSize): the die appended to its damage, as the
+// traits' dice are, and the least the hit deals. A spell attack is no
+// weapon's and stays as printed.
+export function sizedAttack(attack: EnemyAttack, conditions: string[]): { attack: EnemyAttack; floor: number } {
+  const size = attack.spellAttack ? { term: "", floor: 0 } : conditionWeaponSize(conditions);
+  return { attack: size.term ? { ...attack, damage: `${attack.damage}${size.term}` } : attack, floor: size.floor };
 }
 
 // The blow's damage by type, as rolled. The attack rolled one expression;
@@ -200,7 +211,8 @@ export function resolveOnHit(
     }
   }
   const asleep = Boolean(rider.save && rider.dc) && asleepOnFailure(rider, saveTotal);
-  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
+  // A disease's poisoning is the disease's to lay (below), under its name.
+  const conditions = rider.condition && !saved && !rider.disease ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
   const standing = getSheetById(target.id);
   for (const condition of conditions) {
     if (!standing || (standing.currentHp <= 0 && condition === "prone")) {
@@ -261,6 +273,15 @@ export function resolveOnHit(
       }
     }
   }
+  // A disease with a save every 24 hours (an otyugh's bite): poisoned until
+  // cured, its days on the clock (hit-disease.ts).
+  if (rider.disease && !saved && standing && !standing.deathSaves?.dead) {
+    const infected = infectHitDisease(campaign, turn.id, getSheetById(target.id) ?? target, { creature: enemy.displayName, ability: rider.save ?? "con", dc: rider.dc ?? 10, dice: rider.disease.dice });
+    out.disease = infected.line;
+    if (infected.conditions.length) {
+      out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), ...infected.conditions];
+    }
+  }
   // What holds the restrained target and how it breaks (a giant spider's
   // webbing): kept on the instance the hit laid (creature-hold.ts).
   if (rider.hold && ((out.riderCondition as string[] | undefined) ?? []).includes("restrained")) {
@@ -282,7 +303,12 @@ export function resolveOnHit(
     const key = Object.keys(held?.conditionMeta ?? {}).find((name) => name.toLowerCase() === "grappled") ?? "grappled";
     if (held) {
       const meta = { ...(held.conditionMeta as ConditionMetaMap) };
-      meta[key] = { ...meta[key], source: enemy.id, escapeDc: rider.escapeDc };
+      // On this grappler's own instance: a second crab's DC was written over
+      // the first crab's grip, which then named the second crab and was gone.
+      const grips = instancesOf(meta[key]);
+      const mine = grips.findIndex((entry) => entry.source === enemy.id);
+      const at = mine >= 0 ? mine : grips.findIndex((entry) => !entry.source);
+      meta[key] = packInstances(at >= 0 ? grips.map((entry, index) => (index === at ? { ...entry, source: enemy.id, escapeDc: rider.escapeDc } : entry)) : [...grips, { source: enemy.id, escapeDc: rider.escapeDc }]) ?? { source: enemy.id, escapeDc: rider.escapeDc };
       const updated = patchSheet(held.id, { conditionMeta: meta });
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
@@ -383,7 +409,8 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   const before = maxHpRiders(sheet.conditions, meta).drain;
   // No more than the maximum there is to take: the record stays exact, so a
   // long rest gives back what was taken and not a point more.
-  const taken = Math.min(amount, Math.max(0, effectiveMaxHp(sheet)));
+  const had = Math.max(0, effectiveMaxHp(sheet));
+  const taken = Math.min(amount, had);
   const kept = sheet.conditions.filter((name) => !/^max hp reduced \(-\d+\)$/i.test(name.trim()));
   for (const name of sheet.conditions.filter((entry) => !kept.includes(entry))) {
     delete meta[name];
@@ -393,7 +420,9 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   if (!updated) {
     return null;
   }
-  if (effectiveMaxHp(updated) <= 0) {
+  // "The target dies if this effect reduces its hit point maximum to 0":
+  // all of it taken, whatever the halved maximum's floor shows after.
+  if (taken >= had) {
     const dead = patchSheet(updated.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
     publishPersisted(campaign.id, "sheet_updated", { sheet: dead ?? updated });
     return `${updated.name}'s hit point maximum falls to 0: they die.`;

@@ -46,8 +46,13 @@ const conditionInstanceSchema = z.object({
         or: z.enum(ABILITIES).optional(),
         // Saved against only while farther than this from the source (Dreadful Aspect).
         beyondFeet: z.number().int().min(5).max(300).optional(),
+        // Saved against only out of the source's sight (Fear).
+        unseen: z.boolean().optional(),
       })
       .optional(),
+    // A turn of its holder has ended under it (Fear's save off the board,
+    // src/lib/dm/unseen-save.ts).
+    turnEnded: z.boolean().optional(),
     // The spell that laid the condition down, and the slot it was cast
     // from (src/lib/dm/spell-effects.ts): a broken concentration ends only
     // that spell's conditions, and an aura rolls the slot's dice.
@@ -131,6 +136,9 @@ const conditionInstanceSchema = z.object({
     // (src/lib/dm/mummy-rot-logic.ts).
     rotFrom: z.number().int().min(0).optional(),
     rotDrain: z.number().int().min(0).max(5000).optional(),
+    // An Oathbow's oath (src/lib/dm/oathbow.ts): the clock instants it was
+    // sworn at and its sworn enemy died at.
+    oath: z.object({ swornAt: z.number().int().min(0), diedAt: z.number().int().min(0).optional() }).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
     // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),

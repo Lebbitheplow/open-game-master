@@ -1,23 +1,17 @@
 import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
-import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
-import { foretoldWords } from "@/lib/dm/foretold-logic";
 import { hearsSong } from "@/lib/dm/mt-srd-bard";
-import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
-import { sleeplessBy } from "@/lib/srd/mt-species-traits";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { insertSheetAudit } from "@/lib/db/sheet-audit";
+import { getSheetById } from "@/lib/db/sheets";
 import { insertCampaignMessage } from "@/lib/db/messages";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { rechargeOf, resourceDef, resourceLevel } from "@/lib/srd/class-resources";
 import {
   defaultShortRestDice,
-  longRestPatch,
   settleAttuning,
   shortRestResourcePatch,
 } from "@/lib/dm/rest-logic";
@@ -26,27 +20,20 @@ import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { departureNote, departureOpenings } from "@/lib/dm/departure";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
-import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, recordRestEnds, setTravelPace } from "@/lib/db/clock";
+import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordRestEnds, setTravelPace } from "@/lib/db/clock";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { claimWindowRestDice, partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
 import { declaredThisTurn } from "@/lib/dm/player-word";
-import { goingWithout } from "@/lib/dm/supplies";
 import { MEAL_PROPERTY, MEAL_REFUSAL, mealArg, mealRefused } from "@/lib/dm/supplies-logic";
-import { afflictedRestPatch, afflictionsAfterLongRest } from "@/lib/dm/afflictions";
 import { chargeLifestyle } from "@/lib/dm/lifestyle";
 import { dawnsBetween } from "@/lib/dm/item-charges";
 import { refreshSky } from "@/lib/dm/sky";
 import { publishTitleCard } from "@/lib/dm/scene-state";
-import {
-  describeDuration,
-  describeInstant,
-  longRestAllowed,
-  restMinutes,
-} from "@/lib/dm/calendar";
-import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
+import { describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { authoredRestTempHp } from "@/lib/dm/authored-turns";
-import { soulTrinketAtRestEnd } from "@/lib/dm/mt-mr-trinkets";
-import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
+import { auditRest, grantLongRest, restlessIds, whoGainsLongRest } from "@/lib/dm/rest-benefits";
+import { NIGHTMARE_REST } from "@/lib/dm/nightmare-curse-logic";
 import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
@@ -144,32 +131,6 @@ function parseRestArgs(rawArguments: string): z.infer<typeof restArgsSchema> | n
     };
   }
   return null;
-}
-
-function auditRest(
-  campaign: Campaign,
-  turnId: string,
-  sheet: CharacterSheet,
-  kind: string,
-  patch: FullPatchSheetInput,
-  reason: string,
-) {
-  const updated = patchSheet(sheet.id, patch);
-  const entry = insertSheetAudit({
-    campaignId: campaign.id,
-    characterId: sheet.id,
-    turnId,
-    kind,
-    delta: patch as Record<string, unknown>,
-    reason,
-    seq: allocateSeq(campaign.id),
-    before: sheet,
-    patch: patch as Record<string, unknown>,
-  });
-  publishPersisted(campaign.id, "sheet_audit", { entry, characterName: sheet.name });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-  }
 }
 
 function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph) {
@@ -281,25 +242,7 @@ export function handleTakeRest(
   // stable creature wakes, even when nobody at the table qualifies.
   const starts = getClock(campaign.id);
   const endsAt = starts.instant + restMinutes(args.kind, variant);
-  const resting: string[] = [];
-  const unaffected: string[] = [];
-  if (args.kind === "long") {
-    for (const stale of sheets) {
-      const sheet = getSheetById(stale.id);
-      if (!sheet) {
-        continue;
-      }
-      if (sheet.deathSaves?.dead) {
-        unaffected.push(`${sheet.name} (dead)`);
-      } else if (sheet.currentHp <= 0) {
-        unaffected.push(`${sheet.name} (at 0 hit points; a long rest needs at least 1 to begin with)`);
-      } else if (!longRestAllowed(starts.longRests?.[sheet.id], endsAt)) {
-        unaffected.push(`${sheet.name} (finished a long rest less than 24 hours ago)`);
-      } else {
-        resting.push(sheet.id);
-      }
-    }
-  }
+  const { resting, unaffected } = args.kind === "long" ? whoGainsLongRest(campaign.id, sheets, endsAt) : { resting: [], unaffected: [] };
 
   // The night watch of a long rest is a companion's opening (issue 503): one
   // holding a plan to slip away, or to strike once the party is weak enough,
@@ -326,7 +269,7 @@ export function handleTakeRest(
   // A long rest charges the resters' lifestyle for its dawns (below), so
   // those dawns feed them.
   const lifestyle = args.kind === "long" ? Object.fromEntries(resting.map((id) => [id, 0])) : undefined;
-  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle });
+  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle, resting: true });
   // The death saves those hours rolled for the dying (condition-tick.ts):
   // the GM narrates the rest from this result, and without them told a
   // character who died in the night that they still lay dying at dawn.
@@ -341,73 +284,32 @@ export function handleTakeRest(
   // short rest or long (a long rest holds a short one).
   const attuned = settleAttunements(campaign, turnId, sheets, reason);
   // A held Destructive Wrath ends with the rest that gives the use back: a
-  // long rest for those who gain from it, a short one for everyone standing
-  // (its uses come back below). Read from `resting` alone, a short rest left
-  // the hold beside a full set of uses.
-  const regaining = args.kind === "long" ? resting : sheets.filter((stale) => !getSheetById(stale.id)?.deathSaves?.dead).map((stale) => stale.id);
-  for (const id of regaining) {
-    const sheet = getSheetById(id);
-    if (sheet && holdsDestructiveWrath(sheet)) {
-      spendWrath(campaign.id, id);
+  // long rest for those who gain from it (grantLongRest), a short one for
+  // everyone standing (its uses come back below). Read from `resting` alone,
+  // a short rest left the hold beside a full set of uses.
+  // The rakshasa's curse: no benefit from finishing a short rest either
+  // (nightmare-curse-logic.ts), so no hit dice, uses, slots or temporary hit
+  // points for the cursed; a long rest's night is whoGainsLongRest's to deny.
+  const restless = args.kind === "short" ? restlessIds(sheets) : new Set<string>();
+  const benefiting = sheets.filter((sheet) => !restless.has(sheet.id));
+  if (args.kind === "short") {
+    for (const stale of benefiting) {
+      const sheet = getSheetById(stale.id);
+      if (sheet && !sheet.deathSaves?.dead && holdsDestructiveWrath(sheet)) {
+        spendWrath(campaign.id, sheet.id);
+      }
     }
   }
 
   if (args.kind === "long") {
-    const rested: string[] = [];
-    const omens: string[] = [];
-    const portents: string[] = [];
-    for (const id of resting) {
-      // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
-      // incapacitated, and incapacitation ends concentration): the spell
-      // ends whole, through the one function that ends one, before the rest
-      // is read from the sheet it leaves.
-      // An elf in Trance and a warforged at Sentry's Rest never sleep
-      // (src/lib/srd/mt-species-traits.ts): the spell they hold is still held.
-      const resting = getSheetById(id);
-      if (resting?.concentratingOn && !sleeplessBy(resting)) {
-        breakConcentration(campaign, turnId, id, "fell asleep for the long rest");
-      }
-      const sheet = getSheetById(id);
-      if (!sheet || sheet.deathSaves?.dead) {
-        continue;
-      }
-      // Under the supplies variant, going without keeps the exhaustion. Read
-      // as the rest ends: a meal the party lies down on, or the ration, water
-      // or lifestyle of a dawn it crossed, is food and drink taken, and lifts
-      // a level (SRD 5.1: "provided that the creature has also ingested some
-      // food and drink"). Read as it began, a dry hero fed at that dawn kept it.
-      const hunger = "error" in clockAfter ? starts.supplies : clockAfter.clock.supplies;
-      const starving =
-        campaign.gameSettings.variantRules.supplies === true && goingWithout(hunger?.[sheet.id]);
-      // A disease shapes the rest itself: sewer plague restores no hit
-      // points, cackle fever keeps its level of exhaustion (afflictions.ts).
-      const restPatch = afflictedRestPatch(sheet, longRestPatch(sheet, { keepExhaustion: starving }));
-      auditRest(campaign, turnId, sheet, "rest_long", restPatch, reason);
-      rested.push(sheet.name);
-      // The omen the stars give for the day (before-roll-logic.ts), said in the rest's line.
-      if (restPatch.omen) {
-        omens.push(`${sheet.name}'s Cosmic Omen reads ${OMEN_WORDS[restPatch.omen]}`);
-      }
-      // Portent's new numbers, said in the same line: unsaid, the table only
-      // found them on the sheet, and the storyteller not at all.
-      if (restPatch.foretold?.length) {
-        portents.push(`${sheet.name}'s Portent foretells ${foretoldWords(restPatch.foretold)}`);
-      }
-    }
-    recordLongRests(campaign.id, resting, endsAt);
-    recordRestEnds(campaign.id, resting);
-    // The saves a disease asks at the end of a long rest.
-    const afflictions = afflictionsAfterLongRest(campaign, turnId, resting);
+    // The night's benefits, shared with the days of downtime and waiting
+    // (rest-benefits.ts): HP, slots, half the hit dice, a level of
+    // exhaustion, features, and the disease saves the night asks.
+    const { rested, omens, portents, afflictions, restTempHp: resilience } = grantLongRest(campaign, turnId, resting, endsAt, reason);
     // A lifestyle is paid for each dawn the rest crosses (lifestyle.ts).
     const living = dawnsBetween(starts.instant, endsAt)
       ? resting.map((id) => chargeLifestyle(campaign, id, dawnsBetween(starts.instant, endsAt))?.line).filter((line): line is string => Boolean(line))
       : [];
-    // Celestial Resilience: temporary hit points when a rest ends (authored-hooks.ts).
-    const resilience = authoredRestTempHp(campaign, resting);
-    // Tranquility: an Open Hand monk wakes under Sanctuary (srd-defenses.ts).
-    tranquilityAfterLongRest(campaign, resting);
-    // Death's Friend: a soul trinket in hand when none is carried (mt-mr-trinkets.ts).
-    soulTrinketAtRestEnd(campaign, resting);
     tableNote(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${
@@ -462,14 +364,14 @@ export function handleTakeRest(
   const standing = sheets
     .map((stale) => getSheetById(stale.id))
     .filter((sheet): sheet is CharacterSheet => Boolean(sheet) && !sheet?.deathSaves?.dead);
-  const choosers = standing.filter((sheet) => playerChoosesHitDice(campaign.id, sheet));
+  const choosers = standing.filter((sheet) => !restless.has(sheet.id) && playerChoosesHitDice(campaign.id, sheet));
   const chooses = (id: string) => choosers.some((sheet) => sheet.id === id);
   const plan = new Map<string, number>();
   const leftToPlayers: string[] = [];
   if (args.spend?.length) {
     for (const entry of args.spend) {
       const sheet = resolveSheetRef(entry.characterId, sheets, sheetsById);
-      if (!sheet) {
+      if (!sheet || restless.has(sheet.id)) {
         continue;
       }
       if (chooses(sheet.id) && !humanDm) {
@@ -482,7 +384,7 @@ export function handleTakeRest(
     }
   } else {
     for (const sheet of standing) {
-      if (chooses(sheet.id)) {
+      if (chooses(sheet.id) || restless.has(sheet.id)) {
         continue;
       }
       const conMod = computeSheetDerived(sheet).abilityMods.con;
@@ -531,7 +433,7 @@ export function handleTakeRest(
   // Short-recharge resources (Ki, Second Wind, Action Surge...) refill for
   // everyone, hit dice spent or not.
   const refilled: string[] = [];
-  for (const stale of sheets) {
+  for (const stale of benefiting) {
     const sheet = getSheetById(stale.id);
     if (!sheet || sheet.deathSaves?.dead) {
       continue;
@@ -544,9 +446,9 @@ export function handleTakeRest(
   }
   // Arcane Recovery / Natural Recovery: a wizard or druid gets slots back on
   // a short rest, once per day, spending the tracked use.
-  const recovered = applySlotRecovery(campaign, turnId, sheets, reason);
+  const recovered = applySlotRecovery(campaign, turnId, benefiting, reason);
   // Talking Cure: an alienist counsels a companion through the rest (genre-b-mystery-rest.ts).
-  const resilience = [...authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id)), ...talkingCure(campaign, turnId, sheets.map((sheet) => sheet.id))];
+  const resilience = [...authoredRestTempHp(campaign, benefiting.map((sheet) => sheet.id)), ...talkingCure(campaign, turnId, benefiting.map((sheet) => sheet.id))];
 
   tableNote(
     campaign,
@@ -580,6 +482,7 @@ export function handleTakeRest(
         }
       : {}),
     ...(recovered.length ? { slotsRecovered: recovered } : {}),
+    ...(restless.size ? { noBenefit: `${sheets.filter((sheet) => restless.has(sheet.id)).map((sheet) => sheet.name).join(", ")} (${NIGHTMARE_REST})` } : {}),
     ...(attuned.length ? { attuned } : {}),
     ...(resilience.length ? { restTempHp: resilience } : {}),
     note: "Narrate the breather from these real numbers.",

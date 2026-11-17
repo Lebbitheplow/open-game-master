@@ -4,15 +4,18 @@ import { regenerationClock } from "@/lib/dm/regeneration-ring";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
+import { burnCarriedLights } from "@/lib/dm/carried-light-clock";
 import { fadeBeads } from "@/lib/dm/ar-ws-bead-store";
 import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
 import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
 import { afflictionClockTick } from "@/lib/dm/afflictions";
 import { poisonClockTick } from "@/lib/dm/affliction-poisons";
+import { hitDiseaseClockTick } from "@/lib/dm/hit-disease";
 import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
 import { tickClockConditions } from "@/lib/dm/condition-tick";
 import { commandedHourlySaves } from "@/lib/dm/ar-ws-command-hours";
 import { settleInfusions } from "@/lib/dm/infuse-item";
+import { oathsAtDawn } from "@/lib/dm/oathbow";
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -67,7 +70,9 @@ export function advanceClock(
   // `lifestyle`: whose lifestyle the caller charges for the dawns crossed, by
   // character id, with the copper a day their work covers (supplies.ts
   // upkeepAtDawns); only they are fed by it.
-  options: { meal?: boolean; lifestyle?: Record<string, number> } = {},
+  // `resting`: the time is a rest (take_rest), when no new light is lit
+  // (carried-light-clock.ts).
+  options: { meal?: boolean; lifestyle?: Record<string, number>; resting?: boolean } = {},
 ): { clock: CampaignClock; minutes: number; deathSaves: string[]; hourSaves: string[] } | ToolError {
   const current = getClock(campaignId);
   const moved = advance(current.instant, amount, unit);
@@ -138,7 +143,9 @@ export function advanceClock(
     settleInfusions(infusedIn, current.instant, moved.instant);
   }
   // The same clock burns torches down and brings the calendar's days round
-  // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3).
+  // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3): the lights the
+  // party carries, on the board and off it, then the board's own.
+  burnCarriedLights(campaignId, current.instant, moved.instant, options.resting === true);
   gutterBurntLights(campaignId, moved.instant);
   // And ends the hour of an Arcane Abeyance bead (ar-ws-bead-store.ts).
   fadeBeads(campaignId, moved.instant);
@@ -146,6 +153,10 @@ export function advanceClock(
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);
   const dawns = dawnsBetween(current.instant, moved.instant);
+  // An Oathbow's oath ends at a dawn (oathbow.ts).
+  if (dawns) {
+    oathsAtDawn(campaignId);
+  }
   const hunger = upkeepAtDawns(campaignId, dawns, clock.supplies ?? {}, clock.mealAtDawn === true, options.lifestyle);
   if (hunger || (dawns && clock.mealAtDawn)) {
     // The dawn uses the meal up, with the variant since turned off as well.
@@ -158,6 +169,8 @@ export function advanceClock(
   // its midnight (src/lib/dm/afflictions.ts, affliction-poisons.ts).
   afflictionClockTick(campaignId, moved.instant);
   poisonClockTick(campaignId, moved.instant);
+  // A bite's disease and its save every 24 hours (hit-disease.ts).
+  hitDiseaseClockTick(campaignId, moved.instant);
   // Mummy rot's 3d6 off the maximum for every 24 hours (mummy-rot.ts).
   mummyRotClock(campaignId, current.instant, moved.instant);
   // A companion's ultimatum whose deadline it passed (issue 503).

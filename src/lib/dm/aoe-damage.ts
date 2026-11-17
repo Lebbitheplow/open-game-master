@@ -2,6 +2,7 @@
 // spell planned by aoe-spell.ts, an enemy's breath or spell by enemy-casting.ts,
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
+import { sheetIntelligence, sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { proofUnresisted } from "@/lib/dm/genre-gh-proof";
 import { echoAreaSave } from "@/lib/dm/mt-fb-echo";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
@@ -316,6 +317,25 @@ export function handleAoeDamage(
       }
     }
   }
+  // Hideous Laughter named here passes over an Intelligence of 4 or less, a
+  // wolf or a polymorphed hero, as on cast_at_enemy (spell-spares-logic.ts).
+  const intFloor = args.spell ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech.sparesIntAtMost : undefined;
+  if (intFloor !== undefined) {
+    for (const enemy of [...enemyTargets]) {
+      const spared = sparedByIntelligence(args.spell!, intFloor, { name: enemy.displayName, int: enemy.stats.abilities?.int });
+      if (spared) {
+        shielded.push(spared);
+        enemyTargets.splice(enemyTargets.indexOf(enemy), 1);
+      }
+    }
+    for (const target of [...pcTargets]) {
+      const spared = sparedByIntelligence(args.spell!, intFloor, { name: target.name, int: sheetIntelligence(target) });
+      if (spared) {
+        shielded.push(spared);
+        pcTargets.splice(pcTargets.indexOf(target), 1);
+      }
+    }
+  }
   // A spell that only lays its area (an enemy's Darkness, a Web with nobody
   // in it yet) catches nobody (src/lib/dm/zone-cast.ts).
   const areaOnly = Boolean(args.spell && zoneRowFor(engineSpell));
@@ -595,7 +615,9 @@ export function handleAoeDamage(
     total = partsTotal(rolled);
   }
   if (args.damage !== undefined && args.damage !== 0 && args.damage !== "0") {
-    total = Math.max(1, total + (plan?.flat ?? 0) + (plan?.flatSecond ?? 0));
+    // No floor of 1 (SRD 5.1 gives damage none): a total a penalty brings to
+    // 0 or less deals nothing, as every attack door leaves it.
+    total = Math.max(0, total + (plan?.flat ?? 0) + (plan?.flatSecond ?? 0));
   }
   // The blast as it lands: one part, or the first type with the caster's
   // flat bonus and the second type's own roll with its own (Elemental

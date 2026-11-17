@@ -929,6 +929,9 @@ function openAfterAmbush(
 ): string {
   encounter.orderReady = true;
   encounter.round = 2;
+  // Each of them still has no reaction to an ambusher acting before their
+  // lost turn in round 1 (can-act.ts isSurprised).
+  encounter.legendary.ambushed = encounter.surprisedIds.filter((id) => encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === id));
   encounter.surprisedIds = [];
   encounter.turnIndex = first.turnIndex;
   encounter.turnBudget = null;
@@ -1969,8 +1972,10 @@ function advancePointer(
   if (wraps) {
     encounter.round += 1;
     // Surprise costs exactly one turn, so it is spent by the time round 1
-    // has gone all the way around.
+    // has gone all the way around, and so is the lost round a wholly
+    // surprised party's ambushers played in round 2.
     encounter.surprisedIds = [];
+    delete encounter.legendary.ambushed;
     // New round: timed conditions tick down, save-ends conditions re-save,
     // and movement budgets refill for every token.
     tickEncounterConditions(campaign, encounter);

@@ -23,14 +23,17 @@ import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
   adjudicateHit,
-  resolveAttackWeapon,
   weaponAttackProfile,
-  weaponOf,
+  type AttackProfile,
+  type ResolvedWeapon,
 } from "@/lib/dm/attack-logic";
+import { naturalOpportunity } from "@/lib/dm/opportunity-natural";
+import { opportunityWeaponFor } from "@/lib/dm/opportunity-weapon";
 import { RAGING } from "@/lib/srd/class-resources";
-import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
-import { matchWeapon } from "@/lib/srd/weapons";
-import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
+import { computeSheetDerived } from "@/lib/srd";
+import { weaponNamed } from "@/lib/srd/weapons";
+import { underwaterOpportunity } from "@/lib/dm/underwater";
+import { swimsFrom } from "@/lib/battlemap/types";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
@@ -46,17 +49,18 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { Senses } from "@/lib/srd/senses";
 import { acWithEffects } from "@/lib/dm/ac-effects";
+import { coverFor, reachWalled } from "@/lib/dm/attack-spatial";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
-import { opportunityWeapon } from "@/lib/dm/enemy-profile";
-import { enemyOpportunityRiders, opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
+import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
+import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
@@ -206,6 +210,12 @@ export function resolveOpportunityAttacks(
     if (goadBarsOpportunity(enemy, characterId)) {
       continue;
     }
+    // "A charmed creature can't attack the charmer" (SRD 5.1, Charmed): an
+    // opportunity attack is an attack, and a bandit the bard charmed struck
+    // the bard as the bard stepped away.
+    if (charmedBy(enemy.conditions, enemy.conditionMeta, characterId)) {
+      continue;
+    }
     const token = getTokenByRef(map.id, enemy.id);
     if (!token) {
       continue;
@@ -216,10 +226,15 @@ export function resolveOpportunityAttacks(
     if (!weapon) {
       continue;
     }
-    const { attack, reachTiles: reach } = weapon;
+    const { reachTiles: reach } = weapon;
+    // Enlarge/Reduce on the creature: its weapon grew or shrank with it
+    // (enemy-hit.ts sizedAttack), as on its own turn.
+    const sized = sizedAttack(weapon.attack, enemy.conditions);
+    const attack = sized.attack;
     const leftFrom = leavesReachAt(steps, token, reach, footprintForSize(enemy.stats.size));
 
-    if (!leftFrom) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!leftFrom || reachWalled(encounter.id, enemy.id, characterId, leftFrom)) {
       continue;
     }
 
@@ -306,10 +321,12 @@ export function resolveOpportunityAttacks(
     // "no attack roll against you has advantage", read as on its own turn
     // (enemy-swing-odds.ts targetSwingMarks). It strikes from beside them.
     const marks = targetSwingMarks(enemy, sheet, conditionsOf(sheet), 1);
+    // Under the water, as on enemy_attack (underwater.ts).
+    const underwater = underwaterOpportunity(campaign.id, enemy.id, { weapon: attack.name, base: weaponNamed(attack.name)?.name, swims: swimsFrom(enemy.stats.speed) });
     const odds: Advantage[] = [
       ...context.sources,
       ...light.sources,
-      ...(escapes ? ["disadvantage" as const] : []),
+      ...(escapes || underwater.disadvantage ? ["disadvantage" as const] : []),
       ...(eagle ? ["disadvantage" as const] : []),
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
@@ -319,7 +336,10 @@ export function resolveOpportunityAttacks(
       ...wards.sources,
     ];
     const advantage = mergeAdvantage(marks.elusive ? odds.filter((source) => source !== "advantage") : odds);
-    const targetAc = acWithEffects(campaign.id, sheet, enemy);
+    // Cover where they stood as it swung (SRD 5.1, Cover), as enemy_attack
+    // adds it: another hero between them and a 10-foot reach gives half.
+    const cover = coverFor(encounter.id, enemy.id, sheet.id, leftFrom);
+    const targetAc = acWithEffects(campaign.id, sheet, enemy) + cover;
     const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
@@ -339,7 +359,7 @@ export function resolveOpportunityAttacks(
       source: "digital",
     });
     // Mirror Image: a duplicate may take the attack instead (spell-defenses.ts).
-    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total);
+    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total, enemy);
     if (decoy) {
       notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${decoy}.`);
       continue;
@@ -388,7 +408,7 @@ export function resolveOpportunityAttacks(
     // hit points, a beast form's pool first, Relentless Endurance, the rage
     // ending at 0, the death engine, and the concentration save.
     const blow = blowByType(attack, damageOutcome, crit);
-    const warded = opportunityBlow(encounter.id, enemy, sheet, wards, enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount)));
+    const warded = opportunityBlow(encounter.id, enemy, sheet, wards, enfeebledBlow(enemy, attack, false, Math.max(sized.floor, blow.amount)));
     const rolled = warded.amount;
     // The blow without its critical dice when the natural 20 alone made it one,
     // for a reaction that rolls the attack again (last-hit.ts plainOfReroll).
@@ -503,26 +523,6 @@ function stokeRage(sheet: NonNullable<ReturnType<typeof getSheetById>>) {
   });
 }
 
-// The melee weapon a character strikes with when something walks away from
-// them: the best one they carry, one-handed beside a shield. A character
-// carrying only a bow has no opportunity attack to make. A magic weapon is
-// its base weapon (a Flame Tongue is a longsword, src/lib/dm/gear-attack.ts).
-function meleeWeaponFor(sheet: NonNullable<ReturnType<typeof getSheetById>>) {
-  const weaponFor = (item: (typeof sheet.equipment)[number]) =>
-    magicWeaponOfRow(item).srd ?? weaponOf(item) ?? matchWeapon(item);
-  const melee = sheet.equipment.filter((item) => {
-    const weapon = weaponFor(item);
-    return weapon !== null && weapon.kind === "melee";
-  });
-  const carriesWeapon = sheet.equipment.some((item) => weaponFor(item) !== null);
-  if (!melee.length && carriesWeapon) {
-    return null;
-  }
-  return resolveAttackWeapon(melee, sheet.proficiencies.weapons, undefined, {
-    shieldOnArm: acBreakdownFor(sheet).shieldName !== null,
-  });
-}
-
 // The other side of the same rule: a creature that walks out of a
 // character's reach eats a melee attack from them. Fires wherever an enemy
 // walks (the DM's move_token and the approach enemy_attack makes), and for a
@@ -595,7 +595,7 @@ export function resolvePcOpportunityWalk(
 
   // Who has the walker in reach somewhere on the walk, and the square it is
   // on as they swing, in the order the walk meets those squares.
-  const reaches: Array<{ id: string; resolved: NonNullable<ReturnType<typeof meleeWeaponFor>>; token: XY; reachTiles: number; moverAt: XY; step: number; trigger: OpportunityTrigger }> = [];
+  const reaches: Array<{ id: string; resolved: ResolvedWeapon | null; natural: AttackProfile | null; token: XY; reachTiles: number; moverAt: XY; step: number; trigger: OpportunityTrigger }> = [];
   for (const stale of listSheets(campaign.id)) {
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
@@ -604,28 +604,36 @@ export function resolvePcOpportunityWalk(
     if (disengaged && !strikesTheDisengaged(sheet) && !alsoStrikesDisengaged?.(sheet)) {
       continue;
     }
+    // Nor the charmer: a hero under its charm is not offered the swing.
+    if (charmedBy(sheet.conditions, sheet.conditionMeta, enemyId)) {
+      continue;
+    }
     const token = getTokenByRef(map.id, sheet.id);
     if (!token) {
       continue;
     }
-    const resolved = meleeWeaponFor(sheet);
-    if (!resolved) {
+    // A beast form or a summoned creature swings its own natural attack
+    // (opportunity-natural.ts); a form with no melee attack swings nothing.
+    const shaped = naturalOpportunity(sheet);
+    const natural = shaped?.profile ?? null;
+    const resolved = shaped ? null : opportunityWeaponFor(sheet);
+    if (shaped ? !natural : !resolved) {
       continue;
     }
-    const derived = computeSheetDerived(sheet);
-    const riders = combatRiders(sheet);
-    const profile = weaponAttackProfile(derived, sheet.proficiencies.weapons, resolved, {
-      riders,
+    const profile = natural ?? weaponAttackProfile(computeSheetDerived(sheet), sheet.proficiencies.weapons, resolved!, {
+      riders: combatRiders(sheet),
       martialArts: martialArtsApplies(sheet),
     });
     if (profile.ranged) {
       continue;
     }
+    // A wall between is total cover: no swing through it (attack-spatial.ts).
+    const clear = (at: XY | null) => (at && reachWalled(encounter.id, sheet.id, enemyId, at) ? null : at);
     // Polearm Master: a creature entering the polearm's reach provokes too.
-    const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    const entering = polearmReachOpportunity(sheet, resolved?.srd?.name) ? clear(entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
     // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
     // within the reach provokes too.
-    const within = holdsFeature(sheet, "Hold the Line") ? movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    const within = holdsFeature(sheet, "Hold the Line") ? clear(movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
     // Manifest Echo: a creature that moves 5 feet or more away from the echo
     // while within 5 feet of it provokes "as if you were in the echo's space"
     // (mt-fb-echo.ts).
@@ -633,7 +641,7 @@ export function resolvePcOpportunityWalk(
     // Where the walker is as the swing is made: the tile it left the reach
     // from, the one it entered the polearm's reach at, the one it stepped to
     // inside the reach, or the one it left the echo's side from.
-    const leaving = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint);
+    const leaving = clear(leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint));
     const moverAt = leaving ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;
@@ -641,7 +649,7 @@ export function resolvePcOpportunityWalk(
     // Which of them it is, in the words the player is asked in (opportunity-ask-logic.ts).
     const trigger: OpportunityTrigger = leaving ? "leaves" : entering ? "enters" : within ? "within" : "echo";
     const step = steps.findIndex((entry) => entry.x === moverAt.x && entry.y === moverAt.y);
-    reaches.push({ id: sheet.id, resolved, token, reachTiles: profile.reachTiles, moverAt, step: step < 0 ? steps.length : step, trigger });
+    reaches.push({ id: sheet.id, resolved, natural, token, reachTiles: profile.reachTiles, moverAt, step: step < 0 ? steps.length : step, trigger });
   }
   reaches.sort((a, b) => a.step - b.step);
 
@@ -657,7 +665,7 @@ export function resolvePcOpportunityWalk(
       continue;
     }
     if (
-      !canAct({ sheet, encounter, kind: "reaction" }).ok ||
+      !canAct({ sheet, encounter, kind: "reaction", actingId: enemyId }).ok ||
       conditionBlocksReactions(sheet.conditions)
     ) {
       continue;
@@ -668,7 +676,7 @@ export function resolvePcOpportunityWalk(
     if (encounter.reactionsUsed.includes(reactionKey)) {
       continue;
     }
-    const { moverAt, resolved } = reach;
+    const { moverAt, resolved, natural } = reach;
     const enemy = getFoe(enemyId);
     if (!enemy || enemy.status !== "alive" || (isSheetFoe(enemy) && enemy.currentHp <= 0)) {
       break;
@@ -703,7 +711,9 @@ export function resolvePcOpportunityWalk(
     // the card never asks about a swing that could not be made. Let go, it
     // spends nothing and the walk goes on.
     const walker = shownName(encounter.id, enemy.id, enemy.displayName);
-    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: resolved.displayName, trigger: reach.trigger });
+    // A paladin's card offers Divine Smite too (opportunity-strike.ts).
+    const smiteSlot = natural ? null : opportunitySmiteSlot(sheet);
+    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger, ...(smiteSlot ? { smiteSlot } : {}) });
     if (answer && !answer.strike) {
       notes.push(letGoNote(sheet.name, walker));
       continue;
@@ -725,9 +735,11 @@ export function resolvePcOpportunityWalk(
       sheet,
       enemy,
       resolved,
+      natural,
       adjacent: reach.reachTiles <= 1,
       targetConditions: withLiveDodge(enemy.conditions),
       moverAt,
+      ...(answer?.smite && smiteSlot ? { smiteSlot } : {}),
     });
     notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();

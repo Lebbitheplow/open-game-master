@@ -182,7 +182,8 @@ await test("Polymorph turns a 5th level character into an elephant (CR 4) with i
 
 await test("Find Familiar takes every form the spell names: crab, lizard, octopus, quipper (the fish), sea horse, a frog asked for as a toad.", async () => {
   const world = await openWorld();
-  const wizard = world.addHero({ ...caster("wizard", "int", ["Find Familiar"], [], 3), gold: 50 });
+  // Each casting burns 10 gp of incense (Find Familiar's material).
+  const wizard = world.addHero({ ...caster("wizard", "int", ["Find Familiar"], [], 3), gold: 200 });
   for (const [asked, form] of [["crab", "Crab"], ["lizard", "Lizard"], ["octopus", "Octopus"], ["quipper", "Quipper"], ["fish", "Quipper"], ["sea horse", "Sea Horse"], ["toad", "Frog"], ["snake", "Poisonous Snake"]]) {
     const out = await world.invoke("summon_pet", { characterId: wizard.id, kind: "familiar", form: asked });
     assert.equal(out.ok, true, `${asked}: ${out.error}`);
@@ -210,9 +211,13 @@ await test("A story pet has no attacks on record, and pet_attack says so rather 
 
 async function chainFamiliar(form, stats = {}) {
   const { world, sheets: [warlock], enemies: [dummy] } = await board([WARLOCK], { 0: { x: 3, y: 4 }, e0: { x: 4, y: 4 } }, { stats });
-  world.patch(warlock.id, { features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
-  const out = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form });
-  assert.equal(out.ok, true, out.error);
+  world.patch(warlock.id, { gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
+  // The fight is on, and Find Familiar takes an hour to cast: the familiar
+  // is bound as the casting would bind it.
+  const { buildPet } = await import("../src/lib/dm/pet-tools.ts");
+  const out = buildPet(world.sheet(warlock.id), { kind: "familiar", form });
+  assert.ok(!("error" in out), out.error);
+  world.patch(warlock.id, { pets: [out] });
   holdTurn(world, warlock.id);
   return { world, warlock, dummy };
 }

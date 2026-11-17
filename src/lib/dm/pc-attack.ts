@@ -1,3 +1,4 @@
+import { swearOath } from "@/lib/dm/oathbow";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { distantStrikeSquare, distantStrikeTeleport } from "@/lib/dm/distant-strike";
@@ -5,7 +6,7 @@ import { endRageBound } from "@/lib/dm/rage-bound";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, patchEnemyConditions, saveEncounter, type Encounter } from "@/lib/db/encounters";
+import { getActiveEncounter, patchEnemyConditions, type Encounter } from "@/lib/db/encounters";
 import { endInvisibilityOnCast, writeMarks } from "@/lib/dm/attack-marks";
 import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -31,6 +32,7 @@ import { markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
+import { tallyShot } from "@/lib/dm/ammo-tally";
 import { lineNamed } from "@/lib/srd/item-row";
 import { returnsToHand, throwToGround } from "@/lib/dm/gear-ground";
 import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
@@ -167,11 +169,11 @@ export const pcAttackTool: ToolDef = {
               nonlethal: {
                 type: "boolean",
                 description:
-                  "A melee attack meant to knock out: a creature it drops to 0 HP falls unconscious, not dying. It is out of the fight.",
+                  "Melee, to knock out: a creature it drops to 0 HP falls unconscious, not dying.",
               },
               useInspiration: {
                 type: "boolean",
-                description: "True when the player spends their character's Inspiration on this attack roll for advantage. Refused when they hold none.",
+                description: "Spend the character's Inspiration for advantage on this roll.",
               },
               strokeOfLuck: {
                 type: "boolean",
@@ -197,7 +199,7 @@ export const pcAttackTool: ToolDef = {
               improvised: {
                 type: "boolean",
                 description:
-                  "True when weapon names an object that is no weapon on their sheet (a chair, a bottle). It strikes as an improvised weapon.",
+                  "weapon names an object that is no weapon (a chair, a bottle): an improvised weapon.",
               },
               twoHanded: {
                 type: "boolean",
@@ -210,6 +212,10 @@ export const pcAttackTool: ToolDef = {
                 maximum: 9,
                 description:
                   "Paladin Divine Smite: the spell slot level to burn on a hit. The server spends the slot and adds the radiant dice.",
+              },
+              ammo: {
+                type: "string",
+                description: "Magic ammunition's sheet line (+1 Arrows); omit for ordinary.",
               },
               level: {
                 type: "integer",
@@ -254,6 +260,9 @@ export const pcAttackArgsSchema = z.object({
   twoHanded: z.coerce.boolean().optional(),
   offHand: z.coerce.boolean().optional(),
   smite: z.coerce.number().int().min(1).max(9).optional(),
+  // The ammunition line the shot fires, magic ammunition most often
+  // (ammunition.ts namedAmmo): ordinary ammunition when absent.
+  ammo: z.string().trim().min(1).max(80).optional(),
   maneuver: z.string().max(60).optional(),
   advantageSource: z.enum(ADVANTAGE_SOURCES).optional(),
   advantageReason: fittedText(200).optional(),
@@ -577,25 +586,23 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     patchSheet(sheet.id, { equipment: plan.drawn.equipment });
     context.notes.push(plan.drawn.note);
   }
+  // The Oathbow's command phrase, said with the shot (oathbow.ts).
+  if (plan.swearOath) {
+    const sworn = swearOath(campaign, sheet.id, plan.enemy.id);
+    if (sworn) {
+      context.notes.push(sworn);
+    }
+  }
   if (ammo && ammo.ok) {
     const carried = plan.drawn?.equipment ?? sheet.equipment;
     const equipment = withAmmoCount(carried, ammo.index, ammo.remaining);
     patchSheet(sheet.id, { equipment });
-    // Tallied under the line's name as it reads NOW: a quiver written
-    // "Arrows (20)" is renamed by every shot, and the tally follows it so the
-    // end of the fight finds the line it has to refill. The last one spent
-    // takes the line off the sheet, so the tally keeps the line itself.
-    const emptied = ammo.remaining <= 0;
-    const before = `${sheet.id}|${ammo.name}`;
-    const after = `${sheet.id}|${emptied ? ammo.name : (equipment[ammo.index]?.name ?? ammo.name)}`;
-    const tally = { ...encounter.ammoSpent };
-    const spentOf = (entry: (typeof tally)[string] | undefined) => (typeof entry === "object" ? entry.spent : (entry ?? 0));
-    const spentSoFar = spentOf(tally[before]);
-    delete tally[before];
-    const spent = spentOf(tally[after]) + spentSoFar + 1;
-    tally[after] = emptied && carried[ammo.index] ? { spent, line: carried[ammo.index] } : spent;
-    encounter.ammoSpent = tally;
-    saveEncounter(encounter);
+    const tallied = tallyShot(encounter, sheet.id, ammo, carried, equipment);
+    // A magic piece that hits is counted against its line (attack-blow.ts),
+    // so the end of the fight brings it back as ordinary ammunition.
+    if (ammo.bonus) {
+      plan.magicAmmo = tallied;
+    }
   }
   // A flask shatters on impact or on the floor: one is spent whatever the
   // roll (src/lib/srd/gear-weapons.ts). An object picked up is no line.

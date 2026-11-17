@@ -16,11 +16,15 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
   "hypnotic pattern": {
     resolution: "save",
     save: "wis",
-    condition: { name: "charmed", rounds: MINUTE, also: ["incapacitated"], endsOnDamage: true },
+    // "While charmed by this spell, the creature is incapacitated and has a
+    // speed of 0" (SRD 5.1): "hypnotized" holds the speed, ending with the
+    // charm (condition-effects-spells.ts). Without it a hypnotized goblin
+    // walked on its turn.
+    condition: { name: "charmed", rounds: MINUTE, also: ["incapacitated", "hypnotized"], endsOnDamage: true },
     area: true,
     areaFeet: 30,
     noDamage: true,
-    note: "Charmed and incapacitated with a speed of 0 for the duration, no repeat save; it ends for a creature that takes damage (the server ends it) or is shaken out of it with an action.",
+    note: "Charmed and incapacitated with a speed of 0 for the duration, no repeat save; it ends for a creature that takes damage (the server ends it) or is shaken out of it (take_action wake, an action from within 5 feet).",
   },
   "blindness/deafness": {
     resolution: "save",
@@ -78,6 +82,7 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
     resolution: "save",
     save: "wis",
     condition: { name: "incapacitated", also: ["prone"], saveEnds: true, saveOnDamage: "advantage" },
+    sparesIntAtMost: 4,
     noDamage: true,
     note: "Prone and incapacitated, unable to stand; it saves again at the end of each of its turns and each time it takes damage, with advantage then. A creature with Intelligence 4 or less is unaffected.",
   },
@@ -310,13 +315,18 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
   },
 
   // ---- healing and bringing back ----
+  // SRD 5.1: Heal "also ends blindness, deafness, and any diseases affecting
+  // the target"; Mass Heal cures each creature it heals "of all diseases and
+  // any effect making it blinded or deafened" (src/lib/dm/heal-cures.ts).
   heal: {
     resolution: "heal",
     healing: { flat: 70, perSlotLevel: 10 },
+    cures: { conditions: ["blinded", "deafened", "disease"], all: true },
   },
   "mass heal": {
     resolution: "heal",
     healPool: 700,
+    cures: { conditions: ["blinded", "deafened", "disease"], all: true },
     note: "700 hit points divided among any number of creatures: one entry per creature in heal's targets, each with its amount; one slot.",
   },
   "mass healing word": { resolution: "heal", targets: { count: 6 } },

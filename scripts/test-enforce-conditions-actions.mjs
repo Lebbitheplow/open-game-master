@@ -244,9 +244,12 @@ await test("An incapacitated creature cannot take actions: no Dodge, Dash, Disen
   for (const condition of NO_ACTIONS) {
     kit.reset(hero.id, { conditions: [condition] });
     kit.freshTurn();
+    // An unconscious creature lies prone too (SRD 5.1): the refusal changes
+    // nothing on the sheet as the reset wrote it.
+    const laid = world.sheet(hero.id).conditions;
     const out = await world.invoke("take_action", { characterId: hero.id, action: "dodge" });
     assert.equal(out.ok, false, `${condition} character took the Dodge action`);
-    assert.deepEqual(world.sheet(hero.id).conditions, [condition]);
+    assert.deepEqual(world.sheet(hero.id).conditions, laid);
   }
 });
 

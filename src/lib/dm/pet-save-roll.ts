@@ -16,6 +16,7 @@ import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { proficiencyBonus } from "@/lib/srd";
 import { findShapeForm } from "@/lib/srd/beast-forms";
+import { sensesFromBlock, type Senses } from "@/lib/srd/senses";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
 import { saveAuraBeside } from "@/lib/dm/aura";
 import type { ForcedSave } from "@/lib/dm/forced-save";
@@ -49,6 +50,32 @@ export function petSaveBlockFor(campaign: Campaign, owner: CharacterSheet, pet: 
     return { saveMods: { ...own, ...raised }, traits, from, conditionImmune };
   }
   return { saveMods: own, traits, from, conditionImmune };
+}
+
+// The pet's Intelligence from the same block (a wolf's 3, an owl's 2), for a
+// spell that passes over a low one (spell-spares-logic.ts). A drake's block
+// names none here.
+export function petIntelligence(campaign: Campaign, pet: SheetPet): number | undefined {
+  if (pet.kind === "drake") {
+    return undefined;
+  }
+  const table = pet.kind === "other" ? findTableMonster(spellAuthorsFor(campaign), pet.form) : null;
+  return table ? table.draft.stats.abilities?.int : findShapeForm(pet.form)?.abilities?.int;
+}
+
+// The darkvision a Drake Companion's block gives it.
+const DRAKE_SENSES = { darkvision: 60 };
+
+// A pet's own senses, from the same block: a familiar's or a companion's
+// form, a story pet's (the workshop's monster first), a drake's. Its attack
+// (pet-attack-board.ts) and its sight of a fear's source (pet-conditions.ts)
+// read them; here, so the clock reaches them without the attack's doors.
+export function petSenses(campaign: Campaign, pet: SheetPet): Senses {
+  if (pet.kind === "drake") {
+    return sensesFromBlock(DRAKE_SENSES);
+  }
+  const table = pet.kind === "other" ? findTableMonster(spellAuthorsFor(campaign), pet.form) : null;
+  return sensesFromBlock(table ? table.draft.stats.senses : findShapeForm(pet.form)?.senses);
 }
 
 export type PetSave = ForcedSave & { evasion: boolean };

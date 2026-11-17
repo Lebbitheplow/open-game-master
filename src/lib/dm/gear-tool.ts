@@ -44,6 +44,8 @@ import { storeBudget } from "@/lib/dm/turn-budget";
 import { gearPatch, implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { acBreakdownFor } from "@/lib/srd";
+import { cursedHold } from "@/lib/srd/cursed-items";
+import { capacityProblem } from "@/lib/dm/load-rules";
 
 export { describeGround } from "@/lib/dm/gear-ground";
 
@@ -157,12 +159,28 @@ export function handleItemCall(
   if (sheet.deathSaves?.dead) {
     return refuse(`${sheet.name} is dead and handles nothing.`);
   }
+  // Down or out of action in a fight, they handle nothing, and are told so
+  // before the item is looked for (tool-errors.ts: the character's state
+  // first). What they held fell from their hands as they went down
+  // (fallen-gear.ts), so a dying hero's unequip was answered "carries no
+  // Shield", a mistake in the call, when the game was saying no.
+  if (encounter) {
+    const able = canAct({ sheet, encounter, kind: "free" });
+    if (!able.ok && (able.reason === "down" || able.reason === "incapacitated")) {
+      return toolError(able);
+    }
+  }
   if (action === "pick_up") {
     return pickUp(campaign, turn, encounter, sheet, itemName, qty, reason);
   }
   const row = sheet.equipment[lineNamed(sheet.equipment, itemName)];
   if (!row) {
     return retry(`${sheet.name} carries no "${itemName}". They carry: ${sheet.equipment.map((item) => item.name).join(", ") || "nothing"}.`);
+  }
+  // An attuned cursed item stays with its bearer (src/lib/srd/cursed-items.ts).
+  const cursed = action === "drop" || action === "hand" ? cursedHold(sheet, row) : null;
+  if (cursed) {
+    return refuse(cursed);
   }
   switch (action) {
     case "equip":
@@ -308,6 +326,18 @@ function handOver(
 ): ToolResult {
   let budget: TurnBudget | null = null;
   let cost = "";
+  // Worn or strapped on, it does not change hands any more than it falls
+  // (gear-ground.ts drop): armor takes minutes to take off, a shield an
+  // action (SRD 5.1, Getting Into and Out of Armor). Handed over, it came
+  // off for free mid-fight.
+  const kind = gearKindOf(row);
+  if (encounter && (kind === "armor" || kind === "shield") && inHand(row, sheet.equipment)) {
+    return refuse(
+      kind === "shield"
+        ? `${row.name} is strapped on: taking it off is an action (handle_item unequip) before it can be handed over.`
+        : `${sheet.name} is wearing ${row.name}; armor takes minutes to take off, so it is not handed over during a fight.`,
+    );
+  }
   if (encounter) {
     const giver = standing(campaign.id, sheet.id).token;
     const taker = standing(campaign.id, to.id).token;
@@ -341,7 +371,13 @@ function handOver(
     return retry(`${sheet.name} carries no "${row.name}".`);
   }
   const receiver = getSheetById(to.id) ?? to;
-  const received = holdIfFree(addRowMath(receiver.equipment, handedOverRow(row, removal.removed)), row.name);
+  const received = holdIfFree(addRowMath(receiver.equipment, handedOverRow(row, removal.removed, { from: sheet.id, to: receiver.id })), row.name);
+  // Strength x 15 is all the receiver can carry, as a grant holds it
+  // (load-rules.ts); nothing changes hands or is spent past it.
+  const tooHeavy = capacityProblem(receiver, received.equipment, row.name);
+  if (tooHeavy) {
+    return { ...tooHeavy, error: `${tooHeavy.error} Nothing was handed over.` };
+  }
   saveEquipment(campaign, turn, sheet, removal.equipment, "hand_item", { name: row.name, to: to.name, qty: removal.removed }, reason || `Handed ${row.name} to ${to.name}`);
   saveEquipment(campaign, turn, receiver, received.equipment, "hand_item", { name: row.name, from: sheet.name, qty: removal.removed }, reason || `Received ${row.name} from ${sheet.name}`);
   if (encounter && budget) {
