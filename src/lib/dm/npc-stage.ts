@@ -10,7 +10,8 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation } from "@/lib/db/locations";
-import { addNpcMemories, getNpcAway } from "@/lib/db/npc-minds";
+import { getNpcAway } from "@/lib/db/npc-minds";
+import { getPerceptionCursor, lastSceneEventSeq, listPerceivedSince, recordSceneEvent, setPerceptionCursor } from "@/lib/db/scene-events";
 import { listNpcs, setNpcState, type Npc } from "@/lib/db/npcs";
 import { castSheetFor, npcThings } from "@/lib/db/cast-sheets";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -19,7 +20,10 @@ import { rollExpression } from "@/lib/dice";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { requestDmMessage } from "@/lib/dm/model";
 import { handleNpcSpeak, npcMindsOn, tierOfNpc } from "@/lib/dm/npc-mind";
-import { ON_STAGE_SOURCE, recipientsOf } from "@/lib/dm/npc-mind-logic";
+import { recipientsOf } from "@/lib/dm/npc-mind-logic";
+import { perceivedLine, readEventShape } from "@/lib/dm/scene-events-logic";
+import { perceive, type Observer } from "@/lib/dm/senses-logic";
+import { describeDuration } from "@/lib/dm/calendar";
 import {
   STAGE_REFEREE_SYSTEM,
   factLine,
@@ -28,8 +32,9 @@ import {
   settleRuling,
   stageNote,
   stageOrder,
-  stageSenses,
+  stageFrame,
   type HeroLine,
+  type StageBranch,
   type StageFact,
   type StagePerson,
   type StageRuling,
@@ -149,8 +154,23 @@ export async function runStage(
   // Every mind reacts to the same moment at once (a local model serves them
   // side by side); only the referee goes in order, so each outcome stands on
   // the ones before it. What the others did reaches a mind next turn.
+  // Each mind is handed what its own senses took in since its last turn (the
+  // other minds' deeds among them), not the narrator's retelling
+  // (docs/specs/ogm-npc-perception.md §12). The frame is not kept as a
+  // memory: every event in it already left its own line.
+  const frameNow = getClock(campaign.id).instant;
+  const frameSeq = lastSceneEventSeq(campaign.id);
+  const frames = order.map((actor) => {
+    const cursor = getPerceptionCursor(actor.id);
+    const perceived = listPerceivedSince(campaign.id, actor.id, cursor?.seq ?? 0)
+      .map((entry) => perceivedLine(entry.event, actor.name, entry.channels))
+      .filter(Boolean);
+    const elapsed = cursor && frameNow > cursor.instant ? `${describeDuration(frameNow - cursor.instant)} passed` : "";
+    setPerceptionCursor(campaign.id, actor.id, { seq: frameSeq, instant: frameNow });
+    return stageFrame({ heroes: heroLines, perceived, elapsed, atmosphere: narration }) || "Nothing new.";
+  });
   const answers = await Promise.all(
-    order.map(async (actor) => (await handleNpcSpeak(campaign, JSON.stringify({ name: actor.name, perceives: stageSenses(narration, [], heroLines) || "Nothing new." }))) as Record<string, unknown>),
+    order.map(async (actor, index) => (await handleNpcSpeak(campaign, JSON.stringify({ name: actor.name, perceives: frames[index] }), { remember: false })) as Record<string, unknown>),
   );
   for (const [index, actor] of order.entries()) {
     waiting.delete(actor.id);
@@ -172,8 +192,12 @@ export async function runStage(
     ];
     const ruling = intent ? await referee(campaign, renderRefereePrompt({ actor: actor.name, intent, speech, people, ground: groundHere(campaign), place: placeHere(campaign), scene: narration, facts: lines, heroLines })) : null;
     let fact: StageFact = { actor: actor.name, speech, outcome: intent, roll: "", hero: "" };
+    let chosen: StageBranch | null = null;
+    let succeeded = true;
     if (ruling) {
       const settled = settleRuling(ruling, ruling.uncertain ? rollExpression("1d20").total : 0);
+      chosen = settled.branch;
+      succeeded = settled.succeeded;
       fact = { actor: actor.name, speech, outcome: settled.branch.outcome, roll: settled.roll, hero: heroes.find((name) => textKey(name) === textKey(ruling.hero)) ?? "" };
       for (const change of settled.branch.changes) {
         const target = cast.find((npc) => textKey(npc.name) === textKey(change.name) && present.some((entry) => entry.id === npc.id));
@@ -189,10 +213,16 @@ export async function runStage(
       }
     }
     facts.push(fact);
-    // Everyone who already had their turn learns how it ended; those still
-    // to act read it in what they perceive.
-    const told = present.filter((npc) => !waiting.has(npc.id)).map((npc) => npc.id);
-    addNpcMemories(campaign.id, told, { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: factLine(fact), learnedAt: now }, turnId);
+    // The event, perceived by everyone here whose senses reach it, each left
+    // a memory of it as they took it in. Recorded only after every mind has
+    // answered, so each reads it in its frame next turn: the first to act
+    // used never to learn what the six after it did (2026-11-17).
+    const shape = readEventShape(chosen?.event ?? {}, people.map((person) => person.name), speech);
+    const observers: Observer[] = cast
+      .filter((npc) => present.some((entry) => entry.id === npc.id))
+      .map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition }));
+    const event = { ...shape, turnId, instant: now, place: getCurrentLocation(campaign.id)?.name ?? "", actor: actor.name, zoneFrom: "", stealth: null, success: succeeded, speech, outcome: fact.outcome };
+    recordSceneEvent(campaign.id, event, perceive(event, observers), observers);
   }
   return { note: stageNote(facts, silent), heroFacts: facts.filter((fact) => fact.hero).length };
 }

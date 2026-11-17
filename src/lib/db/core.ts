@@ -920,6 +920,46 @@ function ensureSchema(db: SqliteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_npc_memories
       ON npc_memories(campaign_id, npc_id, created_at);
 
+    -- What happened in a scene, as fields the senses reason over
+    -- (docs/specs/ogm-npc-perception.md §5), and who took each event in, by
+    -- which channel. A mind's frame is the events it perceived since its
+    -- cursor. Journaled play tables: a reverted turn takes them back.
+    CREATE TABLE IF NOT EXISTS scene_events (
+      seq INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL DEFAULT '',
+      instant INTEGER NOT NULL DEFAULT 0,
+      place TEXT NOT NULL DEFAULT '',
+      actor TEXT NOT NULL DEFAULT '',
+      verb TEXT NOT NULL DEFAULT 'other',
+      targets_json TEXT NOT NULL DEFAULT '[]',
+      object TEXT NOT NULL DEFAULT '',
+      zone_from TEXT NOT NULL DEFAULT '',
+      zone_to TEXT NOT NULL DEFAULT '',
+      volume TEXT NOT NULL DEFAULT 'normal',
+      covert INTEGER NOT NULL DEFAULT 0,
+      stealth INTEGER,
+      success INTEGER NOT NULL DEFAULT 1,
+      speech TEXT NOT NULL DEFAULT '',
+      outcome TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_scene_events ON scene_events(campaign_id, seq);
+    CREATE TABLE IF NOT EXISTS scene_perceptions (
+      event_seq INTEGER NOT NULL,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      npc_id TEXT NOT NULL,
+      channels_json TEXT NOT NULL DEFAULT '[]',
+      PRIMARY KEY (event_seq, npc_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_scene_perceptions ON scene_perceptions(campaign_id, npc_id, event_seq);
+    CREATE TABLE IF NOT EXISTS npc_perception_cursors (
+      npc_id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      seq INTEGER NOT NULL DEFAULT 0,
+      instant INTEGER NOT NULL DEFAULT 0
+    );
+
     -- A seat from which someone outside the table plays a first-tier mind
     -- through their own agent (docs/specs/ogm-mind-seats.md): the code the
     -- lead shares, who claimed it ('' until then) and the mind the server

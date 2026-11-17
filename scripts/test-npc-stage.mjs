@@ -104,6 +104,14 @@ await test("the engine gives each mind on stage its turn, the referee's ruling i
   assert.match(note, /This table runs a stage/, "the narrator's rules say who runs the minds");
   const told = minds.listNpcMemories(world.campaignId, getNpcByName(world.campaignId, "Volodar").id).map((entry) => entry.content).join("\n");
   assert.match(told, /beve un lungo sorso/, "those on stage learn how each action ended");
+  // docs/specs/ogm-npc-perception.md: every mind here keeps each event as it
+  // took it in, the first to act too, and never a copy of the narrator's prose.
+  for (const name of ["Amleth", "Volodar"]) {
+    const kept = minds.listNpcMemories(world.campaignId, getNpcByName(world.campaignId, name).id).map((entry) => entry.content);
+    assert.ok(kept.some((line) => line.startsWith("You saw: ")), `${name} keeps what the other did`);
+    assert.ok(kept.some((line) => line.startsWith("You did: ")), `${name} keeps what it did`);
+    assert.ok(!kept.some((line) => line.includes("Brakk resta seduto a guardare il barile")), `${name} keeps no copy of the narration`);
+  }
 });
 
 await test("an action aimed at a hero is left to the table as an attempt, and a silent mind is named", async () => {
@@ -114,6 +122,20 @@ await test("an action aimed at a hero is left to the table as an attempt, and a 
   const notes = model.requests.map(textOf).filter((text) => text.includes("These are facts now"));
   assert.match(notes.at(-1), /\[aimed at Brakk: an attempt on a hero; resolve it with your tools now/);
   assert.match(notes.at(-1), /did not answer this turn/);
+});
+
+await test("next turn each mind is handed what its senses took in since its last turn, the narration only as a line of mood", async () => {
+  model.script([reply({ text: Array.from({ length: 30 }, (_, index) => `L'onda numero ${index + 1} batte sulle assi.`).join(" ") }), ego("Mi siedo."), ego("Mi siedo."), reply({ text: "Fine." })]);
+  await model.turn(world, "Guardo il mare.", brakk.id);
+  const asked = model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You are one character"));
+  assert.equal(asked.length, 2);
+  for (const request of asked) {
+    const frame = textOf(request);
+    assert.match(frame, /What you took in with your own senses since your last turn/);
+    assert.match(frame, /Punta il coltello contro Brakk/, "last turn's deed is in both frames, the actor's and the silent one's");
+    const mood = frame.match(/The mood of the moment, as the narrator tells it \(an impression, not a fact you witnessed\): (.*)/)?.[1] ?? "";
+    assert.ok(mood.length > 0 && mood.length <= 300, "the narration is at most a line of mood");
+  }
 });
 
 await test("pure rules: a thing is named by its words; the heroes' own words reach every mind", () => {

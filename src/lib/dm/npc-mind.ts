@@ -663,7 +663,12 @@ const speakSchema = z.object({
 
 // npc_speak: the moment goes to everyone present, then the addressed mind
 // answers from what it knows.
-export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): Promise<ToolResult> {
+// options.remember false: the stage's own call, whose frame is made of
+// events every perceiver already keeps a line of, and whose words become an
+// event heard by the senses (docs/specs/ogm-npc-perception.md): neither the
+// frame nor an overheard copy of the words is stored again.
+export async function handleNpcSpeak(campaign: Campaign, rawArguments: string, options: { remember?: boolean } = {}): Promise<ToolResult> {
+  const remember = options.remember !== false;
   let args: z.infer<typeof speakSchema>;
   try {
     args = speakSchema.parse(JSON.parse(rawArguments || "{}"));
@@ -724,7 +729,9 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   // Only those really with them hear it: a mind apart from the scene is not
   // a listener in it.
   const others = cast.filter((entry) => ids.includes(entry.id) && entry.id !== npc.id && (apart || !getNpcAway(entry.id)));
-  addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: args.perceives, learnedAt: now }, turnId);
+  if (remember) {
+    addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: args.perceives, learnedAt: now }, turnId);
+  }
   // What the mind sees of the others' bodies (docs/specs/ogm-npc-state.md):
   // the listeners, and anyone else here whose state shows (tied, down,
   // dead), never what they carry, and a keeper by name only if it knows it.
@@ -766,7 +773,7 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   const flags = proposal.speech ? unlearnedNames(proposal.speech, npc.name, worldNames(campaign.id), outcome.memories) : [];
   if (proposal.speech) {
     addNpcMemories(campaign.id, [npc.id], { kind: proposal.lie ? "lie" : "said", sourceKind: "self", sourceName: "", content: proposal.speech, learnedAt: now }, turnId);
-    for (const other of others) {
+    for (const other of remember ? others : []) {
       addNpcMemories(campaign.id, [other.id], { ...overheard(npc.name, proposal.speech, listNpcMemories(campaign.id, other.id)), learnedAt: now }, turnId);
     }
   }
