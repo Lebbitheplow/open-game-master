@@ -268,6 +268,9 @@ export type MindBrief = {
   // What they directly perceive right now.
   perceives: string;
   offscreen?: boolean;
+  // Its body's needs and what would ease them, told again just before the
+  // turn: read only among who it is, the needs lost to the talk.
+  body?: string[];
 };
 
 const MEMORY_LABEL: Record<NpcMemoryKind, string> = {
@@ -304,21 +307,33 @@ export const MIND_SYSTEM = [
   "You only propose: the Game Master and the rules decide what actually happens.",
   // Every character's first goal, under whatever else they want.
   "Above all your goals stands one: staying alive. Wealth, power, love, revenge or duty are worth pursuing only while you live to have them. Weigh every risk against your life: in danger you may retreat, hide, flee, surrender, bargain, beg, lie or betray. You risk your life only when your nature truly demands it (a fanatic's faith, a parent shielding a child, a debt of honour), and even then you look for a way to come out alive.",
-  // Every turn a body, not only a voice (the raft sandbox, 2026-11-16): six
-  // turns of minds that only "insisted" and "urged a decision" left the
-  // barrel shut and the bread untouched while all of them starved.
-  "Every turn you DO something with your body in this moment: take, give, hide, steal, strike, threaten with a weapon, move, eat, drink, sleep, keep watch, work, flee. Talking is not an action. If you truly choose to do nothing, say so plainly and why.",
   // Small models copied the last line they read back as their own.
   "Your words are your own: never repeat or rephrase what someone else just said, and never echo a slogan already spoken, yours included.",
   // Washing hands and fishing, turn after turn: a habit is not a plan.
   "Your memories list what you already did (marked as set out to). Do not just repeat it: move toward what you want, or react to what changed.",
   // Free text, not JSON (the same sandbox: a role-play model broke the JSON
   // in 5 of 7 replies). A separate reader turns it into the engine's terms.
-  "Answer in plain text, in exactly these four lines and nothing else:",
-  "SAY: the exact words you speak aloud now, or nothing",
-  "DO: the one physical action you take now, in one sentence",
-  "THINK: a new suspicion or plan you keep to yourself, or nothing",
-  "LYING: yes if what you SAY is knowingly false, otherwise no",
+  // One of three, in an order (the prompt evaluation, 2026-11-18,
+  // scripts/eval-mind-prompt.mjs): asked for words AND a deed every turn, the
+  // raft's minds spoke on and on about the talk itself ("all of you speak of
+  // bonds...") and seldom ate beside free fish; asked for one of speaking,
+  // acting or passing, with the body told again last, none of 70 replies
+  // spoke of the talk and 57 went to the water or the food.
+  "Each turn you do exactly one of three things: you ACT, or you SPEAK, or you PASS. Never two.",
+  "Choose in this order:",
+  "1. Something was just done to you or asked of you by name: answer that first, even before your body. If a deed was asked (help, give, come), the answer is the deed itself or a plain spoken refusal; if your things are grabbed, defend them.",
+  "2. Your body presses (hungry, thirsty, cold, exhausted, in pain) and something in sight would ease it: go and use it, take it, or demand it from whoever holds it.",
+  "3. Otherwise take one concrete step toward what you want: often that is words to one person (a demand, an offer, a deal, a question about a thing, a threat).",
+  "ACT with your body: drink, eat, take, give, hide, move, tie, work, strike, sleep, wrap up warm.",
+  "SPEAK only when words are the step: a demand, an offer, a deal, a threat, a refusal, or a question about a thing here, said to one other person present by name (never to yourself). Your words must name a thing, a deed or a person here. Never comment on the talk or answer a musing with a musing; ignore idle chatter and act instead. Never talk about the talk: no remarks on what others say or said, on words, silence, theories, bonds, meaning or the mood.",
+  "PASS when you truly let the moment go (asleep, too weak, waiting on purpose).",
+  "Answer in plain text: you may first write one line THINK: your private thought. Then write exactly one final line, and nothing after it:",
+  "DO: the one physical action, in one sentence",
+  "or SAY: Name, «the exact words»",
+  "or PASS: why",
+  "Example: THINK: I'm starving and the biscuits lie free.\nDO: I crawl to the biscuits on the deck and eat one.",
+  "Example: THINK: Ottone has the bowl I need.\nSAY: Ottone, «Give me the bowl or I take it.»",
+  "If what you SAY is knowingly false, end with a line LYING: yes.",
 ].join("\n");
 
 export function renderMindPrompt(brief: MindBrief): string {
@@ -334,8 +349,11 @@ export function renderMindPrompt(brief: MindBrief): string {
     brief.offscreen
       ? `Time passes away from the heroes. ${clipText(brief.perceives, MIND_TEXT_CHARS)}\nSay what you do next to pursue your goals (intent). Speech may stay empty.`
       : `What you perceive right now:\n${clipText(brief.perceives, MIND_TEXT_CHARS * 2)}`,
+    !brief.offscreen && brief.body?.length ? `Your body, now (it presses before any talk):\n${brief.body.join("\n")}` : "",
     // Last, so the newest words heard are not the last thing it reads.
-    "Now it is your turn. Answer in the four lines SAY, DO, THINK, LYING. DO is required: one action of your body, not words. Do not repeat anyone's words.",
+    brief.offscreen
+      ? "Now it is your turn: one final line DO, what you do next toward your goals."
+      : "Now it is your turn: one final line DO, SAY or PASS, never two. Answer first what was done to you or asked of you; else, if your body presses and something in sight would ease it, DO that. Nothing you already said, nothing about the talk itself.",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -386,13 +404,14 @@ export function parseProposal(text: string): { ok: true; proposal: NpcProposal }
 export const MIND_READER_SYSTEM = [
   "You are the Ego of one character in a tabletop role-playing game: the part that turns the character's impulse into one real action in the world. Another model wrote the impulse below, in the character's voice. You are not an author of their words and not a censor.",
   "Keep the meaning: do not soften, refuse or moralize. Violence, theft, threats, lies and cruelty stand as written; the rules decide what happens.",
-  "The impulse should hold SAY, DO, THINK and LYING lines, but it may be messy, labelled in another language, or plain prose: read what the character speaks, does and privately thinks.",
+  "The impulse should end with ONE line DO, SAY or PASS (perhaps after a THINK line, perhaps with LYING: yes), but it may be messy, labelled in another language, or plain prose: read what the character speaks, does and privately thinks.",
+  "A character who only speaks has chosen words as this turn's step: intent stays empty. A character who PASSes lets the moment go: intent says they stay where they are, and why.",
   "speech: the words spoken aloud, in their original language. Mend only spelling and grammar (a misspelt or malformed word, a broken agreement); never change the words chosen, the tone or the meaning.",
   "intent: ONE concrete physical action taken now, naming who or what it is aimed at, in the impulse's language. If the impulse already states such an action, keep it exactly.",
   "A gesture, a pose or a feeling is NOT an action (stroking a ring, gripping a key, tightening lips, shifting weight, staring, waiting, an exercise), and neither is a deed already listed as recent. When that is all the impulse gives, YOU choose the next real step this character would take toward their most pressing drive: asking, bargaining, offering, taking, stealing, threatening, striking, opening, drinking, eating, hiding, giving. Use only what the ground says is here; stay inside the character's nature (what they would never do stays undone; what they would do without scruple, they do).",
   "The stronger the drive, the bolder the step: at 60 or more out of 100 the character acts on it this turn, by the means that fit them.",
   "With no ground given, only transcribe: if the impulse states no action, intent says the character stays where they are and does nothing.",
-  'Answer with ONE JSON object and nothing else: {"speech": "...", "intent": "...", "conclusion": "a private suspicion or plan, or empty", "lie": true if the character says or plainly shows the speech is knowingly false, else false}. intent is never empty. Words alone are speech, never the intent.',
+  'Answer with ONE JSON object and nothing else: {"speech": "...", "intent": "...", "conclusion": "a private suspicion or plan, or empty", "lie": true if the character says or plainly shows the speech is knowingly false, else false}. intent is empty only when the character only speaks. Words are speech, never the intent.',
 ].join("\n");
 
 // What the Ego stands on: who the character is, what presses them, and what

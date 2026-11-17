@@ -326,8 +326,7 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     npcThings(npc).length ? `What you have on you now (yours, and nobody else's): ${npcThings(npc).join("; ")}.` : "You carry nothing that matters beyond your clothes.",
     whereYouStand(campaign, npc),
     lyingHere(campaign, npc),
-    needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
-    bodyFrame(campaign, npc, listNpcs(campaign.id).filter((other) => (other.id === npc.id || other.state.withParty) && !other.archived)),
+    ...bodyLines(campaign, npc),
     mood ? `How you feel right now: ${mood} You may hold it back, but it is there.` : "",
     moodPresses(feelings, now) ? "The feeling is too strong to sit still with: this turn you act on it, one way or another." : "",
     (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
@@ -417,13 +416,20 @@ type AskOutcome =
   | { ok: true; proposal: NpcProposal; memories: NpcMemory[]; latencyMs: number; inputTokens: number; outputTokens: number }
   | { ok: false; error: string; latencyMs: number };
 
-async function askMind(
-  campaign: Campaign,
-  npc: Npc,
-  perceives: string,
-  present: MindPerson[],
-  offscreen: boolean,
-): Promise<AskOutcome> {
+// What the body says: hunger, thirst, cold and the things in sight that would
+// ease them. Told among who they are, and again just before the turn.
+function bodyLines(campaign: Campaign, npc: Npc): string[] {
+  const needs = needsWords(npc.state, nowInstant(campaign.id));
+  return [
+    needs ? `Your body right now: ${needs}. You feel it in everything you do, and it grows until you drink or eat.` : "",
+    bodyFrame(campaign, npc, listNpcs(campaign.id).filter((other) => (other.id === npc.id || other.state.withParty) && !other.archived)),
+  ].filter(Boolean);
+}
+
+// What one mind is asked: the system words and its own brief. Exported for
+// the prompt evaluation (scripts/eval-mind-prompt.mjs), which asks the same
+// thing of the character model with made-up perceptions.
+export function mindRequest(campaign: Campaign, npc: Npc, perceives: string, present: MindPerson[], offscreen = false) {
   const memories = memoriesFor(npc.id, listNpcMemories(campaign.id, npc.id), nowInstant(campaign.id));
   const prompt = renderMindPrompt({
     name: npc.name,
@@ -435,8 +441,19 @@ async function askMind(
     bonds: [...bondsOf(campaign, npc, memories), ...feltBonds(campaign, npc)],
     perceives,
     offscreen,
+    body: bodyLines(campaign, npc),
   });
-  const instructions = withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage);
+  return { memories, prompt, instructions: withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage) };
+}
+
+async function askMind(
+  campaign: Campaign,
+  npc: Npc,
+  perceives: string,
+  present: MindPerson[],
+  offscreen: boolean,
+): Promise<AskOutcome> {
+  const { memories, prompt, instructions } = mindRequest(campaign, npc, perceives, present, offscreen);
   const started = Date.now();
   // Someone playing this mind from a mind seat answers the same isolated
   // question, under the same checks; silence or a reply that says nothing

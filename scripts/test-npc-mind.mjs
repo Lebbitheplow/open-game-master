@@ -252,7 +252,7 @@ await test("a free reply is read by the narrator's model into words and a deed; 
   assert.equal(said.intends, "punta la balestra contro Kranz");
   const [asked] = reader();
   assert.match(asked.messages[1].content, /DO: Punto la balestra/, "the reader reads the mind's own reply");
-  assert.match(mindText(mindRequests().at(-1)), /DO is required/);
+  assert.match(mindText(mindRequests().at(-1)), /one final line DO, SAY or PASS, never two/);
   model.script([
     reply({ text: "Dico che chi controlla l'acqua controlla la vita, e prendo la chiave." }),
     answer({ speech: "Chi controlla l'acqua controlla la vita.", intent: "afferra la chiave" }),
@@ -897,6 +897,16 @@ await test("the mind's fight view says what its shield rules out, as the server'
 
 await test("staying alive is every mind's first goal, and a fighting companion sees how close to death it is", async () => {
   assert.match(logic.MIND_SYSTEM, /Above all your goals stands one: staying alive/);
+  // One of three, in an order (the prompt evaluation, 2026-11-18).
+  assert.match(logic.MIND_SYSTEM, /exactly one of three things: you ACT, or you SPEAK, or you PASS/);
+  assert.match(logic.MIND_SYSTEM, /Never talk about the talk/);
+  assert.doesNotMatch(logic.MIND_SYSTEM, /Every turn you DO something/);
+  assert.match(logic.MIND_READER_SYSTEM, /only speaks has chosen words as this turn's step: intent stays empty/);
+  const brief = { name: "Kaku", identity: [], inspiration: "", scores: {}, memories: [], present: [], bonds: [], perceives: "Nulla.", body: ["Your body right now: hungry (30 hours without food)."] };
+  const asked = logic.renderMindPrompt(brief);
+  assert.ok(asked.indexOf("Your body, now") > asked.indexOf("What you perceive right now"), "the body is told again after the moment, before the turn");
+  assert.match(logic.renderMindPrompt({ ...brief, offscreen: true }), /one final line DO, what you do next/);
+  assert.doesNotMatch(logic.renderMindPrompt({ ...brief, offscreen: true }), /Your body, now/);
   const text = logic.renderFightView({ round: 3, foes: [], allies: [], self: { hp: 4, maxHp: 22, conditions: ["poisoned"] } });
   assert.match(text, /You: 4 of 22 hit points \(near death\), poisoned\. Staying alive comes first/);
   const { NPC_MINDS_RULES } = await import("../src/lib/dm/npc-mind-tools.ts");
