@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import {
@@ -16,6 +17,7 @@ import {
   type Tone,
 } from "@/lib/dm/safety-logic";
 import type { Personality } from "@/lib/dm/personalities";
+import { personalityKey } from "@/lib/dm/personality-labels";
 import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 import { personalityVoiceFits } from "@/lib/tts-voices";
 
@@ -26,7 +28,8 @@ import { personalityVoiceFits } from "@/lib/tts-voices";
 // narrator's voice at once. A line or veil naming romance keeps the engine's
 // own romance offers away (dm/advance-logic.ts namesRomance), and the panel
 // points a table that wants no romance at all to its switch, under Bonds and
-// romance.
+// romance. The words are the dictionaries' (creator.*), except the tone
+// chips, which are the GM brief's own vocabulary.
 
 const chip = "rounded-md border px-2 py-0.5 text-[11px]";
 const on = "border-amber-700 bg-amber-950/40 text-amber-100";
@@ -61,9 +64,15 @@ function ListField({ label, hint, value, onChange }: { label: string; hint: stri
 }
 
 // Every personality and what it does, for the ⓘ beside them: a preset's
-// blurb was only ever a hover title.
-function personalitiesInfo(presets: Personality[], setsVoice: boolean): string {
-  return `${presets.map((preset) => `**${preset.name}**: ${preset.blurb}`).join("\n\n")}\n\nPicking one sets the strictness and tone above${setsVoice ? " and the narrator's voice" : ""} together; each can still be changed on its own afterwards.`;
+// blurb was only ever a hover title. A stock preset reads its keyed name and
+// blurb; a personality a user wrote reads its own words.
+function personalitiesInfo(t: (key: string, vars?: Record<string, string | number>) => string, presets: Personality[], setsVoice: boolean): string {
+  const lines = presets.map((preset) => {
+    const nameKey = personalityKey("name", preset.name);
+    const blurbKey = personalityKey("blurb", preset.name);
+    return `**${nameKey ? t(nameKey) : preset.name}**: ${blurbKey ? t(blurbKey) : preset.blurb}`;
+  });
+  return `${lines.join("\n\n")}\n\n${t("Picking one sets the strictness and tone above{tail} together; each can still be changed on its own afterwards.", { tail: setsVoice ? t(" and the narrator's voice") : "" })}`;
 }
 
 export function SafetyToneFields({
@@ -85,6 +94,7 @@ export function SafetyToneFields({
   tableLanguage: TableLanguage;
   showPresets?: boolean;
 }) {
+  const t = useT();
   const [presets, setPresets] = useState<Personality[]>([]);
   useEffect(() => {
     if (!showPresets) {
@@ -118,56 +128,60 @@ export function SafetyToneFields({
   return (
     <div className="space-y-3 text-sm">
       <div>
-        <p className="mb-1 text-xs uppercase tracking-wide text-stone-500">Safety</p>
+        <p className="mb-1 text-xs uppercase tracking-wide text-stone-500">{t("Safety")}</p>
         <div data-pill-group="" className="flex flex-wrap items-center gap-1.5">
           <button type="button" aria-pressed={safety.xCard} onClick={() => onSafety({ ...safety, xCard: !safety.xCard })} className={cn(chip, safety.xCard ? on : off)}>
-            X-card {safety.xCard ? "on" : "off"}
+            {safety.xCard ? t("X-card on") : t("X-card off")}
           </button>
           {BOUNDARIES.map((boundary) => (
             <button data-on={safety.boundaries === boundary ? "" : undefined} key={boundary} type="button" aria-pressed={safety.boundaries === boundary} onClick={() => onSafety({ ...safety, boundaries: boundary })} className={cn(chip, safety.boundaries === boundary ? on : off)}>
-              {BOUNDARY_LABELS[boundary]}
+              {t(BOUNDARY_LABELS[boundary])}
             </button>
           ))}
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <ListField label="Lines (never in the story)" hint="spiders, harm to children" value={safety.lines} onChange={(lines) => onSafety({ ...safety, lines })} />
-          <ListField label="Veils (only off the page)" hint="torture, gore" value={safety.veils} onChange={(veils) => onSafety({ ...safety, veils })} />
+          <ListField label={t("Lines (never in the story)")} hint={t("spiders, harm to children")} value={safety.lines} onChange={(lines) => onSafety({ ...safety, lines })} />
+          <ListField label={t("Veils (only off the page)")} hint={t("torture, gore")} value={safety.veils} onChange={(veils) => onSafety({ ...safety, veils })} />
         </div>
         {/* An all-ages table never has romance, whatever the switch says. */}
-        {safety.boundaries !== "family" ? <p className="mt-1 text-[11px] text-stone-500">To keep romance out of the story, turn Romance off under Bonds and romance.</p> : null}
+        {safety.boundaries !== "family" ? <p className="mt-1 text-[11px] text-stone-500">{t("To keep romance out of the story, turn Romance off under Bonds and romance.")}</p> : null}
       </div>
       <div>
-        <p className="mb-1 text-xs uppercase tracking-wide text-stone-500">Strictness and tone</p>
+        <p className="mb-1 text-xs uppercase tracking-wide text-stone-500">{t("Strictness and tone")}</p>
         <div data-pill-group="" className="flex flex-wrap items-center gap-1.5">
           {STRICTNESS.map((level) => (
             <button data-on={gm.strictness === level ? "" : undefined} key={level} type="button" aria-pressed={gm.strictness === level} onClick={() => onGm({ ...gm, strictness: level })} className={cn(chip, gm.strictness === level ? on : off)}>
-              {STRICTNESS_LABELS[level]}
+              {t(STRICTNESS_LABELS[level])}
             </button>
           ))}
         </div>
         <div className="stagger-pop mt-1.5 flex flex-wrap items-center gap-1.5">
           {TONES.map((tone) => (
             <button key={tone} type="button" aria-pressed={gm.tone.includes(tone)} onClick={() => toggleTone(tone)} className={cn(chip, gm.tone.includes(tone) ? on : off)}>
-              {tone}
+              {t(tone)}
             </button>
           ))}
-          <span className="text-[10px] text-stone-600">Up to three.</span>
+          <span className="text-[10px] text-stone-600">{t("Up to three.")}</span>
         </div>
       </div>
       {showPresets && presets.length ? (
         <div>
           <p className="mb-1 flex items-center gap-1 text-xs uppercase tracking-wide text-stone-500">
-            Or pick a GM personality
-            <InfoButton label="GM personalities" text={personalitiesInfo(presets, Boolean(onVoice) && presets.some(voiced))} />
+            {t("Or pick a GM personality")}
+            <InfoButton label={t("GM personalities")} text={personalitiesInfo(t, presets, Boolean(onVoice) && presets.some(voiced))} />
           </p>
           <div className="stagger-pop flex flex-wrap items-center gap-1.5">
             {presets.map((preset) => {
               const active = isChosen(preset);
+              const nameKey = personalityKey("name", preset.name);
+              const blurbKey = personalityKey("blurb", preset.name);
+              const name = nameKey ? t(nameKey) : preset.name;
+              const blurb = blurbKey ? t(blurbKey) : preset.blurb;
               return (
                 <button
                   key={preset.id}
                   type="button"
-                  title={preset.blurb}
+                  title={blurb}
                   aria-pressed={active}
                   onClick={() => {
                     onGm({ strictness: preset.gm.strictness, tone: [...preset.gm.tone] });
@@ -177,7 +191,7 @@ export function SafetyToneFields({
                   }}
                   className={cn(chip, active ? on : off)}
                 >
-                  {preset.name}
+                  {name}
                 </button>
               );
             })}
@@ -185,7 +199,12 @@ export function SafetyToneFields({
           </div>
           {/* The chosen personality says what it is without a hover, which a
               finger never makes. */}
-          {chosenPreset ? <p className="mt-1 text-[11px] text-stone-500">{chosenPreset.name}: {chosenPreset.blurb}</p> : null}
+          {chosenPreset ? (
+            <p className="mt-1 text-[11px] text-stone-500">
+              {personalityKey("name", chosenPreset.name) ? t(personalityKey("name", chosenPreset.name)!) : chosenPreset.name}:{" "}
+              {personalityKey("blurb", chosenPreset.name) ? t(personalityKey("blurb", chosenPreset.name)!) : chosenPreset.blurb}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

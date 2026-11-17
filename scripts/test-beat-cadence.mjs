@@ -15,10 +15,11 @@ const {
 const {
   beatSourceText,
   BEAT_KINDS,
-  BEAT_KIND_LABELS,
+  BEAT_KIND_KEYS,
   hasBeatSource,
   normalizeBeatBody,
 } = await import("../src/lib/dm/beat-logic.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -185,8 +186,10 @@ test("a quiet stretch is told no rather than handed a made-up summary", () => {
 
 test("every beat kind has a label the DM can read", () => {
   for (const kind of BEAT_KINDS) {
-    assert.equal(typeof BEAT_KIND_LABELS[kind], "string");
-    assert.ok(BEAT_KIND_LABELS[kind].length > 0);
+    const label = translate("en", BEAT_KIND_KEYS[kind]);
+    assert.equal(typeof label, "string");
+    assert.ok(label.length > 0);
+    assert.ok(!label.startsWith("beat.kind."), `untranslated key for ${kind}`);
   }
 });
 

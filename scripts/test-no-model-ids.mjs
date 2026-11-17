@@ -56,8 +56,16 @@ const PINNED_PATHS = new Map([
 // so this list only shrinks.
 const LEFTOVERS = new Map([
   ["src/app/setup/StartHints.tsx", {
-    ids: ["qwen3.6-35b-a3b", "qwen3.6-35b-a3b-q8_0.gguf", "qwen3.6-35b", "gpt-oss-20b", "gpt-oss-20b-mxfp4.gguf"],
+    ids: ["qwen3.6-35b-a3b-q8_0.gguf", "qwen3.6-35b", "gpt-oss-20b", "gpt-oss-20b-mxfp4.gguf"],
     why: "the guided setup's instructions for starting a model server, which name the model to download: the recommended storyteller, and gpt-oss-20b as the 16 GB minimum (the maintainer's call, 2026-10-19, docs/text-backends.md)",
+  }],
+  ["src/lib/messages/en.ts", {
+    ids: ["qwen3.6-35b-a3b", "gpt-oss-20b"],
+    why: "the guided setup's own dictionary lines: the same two commands the StartHints step shows, said in the table's language (the maintainer's call, 2026-10-30)",
+  }],
+  ["src/lib/messages/fr.ts", {
+    ids: ["qwen3.6-35b-a3b", "gpt-oss-20b"],
+    why: "the French side of the same two setup lines",
   }],
 ]);
 

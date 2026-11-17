@@ -3,6 +3,7 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { returnFocus } from "@/components/ui/return-focus";
 import { X } from "lucide-react";
+import { useT } from "@/lib/locale";
 import { RulebookReader } from "./RulebookReader";
 
 // The rulebook laid open over the table, so a rule can be checked mid-fight
@@ -19,14 +20,15 @@ export function RulebookDialog({
   startAt?: string;
   startAnchor?: string;
 }) {
+  const t = useT();
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="dialog-overlay fixed inset-0 z-[60] bg-[#05030d]/80 backdrop-blur-sm" />
         <RadixDialog.Content {...returnFocus} aria-describedby={undefined} className="rb-dialog">
-          <RadixDialog.Title className="sr-only">The Rulebook</RadixDialog.Title>
+          <RadixDialog.Title className="sr-only">{t("The Rulebook")}</RadixDialog.Title>
           <RulebookReader embedded startAt={startAt} startAnchor={startAnchor} />
-          <RadixDialog.Close aria-label="Close the rulebook" className="rb-dialog-close motion-press">
+          <RadixDialog.Close aria-label={t("Close the rulebook")} className="rb-dialog-close motion-press">
             <X className="size-5" />
           </RadixDialog.Close>
         </RadixDialog.Content>

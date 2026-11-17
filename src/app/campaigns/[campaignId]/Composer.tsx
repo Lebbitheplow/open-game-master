@@ -6,6 +6,7 @@ import type { Dispatch, FormEvent, RefObject, SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Switch } from "@/components/ui/Switch";
 import { MODE_GLYPHS } from "@/app/campaigns/[campaignId]/sessionGlyphs";
@@ -49,14 +50,6 @@ import { NameMenu, useNameMenu } from "@/app/campaigns/[campaignId]/NameMenu";
 import { nameChoices } from "@/app/campaigns/[campaignId]/name-menu-logic";
 
 export type { InputKind };
-
-const KIND_TIPS: Record<InputKind, string> = {
-  do: "Act in the world. The GM narrates what happens.",
-  say: "Speak in character. Sent as dialogue in quotes.",
-  ooc: "Table talk. The GM does not respond, and it works even when the floor is locked.",
-  lead: "Party lead only. Send the GM an authoritative story direction.",
-  narrate: "Game Master only. Write the passage the table reads.",
-};
 
 // The action composer at the bottom of the game chat: pending-roll cards,
 // floor banners, the join notice, kind pills and the input row.
@@ -217,6 +210,7 @@ function ComposerInner({
   reactionsSent?: readonly string[];
   onReactionSent?: (characterId: string) => void;
 }) {
+  const t = useT();
   // The Hand outlives the fight by one beat so its fold-away can play.
   const hand = useLingeringEncounter(encounter);
   // A DM who plays characters too (a test fight a person runs, issue 553):
@@ -484,7 +478,7 @@ function ComposerInner({
               ] as const)
           ).map(
             (option) => (
-              <Tooltip key={option} content={KIND_TIPS[option]}>
+              <Tooltip key={option} content={({ "do": t("Act in the world. The GM narrates what happens."), "say": t("Speak in character. Sent as dialogue in quotes."), "ooc": t("Table talk. The GM does not respond, and it works even when the floor is locked."), "lead": t("Party lead only. Send the GM an authoritative story direction."), "narrate": t("Game Master only. Write the passage the table reads.") } as Record<string, string>)[option] ?? String(option)}>
                 <button data-on={kind === option ? "" : undefined}
                   data-mode={option}
                   type="button"
@@ -493,14 +487,14 @@ function ComposerInner({
                 >
                   <GameIcon icon={{ kind: "glyph", key: MODE_GLYPHS[option] }} size="size-6" />
                   {option === "do"
-                    ? "Do"
+                    ? t("Do", { context: "table.composer.mode.do" })
                     : option === "say"
-                      ? "Say"
+                      ? t("Say")
                       : option === "ooc"
-                        ? "OOC"
+                        ? t("OOC")
                         : option === "narrate"
-                          ? "Narrate"
-                          : "Direct"}
+                          ? t("Narrate", { context: "table.composer.mode.narrate" })
+                          : t("Direct", { context: "table.composer.mode.lead" })}
                 </button>
               </Tooltip>
             ),
@@ -527,14 +521,14 @@ function ComposerInner({
             <Tooltip
               content={
                 leadPrivate
-                  ? "Only the GM sees this. It steers the next turn and never enters the transcript."
-                  : "The table sees this direction, and the GM acts on it now."
+                  ? t("Only the GM sees this. It steers the next turn and never enters the transcript.")
+                  : t("The table sees this direction, and the GM acts on it now.")
               }
             >
               <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-stone-300">
                 {leadPrivate ? <EyeOff className="size-3.5 text-amber-300" /> : <Eye className="size-3.5 text-stone-500" />}
-                Private
-                <Switch on={leadPrivate} onChange={onLeadPrivateChange} label="Private" />
+                {t("Private")}
+                <Switch on={leadPrivate} onChange={onLeadPrivateChange} label={t("Private")} />
               </span>
             </Tooltip>
           </div>
@@ -578,11 +572,11 @@ function ComposerInner({
             className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-200 outline-none disabled:opacity-50"
           />
           {onXCard ? (
-            <Tooltip content="X-card: pause the table without saying why. Nobody is told who pressed it.">
+            <Tooltip content={t("X-card: pause the table without saying why. Nobody is told who pressed it.")}>
               <button
                 type="button"
                 onClick={onXCard}
-                aria-label="Raise the X-card"
+                aria-label={t("Raise the X-card")}
                 className={cn(ui.btnSmall, "session-deskbtn text-stone-400")}
               >
                 <Hand className="size-4" />
@@ -599,7 +593,7 @@ function ComposerInner({
           <button
             type="submit"
             disabled={sending || !input.trim() || inputBlocked || tooLong}
-            aria-label="Send"
+            aria-label={t("Send")}
             className={cn(ui.btnPrimary, "session-deskbtn cine-send")}
           >
             {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

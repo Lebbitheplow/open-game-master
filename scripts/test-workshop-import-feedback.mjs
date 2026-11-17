@@ -122,7 +122,7 @@ await test("F03: the creator keeps the campaign it made and sends only what fail
   assert.match(dialog, /if \(problems\.length\) \{\s+setFollowUp\(/);
   const review = fs.readFileSync(new URL("../src/app/create-campaign/ReviewStep.tsx", import.meta.url), "utf8");
   assert.match(review, /role="alert"/);
-  assert.match(review, /Open the campaign as it is/);
+  assert.match(review, /Open the (campaign|adventure) as it is/);
 });
 
 globalThis.fetch = realFetch;
@@ -250,7 +250,9 @@ await test("F08: the Ruleset Library no longer offers Homebrew ticks, and says w
   const library = fs.readFileSync(new URL("../src/app/workshop/RulesetLibrary.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(library, /Homebrew this ruleset ships/);
   assert.doesNotMatch(library, /toggleHomebrew/);
-  assert.match(library, /A ruleset carries variant rules and house rules, not Homebrew/);
+  // The note reads through the dictionary (workshop.rules.homebrewNote), the
+  // i18n pass; the sentence it pins lives in the English dictionary now.
+  assert.match(library, /t\("A ruleset carries variant rules and house rules, not Homebrew\./);
 });
 
 console.log(`workshop import feedback: ${passed} checks passed.`);

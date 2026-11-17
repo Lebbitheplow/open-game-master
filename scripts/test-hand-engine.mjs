@@ -23,6 +23,8 @@ const { hudGates } = await import("../src/lib/battlemap/hand-hud.ts");
 const { conditionNote, conditionNoteLine, namesLookup } = await import("../src/lib/battlemap/condition-notes.ts");
 const { characterStageRows, enemyStageRows } = await import("../src/lib/battlemap/view-stage.ts");
 const { messageIntentSchema, describeIntent, intentAnswered, intentCorrection, intentTools } = await import("../src/lib/dm/intent-logic.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { maxHpView, speedView, hitDiceRows, hitDiceLine, itemStatus, stateTags } = await import(
   "../src/components/sheet/sheet-state.ts"
 );
@@ -346,21 +348,21 @@ const HIT = { characterId: "s1", attacker: "Goblin 2", attackerId: "e2", attack:
 
 test("a fresh hit offers the reactions the character holds, off their turn, as use_reaction cards", () => {
   const lys = caster({ id: "s1" });
-  const cards = reactionCards(lys, talias(), [HIT], [{ id: "s1", name: "Lys" }]);
+  const cards = reactionCards(t, lys, talias(), [HIT], [{ id: "s1", name: "Lys" }]);
   const shield = byId(cards, "reaction:shield");
   assert.equal(shield.disabled, null);
   assert.equal(shield.prompt, "Goblin 2's Scimitar hit you for 7 slashing");
   assert.deepEqual(shield.intent, { card: "reaction", feature: "Shield", spell: "Shield", slotLevel: 1 });
   const rogue = sheet({ class: "rogue", level: 5, features: [feature("Uncanny Dodge")] });
-  assert.ok(byId(reactionCards(rogue, talias(), [HIT], []), "reaction:uncanny-dodge:s1"));
+  assert.ok(byId(reactionCards(t, rogue, talias(), [HIT], []), "reaction:uncanny-dodge:s1"));
   // Deflect Missiles answers a ranged hit only.
   const monk = sheet({ class: "monk", level: 3, features: [feature("Deflect Missiles")] });
-  assert.equal(reactionCards(monk, talias(), [HIT], []).length, 0);
-  assert.equal(reactionCards(monk, talias(), [{ ...HIT, ranged: true }], []).length, 1);
+  assert.equal(reactionCards(t, monk, talias(), [HIT], []).length, 0);
+  assert.equal(reactionCards(t, monk, talias(), [{ ...HIT, ranged: true }], []).length, 1);
   // Answered already, spent reaction, or no fresh record: nothing, or refused.
-  assert.equal(reactionCards(rogue, talias(), [{ ...HIT, answered: ["Uncanny Dodge"] }], []).length, 0);
-  assert.match(byId(reactionCards(rogue, talias({ reactionUsed: true }), [HIT], []), "reaction:uncanny-dodge:s1").disabled, /already used their reaction/);
-  assert.equal(reactionCards(rogue, talias(), [], []).length, 0);
+  assert.equal(reactionCards(t, rogue, talias(), [{ ...HIT, answered: ["Uncanny Dodge"] }], []).length, 0);
+  assert.match(byId(reactionCards(t, rogue, talias({ reactionUsed: true }), [HIT], []), "reaction:uncanny-dodge:s1").disabled, /already used their reaction/);
+  assert.equal(reactionCards(t, rogue, talias(), [], []).length, 0);
 });
 
 // Issue 662: a multiattack's prompt states the one hit Uncanny Dodge halves,
@@ -368,14 +370,14 @@ test("a fresh hit offers the reactions the character holds, off their turn, as u
 test("a multiattack's reaction prompt names the heaviest hit and its own damage, and counts the rest", () => {
   const rogue = sheet({ class: "rogue", level: 5, features: [feature("Uncanny Dodge")] });
   const twice = { ...HIT, attacker: "Raider Captain", attack: "Dagger", type: "piercing", damage: 6, hits: 2 };
-  const dodge = byId(reactionCards(rogue, talias(), [twice], []), "reaction:uncanny-dodge:s1");
+  const dodge = byId(reactionCards(t, rogue, talias(), [twice], []), "reaction:uncanny-dodge:s1");
   assert.equal(dodge.prompt, "Raider Captain's Dagger hit you for 6 piercing, the heaviest of 2 hits");
 });
 
 test("Cutting Words answers an ally's hit, aimed at that ally", () => {
   const bard = sheet({ id: "s3", name: "Wren", class: "bard", features: [feature("Cutting Words")], resources: { bardic_inspiration: { max: 3, used: 0 } } });
   const party = [{ id: "s1", name: "Kael" }, { id: "s3", name: "Wren" }];
-  const cards = reactionCards(bard, talias(), [HIT], party);
+  const cards = reactionCards(t, bard, talias(), [HIT], party);
   const words = byId(cards, "reaction:cutting-words:s1");
   assert.equal(words.target, "ally");
   assert.deepEqual(reactionAim(words, [HIT], "s3", party), { id: "s1", name: "Kael", kind: "ally" });
@@ -487,17 +489,18 @@ test("a character's token rows carry concentration, exhaustion and the death tra
 
 test("the sheet's hit points and speed are the engine's effective ones, with the reason", () => {
   const worn = sheet({ maxHp: 40, currentHp: 18, exhaustion: 4 });
-  const hp = maxHpView(worn);
+  const hp = maxHpView(t, worn);
   assert.equal(hp.max, 20);
   assert.match(hp.note, /halved by exhaustion 4/);
-  assert.equal(speedView(sheet({ conditions: ["grappled"] })).speed, 0);
-  assert.match(speedView(sheet({ conditions: ["grappled"] })).notes.join(" "), /grappled: speed 0/);
-  assert.equal(speedView(sheet({ exhaustion: 2 })).speed, 15);
-  assert.match(speedView(sheet({ exhaustion: 2 })).notes.join(" "), /Exhaustion 2: speed halved/);
+  assert.equal(speedView(t, sheet({ conditions: ["grappled"] })).speed, 0);
+  assert.match(speedView(t, sheet({ conditions: ["grappled"] })).notes.join(" "), /grappled: speed 0/);
+  assert.equal(speedView(t, sheet({ exhaustion: 2 })).speed, 15);
+  assert.match(speedView(t, sheet({ exhaustion: 2 })).notes.join(" "), /Exhaustion 2: speed halved/);
 });
 
 test("the sheet's state row: the death track, exhaustion's effects, concentration, a readied trigger, Inspiration", () => {
   const tags = stateTags(
+    t,
     sheet({
       currentHp: 0,
       deathSaves: { successes: 2, failures: 1 },
@@ -527,13 +530,13 @@ test("every hit die pool of a multiclass character is shown", () => {
 
 test("a charged item shows its count, a pending attunement shows, and a cursed one refuses to let go", () => {
   const wand = item("Wand of Magic Missiles");
-  assert.equal(itemStatus(sheet({ equipment: [wand] }), wand).charges, "7/7 charges");
+  assert.equal(itemStatus(t, sheet({ equipment: [wand] }), wand).charges, "7/7 charges");
   const used = item("Wand of Magic Missiles", { charges: 4 });
-  assert.equal(itemStatus(sheet({ equipment: [used] }), used).charges, "4/7 charges");
+  assert.equal(itemStatus(t, sheet({ equipment: [used] }), used).charges, "4/7 charges");
   const pending = item("Ring of Protection", { attuning: true });
-  assert.equal(itemStatus(sheet({ equipment: [pending] }), pending).attuning, true);
+  assert.equal(itemStatus(t, sheet({ equipment: [pending] }), pending).attuning, true);
   const axe = item("Berserker Axe", { equipped: true, attuned: true });
-  const status = itemStatus(sheet({ equipment: [axe] }), axe);
+  const status = itemStatus(t, sheet({ equipment: [axe] }), axe);
   assert.equal(status.cursed, true);
   assert.match(status.attuneRefusal, /is cursed/);
 });

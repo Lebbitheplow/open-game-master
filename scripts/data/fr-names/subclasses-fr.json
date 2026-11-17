@@ -1,0 +1,22 @@
+{
+  "barbarian:path-of-the-berserker": "Voie du berserker",
+  "barbarian:berserker": "Voie du berserker",
+  "bard:college-of-lore": "Collège du Savoir",
+  "bard:lore": "Collège du Savoir",
+  "cleric:life-domain": "Domaine de la Vie",
+  "cleric:life": "Domaine de la Vie",
+  "druid:circle-of-the-land": "Cercle de la Terre",
+  "druid:land": "Cercle de la Terre",
+  "fighter:champion": "Champion",
+  "monk:way-of-the-open-hand": "Voie de la Paume",
+  "monk:open-hand": "Voie de la Paume",
+  "paladin:oath-of-devotion": "Serment de Dévotion",
+  "paladin:devotion": "Serment de Dévotion",
+  "ranger:hunter": "Chasseur",
+  "rogue:thief": "Voleur",
+  "sorcerer:draconic-bloodline": "Lignée draconique",
+  "warlock:the-fiend": "Le Fiélon",
+  "warlock:fiend": "Le Fiélon",
+  "wizard:school-of-evocation": "École de l’Évocation",
+  "wizard:evocation": "École de l’Évocation"
+}

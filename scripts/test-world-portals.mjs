@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { translate } from "../src/lib/messages-logic.ts";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
@@ -164,8 +165,12 @@ test("arriving on the step replays only a line the preset wrote", () => {
 
 // ---- the table sheet ----
 
+// The English-bound translator the sheet's labels read under test
+// (tableSheet takes one since the settings sheet learned to speak French).
+const enT = (key, vars) => translate("en", key, vars);
+
 function rowsOf(draft, gates) {
-  return tableSheet(draft, gates).flatMap((group) => group.rows);
+  return tableSheet(enT, draft, gates).flatMap((group) => group.rows);
 }
 
 test("featuresOn still counts fourteen", () => {
@@ -209,7 +214,7 @@ test("gating is the old gating", () => {
   for (const key of ["aiStorySetup", "narrationGuard", "worldSimulation"]) {
     assert.ok(!human.includes(key), `${key} shows with a human narrator`);
   }
-  assert.ok(!tableSheet(ALL_ON, { ...TABLE, aiNarrates: false }).some((group) => group.id === "narration"));
+  assert.ok(!tableSheet(enT, ALL_ON, { ...TABLE, aiNarrates: false }).some((group) => group.id === "narration"));
   const solo = keys(ALL_ON, { ...TABLE, solo: true });
   assert.ok(!solo.includes("midGameJoinOpen") && !solo.includes("holdSubmissions"));
   assert.ok(!keys({ ...ALL_ON, ambienceEnabled: false }, TABLE).includes("ambienceAuto"));

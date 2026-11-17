@@ -10,6 +10,7 @@ import { startWebLayout } from "@/lib/worldforge/force-layout";
 import type { XY } from "@/lib/worldforge/model";
 import type { WorldState } from "./useWorld";
 import { EntityAvatar, TypeChip, tint, typeOf } from "./world-ui";
+import { useT } from "@/lib/locale";
 
 // The world's web, after WorldForge's graph tab: the web of every link (or
 // the entries within a few links of one), the family tree read off the
@@ -94,6 +95,7 @@ function rowsLayout(rows: string[][]): Map<string, XY> {
 }
 
 export function WebView({ world, focus, onOpen }: { world: WorldState; focus: string | null; onOpen: (ref: string) => void }) {
+  const t = useT();
   const { doc, entities } = world;
   const [mode, setMode] = useState<Mode>("web");
   const [view, setView] = useState<View>("all");
@@ -142,17 +144,17 @@ export function WebView({ world, focus, onOpen }: { world: WorldState; focus: st
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1" role="tablist" aria-label="Kind of chart">
+        <div className="flex flex-wrap gap-1" role="tablist" aria-label={t("Kind of chart")}>
           {MODES.map((entry) => (
             <button key={entry.id} type="button" role="tab" aria-selected={mode === entry.id} onClick={() => setMode(entry.id)} className={cn(ui.btnSmall, "px-2.5 py-1 text-xs", mode === entry.id && "border-amber-500/60 bg-amber-400/10 text-amber-100")}>
-              <entry.icon className="size-3.5" /> {entry.label}
+              <entry.icon className="size-3.5" /> {t(entry.label)}
             </button>
           ))}
         </div>
-        <div className="flex gap-1" role="radiogroup" aria-label="Which links">
+        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("Which links")}>
           {VIEWS.map((entry) => (
             <button key={entry.id} type="button" role="radio" aria-checked={view === entry.id} onClick={() => setView(entry.id)} className={cn("rounded-md border border-stone-700 px-2 py-1 text-[11px] motion-press", view === entry.id ? "bg-stone-800 text-amber-100" : "text-stone-400")}>
-              {entry.label}
+              {t(entry.label)}
             </button>
           ))}
         </div>
@@ -187,10 +189,10 @@ export function WebView({ world, focus, onOpen }: { world: WorldState; focus: st
         ) : graph.nodes.length === 0 ? (
           <p className="p-8 text-center text-sm text-stone-500">
             {mode === "family"
-              ? "No family yet: link people with parent of, child of, spouse of or sibling of."
+              ? t("No family yet: link people with parent of, child of, spouse of or sibling of.")
               : mode === "chain"
-                ? "No chain of command yet: link with superior of, reports to, liege of or vassal of."
-                : "No links yet. Open an entry in the wiki and add one."}
+                ? t("No chain of command yet: link with superior of, reports to, liege of or vassal of.")
+                : t("No links yet. Open an entry in the wiki and add one.")}
           </p>
         ) : (
           // Kept across a recentre, so the entries that stay glide to their
@@ -283,7 +285,7 @@ export function WebView({ world, focus, onOpen }: { world: WorldState; focus: st
         ) : null}
       </div>
       <p className="text-[11px] text-stone-500">
-        Red dashes are hidden truths, violet dashes false beliefs, arrows one-way links. Gold lines join spouses.
+        {t("Red dashes are hidden truths, violet dashes false beliefs, arrows one-way links. Gold lines join spouses.")}
       </p>
     </div>
   );

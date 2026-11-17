@@ -5,8 +5,9 @@ import { ScheduleSection } from "@/components/ScheduleSection";
 import { Dialog } from "@/components/ui/Dialog";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
+import { useLocale, useT } from "@/lib/locale";
 import {
-  nextSessionWords,
+  nextSessionWordsT,
   pickNextSession,
   sessionWhenLocal,
   type NextSession,
@@ -55,6 +56,8 @@ export function SessionHoldBanner({
   const [busy, setBusy] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [next, setNext] = useState<NextSession | null | undefined>(undefined);
+  const t = useT();
+  const locale = useLocale();
   const held = hold !== null;
   // Under the session header, whatever its height (TableBreakBanner.tsx).
   useEffect(() => {
@@ -112,7 +115,7 @@ export function SessionHoldBanner({
       >
         <SessionBanner
           glyph="rest-long"
-          title={`Session ${hold.number} is over`}
+          title={t("Session {n} is over", { n: hold.number })}
           className="session-hold-banner pointer-events-auto w-full max-w-xl shadow-elev-2"
           actions={
             <>
@@ -122,7 +125,7 @@ export function SessionHoldBanner({
                 className={bannerButtonClass(!mayStart)}
                 data-session-schedule=""
               >
-                Next session
+                {t("Next session", { context: "session.hold.next" })}
               </button>
               {mayStart ? (
                 <button
@@ -132,24 +135,24 @@ export function SessionHoldBanner({
                   className={bannerButtonClass(true)}
                   data-session-start=""
                 >
-                  Start session {hold.number + 1}
+                  {t("Start session {n}", { n: hold.number + 1 })}
                 </button>
               ) : null}
             </>
           }
         >
           <span role="status" className="block text-sm text-stone-300" data-session-next="">
-            {next === undefined ? " " : nextSessionWords(next, next ? sessionWhenLocal(next.startsAt) : "")}
+            {next === undefined ? " " : nextSessionWordsT(t, next, next ? sessionWhenLocal(next.startsAt, locale) : "")}
           </span>
           <span className="block text-xs text-stone-400">
-            The story waits where it stopped. Sheets, the chronicle and OOC table talk stay open.
+            {t("The story waits where it stopped. Sheets, the chronicle and OOC table talk stay open.")}
           </span>
         </SessionBanner>
       </div>
       <Dialog
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
-        title="The schedule"
+        title={t("The schedule")}
         icon={<GameIcon icon={{ kind: "glyph", key: "tab-session" }} size="size-6" />}
       >
         <ScheduleSection

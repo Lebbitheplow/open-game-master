@@ -26,6 +26,11 @@ import {
   type XY,
 } from "@/lib/overworld/logic";
 
+// The translator callers pass (the agoLabel pattern): the refusals and the
+// brush names are the UI's own words, so the surface that shows them lends
+// its t, and a server boundary lends its English-bound one.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 export const OVERWORLD_BRUSHES = [
   "water",
   "plains",
@@ -36,15 +41,11 @@ export const OVERWORLD_BRUSHES = [
 ] as const;
 export type OverworldBrush = (typeof OVERWORLD_BRUSHES)[number];
 
-// Written for a person looking at a map, not for the tile alphabet.
-export const OVERWORLD_BRUSH_LABELS: Record<OverworldBrush, string> = {
-  water: "Sea and lakes",
-  plains: "Open country",
-  forest: "Forest",
-  hills: "Hills",
-  mountains: "Mountains",
-  swamp: "Marsh",
-};
+// Written for a person looking at a map, not for the tile alphabet: the
+// message key per brush, read in the interface's language at render.
+export function brushLabelKey(brush: OverworldBrush): string {
+  return `overworld.brush.${brush}`;
+}
 
 // Exported so a palette can colour each brush with the same swatch the map
 // itself draws, rather than keeping a second copy of the tile colours.
@@ -105,26 +106,29 @@ function clampRadius(radius: number | undefined): number {
   return Math.min(MAX_BRUSH_RADIUS, Math.max(0, Math.round(radius as number)));
 }
 
-export function paintOverworld(input: {
-  terrain: string;
-  width?: number;
-  height?: number;
-  strokes: OverworldStroke[];
-  // Where locations currently sit, so the result can report the drowned.
-  anchors?: AnchorRef[];
-}): PaintOverworldResult {
+export function paintOverworld(
+  t: T,
+  input: {
+    terrain: string;
+    width?: number;
+    height?: number;
+    strokes: OverworldStroke[];
+    // Where locations currently sit, so the result can report the drowned.
+    anchors?: AnchorRef[];
+  },
+): PaintOverworldResult {
   const width = input.width ?? OVERWORLD_WIDTH;
   const height = input.height ?? OVERWORLD_HEIGHT;
   const strokes = input.strokes ?? [];
 
   if (input.terrain.length !== width * height) {
-    return { error: "That map is the wrong size to paint on." };
+    return { error: t("That map is the wrong size to paint on.") };
   }
   if (!strokes.length) {
-    return { error: "Nothing was painted." };
+    return { error: t("Nothing was painted.") };
   }
   if (strokes.length > MAX_STROKES) {
-    return { error: "That is too much to paint in one go." };
+    return { error: t("That is too much to paint in one go.") };
   }
 
   const tiles = input.terrain.split("");
@@ -133,10 +137,10 @@ export function paintOverworld(input: {
   for (const stroke of strokes) {
     const brush = OVERWORLD_BRUSH_TILES[stroke.brush];
     if (!brush) {
-      return { error: "That is not a terrain this map knows." };
+      return { error: t("That is not a terrain this map knows.") };
     }
     if (!Number.isFinite(stroke.x) || !Number.isFinite(stroke.y)) {
-      return { error: "A stroke landed nowhere." };
+      return { error: t("A stroke landed nowhere.") };
     }
     const radius = clampRadius(stroke.radius);
     const centerX = Math.round(stroke.x);
@@ -165,7 +169,7 @@ export function paintOverworld(input: {
   }
 
   if (!changed) {
-    return { error: "That was already what the map looked like." };
+    return { error: t("That was already what the map looked like.") };
   }
 
   const terrain = tiles.join("");
@@ -173,8 +177,7 @@ export function paintOverworld(input: {
   // The one thing the region map owes the engine.
   if (!terrain.split("").some(isSettleable)) {
     return {
-      error:
-        "That would leave nowhere on the map a settlement could stand. Leave some ground that is not sea or peak.",
+      error: t("That would leave nowhere on the map a settlement could stand. Leave some ground that is not sea or peak."),
     };
   }
 

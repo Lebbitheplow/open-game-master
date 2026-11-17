@@ -9,6 +9,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { parseMonster, type EnemyStats } from "@/lib/bestiary/statblock";
 import { draftFromData, type MonsterDraft } from "@/lib/bestiary/monster-draft";
 import { borrowBlocked, borrowInto, borrowParts, type BorrowPart } from "@/lib/bestiary/borrow";
+import { useT } from "@/lib/locale";
 import { addChip, chipRow } from "@/app/workshop/kit";
 
 // Take one part of any monster in the books onto this one: the attack with
@@ -16,7 +17,7 @@ import { addChip, chipRow } from "@/app/workshop/kit";
 // spellcasting block, the regeneration. Pick, do not type: what lands is
 // what the engine already runs for the published monster.
 
-const KIND_WORDS: Record<BorrowPart["kind"], string> = {
+const KIND_KEYS: Record<BorrowPart["kind"], string> = {
   attack: "Attack",
   ability: "Action",
   trait: "Trait",
@@ -33,15 +34,16 @@ function statsOf(entry: { source: string; name: string; data: Record<string, unk
 }
 
 export function BorrowParts({ draft, onChange }: { draft: MonsterDraft; onChange: (draft: MonsterDraft) => void }) {
+  const t = useT();
   const [source, setSource] = useState<{ name: string; parts: BorrowPart[] } | null>(null);
   const [taken, setTaken] = useState<Set<string>>(() => new Set());
   return (
     <div className="flex flex-col gap-2">
-      <SectionHead title="Borrow from the books" glyph="tab-reference" className="mb-0" />
+      <SectionHead title={t("Borrow from the books")} glyph="tab-reference" className="mb-0" />
       <ContentPick
         kind="monsters"
-        label="Find a monster to borrow a part from"
-        placeholder="Borrow from... adult red dragon, ghoul, mage"
+        label={t("Find a monster to borrow a part from")}
+        placeholder={t("Borrow from... adult red dragon, ghoul, mage")}
         onPick={(entry) => {
           setSource({ name: entry.name, parts: borrowParts(statsOf(entry)) });
           setTaken(new Set());
@@ -50,8 +52,8 @@ export function BorrowParts({ draft, onChange }: { draft: MonsterDraft; onChange
       {source ? (
         <div className="reveal flex flex-col gap-1 rounded-lg border border-stone-800 bg-stone-950/50 p-2">
           <span className="flex items-center justify-between gap-2 text-xs text-stone-300">
-            From {source.name}
-            <button type="button" aria-label="Close the borrowed monster" onClick={() => setSource(null)} className={cn(ui.iconAction, "pk-always pk-tap")}>
+            {t("From {name}", { name: source.name })}
+            <button type="button" aria-label={t("Close the borrowed monster")} onClick={() => setSource(null)} className={cn(ui.iconAction, "pk-always pk-tap")}>
               <X className="size-3.5" />
             </button>
           </span>
@@ -73,7 +75,7 @@ export function BorrowParts({ draft, onChange }: { draft: MonsterDraft; onChange
                       className={cn(ui.btnSmall, addChip, "shrink-0", done && "border-emerald-500/40 text-emerald-200")}
                     >
                       {done ? <Check className="size-3" /> : <Plus className="size-3" />}
-                      {KIND_WORDS[part.kind]}
+                      {t(KIND_KEYS[part.kind])}
                     </button>
                     <span className="min-w-0 text-[11px] leading-snug text-stone-400">{part.label}</span>
                   </li>
@@ -81,7 +83,7 @@ export function BorrowParts({ draft, onChange }: { draft: MonsterDraft; onChange
               })}
             </ul>
           ) : (
-            <p className="text-[11px] text-stone-500">Nothing on this block travels on its own.</p>
+            <p className="text-[11px] text-stone-500">{t("Nothing on this block travels on its own.")}</p>
           )}
         </div>
       ) : null}

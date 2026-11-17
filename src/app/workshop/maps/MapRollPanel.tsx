@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { sceneOptions } from "@/lib/ambience/catalog";
 import { dieSpins, forgeGenerate, freshSeed } from "@/app/workshop/maps/forge";
 import { THEME_LABELS } from "@/app/workshop/maps/types";
+import { useT } from "@/lib/locale";
 
 // The Roll tool's options (N on the rail): the forge's kind of place and
 // theme, cut down to the column, rolling the whole field of the map that is
@@ -34,6 +35,7 @@ export function MapRollPanel({
   // Counts rolls so the die starts each one from upright.
   const [rolls, setRolls] = useState(0);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
+  const t = useT();
 
   async function roll() {
     const seed = freshSeed();
@@ -50,18 +52,18 @@ export function MapRollPanel({
   return (
     <div className="space-y-2">
       <div className="block space-y-1">
-        <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">Kind of place</span>
+        <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">{t("Kind of place")}</span>
         <Select<string>
           size="sm"
           value={scene}
           onChange={setScene}
-          label="Kind of place"
+          label={t("Kind of place")}
           className="w-full"
-          options={[{ value: "", label: "Not set: open ground" }, ...sceneOptions()]}
+          options={[{ value: "", label: t("Not set: open ground") }, ...sceneOptions()]}
         />
       </div>
       <div className="space-y-1">
-        <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">Or say outright</span>
+        <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">{t("Or say outright")}</span>
         <div className="grid grid-cols-2 gap-1">
           {MAP_THEMES.map((option) => (
             <Chip key={option} active={theme === option} onClick={() => setTheme(theme === option ? "" : option)}>
@@ -81,12 +83,11 @@ export function MapRollPanel({
           className={cn("size-4", rolling ? "map-die-spin" : rolls > 0 && "map-die-roll")}
           style={{ "--map-spins": dieSpins(width, height) } as CSSProperties}
         />
-        <span className="font-display text-[12px] font-semibold uppercase tracking-[0.14em]">{rolling ? "Rolling" : "Roll the field"}</span>
+        <span className="font-display text-[12px] font-semibold uppercase tracking-[0.14em]">{rolling ? t("Rolling", { context: "workshop.maps.rolling" }) : t("Roll the field")}</span>
       </button>
       <FinePrint>
-        {lastSeed !== null ? `Seed ${lastSeed}. ` : ""}
-        The whole field, {width} by {height}, from one seed. Everything placed on ground that turns to rock is dropped, and
-        undo puts the old field back.
+        {lastSeed !== null ? `${t("Seed {seed}.", { seed: lastSeed })} ` : ""}
+        {t("The whole field, {width} by {height}, from one seed. Everything placed on ground that turns to rock is dropped, and undo puts the old field back.", { width, height })}
       </FinePrint>
     </div>
   );

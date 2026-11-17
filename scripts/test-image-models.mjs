@@ -11,6 +11,9 @@ const curate = await import("../src/lib/image-models/curate.ts");
 const { buildModelWorkflow, honoursNegative, modelDimensions } = await import("../src/lib/image-models/workflow.ts");
 const { FOLDER_LOADER } = await import("../src/lib/image-models/types.ts");
 const { listWords, measuredLine, seconds } = await import("../src/lib/image-models/describe.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The wording is the dictionary's; the tests read it in English, the source.
+const t = (key, vars) => translate("en", key, vars);
 const rows = JSON.parse(fs.readFileSync(new URL("../src/lib/image-models/verified.json", import.meta.url), "utf8"));
 const { nodes: NODE_INPUTS } = JSON.parse(fs.readFileSync(new URL("./fixtures/comfy-node-inputs.json", import.meta.url), "utf8"));
 
@@ -191,14 +194,14 @@ await test("measurements are put into words", () => {
   assert.equal(seconds(18.6), "19 s");
   assert.equal(seconds(125), "2 min 5 s");
   assert.equal(seconds(120), "2 min");
-  assert.equal(listWords(["a", "b", "c"]), "a, b and c");
-  assert.equal(listWords(["a"]), "a");
+  assert.equal(listWords(t, ["a", "b", "c"]), "a, b and c");
+  assert.equal(listWords(t, ["a"]), "a");
   const verified = { verdict: "recommended", seconds: { square: 19, landscape: 15 }, peakGb: 23.6, device: "AMD Radeon 8060S Graphics" };
-  assert.equal(measuredLine({ verified, needGb: 23.6, fits: true }, "AMD Strix Halo"), "Recommended. 19 s a picture, peaks 23.6 GB on AMD Strix Halo.");
-  assert.equal(measuredLine({ verified: { ...verified, verdict: "fails" }, needGb: null, fits: null }, "AMD Strix Halo"), "Did not run on AMD Strix Halo.");
-  assert.equal(measuredLine({ verified: { ...verified, verdict: "poor" }, needGb: 20, fits: true }, "AMD Strix Halo"), "Runs on AMD Strix Halo, but its pictures were poor there.");
-  assert.equal(measuredLine({ verified: null, needGb: 40, fits: false }, null), "Peaked at 40 GB elsewhere, more than this GPU has.");
-  assert.equal(measuredLine({ verified: null, needGb: null, fits: null }, "AMD Strix Halo"), "Not measured on AMD Strix Halo yet.");
+  assert.equal(measuredLine(t, { verified, needGb: 23.6, fits: true }, "AMD Strix Halo"), "Recommended. 19 s a picture, peaks 23.6 GB on AMD Strix Halo.");
+  assert.equal(measuredLine(t, { verified: { ...verified, verdict: "fails" }, needGb: null, fits: null }, "AMD Strix Halo"), "Did not run on AMD Strix Halo.");
+  assert.equal(measuredLine(t, { verified: { ...verified, verdict: "poor" }, needGb: 20, fits: true }, "AMD Strix Halo"), "Runs on AMD Strix Halo, but its pictures were poor there.");
+  assert.equal(measuredLine(t, { verified: null, needGb: 40, fits: false }, null), "Peaked at 40 GB elsewhere, more than this GPU has.");
+  assert.equal(measuredLine(t, { verified: null, needGb: null, fits: null }, "AMD Strix Halo"), "Not measured on AMD Strix Halo yet.");
 });
 
 await test("verified.json rows name a catalog model and a known hardware profile, once each", () => {

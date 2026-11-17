@@ -2,6 +2,7 @@ import type { CampaignDefaultSettings } from "@/lib/campaign-defaults";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import { DEFAULT_DRAFT, type CampaignDraft } from "@/app/create-campaign/draft";
 import { presetTheme } from "@/app/create-campaign/portals";
+import type { Locale } from "@/lib/messages-logic";
 
 // The new-campaign draft and a person's saved defaults
 // (src/lib/campaign-defaults.ts), converted both ways. Pure, so
@@ -62,7 +63,7 @@ const DRAFT_KEYS = [
 
 const clone = <T>(value: T): T => (typeof value === "object" && value !== null ? structuredClone(value) : value);
 
-export function defaultsFromDraft(draft: CampaignDraft): CampaignDefaultSettings {
+export function defaultsFromDraft(draft: CampaignDraft, locale: Locale = "en"): CampaignDefaultSettings {
   const settings: Record<string, unknown> = {};
   for (const key of DRAFT_KEYS) {
     settings[key] = clone(draft[key]);
@@ -87,6 +88,7 @@ export function applyDefaults(
   draft: CampaignDraft,
   settings: CampaignDefaultSettings,
   selectedPack: WorldPackSummary | null,
+  locale: Locale = "en",
 ): AppliedDefaults {
   const next: Record<string, unknown> = { ...draft };
   const kept: string[] = [];
@@ -111,7 +113,7 @@ export function applyDefaults(
   if (next.aiStorySetup !== draft.aiStorySetup) {
     next.storySetupKept = false;
   }
-  return { draft: presetTheme(next as CampaignDraft), kept };
+  return { draft: presetTheme(next as CampaignDraft, locale), kept };
 }
 
 // The app's own starting table, for "use app defaults": every saved setting

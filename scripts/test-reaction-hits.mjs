@@ -168,7 +168,9 @@ await test("Two goblins hitting one hero in one AI reply leave two open hits, ea
   const heldOther = holdSentReactions(others, [poppy.id], "someone-else");
   assert.ok(heldOther.every((card) => card.disabled === `Sent. Waiting for the GM to resolve ${poppy.name}'s reaction.`));
   assert.deepEqual(holdSentReactions(others, [], "someone-else"), others, "nothing sent, nothing held");
-  assert.match(hand, /reactionStrips\(holdPendingCards\(reactions, waiting\), othersReactions\)/, "a sent card holds the strip's chips as it holds the fan's");
+  // The pending chips read through the dictionary, the i18n pass: the
+  // translator rides first into holdPendingCards.
+  assert.match(hand, /reactionStrips\(holdPendingCards\(t, reactions, waiting\), othersReactions\)/, "a sent card holds the strip's chips as it holds the fan's");
   assert.match(hand, /if \(picked\.cost === "reaction"\) onReactionSent\?\.\(picked\.actor\?\.id \?\? sheet\.id\)/);
   const session = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/SessionView.tsx", import.meta.url), "utf8");
   assert.match(session, /if \(kind === "do" && speakingAs\) markReactionSent\(speakingAs\.id\)/, "typed words hold their hero too");
@@ -1062,7 +1064,7 @@ await test("The screens wire it: Speaking as on its host flag, Edit in chat name
   assert.match(composer, /kind === "do" && speakingAs\?\.reactors\.length/, "in Do: a reaction is something done");
   assert.match(composer, /onComposeAs=\{speakingAs\?\.onChange\}/);
   const picker = read("app/campaigns/[campaignId]/ReactAsPicker.tsx");
-  assert.match(picker, /label="Speaking as"/, "named for screen readers");
+  assert.match(picker, /label=\{t\("Speaking as"\)\}/, "named for screen readers");
   assert.match(picker, /size="sm"/, "the kit's small select: 40 px on a touch screen");
   const hand = read("app/campaigns/[campaignId]/Hand.tsx");
   assert.match(hand, /hostOffers\(capabilities, "companionReactions"\)/);

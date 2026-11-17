@@ -9,6 +9,8 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { LIGHT_LIMITS, LIGHT_PRESETS, describeLight, normalizeLights, toggleLight } = await import(
   "../src/lib/battlemap/lights.ts"
 );
+const { translate } = await import("../src/lib/messages-logic.ts");
+const enT = (key, vars) => translate("en", key, vars);
 
 let passed = 0;
 function test(name, fn) {
@@ -33,7 +35,9 @@ test("every preset is inside the limits and dim is never smaller than bright", (
     assert.ok(preset.brightRadius >= LIGHT_LIMITS.minRadius);
     assert.ok(preset.dimRadius <= LIGHT_LIMITS.maxRadius);
     assert.ok(preset.dimRadius >= preset.brightRadius);
-    assert.ok(describeLight(preset).includes("ft"));
+    // The tooltip reads through the dictionary (scene.light.*), the i18n pass;
+    // the suite reads it in English, the source.
+    assert.ok(describeLight(enT, preset).includes("ft"));
   }
 });
 

@@ -14,6 +14,7 @@ import { engineRunsFeature, subclassFeatureCatalog, type CatalogFeature } from "
 import { addChip, rowIcon } from "@/app/workshop/kit";
 import type { Data } from "@/app/workshop/homebrew/draft";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 import {
   THIRD_CASTER_PROFILES,
   defaultThirdCasterProfile,
@@ -37,12 +38,13 @@ type Flat = { level: number; feature: FeatureRow };
 
 const capital = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-const ABILITY_NAMES = { int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
+const ABILITY_KEYS = { int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
 
 // A class with Spellcasting of its own: its subclass's spells join that.
 const casterClass = (classId: string) => !subclassMayCast(classId);
 
 function BorrowFeature({ onPick, taken, full }: { onPick: (feature: CatalogFeature) => void; taken: Set<string>; full: Set<number> }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const all = subclassFeatureCatalog();
   const results = useMemo(() => {
@@ -59,8 +61,8 @@ function BorrowFeature({ onPick, taken, full }: { onPick: (feature: CatalogFeatu
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Borrow a feature from any subclass: improved critical, vow of enmity..."
-          aria-label="Find a published subclass feature to borrow"
+          placeholder={t("Borrow a feature from any subclass: improved critical, vow of enmity...")}
+          aria-label={t("Find a published subclass feature to borrow")}
           className={cn(ui.input, "w-full pl-7 text-sm")}
         />
       </div>
@@ -78,8 +80,8 @@ function BorrowFeature({ onPick, taken, full }: { onPick: (feature: CatalogFeatu
                   onClick={() => onPick(entry)}
                   className={cn(ui.btnSmall, addChip, "shrink-0", done && "border-emerald-500/40 text-emerald-200")}
                 >
-                  {done ? <Check className="size-3" /> : levelFull ? null : <Plus className="size-3" />} Level {entry.level}
-                  {levelFull ? " full" : ""}
+                  {done ? <Check className="size-3" /> : levelFull ? null : <Plus className="size-3" />} {t("Level {level}", { level: entry.level })}
+                  {levelFull ? ` ${t("full")}` : ""}
                 </button>
                 <span className="min-w-0 text-[11px] leading-snug text-stone-400">
                   <span className="text-stone-200">{entry.name}</span> ({capital(entry.classId)}, {entry.subclass})
@@ -117,24 +119,25 @@ function SpellLists({
   classLabel: string;
   field?: keyof typeof SPELL_SECTIONS;
 }) {
+  const t = useT();
   const spells = (data[field] ?? {}) as Record<string, string[]>;
   const rows = Object.entries(spells).sort(([a], [b]) => Number(a) - Number(b));
   const put = (next: Record<string, string[]>) => set({ [field]: Object.keys(next).length ? next : undefined });
   const [level, setLevel] = useState(3);
   return (
     <div className="space-y-1.5" data-testid={`subclass-${field}`}>
-      <SectionHead title={SPELL_SECTIONS[field].title} glyph="rest-spell-slot" className="mb-1" />
+      <SectionHead title={t(SPELL_SECTIONS[field].title)} glyph="rest-spell-slot" className="mb-1" />
       {rows.map(([at, names]) => (
         <div key={at} className="live-in flex flex-wrap items-center gap-1.5 text-xs">
           <span className="w-28 shrink-0 text-stone-400">
-            Level {at} ({names.length} of {SUBCLASS_SPELLS_PER_LEVEL})
+            {t("Level {level} ({count} of {total})", { level: Number(at), count: names.length, total: SUBCLASS_SPELLS_PER_LEVEL })}
           </span>
           {names.map((name) => (
             <span key={name} className="inline-flex items-center gap-1 rounded-md border border-stone-700 px-1.5 py-0.5 text-stone-200">
               {name}
               <button
                 type="button"
-                aria-label={`Remove ${name}`}
+                aria-label={t("Remove {name}", { name })}
                 onClick={() => {
                   const left = names.filter((entry) => entry !== name);
                   const next = { ...spells };
@@ -152,13 +155,13 @@ function SpellLists({
       ))}
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1 text-[11px] text-stone-400">
-          At class level
-          <NumberStepper size="sm" label="Class level the spells arrive at" min={1} max={20} value={level} onChange={setLevel} />
+          {t("At class level")}
+          <NumberStepper size="sm" label={t("Class level the spells arrive at")} min={1} max={20} value={level} onChange={setLevel} />
         </span>
         {(spells[String(level)] ?? []).length < SUBCLASS_SPELLS_PER_LEVEL ? (
           <SpellSearch
-            label={SPELL_SECTIONS[field].find}
-            placeholder="Add a spell..."
+            label={t(SPELL_SECTIONS[field].find)}
+            placeholder={t("Add a spell...")}
             className="min-w-48 flex-1"
             exclude={new Set((spells[String(level)] ?? []).map(textKey))}
             onPick={(entry) => {
@@ -169,20 +172,20 @@ function SpellLists({
           />
         ) : (
           <span role="status" className="live-in text-[11px] text-stone-400">
-            Level {level} holds {SUBCLASS_SPELLS_PER_LEVEL}, the most a level keeps.
+            {t("Level {level} holds {total}, the most a level keeps.", { level, total: SUBCLASS_SPELLS_PER_LEVEL })}
           </span>
         )}
       </div>
       {castsNothing && rows.length ? (
         <p className="reveal text-[11px] text-amber-300/90">
-          A {classLabel} casts nothing of its own, so these spells have no slots to be cast with. Choose a spellcasting progression above, or they are words for the GM.
+          {t("A {class} casts nothing of its own, so these spells have no slots to be cast with. Choose a spellcasting progression above, or they are words for the GM.", { class: classLabel })}
         </p>
       ) : field === "expanded" ? (
         <p className="text-[11px] text-stone-500">
-          From that level on the character may learn or prepare these as if they were on the {classLabel}&apos;s list, as a warlock patron&apos;s spells are. They count like any other spell.
+          {t("From that level on the character may learn or prepare these as if they were on the {class}'s list, as a warlock patron's spells are. They count like any other spell.", { class: classLabel })}
         </p>
       ) : (
-        <p className="text-[11px] text-stone-500">Prepared for free from that level on, and never counted against the class&apos;s own prepared spells.</p>
+        <p className="text-[11px] text-stone-500">{t("Prepared for free from that level on, and never counted against the class's own prepared spells.")}</p>
       )}
     </div>
   );
@@ -198,6 +201,7 @@ export function ArchetypeFields({
   // The author's own classes (homebrew kind "class"), which a subclass can sit under.
   workshopClasses?: Array<{ id: string; name: string; subclassLevel?: number }>;
 }) {
+  const t = useT();
   const classId = String(data.classSlug ?? "fighter");
   const levels = (data.levels ?? {}) as Record<string, FeatureRow[]>;
   const flat: Flat[] = Object.entries(levels)
@@ -237,22 +241,26 @@ export function ArchetypeFields({
   return (
     <div className="space-y-3">
       <SelectField
-        label="Class"
+        label={t("Class")}
         value={classId}
         options={[...CLASS_IDS.map((value) => ({ value: value as string, label: capital(value) })), ...workshopClasses.map((klass) => ({ value: klass.id, label: klass.name }))]}
         onChange={(classSlug) => set({ classSlug })}
         className="w-56"
-        hint={`The builder offers it under this class from level ${ownClass?.subclassLevel ?? subclassLevelFor(classId) ?? 3}.`}
+        hint={t("The builder offers it under this class from level {level}.", { level: ownClass?.subclassLevel ?? subclassLevelFor(classId) ?? 3 })}
       />
       {mayCast ? (
         <SelectField
-          label="Spellcasting progression"
+          label={t("Spellcasting progression")}
           value={casting}
           options={[
-            { value: "none", label: "No subclass spellcasting" },
+            { value: "none", label: t("No subclass spellcasting") },
             ...THIRD_CASTER_PROFILES.map((profile) => ({
               value: profile.id,
-              label: `${profile.label} rules: ${capital(profile.list)} spells, ${ABILITY_NAMES[profile.ability]}`,
+              label: t("{label} rules: {list} spells, {ability}", {
+                label: profile.label,
+                list: capital(profile.list),
+                ability: t(ABILITY_KEYS[profile.ability]),
+              }),
             })),
           ]}
           onChange={(value) =>
@@ -260,19 +268,24 @@ export function ArchetypeFields({
           }
           hint={
             rules
-              ? `${!stored && spellcastingRow ? `On because the subclass has ${spellcastingRow.feature.n.trim()}: ` : ""}${ABILITY_NAMES[rules.ability]}, ${rules.list} spells, a third of a full caster's slots, and spells mostly from ${rules.schools[0]} and ${rules.schools[1]}.`
-              : `A ${capital(classId)} casts nothing of its own; its subclass can cast as a third caster, from the wizard, cleric or druid list.`
+              ? `${!stored && spellcastingRow ? t("On because the subclass has {feature}: ", { feature: spellcastingRow.feature.n.trim() }) : ""}${t("{ability}, {list} spells, a third of a full caster's slots, and spells mostly from {schoolA} and {schoolB}.", {
+                  ability: t(ABILITY_KEYS[rules.ability]),
+                  list: rules.list,
+                  schoolA: rules.schools[0],
+                  schoolB: rules.schools[1],
+                })}`
+              : t("A {class} casts nothing of its own; its subclass can cast as a third caster, from the wizard, cleric or druid list.", { class: capital(classId) })
           }
         />
       ) : null}
       <div className="space-y-1.5 text-sm">
-        <SectionHead title="Features by level" glyph="rest-level-up" className="mb-1" />
+        <SectionHead title={t("Features by level")} glyph="rest-level-up" className="mb-1" />
         {flat.map((row, index) => {
           const tag = row.feature.n.trim() ? engineRunsFeature(classId, row.feature.n.trim()) : null;
           return (
             <div key={index} className="live-in grid gap-1.5 rounded-lg border border-stone-800 p-2 sm:grid-cols-[auto_1fr_auto]">
               <NumberStepper
-                label="Level"
+                label={t("Level")}
                 value={row.level}
                 min={1}
                 max={20}
@@ -282,21 +295,21 @@ export function ArchetypeFields({
                 <span className="flex flex-wrap items-center gap-2">
                   <input
                     value={row.feature.n}
-                    aria-label="Feature name"
+                    aria-label={t("Feature name")}
                     placeholder="Reed Walker"
                     maxLength={80}
                     onChange={(event) => write(flat.map((entry, at) => (at === index ? { ...entry, feature: { ...entry.feature, n: event.target.value } } : entry)))}
                     className={cn(ui.input, "w-full text-sm sm:w-56")}
                   />
                   {tag ? (
-                    <span className="reveal-pop rounded-full border border-emerald-500/40 px-2 py-0.5 text-[10px] text-emerald-200" title="A feature of this name is run by the server, not just read by the GM.">
-                      The engine runs it {tag}
+                    <span className="reveal-pop rounded-full border border-emerald-500/40 px-2 py-0.5 text-[10px] text-emerald-200" title={t("A feature of this name is run by the server, not just read by the GM.")}>
+                      {t("The engine runs it {tag}", { tag })}
                     </span>
                   ) : null}
                 </span>
                 <textarea
                   value={row.feature.d}
-                  aria-label="What it does"
+                  aria-label={t("What it does")}
                   placeholder="Marsh terrain costs no extra movement."
                   maxLength={1500}
                   rows={2}
@@ -304,7 +317,7 @@ export function ArchetypeFields({
                   className={cn(ui.input, "w-full resize-y text-sm")}
                 />
               </div>
-              <button type="button" aria-label="Remove feature" onClick={() => write(flat.filter((_, at) => at !== index))} className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}>
+              <button type="button" aria-label={t("Remove feature")} onClick={() => write(flat.filter((_, at) => at !== index))} className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}>
                 <X className="size-3.5" />
               </button>
             </div>
@@ -315,19 +328,19 @@ export function ArchetypeFields({
           onClick={() => write([...flat, { level: flat.length ? Math.min(20, flat[flat.length - 1].level + 3) : 3, feature: { n: "", d: "" } }])}
           className={cn(ui.btnSmall, addChip)}
         >
-          <Plus className="size-3" /> Add a feature
+          <Plus className="size-3" /> {t("Add a feature")}
         </button>
         {[...counts]
           .filter(([, count]) => count > FEATURE_LIMITS.perLevel)
           .sort(([a], [b]) => a - b)
           .map(([level, count]) => (
             <p key={level} role="alert" className="live-in text-[11px] text-red-300">
-              Level {level} has {count} features; a level keeps {FEATURE_LIMITS.perLevel}.
+              {t("Level {level} has {count} features; a level keeps {max}.", { level, count, max: FEATURE_LIMITS.perLevel })}
             </p>
           ))}
         <BorrowFeature taken={taken} full={full} onPick={(entry) => write([...flat, { level: entry.level, feature: { n: entry.name, d: entry.text } }])} />
         <p className="text-[11px] text-stone-500">
-          Granted by name when a character takes this subclass. A borrowed feature keeps its name so the engine runs it; renaming it makes it words for the GM.
+          {t("Granted by name when a character takes this subclass. A borrowed feature keeps its name so the engine runs it; renaming it makes it words for the GM.")}
         </p>
       </div>
       <SpellLists data={data} set={set} castsNothing={casting === "none" && !casterClass(classId)} classLabel={classLabel} />

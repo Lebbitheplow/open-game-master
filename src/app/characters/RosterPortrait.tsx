@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { CharacterPortrait, ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { portraitPhase, portraitReadyLine, type PortraitSubject } from "@/app/characters/portrait-arrival";
 import { variantUrl } from "@/lib/image-variant-url";
 
@@ -76,6 +77,7 @@ export function RosterPortraitStatus({
   retryError: string;
   onRetry: () => void;
 }) {
+  const t = useT();
   const phase = portraitPhase(character);
   return (
     <div className={cn(phase === "painting" || phase === "failed" ? "mt-2 flex flex-wrap items-center gap-2" : "contents")}>
@@ -83,12 +85,12 @@ export function RosterPortraitStatus({
         {phase === "painting" ? (
           <>
             <span className="sr-only">{character.name}: </span>
-            Painting portrait…
+            {t("Painting portrait…", { context: "characters.portrait.painting" })}
           </>
         ) : phase === "failed" ? (
           <>
             <span className="sr-only">{character.name}: </span>
-            The portrait could not be painted.
+            {t("The portrait could not be painted.")}
           </>
         ) : null}
       </p>
@@ -97,11 +99,11 @@ export function RosterPortraitStatus({
           type="button"
           onClick={onRetry}
           disabled={retrying}
-          aria-label={`Paint ${character.name}'s portrait again`}
+          aria-label={t("Paint {name}'s portrait again", { name: character.name })}
           className={cn(ui.btnSecondary, "min-h-10 px-3 py-1 text-xs")}
         >
           {retrying ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
-          Try again
+          {t("Try again", { context: "characters.portrait.retry" })}
         </button>
       ) : null}
       {phase === "failed" && retryError ? (
@@ -116,11 +118,12 @@ export function RosterPortraitStatus({
 // The page's toast. The region stays mounted and polite, so the line is
 // heard once when it appears; it holds no control and never takes focus.
 export function PortraitToast({ toast }: { toast: { id: string; name: string } | null }) {
+  const t = useT();
   return (
     <div role="status" className="portrait-toast-region">
       {toast ? (
         <p key={toast.id} className="portrait-toast">
-          {portraitReadyLine(toast.name)}
+          {portraitReadyLine(t, toast.name)}
         </p>
       ) : null}
     </div>

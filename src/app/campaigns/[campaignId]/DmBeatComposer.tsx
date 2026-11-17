@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/Switch";
 import { DeskCard } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import {
   BEAT_KINDS,
-  BEAT_KIND_LABELS,
+  beatKindLabel,
   BEAT_MAX_CHARS,
   type BeatKind,
   type BeatSource,
@@ -18,6 +18,7 @@ import {
 import type { DmBeat } from "@/lib/db/dm-beats";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useT } from "@/lib/locale";
 
 // Story capture, in the three ways a DM will actually do it: type a sentence,
 // speak it, or press the button and edit what comes back.
@@ -38,6 +39,7 @@ export function DmBeatComposer({
   // on a scene transition and not on "they took the left fork".
   canExpand: boolean;
 }) {
+  const t = useT();
   const [body, setBody] = useState("");
   const [kind, setKind] = useState<BeatKind>("scene");
   const [source, setSource] = useState<BeatSource>("typed");
@@ -123,7 +125,7 @@ export function DmBeatComposer({
         <Select
           value={kind}
           onChange={setKind}
-          options={optionsFrom<BeatKind>(BEAT_KINDS.map((option) => [option, BEAT_KIND_LABELS[option]]))}
+          options={optionsFrom<BeatKind>(BEAT_KINDS.map((option) => [option, beatKindLabel(t, option)]))}
           label="Kind of beat"
           size="sm"
           className="w-auto min-w-[10rem] max-w-full"
@@ -173,7 +175,7 @@ export function DmBeatComposer({
         <ul className="stagger mt-3 space-y-1 border-t border-amber-500/15 pt-2">
           {beats.slice(0, 3).map((beat) => (
             <li key={beat.id} className="text-[11px] leading-snug text-stone-400">
-              <span className="font-display tracking-wide text-amber-200/80">{BEAT_KIND_LABELS[beat.kind] ?? "Beat"}:</span>{" "}
+              <span className="font-display tracking-wide text-amber-200/80">{beatKindLabel(t, beat.kind)}:</span>{" "}
               {beat.body.length > 140 ? `${beat.body.slice(0, 140)}...` : beat.body}
             </li>
           ))}

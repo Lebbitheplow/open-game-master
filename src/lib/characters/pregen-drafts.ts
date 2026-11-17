@@ -28,6 +28,11 @@ import type { Genre } from "@/lib/schemas/game-settings";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { draftNotes, roleWords, type DraftOptionNames, type HeroProposal } from "@/lib/dm/pregen-draft-logic";
 
+import { translate } from "@/lib/messages-logic";
+
+// A pregen is built on the server, in the source dictionary's own words.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+
 // The AI DM's proposed heroes built into sheets by the quick-build engine
 // (src/app/characters/builder/quickBuild.ts): the same rounds "Build one for
 // me" runs in the wizard, each reading what useBuilderDerived makes of the
@@ -227,7 +232,7 @@ function fill(
   for (let round = 0; round < FILL_ROUNDS + 1; round += 1) {
     const chosen = pick();
     const derived = deriveBuilder({ state: asState(fields), ...chosen });
-    const step = fillRound({ fields, derived, ...chosen, offered, answers, rng });
+    const step = fillRound({ t: enT, fields, derived, ...chosen, offered, answers, rng });
     if (!step.filled.length) {
       break;
     }
@@ -237,7 +242,7 @@ function fill(
   const state = asState(fields);
   const derived = deriveBuilder({ state, ...chosen });
   const input = { state, derived, ...chosen };
-  const blocker = validateBuilder(input);
+  const blocker = validateBuilder(enT, input);
   if (blocker) {
     return { refused: blocker.message };
   }

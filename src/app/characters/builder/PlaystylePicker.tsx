@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 import { cn } from "@/lib/cn";
+import { textKey } from "@/lib/language/text-logic";
 import { EASY_CLASSES, PLAYSTYLES, playstyleSuggestions, type PlaystyleId } from "./playstyles";
 
 // A new player's way in: pick your job in a fight, see the classes that
@@ -18,8 +21,8 @@ export function PlaystylePicker({
   onChoose,
   style: heldStyle,
   onStyle,
-  intro = "Not sure which class? Start from your job in a fight.",
-  question = "In a fight, what's your job?",
+  intro,
+  question,
   onHelpMeBuild,
 }: {
   offered: Array<{ id: string; name: string; roles: string[]; playsLike: string }>;
@@ -32,14 +35,23 @@ export function PlaystylePicker({
   question?: string;
   onHelpMeBuild?: (style: PlaystyleId | null) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
+  // The job words (builder.play.*) say the five answers in the reader's
+  // language; the ids stay the quiz's.
+  const words = (id: PlaystyleId) => ({
+    label: ({ "tank": t("Hold the line, take the hits"), "dps": t("Deal the damage"), "healer": t("Keep everyone alive"), "support": t("Help the team, control the battlefield"), "utility": t("Scout, sneak, solve problems") } as Record<string, string>)[id] ?? String(id),
+    tag: ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support / Control"), "utility": t("Utility") } as Record<string, string>)[id] ?? String(id),
+    blurb: ({ "tank": t("Stand in front and keep the others safe."), "dps": t("End fights fast, with a blade, a bow or a spell."), "healer": t("Heal the hurt and bring the fallen back up."), "support": t("Lift your friends, hinder your foes, bend the fight with magic."), "utility": t("Scout ahead, pick locks, talk your way through.") } as Record<string, string>)[id] ?? String(id),
+  });
   const [ownStyle, setOwnStyle] = useState<PlaystyleId | null>(null);
   const style = onStyle ? (heldStyle ?? null) : ownStyle;
   const setStyle = onStyle ?? setOwnStyle;
   const suggestions = style ? playstyleSuggestions(style, offered) : [];
   return (
     <div className="space-y-2.5" data-playstyle>
-      <p className="text-xs text-stone-400">{intro}</p>
-      <div data-pill-group="" className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={question}>
+      <p className="text-xs text-stone-400">{intro ?? t("Not sure which class? Start from your job in a fight.")}</p>
+      <div data-pill-group="" className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={question ?? t("In a fight, what's your job?")}>
         {PLAYSTYLES.map((entry) => (
           <button
             key={entry.id}
@@ -48,32 +60,30 @@ export function PlaystylePicker({
             aria-checked={style === entry.id}
             data-on={style === entry.id ? "" : undefined}
             onClick={() => setStyle(style === entry.id ? null : entry.id)}
-            title={entry.blurb}
+            title={words(entry.id).blurb}
             className="session-subtab motion-press"
           >
-            {entry.label} <strong className="font-semibold">({entry.tag})</strong>
+            {words(entry.id).label} <strong className="font-semibold">({words(entry.id).tag})</strong>
           </button>
         ))}
       </div>
       {onHelpMeBuild ? (
         <div className="flex flex-wrap items-center gap-2 text-xs text-stone-400" data-quick-door="">
           <span className="min-w-0 flex-1">
-            {style
-              ? "Or answer three more questions and get a whole character, ready to change before you save."
-              : "Or answer four questions and get a whole character, ready to change before you save."}
+            {style ? t("Or answer three more questions and get a whole character, ready to change before you save.") : t("Or answer four questions and get a whole character, ready to change before you save.")}
           </span>
           <button
             type="button"
             onClick={() => onHelpMeBuild(style)}
             className="motion-press rounded-md border border-sky-500/50 px-2 py-1 text-sky-100 transition-colors hover:bg-sky-500/10"
           >
-            Help me build
+            {t("Help me build")}
           </button>
         </div>
       ) : null}
       {style ? (
         <div key={style} className="reveal-height space-y-1.5">
-          <p className="text-xs text-stone-500">{PLAYSTYLES.find((entry) => entry.id === style)?.blurb}</p>
+          <p className="text-xs text-stone-500">{words(style).blurb}</p>
           {suggestions.length ? (
             <ul className="stagger-up grid gap-2 sm:grid-cols-3">
               {suggestions.map((id) => {
@@ -93,21 +103,21 @@ export function PlaystylePicker({
                     >
                       <GameIcon icon={{ kind: "family", key: `class-${id}` }} size="size-8" className="shrink-0" />
                       <span className="min-w-0 flex-1">
-                        <span className="block font-display text-sm tracking-wide text-amber-50">{entry.name}</span>
-                        <span className="block text-[0.875rem] text-stone-500">{entry.roles.join(" / ")}</span>
+                        <span className="block font-display text-sm tracking-wide text-amber-50">{contentName("classes", id, locale)}</span>
+                        <span className="block text-[0.875rem] text-stone-500">{entry.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? String(textKey(role))).join(" / ")}</span>
+                        {EASY_CLASSES.has(id) ? (
+                          <span className="mt-1 inline-block max-w-full rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[11px] leading-snug text-emerald-200">
+                            {t("Easy to learn")}
+                          </span>
+                        ) : null}
                       </span>
-                      {EASY_CLASSES.has(id) ? (
-                        <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[0.875rem] text-emerald-200">
-                          Easy to learn
-                        </span>
-                      ) : null}
                     </button>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="text-xs text-stone-500">No class here fits that exactly; every class is in the grid below.</p>
+            <p className="text-xs text-stone-500">{t("No class here fits that exactly; every class is in the grid below.")}</p>
           )}
         </div>
       ) : null}

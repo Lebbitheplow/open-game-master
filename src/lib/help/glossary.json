@@ -1,270 +1,403 @@
 {
   "_license": "Original content for Open Game Master. Plain-language explanations of core 5e concepts for players who have never played, written from scratch. Mechanics only; no publisher's descriptive text is reproduced. See docs/LICENSES.md.",
-  "_shape": "terms[] = { id, term, short, long? }. `short` is one sentence for a tooltip-sized read; `long` adds the detail a first-timer needs. Look up with glossaryTerm(id) from src/lib/help.",
+  "_shape": "terms[] = { id, term, short, shortFr?, long?, longFr?, fr? }. `short` is one sentence for a tooltip-sized read; `long` adds the detail a first-timer needs. The Fr fields carry the French of both. Look up with glossaryTerm(id) from src/lib/help.",
   "terms": [
     {
       "id": "ability_score",
       "term": "Ability score",
       "short": "One of six numbers describing what your character is naturally good at.",
-      "long": "The six are Strength, Dexterity, Constitution, Intelligence, Wisdom and Charisma. Most scores land between 8 and 18 at first level. What actually gets added to your rolls is the modifier derived from the score: 10 or 11 gives +0, every 2 points above that adds +1, every 2 below subtracts 1."
+      "shortFr": "L'un des six nombres décrivant ce pour quoi ton personnage est doué naturellement.",
+      "long": "The six are Strength, Dexterity, Constitution, Intelligence, Wisdom and Charisma. Most scores land between 8 and 18 at first level. What actually gets added to your rolls is the modifier derived from the score: 10 or 11 gives +0, every 2 points above that adds +1, every 2 below subtracts 1.",
+      "longFr": "Les six sont Force, Dextérité, Constitution, Intelligence, Sagesse et Charisme. Au niveau 1, la plupart se situent entre 8 et 18. Ce qui s'ajoute vraiment à tes jets, c'est le modificateur dérivé de la valeur : 10 ou 11 donne +0, chaque 2 points au-dessus ajoute +1, chaque 2 en dessous retranche 1.",
+      "fr": "Valeur de caractéristique"
     },
     {
       "id": "modifier",
       "term": "Modifier",
       "short": "The bonus or penalty an ability score adds to your rolls.",
-      "long": "Work it out by subtracting 10 from the score and halving the result, rounding down. A score of 16 gives +3, a score of 8 gives -1. You will see modifiers written with a sign, like +3, everywhere on your sheet."
+      "shortFr": "Le bonus ou le malus qu'une valeur de caractéristique ajoute à tes jets.",
+      "long": "Work it out by subtracting 10 from the score and halving the result, rounding down. A score of 16 gives +3, a score of 8 gives -1. You will see modifiers written with a sign, like +3, everywhere on your sheet.",
+      "longFr": "Calcule-le en retranchant 10 de la valeur et en divisant le résultat par deux, arrondi à la baisse. Une valeur de 16 donne +3, une valeur de 8 donne -1. Tu verras les modificateurs écrits avec un signe, comme +3, partout sur ta fiche.",
+      "fr": "Modificateur"
     },
     {
       "id": "str",
       "term": "Strength",
       "short": "Raw physical power: hitting things with heavy weapons, shoving, climbing, lifting.",
-      "long": "Most melee weapons use Strength for their attack and damage rolls. It also covers the Athletics skill, and the saving throw against being pushed or restrained."
+      "shortFr": "La puissance physique brute : frapper avec des armes lourdes, bousculer, grimper, soulever.",
+      "long": "Most melee weapons use Strength for their attack and damage rolls. It also covers the Athletics skill, and the saving throw against being pushed or restrained.",
+      "longFr": "La plupart des armes de corps à corps utilisent la Force pour leurs jets d'attaque et de dégâts. Elle couvre aussi la compétence Athlétisme, et le jet de sauvegarde contre être bousculé ou entravé.",
+      "fr": "Force"
     },
     {
       "id": "dex",
       "term": "Dexterity",
       "short": "Agility and precision: light weapons, bows, armor class, dodging.",
-      "long": "Dexterity adds to your armor class in light and medium armor, decides your initiative, and powers finesse and ranged weapons. Its saving throw is the one you make to dodge fireballs and traps."
+      "shortFr": "L'agilité et la précision : armes légères, arcs, classe d'armure, esquive.",
+      "long": "Dexterity adds to your armor class in light and medium armor, decides your initiative, and powers finesse and ranged weapons. Its saving throw is the one you make to dodge fireballs and traps.",
+      "longFr": "La Dextérité s'ajoute à ta classe d'armure en armure légère et intermédiaire, décide ton initiative et alimente les armes de finesse et à distance. Son jet de sauvegarde est celui que tu tente pour esquiver boules de feu et pièges.",
+      "fr": "Dextérité"
     },
     {
       "id": "con",
       "term": "Constitution",
       "short": "Toughness and stamina. It raises your hit points at every level.",
-      "long": "You never roll a Constitution check, but its saving throw comes up constantly: resisting poison, surviving exhaustion, and holding concentration on a spell when you take damage."
+      "shortFr": "La robustesse et l'endurance. Elle augmente tes points de vie à chaque niveau.",
+      "long": "You never roll a Constitution check, but its saving throw comes up constantly: resisting poison, surviving exhaustion, and holding concentration on a spell when you take damage.",
+      "longFr": "Tu ne lance jamais un test de Constitution, mais son jet de sauvegarde revient sans arrêt : résister au poison, survivre à l'épuisement, et garder la concentration sur un sort quand tu prends des dégâts.",
+      "fr": "Constitution"
     },
     {
       "id": "int",
       "term": "Intelligence",
       "short": "Reasoning and recall. The casting ability for wizards.",
-      "long": "It covers Arcana, History, Investigation, Nature and Religion. Its saving throw resists illusions and effects that attack the mind directly."
+      "shortFr": "Le raisonnement et la mémoire. La caractéristique d'incantation des mages.",
+      "long": "It covers Arcana, History, Investigation, Nature and Religion. Its saving throw resists illusions and effects that attack the mind directly.",
+      "longFr": "Elle couvre Arcanes, Histoire, Investigation, Nature et Religion. Son jet de sauvegarde résiste aux illusions et aux effets qui s'attaquent directement à l'esprit.",
+      "fr": "Intelligence"
     },
     {
       "id": "wis",
       "term": "Wisdom",
       "short": "Perceptiveness and judgement. The casting ability for clerics, druids and rangers.",
-      "long": "It covers Perception, Insight, Medicine, Survival and Animal Handling, and sets your passive Perception. Its saving throw resists charms, fear and mind control, which makes it one of the most valuable saves in the game."
+      "shortFr": "Le sens de l'observation et le jugement. La caractéristique d'incantation des clercs, druides et rôdeurs.",
+      "long": "It covers Perception, Insight, Medicine, Survival and Animal Handling, and sets your passive Perception. Its saving throw resists charms, fear and mind control, which makes it one of the most valuable saves in the game.",
+      "longFr": "Elle couvre Perception, Intuition, Médecine, Survie et Dressage, et fixe ta Perception passive. Son jet de sauvegarde résiste aux charmes, à la peur et au contrôle mental, ce qui en fait l'un des jets de sauvegarde les plus précieux du jeu.",
+      "fr": "Sagesse"
     },
     {
       "id": "cha",
       "term": "Charisma",
       "short": "Force of personality. The casting ability for bards, sorcerers, warlocks and paladins.",
-      "long": "It covers Persuasion, Deception, Intimidation and Performance. Its saving throw resists banishment and possession."
+      "shortFr": "La force de personnalité. La caractéristique d'incantation des bardes, sorciers, occultistes et paladins.",
+      "long": "It covers Persuasion, Deception, Intimidation and Performance. Its saving throw resists banishment and possession.",
+      "longFr": "Il couvre Persuasion, Tromperie, Intimidation et Représentation. Son jet de sauvegarde résiste au bannissement et à la possession.",
+      "fr": "Charisme"
     },
     {
       "id": "armor_class",
       "term": "Armor Class (AC)",
       "short": "How hard you are to hit. An attacker must roll this number or higher to land a hit.",
-      "long": "Your AC comes from your armor, your shield, your Dexterity, and any magic or class feature that adds to it. The app works it out for you from what you are wearing. Higher is better, and most characters sit between 12 and 20."
+      "shortFr": "À quel point tu es difficile à toucher. Un attaquant doit faire ce nombre ou plus pour t'atteindre.",
+      "long": "Your AC comes from your armor, your shield, your Dexterity, and any magic or class feature that adds to it. The app works it out for you from what you are wearing. Higher is better, and most characters sit between 12 and 20.",
+      "longFr": "Ta CA vient de ton armure, de ton bouclier, de ta Dextérité et de toute magie ou trait de classe qui s'y ajoute. L'appli la calcule pour toi d'après ce que tu portes. Plus elle est haute, mieux c'est, et la plupart des personnages se tiennent entre 12 et 20.",
+      "fr": "Classe d'armure (CA)"
     },
     {
       "id": "hit_points",
       "term": "Hit points (HP)",
       "short": "How much damage you can take before you drop.",
-      "long": "At 0 hit points you fall unconscious and start making death saving throws. Healing brings you back. Your maximum grows every level, based on your class's hit die and your Constitution modifier."
+      "shortFr": "Combien de dégâts tu peux encaisser avant de t'effondrer.",
+      "long": "At 0 hit points you fall unconscious and start making death saving throws. Healing brings you back. Your maximum grows every level, based on your class's hit die and your Constitution modifier.",
+      "longFr": "À 0 point de vie, tu tombes inconscient et commences à faire des jets de sauvegarde contre la mort. Les soins te remettent debout. Ton maximum grandit à chaque niveau, selon le dé de vie de ta classe et ton modificateur de Constitution.",
+      "fr": "Points de vie (PV)"
     },
     {
       "id": "temp_hp",
       "term": "Temporary hit points",
       "short": "A buffer that soaks damage before your real hit points do.",
-      "long": "They are not healing and do not stack: a new source replaces the old one rather than adding to it. They vanish on a long rest, and any left over when the effect ends are simply lost."
+      "shortFr": "Un tampon qui absorbe les dégâts avant tes vrais points de vie.",
+      "long": "They are not healing and do not stack: a new source replaces the old one rather than adding to it. They vanish on a long rest, and any left over when the effect ends are simply lost.",
+      "longFr": "Ce ne sont pas des soins et ça ne se cumule pas : une nouvelle source remplace l'ancienne au lieu de s'y ajouter. Ils disparaissent lors d'un repos long, et tout reste quand l'effet se termine est simplement perdu.",
+      "fr": "Points de vie temporaires"
     },
     {
       "id": "hit_dice",
       "term": "Hit Dice",
       "short": "A pool of dice you spend during a short rest to heal yourself.",
-      "long": "You have one per character level, of the size your class uses. Spend one on a short rest to roll it and regain that many hit points plus your Constitution modifier. You get half of them back on a long rest, so they are a resource to ration across a day of adventuring."
+      "shortFr": "Une réserve de dés que tu dépenses pendant un repos court pour te soigner.",
+      "long": "You have one per character level, of the size your class uses. Spend one on a short rest to roll it and regain that many hit points plus your Constitution modifier. You get half of them back on a long rest, so they are a resource to ration across a day of adventuring.",
+      "longFr": "Tu en as un par niveau de personnage, de la taille que ta classe utilise. Dépense-en un pendant un repos court pour le lancer et regagner autant de points de vie, plus ton modificateur de Constitution. Tu en récupères la moitié lors d'un repos long : c'est une ressource à doser sur une journée d'aventure.",
+      "fr": "Dés de vie"
     },
     {
       "id": "ability_check",
       "term": "Ability check",
       "short": "A d20 roll plus a modifier, made when the outcome of something is uncertain.",
-      "long": "The GM sets a difficulty number and you try to meet or beat it. Climbing a wall is a Strength check, spotting an ambush is a Wisdom check. If you are proficient in a relevant skill you add your proficiency bonus too."
+      "shortFr": "Un jet de d20 plus un modificateur, tenté quand l'issue de quelque chose est incertaine.",
+      "long": "The GM sets a difficulty number and you try to meet or beat it. Climbing a wall is a Strength check, spotting an ambush is a Wisdom check. If you are proficient in a relevant skill you add your proficiency bonus too.",
+      "longFr": "Le MJ fixe un nombre de difficulté et tu essaies de l'atteindre ou de le dépasser. Grimper un mur est un test de Force, repérer une embuscade un test de Sagesse. Si tu maîtrises une compétence pertinente, tu ajoutes aussi ton bonus de maîtrise.",
+      "fr": "Test de caractéristique"
     },
     {
       "id": "saving_throw",
       "term": "Saving throw",
       "short": "A d20 roll to resist something happening to you, rather than to make something happen.",
-      "long": "A dragon breathes fire and you make a Dexterity save to take half damage. A vampire tries to charm you and you make a Wisdom save to shrug it off. Each class is proficient in two of the six saves, adding its proficiency bonus to those."
+      "shortFr": "Un jet de d20 pour résister à quelque chose qui t'arrive, plutôt que pour faire arriver quelque chose.",
+      "long": "A dragon breathes fire and you make a Dexterity save to take half damage. A vampire tries to charm you and you make a Wisdom save to shrug it off. Each class is proficient in two of the six saves, adding its proficiency bonus to those.",
+      "longFr": "Un dragon crache du feu et tu fais un jet de sauvegarde de Dextérité pour n'en prendre que la moitié. Un vampire tente de te charmer et tu fais un jet de sauvegarde de Sagesse pour t'en affranchir. Chaque classe maîtrise deux des six jets de sauvegarde, et ajoute son bonus de maîtrise à ceux-là.",
+      "fr": "Jet de sauvegarde"
     },
     {
       "id": "proficiency_bonus",
       "term": "Proficiency bonus",
       "short": "A bonus you add to anything you are trained in. It grows from +2 to +6 as you level.",
-      "long": "It applies to attacks with weapons you are proficient with, skills you are proficient in, your two saving throw proficiencies, and your spell save DC. It is +2 at levels 1 to 4 and rises by 1 every four levels after that."
+      "shortFr": "Un bonus que tu ajoutes à tout ce en quoi tu es entraîné. Il passe de +2 à +6 en montant de niveau.",
+      "long": "It applies to attacks with weapons you are proficient with, skills you are proficient in, your two saving throw proficiencies, and your spell save DC. It is +2 at levels 1 to 4 and rises by 1 every four levels after that.",
+      "longFr": "Il s'applique aux attaques avec les armes que tu maîtrises, aux compétences que tu maîtrises, à tes deux maîtrises de jets de sauvegarde et à ton DD de sauvegarde des sorts. Il vaut +2 aux niveaux 1 à 4 et monte de 1 tous les quatre niveaux ensuite.",
+      "fr": "Bonus de maîtrise"
     },
     {
       "id": "advantage",
       "term": "Advantage",
       "short": "Roll two d20s and keep the higher one.",
-      "long": "You get it when circumstances favour you: attacking an unaware enemy, or acting on information an ally gave you. Advantage and disadvantage cancel out exactly, no matter how many sources of each you have, and they never stack with themselves."
+      "shortFr": "Lance deux d20 et garde le plus haut.",
+      "long": "You get it when circumstances favour you: attacking an unaware enemy, or acting on information an ally gave you. Advantage and disadvantage cancel out exactly, no matter how many sources of each you have, and they never stack with themselves.",
+      "longFr": "Tu l'obtiens quand les circonstances te favorisent : attaquer un ennemi qui ne t'a pas remarqué, ou agir sur une information qu'un allié t'a donnée. Avantage et désavantage s'annulent exactement, peu importe combien de sources de chacun tu as, et ils ne se cumulent jamais entre eux.",
+      "fr": "Avantage"
     },
     {
       "id": "disadvantage",
       "term": "Disadvantage",
       "short": "Roll two d20s and keep the lower one.",
-      "long": "You get it when circumstances work against you: attacking at long range, fighting blind, or acting while poisoned or frightened. It cancels out with advantage exactly."
+      "shortFr": "Lance deux d20 et garde le plus bas.",
+      "long": "You get it when circumstances work against you: attacking at long range, fighting blind, or acting while poisoned or frightened. It cancels out with advantage exactly.",
+      "longFr": "Tu l'obtiens quand les circonstances te contrarient : attaquer à longue portée, se battre aveugle, ou agir empoisonné ou effrayé. Il s'annule exactement avec l'avantage.",
+      "fr": "Désavantage"
     },
     {
       "id": "initiative",
       "term": "Initiative",
       "short": "A Dexterity roll at the start of a fight that sets the turn order.",
-      "long": "Everyone rolls once, and the round then runs from highest to lowest. The order holds until the fight ends."
+      "shortFr": "Un jet de Dextérité au début d'un combat qui fixe l'ordre des tours.",
+      "long": "Everyone rolls once, and the round then runs from highest to lowest. The order holds until the fight ends.",
+      "longFr": "Tout le monde lance une fois, et le tour se déroule ensuite du plus haut au plus bas. L'ordre tient jusqu'à la fin du combat.",
+      "fr": "Initiative"
     },
     {
       "id": "action",
       "term": "Action",
       "short": "The main thing you do on your turn: attack, cast a spell, dash, hide, help an ally.",
-      "long": "Each turn you get one action, one bonus action, your movement, and one reaction that you can use before your next turn. Most turns are an action plus movement; bonus actions only exist when a feature or spell specifically grants one."
+      "shortFr": "La principale chose que tu fais à ton tour : attaquer, lancer un sort, courir, te cacher, aider un allié.",
+      "long": "Each turn you get one action, one bonus action, your movement, and one reaction that you can use before your next turn. Most turns are an action plus movement; bonus actions only exist when a feature or spell specifically grants one.",
+      "longFr": "À chaque tour, tu as une action, une action bonus, ton déplacement et une réaction utilisable avant ton prochain tour. La plupart des tours sont une action plus un déplacement ; les actions bonus n'existent que si un trait ou un sort en accorde une expressément.",
+      "fr": "Action"
     },
     {
       "id": "bonus_action",
       "term": "Bonus action",
       "short": "A quick extra thing on your turn, but only when something specifically grants one.",
-      "long": "You cannot invent a bonus action: a class feature, a spell or a weapon has to say it uses one. You get at most one per turn, so features that compete for it force a real choice."
+      "shortFr": "Une rapide chose en plus à ton tour, mais seulement si quelque chose en accorde une expressément.",
+      "long": "You cannot invent a bonus action: a class feature, a spell or a weapon has to say it uses one. You get at most one per turn, so features that compete for it force a real choice.",
+      "longFr": "Tu ne peux pas inventer une action bonus : un trait de classe, un sort ou une arme doit dire qu'elle en utilise une. Tu en as au plus une par tour, donc les traits qui se la disputent imposent un vrai choix.",
+      "fr": "Action bonus"
     },
     {
       "id": "reaction",
       "term": "Reaction",
       "short": "One response you can make between your turns, triggered by something specific.",
-      "long": "The most common one is an opportunity attack when an enemy walks out of your reach. Spells like shield and features like Uncanny Dodge also use it. You get one and it comes back at the start of your turn."
+      "shortFr": "Une réponse que tu peux faire entre tes tours, déclenchée par quelque chose de précis.",
+      "long": "The most common one is an opportunity attack when an enemy walks out of your reach. Spells like shield and features like Uncanny Dodge also use it. You get one and it comes back at the start of your turn.",
+      "longFr": "La plus courante est l'attaque d'opportunité quand un ennemi sort de ta portée. Des sorts comme shield et des traits comme Uncanny Dodge s'en servent aussi. Tu en as une, et elle revient au début de ton tour.",
+      "fr": "Réaction"
     },
     {
       "id": "attack_roll",
       "term": "Attack roll",
       "short": "A d20 plus your ability modifier and proficiency bonus, against the target's AC.",
-      "long": "Meet or beat the AC and you hit, then roll the weapon or spell's damage. A natural 20 always hits and doubles the damage dice, and a natural 1 always misses."
+      "shortFr": "Un d20 plus ton modificateur de caractéristique et ton bonus de maîtrise, contre la CA de la cible.",
+      "long": "Meet or beat the AC and you hit, then roll the weapon or spell's damage. A natural 20 always hits and doubles the damage dice, and a natural 1 always misses.",
+      "longFr": "Fais au moins la CA et tu touches ; lance ensuite les dégâts de l'arme ou du sort. Un 20 naturel touche toujours et double les dés de dégâts, et un 1 naturel échoue toujours.",
+      "fr": "Jet d'attaque"
     },
     {
       "id": "critical_hit",
       "term": "Critical hit",
       "short": "A natural 20 on an attack roll. You roll all the damage dice twice.",
-      "long": "Only the dice double, not the flat modifiers. Some features widen the range so a 19 counts too."
+      "shortFr": "Un 20 naturel sur un jet d'attaque. Tu lances tous les dés de dégâts deux fois.",
+      "long": "Only the dice double, not the flat modifiers. Some features widen the range so a 19 counts too.",
+      "longFr": "Seuls les dés doublent, pas les modificateurs fixes. Certains traits élargissent la plage pour qu'un 19 compte aussi.",
+      "fr": "Coup critique"
     },
     {
       "id": "spell_slot",
       "term": "Spell slot",
       "short": "The fuel for casting a spell. You have a limited number of each level per day.",
-      "long": "Casting a 1st-level spell spends a 1st-level slot or higher. Casting a spell with a bigger slot than it needs often makes it stronger, which is called upcasting. Most casters get their slots back on a long rest; warlocks get theirs back on a short one."
+      "shortFr": "Le carburant pour lancer un sort. Tu en as un nombre limité de chaque niveau par jour.",
+      "long": "Casting a 1st-level spell spends a 1st-level slot or higher. Casting a spell with a bigger slot than it needs often makes it stronger, which is called upcasting. Most casters get their slots back on a long rest; warlocks get theirs back on a short one.",
+      "longFr": "Lancer un sort de niveau 1 dépense un emplacement de niveau 1 ou plus. Lancer un sort avec un emplacement plus grand que nécessaire le rend souvent plus puissant : on appelle ça la sur-incantation. La plupart des lanceurs récupèrent leurs emplacements lors d'un repos long ; les occultistes, lors d'un repos court.",
+      "fr": "Emplacement de sort"
     },
     {
       "id": "cantrip",
       "term": "Cantrip",
       "short": "A level 0 spell you can cast as often as you like, with no slot.",
-      "long": "Cantrips get stronger on their own at character levels 5, 11 and 17, which is why an attack cantrip stays useful all game."
+      "shortFr": "Un sort de niveau 0 que tu peux lancer autant de fois que tu veux, sans emplacement.",
+      "long": "Cantrips get stronger on their own at character levels 5, 11 and 17, which is why an attack cantrip stays useful all game.",
+      "longFr": "Les sorts mineurs gagnent en puissance tout seuls aux niveaux de personnage 5, 11 et 17, c'est pourquoi un sort mineur d'attaque reste utile toute la partie.",
+      "fr": "Sort mineur"
     },
     {
       "id": "spell_save_dc",
       "term": "Spell save DC",
       "short": "The number an enemy must beat to resist your spell.",
-      "long": "It is 8 plus your proficiency bonus plus your spellcasting ability modifier. The app calculates it for you and shows it on your sheet."
+      "shortFr": "Le nombre qu'un ennemi doit dépasser pour résister à ton sort.",
+      "long": "It is 8 plus your proficiency bonus plus your spellcasting ability modifier. The app calculates it for you and shows it on your sheet.",
+      "longFr": "C'est 8 plus ton bonus de maîtrise plus le modificateur de ta caractéristique d'incantation. L'appli le calcule pour toi et l'affiche sur ta fiche.",
+      "fr": "DD de sauvegarde des sorts"
     },
     {
       "id": "concentration",
       "term": "Concentration",
       "short": "Some spells only last while you keep concentrating, and you can only concentrate on one at a time.",
-      "long": "Casting a second concentration spell ends the first. Taking damage forces a Constitution saving throw against 10 or half the damage, whichever is higher, and failing it ends the spell. Being knocked unconscious ends it too."
+      "shortFr": "Certains sorts ne durent que tant que tu restes concentré, et tu ne peux te concentrer que sur un à la fois.",
+      "long": "Casting a second concentration spell ends the first. Taking damage forces a Constitution saving throw against 10 or half the damage, whichever is higher, and failing it ends the spell. Being knocked unconscious ends it too.",
+      "longFr": "Lancer un second sort de concentration met fin au premier. Prendre des dégâts impose un jet de sauvegarde de Constitution contre 10 ou la moitié des dégâts, le plus haut des deux, et l'échouer met fin au sort. Être mis inconscient le termine aussi.",
+      "fr": "Concentration"
     },
     {
       "id": "ritual",
       "term": "Ritual",
       "short": "A spell you can cast without spending a slot by taking 10 extra minutes over it.",
-      "long": "Only spells marked as rituals can be cast this way, and only if your class supports ritual casting. It is free but far too slow for combat."
+      "shortFr": "Un sort que tu peux lancer sans dépenser d'emplacement en y consacrant 10 minutes de plus.",
+      "long": "Only spells marked as rituals can be cast this way, and only if your class supports ritual casting. It is free but far too slow for combat.",
+      "longFr": "Seuls les sorts marqués comme rituels peuvent être lancés ainsi, et seulement si ta classe permet l'incantation rituelle. C'est gratuit, mais bien trop lent pour le combat.",
+      "fr": "Rituel"
     },
     {
       "id": "prepared_spells",
       "term": "Prepared and known spells",
       "short": "Which spells you actually have available today.",
-      "long": "Some classes know a fixed short list forever, like bards and sorcerers. Others, like clerics and wizards, choose a fresh set after each long rest from a much bigger pool. Either way you can only cast what is on the list, and only while you have slots left."
+      "shortFr": "Les sorts que tu as réellement à disposition aujourd'hui.",
+      "long": "Some classes know a fixed short list forever, like bards and sorcerers. Others, like clerics and wizards, choose a fresh set after each long rest from a much bigger pool. Either way you can only cast what is on the list, and only while you have slots left.",
+      "longFr": "Certaines classes connaissent pour toujours une courte liste fixe, comme les bardes et les sorciers. D'autres, comme les clercs et les mages, choisissent une nouvelle liste après chaque repos long dans un vivier bien plus grand. Dans tous les cas, tu ne peux lancer que ce qui est sur la liste, et tant qu'il te reste des emplacements.",
+      "fr": "Sorts préparés et connus"
     },
     {
       "id": "short_rest",
       "term": "Short rest",
       "short": "About an hour of downtime. You can spend Hit Dice to heal and recover some abilities.",
-      "long": "Features that say short rest come back, including warlock spell slots, monk ki, and a fighter's Second Wind and Action Surge. You can take several in a day."
+      "shortFr": "Environ une heure de temps mort. Tu peux dépenser des dés de vie pour te soigner et récupérer certaines capacités.",
+      "long": "Features that say short rest come back, including warlock spell slots, monk ki, and a fighter's Second Wind and Action Surge. You can take several in a day.",
+      "longFr": "Les traits qui indiquent repos court reviennent, y compris les emplacements de sort d'occultiste, le ki du moine, et le Second souffle et l'Action Surge du guerrier. Tu peux en prendre plusieurs par jour.",
+      "fr": "Repos court"
     },
     {
       "id": "long_rest",
       "term": "Long rest",
       "short": "About eight hours of sleep. You regain all hit points and almost everything else.",
-      "long": "You get all your spell slots and long-rest features back and half your spent Hit Dice. You only benefit from one per 24 hours."
+      "shortFr": "Environ huit heures de sommeil. Tu récupères tous tes points de vie et presque tout le reste.",
+      "long": "You get all your spell slots and long-rest features back and half your spent Hit Dice. You only benefit from one per 24 hours.",
+      "longFr": "Tu récupères tous tes emplacements de sort et tes traits de repos long, et la moitié de tes dés de vie dépensés. Tu ne profites que d'un seul par 24 heures.",
+      "fr": "Repos long"
     },
     {
       "id": "death_save",
       "term": "Death saving throw",
       "short": "At 0 hit points you roll a d20 each turn to see whether you stabilize or die.",
-      "long": "10 or higher is a success, under 10 is a failure. Three successes and you stabilize; three failures and you die. A natural 20 puts you back up at 1 hit point, a natural 1 counts as two failures, and any healing at all wakes you immediately."
+      "shortFr": "À 0 point de vie, tu lances un d20 à chaque tour pour savoir si tu te stabilises ou meurs.",
+      "long": "10 or higher is a success, under 10 is a failure. Three successes and you stabilize; three failures and you die. A natural 20 puts you back up at 1 hit point, a natural 1 counts as two failures, and any healing at all wakes you immediately.",
+      "longFr": "10 ou plus est une réussite, moins de 10 un échec. Trois réussites et tu te stabilises ; trois échecs et tu meurs. Un 20 naturel te remet debout à 1 point de vie, un 1 naturel compte comme deux échecs, et le moindre soin te réveille immédiatement.",
+      "fr": "Jet de sauvegarde contre la mort"
     },
     {
       "id": "condition",
       "term": "Condition",
       "short": "A status effect that changes what you can do, like poisoned, frightened or stunned.",
-      "long": "Most conditions let you repeat a saving throw at the end of your turns to shake them off. The app tracks the ones you have and applies their effects to your rolls automatically."
+      "shortFr": "Un effet de statut qui change ce que tu peux faire, comme empoisonné, effrayé ou étourdi.",
+      "long": "Most conditions let you repeat a saving throw at the end of your turns to shake them off. The app tracks the ones you have and applies their effects to your rolls automatically.",
+      "longFr": "La plupart des états te laissent retenter un jet de sauvegarde à la fin de tes tours pour t'en défaire. L'appli suit ceux que tu as et applique leurs effets à tes jets automatiquement.",
+      "fr": "État"
     },
     {
       "id": "exhaustion",
       "term": "Exhaustion",
       "short": "A stacking penalty from six levels of increasing severity. Level 6 is death.",
-      "long": "It comes from forced marches, going without sleep, and a few powerful abilities that trade stamina for effect. A long rest with food and drink removes one level."
+      "shortFr": "Un malus cumulable sur six niveaux de gravité croissante. Le niveau 6, c'est la mort.",
+      "long": "It comes from forced marches, going without sleep, and a few powerful abilities that trade stamina for effect. A long rest with food and drink removes one level.",
+      "longFr": "Il vient des marches forcées, du manque de sommeil, et de quelques capacités puissantes qui échangent de l'endurance contre de l'effet. Un repos long avec à manger et à boire retire un niveau.",
+      "fr": "Épuisement"
     },
     {
       "id": "attunement",
       "term": "Attunement",
       "short": "A bond with a magic item, formed over a short rest. You can hold three at once.",
-      "long": "Items that require attunement do nothing until you attune to them, so the three-slot limit is a real choice about which magic you carry."
+      "shortFr": "Un lien avec un objet magique, formé pendant un repos court. Tu peux en tenir trois à la fois.",
+      "long": "Items that require attunement do nothing until you attune to them, so the three-slot limit is a real choice about which magic you carry.",
+      "longFr": "Les objets qui exigent l'harmonisation ne font rien tant que tu ne t'y es pas harmonisé, donc la limite de trois est un vrai choix sur la magie que tu portes.",
+      "fr": "Harmonisation"
     },
     {
       "id": "difficult_terrain",
       "term": "Difficult terrain",
       "short": "Ground that costs double movement: rubble, deep snow, undergrowth, a crowd.",
-      "long": "Moving 10 feet through it uses 20 feet of your speed. Some features let you ignore it."
+      "shortFr": "Un sol qui coûte le double de déplacement : gravats, neige profonde, fourrés, une foule.",
+      "long": "Moving 10 feet through it uses 20 feet of your speed. Some features let you ignore it.",
+      "longFr": "Traverser 10 pieds dedans utilise 20 pieds de ta vitesse. Certains traits te permettent de l'ignorer.",
+      "fr": "Terrain difficile"
     },
     {
       "id": "cover",
       "term": "Cover",
       "short": "Something between you and an attacker makes you harder to hit.",
-      "long": "Half cover gives +2 AC and +2 on Dexterity saves, three-quarters cover gives +5, and total cover means you cannot be targeted directly at all."
+      "shortFr": "Quelque chose entre toi et un attaquant te rend plus difficile à toucher.",
+      "long": "Half cover gives +2 AC and +2 on Dexterity saves, three-quarters cover gives +5, and total cover means you cannot be targeted directly at all.",
+      "longFr": "Un demi-couvert donne +2 CA et +2 aux jets de sauvegarde de Dextérité, les trois quarts du couvert donnent +5, et un couvert total veut dire qu'on ne peut tout simplement pas te cibler directement.",
+      "fr": "Couvert"
     },
     {
       "id": "opportunity_attack",
       "term": "Opportunity attack",
       "short": "A free swing when an enemy walks out of your reach.",
-      "long": "It uses your reaction and happens as they leave. Taking the Disengage action avoids provoking it, which is why rogues get Disengage as a bonus action."
+      "shortFr": "Un coup gratuit quand un ennemi sort de ta portée.",
+      "long": "It uses your reaction and happens as they leave. Taking the Disengage action avoids provoking it, which is why rogues get Disengage as a bonus action.",
+      "longFr": "Elle utilise ta réaction et se produit pendant qu'il s'éloigne. L'action Désengagement évite de la provoquer, c'est pourquoi les roublards ont Désengagement en action bonus.",
+      "fr": "Attaque d'opportunité"
     },
     {
       "id": "passive_perception",
       "term": "Passive Perception",
       "short": "A standing score for what you notice without looking. 10 plus your Perception bonus.",
-      "long": "The GM checks it against hidden things so nobody has to keep rolling. A higher passive Perception means traps and ambushes are spotted before they matter."
+      "shortFr": "Un score permanent pour ce que tu remarques sans chercher. 10 plus ton bonus de Perception.",
+      "long": "The GM checks it against hidden things so nobody has to keep rolling. A higher passive Perception means traps and ambushes are spotted before they matter.",
+      "longFr": "Le MJ le confronte aux choses cachées pour que personne n'ait à lancer sans arrêt. Une Perception passive plus haute repère pièges et embuscades avant qu'ils ne comptent.",
+      "fr": "Perception passive"
     },
     {
       "id": "skill",
       "term": "Skill",
       "short": "A narrow area of expertise attached to an ability, like Stealth or Persuasion.",
-      "long": "Being proficient in a skill adds your proficiency bonus to checks that use it. You do not need proficiency to try, only to be reliably good at it."
+      "shortFr": "Un domaine d'expertise étroit rattaché à une caractéristique, comme Discrétion ou Persuasion.",
+      "long": "Being proficient in a skill adds your proficiency bonus to checks that use it. You do not need proficiency to try, only to be reliably good at it.",
+      "longFr": "Maîtriser une compétence ajoute ton bonus de maîtrise aux tests qui l'utilisent. Tu n'as pas besoin de la maîtrise pour essayer, seulement pour en réussir régulièrement.",
+      "fr": "Compétence"
     },
     {
       "id": "expertise",
       "term": "Expertise",
       "short": "Doubled proficiency bonus on a chosen skill, so you rarely fail at it.",
-      "long": "Rogues and bards get it. On a skill you already have proficiency in, it makes you the party's clear specialist."
+      "shortFr": "Un bonus de maîtrise doublé sur une compétence choisie, pour que tu y échoues rarement.",
+      "long": "Rogues and bards get it. On a skill you already have proficiency in, it makes you the party's clear specialist.",
+      "longFr": "Les roublards et les bardes l'ont. Sur une compétence que tu maîtrises déjà, ça fait de toi le spécialiste clair du groupe.",
+      "fr": "Expertise"
     },
     {
       "id": "level",
       "term": "Level",
       "short": "How experienced your character is, from 1 to 20. Higher levels bring more hit points, features and spells.",
-      "long": "Levelling happens between sessions or at a milestone in the story. The app walks you through each choice a new level gives you."
+      "shortFr": "Ton degré d'expérience, de 1 à 20. Les niveaux hauts apportent plus de points de vie, de traits et de sorts.",
+      "long": "Levelling happens between sessions or at a milestone in the story. The app walks you through each choice a new level gives you.",
+      "longFr": "Les montées de niveau arrivent entre les séances ou à un moment clé de l'histoire. L'appli te guide à travers chaque choix qu'un nouveau niveau t'offre.",
+      "fr": "Niveau"
     },
     {
       "id": "subclass",
       "term": "Subclass",
       "short": "A specialization within your class, chosen at level 1, 2 or 3 depending on the class.",
-      "long": "Two fighters can play completely differently based on this one choice: a Battle Master spends dice on tactical maneuvers, an Eldritch Knight casts wizard spells. It is the biggest single decision about how your character plays."
+      "shortFr": "Une spécialisation dans ta classe, choisie au niveau 1, 2 ou 3 selon la classe.",
+      "long": "Two fighters can play completely differently based on this one choice: a Battle Master spends dice on tactical maneuvers, an Eldritch Knight casts wizard spells. It is the biggest single decision about how your character plays.",
+      "longFr": "Deux guerriers peuvent jouer de façon complètement différente selon ce seul choix : un Battle Master dépense des dés en manœuvres tactiques, un Eldritch Knight lance des sorts de magicien. C'est la plus grande décision unique sur la façon dont ton personnage joue.",
+      "fr": "Sous-classe"
     },
     {
       "id": "magic_item_prices",
       "term": "Magic item prices",
       "short": "What a magic item costs under the 2014 rules this server plays.",
-      "long": "The rules give few magic items a price, so the server uses the top of each rarity’s value in the 2014 rules: common 100 gp, uncommon 500 gp, rare 5,000 gp, very rare 50,000 gp. A potion, a scroll or anything else used up once is worth half. Legendary items and artifacts are never for sale. A shop stocks only common magic items unless the GM puts something rarer on its shelf, and buys back only potions and scrolls, at half their value; anything else needs a wealthy buyer the story provides."
+      "shortFr": "Ce que coûte un objet magique sous les règles de 2014 que ce serveur joue.",
+      "long": "The rules give few magic items a price, so the server uses the top of each rarity’s value in the 2014 rules: common 100 gp, uncommon 500 gp, rare 5,000 gp, very rare 50,000 gp. A potion, a scroll or anything else used up once is worth half. Legendary items and artifacts are never for sale. A shop stocks only common magic items unless the GM puts something rarer on its shelf, and buys back only potions and scrolls, at half their value; anything else needs a wealthy buyer the story provides.",
+      "longFr": "Les règles donnent un prix à peu d'objets magiques, donc le serveur utilise le haut de la valeur de chaque rareté dans les règles de 2014 : commun 100 po, peu commun 500 po, rare 5 000 po, très rare 50 000 po. Une potion, un parchemin ou tout ce qui se consomme en une fois vaut la moitié. Les objets légendaires et les artéfacts ne sont jamais à vendre. Une boutique ne stocke que des objets magiques communs, sauf si le MJ pose quelque chose de plus rare sur son étagère, et ne rachète que potions et parchemins, à la moitié de leur valeur ; tout le reste demande un acheteur fortuné que l'histoire fournit.",
+      "fr": "Prix des objets magiques"
     }
-  ]
+  ],
+  "_fr": "French term names follow Wizards of the Coast's official French SRD 5.1 (Document de Référence du Système 5.1, CC-BY-4.0, https://media.dndbeyond.com/compendium-images/srd/5.1/SRD_CC_v5.1_FR.pdf), checked word for word against that document; « Sous-classe », the one word the SRD text never uses, follows the French community's standard. The French explanation bodies (shortFr, longFr) are this fork's own translations, not WotC text: they are written with that official vocabulary (an entry names itself by its fr field, and « sort mineur », « valeur de caractéristique », « DD de sauvegarde des sorts », « jet de sauvegarde », « maîtrise » and the rest of that wording run through the bodies), but no publisher's wording is reproduced. The English explanations (short, long) remain the source of truth. See docs/LICENSES.md."
 }

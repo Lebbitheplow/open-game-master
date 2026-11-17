@@ -32,6 +32,16 @@ export type PackOmission = {
   assets: string[];
 };
 
+// The group headings are the dictionaries' (workshop.plugin.omissionGroup.*);
+// the report passes its translator. The raw group stays the stored value.
+export const OMISSION_GROUP_KEYS: Record<PackOmission["group"], string> = {
+  setting: "Setting the draft does not hold",
+  world: "World detail a pack cannot carry",
+  scenario: "Scenario and mechanics",
+};
+
+// The groups' English words, pinned, for wherever the pack's own notes quote
+// them.
 export const OMISSION_GROUPS: Record<PackOmission["group"], string> = {
   setting: "Setting the draft does not hold",
   world: "World detail a pack cannot carry",

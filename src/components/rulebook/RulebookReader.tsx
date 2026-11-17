@@ -4,6 +4,7 @@ import "@/app/styles/rulebook.css";
 import { Bookmark, ChevronLeft, ChevronRight, List } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useLocale, useT, odmLocaleHeaders } from "@/lib/locale";
 import type { RulebookContents as Contents, RulebookPageResponse } from "@/lib/rulebook/types";
 import { RulebookContents, type OpenFromContents } from "./RulebookContents";
 import { RulebookPage } from "./RulebookPage";
@@ -71,6 +72,17 @@ export function RulebookReader({
   const [pageFailed, setPageFailed] = useState(false);
   const [arrive, setArrive] = useState<{ at?: string; nonce: number } | null>(null);
   const [turning, setTurning] = useState<Turn | null>(null);
+  const t = useT();
+  // The book reads the reader's language: the fetches carry it in
+  // Accept-Language and the routes answer with that language's book.
+  const locale = useLocale();
+  // Hydration renders with the server's locale ("en"); the fetches below must
+  // read the reader's CURRENT one at call time, not the render they were
+  // built in, or the first contents fetch races the locale it hydrates to.
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
   // The leaf in the air on a wide screen: the page it carries on its face,
   // scrolled where the reader had it. On a phone the incoming page swings
   // in instead (`enter`).
@@ -109,27 +121,32 @@ export function RulebookReader({
   const loadContents = useCallback(async () => {
     setContentsFailed(false);
     try {
-      const response = await fetch("/api/rulebook");
+      const response = await fetch("/api/rulebook", { headers: { "Accept-Language": localeRef.current, ...odmLocaleHeaders() } });
       if (!response.ok) throw new Error(String(response.status));
       setContents(await response.json());
     } catch {
       setContentsFailed(true);
     }
+    // Reads the live locale; stable on purpose so the arrival effect's
+    // closure cannot pin a stale language.
   }, []);
 
-  const fetchPage = useCallback(async (id: string): Promise<RulebookPageResponse | null> => {
-    const cached = cache.current.get(id);
-    if (cached) return cached;
-    try {
-      const response = await fetch(`/api/rulebook/pages/${encodeURIComponent(id)}`);
-      if (!response.ok) return null;
-      const data: RulebookPageResponse = await response.json();
-      cache.current.set(id, data);
-      return data;
-    } catch {
-      return null;
-    }
-  }, []);
+  const fetchPage = useCallback(
+    async (id: string): Promise<RulebookPageResponse | null> => {
+      const cached = cache.current.get(`${localeRef.current}:${id}`);
+      if (cached) return cached;
+      try {
+        const response = await fetch(`/api/rulebook/pages/${encodeURIComponent(id)}`, { headers: { "Accept-Language": localeRef.current, ...odmLocaleHeaders() } });
+        if (!response.ok) return null;
+        const data: RulebookPageResponse = await response.json();
+        cache.current.set(`${localeRef.current}:${id}`, data);
+        return data;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
 
   // Turns a leaf. Forward, the right-hand page itself lifts away (the leaf
   // carries its words) and the next page is already lying beneath it. Back,
@@ -216,6 +233,22 @@ export function RulebookReader({
     },
     [fetchPage, turn],
   );
+
+  // A reader who switches the table's language turns the same book over in
+  // the other tongue: the page cache empties, the contents reload, and the
+  // open page is fetched again in the new words.
+  const seenLocale = useRef(locale);
+  useEffect(() => {
+    if (seenLocale.current === locale) return;
+    seenLocale.current = locale;
+    cache.current.clear();
+    void loadContents();
+    const current = shownRef.current?.data.page.id;
+    if (current) void open(current, undefined, [], { animate: false, quiet: true });
+    // Only on a locale change: the reader's own navigation is not a handler
+    // of this effect, and the first locale needs no turn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   // The contents, then the page to open on: a deep link, else where this
   // device left off. Neither turns a leaf; the book simply opens there.
@@ -329,13 +362,13 @@ export function RulebookReader({
         data-view={view}
         data-enter={enter ?? undefined}
       >
-        <section className="rb-leaf rb-left" aria-label="Contents and search">
+        <section className="rb-leaf rb-left" aria-label={t("Contents and search")}>
           <div className="rb-leaf-scroll">
             {contentsFailed ? (
               <div className="rb-trouble">
-                <p>The rulebook could not be opened just now.</p>
+                <p>{t("The rulebook could not be opened just now.")}</p>
                 <button type="button" className="rb-chip motion-press" onClick={() => void loadContents()}>
-                  Try again
+                  {t("Try again", { context: "rulebook.trouble.retry" })}
                 </button>
               </div>
             ) : (
@@ -348,7 +381,7 @@ export function RulebookReader({
 
         <section
           className="rb-leaf rb-right"
-          aria-label={shown ? shown.data.page.title : "The Rulebook"}
+          aria-label={shown ? shown.data.page.title : t("The Rulebook")}
           onTouchStart={(event) => {
             const point = event.touches[0];
             touch.current = point ? { x: point.clientX, y: point.clientY } : null;
@@ -365,13 +398,13 @@ export function RulebookReader({
         >
           <div className="rb-toolbar">
             <button type="button" className="rb-tool rb-tool-contents" onClick={goContents}>
-              <List className="size-4" aria-hidden="true" /> Contents
+              <List className="size-4" aria-hidden="true" /> {t("Contents")}
             </button>
             <span className="rb-toolbar-space" />
             <button
               type="button"
               className="rb-tool rb-tool-step"
-              aria-label="Previous page"
+              aria-label={t("Previous page")}
               disabled={!shown?.data.prev}
               onClick={() => step("back")}
             >
@@ -380,7 +413,7 @@ export function RulebookReader({
             <button
               type="button"
               className="rb-tool rb-tool-step"
-              aria-label="Next page"
+              aria-label={t("Next page")}
               disabled={!shown?.data.next}
               onClick={() => step("forward")}
             >
@@ -391,8 +424,8 @@ export function RulebookReader({
                 type="button"
                 className="rb-tool rb-tool-mark"
                 aria-pressed={marked}
-                aria-label={marked ? "Remove the bookmark" : "Bookmark this page"}
-                title={marked ? "Remove the bookmark" : "Bookmark this page"}
+                aria-label={marked ? t("Remove the bookmark") : t("Bookmark this page")}
+                title={marked ? t("Remove the bookmark") : t("Bookmark this page")}
                 onClick={toggleMark}
               >
                 <Bookmark className="size-4" fill={marked ? "currentColor" : "none"} />
@@ -403,7 +436,7 @@ export function RulebookReader({
           <div ref={leafRef} className="rb-leaf-scroll">
             {pageFailed && !shown ? (
               <div className="rb-trouble">
-                <p>That page could not be found in the book.</p>
+                <p>{t("That page could not be found in the book.")}</p>
               </div>
             ) : shown ? (
               <div key={shown.data.page.id} className="rb-page-in" data-no-motion>
@@ -437,15 +470,15 @@ export function RulebookReader({
         <button
           type="button"
           className="rb-cover"
-          aria-label="Open the book"
+          aria-label={t("Open the book")}
           onClick={(event) => event.currentTarget.classList.add("rb-cover-now")}
           onAnimationEnd={(event) => {
             if (event.animationName === "rb-cover-open") setCoverOn(false);
           }}
         >
           <span className="rb-cover-frame" aria-hidden="true" />
-          <span className="rb-cover-title">The Rulebook</span>
-          <span className="rb-cover-sub">Fifth Edition</span>
+          <span className="rb-cover-title">{t("The Rulebook")}</span>
+          <span className="rb-cover-sub">{t("Fifth Edition")}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/ui/wax-seal-gold.webp" alt="" className="rb-cover-seal" />
         </button>
@@ -455,28 +488,19 @@ export function RulebookReader({
 }
 
 function Frontispiece({ onBegin }: { onBegin: () => void }) {
+  const t = useT();
   return (
     <div className="rb-frontis">
       <p className="rb-running">Open Game Master</p>
-      <h1 className="rb-frontis-title">The Rulebook</h1>
-      <p className="rb-frontis-sub">Fifth Edition &middot; System Reference Document 5.1</p>
+      <h1 className="rb-frontis-title">{t("The Rulebook")}</h1>
+      <p className="rb-frontis-sub">{t("Fifth Edition · System Reference Document 5.1")}</p>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/ui/divider-rule.webp" alt="" width={512} height={33} className="rb-divider" />
-      <p className="rb-frontis-text">
-        Every rule of the game in one volume: the races and classes, equipment, how to use ability scores,
-        adventuring, combat, spellcasting, every spell, magic item and monster, and the conditions they inflict.
-      </p>
-      <p className="rb-frontis-text">
-        Three books are bound here: the players&apos;, the Game Master&apos;s and the monsters&apos;, each
-        holding all that the reference document opens of the Player&apos;s Handbook, the Dungeon Master&apos;s
-        Guide and the Monster Manual.
-      </p>
-      <p className="rb-frontis-text">
-        Search from the contents page, or open a chapter. The arrow keys turn the pages, and a bookmark keeps a
-        page one tap away.
-      </p>
+      <p className="rb-frontis-text">{t("Every rule of the game in one volume: the races and classes, equipment, how to use ability scores, adventuring, combat, spellcasting, every spell, magic item and monster, and the conditions they inflict.")}</p>
+      <p className="rb-frontis-text">{t("Three books are bound here: the players', the Game Master's and the monsters', each holding all that the reference document opens of the Player's Handbook, the Dungeon Master's Guide and the Monster Manual.")}</p>
+      <p className="rb-frontis-text">{t("Search from the contents page, or open a chapter. The arrow keys turn the pages, and a bookmark keeps a page one tap away.")}</p>
       <button type="button" className="rb-chip rb-begin motion-press" onClick={onBegin}>
-        Begin at chapter I
+        {t("Begin at chapter I")}
       </button>
     </div>
   );

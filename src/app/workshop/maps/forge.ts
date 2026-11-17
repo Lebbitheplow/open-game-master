@@ -8,6 +8,7 @@ import {
   type MapTheme,
 } from "@/lib/battlemap/generate";
 import type { AmbientLight } from "@/lib/battlemap/types";
+import { translate } from "@/lib/messages-logic";
 
 // The pure half of the Map Forge (docs/visual-overhaul-plan.md 4.1): what a
 // roll is, what the history strip remembers, how the reveal floods, and what
@@ -151,9 +152,38 @@ export function forgeOutcome(settings: Pick<ForgeSettings, "theme" | "ambient" |
 
 export const AMBIENT_LABELS: Record<AmbientLight, string> = { bright: "Daylight", dim: "Dim", dark: "Dark" };
 
+// The drawer's words in the reader's language (monster-folds.ts's idiom): the
+// default translator keeps the English lines scripts/test-map-forge.mjs pins
+// byte-identical, and the wired forge passes its own t. The word functions
+// reuse the keys the already-translated pieces use — the addon's theme Select
+// (AddonMapGenerator.tsx) and MapEditor's light Select — coining
+// dm.maps.theme.* only for the two labels no key's English matches. The theme
+// and scene ids stored on drafts stay English; only the label reads the
+// reader's language.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
+const THEME_WORD_KEYS: Record<MapTheme, string> = {
+  cave: "Cave",
+  forest: "Forest",
+  swamp: "Swamp",
+  riverside: "Water",
+  interior: "Indoors",
+  field: "Open ground",
+};
+
+export function themeWord(theme: MapTheme, t: T): string {
+  return t(THEME_WORD_KEYS[theme]);
+}
+
+export function ambientWord(ambient: AmbientLight, t: T): string {
+  return t(ambient === "bright" ? "Daylight" : ambient === "dim" ? "Dim" : "Dark");
+}
+
 // The sentences under the chips: what the kind of place decided, or that
 // the DM did instead.
-export function explainForge(
+export function explainForgeT(
+  t: T = enT,
   settings: Pick<ForgeSettings, "theme" | "ambient" | "scene">,
   themeLabel: (theme: MapTheme) => string,
   sceneLabel: (scene: string) => string,
@@ -161,19 +191,28 @@ export function explainForge(
   const out: string[] = [];
   const { theme } = forgeOutcome(settings);
   if (settings.theme) {
-    out.push(`You said ${themeLabel(settings.theme).toLowerCase()} outright, so the kind of place does not pick the ground.`);
+    out.push(t("You said {theme} outright, so the kind of place does not pick the ground.", { theme: themeLabel(settings.theme).toLowerCase() }));
   } else if (settings.scene) {
-    out.push(`${sceneLabel(settings.scene)} is fought on ${themeLabel(theme).toLowerCase()}.`);
+    out.push(t("{scene} is fought on {theme}.", { scene: sceneLabel(settings.scene), theme: themeLabel(theme).toLowerCase() }));
   } else {
-    out.push("No kind of place is set, so it is open ground.");
+    out.push(t("No kind of place is set, so it is open ground."));
   }
   if (settings.ambient) {
-    out.push(`You set the light to ${AMBIENT_LABELS[settings.ambient].toLowerCase()}.`);
+    out.push(t("You set the light to {light}.", { light: ambientWord(settings.ambient, t).toLowerCase() }));
   } else {
-    out.push(`The light is what ${themeLabel(theme).toLowerCase()} usually has.`);
+    out.push(t("The light is what {theme} usually has.", { theme: themeLabel(theme).toLowerCase() }));
   }
   if (sceneRough(settings.scene || null)) {
-    out.push(`${sceneLabel(settings.scene)} scatters rough ground.`);
+    out.push(t("{scene} scatters rough ground.", { scene: sceneLabel(settings.scene) }));
   }
   return out;
+}
+
+// English default for the scripts that pin these lines.
+export function explainForge(
+  settings: Pick<ForgeSettings, "theme" | "ambient" | "scene">,
+  themeLabel: (theme: MapTheme) => string,
+  sceneLabel: (scene: string) => string,
+): string[] {
+  return explainForgeT(enT, settings, themeLabel, sceneLabel);
 }

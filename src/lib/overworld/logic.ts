@@ -344,7 +344,9 @@ export function placeAnchor(input: {
 // genres; entries override label and fill per tile.
 export type TileSkin = { label: string; fill: string };
 
-const DEFAULT_SKIN: Record<OverworldTile, TileSkin> = {
+// Exported so the legend can tell a tile wearing the default skin's name
+// (the interface's to translate) from one a genre renames (kept as data).
+export const DEFAULT_SKIN: Record<OverworldTile, TileSkin> = {
   w: { label: "Water", fill: "#2c4a63" },
   p: { label: "Plains", fill: "#7a8f4e" },
   f: { label: "Forest", fill: "#48663c" },

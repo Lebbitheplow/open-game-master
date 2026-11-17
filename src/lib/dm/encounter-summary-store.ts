@@ -18,6 +18,11 @@ import {
   type SummaryRoll,
 } from "@/lib/dm/encounter-summary";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { translate } from "@/lib/messages-logic";
+
+// English-bound: the chapter record keeps the server's English, as the
+// reports do (src/lib/report-setup-server.ts).
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 
 export function recordEncounterSummary(
   campaignId: string,
@@ -55,7 +60,7 @@ export function recordEncounterSummary(
       rolls,
       audits,
     });
-    setEncounterSummary(encounter.id, summary, describeEncounterSummary(summary));
+    setEncounterSummary(encounter.id, summary, describeEncounterSummary(enT, summary));
     publishPersisted(campaignId, "encounter_summary", { encounterId: encounter.id, summary });
   } catch (error) {
     console.error("[encounter] summary failed", error);

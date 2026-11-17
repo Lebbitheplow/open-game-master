@@ -1,4 +1,7 @@
 import type { CampaignDraft, WizardGates } from "@/app/create-campaign/draft";
+// Pure still: the translate is only the English fallback for a caller that
+// passes no translator (the suites).
+import { translate } from "@/lib/messages-logic";
 
 // The table sheet's pure half: which table switches the creator shows, in which
 // group, which of them the "features on" total counts, and what a press
@@ -29,6 +32,9 @@ export function featuresOn(draft: CampaignDraft, gates: WizardGates): number {
     !solo && draft.holdSubmissions,
   ].filter(Boolean).length;
 }
+
+// The translator a caller hands over (`const t = useT()`).
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 export type SheetGroupId = "narration" | "senses" | "people" | "rules";
 
@@ -105,12 +111,18 @@ const ROWS: RowSpec[] = [
   { key: "enemyIntent", group: "rules", counted: false },
 ];
 
-const GROUPS: Array<{ id: SheetGroupId; label: string; note: string }> = [
-  { id: "narration", label: "The narrator", note: "only with an AI narrator" },
-  { id: "senses", label: "Sight and sound", note: "" },
-  { id: "people", label: "People and the floor", note: "" },
-  { id: "rules", label: "Rules at the table", note: "" },
-];
+// The groups' words by key; the keys live with the table sheet group.
+const GROUP_KEYS: Record<SheetGroupId, string> = {
+  narration: "The narrator",
+  senses: "Sight and sound",
+  people: "People and the floor",
+  rules: "Rules at the table",
+};
+const GROUP_NOTE_KEYS: Partial<Record<SheetGroupId, string>> = {
+  narration: "only with an AI narrator",
+};
+
+const GROUPS: SheetGroupId[] = ["narration", "senses", "people", "rules"];
 
 function parentOn(draft: CampaignDraft, needs: RowSpec["needs"]): boolean {
   if (needs === "ambienceEnabled") return draft.ambienceEnabled;
@@ -122,64 +134,69 @@ function gated(spec: RowSpec, gates: WizardGates): boolean {
   return Boolean((spec.aiOnly && !gates.aiNarrates) || (spec.tableOnly && gates.solo));
 }
 
-function copy(spec: RowSpec, draft: CampaignDraft, gates: WizardGates): { label: string; hint: string } {
+function copy(
+  t: Translate,
+  spec: RowSpec,
+  draft: CampaignDraft,
+  gates: WizardGates,
+): { label: string; hint: string } {
   switch (spec.key) {
     case "aiStorySetup":
-      return { label: "AI story setup", hint: "The GM invents the plot" };
+      return { label: t("AI story setup", { context: "tsheet.row.aiStorySetup" }), hint: t("The GM invents the plot") };
     case "narrationGuard":
-      return { label: "Outcome check", hint: "Narration that contradicts the dice is rewritten" };
+      return { label: t("Outcome check"), hint: t("Narration that contradicts the dice is rewritten") };
     case "worldSimulation":
-      return { label: "Living world", hint: "Off-screen schemes and rumors advance on their own" };
+      return { label: t("Living world"), hint: t("Off-screen schemes and rumors advance on their own") };
     case "ttsEnabled":
       return {
-        label: "Voice narration",
-        hint: gates.ttsAvailable ? "Spoken GM narration" : "No speech service on this server",
+        label: t("Voice narration"),
+        hint: gates.ttsAvailable ? t("Spoken GM narration") : t("No speech service on this server"),
       };
     case "mapsEnabled":
       return {
-        label: "Maps",
-        hint: gates.mapsAvailable ? "AI-drawn area maps" : "Drawn once this server can paint pictures",
+        label: t("Maps"),
+        hint: gates.mapsAvailable ? t("AI-drawn area maps") : t("Drawn once this server can paint pictures"),
       };
     case "ambienceEnabled":
-      return { label: "Ambience", hint: "Room tone, music and stings" };
+      return { label: t("Ambience"), hint: t("Room tone, music and stings") };
     case "ambienceAuto":
-      return { label: "Sound follows the scene", hint: "Off leaves it to the GM" };
+      return { label: t("Sound follows the scene"), hint: t("Off leaves it to the GM") };
     case "presentation":
       return {
-        label: "Theatre inserts",
-        hint: "A speaking NPC's face over the scene art while their lines play",
+        label: t("Theatre inserts"),
+        hint: t("A speaking NPC's face over the scene art while their lines play"),
       };
     case "relationships":
-      return { label: "Bonds", hint: "NPCs remember how each character treated them" };
+      return { label: t("Bonds"), hint: t("NPCs remember how each character treated them") };
     case "romance":
-      return { label: "Romance", hint: "Bonds can grow into a relationship" };
+      return { label: t("Romance"), hint: t("Bonds can grow into a relationship") };
     case "multiCharacter":
       return {
         label:
           draft.multiCharacter === "all_active"
-            ? "Several characters each, all fielded"
+            ? t("Several characters each, all fielded")
             : draft.multiCharacter === "one_active"
-              ? "Several characters each, one at a time"
-              : "One character each",
-        hint: "A player may build more than one; press again to field them all at once (solo tables)",
+              ? t("Several characters each, one at a time")
+              : t("One character each"),
+        hint: t("A player may build more than one; press again to field them all at once (solo tables)"),
       };
     case "midGameJoinOpen":
-      return { label: "Mid-game joining", hint: "New players can use the invite code after the start" };
+      return { label: t("Mid-game joining"), hint: t("New players can use the invite code after the start") };
     case "holdSubmissions":
-      return { label: "Held responses", hint: "Nobody acts until the party lead opens the floor" };
+      return { label: t("Held responses"), hint: t("Nobody acts until the party lead opens the floor") };
     case "multiclassingEnabled":
-      return { label: "Multiclassing", hint: "Second classes at level-up" };
+      return { label: t("Multiclassing"), hint: t("Second classes at level-up") };
     case "inventoryApprovals":
-      return { label: "Item offers", hint: "Players confirm GM loot and gold changes" };
+      return { label: t("Item offers"), hint: t("Players confirm GM loot and gold changes") };
     case "vitalsApprovals":
-      return { label: "Vitals confirmed", hint: "Players confirm GM damage, healing and conditions" };
+      return { label: t("Vitals confirmed"), hint: t("Players confirm GM damage, healing and conditions") };
     case "boardDrawing":
       return {
-        label: "Players draw on the board",
-        hint: "Plans and circles on the battle map; the GM always may",
+        label: t("Players draw on the board"),
+        hint: t("Plans and circles on the battle map; the GM always may"),
       };
     case "enemyIntent":
-      return { label: "Enemy intent", hint: "Show what enemies look likely to do next" };
+      return { label: t("Enemy intent"), hint: t("Show what enemies look likely to do next", { context: "tsheet.row.enemyIntent.hint" }) };
   }
 }
 
@@ -200,16 +217,29 @@ function knobOf(key: SheetRowKey, draft: CampaignDraft): 0 | 0.5 | 1 {
 
 // The groups as the step draws them. A group with nothing to show is left
 // out, which is how the narrator block disappears when a person narrates.
-export function tableSheet(draft: CampaignDraft, gates: WizardGates): SheetGroup[] {
-  return GROUPS.map((group) => ({
-    ...group,
+export function tableSheet(
+  tOrDraft: Translate | CampaignDraft,
+  draftArg?: CampaignDraft,
+  gatesArg?: WizardGates,
+): SheetGroup[] {
+  // Both call shapes: the step passes the translator first (t-first, the
+  // agoLabel pattern), the suites pass the draft alone — the reading falls
+  // back to the dictionary's English.
+  const withT = typeof tOrDraft === "function";
+  const t = (withT ? tOrDraft : (key: string, vars?: Record<string, string | number>) => translate("en", key, vars)) as Translate;
+  const draft = (withT ? draftArg : tOrDraft) as CampaignDraft;
+  const gates = (withT ? gatesArg : draftArg) as WizardGates;
+  return GROUPS.map((groupId) => ({
+    id: groupId,
+    label: t(GROUP_KEYS[groupId]),
+    note: GROUP_NOTE_KEYS[groupId] ? t(GROUP_NOTE_KEYS[groupId]!) : "",
     rows: ROWS.filter(
-      (spec) => spec.group === group.id && !gated(spec, gates) && parentOn(draft, spec.needs),
+      (spec) => spec.group === groupId && !gated(spec, gates) && parentOn(draft, spec.needs),
     ).map((spec) => {
       const knob = knobOf(spec.key, draft);
       return {
         key: spec.key,
-        ...copy(spec, draft, gates),
+        ...copy(t, spec, draft, gates),
         on: knob > 0,
         knob,
         counted: spec.counted,

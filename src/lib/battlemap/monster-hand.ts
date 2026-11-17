@@ -6,6 +6,8 @@ import { lairCard, legendaryCard } from "@/lib/battlemap/monster-hand-legendary"
 export type { MonsterHandEnemy } from "@/lib/battlemap/monster-hand-parts";
 export { lairTitle } from "@/lib/battlemap/monster-hand-legendary";
 import { monsterAttackIcon } from "@/lib/battlemap/attack-art";
+import { translate } from "@/lib/messages-logic";
+import { pluralOf } from "@/lib/messages-logic";
 
 // The DM's hand: a monster's turn as cards (issue #108). A person running
 // the table used to play every goblin through the console's form; the
@@ -15,12 +17,23 @@ import { monsterAttackIcon } from "@/lib/battlemap/attack-art";
 // the reach, the conditions and the audit trail are the engine's exactly as
 // they are when the form is used.
 //
-// Pure and database-free: scripts/test-monster-hand.mjs drives every branch.
+// Like composerGate, the cards' own words (names, rules, refusal reasons,
+// the aim bar's sentence; table.hand.monster.*) are read with the translator
+// of the component that draws the hand. Pure and database-free otherwise:
+// scripts/test-monster-hand.mjs drives every branch.
 
 export type MonsterAdvantage = "none" | "advantage" | "disadvantage";
 
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+const enT: Translator = (key, vars) => translate("en", key, vars);
+
+// Both call shapes read: the t-first one (the components pass the hand's
+// translator) and the plain one, which reads English (enT).
+
 // "Multiattack: 2 Claw, 1 Bite" from the swings one call makes.
-export function swingsLine(swings: string[]): string {
+export function swingsLine(arg: Translator | string[], maybeSwings?: string[]): string {
+  const t = typeof arg === "function" ? arg : enT;
+  const swings = typeof arg === "function" ? maybeSwings! : arg;
   if (swings.length <= 1) {
     return "";
   }
@@ -28,10 +41,10 @@ export function swingsLine(swings: string[]): string {
   for (const name of swings) {
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
-  return `Multiattack: ${[...counts.entries()].map(([name, count]) => `${count} ${name}`).join(", ")}. One card plays the whole routine.`;
+  return t("Multiattack: {swings}. One card plays the whole routine.", { swings: [...counts.entries()].map(([name, count]) => `${count} ${name}`).join(", ") });
 }
 
-function attackCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, attack: PublicEnemyAttack): HandCard {
+function attackCard(t: Translator, enemy: MonsterHandEnemy, actions: PublicEnemyActions, attack: PublicEnemyAttack): HandCard {
   return {
     ...BASE,
     id: `monster:${enemy.id}:attack:${cardKey(attack.name)}`,
@@ -39,8 +52,8 @@ function attackCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, attack
     name: attack.name,
     range: attack.range,
     dice: `${attack.damage} ${attack.type}`.trim(),
-    roll: `${signed(attack.toHit)} to hit`,
-    rules: [swingsLine(attack.swings), attack.spellAttack ? "A spell attack." : ""].filter(Boolean).join(" "),
+    roll: t("{bonus} to hit", { bonus: signed(attack.toHit) }),
+    rules: [swingsLine(t, attack.swings), attack.spellAttack ? t("A spell attack.") : ""].filter(Boolean).join(" "),
     condition: attack.onHit ?? "",
     icon: monsterAttackIcon(enemy.name, attack.name, Boolean(attack.spellAttack)),
     target: "enemy",
@@ -68,12 +81,13 @@ function abilityUse(ability: Omit<PublicEnemyAbility, "resource" | "refusal">): 
   };
 }
 
-function abilityCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, ability: PublicEnemyAbility): HandCard {
+function abilityCard(t: Translator, enemy: MonsterHandEnemy, actions: PublicEnemyActions, ability: PublicEnemyAbility): HandCard {
+  const tp = pluralOf(t);
   const use = abilityUse(ability);
   const rules = [
-    ability.halfOnSave ? "Half damage on a save." : "",
-    ability.rounds ? `Lasts ${ability.rounds} round${ability.rounds === 1 ? "" : "s"}.` : "",
-    "Pick everyone caught in it.",
+    ability.halfOnSave ? t("Half damage on a save.") : "",
+    ability.rounds ? tp("Lasts {count} round.", "Lasts {count} rounds.", { count: ability.rounds }) : "",
+    t("Pick everyone caught in it."),
   ]
     .filter(Boolean)
     .join(" ");
@@ -84,7 +98,7 @@ function abilityCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, abili
     name: ability.name,
     range: "",
     dice: ability.damage ? `${ability.damage} ${ability.damageType ?? ""}`.trim() : (ability.condition ?? ""),
-    roll: `${saveWord(ability.save)} save DC ${ability.dc}`,
+    roll: t("{ability} save DC {dc}", { ability: saveWord(ability.save), dc: ability.dc, context: "table.hand.monster.saveRoll" }),
     rules,
     resource: ability.resource,
     condition: ability.condition ?? "",
@@ -102,17 +116,18 @@ function abilityCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, abili
   };
 }
 
-function fleeCard(enemy: MonsterHandEnemy): HandCard {
+function fleeCard(t: Translator, enemy: MonsterHandEnemy): HandCard {
+
   return {
     ...BASE,
     id: `monster:${enemy.id}:flee`,
     type: "basic",
-    name: "Flee",
+    name: t("Flee"),
     cost: "free",
     range: "",
     dice: "",
-    roll: "no roll",
-    rules: "Leaves the fight alive. The party still earns it.",
+    roll: t("no roll", { context: "table.hand.react.noRoll" }),
+    rules: t("Leaves the fight alive. The party still earns it."),
     icon: { kind: "action", key: "escape" },
     target: "none",
     toHit: null,
@@ -120,32 +135,32 @@ function fleeCard(enemy: MonsterHandEnemy): HandCard {
     damageType: "",
     save: null,
     melee: false,
-    disabled: enemy.status === "alive" ? null : `${enemy.name} is ${enemy.status}.`,
+    disabled: enemy.status === "alive" ? null : t("{name} is {status}.", { name: enemy.name, status: enemy.status }),
     spent: false,
     intent: { card: "monster", enemyId: enemy.id, action: "flee" },
   };
 }
 
-const MOVE_CARDS: Array<{ move: MonsterMove; name: string; rules: (left: number) => string }> = [
-  { move: "dash", name: "Dash", rules: (left) => `Adds its speed to its movement this turn (${left} ft left now). Then move its token.` },
-  { move: "disengage", name: "Disengage", rules: () => "Its moves this turn draw no opportunity attacks. A bonus action with Nimble Escape." },
-  { move: "dodge", name: "Dodge", rules: () => "Attacks against it have disadvantage and it has advantage on DEX saves until its next turn." },
+const MOVE_CARDS: Array<{ move: MonsterMove; nameKey: string; rulesKey: string }> = [
+  { move: "dash", nameKey: "Dash", rulesKey: "Adds its speed to its movement this turn ({left} ft left now). Then move its token." },
+  { move: "disengage", nameKey: "Disengage", rulesKey: "Its moves this turn draw no opportunity attacks. A bonus action with Nimble Escape." },
+  { move: "dodge", nameKey: "Dodge", rulesKey: "Attacks against it have disadvantage and it has advantage on DEX saves until its next turn." },
 ];
 
 // Dash, Disengage and Dodge (issue #621): its action, played with no target,
 // as take_action with its enemyId. Only from a host that resolves them and
 // says how far the creature may still walk.
-function moveCards(enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCard[] {
+function moveCards(t: Translator, enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCard[] {
   const movement = actions.movement;
   if (!movement) {
     return [];
   }
-  return MOVE_CARDS.map(({ move, name, rules }) => {
+  return MOVE_CARDS.map(({ move, nameKey, rulesKey }) => {
     const disabled =
       move === "dash" && movement.speedFeet === 0
-        ? `${enemy.name}'s speed is 0 right now.`
+        ? t("{name}'s speed is 0 right now.", { name: enemy.name })
         : move === "disengage" && movement.disengaged
-          ? `${enemy.name} already Disengaged this turn.`
+          ? t("{name} already Disengaged this turn.", { name: enemy.name })
           : move === "disengage"
             ? null
             : actions.refusal;
@@ -153,11 +168,11 @@ function moveCards(enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCa
       ...BASE,
       id: `monster:${enemy.id}:${move}`,
       type: "basic",
-      name,
+      name: t(nameKey),
       range: "",
       dice: "",
-      roll: "no roll",
-      rules: rules(movement.leftFeet),
+      roll: t("no roll", { context: "table.hand.react.noRoll" }),
+      rules: t(rulesKey, { left: movement.leftFeet }),
       icon: { kind: "action", key: move },
       target: "none",
       toHit: null,
@@ -167,7 +182,7 @@ function moveCards(enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCa
       melee: false,
       // Disengage may still be its bonus action (Nimble Escape): the server
       // says no if neither is left.
-      disabled: enemy.status === "alive" ? disabled : `${enemy.name} is ${enemy.status}.`,
+      disabled: enemy.status === "alive" ? disabled : t("{name} is {status}.", { name: enemy.name, status: enemy.status }),
       spent: move !== "disengage" && actions.acted,
       intent: { card: "monster", enemyId: enemy.id, action: move },
     };
@@ -179,21 +194,28 @@ function moveCards(enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCa
 // lair actions while they can be taken (`legendaryCards`), and breaking off.
 // Empty for an enemy the projection carries no actions for (a player's view,
 // or an older server).
-export function deriveMonsterHand(enemy: MonsterHandEnemy, options: { enemyActions?: boolean; legendaryCards?: boolean } = {}): HandCard[] {
+export function deriveMonsterHand(
+  tArg: Translator | MonsterHandEnemy,
+  enemyArg?: MonsterHandEnemy,
+  maybeOptions: { enemyActions?: boolean; legendaryCards?: boolean } = {},
+): HandCard[] {
+  const t = typeof tArg === "function" ? tArg : enT;
+  const enemy = (typeof tArg === "function" ? enemyArg : tArg)!;
+  const options = typeof tArg === "function" ? maybeOptions : ((enemyArg as { enemyActions?: boolean; legendaryCards?: boolean } | undefined) ?? {});
   const actions = enemy.actions;
   if (!actions) {
     return [];
   }
   const legendary = options.legendaryCards ? actions.legendary : undefined;
   return [
-    ...actions.attacks.map((attack) => attackCard(enemy, actions, attack)),
-    ...actions.abilities.map((ability) => abilityCard(enemy, actions, ability)),
-    ...(options.enemyActions ? moveCards(enemy, actions) : []),
+    ...actions.attacks.map((attack) => attackCard(t, enemy, actions, attack)),
+    ...actions.abilities.map((ability) => abilityCard(t, enemy, actions, ability)),
+    ...(options.enemyActions ? moveCards(t, enemy, actions) : []),
     ...(legendary
-      ? legendary.options.flatMap((option) => (option.routes.length ? option.routes.map((route) => legendaryCard(enemy, legendary, option, route)) : [legendaryCard(enemy, legendary, option, null)]))
+      ? legendary.options.flatMap((option) => (option.routes.length ? option.routes.map((route) => legendaryCard(enemy, legendary, option, route, t)) : [legendaryCard(enemy, legendary, option, null, t)]))
       : []),
-    ...(options.legendaryCards ? (actions.lair ?? []).map((option) => lairCard(enemy, option)) : []),
-    fleeCard(enemy),
+    ...(options.legendaryCards ? (actions.lair ?? []).map((option) => lairCard(enemy, option, t)) : []),
+    fleeCard(t, enemy),
   ];
 }
 
@@ -223,42 +245,58 @@ export function rollsMonsterAttack(card: HandCard): boolean {
   return intent.card === "monster" && (intent.action === "attack" || (intent.action === "legendary" && Boolean(intent.attackName)));
 }
 
-function listNames(names: string[]): string {
+function listNames(t: Translator, names: string[]): string {
   if (names.length <= 1) {
     return names[0] ?? "";
   }
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  // The joiner's own spaces come with the key's value (" and " / " et ").
+  return `${names.slice(0, -1).join(", ")}${t(" and ", { context: "table.hand.join.and" })}${names[names.length - 1]}`;
 }
 
 // The line the aim bar shows for the raised card.
-export function monsterSentence(enemyName: string, card: HandCard, targetNames: string[]): string {
+export function monsterSentence(
+  tArg: Translator | string,
+  enemyNameArg?: string | HandCard,
+  cardArg?: HandCard | string[],
+  targetNames: string[] = [],
+): string {
+  const t = typeof tArg === "function" ? tArg : enT;
+  const enemyName = (typeof tArg === "function" ? enemyNameArg : tArg) as string;
+  const card = (typeof tArg === "function" ? cardArg : enemyNameArg) as HandCard;
+  const targets = (typeof tArg === "function" ? targetNames : (cardArg as string[])) ?? [];
   const intent = card.intent;
   if (intent.card !== "monster") {
     return "";
   }
-  const who = listNames(targetNames);
+  const who = listNames(t, targets);
   if (intent.action === "attack") {
-    return who ? `${enemyName} attacks ${who} with its ${card.name}.` : `${enemyName} attacks with its ${card.name}.`;
+    return who
+      ? t("{name} attacks {who} with its {attack}.", { name: enemyName, who, attack: card.name })
+      : t("{name} attacks with its {attack}.", { name: enemyName, attack: card.name });
   }
   if (intent.action === "ability") {
-    return who ? `${enemyName} uses ${card.name} on ${who}.` : `${enemyName} uses ${card.name}.`;
+    return who
+      ? t("{name} uses {ability} on {who}.", { name: enemyName, who, ability: card.name })
+      : t("{name} uses {ability}.", { name: enemyName, ability: card.name });
   }
   if (intent.action === "dash") {
-    return `${enemyName} takes the Dash action.`;
+    return t("{name} takes the Dash action.", { name: enemyName });
   }
   if (intent.action === "disengage") {
-    return `${enemyName} disengages.`;
+    return t("{name} disengages.", { name: enemyName });
   }
   if (intent.action === "dodge") {
-    return `${enemyName} takes the Dodge action.`;
+    return t("{name} takes the Dodge action.", { name: enemyName });
   }
   if (intent.action === "legendary") {
-    return who ? `${enemyName} spends a legendary action: ${card.name} on ${who}.` : `${enemyName} spends a legendary action: ${card.name}.`;
+    return who
+      ? t("{name} spends a legendary action: {card} on {who}.", { name: enemyName, card: card.name, who })
+      : t("{name} spends a legendary action: {card}.", { name: enemyName, card: card.name });
   }
   if (intent.action === "lair") {
-    return who ? `The lair acts on ${who}.` : "The lair acts.";
+    return who ? t("The lair acts on {who}.", { who }) : t("The lair acts.");
   }
-  return `${enemyName} breaks off and flees.`;
+  return t("{name} breaks off and flees.", { name: enemyName });
 }
 
 // The calls a played card makes, in order: one for most cards

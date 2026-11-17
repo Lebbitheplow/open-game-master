@@ -15,7 +15,11 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 // Windows CI checks out with CRLF.
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+// The dictionary the keyed pins read: the sentences live there now.
+const en = () => read("src/lib/messages/en.ts");
 const submit = await import("../src/app/characters/builder/submit.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { draftStepKey } = await import("../src/app/characters/builder/builderDraft.ts");
 
 let passed = 0;
@@ -43,13 +47,15 @@ await test("the steps run class, ancestry, abilities, spells and gear, hero, fin
 
 await test("the first step asks how you want to play, with Help me build, the notices and the level", () => {
   const calling = stepOf("calling");
-  assert.match(calling, /question: quizVoice === "party" \? "What does the party need\?" : "In a fight, what's your job\?"/);
+  // The two asks read through the dictionary (builder.shell.playstyle*), the
+  // i18n pass; the sentences they pin live in the English dictionary now.
+  assert.match(calling, /question: quizVoice === "party" \? t\("What does the party need\?"\) : t\("In a fight, what's your job\?"\)/);
   assert.match(calling, /onHelpMeBuild: \(role\) => setQuiz\(\{ role \}\)/);
   assert.match(calling, /notices=\{<ContentNotices pack=\{pack\} packInstalled=\{packInstalled\} \/>\}/);
   assert.match(calling, /levelField=\{<LevelField state=\{state\} fixedLevel=\{fixedLevel\} levelNote=\{levelNote\}/);
   const step = read("src/app/characters/builder/steps/CallingStep.tsx");
   assert.match(step, /onHelpMeBuild=\{playstyle\?\.onHelpMeBuild\}/);
-  assert.ok(step.indexOf("{levelField}") > step.indexOf('<Field label="Class"') && step.indexOf("{levelField}") < step.indexOf("{offersSubclass ? ("), "the level sits under the class, above the subclass it decides");
+  assert.ok(step.indexOf("{levelField}") > step.indexOf('<Field label={t("Class")}') && step.indexOf("{levelField}") < step.indexOf("{offersSubclass ? ("), "the level sits under the class, above the subclass it decides");
   const level = read("src/app/characters/builder/steps/CallingSetup.tsx");
   assert.match(level, /state\.changeLevel\(Number\(next\)\)/);
   assert.match(level, /levelNote \? \(/, "the door's note is said beside the level");
@@ -59,7 +65,7 @@ await test("the background sits beside the ancestry, with every open tool grant"
   const ancestry = stepOf("ancestry");
   assert.match(ancestry, /<BackgroundPanel/);
   assert.match(ancestry, /<ToolGrantPanels/);
-  assert.match(builder, /ancestry: \[\n\s+\.\.\.ancestryBlocks\(state, race, background, derived, featJudge\),\n\s+\.\.\.backgroundBlocks\(state, background, derived\),\n\s+\]/);
+  assert.match(builder, /ancestry: \[\n\s+\.\.\.ancestryBlocks\(t, state, race, background, derived, featJudge\),\n\s+\.\.\.backgroundBlocks\(t, state, background, derived\),\n\s+\]/);
   for (const target of ["background", "backgroundSkills", "tools"]) {
     assert.match(builder, new RegExp(`\\n  ${target}: "ancestry",`), `${target} is asked on the ancestry step`);
   }
@@ -71,35 +77,38 @@ await test("the background sits beside the ancestry, with every open tool grant"
 });
 
 await test("nothing before the identity step needs a name", () => {
-  assert.deepEqual(submit.identityBlocks({ name: "" }).map((block) => block.target), ["name"]);
-  assert.deepEqual(submit.identityBlocks({ name: "Wren" }), []);
+  assert.deepEqual(submit.identityBlocks(t, { name: "" }).map((block) => block.target), ["name"]);
+  assert.deepEqual(submit.identityBlocks(t, { name: "Wren" }), []);
   // The other steps' gates never ask for the name.
   const nameless = { name: "", backgroundSkills: [], bonusLanguages: [], racialAsi: [], racialSkills: [], feats: [], repeatSkills: [] };
   const soldier = { id: "soldier", name: "Soldier", skills: [] };
   const human = { id: "human", name: "Human", skills: [], asi: {} };
   for (const blocks of [
-    submit.backgroundBlocks(nameless, soldier, { toolGrants: { choices: [], left: [] } }),
-    submit.ancestryBlocks(nameless, human, soldier),
-    submit.callingBlocks(undefined),
-    submit.abilitiesBlocks({ abilities: null }),
+    submit.backgroundBlocks(t, nameless, soldier, { toolGrants: { choices: [], left: [] } }),
+    submit.ancestryBlocks(t, nameless, human, soldier),
+    submit.callingBlocks(t, undefined),
+    submit.abilitiesBlocks(t, { abilities: null }),
   ]) {
     assert.ok(blocks.every((block) => block.target !== "name"));
   }
   // The summary's Save waits on the earliest step's pick, the name last.
   assert.match(builder, /const firstOwed = blockers\.calling \?\? blockers\.ancestry \?\? blockers\.abilities \?\? blockers\.spells \?\? blockers\.identity;/);
   const source = read("src/app/characters/builder/submit.ts");
-  assert.match(source, /gearBlocker\(derived\) \?\?\n\s+identityBlocker\(state\);/, "the final check asks for the name last");
-  // Until the name is given, the hero is "Your hero".
-  assert.match(builder, /title=\{state\.name\.trim\(\) \|\| "Your hero"\}/);
+  assert.match(source, /gearBlocker\(t, derived\) \?\?\n\s+identityBlocker\(t, state\);/, "the final check asks for the name last");
+  // Until the name is given, the hero is "Your hero" — the words are the
+  // dictionary's (builder.shared.yourHero), the i18n pass.
+  assert.match(builder, /title=\{state\.name\.trim\(\) \|\| t\("Your hero"\)\}/);
 });
 
 await test("the name, alignment, looks and story are the last step before the summary", () => {
   const identity = stepOf("identity");
-  assert.match(identity, /label: "Hero",\n\s+title: "Name your hero and tell their story",/);
+  // The step's words are the dictionary's (builder.shell.step.*), the i18n
+  // pass; the pinned sentences live in the English dictionary now.
+  assert.match(identity, /label: t\("Hero"\),\n\s+title: t\("Name your hero and tell their story"\),/);
   assert.match(identity, /alignmentGroups=\{pickers\.alignmentGroups\}/);
   assert.match(identity, /onUploadPortrait=\{\(\) => setCropping\(true\)\}/);
   const step = read("src/app/characters/builder/steps/IdentityStep.tsx");
-  for (const field of ['aria-label="Name"', "<AttractionPicker", '<span id={alignmentId}>Alignment</span>', '<Field label="Appearance"', 'aria-label="Backstory"']) {
+  for (const field of ['aria-label={t("Name")}', "<AttractionPicker", '<span id={alignmentId}>{t("Alignment")}</span>', '<Field label={t("Appearance")}', 'aria-label={t("Backstory", { context: "builder.identity.backstoryAria" })}']) {
     assert.ok(step.includes(field), `the identity step holds ${field}`);
   }
   // Who plays them changes nothing earlier, so the toggle stays on Finish.
@@ -125,7 +134,9 @@ await test("a kept draft resumes on its step by key, an old one on the same step
   assert.match(builder, /writeBuilderDraft\(draftAt, STEP_ORDER\[step\] \?\? STEP_ORDER\[0\], JSON\.parse\(draftJson\)\)/);
   assert.match(builder, /return Math\.max\(0, STEP_ORDER\.indexOf\(draft\.step\)\);/);
   assert.match(builder, /setStep\(draftStepIndex\(draftOffer\)\);/);
-  assert.match(builder, /left on step \{draftStepIndex\(draftOffer\) \+ 1\} of \{steps\.length\}/);
+  // The draft's sentence reads through the dictionary
+  // (builder.shell.draftLeft), the i18n pass.
+  assert.match(builder, /t\(", left on step \{step\} of \{total\}\.", \{ step: draftStepIndex\(draftOffer\) \+ 1, total: steps\.length \}\)/);
 });
 
 console.log(`test-builder-calling-first: ${passed} passed`);

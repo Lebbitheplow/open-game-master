@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { DENOMINATION_COPPER, formatPrice, purseCopper } from "@/lib/srd/currency";
 
@@ -15,6 +16,7 @@ import { DENOMINATION_COPPER, formatPrice, purseCopper } from "@/lib/srd/currenc
 type Picked = Record<string, number>;
 
 function ItemPicker({ sheet, picked, onChange, title }: { sheet: CharacterSheet; picked: Picked; onChange: (next: Picked) => void; title: string }) {
+  const t = useT();
   return (
     <div className="space-y-1">
       <p className="text-[10px] uppercase tracking-wide text-stone-500">{title}</p>
@@ -39,7 +41,7 @@ function ItemPicker({ sheet, picked, onChange, title }: { sheet: CharacterSheet;
                     max={item.qty}
                     value={qty}
                     onChange={(next) => onChange({ ...picked, [item.name]: Math.max(1, Math.min(item.qty, next || 1)) })}
-                    label={`How many ${item.name}`}
+                    label={t("How many {name}", { name: item.name, context: "table.trade.howMany" })}
                     size="sm"
                   />
                 ) : null}
@@ -48,7 +50,7 @@ function ItemPicker({ sheet, picked, onChange, title }: { sheet: CharacterSheet;
           })}
         </ul>
       ) : (
-        <p className="text-[11px] italic text-stone-600">Nothing carried.</p>
+        <p className="text-[11px] italic text-stone-600">{t("Nothing carried.")}</p>
       )}
     </div>
   );
@@ -59,41 +61,43 @@ function ItemPicker({ sheet, picked, onChange, title }: { sheet: CharacterSheet;
 // with nothing to offer and no way to ask for less than a gold piece. Each
 // stepper stops at what the purse holds of it; the sum is checked below.
 const COINS = [
-  ["gp", "Gold", DENOMINATION_COPPER.gp],
-  ["sp", "Silver", DENOMINATION_COPPER.sp],
-  ["cp", "Copper", DENOMINATION_COPPER.cp],
+  ["gp", DENOMINATION_COPPER.gp],
+  ["sp", DENOMINATION_COPPER.sp],
+  ["cp", DENOMINATION_COPPER.cp],
 ] as const;
 type Coins = Record<(typeof COINS)[number][0], number>;
 const NO_COINS: Coins = { gp: 0, sp: 0, cp: 0 };
-const coinsCopper = (coins: Coins) => COINS.reduce((sum, [code, , each]) => sum + coins[code] * each, 0);
+const coinsCopper = (coins: Coins) => COINS.reduce((sum, [code, each]) => sum + coins[code] * each, 0);
 
 function CoinField({ who, sheet, value, onChange }: { who: string; sheet: CharacterSheet; value: Coins; onChange: (coins: Coins) => void }) {
+  const t = useT();
   const purse = purseCopper(sheet);
   const over = coinsCopper(value) > purse;
   return (
     <div className="space-y-1 text-[11px] text-stone-400">
-      <p className="text-[10px] uppercase tracking-wide text-stone-500">Coin, of {formatPrice(purse)}</p>
+      <p className="text-[10px] uppercase tracking-wide text-stone-500">{t("Coin, of {purse}", { purse: formatPrice(purse) })}</p>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        {COINS.map(([code, name, each]) => (
+        {COINS.map(([code, each]) => (
           <span key={code} className="flex items-center gap-1">
             <NumberStepper
               min={0}
               max={Math.floor(purse / each)}
               value={value[code]}
               onChange={(next) => onChange({ ...value, [code]: Math.max(0, Math.min(Math.floor(purse / each), next || 0)) })}
-              label={`${name} ${who} gives`}
+              label={({ gp: t("Gold {who} gives", { who }), sp: t("Silver {who} gives", { who }), cp: t("Copper {who} gives", { who }) } as Record<string, string>)[code] ?? code}
               size="sm"
             />
             <span className="text-stone-500">{code}</span>
           </span>
         ))}
       </div>
-      {over ? <p className="reveal text-amber-300/90">{who} has only {formatPrice(purse)}.</p> : null}
+      {over ? <p className="reveal text-amber-300/90">{t("{who} has only {purse}.", { who, purse: formatPrice(purse) })}</p> : null}
     </div>
   );
 }
 
 export function TradeDialog({ campaignId, me, them, onClose }: { campaignId: string; me: CharacterSheet; them: CharacterSheet; onClose: () => void }) {
+  const t = useT();
   const [give, setGive] = useState<Picked>({});
   const [want, setWant] = useState<Picked>({});
   const [giveCoins, setGiveCoins] = useState<Coins>(NO_COINS);
@@ -117,7 +121,7 @@ export function TradeDialog({ campaignId, me, them, onClose }: { campaignId: str
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(String(data.error ?? "The offer could not be made."));
+        setError(String(data.error ?? t("The offer could not be made.")));
         return;
       }
       onClose();
@@ -127,26 +131,26 @@ export function TradeDialog({ campaignId, me, them, onClose }: { campaignId: str
   }
 
   return (
-    <Dialog open onOpenChange={(open) => (open ? null : onClose())} title={`Trade with ${them.name}`} icon={<ArrowLeftRight className="size-4 text-amber-400" />} width="w-[min(94vw,40rem)]">
+    <Dialog open onOpenChange={(open) => (open ? null : onClose())} title={t("Trade with {name}", { name: them.name })} icon={<ArrowLeftRight className="size-4 text-amber-400" />} width="w-[min(94vw,40rem)]">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2 rounded-lg border border-stone-800 bg-stone-950/50 p-2.5">
-          <p className="font-display text-sm text-amber-100">{me.name} gives</p>
-          <ItemPicker sheet={me} picked={give} onChange={setGive} title="From my pack" />
+          <p className="font-display text-sm text-amber-100">{t("{name} gives", { name: me.name })}</p>
+          <ItemPicker sheet={me} picked={give} onChange={setGive} title={t("From my pack")} />
           <CoinField who={me.name} sheet={me} value={giveCoins} onChange={setGiveCoins} />
         </div>
         <div className="space-y-2 rounded-lg border border-stone-800 bg-stone-950/50 p-2.5">
-          <p className="font-display text-sm text-amber-100">{them.name} gives</p>
-          <ItemPicker sheet={them} picked={want} onChange={setWant} title="From their pack" />
+          <p className="font-display text-sm text-amber-100">{t("{name} gives", { name: them.name })}</p>
+          <ItemPicker sheet={them} picked={want} onChange={setWant} title={t("From their pack")} />
           <CoinField who={them.name} sheet={them} value={wantCoins} onChange={setWantCoins} />
         </div>
       </div>
       {error ? <p className="motion-shake mt-2 text-[11px] text-red-400">{error}</p> : null}
       <div className="mt-3 flex justify-end gap-2">
         <button type="button" onClick={onClose} className="rounded border border-stone-700 px-3 py-1 text-xs text-stone-400 hover:bg-stone-900">
-          Never mind
+          {t("Never mind")}
         </button>
         <button type="button" disabled={busy || empty || short} onClick={() => void offer()} className="flex items-center gap-1 rounded border border-amber-700 bg-amber-950/50 px-3 py-1 text-xs text-amber-100 disabled:opacity-50">
-          {busy ? <Loader2 className="size-3 animate-spin" /> : <ArrowLeftRight className="size-3" />} Offer the trade
+          {busy ? <Loader2 className="size-3 animate-spin" /> : <ArrowLeftRight className="size-3" />} {t("Offer the trade")}
         </button>
       </div>
     </Dialog>

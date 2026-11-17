@@ -15,6 +15,7 @@ import { importView, reviewView } from "@/lib/pdf-import/view";
 import { applyMatches } from "@/lib/pdf-import/matches";
 import { chooseMatches, optionDetail } from "@/lib/pdf-import/match-logic";
 import { isSrdCreature, srdCreatures } from "@/lib/pdf-import/srd-match";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,17 +28,20 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ importId: string }> };
 
-async function mine(params: Params["params"]) {
+// The page shows these refusals raw (the review's alerts, the button's
+// error line), so they answer in the request's language.
+async function mine(request: Request, params: Params["params"]) {
+  const t = requestT(request);
   const user = await currentUser();
   if (!user) return { response: unauthorized() } as const;
   const { importId } = await params;
   const item = getPdfImportForUser(importId, user.id);
-  if (!item) return { response: Response.json({ error: "That import is gone. Pick the PDF again." }, { status: 404 }) } as const;
+  if (!item) return { response: Response.json({ error: t("That import is gone. Pick the PDF again.") }, { status: 404 }) } as const;
   return { user, item } as const;
 }
 
-export async function GET(_request: Request, { params }: Params) {
-  const found = await mine(params);
+export async function GET(request: Request, { params }: Params) {
+  const found = await mine(request, params);
   if ("response" in found) return found.response;
   resumeIfStranded(found.item);
   const draft = found.item.state === "review" ? readDraft(found.item.id) : null;
@@ -58,13 +62,14 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(request: Request, { params }: Params) {
-  const found = await mine(params);
+  const found = await mine(request, params);
   if ("response" in found) return found.response;
-  if (found.item.state !== "review") return Response.json({ error: "This import is not waiting for review." }, { status: 409 });
+  const t = requestT(request);
+  if (found.item.state !== "review") return Response.json({ error: t("This import is not waiting for review.") }, { status: 409 });
   const parsed = patchSchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) return Response.json({ error: "Those choices could not be read." }, { status: 400 });
+  if (!parsed.success) return Response.json({ error: t("Those choices could not be read.") }, { status: 400 });
   const draft = readDraft(found.item.id);
-  if (!draft) return Response.json({ error: "This import lost its draft. Read the book again." }, { status: 409 });
+  if (!draft) return Response.json({ error: t("This import lost its draft. Read the book again.") }, { status: 409 });
   for (const record of draft.records) {
     const include = parsed.data.include[record.key];
     if (include !== undefined) record.include = include;
@@ -74,7 +79,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (Object.keys(choices).length) {
     // Only an SRD 5.1 creature's own name is a match.
     const stranger = Object.values(choices).find((choice) => choice.srd !== null && !isSrdCreature(choice.srd));
-    if (stranger) return Response.json({ error: `"${stranger.srd}" is not an SRD 5.1 creature. Pick one from the list.` }, { status: 400 });
+    if (stranger) return Response.json({ error: t("\"{name}\" is not an SRD 5.1 creature. Pick one from the list.", { name: stranger.srd ?? "" }) }, { status: 400 });
     draft.matches = chooseMatches(draft.matches ?? [], choices);
     applyMatches(draft);
   }
@@ -93,17 +98,18 @@ const postSchema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(request: Request, { params }: Params) {
-  const found = await mine(params);
+  const found = await mine(request, params);
   if ("response" in found) return found.response;
   const { user, item } = found;
+  const t = requestT(request);
   const parsed = postSchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) return Response.json({ error: "That is not something an import can do." }, { status: 400 });
+  if (!parsed.success) return Response.json({ error: t("That is not something an import can do.") }, { status: 400 });
 
   if (parsed.data.action === "start") {
     if (item.state === "working") return Response.json({ import: importView(item) });
-    if (!["reading", "ready", "failed", "review"].includes(item.state)) return Response.json({ error: "This import cannot be read again." }, { status: 409 });
+    if (!["reading", "ready", "failed", "review"].includes(item.state)) return Response.json({ error: t("This import cannot be read again.") }, { status: 409 });
     if (item.pagesReceived < item.pageCount) {
-      return Response.json({ error: `Only ${item.pagesReceived} of the book's ${item.pageCount} pages arrived. Pick the PDF again to send the rest.` }, { status: 409 });
+      return Response.json({ error: t("Only {received} of the book's {total} pages arrived. Pick the PDF again to send the rest.", { received: item.pagesReceived, total: item.pageCount }) }, { status: 409 });
     }
     // Reading again starts from the layout; the model's answers so far are
     // kept, so a second run asks only for what is missing.
@@ -118,7 +124,7 @@ export async function POST(request: Request, { params }: Params) {
   if (destination === "workshop" && !canCreateCampaigns(user)) return campaignCreationRefusal();
   if (destination === "world") {
     const target = item.campaignId ? getCampaignById(item.campaignId) : null;
-    if (!target) return Response.json({ error: "The WorldForge this import was begun in is gone. Bring it in as a new workshop instead." }, { status: 409 });
+    if (!target) return Response.json({ error: t("The WorldForge this import was begun in is gone. Bring it in as a new workshop instead.") }, { status: 409 });
     // Still theirs to write in: an author taken off the workshop since the
     // import began cannot land a book in it.
     const authority = await requireStoryAuthority(target.id);
@@ -135,8 +141,8 @@ export async function POST(request: Request, { params }: Params) {
   return Response.json({ workshopId: landed.workshopId, ...(landed.shelf ? { shelf: landed.shelf } : {}) });
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
-  const found = await mine(params);
+export async function DELETE(request: Request, { params }: Params) {
+  const found = await mine(request, params);
   if ("response" in found) return found.response;
   // A running job sees its row gone and stops at its next piece.
   deletePdfImport(found.item.id);

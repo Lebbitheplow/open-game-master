@@ -17,7 +17,9 @@ export const BEAT_KINDS = [
 ] as const;
 export type BeatKind = (typeof BEAT_KINDS)[number];
 
-export const BEAT_KIND_LABELS: Record<BeatKind, string> = {
+// The composer's words for each kind are the dictionaries' (beat.kind.*);
+// the surface that shows them passes its translator.
+export const BEAT_KIND_KEYS: Record<BeatKind, string> = {
   scene: "A scene played out",
   npc: "Someone they met",
   discovery: "Something they learned",
@@ -25,6 +27,13 @@ export const BEAT_KIND_LABELS: Record<BeatKind, string> = {
   combat: "How a fight went",
   downtime: "Downtime and shopping",
 };
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function beatKindLabel(t: T, kind: BeatKind): string {
+  return t(BEAT_KIND_KEYS[kind] ?? "A scene played out");
+}
 
 // How the text got here. Kept because "the DM wrote this" and "a model wrote
 // this and the DM accepted it" are different provenance, and a later pass over

@@ -15,6 +15,8 @@ import fs from "node:fs";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 
 const { openBuilder } = await import("./lib/enforce-builder.mjs");
 const { legalizeSheet } = await import("../src/lib/srd/sheet-legality.ts");
@@ -348,14 +350,14 @@ await test("the level table says which class each level went to", () => {
 
 await test("a table that turns multiclassing off holds a new character to one class", () => {
   const built = builder.build({ ...FIGHTER_ROGUE });
-  const blocks = builder.submit.callingBlocks(classRow("fighter"), built.state, { ...built.derived, multiclassAllowed: false });
+  const blocks = builder.submit.callingBlocks(t, classRow("fighter"), built.state, { ...built.derived, multiclassAllowed: false });
   assert.ok(blocks.some((entry) => entry.target === "multiclass" && /turns multiclassing off/.test(entry.message)));
   // A stored split the seat already holds is kept there, so its rebuild owes
   // nothing for it; a class it did not hold is still held back.
   const off = { ...built.derived, multiclassAllowed: false };
-  const kept = builder.submit.callingBlocks(classRow("fighter"), { ...built.state, storedClassIds: ["fighter", "rogue"] }, off);
+  const kept = builder.submit.callingBlocks(t, classRow("fighter"), { ...built.state, storedClassIds: ["fighter", "rogue"] }, off);
   assert.ok(!kept.some((entry) => /turns multiclassing off/.test(entry.message)), "a kept split was blocked");
-  const other = builder.submit.callingBlocks(classRow("fighter"), { ...built.state, storedClassIds: ["fighter", "wizard"] }, off);
+  const other = builder.submit.callingBlocks(t, classRow("fighter"), { ...built.state, storedClassIds: ["fighter", "wizard"] }, off);
   assert.ok(other.some((entry) => /turns multiclassing off/.test(entry.message)), "a class the seat did not hold was let through");
   // The table rule reaches the builder from the table's settings.
   const rules = read("src/app/characters/builder/useTableRules.ts");
@@ -389,7 +391,7 @@ await test("a second class owes its subclass and its skill on the class step", (
   assert.match(rogue.blocker.message, /rogue levels taught you/);
   // A score that misses a class's 13 is asked for on the Abilities step.
   const weak = builder.build({ ...FIGHTER_WIZARD, scores: { str: 15, dex: 12, con: 13, int: 8, wis: 10, cha: 14 } });
-  const owed = builder.submit.abilitiesBlocks(weak.derived, weak.state);
+  const owed = builder.submit.abilitiesBlocks(t, weak.derived, weak.state);
   assert.ok(owed.some((entry) => /Wizard beside another class needs Intelligence 13/.test(entry.message)));
 });
 
@@ -588,7 +590,7 @@ await test("the level table and the math table read each casting class", () => {
   assert.deepEqual(rows[4].casters.map((caster) => [caster.name, caster.cantrips]), [["Cleric", 3], ["Wizard", 3]]);
   assert.equal(rows[4].casters[1].spells.spellbook, 8);
   assert.deepEqual(rows[4].slots, [{ level: 1, count: 4 }, { level: 2, count: 3 }, { level: 3, count: 2 }]);
-  const sections = buildMathSections({ derived: built.derived, scores: built.state.scores, klass: classRow("cleric"), atTable: false });
+  const sections = buildMathSections({ t, derived: built.derived, scores: built.state.scores, klass: classRow("cleric"), atTable: false });
   const spellRows = sections.find((section) => section.id === "spells").rows;
   assert.ok(spellRows.some((row) => row.id === "spell-dc-wizard" && row.value === "14"));
   assert.ok(spellRows.some((row) => row.id === "spell-dc-cleric"));
@@ -619,7 +621,7 @@ await test("one set of words names a split wherever a class and level are shown"
   ]) {
     assert.match(read(file), /@\/lib\/characters\/class-words/, `${file} names a split with the shared words`);
   }
-  assert.match(read("src/app/campaigns/[campaignId]/LobbyParty.tsx"), /title=\{classLevelWords\(sheet\)\}/, "the medallion's title names the split");
+  assert.match(read("src/app/campaigns/[campaignId]/LobbyParty.tsx"), /title=\{classLevelWords\(sheet, \(id\) => classDisplayNameFor\(id, locale\)\)\}/, "the medallion's title names the split, in the reader's language");
 });
 
 // ---- lists trimmed to their counts when levels move ----

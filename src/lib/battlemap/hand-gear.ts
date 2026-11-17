@@ -11,7 +11,12 @@
 // Dismounting costs half the rider's speed.
 //
 // Pure and database-free: scripts/test-hand-gear.mjs drives it.
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 import { guessedRehand, guessStands, handsFullError, handsFullFor, spendInteraction, gearKindOf, inHand } from "@/lib/dm/gear-hands";
+import type { SpendResult } from "@/lib/dm/action-budget";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -61,8 +66,22 @@ function card(
   rules: string,
   icon: HandCard["icon"],
   extra: Partial<HandCard> = {},
+  t: T = enT,
 ): HandCard {
-  return { ...BLANK, id: `gear:${id}`, type: "basic", name, cost, rules, icon, target: "none", intent: { card: "gear", action }, ...extra };
+  return {
+    ...BLANK,
+    range: t("Self", { context: "table.hand.range.self" }),
+    roll: t("no roll", { context: "table.hand.roll.none" }),
+    id: `gear:${id}`,
+    type: "basic",
+    name,
+    cost,
+    rules,
+    icon,
+    target: "none",
+    intent: { card: "gear", action },
+    ...extra,
+  };
 }
 
 function pick(label: string, rows: Array<{ value: string; label: string; note?: string }>): HandChoice {
@@ -84,9 +103,9 @@ const rowPick = (item: EquipmentItem) => ({ value: item.name, label: item.name, 
 // What the interaction costs now: nothing while it is unspent, the Use an
 // Object action after (Fast Hands' bonus action for a thief), in the
 // engine's own words when neither is left.
-function interactionCost(sheet: CharacterSheet, turn: HandTurn): { cost: HandCost; note: string; gate: Gate } {
+function interactionCost(sheet: CharacterSheet, turn: HandTurn, t: T = enT): { cost: HandCost; note: string; gate: Gate } {
   if (!turn.interactionUsed) {
-    return { cost: "free", note: "Your free object interaction this turn.", gate: null };
+    return { cost: "free", note: t("Your free object interaction this turn."), gate: null };
   }
   const result = spendInteraction(budgetOf(turn, sheet), {
     what: "another object",
@@ -98,17 +117,50 @@ function interactionCost(sheet: CharacterSheet, turn: HandTurn): { cost: HandCos
   return {
     cost: bonus ? "bonus" : "action",
     note: bonus
-      ? "Your free object interaction is spent: Fast Hands makes this one your bonus action."
-      : "Your free object interaction is spent: this one takes the Use an Object action.",
-    gate: result.ok ? null : { reason: result.error, spent: true },
+      ? t("Your free object interaction is spent: Fast Hands makes this one your bonus action.")
+      : t("Your free object interaction is spent: this one takes the Use an Object action."),
+    gate: interactionGate(result, sheet.name, "another object", t),
   };
 }
 
+// The engine's refusals the gear cards carry (src/lib/dm/gear-hands.ts),
+// matched exactly and carried into the reader's words; a sentence the
+// mapping has not met keeps the engine's English. Each mapping, refusal → key:
+//   handsFullError, a draw with no hand free → table.hand.gear.handsFull
+//   spendInteraction, the action gone → table.hand.gear.interactionSpentAction
+//   spendInteraction, an attack cannot draw too → table.hand.gear.interactionSpentAttack
+// The "already went on" clause names what the budget spent, which the Hand
+// always builds as "an object" (budgetOf); a different wording falls back.
+function handsFullReason(who: string, what: string, full: readonly string[], t: T): string {
+  const items = full.join(" and ");
+  if (
+    handsFullError(who, what, full) ===
+    `${who}'s hands are full (${items}), so ${what} cannot be drawn yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.`
+  ) {
+    return t("{name}'s hands are full ({items}), so {what} cannot be drawn yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.", { name: who, items, what });
+  }
+  return handsFullError(who, what, full);
+}
+
+function interactionGate(result: SpendResult, who: string, what: string, t: T): Gate {
+  if (result.ok) {
+    return null;
+  }
+  const spent = `${who}'s free object interaction this turn already went on an object`;
+  if (result.error === `${spent}, and ${what} would be a second: that takes the Use an Object action, which ${who} has already spent. It can wait for their next turn.`) {
+    return { reason: t("{name}'s free object interaction this turn already went on an object, and {what} would be a second: that takes the Use an Object action, which {name} has already spent. It can wait for their next turn.", { name: who, what }), spent: true };
+  }
+  if (result.error === `${spent}, and ${what} would be a second, which takes the Use an Object action: an attack cannot draw it as well. ${who} attacks with what they hold, or draws it on their next turn.`) {
+    return { reason: t("{name}'s free object interaction this turn already went on an object, and {what} would be a second, which takes the Use an Object action: an attack cannot draw it as well. {name} attacks with what they hold, or draws it on their next turn.", { name: who, what }), spent: true };
+  }
+  return { reason: result.error, spent: true };
+}
+
 // `walled`: who beside this character a wall stands between (HandBoardFacts).
-export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGearContext = {}, walled: readonly string[] = []): HandCard[] {
-  const standing = standingGate(sheet, turn, "action");
-  const free = standingGate(sheet, turn, "free");
-  const interaction = interactionCost(sheet, turn);
+export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGearContext = {}, walled: readonly string[] = [], t: T = enT): HandCard[] {
+  const standing = standingGate(sheet, turn, "action", t);
+  const free = standingGate(sheet, turn, "free", t);
+  const interaction = interactionCost(sheet, turn, t);
   const touch = { cost: interaction.cost, resource: interaction.cost === "free" ? "Interaction" : "", interaction: true };
   const cards: HandCard[] = [];
   const equipment = sheet.equipment;
@@ -131,15 +183,16 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
       gated(
         card(
           worn ? "doff-shield" : "don-shield",
-          worn ? `Take off ${shield.name}` : `Strap on ${shield.name}`,
+          worn ? t("Take off {name}", { name: shield.name }) : t("Strap on {name}", { name: shield.name }),
           worn ? "unequip" : "equip",
           "action",
-          worn ? "An action to take it off: your AC drops by its bonus, and the hand is free." : "An action to strap it on: its bonus to AC, and that hand is taken.",
+          worn ? t("An action to take it off: your AC drops by its bonus, and the hand is free.") : t("An action to strap it on: its bonus to AC, and that hand is taken."),
           { kind: "item", key: shield.name, family: "item-armor" },
-          { choice: pick("Shield", [rowPick(shield)]) },
+          { choice: pick(t("Shield"), [rowPick(shield)]) },
+          t,
         ),
         standing,
-        costGate("action", turn, sheet, worn ? `taking off ${shield.name}` : `strapping on ${shield.name}`),
+        costGate("action", turn, sheet, worn ? `taking off ${shield.name}` : `strapping on ${shield.name}`, t),
       ),
     );
   }
@@ -148,14 +201,14 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
     // Only what a free hand can take; with none free, the card says how to
     // free one (dropping is free, putting one away is the interaction).
     const fits = stowed.filter((item) => (guess ? guessedRehand(equipment, item) !== null : !handsFullFor(equipment, item).length));
-    const full: Gate = fits.length ? null : { reason: handsFullError(sheet.name, "another weapon", handsFullFor(equipment, stowed[0]), "drawn", "player"), spent: false };
+    const full: Gate = fits.length ? null : { reason: handsFullReason(sheet.name, "another weapon", handsFullFor(equipment, stowed[0]), t), spent: false };
     cards.push(
       gated(
-        card("draw", "Draw a weapon", "equip", handle.cost, `${guess ? guessNote : interaction.note} A hand holds one weapon; a two-handed one takes both.`, { kind: "action", key: "use-object" }, {
+        card("draw", t("Draw a weapon"), "equip", handle.cost, `${guess ? guessNote : interaction.note} ${t("A hand holds one weapon; a two-handed one takes both.")}`, { kind: "action", key: "use-object" }, {
           resource: handle.resource,
           interaction: handle.interaction,
-          choice: pick("Weapon", (fits.length ? fits : stowed).map(rowPick)),
-        }),
+          choice: pick(t("Weapon"), (fits.length ? fits : stowed).map(rowPick)),
+        }, t),
         standing,
         full,
         guess ? null : interaction.gate,
@@ -165,11 +218,11 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   if (held.length) {
     cards.push(
       gated(
-        card("stow", "Stow a weapon", "unequip", handle.cost, `${guess ? guessNote : interaction.note} Sheathed or slung, it is ready to draw again.`, { kind: "action", key: "use-object" }, {
+        card("stow", t("Stow a weapon"), "unequip", handle.cost, `${guess ? guessNote : interaction.note} ${t("Sheathed or slung, it is ready to draw again.")}`, { kind: "action", key: "use-object" }, {
           resource: handle.resource,
           interaction: handle.interaction,
-          choice: pick("Weapon", held.map(rowPick)),
-        }),
+          choice: pick(t("Weapon"), held.map(rowPick)),
+        }, t),
         standing,
         guess ? null : interaction.gate,
       ),
@@ -177,9 +230,9 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
     // Letting go costs nothing, and the thing lies where it fell.
     cards.push(
       gated(
-        card("drop", "Drop", "drop", "free", "Free: it falls at your feet and lies there to be picked up.", { kind: "action", key: "use-object" }, {
-          choice: pick("Item", held.map(rowPick)),
-        }),
+        card("drop", t("Drop"), "drop", "free", t("Free: it falls at your feet and lies there to be picked up."), { kind: "action", key: "use-object" }, {
+          choice: pick(t("Item"), held.map(rowPick)),
+        }, t),
         free,
       ),
     );
@@ -189,11 +242,11 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   if (reach.length) {
     cards.push(
       gated(
-        card("pick-up", "Pick up", "pick_up", touch.cost, `${interaction.note} Something within 5 feet of you.`, { kind: "action", key: "use-object" }, {
+        card("pick-up", t("Pick up"), "pick_up", touch.cost, `${interaction.note} ${t("Something within 5 feet of you.")}`, { kind: "action", key: "use-object" }, {
           resource: touch.resource,
           interaction: touch.interaction,
-          choice: pick("Item", once(reach, (drop) => drop.name).map((drop) => ({ value: drop.id, label: drop.name }))),
-        }),
+          choice: pick(t("Item"), once(reach, (drop) => drop.name).map((drop) => ({ value: drop.id, label: drop.name }))),
+        }, t),
         standing,
         interaction.gate,
       ),
@@ -213,13 +266,13 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   if (passable.length && (context.allies ?? 0) > 0) {
     cards.push(
       gated(
-        card("hand", "Hand to an ally", "hand", touch.cost, `${interaction.note} They must be within 5 feet; it is theirs to use on their turn.`, { kind: "action", key: "help" }, {
+        card("hand", t("Hand to an ally"), "hand", touch.cost, `${interaction.note} ${t("They must be within 5 feet; it is theirs to use on their turn.")}`, { kind: "action", key: "help" }, {
           resource: touch.resource,
           interaction: touch.interaction,
           target: "ally",
-          range: "5 ft",
-          choice: pick("Item", passable.map(rowPick)),
-        }),
+          range: t("5 ft"),
+          choice: pick(t("Item"), passable.map(rowPick)),
+        }, t),
         standing,
         interaction.gate,
       ),
@@ -231,13 +284,13 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   if (potions.length) {
     cards.push(
       gated(
-        card("potion", "Drink a potion", "use", "action", "An action, for you or an ally within reach: a dying ally drinks too.", { kind: "item", key: potions[0].name, family: "item-gear" }, {
+        card("potion", t("Drink a potion"), "use", "action", t("An action, for you or an ally within reach: a dying ally drinks too."), { kind: "item", key: potions[0].name, family: "item-gear" }, {
           target: "ally",
-          range: "Touch",
-          choice: pick("Potion", potions.map(rowPick)),
-        }),
+          range: t("Touch"),
+          choice: pick(t("Potion"), potions.map(rowPick)),
+        }, t),
         standing,
-        costGate("action", turn, sheet, "drinking a potion"),
+        costGate("action", turn, sheet, "drinking a potion", t),
       ),
     );
   }
@@ -251,18 +304,18 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
           ...BLANK,
           id: "basic:stabilize",
           type: "basic",
-          name: "Stabilize",
+          name: t("Stabilize"),
           cost: "action",
-          range: "Touch",
-          dice: "Medicine DC 10",
-          roll: "skill check",
-          rules: "An action: a DC 10 Medicine check, or a healer's kit with no roll, and they stop dying.",
+          range: t("Touch"),
+          dice: t("Medicine DC 10"),
+          roll: t("skill check"),
+          rules: t("An action: a DC 10 Medicine check, or a healer's kit with no roll, and they stop dying."),
           icon: { kind: "action", key: "help" },
           target: "ally",
           intent: { card: "basic", action: "stabilize" },
         },
         standing,
-        costGate("action", turn, sheet, "stabilizing"),
+        costGate("action", turn, sheet, "stabilizing", t),
       ),
     );
   }
@@ -278,10 +331,10 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
           ...BLANK,
           id: "basic:wake",
           type: "basic",
-          name: "Wake",
+          name: t("Wake"),
           cost: "action",
-          range: "5 ft",
-          rules: "An action: shake an ally within 5 ft out of Sleep or Hypnotic Pattern. They wake still prone.",
+          range: t("5 ft"),
+          rules: t("An action: shake an ally within 5 ft out of Sleep or Hypnotic Pattern. They wake still prone."),
           icon: { kind: "action", key: "help" },
           target: "ally",
           // take_action refuses a shake of oneself: the aim bar leaves out
@@ -290,7 +343,7 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
           intent: { card: "basic", action: "wake" },
         },
         standing,
-        costGate("action", turn, sheet, "shaking them awake"),
+        costGate("action", turn, sheet, "shaking them awake", t),
       ),
     );
   }
@@ -301,14 +354,15 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
           ...BLANK,
           id: "basic:dismount",
           type: "basic",
-          name: "Dismount",
+          name: t("Dismount"),
           cost: "free",
-          rules: `Off ${context.mount}: half your speed.`,
+          range: t("Self", { context: "table.hand.range.self" }),
+          rules: t("Off {mount}: half your speed.", { mount: context.mount }),
           icon: { kind: "action", key: "stand-up" },
           target: "none",
           intent: { card: "basic", action: "dismount" },
         },
-        standingGate(sheet, turn, "move"),
+        standingGate(sheet, turn, "move", t),
       ),
     );
   }
@@ -338,7 +392,7 @@ export function wieldOf(sheet: CharacterSheet, weapon: string): "in-hand" | "sto
 // The Attack action draws the weapon it swings with when a hand is free and
 // the interaction is too (pc-attack-plan.ts); otherwise a stowed weapon is
 // not swung this turn, in the engine's own words.
-export function undrawnGate(sheet: CharacterSheet, turn: HandTurn, weapon: string): Gate {
+export function undrawnGate(sheet: CharacterSheet, turn: HandTurn, weapon: string, t: T = enT): Gate {
   if (!wearingIsExplicit(sheet.equipment)) return null;
   const row = sheet.equipment.find((item) => textKey(item.name) === textKey(weapon));
   if (!row || gearKindOf(row) !== "weapon" || row.equipped === true) return null;
@@ -346,8 +400,8 @@ export function undrawnGate(sheet: CharacterSheet, turn: HandTurn, weapon: strin
   // weapon played while it stands is taken up free (gear-hands.ts).
   if (guessedRehand(sheet.equipment, row)) return null;
   const full = handsFullFor(sheet.equipment, row);
-  if (full.length) return { reason: handsFullError(sheet.name, row.name, full, "drawn", "player"), spent: false };
+  if (full.length) return { reason: handsFullReason(sheet.name, row.name, full, t), spent: false };
   if (!turn.interactionUsed) return null;
   const result = spendInteraction(budgetOf(turn, sheet), { what: `drawing ${row.name}`, who: sheet.name, withAction: false });
-  return result.ok ? null : { reason: result.error, spent: true };
+  return interactionGate(result, sheet.name, `drawing ${row.name}`, t);
 }

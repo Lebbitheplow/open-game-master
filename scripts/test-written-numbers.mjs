@@ -13,6 +13,10 @@ const { test, finish } = suite("test-written-numbers");
 const world = await openWorld({ campaign: { maxPlayers: 10 } });
 const { writtenWholeNumber } = await import("../src/lib/language/text-logic.ts");
 const { parseCoins, packCostCopper, unreadCoins } = await import("../src/lib/srd/currency.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
 const { foldFieldValue } = await import("../src/lib/dm/update-sheet-args.ts");
 const { getContentDb } = await import("../src/lib/content/db.ts");
 const { getSheetById } = await import("../src/lib/db/sheets.ts");
@@ -44,7 +48,7 @@ await test("coins: whole coins of each kind; a decimal is refused, saying to wri
   }
   for (const text of ["1,5 gp", "1.5 gp", "0,5 gp", "1.234,56 gp", "1'5 gp"]) {
     assert.equal(parseCoins(text), null, text);
-    assert.match(unreadCoins(text), /whole numbers[^]*1 gp 5 sp/, text);
+    assert.match(unreadCoins(enT, text), /whole numbers[^]*1 gp 5 sp/, text);
   }
 });
 

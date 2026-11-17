@@ -16,6 +16,8 @@ const { buildMathSections, changeLine, createChangeAnnouncer, knownSoFarRows, sn
   "../src/app/characters/builder/buildMath.ts"
 );
 const { computeSheetDerived, deriveAc, formatModifier, SRD_SKILLS } = await import("../src/lib/srd/index.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 const { withSpeciesVariant } = await import("../src/lib/content/species-variants.ts");
 const { deriveHand } = await import("../src/lib/battlemap/hand.ts");
 const { storedSheetSchema } = await import("../src/lib/schemas/sheet.ts");
@@ -33,6 +35,7 @@ const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"];
 
 function tableOf(built) {
   return buildMathSections({
+    t,
     derived: built.derived,
     scores: built.state.scores,
     klass: builder.classes.find((entry) => entry.id === built.state.classId) ?? built.klass,
@@ -108,7 +111,7 @@ for (const { label, fields, weapon } of CASES) {
     for (const ability of ABILITIES) {
       assert.equal(rows.get(`ability-${ability}`).value, `${built.sheet.abilities[ability]} (${formatModifier(sheet.abilityMods[ability])})`);
       assert.equal(rows.get(`save-${ability}`).value, formatModifier(sheet.saves[ability]), `${ability} save`);
-      assert.equal(rows.get(`save-${ability}`).working, workingOf(sheet.parts.saves[ability]));
+      assert.equal(rows.get(`save-${ability}`).working, workingOf(t, sheet.parts.saves[ability]));
     }
     assert.equal(SRD_SKILLS.filter((skill) => rows.has(`skill-${skill.id}`)).length, SRD_SKILLS.length);
     for (const skill of SRD_SKILLS) {
@@ -161,16 +164,16 @@ for (const { label, fields, weapon } of CASES) {
 test("the working names its parts: a rogue's Dexterity save and an expert's Stealth", () => {
   const built = builder.build(CASES[2].fields);
   const rows = rowsOf(tableOf({ ...built, klass: builder.classes.find((entry) => entry.id === "rogue") }));
-  assert.equal(rows.get("save-dex").working, "DEX modifier +3, proficiency +2");
-  assert.equal(rows.get("skill-stealth").working, "DEX modifier +3, expertise +4");
-  assert.equal(rows.get("skill-athletics").working, "STR modifier -1");
-  assert.match(rows.get("weapon-Rapier").working, /^to hit: DEX modifier \+3, proficiency \+2; damage adds DEX modifier/);
+  assert.equal(rows.get("save-dex").working, "Dexterity modifier +3, proficiency +2");
+  assert.equal(rows.get("skill-stealth").working, "Dexterity modifier +3, expertise +4");
+  assert.equal(rows.get("skill-athletics").working, "Strength modifier -1");
+  assert.match(rows.get("weapon-Rapier").working, /^to hit: Dexterity modifier \+3, proficiency \+2; damage adds Dexterity modifier/);
 });
 
 test("a wizard's spell save DC shows its parts", () => {
   const built = builder.build(CASES[1].fields);
   const rows = rowsOf(tableOf({ ...built, klass: builder.classes.find((entry) => entry.id === "wizard") }));
-  assert.equal(rows.get("spell-dc").working, "base +8, proficiency +2, INT modifier +3");
+  assert.equal(rows.get("spell-dc").working, "base +8, proficiency +2, Intelligence modifier +3");
   assert.equal(rows.get("slots-1").label, "1st-level slots");
   assert.equal(rows.get("slots-2").label, "2nd-level slots");
 });
@@ -329,8 +332,8 @@ test("the picks show the class and ancestry write-ups their cards' details show"
   // Named for a new player, and the card's "?" is "About", so "details"
   // means one thing.
   assert.match(panel, /Character details/);
-  assert.match(panel, /aria-label=\{open \? "Hide character details" : "Show character details"\}/);
-  assert.match(panel, /\{open \? "Hide" : "Show"\}/);
+  assert.match(panel, /aria-label=\{open \? t\("Hide character details"\) : t\("Show character details"\)\}/, "the details switch reads through the dictionary (i18n pass)");
+  assert.match(panel, /\{open \? t\("Hide", \{ context: "builder\.math\.panel\.hideWord" \}\) : t\("Show", \{ context: "builder\.math\.panel\.showWord" \}\)\}/);
   assert.match(read("../src/app/characters/builder/OptionCardGrid.tsx"), /aria-label=\{`About \$\{option\.name\}`\}/);
   // Shown only until the full table can be worked out.
   assert.match(panel, /sections\.length \? \([\s\S]*<table[\s\S]*\) : \(\s*<PicksSoFar/);

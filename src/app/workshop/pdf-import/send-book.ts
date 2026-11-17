@@ -3,24 +3,39 @@
 import { PAGES_PER_BATCH, type ReadPage } from "@/lib/pdf-import/reading";
 import { furnitureIds, mapPagesOf } from "@/lib/pdf-import/picture-logic";
 import type { ImportView } from "@/lib/pdf-import/view";
+import { translate } from "@/lib/messages-logic";
 
 // Reading a book in the page and sending it to its import: open the PDF,
 // open (or continue) the import, send the pages a batch at a time, then
 // the pictures worth keeping one at a time, then start the server's job.
 // Everything here runs in the page, so it is the same on the website and
 // in the apps' screens (the apps patch fetch to their host).
+//
+// The reading takes the translator from the page that draws the progress
+// (t-first, the handTargets pattern); upstream's plain call shape falls
+// back to the dictionary's English. One sentence stays English at its
+// source on purpose: the retry logic below matches it (/reach the
+// server/), so it is mapped to the reader's words at the display site
+// (PdfImportButton's pick, the engineRefusalKey pattern) instead.
 
 export type SendProgress = { phase: "opening" | "pages" | "pictures" | "starting"; done: number; total: number };
 
-async function call<T>(url: string, init: RequestInit): Promise<T> {
+type SendBookT = (key: string, vars?: Record<string, string | number>) => string;
+
+const enT: SendBookT = (key, vars) => translate("en", key, vars);
+
+type SendOptions = { campaignId?: string; continueId?: string; onProgress: (progress: SendProgress) => void; signal: { cancelled: boolean } };
+
+async function call<T>(t: SendBookT, url: string, init: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init.headers ?? {}) } });
   } catch {
+    // English on purpose (see the header): withRetries matches it.
     throw new Error("Could not reach the server. Your progress is kept; pick the PDF again to carry on.");
   }
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(data.error || "The server would not take that. Try again.");
+  if (!response.ok) throw new Error(data.error || t("The server would not take that. Try again."));
   return data;
 }
 
@@ -42,16 +57,23 @@ async function withRetries<T>(work: () => Promise<T>, tries = 3): Promise<T> {
 }
 
 export async function sendBook(
-  file: File,
-  options: { campaignId?: string; continueId?: string; onProgress: (progress: SendProgress) => void; signal: { cancelled: boolean } },
+  ...args:
+    | [t: SendBookT, file: File, options: SendOptions]
+    // Upstream's suites call the plain form without a translator.
+    | [file: File, options: SendOptions]
 ): Promise<ImportView> {
+  // Both call shapes: the page passes the translator first (t-first), the
+  // plain form falls back to the dictionary's English.
+  const withT = typeof args[0] === "function";
+  const t = (withT ? args[0] : enT) as SendBookT;
+  const [file, options] = (withT ? args.slice(1) : args) as [File, SendOptions];
   const { openBook } = await import("@/lib/pdf-import/read-pdf");
   options.onProgress({ phase: "opening", done: 0, total: 0 });
   const book = await openBook(file);
   try {
     const opened = options.continueId
       ? { import: { id: options.continueId } as ImportView }
-      : await call<{ import: ImportView }>("/api/pdf-imports", {
+      : await call<{ import: ImportView }>(t, "/api/pdf-imports", {
           method: "POST",
           body: JSON.stringify({ ...book.head, ...(options.campaignId ? { campaignId: options.campaignId } : {}) }),
         });
@@ -62,10 +84,10 @@ export async function sendBook(
       if (!batch.length) return;
       const sending = batch;
       batch = [];
-      await withRetries(() => call(`/api/pdf-imports/${id}/pages`, { method: "POST", body: JSON.stringify({ fonts: book.fonts, pages: sending }) }));
+      await withRetries(() => call(t, `/api/pdf-imports/${id}/pages`, { method: "POST", body: JSON.stringify({ fonts: book.fonts, pages: sending }) }));
     };
     for (let n = 1; n <= book.head.pageCount; n += 1) {
-      if (options.signal.cancelled) throw new Error("Stopped.");
+      if (options.signal.cancelled) throw new Error(t("Stopped."));
       const page = await book.readPage(n);
       // Only what the picture pass needs stays in memory past its batch: the
       // pictures, and how many words the page has (a scan under many words
@@ -83,7 +105,7 @@ export async function sendBook(
     const kept = pages.flatMap((page) => page.pictures.filter((picture) => !furniture.has(picture.id)).map((picture) => ({ page, picture })));
     let sent = 0;
     for (const { page, picture } of kept) {
-      if (options.signal.cancelled) throw new Error("Stopped.");
+      if (options.signal.cancelled) throw new Error(t("Stopped."));
       options.onProgress({ phase: "pictures", done: sent, total: kept.length });
       // Any picture might be a battle map (a book prints small ones too):
       // its grid is looked for while the pixels are at hand. Which ones are
@@ -95,7 +117,7 @@ export async function sendBook(
       if (!encoded) continue;
       try {
         await withRetries(() =>
-          call(`/api/pdf-imports/${id}/pictures`, {
+          call(t, `/api/pdf-imports/${id}/pictures`, {
             method: "POST",
             body: JSON.stringify({ picture, page: page.n, width: encoded.width, height: encoded.height, grid: encoded.grid, dataUrl: encoded.dataUrl }),
           }),
@@ -108,7 +130,7 @@ export async function sendBook(
       }
     }
     options.onProgress({ phase: "starting", done: 0, total: 0 });
-    const started = await call<{ import: ImportView }>(`/api/pdf-imports/${id}`, { method: "POST", body: JSON.stringify({ action: "start" }) });
+    const started = await call<{ import: ImportView }>(t, `/api/pdf-imports/${id}`, { method: "POST", body: JSON.stringify({ action: "start" }) });
     return started.import;
   } finally {
     await book.close();

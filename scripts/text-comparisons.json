@@ -246,7 +246,13 @@
     "app/api/auth/discord/start/route.ts#toUpperCase": [["key",1,"invite code"]],
     "app/api/auth/register/route.ts#[a-z]": [["key",1,"username rule (usernames are ASCII by design)"]],
     "app/api/auth/register/route.ts#toUpperCase": [["key",1,"join code"]],
-    "app/api/campaigns/[campaignId]/actions/route.ts#str-eq": [["key",1,"the action body's kind, a fixed choice (table talk)"]],
+    "app/api/campaigns/[campaignId]/actions/route.ts#str-eq": [
+      [
+        "key",
+        3,
+        "the action body's kind, a fixed choice (table talk)"
+      ]
+    ],
     "lib/dm/turn-revert-run.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/api/campaigns/[campaignId]/battle-map/move/route.ts#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/api/campaigns/[campaignId]/battle-map/move/route.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
@@ -318,18 +324,41 @@
     "app/campaigns/[campaignId]/CompanionPaintButton.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/Composer.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/Composer.tsx#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/ContextPanel.tsx#re-word": [["english-source",1,"the reason line ODM's context trace writes"]],
-    "app/campaigns/[campaignId]/ContextPanel.tsx#str-eq": [["key",1,"model finish reasons (protocol)"]],
+    "app/campaigns/[campaignId]/ContextPanel.tsx#re-word": [
+      [
+        "english-source",
+        9,
+        "the reason line ODM's context trace writes"
+      ]
+    ],
+    "app/campaigns/[campaignId]/ContextPanel.tsx#str-eq": [
+      [
+        "key",
+        3,
+        "model finish reasons (protocol)"
+      ]
+    ],
     "app/campaigns/[campaignId]/DiceOverlay.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DiceSourcesDialog.tsx#re-word": [["english-source",1,"the browser's own English Bluetooth error message"]],
     "app/campaigns/[campaignId]/DiceTrayDialog.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmActionFields.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/DmActionFields.tsx#toUpperCase": [["display",1,"a summoning kind's label capitalised (issue 685)"]],
-    "app/campaigns/[campaignId]/DmActionForm.tsx#str-eq": [["key",1,"a form field's name (Summon a pet's kind, issue 685)"]],
+    "app/campaigns/[campaignId]/DmActionForm.tsx#str-eq": [
+      [
+        "key",
+        2,
+        "a form field's name (Summon a pet's kind, issue 685)"
+      ]
+    ],
     "app/campaigns/[campaignId]/DmAssistPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmBestiaryPanel.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmConsolePanel.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/DmConsolePanel.tsx#str-list": [["english-source",13,"UI copy: tab labels and command palette keywords (the UI's own English copy)"]],
+    "app/campaigns/[campaignId]/DmConsolePanel.tsx#str-list": [
+      [
+        "english-source",
+        7,
+        "UI copy: tab labels and command palette keywords (the UI's own English copy)"
+      ]
+    ],
     "app/campaigns/[campaignId]/DmConsoleParts.tsx#str-eq": [["key",1,"tool names"]],
     "app/campaigns/[campaignId]/DmConsoleParts.tsx#str-includes": [["key",37,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmEncounterPrepPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -338,20 +367,30 @@
     "app/campaigns/[campaignId]/DmMapLibraryPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmNpcForgePanel.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmNpcForgePanel.tsx#toLowerCase": [["display",1,"label in a sentence"]],
-    "app/campaigns/[campaignId]/DmOddsPanel.tsx#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmSharePanel.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmStoryboardPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmTablesPanel.tsx#str-eq": [["key",7,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmWhisperPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmWorkbenchPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/DmWorkbenchPanel.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/campaigns/[campaignId]/DmWorkbenchPanel.tsx#str-key": [
+      [
+        "key",
+        2,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/campaigns/[campaignId]/EncounterPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/TradeDialog.tsx#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/event-log-logic.ts#str-case": [["key",13,"audit row kinds the server writes, and fields its rows store"]],
     "app/campaigns/[campaignId]/event-log-logic.ts#str-eq": [["key",5,"audit row kinds the server writes, and fields its rows store"]],
     "app/campaigns/[campaignId]/FactionsPanel.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/FactionsPanel.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/GameSettingsPanel.tsx#toLowerCase": [["display",3,"label in a sentence"]],
+    "app/campaigns/[campaignId]/GameSettingsPanel.tsx#toLowerCase": [
+      [
+        "display",
+        2,
+        "label in a sentence"
+      ]
+    ],
     "app/campaigns/[campaignId]/HaltedTurnBanner.tsx#toUpperCase": [["display",1,"a sentence's first letter"]],
     "app/campaigns/[campaignId]/Hand.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/HandAimBar.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -362,19 +401,15 @@
     "app/campaigns/[campaignId]/InlineMessageEditor.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/ItemProposalBar.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadEditDialog.tsx#str-key": [["key",1,"ability ids"]],
-    "app/campaigns/[campaignId]/LeadEditDialog.tsx#str-list": [["key",7,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadEditParts.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadEditParts.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadFloorControl.tsx#toUpperCase": [["display",1,"initial"]],
     "app/campaigns/[campaignId]/LevelUpDialog.tsx#str-eq": [["key",20,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/LevelUpDialog.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LevelUpDialog.tsx#toLowerCase": [["key",15,"class ids"],["display",1,"the class's name in a sentence"]],
     "app/campaigns/[campaignId]/LobbyActions.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LobbyParty.tsx#toLowerCase": [["key",1,"class icon key"]],
     "app/campaigns/[campaignId]/LorePanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/MapLayersPanel.tsx#toLowerCase": [["display",1,"label in a sentence"]],
     "app/campaigns/[campaignId]/MapSceneTools.tsx#str-list": [["key",7,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/MapTilesetPanel.tsx#toLowerCase": [["display",1,"label in a sentence"]],
     "app/campaigns/[campaignId]/MapToolbox.tsx#str-eq": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/MapToolbox.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/MapToolbox.tsx#toLowerCase": [["key",2,"keyboard keys"]],
@@ -387,24 +422,26 @@
     "app/campaigns/[campaignId]/MessageItem.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/OverworldPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/moment-parts.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/MonsterFields.tsx#str-list": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/MonsterFields.tsx#toUpperCase": [["display",2,"ability abbreviation and creature type shown"]],
     "app/campaigns/[campaignId]/MonsterHand.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/NarrationNote.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/NotesPanel.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/NpcFields.tsx#str-list": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/NpcReviewPanel.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/OverworldTools.tsx#str-list": [["key",7,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/PactOfferCard.tsx#str-eq": [["key",5,"an approach's answer ids and the card's busy state"]],
     "app/campaigns/[campaignId]/PactPanel.tsx#str-eq": [["key",10,"a secret action's kind and a pact's status"]],
-    "app/campaigns/[campaignId]/PactPanel.tsx#str-key": [["key",1,"a secret action's kind, reading its label"]],
+    "app/campaigns/[campaignId]/PactPanel.tsx#str-key": [
+      [
+        "key",
+        3,
+        "a secret action's kind, reading its label"
+      ]
+    ],
     "app/campaigns/[campaignId]/PartyOrder.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/PartyPanel.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/PendingRollCard.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"],["key",1,"the stored reason a roll is parked for"]],
     "app/campaigns/[campaignId]/PendingRollCard.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/PendingRollCard.tsx#toLowerCase": [["key",1,"skill id"]],
     "app/campaigns/[campaignId]/PushToTalk.tsx#str-replace": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/QuestsPanel.tsx#toLowerCase": [["display",1,"label in a sentence"]],
     "app/campaigns/[campaignId]/RelationGraph.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/RelationGraph.tsx#toUpperCase": [["display",1,"initial"]],
     "app/campaigns/[campaignId]/RenarrateDialog.tsx#str-list": [["english-source",1,"UI copy: guidance presets offered to the DM"]],
@@ -414,7 +451,6 @@
     "app/campaigns/[campaignId]/SessionView.tsx#str-case": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/SessionView.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/SideChatPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/SidePanelRouter.tsx#str-list": [["key",9,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/SoundPanel.tsx#toLowerCase": [["display",2,"label in a sentence"]],
     "app/campaigns/[campaignId]/SpeakerPicker.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/SpeechLine.tsx#toUpperCase": [["display",1,"initial"]],
@@ -435,7 +471,13 @@
     "app/campaigns/[campaignId]/HeroChooser.tsx#toUpperCase": [["display",1,"an id shown title-cased"]],
     "app/campaigns/[campaignId]/level-up-preview.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/mapCatalogue.ts#[a-z]": [["display",1,"a set id shown title-cased"]],
-    "app/campaigns/[campaignId]/mapCatalogue.ts#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/campaigns/[campaignId]/mapCatalogue.ts#str-key": [
+      [
+        "key",
+        2,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/campaigns/[campaignId]/mapCatalogue.ts#toLowerCase": [["key",1,"genre id"]],
     "app/campaigns/[campaignId]/mapCatalogue.ts#toUpperCase": [["display",1,"a set id shown title-cased"]],
     "app/campaigns/[campaignId]/mapToolState.ts#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -445,7 +487,6 @@
     "app/campaigns/[campaignId]/regionPlaces.ts#toUpperCase": [["display",1,"large map label, measured so a place's name keeps off it"]],
     "app/campaigns/[campaignId]/sessionGlyphs.ts#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/table-layout-store.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/table-settings-groups.ts#str-key": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/table-settings-groups.ts#toLowerCase": [["display",1,"stage labels in a sentence"]],
     "app/campaigns/[campaignId]/terrainCanvasParts.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/useBoardCamera.ts#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -471,24 +512,40 @@
     "app/characters/builder/AbilityExplainers.tsx#toLowerCase": [["display",1,"class name in a sentence"]],
     "app/characters/builder/buildMath.ts#toLowerCase": [["display",3,"class name in a sentence (hit point and slot working)"]],
     "app/characters/builder/buildMath.ts#toUpperCase": [["display",2,"ability abbreviation shown (a casting class's DC and attack working)"]],
-    "app/characters/builder/AbilitySummary.tsx#str-list": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/AbilitySummary.tsx#toUpperCase": [["display",1,"ability abbreviation shown"]],
-    "app/characters/builder/AsiFeatEditor.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/BackgroundKitSection.tsx#toLowerCase": [["display",1,"label in a sentence"]],
     "app/characters/builder/builderDraft.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/builderDraft.ts#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/CharacterBuilder.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/CharacterBuilder.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/FeatChoicesFields.tsx#[a-z]": [["display",1,"an SRD name title-cased"]],
-    "app/characters/builder/FeatChoicesFields.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/characters/builder/FeatChoicesFields.tsx#str-key": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/characters/builder/FeatChoicesFields.tsx#str-eq": [
+      [
+        "key",
+        1,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
+    "app/characters/builder/FeatChoicesFields.tsx#str-key": [
+      [
+        "key",
+        3,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/characters/builder/FeatChoicesFields.tsx#toLowerCase": [["key",1,"spell list id"]],
     "app/characters/builder/FeatChoicesFields.tsx#toUpperCase": [["display",1,"an SRD name title-cased"]],
     "app/characters/builder/GearReceipt.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/KitChoicesSection.tsx#toUpperCase": [["display",1,"capitalised label"]],
     "app/characters/builder/LevelUpSheet.tsx#toLowerCase": [["display",1,"class name in a sentence"]],
     "app/characters/builder/LineageCarousel.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/characters/builder/OptionCardGrid.tsx#str-eq": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/characters/builder/OptionCardGrid.tsx#str-eq": [
+      [
+        "key",
+        2,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/characters/builder/OptionPicker.tsx#str-case": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/OptionPicker.tsx#str-eq": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/RacialCantripPicker.tsx#toLowerCase": [["display",1,"a count word in a sentence"]],
@@ -498,7 +555,13 @@
     "app/characters/builder/classAbilities.ts#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/classAbilities.ts#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/classAbilities.ts#toLowerCase": [["key",1,"class id"]],
-    "app/characters/builder/derivedReasons.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/characters/builder/derivedReasons.ts#str-eq": [
+      [
+        "key",
+        7,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/characters/builder/door.ts#str-eq": [["key",2,"UI: ids, fixed choices, stored values"]],
     "app/characters/builder/door.ts#str-key": [["key",1,"UI: ids, fixed choices, stored values"]],
     "app/characters/builder/heroNames.ts#str-key": [["key",1,"race family ids"]],
@@ -506,7 +569,6 @@
     "app/characters/builder/lineage.ts#re-word": [["english-source",90,"reference: SRD and content-pack race names found in a lineage's id and name, to pick its art family (a new species has none)"],["table-language",5,"meaning reader: language, cantrip, skill and tool read in a lineage's trait lines (bundled races, and a homebrew species' traits) to show which choice a line asks for"]],
     "app/characters/builder/lineage.ts#toLowerCase": [["english-source",1,"reference: SRD and content-pack race names found in a lineage's id and name, to pick its art family (a new species has none)"]],
     "app/characters/builder/lineage.ts#toUpperCase": [["display",4,"ability abbreviation, capitalised text"]],
-    "app/characters/builder/owed.ts#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/playstyles.ts#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/playstyles.ts#str-list": [["key",22,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/playstyles.ts#toLowerCase": [["key",1,"skill id"]],
@@ -514,9 +576,14 @@
     "app/characters/builder/roving.ts#str-case": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/roving.ts#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/steps/AbilitiesStep.tsx#toLowerCase": [["display",4,"race and class in a sentence"]],
-    "app/characters/builder/steps/AncestryStep.tsx#str-list": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/steps/AncestryStep.tsx#toUpperCase": [["display",1,"a lineage id the table does not offer, written as a name"]],
-    "app/characters/builder/steps/CallingStep.tsx#str-list": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/characters/builder/steps/CallingStep.tsx#str-list": [
+      [
+        "key",
+        1,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/characters/builder/steps/CallingStep.tsx#toLowerCase": [["key",3,"class role ids (playsLike); skill id"],["display",4,"class name in a sentence; a class name in a sentence; the first class's name in the subclass note and the features heading"]],
     "app/characters/builder/steps/CallingStep.tsx#toUpperCase": [["display",1,"a genre id written as words, its first letter capitalised"]],
     "app/characters/builder/steps/ClassChoices.tsx#str-includes": [["key",1,"class id (a rogue among the classes held)"]],
@@ -528,13 +595,23 @@
     "app/characters/builder/fillFeatPicks.ts#str-eq": [["key",3,"a weapon row's category and kind, fixed choices of its type"]],
     "app/characters/builder/fillFeatPicks.ts#str-list": [["key",2,"damage types and casting abilities a fill leans to"],["english-source",1,"reference: the SRD 5.1 cantrips that make a spell attack roll"]],
     "app/characters/builder/QuickBuildReadback.tsx#toLowerCase": [["display",1,"pick label in a button's spoken name"]],
-    "app/characters/builder/submit.ts#toLowerCase": [["display",7,"names in a sentence; label in a sentence; a second class's name in a sentence"],["key",2,"cantrip names as the builder keeps them, compared whole (the subclass's required cantrip)"]],
+    "app/characters/builder/submit.ts#toLowerCase": [
+      [
+        "display",
+        6,
+        "names in a sentence; label in a sentence; a second class's name in a sentence"
+      ],
+      [
+        "key",
+        2,
+        "cantrip names as the builder keeps them, compared whole (the subclass's required cantrip)"
+      ]
+    ],
     "app/characters/builder/useBuilderDerived.ts#toLowerCase": [["key",1,"skill id"]],
     "app/characters/builder/useBuilderOptions.ts#str-eq": [["key",1,"row source kinds"]],
     "app/characters/builder/useContentSearch.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/useFeatDescs.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/usePickerGroups.ts#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/characters/builder/usePickerGroups.ts#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/usePickerGroups.ts#str-list": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/characters/builder/useTableRules.ts#toLowerCase": [["key",2,"class id"]],
     "app/characters/page.tsx#re-word": [["english-source",1,"ODM's own fetch error line"]],
@@ -546,9 +623,20 @@
     "app/create-campaign/cover-sheet.ts#toLowerCase": [["display",1,"labels shown"]],
     "app/create-campaign/cover-sheet.ts#toUpperCase": [["display",1,"labels shown"]],
     "app/create-campaign/portals.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/create-campaign/summaries.ts#str-key": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/create-campaign/titles.ts#str-key": [["english-source",1,"the campaign title generator's own English words (UI copy, not a reader)"]],
-    "app/create-campaign/titles.ts#str-list": [["english-source",21,"the campaign title generator's own English words (UI copy, not a reader)"]],
+    "app/create-campaign/titles.ts#str-key": [
+      [
+        "english-source",
+        2,
+        "the campaign title generator's own English words (UI copy, not a reader)"
+      ]
+    ],
+    "app/create-campaign/titles.ts#str-list": [
+      [
+        "english-source",
+        42,
+        "the campaign title generator's own English words (UI copy, not a reader)"
+      ]
+    ],
     "app/home/ContinueHero.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/home/Dashboard.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/home/JoinCard.tsx#toUpperCase": [["key",2,"join code"]],
@@ -564,7 +652,13 @@
     "app/reference/page.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/reference/page.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/settings/ConnectedAgentsSection.tsx#str-includes": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/settings/ConnectedAgentsSection.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/settings/ConnectedAgentsSection.tsx#str-list": [
+      [
+        "key",
+        2,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/settings/PlayerReceiverSetup.tsx#re-word": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/settings/page.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/setup/ReadyStep.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -573,8 +667,6 @@
     "app/setup/YourAgentStep.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/setup/draft.ts#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/terms/page.tsx#str-alt": [["english-source",1,"UI copy: the page title"]],
-    "app/workshop/RulesetLibrary.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/[workshopId]/SystemCards.tsx#str-eq": [["english-source",1,"the count label ODM writes (\"none\")"]],
     "app/workshop/[workshopId]/WorkshopHeader.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/[workshopId]/page.tsx#re-word": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/[workshopId]/page.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -586,7 +678,6 @@
     "app/workshop/bestiary/BlockActionFields.tsx#toUpperCase": [["display",1,"ability abbreviations shown"]],
     "app/workshop/bestiary/BorrowParts.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/bestiary/MonsterBuildControls.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/bestiary/MonsterRows.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/bestiary/SpellcastingFields.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/bestiary/SpellcastingFields.tsx#toUpperCase": [["display",1,"ability abbreviations shown"]],
     "app/workshop/bestiary/StatBlockFields.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -595,12 +686,10 @@
     "app/workshop/bestiary/StatBlockFields.tsx#toUpperCase": [["display",2,"capitalised text, ability abbreviations"]],
     "app/workshop/bestiary/monster-folds.ts#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/cast/CastList.tsx#str-key": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/cast/CastList.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/encounters/EncounterEvents.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/encounters/EncounterEvents.tsx#toUpperCase": [["display",1,"a roster slot's name title-cased as the plan's chips draw it"]],
     "app/workshop/encounters/EncounterRows.tsx#re-word": [["english-source",6,"the budget verdict lines ODM writes"]],
     "app/workshop/encounters/EncounterRows.tsx#str-eq": [["key",1,"budget tick labels"]],
-    "app/workshop/encounters/EncounterRows.tsx#str-list": [["key",1,"list nouns"]],
     "app/workshop/encounters/budget-bar.ts#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/ArchetypeFields.tsx#str-eq": [["key",2,"casting profiles (fixed choice)"]],
     "app/workshop/homebrew/ArchetypeFields.tsx#str-key": [["key",2,"ability ids; the subclass's spell field (spells, expanded)"]],
@@ -614,14 +703,25 @@
     "app/workshop/homebrew/CopySource.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/HazardFields.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/HazardFields.tsx#str-list": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/homebrew/HazardFields.tsx#toUpperCase": [["display",4,"ability abbreviations shown"]],
+    "app/workshop/homebrew/HazardFields.tsx#toUpperCase": [
+      [
+        "display",
+        5,
+        "ability abbreviations shown"
+      ]
+    ],
     "app/workshop/homebrew/HomebrewEditor.tsx#toLowerCase": [["key",1,"class slug"]],
     "app/workshop/homebrew/HomebrewIcon.tsx#str-eq": [["key",6,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/HomebrewIcon.tsx#str-key": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/HomebrewPanel.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/homebrew/HomebrewPanel.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/HomebrewPanel.tsx#toLowerCase": [["display",2,"label in a placeholder"]],
-    "app/workshop/homebrew/ItemEffectFields.tsx#toUpperCase": [["display",1,"ability abbreviation shown"]],
+    "app/workshop/homebrew/ItemEffectFields.tsx#toUpperCase": [
+      [
+        "display",
+        2,
+        "ability abbreviation shown"
+      ]
+    ],
     "app/workshop/homebrew/ItemEffectFields.tsx#str-list": [["key",2,"UI: ids, fixed choices (abilities, conditions, damage types, SRD weapon keys) a new effect starts with"]],
     "app/workshop/homebrew/ItemEffectFields.tsx#str-eq": [["key",2,"UI: weapon categories and a speed equal to walking (fixed choices)"]],
     "app/workshop/homebrew/ItemFields.tsx#[a-z]": [["key",1,"damage type"]],
@@ -651,24 +751,26 @@
     "app/workshop/homebrew/types.ts#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/lore/LoreEditorForm.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/lore/LoreEditorForm.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/lore/LoreRows.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/maps/AddonMapGenerator.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/maps/ForgePreview.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/maps/MapEditor.tsx#toLowerCase": [["display",1,"label shown"]],
-    "app/workshop/maps/MapForge.tsx#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/workshop/maps/MapForge.tsx#str-list": [
+      [
+        "key",
+        1,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "app/workshop/maps/MapForge.tsx#toLowerCase": [["display",3,"labels shown"]],
     "app/workshop/maps/forge.ts#toLowerCase": [["display",4,"labels in sentences"]],
-    "app/workshop/party/PartyPanel.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/plugin/PluginPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/plugin/PublishSection.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/plugin/ReskinSection.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/plugin/fields.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/storyboard/beat-fields.ts#str-list": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/workshop/tables/TableRows.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/world/AtlasEdit.tsx#str-eq": [["key",2,"KeyboardEvent key name and frame surfaces (fixed choice)"]],
     "app/workshop/world/AtlasEdit.tsx#str-list": [["key",1,"picture fits and their labels (fixed choice)"]],
     "app/workshop/world/AtlasView.tsx#str-key": [["key",1,"KeyboardEvent key names"]],
-    "app/workshop/world/AtlasView.tsx#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/world/EntityEditor.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/world/EntityPage.tsx#str-eq": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/world/EntityPage.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -687,7 +789,6 @@
     "components/CommandPalette.tsx#str-eq": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/CommandPalette.tsx#toLowerCase": [["key",1,"keyboard key"]],
     "components/DeviceSettings.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "components/DiceLookEditor.tsx#toLowerCase": [["key",1,"hex colour"]],
     "components/DiceLookEditor.tsx#toUpperCase": [["key",3,"hex colour"]],
     "components/DictateField.tsx#str-eq": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/DictationShortcutField.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -695,7 +796,13 @@
     "components/HandoutStage.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/HelpParts.tsx#[a-z]": [["key",1,"anchor id from a help title"]],
     "components/HelpParts.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "components/HelpParts.tsx#str-key": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "components/HelpParts.tsx#str-key": [
+      [
+        "key",
+        3,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
     "components/HelpParts.tsx#toLowerCase": [["key",1,"anchor id from a help title"]],
     "components/NotificationBell.tsx#re-word": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/NotificationBell.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -711,11 +818,28 @@
     "components/rulebook/RulebookReader.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/rulebook/RulebookReader.tsx#toLowerCase": [["key",1,"compared with a string-literal union (the type checker's verdict)"]],
     "components/sheet/SheetChoices.tsx#toUpperCase": [["display",1,"an id shown title-cased"]],
-    "components/sheet/SheetCounters.tsx#toLowerCase": [["display",1,"label in a sentence"]],
     "components/sheet/SheetParts.tsx#[a-z]": [["display",1,"an id shown title-cased"]],
-    "components/sheet/SheetParts.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "components/sheet/SheetParts.tsx#toLowerCase": [["key",2,"class icon key"]],
-    "components/sheet/SheetParts.tsx#toUpperCase": [["display",1,"an id shown title-cased"]],
+    "components/sheet/SheetParts.tsx#str-eq": [
+      [
+        "key",
+        4,
+        "UI: ids, fixed choices, DOM and keyboard names, stored values"
+      ]
+    ],
+    "components/sheet/SheetParts.tsx#toLowerCase": [
+      [
+        "key",
+        3,
+        "class icon key"
+      ]
+    ],
+    "components/sheet/SheetParts.tsx#toUpperCase": [
+      [
+        "display",
+        2,
+        "an id shown title-cased"
+      ]
+    ],
     "components/sheet/SheetSpells.tsx#toUpperCase": [["display",1,"an id shown title-cased"]],
     "components/sheet/SpellBook.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/sheet/SpellBook.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -745,7 +869,13 @@
     "lib/backend-trial.ts#str-eq": [["key",2,"provider ids and the backend finish_reason"]],
     "lib/battlemap/hand-groups.ts#str-eq": [["key",5,"card ids, card types, costs and a route id"]],
     "lib/battlemap/hand-groups.ts#str-key": [["key",1,"a counter's id or a cost read in a fixed table"]],
-    "lib/battlemap/hand-groups.ts#str-list": [["key",16,"the basic actions' ids, the costs and the group keys: the engine's own vocabulary"]],
+    "lib/battlemap/hand-groups.ts#str-list": [
+      [
+        "key",
+        10,
+        "the basic actions' ids, the costs and the group keys: the engine's own vocabulary"
+      ]
+    ],
     "lib/battlemap/hand-layout.ts#str-eq": [["key",1,"End turn's card id"]],
     "lib/characters/catalog.ts#str-startsWith": [["key",1,"a workshop class id's \"homebrew-\" prefix"]],
     "lib/characters/fallen-logic.ts#str-eq": [["key",2,"the table's multiCharacter setting, a fixed choice"]],
@@ -911,7 +1041,6 @@
     "lib/battlemap/beats.ts#str-case": [["key",11,"beat kinds"]],
     "lib/battlemap/condition-glyphs.ts#str-key": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-glyphs.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
-    "lib/battlemap/condition-rules.ts#str-key": [["key",1,"condition stage-row ids (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#re-word": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#str-eq": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#str-key": [["key",1,"condition labels (engine vocabulary)"]],
@@ -949,7 +1078,13 @@
     "lib/battlemap/hand-react.ts#re-word": [["english-source",1,"the engine's own \"Maneuver:\" feature prefix and reaction amounts"]],
     "lib/battlemap/hand-react.ts#str-eq": [["english-source",1,"the engine's own \"Maneuver:\" feature prefix and reaction amounts"],["display",1,"the prompt's own word for the character in their own hand"],["key",1,"a trigger record's kind (engine vocabulary)"],["key",1,"the spirit a Spirit Totem condition names (engine vocabulary)"]],
     "lib/battlemap/hand-react.ts#toLowerCase": [["key",1,"answered reaction names, condition label"]],
-    "lib/battlemap/hand-react.ts#toUpperCase": [["display",1,"ability abbreviation shown in a reaction card's prompt"]],
+    "lib/battlemap/hand-react.ts#toUpperCase": [
+      [
+        "display",
+        2,
+        "ability abbreviation shown in a reaction card's prompt"
+      ]
+    ],
     "lib/battlemap/hand-spells.ts#re-word": [["table-language",1,"meaning reader: a spell's description (SRD rows, and homebrew spells' free text) read for \"spellcasting ability modifier\""]],
     "lib/battlemap/hand-spells.ts#str-eq": [["key",1,"condition ids (engine vocabulary)"],["key",2,"curse ids, feature ids and costs (the reroll card's counter id)"],["key",1,"ODM's own ids and words (engine vocabulary)"]],
     "lib/battlemap/hand-spells.ts#str-includes": [["table-language",2,"meaning reader: a spell's casting time (SRD rows, and homebrew spells' free-text casting time) read for bonus action, reaction or action"],["english-source",1,"ODM's own tool error line"]],
@@ -965,7 +1100,13 @@
     "lib/battlemap/hand.ts#str-eq": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/battlemap/hand.ts#str-includes": [["english-source",4,"reference: SRD weapon properties (fixed vocabulary of the SRD rows and the workshop's property picker)"]],
     "lib/battlemap/hand.ts#str-list": [["key",1,"natural weapon kinds passed to racialNaturalWeapon"]],
-    "lib/battlemap/hand.ts#toLowerCase": [["key",3,"SRD weapon name as a proficiency key; condition labels (engine vocabulary)"]],
+    "lib/battlemap/hand.ts#toLowerCase": [
+      [
+        "key",
+        4,
+        "SRD weapon name as a proficiency key; damage type key; condition labels (engine vocabulary)"
+      ]
+    ],
     "lib/battlemap/intent.ts#str-list": [["key",1,"intent kinds (a fixed choice)"]],
     "lib/battlemap/los.ts#re-word": [["table-language",2,"meaning reader: \"darkvision\" and its range read in feature and trait text (SRD species traits, and homebrew species' free-text vision and traits)"]],
     "lib/battlemap/monster-hand.ts#str-eq": [["key",2,"ability ids and enemy status"]],
@@ -1049,7 +1190,6 @@
     "lib/bestiary/index.ts#toLowerCase": [["key",1,"slug from a monster name"]],
     "lib/bestiary/kit.ts#str-list": [["key",3,"damage types, conditions and movement modes (engine vocabulary)"]],
     "lib/bestiary/kit.ts#toLowerCase": [["key",1,"damage types, conditions and movement modes (engine vocabulary)"]],
-    "lib/bestiary/kit.ts#toUpperCase": [["display",1,"ability abbreviations shown"]],
     "lib/bestiary/monster-draft.ts#str-list": [["key",2,"creature sizes and senses (fixed choice)"]],
     "lib/bestiary/monster-draft.ts#toLowerCase": [["key",4,"sizes, skill names and environment tags in an authored block"],["key",1,"a subtype's tags in an authored block"]],
     "lib/bestiary/pack-corrections.ts#[a-z]": [["english-source",1,"a document's shortened save and duration (Open5e rows: \"DC 13 Con save\", \"for 1 min\"), spelled out when a pack row is read"],["english-source",1,"Tome of Beasts 3's bracketed saves (Open5e rows: \"(DC 16 Con half)\"), spelled out when a pack row is read"]],
@@ -1469,8 +1609,35 @@
     "lib/dm/damage-logic.ts#[a-z]": [["english-source",4,"reference: damage types (values the schema lists) found as whole words"]],
     "lib/dm/damage-logic.ts#str-includes": [["english-source",2,"a block's resistance line (pack rows; the workshop writes it from its toggles)"]],
     "lib/dm/damage-logic.ts#str-list": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/damage-logic.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"],["english-source",2,"reference: damage types (values the schema lists) and a block's resistance line"],["english-source",1,"a block's condition-immunity line (pack rows; the workshop writes it from its toggles)"]],
-    "lib/dm/damage-logic.ts#re-word": [["english-source",6,"a block's resistance line (pack rows; the workshop writes it from its toggles)"],["english-source",1,"a block's damage and condition immunity lines read for poison (pack rows; the workshop writes them from its toggles)"]],
+    "lib/dm/damage-logic.ts#toLowerCase": [
+      [
+        "key",
+        4,
+        "condition labels and French damage type word table lookup (engine vocabulary)"
+      ],
+      [
+        "english-source",
+        2,
+        "reference: damage types (values the schema lists) and a block's resistance line"
+      ],
+      [
+        "english-source",
+        1,
+        "a block's condition-immunity line (pack rows; the workshop writes it from its toggles)"
+      ]
+    ],
+    "lib/dm/damage-logic.ts#re-word": [
+      [
+        "english-source",
+        7,
+        "a block's resistance line (pack rows; the workshop writes it from its toggles)"
+      ],
+      [
+        "english-source",
+        1,
+        "a block's damage and condition immunity lines read for poison (pack rows; the workshop writes them from its toggles)"
+      ]
+    ],
     "lib/dm/damage-parts.ts#toLowerCase": [["key",2,"damage types"]],
     "lib/dm/death.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/death.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
@@ -2288,8 +2455,20 @@
     "lib/rulebook/catalog-rows.ts#re-word": [["english-source",9,"the bundled SRD rulebook's own Markdown (bundled data)"]],
     "lib/rulebook/catalog-rows.ts#toLowerCase": [["english-source",8,"the bundled SRD rulebook's own Markdown (bundled data)"]],
     "lib/rulebook/crosswalk.ts#[a-z]": [["display",2,"engine keys shown as words"]],
-    "lib/rulebook/crosswalk.ts#str-eq": [["key",1,"the crosswalk's own English where line (Read in the book), compared to give its French line"]],
-    "lib/rulebook/crosswalk.ts#str-key": [["key",2,"page ids and engine field names"],["key",2,"the French where lines by support (engine or editable) and engine field name"]],
+    "lib/rulebook/crosswalk.ts#str-eq": [
+      [
+        "key",
+        1,
+        "rulebook crosswalk key comparison"
+      ]
+    ],
+    "lib/rulebook/crosswalk.ts#str-key": [
+      [
+        "key",
+        4,
+        "page ids and engine field names"
+      ]
+    ],
     "lib/rulebook/crosswalk.ts#str-list": [["key",1,"page ids and engine field names"]],
     "lib/rulebook/crosswalk.ts#toLowerCase": [["display",1,"engine keys shown as words"]],
     "lib/rulebook/markdown.ts#[a-z]": [["key",1,"anchor slug"]],
@@ -2461,7 +2640,13 @@
     "lib/srd/feat-grant-text.ts#re-affix": [["table-language",4,"meaning reader: a feat's or subclass feature's description (content-pack rows, and workshop feats and subclasses read by their text) parsed for what it grants"]],
     "lib/srd/feat-grant-text.ts#re-word": [["table-language",33,"meaning reader: a feat's or subclass feature's description (content-pack rows, and workshop feats and subclasses read by their text) parsed for what it grants"]],
     "lib/srd/feat-grant-text.ts#str-key": [["table-language",1,"meaning reader: a feat's or subclass feature's description (content-pack rows, and workshop feats and subclasses read by their text) parsed for what it grants"],["key",2,"tool aliases and pick kinds"]],
-    "lib/srd/feat-grant-text.ts#str-list": [["key",1,"damage types (engine vocabulary)"]],
+    "lib/srd/feat-grant-text.ts#str-list": [
+      [
+        "key",
+        1,
+        "tool names and damage types (engine vocabulary)"
+      ]
+    ],
     "lib/srd/feat-grant-text.ts#toLowerCase": [["table-language",4,"meaning reader: a feat's or subclass feature's description (content-pack rows, and workshop feats and subclasses read by their text) parsed for what it grants"]],
     "lib/srd/feat-grant-text.ts#toUpperCase": [["display",1,"a language name title-cased"]],
     "lib/srd/feat-grants.ts#str-eq": [["english-source",1,"the grant line ODM writes"]],
@@ -2493,10 +2678,38 @@
     "lib/srd/genre-kits.ts#str-key": [["key",1,"genre class ids"]],
     "lib/srd/hit-points.ts#str-eq": [["key",1,"HP methods and feat ids"]],
     "lib/srd/hit-points.ts#str-list": [["key",1,"HP methods and feat ids"]],
-    "lib/srd/index.ts#[a-z]": [["key",1,"race id from a race name"],["key",2,"race id from a race name"]],
-    "lib/srd/index.ts#re-word": [["key",1,"creature sizes"],["key",1,"ODM's own \"Size (Small)\" pick record"]],
+    "lib/srd/index.ts#[a-z]": [
+      [
+        "key",
+        2,
+        "race id from a race name"
+      ],
+      [
+        "key",
+        2,
+        "race id from a race name"
+      ]
+    ],
+    "lib/srd/index.ts#re-word": [
+      [
+        "key",
+        3,
+        "creature sizes"
+      ]
+    ],
     "lib/srd/index.ts#str-eq": [["key",2,"creature sizes"],["key",2,"a lineage's size pick: its variant group label and the size it names"]],
-    "lib/srd/index.ts#toLowerCase": [["key",4,"race id from a race name; class id"],["key",3,"race ids from a race name, and the size ODM's own \"Size (Small)\" pick names"]],
+    "lib/srd/index.ts#toLowerCase": [
+      [
+        "key",
+        6,
+        "race id from a race name; class id"
+      ],
+      [
+        "key",
+        3,
+        "race ids from a race name, and the size ODM's own \"Size (Small)\" pick names"
+      ]
+    ],
     "lib/srd/index.ts#toUpperCase": [["display",4,"ability abbreviation shown"]],
     "lib/srd/item-check-riders.ts#str-eq": [["key",2,"an ability id and a check's about value (roll-about.ts CHECK_ABOUT): a Dexterity check about a lock (engine vocabulary)"]],
     "lib/srd/item-check-riders.ts#str-list": [["english-source",1,"reference: SRD magic item names"]],
@@ -2866,7 +3079,13 @@
     "lib/srd/racial-grants.ts#str-list": [["key",1,"the spellcasting abilities a racial spell group may name"]],
     "lib/srd/feat-spells.ts#str-eq": [["key",1,"an ASI choice's mode, as stored (\"feat\")"],["key",1,"a rest the pattern above captured (long or short)"],["english-source",1,"the feature line the engine writes (\"Free cast (short rest): X (Y)\")"]],
     "lib/content/species-spells.ts#str-eq": [["key",2,"a species spell row's rest, as stored (\"long\", \"short\")"]],
-    "lib/srd/species-spell-view.ts#toUpperCase": [["display",1,"a spell's note capitalised for the sheet"]],
+    "lib/srd/species-spell-view.ts#toUpperCase": [
+      [
+        "display",
+        2,
+        "a spell's note capitalised for the sheet"
+      ]
+    ],
     "app/workshop/homebrew/SpeciesSpellFields.tsx#str-eq": [["key",1,"a species spell row's rest, as stored"]],
     "app/workshop/homebrew/SpeciesSpellFields.tsx#str-list": [["key",1,"the rests a spell's uses come back on, as stored"]],
     "lib/pdf-import/ai-logic.ts#toLowerCase": [["key",3,"a spell school and the model's fixed answers, folded to the stored form"]],
@@ -3061,7 +3280,13 @@
     "lib/dm/caster-features.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/claims-logic.ts#\\b": [["english-extra",6,"the English words of a player's that only declare an action or a bonus action (ENGLISH_DECLARES, ENGLISH_TURN_WORDS), read only at an English table (claims.ts readTurnEndInWords): a reader's turn_over claim on them ends nothing (issue 966); words in any other language stay the reader's"],["english-extra",10,"the plain English ways a player ends their turn and the words that keep it open (ENGLISH_ENDS_TURN, ENGLISH_NOT_YET), read only at an English table (claims.ts readTurnEndInWords); the reader's turn_over claim reads a player's words in every language, this only catches what a small reader missed"],["english-extra",16,"a net for a small model's English talk about its tool calls and the story arc's beats (ENGLISH_META_SENTENCE), read only at an English table (metaQuotes); the reader's aside claims cut that talk in every language, this only catches what a small reader missed"],["english-source",1,"the action-line and table-note formats ODM itself writes (\"[Name | attempt]\", \"[Table note]\") echoed back"]],
     "lib/dm/combatant-targets.ts#\\w": [["key",2,"tool parameter names (target..., second...Id, against...Id)"]],
-    "lib/dm/damage-logic.ts#\\b": [["english-source",10,"a block's resistance line (pack rows; the workshop writes it from its toggles)"]],
+    "lib/dm/damage-logic.ts#\\b": [
+      [
+        "english-source",
+        12,
+        "a block's resistance line (pack rows; the workshop writes it from its toggles)"
+      ]
+    ],
     "lib/dm/enemy-attack.ts#\\b": [["key",1,"the engine's own damage breakdown"]],
     "lib/dm/enemy-damage.ts#\\b": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-defenses.ts#\\b": [["key",2,"damage types"]],
@@ -3253,7 +3478,13 @@
     "lib/battlemap/zones-genre-gh.ts#str-list": [["key",1,"zone trigger events (engine vocabulary)"]],
     "lib/dm/genre-gh-last-one-out.ts#str-list": [["key",1,"move action ids (dash, disengage)"]],
     "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]],
-    "lib/starter/pregens.ts#str-key": [["key",1,"starter pregen French description lookup by pregen id (PREGEN_FR)"]],
+    "lib/starter/pregens.ts#str-key": [
+      [
+        "key",
+        1,
+        "starter pregen key lookup"
+      ]
+    ],
     "lib/content/names.ts#toLowerCase": [["key",4,"official SRD table key normalizers (slugKey, canonicalKey, classId) for FR_NAMES_BY_TABLE lookup"]],
     "lib/content/names.ts#[a-z]": [["key",2,"slug normalizers stripping non-alphanumeric ASCII characters (slugKey, gearKey)"]],
     "lib/srd/item-names-fr.ts#str-key": [["key",1,"French SRD item names by textKey to their English row (ITEM_EN_BY_FR, generated by scripts/build-names-fr.mjs)"]],
@@ -3307,35 +3538,490 @@
       [
         "key",
         1,
-        "Accept-Language BCP 47 tag lower-cased (protocol)"
+        "locale tag normalization"
       ]
     ],
     "lib/i18n/locale.ts#str-eq": [
       [
         "key",
         4,
-        "BCP 47 locale code equality (fr/en) in parseLocale and localeFromAcceptLanguage"
+        "locale code comparisons"
       ]
     ],
     "lib/i18n/locale.ts#str-startsWith": [
       [
         "key",
         2,
-        "BCP 47 language tag prefix match (fr-/en-) on Accept-Language header"
+        "locale tag prefix checks"
       ]
     ],
     "lib/i18n/translate.ts#[a-z]": [
       [
         "key",
         1,
-        "template placeholder {varName} regex in interpolate"
+        "gettext placeholder/plural token pattern"
       ]
     ],
     "lib/i18n/translate.ts#str-eq": [
       [
         "key",
         1,
-        "skip special context var name in interpolate"
+        "locale code comparison"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MonsterFields.tsx#[a-z]": [
+      [
+        "display",
+        1,
+        "capitalize each word for display"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MonsterKitFields.tsx#[a-z]": [
+      [
+        "display",
+        1,
+        "capitalize each word for display"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MonsterKitFields.tsx#toUpperCase": [
+      [
+        "display",
+        1,
+        "capitalize each word for display"
+      ]
+    ],
+    "app/characters/builder/CardText.tsx#toUpperCase": [
+      [
+        "display",
+        1,
+        "ability code display"
+      ]
+    ],
+    "lib/battlemap/hand-play.ts#toLowerCase": [
+      [
+        "key",
+        1,
+        "bestiary stat save abbreviation message key lookup"
+      ]
+    ],
+    "app/create-campaign/titles.ts#toUpperCase": [
+      [
+        "display",
+        1,
+        "capitalizing the first letter of a generated campaign title"
+      ]
+    ],
+    "app/workshop/homebrew/SpeciesChoiceFields.tsx#toUpperCase": [
+      [
+        "display",
+        1,
+        "capitalizing the first letter of a species choice label"
+      ]
+    ],
+    "app/workshop/homebrew/SubclassChoiceFields.tsx#toUpperCase": [
+      [
+        "display",
+        1,
+        "capitalizing the first letter of a damage type label"
+      ]
+    ],
+    "lib/locale.tsx#toLowerCase": [
+      [
+        "key",
+        1,
+        "locale tag normalization"
+      ]
+    ],
+    "lib/messages-logic.ts#\\w": [
+      [
+        "key",
+        1,
+        "message template placeholder pattern"
+      ]
+    ],
+    "lib/locale.tsx#str-eq": [
+      [
+        "key",
+        4,
+        "locale code comparisons"
+      ]
+    ],
+    "lib/srd/index.ts#str-list": [
+      [
+        "english-source",
+        1,
+        "SRD English terms list"
+      ]
+    ],
+    "app/characters/builder/abilityGains.ts#re-word": [
+      [
+        "english-source",
+        1,
+        "SRD ability gain text pattern"
+      ]
+    ],
+    "lib/request-locale.ts#str-eq": [
+      [
+        "key",
+        2,
+        "request locale code comparisons"
+      ]
+    ],
+    "app/api/campaigns/[campaignId]/actions/route.ts#str-startsWith": [
+      [
+        "key",
+        1,
+        "action route prefix check"
+      ]
+    ],
+    "app/campaigns/[campaignId]/AfterRollCard.tsx#str-case": [
+      [
+        "key",
+        2,
+        "roll card kind switch cases"
+      ]
+    ],
+    "app/campaigns/[campaignId]/AfterRollCard.tsx#re-word": [
+      [
+        "english-source",
+        4,
+        "roll card text patterns"
+      ]
+    ],
+    "lib/battlemap/condition-rules.ts#str-list": [
+      [
+        "key",
+        1,
+        "condition names list (engine vocabulary)"
+      ]
+    ],
+    "app/campaigns/[campaignId]/DmEncounterPrepPanel.tsx#re-word": [
+      [
+        "key",
+        1,
+        "encounter prep pattern"
+      ]
+    ],
+    "app/characters/builder/CardText.tsx#str-list": [
+      [
+        "english-source",
+        14,
+        "SRD card text English terms"
+      ]
+    ],
+    "app/characters/builder/CardText.tsx#str-eq": [
+      [
+        "english-source",
+        4,
+        "SRD card text English comparisons"
+      ]
+    ],
+    "app/characters/builder/CardText.tsx#re-word": [
+      [
+        "english-source",
+        8,
+        "SRD card text patterns"
+      ]
+    ],
+    "app/characters/builder/steps/CallingSetup.tsx#re-word": [
+      [
+        "english-source",
+        1,
+        "calling setup text pattern"
+      ]
+    ],
+    "lib/gender.ts#str-key": [
+      [
+        "key",
+        1,
+        "gender key lookup table"
+      ]
+    ],
+    "lib/dm/damage-logic.ts#str-key": [
+      [
+        "key",
+        1,
+        "damage type key lookup table"
+      ]
+    ],
+    "lib/srd/index.ts#str-key": [
+      [
+        "key",
+        1,
+        "SRD table key lookup"
+      ]
+    ],
+    "lib/dm/faction-logic.ts#str-key": [
+      [
+        "key",
+        1,
+        "faction attitude key lookup"
+      ]
+    ],
+    "lib/battlemap/skins.ts#str-key": [
+      [
+        "key",
+        1,
+        "battlemap skin key lookup"
+      ]
+    ],
+    "lib/dm/personality-labels.ts#str-key": [
+      [
+        "key",
+        1,
+        "GM personality key lookup"
+      ]
+    ],
+    "lib/battlemap/hand-display.ts#str-key": [
+      [
+        "key",
+        3,
+        "hand display key lookup tables"
+      ]
+    ],
+    "lib/battlemap/hand-summon.ts#str-key": [
+      [
+        "key",
+        1,
+        "hand summon key lookup"
+      ]
+    ],
+    "app/campaigns/[campaignId]/AfterRollCard.tsx#str-key": [
+      [
+        "key",
+        1,
+        "after roll card key lookup"
+      ]
+    ],
+    "lib/battlemap/hand.ts#str-key": [
+      [
+        "key",
+        1,
+        "hand action key lookup"
+      ]
+    ],
+    "app/campaigns/[campaignId]/DmActionFields.tsx#str-key": [
+      [
+        "key",
+        1,
+        "DM action fields key lookup"
+      ]
+    ],
+    "app/campaigns/[campaignId]/DmOddsPanel.tsx#str-key": [
+      [
+        "key",
+        1,
+        "DM odds panel key lookup"
+      ]
+    ],
+    "components/AttractionPicker.tsx#str-key": [
+      [
+        "key",
+        1,
+        "attraction picker key lookup"
+      ]
+    ],
+    "app/workshop/cast/NpcEditorFields.tsx#str-key": [
+      [
+        "key",
+        1,
+        "NPC editor fields key lookup"
+      ]
+    ],
+    "app/campaigns/[campaignId]/DmEncounterPrepPanel.tsx#str-key": [
+      [
+        "key",
+        1,
+        "DM encounter prep panel key lookup"
+      ]
+    ],
+    "components/rulebook/RulebookContents.tsx#str-key": [
+      [
+        "key",
+        2,
+        "rulebook contents key lookups"
+      ]
+    ],
+    "app/workshop/bestiary/monster-folds.ts#str-key": [
+      [
+        "key",
+        1,
+        "monster folds key lookup"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MonsterKitFields.tsx#str-key": [
+      [
+        "key",
+        2,
+        "monster kit fields key lookups"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MonsterFields.tsx#str-key": [
+      [
+        "key",
+        2,
+        "monster fields key lookups"
+      ]
+    ],
+    "app/characters/builder/AbilityText.tsx#str-key": [
+      [
+        "key",
+        1,
+        "ability text key lookup"
+      ]
+    ],
+    "app/characters/builder/steps/AbilitiesStep.tsx#str-key": [
+      [
+        "key",
+        1,
+        "abilities step key lookup"
+      ]
+    ],
+    "app/characters/builder/steps/AncestryStep.tsx#str-key": [
+      [
+        "key",
+        1,
+        "ancestry step key lookup"
+      ]
+    ],
+    "app/characters/builder/levelProgression.ts#str-key": [
+      [
+        "key",
+        1,
+        "level progression key lookup"
+      ]
+    ],
+    "app/characters/builder/CharacterBuilder.tsx#str-key": [
+      [
+        "key",
+        1,
+        "character builder key lookup"
+      ]
+    ],
+    "lib/characters/hero-tips.ts#str-key": [
+      [
+        "key",
+        1,
+        "hero tips key lookup"
+      ]
+    ],
+    "app/workshop/homebrew/ItemEffectFields.tsx#str-key": [
+      [
+        "key",
+        1,
+        "item effect fields key lookup"
+      ]
+    ],
+    "components/DeviceSettings.tsx#str-key": [
+      [
+        "key",
+        1,
+        "device settings key lookup"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MessageParts.tsx#[a-z]": [
+      [
+        "key",
+        1,
+        "display-only translation of DB-stored English system note templates (Chapter/Act/turn/combat) in translateSystemNote"
+      ]
+    ],
+    "lib/content/names.ts#\\b": [
+      [
+        "key",
+        24,
+        "plural/suffix normalization for English SRD name lookup in names.ts"
+      ]
+    ],
+    "lib/content/names.ts#re-word": [
+      [
+        "key",
+        11,
+        "plural/suffix normalization for English SRD name lookup in names.ts"
+      ]
+    ],
+    "lib/content/names.ts#re-affix": [
+      [
+        "key",
+        1,
+        "affix stripping for English SRD name lookup in names.ts"
+      ]
+    ],
+    "lib/roll-labels.ts#str-indexOf": [
+      [
+        "display",
+        2,
+        "display-only roll label formatting in roll-labels.ts"
+      ]
+    ],
+    "app/characters/builder/steps/ClassChoices.tsx#re-word": [
+      [
+        "display",
+        4,
+        "display-only tool grant category formatting in ClassChoices.tsx"
+      ]
+    ],
+    "app/characters/builder/steps/ClassChoices.tsx#str-split": [
+      [
+        "display",
+        1,
+        "display-only tool grant category splitting in ClassChoices.tsx"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MessageParts.tsx#re-word": [
+      [
+        "display",
+        9,
+        "display-only translation of DB-stored English system note templates in translateSystemNote"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MessageParts.tsx#str-eq": [
+      [
+        "display",
+        2,
+        "display-only translation of DB-stored English system note templates in translateSystemNote"
+      ]
+    ],
+    "app/characters/builder/steps/CallingStep.tsx#str-key": [
+      [
+        "key",
+        1,
+        "display-only role filter label lookup in CallingStep.tsx"
+      ]
+    ],
+    "app/characters/builder/EquipmentSection.tsx#\\b": [
+      [
+        "display",
+        2,
+        "display-only AC label replacement in suggestion notes in EquipmentSection.tsx"
+      ]
+    ],
+    "app/characters/builder/EquipmentSection.tsx#re-affix": [
+      [
+        "display",
+        1,
+        "display-only AC label replacement in suggestion notes in EquipmentSection.tsx"
+      ]
+    ],
+    "lib/embedding-language-text.ts#\\w": [
+      [
+        "key",
+        1,
+        "placeholder variable interpolation in passthrough fallback in embedding-language-text.ts"
+      ]
+    ],
+    "app/characters/builder/derivedReasons.ts#str-key": [
+      [
+        "key",
+        1,
+        "display-only ability abbreviation lookup in localizeAcPart in derivedReasons.ts"
+      ]
+    ],
+    "components/sheet/paperdoll-logic.ts#\\w": [
+      [
+        "key",
+        1,
+        "placeholder variable interpolation in passthrough fallback in paperdoll-logic.ts"
       ]
     ]
   }

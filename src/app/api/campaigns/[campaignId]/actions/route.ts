@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { ACTION_MAX_CHARS, textLength, tooLongMessage } from "@/lib/text-limits";
+import { ACTION_MAX_CHARS, formatCount, textLength } from "@/lib/text-limits";
+import { requestT } from "@/lib/request-locale";
 import { resolveActionCharacter } from "@/lib/player-characters";
 import { currentPcId } from "@/lib/character-seat";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -19,6 +20,7 @@ import { openHits } from "@/lib/dm/last-hit";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { allyReactions } from "@/lib/battlemap/hand-react";
 import { aiTurnRefusal } from "@/lib/workshop/test-seats-logic";
+import type { ActKind } from "@/lib/dm/can-act";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { answerSpotlight } from "@/lib/dm/spotlight-answer";
 import { requestDmTurn } from "@/lib/dm/loop";
@@ -34,7 +36,7 @@ import { runResumeRecap } from "@/lib/dm/recap";
 import { RECAP_AFTER_MS } from "@/lib/dm/session-hold-logic";
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { TYPED_REACTION, directCardCalls, drawStopsCast, isStoredCast, isTypedReaction, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { TYPED_REACTION, directCardCalls, drawStopsCast, isStoredCast, isTypedReaction, parseMessageIntent, type MessageIntent } from "@/lib/dm/intent-logic";
 import { takeBackItemCast } from "@/lib/dm/item-use";
 import { refusedPartsLine } from "@/lib/dm/action-parts-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
@@ -43,7 +45,7 @@ import { spokenLine } from "@/lib/dm/speech";
 import { cardMoment, intentRefusal } from "@/lib/dm/intent-check";
 import { concentrationSwapFor } from "@/lib/dm/concentration-confirm";
 import { inCoordination } from "@/lib/dm/coordination";
-import { confirmsSwap, swapQuestion } from "@/lib/dm/concentration-confirm-logic";
+import { confirmsSwap } from "@/lib/dm/concentration-confirm-logic";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { isSecretActionBody, secretActionResponse } from "@/lib/dm/secret-action-request";
@@ -79,8 +81,161 @@ const actionSchema = z.object({
   reaction: z.boolean().optional(),
 });
 
-function fallenRefusal(name: string): string {
-  return `${name} has fallen. Use OOC for table talk until your new hero joins.`;
+// A refusal's words: the request's language (requestT), the way the read
+// routes answer (ea431ca6). Panels and alerts show the server's error raw.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+// A hero who fell acts no more (issue 655): the words are the session's own
+// (table.session.fallen, keyed when the composer learned them).
+function fallenRefusal(t: T, name: string): string {
+  return t("{name} has fallen. Use OOC for table talk until your new hero joins.", { name });
+}
+
+// The engine's refusal words, carried into the reader's keys AT THIS
+// BOUNDARY — the sources ride the AI protocol and are never edited here
+// (can-act.ts, action-budget.ts, cast-guard.ts, cast-rules.ts; the same
+// discipline as src/lib/battlemap/hand-core.ts, which mirrors can-act's
+// KIND_WORDS for the Hand's own gates). Sentences are matched exactly; a
+// sentence the mapping has not met keeps the engine's English.
+
+// can-act.ts names the act in its sentences (KIND_WORDS there); intent-check.ts
+// kindOf judges a card as the same kinds. Mirrored, so a drift there makes the
+// match miss and the refusal falls back to the engine's English.
+const KIND_WORDS: Record<ActKind, string> = {
+  action: "take an action",
+  bonus: "take a bonus action",
+  reaction: "take a reaction",
+  attack: "attack",
+  cast: "cast a spell",
+  move: "move",
+  free: "act",
+};
+
+// intent-check.ts kindOf: the ActKind a Hand card is judged as.
+function kindOfIntent(intent: MessageIntent): ActKind {
+  switch (intent.card) {
+    case "attack":
+    case "rider":
+      return "attack";
+    case "spell":
+      return "cast";
+    case "feature":
+      return "free";
+    case "basic":
+      return intent.action === "end-turn" ? "free" : intent.action === "stand-up" || intent.action === "dismount" ? "move" : intent.bonus ? "bonus" : "action";
+    case "reaction":
+      return "reaction";
+    // A shield's action, a draw's object interaction or a free drop: the
+    // tool charges the right one; here only whether they may act at all.
+    case "gear":
+      return intent.action === "use" ? "action" : "free";
+  }
+}
+
+// A card the engine refuses before anything is posted (intent-check.ts asks
+// can-act.ts, cast-guard.ts and action-budget.ts). Each mapping, refusal → key:
+//   dead (can-act)                   → table.hand.gate.dead
+//   down, 0 HP (can-act)             → table.hand.gate.down
+//   incapacitated, by a condition    → table.hand.gate.stopped
+//   incapacitated, by a spell's hold → table.hand.gate.spellHeld
+//   surprised, a reaction            → table.hand.gate.surprisedReaction
+//   surprised, the first round       → table.hand.gate.surprised
+//   no_initiative                    → table.hand.gate.noInitiative
+//   not_your_turn                    → table.hand.gate.notYourTurn
+//   the reaction spent (action-budget, what = the feature or "The reaction")
+//                                    → table.hand.gate.reactionSpent
+// The cast guard's own refusals (the spell not held, a raging or polymorphed
+// caster, untrained armor, the components, the slot and the turn's room for
+// the casting) keep the engine's English: no reader key exists for them, the
+// Hand's cards show them as written too (hand-spells.ts passes them through),
+// and they are the AI protocol's words.
+function engineRefusalKey(error: string, kind: ActKind, name: string, what: string, t: T): string {
+  const act = KIND_WORDS[kind] ?? KIND_WORDS.free;
+  const doing = ({ "action": t("take an action"), "bonus": t("take a bonus action"), "reaction": t("take a reaction"), "attack": t("attack"), "cast": t("cast a spell"), "move": t("move"), "free": t("act") } as Record<string, string>)[kind] ?? String(kind);
+  if (error === `${name} is dead and cannot ${act}. Only magic that raises the dead brings them back.`) {
+    return t("{name} is dead and cannot {what}. Only magic that raises the dead brings them back.", { name, what: doing });
+  }
+  if (error === `${name} is at 0 HP and cannot ${act}. They act again once they are healed above 0.`) {
+    return t("{name} is at 0 HP and cannot {what}. They act again once they are healed above 0.", { name, what: doing });
+  }
+  const heldPrefix = `${name} is `;
+  const stoppedTail = ` and cannot ${act} until the condition ends.`;
+  if (error.startsWith(heldPrefix) && error.endsWith(stoppedTail)) {
+    const condition = error.slice(heldPrefix.length, error.length - stoppedTail.length);
+    if (condition) {
+      return t("{name} is {condition} and cannot {what} until the condition ends.", { name, condition, what: doing });
+    }
+  }
+  const spellHeldTail = ` and cannot ${act} while it lasts.`;
+  if (error.startsWith(heldPrefix) && error.endsWith(spellHeldTail)) {
+    const held = error.slice(heldPrefix.length, error.length - spellHeldTail.length);
+    if (held) {
+      return t("{name} is {held} and cannot {what} while it lasts.", { name, held, what: doing });
+    }
+  }
+  if (error === `${name} is surprised and has no reaction until their first turn has passed.`) {
+    return t("{name} is surprised and has no reaction until their first turn has passed.", { name });
+  }
+  if (error === `${name} is surprised and cannot ${act} in the first round. They act from round 2.`) {
+    return t("{name} is surprised and cannot {what} in the first round. They act from round 2.", { name, what: doing });
+  }
+  if (error === `Initiative is still being rolled, so ${name} cannot ${act} yet. Roll initiative for every character first.`) {
+    return t("Initiative is still being rolled, so {name} cannot {what} yet. Roll initiative for every character first.", { name, what: doing });
+  }
+  const turnTail = `'s turn, not ${name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.`;
+  if (error.startsWith("It is ") && error.endsWith(turnTail)) {
+    // The sentence is "It is {who}" + this tail; the tail already opens with
+    // "'s turn", so the who is everything between the prefix and the tail.
+    const who = error.slice("It is ".length, error.length - turnTail.length);
+    if (who) {
+      return t("It is {who}'s turn, not {name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.", { who: who === "someone else" ? t("someone else") : who, name });
+    }
+  }
+  const reactionSpent = `${name} has already used their reaction; it comes back at the start of their next turn. ${what} does not happen.`;
+  if (error === reactionSpent) {
+    return t("{name} has already used their reaction; it comes back at the start of their next turn. {what} does not happen.", { name, what: intentFeature(what, t) });
+  }
+  return error;
+}
+
+// The spend the reaction refusal names: a feature's own name, else the word.
+function intentFeature(what: string, t: T): string {
+  return what === "The reaction" ? t("The reaction") : what;
+}
+
+// A character dominated by the other side (companion-command.ts). Mapping:
+//   "{name} is dominated: the GM plays {name} until the charm ends. Use OOC
+//    for table talk." → board.side.dominated + refusal.oocTail
+// (the sentence's first half is already keyed for the board's own line).
+function dominatedKey(error: string, name: string, t: T): string {
+  if (error === `${name} is dominated: the GM plays ${name} until the charm ends. Use OOC for table talk.`) {
+    return `${t("{name} is dominated: the GM plays {name} until the charm ends.", { name })} ${t("Use OOC for table talk.")}`;
+  }
+  return error;
+}
+
+// Which of the player's characters acts (resolveActionCharacter,
+// src/lib/player-characters.ts). Mapping, refusal → key:
+//   not one of yours        → refusal.notYourCharacter
+//   a companion off its turn → refusal.companionOrders (the name is cut from
+//     the engine's "{name} follows your orders …" sentence)
+//   select it first         → refusal.selectFirst
+//   wait for its turn       → refusal.waitOwnTurn
+function actorErrorKey(error: string, t: T): string {
+  if (error === "That is not one of your characters.") {
+    return t("That is not one of your characters.");
+  }
+  const ordersTail = " follows your orders on their own turn in a fight; the GM plays them otherwise.";
+  if (error.endsWith(ordersTail)) {
+    return t("{name} follows your orders on their own turn in a fight; the GM plays them otherwise.", { name: error.slice(0, error.length - ordersTail.length) });
+  }
+  if (error === "Select that character before acting as them.") {
+    return t("Select that character before acting as them.");
+  }
+  if (error === "Wait for that character's turn in the initiative order. Use OOC for table talk.") {
+    return t("Wait for that character's turn in the initiative order. Use OOC for table talk.");
+  }
+  return error;
 }
 
 export async function POST(
@@ -88,14 +243,17 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireVoice(campaignId);
+  // The refusals read the asker's language: the Hand and the composer show
+  // them raw (requestT — x-odm-locale, then Accept-Language).
+  const t = requestT(request);
+  const context = await requireVoice(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
 
   const { campaign, user } = context;
   if (campaign.status !== "active") {
-    return Response.json({ error: "The adventure has not started yet." }, { status: 400 });
+    return Response.json({ error: t("The adventure has not started yet.") }, { status: 400 });
   }
 
   const owned = getSheetForUser(campaignId, user.id);
@@ -124,27 +282,32 @@ export async function POST(
   }
   const selected = owned ?? playsCompanion;
   if (!selected) {
-    return Response.json({ error: "You need a character to act." }, { status: 400 });
+    return Response.json({ error: t("You need a character to act.") }, { status: 400 });
   }
 
   // A secret action (issue 503 Phase 7) is held by the server, never posted.
   if (isSecretActionBody(raw)) {
     if (!owned) {
-      return Response.json({ error: "You need a character to act." }, { status: 400 });
+      return Response.json({ error: t("You need a character to act.") }, { status: 400 });
     }
     if (heroFell(owned)) {
-      return Response.json({ error: fallenRefusal(owned.name) }, { status: 409 });
+      return Response.json({ error: fallenRefusal(t, owned.name) }, { status: 409 });
     }
-    return secretActionResponse(campaign, user.id, owned, raw);
+    return secretActionResponse(campaign, user.id, owned, raw, request);
   }
   const parsed = actionSchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid action." }, { status: 400 });
+    return Response.json({ error: t("Invalid action.") }, { status: 400 });
   }
   if (textLength(parsed.data.content) > ACTION_MAX_CHARS) {
-    const what = parsed.data.kind === "say" ? "A line" : parsed.data.kind === "ooc" ? "Table talk" : "A move";
+    // The shared builder (text-limits.ts) stays English for its other
+    // consumers; this route maps its sentence at the boundary instead.
+    const what = parsed.data.kind === "say" ? t("A line") : parsed.data.kind === "ooc" ? t("Table talk") : t("A move");
     return Response.json(
-      { error: tooLongMessage(what, ACTION_MAX_CHARS, textLength(parsed.data.content)), maxChars: ACTION_MAX_CHARS },
+      {
+        error: t("{what} can be up to {max} characters; this one has {length}. Shorten it and send it again.", { what, max: formatCount(ACTION_MAX_CHARS), length: formatCount(textLength(parsed.data.content)) }),
+        maxChars: ACTION_MAX_CHARS,
+      },
       { status: 400 },
     );
   }
@@ -153,7 +316,7 @@ export async function POST(
   // A table break (src/lib/dm/table-break.ts) stops play where it stands:
   // table talk goes on, nothing in character does, and the floor underneath
   // is left alone so Resume picks up exactly there.
-  const paused = kind === "ooc" ? null : refuseDuringBreak(campaignId);
+  const paused = kind === "ooc" ? null : refuseDuringBreak(campaignId, undefined, request);
   if (paused) {
     return paused;
   }
@@ -165,7 +328,7 @@ export async function POST(
   const acting = playsCompanion ?? (named && named.campaignId === campaignId && named.userId === user.id ? named : selected);
   const held = kind === "ooc" || playsCompanion ? null : dominatedRefusal(campaignId, acting);
   if (held) {
-    return Response.json({ error: held, dominated: true }, { status: 409 });
+    return Response.json({ error: dominatedKey(held, acting.name, t), dominated: true }, { status: 409 });
   }
   const played = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
   // Words typed as a reaction carry the reaction mark a card carries, and a
@@ -225,8 +388,10 @@ export async function POST(
       return Response.json(
         {
           error: enemiesDue
-            ? "The enemies are taking their turns; the GM hands the turn on. Use OOC for table talk."
-            : `The ${campaign.dmUserId ? "GM" : "party lead"} has not opened responses yet. Use OOC for table talk.`,
+            ? t("The enemies are taking their turns; the GM hands the turn on. Use OOC for table talk.")
+            : campaign.dmUserId
+              ? t("The GM has not opened responses yet. Use OOC for table talk.")
+              : t("The party lead has not opened responses yet. Use OOC for table talk."),
           floor,
         },
         { status: 409 },
@@ -235,7 +400,7 @@ export async function POST(
     if (floor.mode === "initiative") {
       return Response.json(
         {
-          error: `It is ${floor.currentName || "another character"}'s turn in the initiative order. Use OOC for table talk.`,
+          error: t("It is {name}'s turn in the initiative order. Use OOC for table talk.", { name: floor.currentName || t("another character") }),
           floor,
         },
         { status: 409 },
@@ -256,8 +421,8 @@ export async function POST(
     return Response.json(
       {
         error: waitingOn
-          ? `The GM is waiting on ${waitingOn}. Use OOC for table talk.`
-          : "It is not your moment to act.",
+          ? t("The GM is waiting on {names}. Use OOC for table talk.", { names: waitingOn })
+          : t("It is not your moment to act."),
         floor,
       },
       { status: 409 },
@@ -280,7 +445,7 @@ export async function POST(
     multiCharacter: campaign.gameSettings.multiCharacter,
   });
   if ("error" in actor) {
-    return Response.json({ error: actor.error, floor }, { status: actor.status });
+    return Response.json({ error: actorErrorKey(actor.error, t), floor }, { status: actor.status });
   }
   const { sheet } = actor;
   // A companion's reaction from its commander: the server's word on who
@@ -293,15 +458,20 @@ export async function POST(
   // connected agent or an older screen posting for them is told the same,
   // rather than the GM narrating the dead. Table talk stays open.
   if (kind !== "ooc" && !playsCompanion && heroFell(sheet)) {
-    return Response.json({ error: fallenRefusal(sheet.name), floor }, { status: 409 });
+    return Response.json({ error: fallenRefusal(t, sheet.name), floor }, { status: 409 });
   }
   // A card the engine would refuse is refused here, with the engine's own
   // reason and before anything is posted, so the Hand never marks spent a
-  // card that was never going to resolve (src/lib/dm/intent-check.ts).
+  // card that was never going to resolve (src/lib/dm/intent-check.ts). The
+  // engine's sentences are carried into the reader's words at the boundary
+  // above (engineRefusalKey); unknown wording keeps the engine's English.
   if (intent) {
     const refusal = intentRefusal(campaign, sheet, intent);
     if (refusal) {
-      return Response.json({ error: refusal }, { status: 409 });
+      return Response.json(
+        { error: engineRefusalKey(refusal, kindOfIntent(intent), sheet.name, intent.feature ?? "The reaction", t) },
+        { status: 409 },
+      );
     }
   }
   // A character in the plan the party is coordinating puts its move there,
@@ -309,7 +479,7 @@ export async function POST(
   // move posted beside it would wake the DM before it. Table talk is free.
   if (kind !== "ooc" && inCoordination(campaignId, sheet.id)) {
     return Response.json(
-      { error: `The party is coordinating its next move; put ${sheet.name}'s part in the plan above the box, or ask the lead to set the plan aside.`, coordinating: true },
+      { error: t("The party is coordinating its next move; put {name}'s part in the plan above the box, or ask the lead to set the plan aside.", { name: sheet.name }), coordinating: true },
       { status: 409 },
     );
   }
@@ -319,8 +489,11 @@ export async function POST(
   // against the state now, so an old answer cannot authorise another cast.
   const swap = concentrationSwapFor(sheet, { intent, content: parsed.data.content, kind }, tableAuthors(campaignId));
   if (swap && !confirmsSwap(swap, parsed.data.concentrationAck)) {
+    // The question the clients answer from the confirmConcentration FIELDS
+    // (concentration-prompt.ts); the error is the same words, in the asker's
+    // language, for a reader without the dialog.
     return Response.json(
-      { error: swapQuestion(swap, sheet.name), confirmConcentration: { ...swap, characterName: sheet.name } },
+      { error: t("Casting {next} will end {name}'s concentration on {current}. Replace {current}?", { next: swap.next, name: sheet.name, current: swap.current }), confirmConcentration: { ...swap, characterName: sheet.name } },
       { status: 409 },
     );
   }
@@ -348,6 +521,9 @@ export async function POST(
     for (const call of direct) {
       const resolved = await invokeEngine(campaign, { kind: "human", userId: user.id }, call);
       if (!resolved.ok) {
+        // The DM seat resolving its own play hears the engine's tool words
+        // (the AI protocol's own refusals, invoke's surface): these stay
+        // English, as they read on the DM console.
         // The spell did not happen: what its item spent comes back.
         if (intent && isStoredCast(intent)) {
           takeBackItemCast(campaign, sheet.id, intent.spell ?? "");

@@ -1,4 +1,7 @@
-// Which of the three ways to a hero to recommend (HeroRoutes.tsx). Pure, for
+// Which of the three ways to a hero to recommend (HeroRoutes.tsx). The
+// library card's line is built from the dictionaries (table.hero.*), so the
+// reading takes the translator from the component that draws it, the way
+// home/types.ts's agoLabel does. Pure otherwise, for
 // scripts/test-hero-routes.mjs.
 
 export type HeroRoute = "ready" | "library" | "build";
@@ -16,11 +19,18 @@ export type HeroRouteAdvice = {
   libraryLine: string;
 };
 
-export function heroRouteAdvice({ library, pregens }: { library: string[]; pregens: number }): HeroRouteAdvice {
+export function heroRouteAdvice(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  { library, pregens }: { library: string[]; pregens: number },
+): HeroRouteAdvice {
   const ready = pregens > 0;
   const has = library.length > 0;
   const named =
-    library.length <= 2 ? library.join(" and ") : `${library.slice(0, 2).join(", ")} and ${library.length - 2} more`;
+    library.length === 1
+      ? library[0]
+      : library.length === 2
+        ? t("{first} and {second}", { first: library[0], second: library[1] })
+        : t("{first}, {second} and {count} more", { first: library[0], second: library[1], count: library.length - 2 });
   return {
     // A player with heroes of their own most likely wants one of them; one
     // with none is quickest at the table with a ready-made one.
@@ -29,7 +39,7 @@ export function heroRouteAdvice({ library, pregens }: { library: string[]; prege
     library: has,
     openReady: !has && ready,
     libraryLine: has
-      ? `${named}, adapted to this table's level. Joining leaves your library copy as it is.`
-      : "Nothing saved yet. Heroes you make or take here are kept for your next table.",
+      ? t("{named}, adapted to this table's level. Joining leaves your library copy as it is.", { named })
+      : t("Nothing saved yet. Heroes you make or take here are kept for your next table."),
   };
 }

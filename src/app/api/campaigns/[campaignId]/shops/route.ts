@@ -40,9 +40,9 @@ export function shopView(shop: Shop, prep = true, viewerId: string | null = null
   };
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -86,7 +86,7 @@ const createSchema = z.object({
 
 export async function POST(request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
-  const context = await requirePrepAuthority(campaignId);
+  const context = await requirePrepAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

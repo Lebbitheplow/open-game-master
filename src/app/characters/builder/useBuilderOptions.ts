@@ -4,6 +4,7 @@ import { registerBrowserSubclassExtras, subclassLevelFor } from "@/lib/srd/featu
 import { extraSubclassOf } from "@/lib/srd/subclass-tables";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { scopeQuery, useContentCampaign } from "@/lib/content-scope";
+import { odmLocaleHeaders } from "@/lib/locale";
 import { packRaceOptions, speciesRulesOf } from "@/lib/content/race-options";
 import { registerBrowserSpecies } from "@/lib/srd/race-id";
 import {
@@ -82,7 +83,9 @@ export function useBuilderOptions(keepRaceId?: string) {
   useEffect(() => {
     let cancelled = false;
     async function list(kind: OptionListKind, limit: number): Promise<{ results?: ContentRow[]; packInstalled?: boolean; unadmitted?: string[] }> {
-      const response = await fetch(`/api/content/${kind}?limit=${limit}${scopeQuery(campaignId, "&")}`);
+      const response = await fetch(`/api/content/${kind}?limit=${limit}${scopeQuery(campaignId, "&")}`, {
+        headers: odmLocaleHeaders(),
+      });
       if (!response.ok) {
         throw new Error(String(response.status));
       }

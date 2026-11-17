@@ -28,6 +28,7 @@ import type { PlaceBindingKind } from "@/lib/worldforge/model";
 import { offersImages, offersStoryModel, useCapabilities } from "@/lib/use-capabilities";
 import type { SceneLoss } from "@/lib/worldforge/scenes";
 import { SceneLosses } from "./SceneLosses";
+import { useT } from "@/lib/locale";
 
 // WorldForge in the workshop, and at the play table as the World tab.
 // WorldForge is Smoebo's world-building app, built in with their blessing:
@@ -136,6 +137,7 @@ export function WorldForgePanel({
   refreshKey?: number;
 }) {
   const api = useWorld(campaignId);
+  const t = useT();
   const capabilities = useCapabilities();
   const canWrite = offersStoryModel(capabilities);
   const canPaint = offersImages(capabilities);
@@ -249,11 +251,11 @@ export function WorldForgePanel({
     try {
       const response = await fetch(`${exportHref}?check=1`);
       const check = response.ok ? ((await response.json()) as ExportCheck) : null;
-      if (!check) setExportError("The file could not be checked. Try again.");
+      if (!check) setExportError(t("The file could not be checked. Try again."));
       else if (check.scenes.length) setExportHeld(check);
       else download();
     } catch {
-      setExportError("The file could not be checked. Try again.");
+      setExportError(t("The file could not be checked. Try again."));
     } finally {
       setChecking(false);
     }
@@ -276,56 +278,56 @@ export function WorldForgePanel({
     <section className="@container flex flex-col gap-3" aria-label="WorldForge" data-world-at={at}>
       {atTable ? (
         <p className="text-xs text-stone-500" data-testid="world-table-note">
-          <span className="text-amber-200/90">This campaign&apos;s world.</span> What came in from a workshop is this campaign&apos;s own copy: a change here stays at this table and leaves the workshop as it was. Only whoever runs the story sees this tab.
+          <span className="text-amber-200/90">{t("This campaign's world.")}</span> {t("What came in from a workshop is this campaign's own copy: a change here stays at this table and leaves the workshop as it was. Only whoever runs the story sees this tab.")}
         </p>
       ) : (
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-xs text-stone-500">
-          <span className="text-amber-200/90">WorldForge</span>, by Smoebo, built into the workshop. Every entry is a Cast member, place, faction or lore entry here.
+          <span className="text-amber-200/90">WorldForge</span>{t(", by Smoebo, built into the workshop. Every entry is a Cast member, place, faction or lore entry here.")}
         </p>
         <span className="ml-auto flex gap-1.5">
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && importFile(event.target.files[0])} />
-          <KitButton tone="small" busy={reading} disabled={reading} onClick={() => fileRef.current?.click()} title="Add a WorldForge export to this world" data-tour="world-import">
-            {reading ? null : <Upload className="size-3.5" />} Open a WorldForge file
+          <KitButton tone="small" busy={reading} disabled={reading} onClick={() => fileRef.current?.click()} title={t("Add a WorldForge export to this world")} data-tour="world-import">
+            {reading ? null : <Upload className="size-3.5" />} {t("Open a WorldForge file")}
           </KitButton>
-          <KitButton tone="small" busy={checking} disabled={checking} onClick={saveFile} title="Save this world as a file WorldForge opens" data-tour="world-export">
-            {checking ? null : <Download className="size-3.5" />} Save as a WorldForge file
+          <KitButton tone="small" busy={checking} disabled={checking} onClick={saveFile} title={t("Save this world as a file WorldForge opens")} data-tour="world-export">
+            {checking ? null : <Download className="size-3.5" />} {t("Save as a WorldForge file")}
           </KitButton>
         </span>
         {/* The book's people, places, factions, lore, ties and story, laid
             into this world; its review card opens below the row. */}
         <div className="w-full">
-          <PdfImportButton campaignId={campaignId} className={ui.btnSmall} label="Add an adventure PDF to this world" onImported={refresh} />
+          <PdfImportButton campaignId={campaignId} className={ui.btnSmall} label={t("Add an adventure PDF to this world")} onImported={refresh} />
         </div>
       </div>
       )}
       {exportError ? <PanelError>{exportError}</PanelError> : null}
       {exportHeld ? (
         <div className="motion-pop flex flex-col gap-2 rounded-lg border border-amber-700/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-100" role="alert" data-testid="world-export-losses">
-          <span>A WorldForge file holds scenes in a line, so it cannot carry all of this storyboard. Nothing has been saved yet.</span>
-          <SceneLosses scenes={exportHeld.scenes} label="What each storyboard card would lose" />
+          <span>{t("A WorldForge file holds scenes in a line, so it cannot carry all of this storyboard. Nothing has been saved yet.")}</span>
+          <SceneLosses scenes={exportHeld.scenes} label={t("What each storyboard card would lose")} />
           {exportHeld.notes.map((note) => (
             <span key={note} className="text-stone-300">{note}</span>
           ))}
-          <span className="text-stone-300">A workshop bundle carries the whole adventure: every card, arrow and route, and what each card picked.</span>
+          <span className="text-stone-300">{t("A workshop bundle carries the whole adventure: every card, arrow and route, and what each card picked.")}</span>
           <span className="flex flex-wrap gap-2">
             <a href={exportHref} download onClick={() => setExportHeld(null)} className="pk-tap inline-flex items-center gap-1.5 rounded-lg border border-stone-600/60 bg-stone-900/50 px-2.5 py-1 text-xs text-stone-300 hover:border-amber-500/40 hover:text-amber-100 motion-press">
-              <Download className="size-3.5" /> Save the file anyway
+              <Download className="size-3.5" /> {t("Save the file anyway")}
             </a>
             {onOpenSystem ? (
               <KitButton tone="small" onClick={() => onOpenSystem("share")}>
-                Share as a bundle instead
+                {t("Share as a bundle instead")}
               </KitButton>
             ) : null}
             <KitButton tone="small" onClick={() => setExportHeld(null)}>
-              Cancel
+              {t("Cancel")}
             </KitButton>
           </span>
         </div>
       ) : null}
       {held ? (
         <div className="motion-pop flex flex-col gap-2 rounded-lg border border-amber-700/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-100" role="alert" data-testid="world-import-losses">
-          <span>This file would not come in whole. Nothing has been brought in yet.</span>
+          <span>{t("This file would not come in whole. Nothing has been brought in yet.")}</span>
           {held.losses.length ? (
             <ul className="list-disc pl-4">
               {held.losses.map((loss) => (
@@ -333,44 +335,50 @@ export function WorldForgePanel({
               ))}
             </ul>
           ) : null}
-          <SceneLosses scenes={held.scenes} label="What each scene would lose as a storyboard card" />
+          <SceneLosses scenes={held.scenes} label={t("What each scene would lose as a storyboard card")} />
           {held.notes.map((note) => (
             <span key={note} className="text-stone-300">{note}</span>
           ))}
           <span className="flex flex-wrap gap-2">
             <KitButton tone="small" busy={reading} disabled={reading} onClick={() => bringIn(held.text, true)}>
-              Bring it in anyway
+              {t("Bring it in anyway")}
             </KitButton>
             <KitButton tone="small" onClick={() => setHeld(null)}>
-              Cancel
+              {t("Cancel")}
             </KitButton>
           </span>
         </div>
       ) : null}
       {report ? (
         <div className="motion-pop rounded-lg border border-emerald-700/40 bg-emerald-900/15 px-3 py-2 text-xs text-stone-200" role="status">
-          Brought in {report.created} new {report.created === 1 ? "entry" : "entries"}
-          {report.updated ? `, updated ${report.updated}` : ""}, {report.links} links, {report.events} events, {report.secrets} secrets, {report.maps} maps
-          {report.beats ? ` and ${report.beats} storyboard cards` : ""}.
+          {t("Brought in {created} new entries, updated {updated}, {links} links, {events} events, {secrets} secrets, {maps} maps and {beats} storyboard cards.", {
+            created: report.created,
+            updated: report.updated,
+            links: report.links,
+            events: report.events,
+            secrets: report.secrets,
+            maps: report.maps,
+            beats: report.beats,
+          })}
           {report.beatsUpdated ? (
-            <span className="block">Storyboard cards brought in before: {report.beatsUpdated} found again and updated, not added twice.</span>
+            <span className="block">{t("Storyboard cards brought in before: {count} found again and updated, not added twice.", { count: report.beatsUpdated })}</span>
           ) : null}
           {report.scenesMatched?.length ? (
-            <span className="block text-amber-300">Scenes matched by title to cards already here, so check they are the same: {report.scenesMatched.join(", ")}.</span>
+            <span className="block text-amber-300">{t("Scenes matched by title to cards already here, so check they are the same: {list}.", { list: report.scenesMatched.join(", ") })}</span>
           ) : null}
           {report.linksUpdated || report.linksRemoved ? (
             <span className="block">
-              Links brought in before: {report.linksUpdated ?? 0} updated to match the file, {report.linksRemoved ?? 0} the file no longer has removed.
+              {t("Links brought in before: {updated} updated to match the file, {removed} the file no longer has removed.", { updated: report.linksUpdated ?? 0, removed: report.linksRemoved ?? 0 })}
             </span>
           ) : null}
           {report.conflicts?.length ? (
             <span className="block text-amber-300">{report.conflicts.join(" ")}</span>
           ) : null}
           {report.matched?.length ? (
-            <span className="block text-amber-300">Matched by name to entries already here, so check they are the same: {report.matched.join(", ")}.</span>
+            <span className="block text-amber-300">{t("Matched by name to entries already here, so check they are the same: {list}.", { list: report.matched.join(", ") })}</span>
           ) : null}
-          {report.skipped.length ? <span className="block text-ember-300">Left out: {report.skipped.join("; ")}</span> : null}
-          {report.losses?.length ? <span className="block text-amber-300">Not in whole: {report.losses.join(" ")}</span> : null}
+          {report.skipped.length ? <span className="block text-ember-300">{t("Left out: {list}", { list: report.skipped.join("; ") })}</span> : null}
+          {report.losses?.length ? <span className="block text-amber-300">{t("Not in whole: {list}", { list: report.losses.join(" ") })}</span> : null}
           {report.notes?.length ? <span className="block text-stone-300">{report.notes.join(" ")}</span> : null}
         </div>
       ) : null}
@@ -378,15 +386,15 @@ export function WorldForgePanel({
       {!canWrite || !canPaint ? (
         <p className="text-[11px] text-stone-500" data-tour="world-ai-note">
           {!canWrite && !canPaint
-            ? "Outline, Forge, Ask, Draft and Paint need AI (a text model, an image backend), which this server does not have set up. Everything else here works without it, and pictures can still be uploaded. An admin switches them on under Admin > Text model defaults and Admin > Image generation."
+            ? t("Outline, Forge, Ask, Draft and Paint need AI (a text model, an image backend), which this server does not have set up. Everything else here works without it, and pictures can still be uploaded. An admin switches them on under Admin > Text model defaults and Admin > Image generation.")
             : !canWrite
-              ? "Outline, Forge, Ask and Draft need a text model, which this server does not have set up. Everything else here works without it. An admin switches them on under Admin > Text model defaults."
-              : "Paint needs an image backend, which this server does not have set up. Pictures can still be uploaded. An admin switches it on under Admin > Image generation."}
+              ? t("Outline, Forge, Ask and Draft need a text model, which this server does not have set up. Everything else here works without it. An admin switches them on under Admin > Text model defaults.")
+              : t("Paint needs an image backend, which this server does not have set up. Pictures can still be uploaded. An admin switches it on under Admin > Image generation.")}
         </p>
       ) : null}
 
       <IconRail
-        items={VIEWS.filter((entry) => (canWrite || !AI_VIEWS.has(entry.value)) && !(atTable && WORKSHOP_VIEWS.has(entry.value))).map((entry) => ({ ...entry, badge: counts[entry.value] || undefined, tour: `world-view-${entry.value}` }))}
+        items={VIEWS.filter((entry) => (canWrite || !AI_VIEWS.has(entry.value)) && !(atTable && WORKSHOP_VIEWS.has(entry.value))).map((entry) => ({ ...entry, label: t(entry.label), badge: counts[entry.value] || undefined, tour: `world-view-${entry.value}` }))}
         value={view}
         onChange={setView}
         orientation="horizontal"
@@ -396,7 +404,7 @@ export function WorldForgePanel({
         className={cn("border-b border-stone-800/80 pb-1", atTable && "chip-rail flex-wrap")}
       />
 
-      <Listed loaded={api.loaded} error={api.loadError} onRetry={api.refresh} loading="Reading the world" rows={4}>
+      <Listed loaded={api.loaded} error={api.loadError} onRetry={api.refresh} loading={t("Reading the world")} rows={4}>
         {world ? (
           // Keyed by view so the incoming one rises in instead of cutting.
           <div key={view} className="motion-tab">

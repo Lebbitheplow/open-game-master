@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import {
   SKIN_CHARS,
-  SKIN_ROLES,
+  skinRoleLabel,
   defaultSkinFor,
   skinById,
   skinChoices,
@@ -19,6 +19,7 @@ import type { TileEntry } from "@/lib/battlemap/render/painted";
 import { materialChoices } from "@/app/campaigns/[campaignId]/mapCatalogue";
 import type { Catalogue } from "@/app/campaigns/[campaignId]/useMapPaint";
 import { Chip, FinePrint, PanelHead, Swatch, mapInput } from "@/app/campaigns/[campaignId]/mapUi";
+import { useT } from "@/lib/locale";
 
 // The tileset panel (docs/visual-overhaul-plan.md 4.4): which skin the map
 // wears and, under it, the material each of the six terrain characters is
@@ -52,10 +53,11 @@ export function MapTilesetPanel({
   // Absent on a surface that cannot store a skin (the live board).
   onSkin?: (next: MapSkin) => void;
 }) {
+  const t = useT();
   const [picking, setPicking] = useState<SkinChar | null>(null);
   const tiles = useMemo(() => new Map((catalogue?.tiles ?? []).map((tile) => [tile.id, tile])), [catalogue]);
   const defaultId = defaultSkinFor(genre, theme);
-  const groups = useMemo(() => skinChoices(genre), [genre]);
+  const groups = useMemo(() => skinChoices(genre, t), [genre, t]);
   const overridden = Object.keys(skin.bind).length > 0;
 
   return (
@@ -72,10 +74,10 @@ export function MapTilesetPanel({
 
       {onSkin ? (
         <label className="block space-y-1">
-          <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">Skin</span>
+          <span className="font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">{t("Skin")}</span>
           <Select
             value={skin.id as string}
-            label="Skin"
+            label={t("Skin")}
             size="sm"
             onChange={(id) => onSkin({ id, bind: {} })}
             options={[
@@ -100,7 +102,7 @@ export function MapTilesetPanel({
                 type="button"
                 disabled={!onSkin || !catalogue}
                 onClick={() => setPicking(char)}
-                title={onSkin ? `Choose what ${SKIN_ROLES[char].label.toLowerCase()} is painted with` : undefined}
+                title={onSkin ? t("Choose what {role} is painted with", { role: skinRoleLabel(t, char) }) : undefined}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md border px-1.5 py-1 text-left motion-press disabled:cursor-default",
                   own ? "border-amber-500/40 bg-amber-400/5" : "border-transparent hover:border-stone-700",
@@ -108,7 +110,7 @@ export function MapTilesetPanel({
               >
                 <Swatch char={char} src={painted ? material?.src : undefined} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[11px] text-stone-200">{SKIN_ROLES[char].label}</span>
+                  <span className="block truncate text-[11px] text-stone-200">{skinRoleLabel(t, char)}</span>
                   <span className="block truncate font-mono text-[9px] text-stone-500">
                     {material?.label ?? resolved.bind[char]}
                     {own ? " · yours" : ""}
@@ -182,13 +184,14 @@ function MaterialPicker({
   onPick: (material: string) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
-  const groups = useMemo(() => (char ? materialChoices(tiles, char, genre, theme, query) : []), [tiles, char, genre, theme, query]);
+  const groups = useMemo(() => (char ? materialChoices(tiles, char, genre, theme, query, t) : []), [tiles, char, genre, theme, query, t]);
   return (
     <Dialog
       open={char !== null}
       onOpenChange={(open) => (open ? undefined : onClose())}
-      title={char ? `${SKIN_ROLES[char].label}: painted with` : "Material"}
+      title={char ? t("{role}: painted with", { role: skinRoleLabel(t, char) }) : t("Material", { context: "maptools.material" })}
       width="w-[min(94vw,44rem)]"
     >
       <input

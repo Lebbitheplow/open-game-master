@@ -14,6 +14,7 @@ import {
 } from "@/lib/dm/encounter-template-logic";
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
 import { EVENTS_REFUSAL, EXTRAS_INPUT, eventsUnreadable } from "@/lib/dm/fight-event-logic";
+import { requestT } from "@/lib/request-locale";
 import { fitPlanToMap } from "@/lib/dm/fight-ground";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
@@ -61,11 +62,11 @@ function withReadout(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requirePrepAuthority(campaignId);
+  const context = await requirePrepAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -79,15 +80,16 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requirePrepAuthority(campaignId);
+  const context = await requirePrepAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const body: unknown = await request.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
-      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : "A prepared encounter needs a name and a roster." },
+      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : t("A prepared encounter needs a name and a roster.") },
       { status: 400 },
     );
   }
@@ -100,7 +102,7 @@ export async function POST(
   // in this campaign's drawer is answered here, where the DB is.
   if (map.mapId && !getPreparedMap(campaignId, map.mapId)) {
     return Response.json(
-      { error: "That prepared map is not in this campaign's drawer." },
+      { error: t("That prepared map is not in this campaign's drawer.") },
       { status: 400 },
     );
   }

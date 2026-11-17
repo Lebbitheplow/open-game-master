@@ -1,4 +1,5 @@
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
+import { requestT } from "@/lib/request-locale";
 import { describeFightSetup } from "@/lib/workshop/fight-setup-logic";
 import { saveTestAsSetup } from "@/lib/workshop/fight-setup";
 
@@ -11,9 +12,10 @@ export const dynamic = "force-dynamic";
 // it from then on. Only the test's author, at a test table.
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
+  const t = requestT(request);
   const { campaignId } = await params;
   const context = await requireMember(campaignId);
   if (isErrorResponse(context)) {
@@ -28,6 +30,6 @@ export async function POST(
     templateId: saved.templateId,
     workshopId: saved.workshopId,
     keptMap: saved.keptMap,
-    lines: describeFightSetup(saved.setup),
+    lines: describeFightSetup(saved.setup, t),
   });
 }

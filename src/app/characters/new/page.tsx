@@ -12,10 +12,12 @@ import { refusalText } from "@/app/characters/builder/refusal";
 import { builderDraftKey, clearBuilderDraft } from "@/app/characters/builder/builderDraft";
 import { readBuilderDoor } from "@/app/characters/builder/door";
 import { afterFirstSave } from "@/lib/characters/hero-tips";
+import { useT } from "@/lib/locale";
 
 const DRAFT_KEY = builderDraftKey("library");
 
 function NewCharacterInner() {
+  const t = useT();
   // What the link that opened the builder already decided (door.ts): it is
   // set here and not asked again.
   const door = readBuilderDoor(useSearchParams());
@@ -74,20 +76,20 @@ function NewCharacterInner() {
     <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
       <header className="mb-5">
         <Link href="/characters" className="text-sm text-stone-500 hover:text-stone-300">
-          &larr; Back to your characters
+          {t("Back to your characters")}
         </Link>
         <div className="mt-2 flex items-center gap-3">
           <PixelTile src={PIXEL_ICONS.characters} />
           <div>
-            <GoldTitle size="text-2xl">Create a character</GoldTitle>
+            <GoldTitle size="text-2xl">{t("Create a character")}</GoldTitle>
             <p className="text-sm text-stone-400">
-              Saved to your library; bring them into any campaign later.
+              {t("Saved to your library; bring them into any campaign later.")}
             </p>
           </div>
         </div>
       </header>
       <CharacterBuilder
-        submitLabel="Save to library"
+        submitLabel={t("Save to library")}
         onSubmit={submit}
         busy={busy}
         error={error}
@@ -103,6 +105,7 @@ function NewCharacterInner() {
 
 // useSearchParams needs a Suspense boundary during prerender in Next 16.
 export default function NewCharacterPage() {
+  const t = useT();
   return (
     <Suspense
       fallback={

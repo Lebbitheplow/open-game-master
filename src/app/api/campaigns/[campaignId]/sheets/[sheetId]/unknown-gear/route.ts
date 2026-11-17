@@ -3,6 +3,7 @@ import { isTableGearName, tableAuthors } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { listWorkshopsForUser } from "@/lib/db/workshops";
 import { itemsWithoutStats } from "@/lib/homebrew/unknown-gear";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 // answer says whether this reader is one of them, and which of their
 // workshops the editor opens in.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string; sheetId: string }> },
 ) {
   const { campaignId, sheetId } = await params;
@@ -22,9 +23,10 @@ export async function GET(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const sheet = getSheetById(sheetId);
   if (!sheet || sheet.campaignId !== campaignId) {
-    return Response.json({ error: "Character not found." }, { status: 404 });
+    return Response.json({ error: t("Character not found.") }, { status: 404 });
   }
   const canAuthor = tableAuthors(campaignId).includes(context.user.id);
   return Response.json({

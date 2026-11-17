@@ -12,9 +12,13 @@
 // The rules below refuse a key that would fight something else, and say
 // what: voice chat's push-to-talk key, a key that types, edits or sends in
 // the box, and the shortcuts browsers, the desktop app's menu and common
-// desktops keep for themselves. Pure, and free of alias imports, so
-// scripts/test-dictation-shortcut.mjs and the client apps' tests read it
-// directly.
+// desktops keep for themselves. Pure, and free of alias imports (the only
+// import is the relative translator), so scripts/test-dictation-shortcut.mjs
+// and the client apps' tests read it directly.
+import { translate } from "./messages-logic.ts";
+
+// English-bound, for the checks that only ask whether a chord is refused.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 
 export type DictationChord = {
   code: string;
@@ -196,38 +200,47 @@ function ownCharacter(typed: string, chord: Pick<DictationChord, "code" | "label
 // Why this chord cannot be the dictation key, or null when it can. `typed`
 // is the character the press produced (KeyboardEvent.key), when known: on a
 // layout where Ctrl+Alt is AltGr, Ctrl+Alt+Q types "@" and must stay typing.
-export function chordProblem(chord: DictationChord, typed = ""): string | null {
+//
+// The refusals are sentences the settings field shows; they live in the
+// dictionaries (dictation.problem.*) and take the translator from the
+// surface that asks, as home/types.ts's agoLabel does. The key's own names
+// (keyLabel, formatChord) are the keyboard's, and stay as printed.
+export function chordProblem(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  chord: DictationChord,
+  typed = "",
+): string | null {
   const name = formatChord(chord);
   if (chord.meta) {
-    return "The Windows, Command and Super keys belong to the system. Hold Ctrl or Alt instead.";
+    return t("The Windows, Command and Super keys belong to the system. Hold Ctrl or Alt instead.");
   }
   if (chord.code === VOICE_PTT_CODE) {
-    return "` is voice chat's push-to-talk key. Pick another so the two never fight.";
+    return t("` is voice chat's push-to-talk key. Pick another so the two never fight.");
   }
   if (EDITING_CODES.has(chord.code) || (chord.code === "Insert" && (chord.ctrl || chord.shift))) {
-    return `${EDITING_CODES.has(chord.code) ? keyLabel(chord.code) : name} moves, edits or sends in the message box. Pick another key.`;
+    return t("{name} moves, edits or sends in the message box. Pick another key.", { name: EDITING_CODES.has(chord.code) ? keyLabel(chord.code) : name });
   }
   if (KEPT_FUNCTION_KEYS.has(chord.code)) {
-    return `${name} belongs to the browser or the app window (help, reload, full screen, developer tools). Pick another key, such as F8 or F9.`;
+    return t("{name} belongs to the browser or the app window (help, reload, full screen, developer tools). Pick another key, such as F8 or F9.", { name });
   }
   if (chord.code === "F4" && (chord.ctrl || chord.alt)) {
-    return `${name} closes the window or the tab. Pick another key.`;
+    return t("{name} closes the window or the tab. Pick another key.", { name });
   }
   const types = TYPING.test(chord.code);
   if (types && !chord.ctrl && !chord.alt) {
-    return `${name} types in the message box. Hold Ctrl or Alt with it, or pick a key that does not type, such as F8 or F9.`;
+    return t("{name} types in the message box. Hold Ctrl or Alt with it, or pick a key that does not type, such as F8 or F9.", { name });
   }
   if (types && chord.ctrl && !chord.alt) {
-    return `${name} is a browser or system shortcut (copy, find, a new tab, zoom, the input language). Add Alt, or pick another key.`;
+    return t("{name} is a browser or system shortcut (copy, find, a new tab, zoom, the input language). Add Alt, or pick another key.", { name });
   }
   if (chord.alt && !chord.ctrl && ALT_MENU_CODES.has(chord.code)) {
-    return `${name} opens a browser menu, the address bar or the window menu. Pick another key.`;
+    return t("{name} opens a browser menu, the address bar or the window menu. Pick another key.", { name });
   }
   if (chord.ctrl && chord.alt && CTRL_ALT_DESKTOP_CODES.has(chord.code)) {
-    return `${name} is a desktop shortcut on many systems (a terminal, the lock screen, the desktop). Pick another key.`;
+    return t("{name} is a desktop shortcut on many systems (a terminal, the lock screen, the desktop). Pick another key.", { name });
   }
   if (chord.ctrl && chord.alt && typed.length === 1 && !ownCharacter(typed, chord)) {
-    return `On this keyboard ${name} types "${typed}". Pick another key so it keeps typing.`;
+    return t("On this keyboard {name} types \"{typed}\". Pick another key so it keeps typing.", { name, typed });
   }
   return null;
 }
@@ -259,7 +272,8 @@ export function releasesChord(event: Pick<KeyEventLike, "code" | "key">, chord: 
 }
 
 // A stored shortcut, or null for none, an unreadable one, or one the rules
-// now refuse.
+// now refuse. The refusal words are only a check here, so an English-bound
+// translator reads them; nothing user-facing is made of it.
 export function parseChord(raw: string | null): DictationChord | null {
   if (!raw) {
     return null;
@@ -285,7 +299,7 @@ export function parseChord(raw: string | null): DictationChord | null {
     meta: false,
     label: typeof stored.label === "string" && stored.label.trim() ? stored.label.trim().slice(0, 16) : keyLabel(stored.code),
   };
-  return chordProblem(chord) ? null : chord;
+  return chordProblem(enT, chord) ? null : chord;
 }
 
 export function serializeChord(chord: DictationChord): string {

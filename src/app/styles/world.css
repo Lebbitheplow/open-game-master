@@ -1533,6 +1533,11 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
   transform: translateX(-50%);
   animation: cine-roll-in 420ms var(--ease-spring) both, cine-roll-out 400ms var(--ease-snap) 4.8s forwards;
 }
+@media (max-width: 639px) {
+  .cine-roll {
+    top: calc(7.25rem + env(safe-area-inset-top));
+  }
+}
 .cine-roll[data-crit="nat1"] { border-color: rgba(224, 112, 58, 0.6); box-shadow: 0 0 18px rgba(224, 112, 58, 0.3), 0 10px 24px rgba(4, 2, 12, 0.6); }
 .cine-roll[data-crit="nat20"] { border-color: rgba(244, 224, 166, 0.9); box-shadow: 0 0 26px rgba(212, 171, 58, 0.55), 0 10px 24px rgba(4, 2, 12, 0.6); }
 .cine-roll-die { width: 30px; height: 30px; flex: none; }

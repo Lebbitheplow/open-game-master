@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Sparkles, Wand2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import {
@@ -10,7 +11,7 @@ import {
   OVERWORLD_PARAM_LABELS,
   type OverworldParams,
 } from "@/lib/overworld/logic";
-import { OVERWORLD_SIZES, sizeLabel, type OverworldSize } from "@/lib/overworld/features";
+import { OVERWORLD_SIZES, sizeLabel, sizeLabelKey, type OverworldSize } from "@/lib/overworld/features";
 import type { OverworldData } from "@/app/campaigns/[campaignId]/overworldDraw";
 import { offersStoryModel, useCapabilities } from "@/lib/use-capabilities";
 import { DictateField } from "@/components/DictateField";
@@ -43,6 +44,7 @@ export function OverworldAuthoring({
   data: OverworldData;
   onData: (next: OverworldData) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -135,7 +137,7 @@ export function OverworldAuthoring({
         className="flex w-full items-center gap-1.5 text-left text-xs font-medium uppercase tracking-wide text-stone-500 hover:text-stone-300"
       >
         <Wand2 className="size-3.5" />
-        Shape the region
+        {t("Shape the region")}
       </button>
 
       {open ? (
@@ -202,10 +204,10 @@ export function OverworldAuthoring({
                 }
               }}
               options={[
-                ...(sizeId === "custom" ? [{ value: "custom", label: sizeLabel(size) }] : []),
+                ...(sizeId === "custom" ? [{ value: "custom", label: sizeLabel(t, size) }] : []),
                 ...OVERWORLD_SIZES.map((entry) => ({
                   value: entry.id as string,
-                  label: `${entry.label} (${entry.width} by ${entry.height})`,
+                  label: t("{label} ({width} by {height})", { label: t(sizeLabelKey(entry.id)), width: entry.width, height: entry.height }),
                 })),
               ]}
             />

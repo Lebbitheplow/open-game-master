@@ -13,6 +13,7 @@ import {
   MAX_COVER_TURNS,
   type DmCover,
 } from "@/lib/dm/delegation";
+import { useT } from "@/lib/locale";
 
 // The two delegations the DM triggers by hand: handing the monsters their
 // turn, and handing the whole table over for a counted stretch while they step
@@ -71,6 +72,7 @@ function MonsterButton({ campaignId }: { campaignId: string }) {
 }
 
 function CoverControl({ campaignId, cover }: { campaignId: string; cover: DmCover | null }) {
+  const t = useT();
   const [turns, setTurns] = useState(5);
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
@@ -107,7 +109,7 @@ function CoverControl({ campaignId, cover }: { campaignId: string; cover: DmCove
         <>
           <p className="live-in flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-400/10 px-2.5 py-2 text-xs text-amber-100">
             <GameIcon icon={{ kind: "glyph", key: "tab-dm" }} size="size-5" className="shrink-0" />
-            {describeCover(cover)}
+            {describeCover(t, cover)}
           </p>
           <button
             type="button"
@@ -191,13 +193,14 @@ export function DmDelegationPanel({
 // a player owed an answer is owed the knowledge that the person answering
 // them stepped out and the AI is standing in.
 export function DmCoverNotice({ cover }: { cover: DmCover | null }) {
+  const t = useT();
   if (!coverActive(cover)) {
     return null;
   }
   return (
     <p className="live-in mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-100">
       <GameIcon icon={{ kind: "glyph", key: "tab-dm" }} size="size-5" className="shrink-0" />
-      {describeCover(cover)}
+      {describeCover(t, cover)}
     </p>
   );
 }

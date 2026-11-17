@@ -6,14 +6,15 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { genreName, type PluginFilter, type PluginOrigin } from "@/lib/worlds/plugin-filter";
+import { useT } from "@/lib/locale";
 
 // The genre picker's "no genre" row; Radix wants a real value for it.
 const EVERY_GENRE = "any";
 
-const ORIGINS: Array<{ value: PluginOrigin; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "original", label: "Original" },
-  { value: "fan", label: "Fan-made" },
+const ORIGINS: Array<{ value: PluginOrigin }> = [
+  { value: "all" },
+  { value: "original" },
+  { value: "fan" },
 ];
 
 // The plugin browser's filter row: a search, the genres the lists use, and
@@ -28,8 +29,14 @@ export function PluginFilterBar({
   onChange: (next: PluginFilter) => void;
   genres: string[];
 }) {
+  const t = useT();
+  const originLabel: Record<PluginOrigin, string> = {
+    all: t("All"),
+    original: t("Original"),
+    fan: t("Fan-made"),
+  };
   return (
-    <div className="flex flex-wrap items-center gap-2" role="search" aria-label="Filter campaign plugins">
+    <div className="flex flex-wrap items-center gap-2" role="search" aria-label={t("Filter campaign plugins")}>
       <label className="relative min-w-[12rem] flex-1">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500"
@@ -39,19 +46,19 @@ export function PluginFilterBar({
           type="search"
           value={filter.query}
           onChange={(event) => onChange({ ...filter, query: event.target.value })}
-          placeholder="Search by name, setting or author"
-          aria-label="Search campaign plugins"
+          placeholder={t("Search by name, setting or author")}
+          aria-label={t("Search campaign plugins")}
           className={cn(ui.input, "pl-8 text-xs")}
         />
       </label>
       {genres.length > 1 ? (
         <Select
           size="sm"
-          label="Genre"
+          label={t("Genre")}
           value={filter.genre || EVERY_GENRE}
           onChange={(value) => onChange({ ...filter, genre: value === EVERY_GENRE ? "" : value })}
           options={[
-            { value: EVERY_GENRE, label: "Every genre" },
+            { value: EVERY_GENRE, label: t("Every genre") },
             ...genres.map((genre) => ({ value: genre, label: genreName(genre) })),
           ]}
           className="w-40"
@@ -59,8 +66,8 @@ export function PluginFilterBar({
       ) : null}
       <SegmentedControl
         size="sm"
-        label="Original or fan-made"
-        options={ORIGINS}
+        label={t("Original or fan-made")}
+        options={ORIGINS.map((origin) => ({ ...origin, label: originLabel[origin.value] }))}
         value={filter.origin}
         onChange={(origin) => onChange({ ...filter, origin })}
       />

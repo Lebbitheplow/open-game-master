@@ -10,7 +10,9 @@ import { listWords, measuredLine } from "@/lib/image-models/describe";
 import { honoursNegative } from "@/lib/image-models/workflow";
 import { ComfyModelCatalog } from "@/app/admin/ComfyModelCatalog";
 import { ModelChoiceField } from "@/app/admin/ModelChoice";
-import { BLANK, fromEnv } from "@/app/admin/model-blanks";
+import { blanks, fromEnv } from "@/app/admin/model-blanks";
+import { useT } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 import {
   Field,
   SECRET_KEPT,
@@ -51,7 +53,12 @@ const loadsCheckpoint = (id: string) => {
 // recommended (never picked for the admin). The saved choice stays listed
 // when the check no longer finds it. `discovery` is null until a check has
 // answered.
-export function comfyModelOptions(saved: { checkpoint: string; preset: string }, discovery: ComfyDiscovery | null) {
+export function comfyModelOptions(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  saved: { checkpoint: string; preset: string },
+  discovery: ComfyDiscovery | null,
+) {
+  const BLANK = blanks(t);
   const succeeded = Boolean(discovery && !discovery.error);
   const hardware = discovery?.hardware?.label ?? null;
   const reports = discovery?.models ?? [];
@@ -65,15 +72,15 @@ export function comfyModelOptions(saved: { checkpoint: string; preset: string },
     ...(savedModel && !installed.some((report) => report.id === savedModel.id) ? [{ id: savedModel.id, report: null }] : []),
   ];
   const checkpointHint = (name: string) => {
-    if (name === saved.checkpoint && succeeded && !checkpoints.includes(name)) return "Saved selection; not reported by this ComfyUI.";
+    if (name === saved.checkpoint && succeeded && !checkpoints.includes(name)) return t("Saved selection; not reported by this ComfyUI.");
     const known = checkpointModel(name);
     if (!known) return undefined;
     const report = reports.find((entry) => entry.id === known.id);
-    return report?.verified ? `${known.label}. ${measuredLine(report, hardware)}` : `${known.label} settings.`;
+    return report?.verified ? `${known.label}. ${measuredLine(t, report, hardware)}` : t("{name} settings.", { name: known.label });
   };
   const unpicked = saved.preset === CHECKPOINT_PRESET && !saved.checkpoint;
   const obvious = unpicked && discovery && succeeded ? obviousComfyChoice(discovery) : null;
-  const recommended = (label: string, isIt: boolean) => (isIt ? `${label} (recommended)` : label);
+  const recommended = (label: string, isIt: boolean) => (isIt ? `${label}${t(" (recommended)")}` : label);
   return [
     // Nothing is painted in checkpoint mode until a checkpoint is picked:
     // no file is named in code, and none is taken from ComfyUI's list.
@@ -81,14 +88,14 @@ export function comfyModelOptions(saved: { checkpoint: string; preset: string },
     ...models.map(({ id, report }) => ({
       value: `${PRESET_PREFIX}${id}`,
       label: recommended(comfyModel(id)?.label ?? id, obvious?.preset === id),
-      group: "Models",
-      ...(report ? { hint: measuredLine(report, hardware) } : succeeded ? { hint: "Its files are not all on this ComfyUI." } : {}),
+      group: t("Models"),
+      ...(report ? { hint: measuredLine(t, report, hardware) } : succeeded ? { hint: t("Its files are not all on this ComfyUI.") } : {}),
     })),
     ...[saved.checkpoint, ...checkpoints]
       .filter((name, index, names) => name && names.indexOf(name) === index)
       .map((name) => {
         const hint = checkpointHint(name);
-        return { value: `${CHECKPOINT_PREFIX}${name}`, label: recommended(name, obvious?.checkpoint === name), group: "Checkpoints", ...(hint ? { hint } : {}) };
+        return { value: `${CHECKPOINT_PREFIX}${name}`, label: recommended(name, obvious?.checkpoint === name), group: t("Checkpoints"), ...(hint ? { hint } : {}) };
       }),
   ];
 }
@@ -102,7 +109,11 @@ export function comfyModelPatch(value: string, options: ReturnType<typeof comfyM
   return null;
 }
 
-export async function fetchComfyModels(url: string, signal: AbortSignal): Promise<ComfyDiscovery> {
+export async function fetchComfyModels(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  url: string,
+  signal: AbortSignal,
+): Promise<ComfyDiscovery> {
   const response = await fetch("/api/comfy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -111,7 +122,7 @@ export async function fetchComfyModels(url: string, signal: AbortSignal): Promis
   });
   const result = (await response.json()) as Partial<ComfyStatus>;
   if (!response.ok || !result.ok) {
-    return { checkpoints: [], models: [], hardware: null, device: null, error: result.error || "Could not check ComfyUI." };
+    return { checkpoints: [], models: [], hardware: null, device: null, error: result.error || t("Could not check ComfyUI.") };
   }
   return {
     checkpoints: Array.isArray(result.checkpoints) ? result.checkpoints.filter((name): name is string => typeof name === "string") : [],
@@ -123,30 +134,41 @@ export async function fetchComfyModels(url: string, signal: AbortSignal): Promis
 }
 
 // The line under the picker: what the check found for the model chosen.
-export function comfyModelStatus(discovery: ComfyDiscovery | null, preset: string) {
-  if (!discovery) return "Checking installed models…";
+export function comfyModelStatus(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  discovery: ComfyDiscovery | null,
+  preset: string,
+) {
+  if (!discovery) return t("Checking installed models…");
   if (discovery.error) return discovery.error;
   const model = preset === CHECKPOINT_PRESET ? undefined : comfyModel(preset);
   if (!model) {
-    return discovery.checkpoints.length ? "Installed checkpoints from ComfyUI." : "No checkpoints reported by ComfyUI.";
+    return discovery.checkpoints.length
+      ? t("Installed checkpoints from ComfyUI.")
+      : t("No checkpoints reported by ComfyUI.");
   }
   const report = discovery.models.find((entry) => entry.id === model.id);
   if (!report || report.missing.length) {
-    return `This ComfyUI is missing ${report ? listWords(report.missing.map((file) => file.what)) : `the ${model.label} files`}.`;
+    // No report to list from: the named-model variant says it whole.
+    return report
+      ? t("This ComfyUI is missing {list}.", { list: listWords(t, report.missing.map((file) => file.what)) })
+      : t("This ComfyUI is missing the {model} files.", { model: model.label });
   }
-  const files = listWords(Object.values(report.files).map(fileName));
-  return `Paints every campaign's ComfyUI pictures with ${files}.${
-    honoursNegative(model) ? "" : " It runs without a negative prompt, so a table's boundary cannot keep anything out of its pictures."
-  }`;
+  const files = listWords(t, Object.values(report.files).map(fileName));
+  return t("Paints every campaign's ComfyUI pictures with {files}.{negative}", {
+    files,
+    negative: honoursNegative(model) ? "" : t(" It runs without a negative prompt, so a table's boundary cannot keep anything out of its pictures."),
+  });
 }
 
 // Said under a picture backend whose model is blank. No model is named in
 // code, so it paints nothing until one is picked; an upgrade from a version
 // that named one lands here.
 function NoPictureModel() {
+  const t = useT();
   return (
     <p role="status" className="text-[11px] leading-4 text-amber-300 sm:col-span-2" data-needs-model>
-      No model is picked, so nothing is painted until you pick one.
+      {t("No model is picked, so nothing is painted until you pick one.")}
     </p>
   );
 }
@@ -160,6 +182,7 @@ function ComfyModelField({
   env: EnvDefaults;
   onChange: (patch: Partial<Images>) => void;
 }) {
+  const t = useT();
   const url = images.comfyUrl || env.comfyUrl;
   const [revision, setRevision] = useState(0);
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
@@ -168,11 +191,11 @@ function ComfyModelField({
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
-        const result = await fetchComfyModels(url, controller.signal);
+        const result = await fetchComfyModels(t, url, controller.signal);
         if (!controller.signal.aborted) setDiscovery({ url, revision, ...result });
       } catch {
         if (!controller.signal.aborted) {
-          setDiscovery({ url, revision, checkpoints: [], models: [], hardware: null, device: null, error: "Could not check ComfyUI. Check the server URL." });
+          setDiscovery({ url, revision, checkpoints: [], models: [], hardware: null, device: null, error: t("Could not check ComfyUI. Check the server URL.") });
         }
       }
     }, 250);
@@ -184,7 +207,7 @@ function ComfyModelField({
 
   const current = discovery?.url === url && discovery.revision === revision ? discovery : null;
   const preset = images.comfyWorkflowPreset;
-  const options = comfyModelOptions({ checkpoint: images.comfyCheckpoint, preset }, current);
+  const options = comfyModelOptions(t, { checkpoint: images.comfyCheckpoint, preset }, current);
   const selected = preset !== CHECKPOINT_PRESET ? `${PRESET_PREFIX}${preset}` : `${CHECKPOINT_PREFIX}${images.comfyCheckpoint}`;
   const report = current?.models.find((entry) => entry.id === preset);
   const missing = Boolean(current && !current.error && preset !== CHECKPOINT_PRESET && (!report || report.missing.length));
@@ -196,7 +219,7 @@ function ComfyModelField({
     <>
       <div>
         <SelectField<string>
-          label="Image model"
+          label={t("Image model")}
           value={selected}
           onChange={(value) => {
             const patch = comfyModelPatch(value, options);
@@ -206,10 +229,10 @@ function ComfyModelField({
         />
         <div className="mt-1 flex items-start justify-between gap-2">
           <p role={current?.error || missing ? "alert" : "status"} className="text-[11px] leading-4 text-stone-500">
-            {comfyModelStatus(current, preset)}
+            {comfyModelStatus(t, current, preset)}
           </p>
           <button type="button" className="shrink-0 text-[11px] text-amber-300 hover:text-amber-200" onClick={() => setRevision((value) => value + 1)}>
-            Refresh
+            {t("Refresh", { context: "admin.images.refresh" })}
           </button>
         </div>
       </div>
@@ -230,7 +253,8 @@ function groupOf(backend: string): Group | null {
   return null;
 }
 
-const GROUP_TITLE: Record<Group, string> = {
+// The group titles, by backend group.
+const GROUP_KEYS: Record<Group, MessageKey> = {
   comfyui: "ComfyUI",
   flux: "FLUX worker",
   openai: "OpenAI-compatible images API",
@@ -254,6 +278,8 @@ export function AdminImagesSection({
   onImages: (images: Images) => void;
   onOpenaiKey: (value: string) => void;
 }) {
+  const t = useT();
+  const BLANK = blanks(t);
   const set = (patch: Partial<Images>) => onImages({ ...images, ...patch });
   // The backend "Auto" resolves to, so its fields are the ones shown open.
   const effective = images.defaultBackend || env.imageBackend || "comfyui";
@@ -262,7 +288,7 @@ export function AdminImagesSection({
   const blocks: Record<Group, React.ReactNode> = {
     comfyui: (
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Server URL" hint={inheritedHint(images.comfyUrl, env.comfyUrl)}>
+        <Field label={t("Server URL")} hint={inheritedHint(t, images.comfyUrl, env.comfyUrl)}>
           <input
             className={ui.input}
             value={images.comfyUrl}
@@ -275,7 +301,7 @@ export function AdminImagesSection({
     ),
     flux: (
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Worker URL" hint={inheritedHint(images.fluxWorkerUrl, env.fluxWorkerUrl, "The worker loads its own FLUX model.")}>
+        <Field label={t("Worker URL")} hint={inheritedHint(t, images.fluxWorkerUrl, env.fluxWorkerUrl, t("The worker loads its own FLUX model."))}>
           <input
             className={ui.input}
             value={images.fluxWorkerUrl}
@@ -288,8 +314,8 @@ export function AdminImagesSection({
     openai: (
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
-          label="Server base URL"
-          hint="OpenAI itself, or any server with OpenAI's /v1/images/generations. Blank = api.openai.com."
+          label={t("Server base URL")}
+          hint={t("OpenAI itself, or any server with OpenAI's /v1/images/generations. Blank = api.openai.com.")}
         >
           <input
             className={ui.input}
@@ -299,25 +325,25 @@ export function AdminImagesSection({
           />
         </Field>
         <ModelChoiceField
-          label="Model"
-          hint="The picture models the server lists."
+          label={t("Model")}
+          hint={t("The picture models the server lists.")}
           role="image"
           provider="images"
           baseUrl={images.openaiBaseUrl}
           apiKey={openaiKey === SECRET_KEPT ? "" : openaiKey}
           value={images.openaiModel}
           onChange={(openaiModel) => set({ openaiModel })}
-          blankLabel={env.openaiImageModel ? fromEnv(env.openaiImageModel, "OPENAI_IMAGE_MODEL") : BLANK.picture}
+          blankLabel={env.openaiImageModel ? fromEnv(t, env.openaiImageModel, "OPENAI_IMAGE_MODEL") : BLANK.picture}
         />
         <SecretField
-          label="API key"
+          label={t("API key", { context: "admin.images.apiKey" })}
           isSet={images.hasOpenaiApiKey}
           value={openaiKey}
           onChange={onOpenaiKey}
           hint={
             env.hasOpenaiImageApiKey
-              ? "An env-var key is also set; this one wins when filled."
-              : "Billed to whoever owns the key. Used only when a campaign's backend is this API."
+              ? t("An env-var key is also set; this one wins when filled.")
+              : t("Billed to whoever owns the key. Used only when a campaign's backend is this API.")
           }
         />
         {!images.openaiModel.trim() && !env.openaiImageModel ? <NoPictureModel /> : null}
@@ -332,30 +358,30 @@ export function AdminImagesSection({
   const [opened, setOpened] = useState<Group[]>([]);
 
   return (
-    <PageSection id="admin-images" heading="Image generation" glyph="ui-paint">
+    <PageSection id="admin-images" heading={t("Image generation")} glyph="ui-paint">
       <div className="mb-3">
         <SelectField<Images["defaultBackend"]>
-          label="Default backend"
+          label={t("Default backend")}
           hint={
             phoneWorld
-              ? "For new campaigns. The OpenAI-compatible API renders on another machine with the key below and needs no GPU here."
-              : "For new campaigns; a campaign can pick any backend that is set up below. ComfyUI and the FLUX workers run on this machine; an OpenAI-compatible API renders wherever its address points."
+              ? t("For new campaigns. The OpenAI-compatible API renders on another machine with the key below and needs no GPU here.")
+              : t("For new campaigns; a campaign can pick any backend that is set up below. ComfyUI and the FLUX workers run on this machine; an OpenAI-compatible API renders wherever its address points.")
           }
           value={images.defaultBackend}
           onChange={(defaultBackend) => set({ defaultBackend })}
           options={[
-            { value: "", label: `Auto (${env.imageBackend || "ComfyUI"})` },
-            ...(phoneWorld ? [] : [{ value: "comfyui" as const, label: "ComfyUI (local)" }]),
-            { value: "openai", label: "OpenAI-compatible images API" },
+            { value: "", label: t("Auto ({name})", { name: env.imageBackend || "ComfyUI" }) },
+            ...(phoneWorld ? [] : [{ value: "comfyui" as const, label: t("ComfyUI (local)") }]),
+            { value: "openai", label: t("OpenAI-compatible images API") },
             ...(phoneWorld
               ? []
               : [
-                  { value: "mflux-hs" as const, label: "FLUX worker: mflux (Apple Silicon)" },
-                  { value: "sdnq-hs" as const, label: "FLUX worker: sdnq (CUDA/ROCm)" },
+                  { value: "mflux-hs" as const, label: t("FLUX worker: mflux (Apple Silicon)") },
+                  { value: "sdnq-hs" as const, label: t("FLUX worker: sdnq (CUDA/ROCm)") },
                 ]),
             // Only once the agent program has painted a real test picture.
             ...(harness?.images === "native" && harness.imagesVerifiedAt
-              ? [{ value: "harness" as const, label: "The agent program's own pictures" }]
+              ? [{ value: "harness" as const, label: t("The agent program's own pictures") }]
               : []),
           ]}
         />
@@ -363,17 +389,17 @@ export function AdminImagesSection({
       {active && offered.includes(active) ? (
         // Keyed, so picking another backend brings its block in.
         <div key={active} className="reveal">
-          <h3 className="mb-2 text-sm font-medium text-stone-200">{GROUP_TITLE[active]}</h3>
+          <h3 className="mb-2 text-sm font-medium text-stone-200">{t(GROUP_KEYS[active])}</h3>
           {blocks[active]}
         </div>
       ) : effective === "harness" ? (
         <p className="reveal text-xs text-stone-500">
-          Pictures come from the agent program set up in the Agent section; it has no address or key of its own.
+          {t("Pictures come from the agent program set up in the Agent section; it has no address or key of its own.")}
         </p>
       ) : null}
       {others.length ? (
         <div className="mt-4 space-y-2">
-          <p className="text-xs text-stone-500">Other backends a campaign can pick:</p>
+          <p className="text-xs text-stone-500">{t("Other backends a campaign can pick:")}</p>
           {others.map((group) => (
             <details
               key={group}
@@ -382,7 +408,7 @@ export function AdminImagesSection({
                 if (event.currentTarget.open && !opened.includes(group)) setOpened([...opened, group]);
               }}
             >
-              <summary className="cursor-pointer text-sm text-stone-300">{GROUP_TITLE[group]}</summary>
+              <summary className="cursor-pointer text-sm text-stone-300">{t(GROUP_KEYS[group])}</summary>
               {opened.includes(group) ? <div className="mt-3">{blocks[group]}</div> : null}
             </details>
           ))}

@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { describeCall, formatElapsed, type UtilityCall } from "@/lib/dm/call-tracker-logic";
+import { useT } from "@/lib/locale";
 
 // What the engine is doing between turns, as one chip per job.
 //
@@ -11,6 +12,7 @@ import { describeCall, formatElapsed, type UtilityCall } from "@/lib/dm/call-tra
 // seal, the world tick, a lore check, an Ask. On a local 35B any of those is
 // a minute of apparent nothing.
 function UtilityCallStripInner({ calls }: { calls: UtilityCall[] }) {
+  const t = useT();
   // One shared ticker for the whole strip rather than one per chip, and only
   // while something is actually running.
   const [now, setNow] = useState(() => Date.now());
@@ -45,7 +47,7 @@ function UtilityCallStripInner({ calls }: { calls: UtilityCall[] }) {
             aria-live="polite"
           >
             <Loader2 className="size-3 animate-spin text-amber-400/70" />
-            {describeCall(call.kind)}
+            {t(describeCall(call.kind))}
             {elapsed ? (
               <span className="tabular-nums text-stone-600">{elapsed}</span>
             ) : null}

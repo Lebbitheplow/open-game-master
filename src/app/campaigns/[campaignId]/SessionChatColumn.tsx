@@ -16,6 +16,7 @@ import { UtilityCallStrip } from "@/app/campaigns/[campaignId]/UtilityCallStrip"
 import { FightSummaryCard } from "@/app/campaigns/[campaignId]/FightSummaryCard";
 import { AskDock } from "@/app/campaigns/[campaignId]/AskPanel";
 import { DmCoverNotice } from "@/app/campaigns/[campaignId]/DmDelegationPanel";
+import { useT } from "@/lib/locale";
 import type { CampaignState, NarrationStatus } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import type { CampaignMessage } from "@/lib/db/messages";
 
@@ -86,6 +87,7 @@ export function SessionChatColumn({
   const { campaign, messages, rolls, sheets, locations, dmStatus, utilityCalls } = state;
   // An older host has no take-back route (SERVER_FEATURES takeBackMove).
   const offersTakeBack = hostOffers(useCapabilities(), "takeBackMove");
+  const t = useT();
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   // The passage a player is objecting to (DisputeDialog.tsx); only a table
   // the AI narrates has rulings to dispute this way.
@@ -139,7 +141,7 @@ export function SessionChatColumn({
         onDispute={narratedByAi && !steersStory ? (message) => setDisputeMessageId(message.id) : undefined}
         onReport={(message) => {
           if (message.authorType === "dm") {
-            setReportTarget({ messageId: message.id, authorType: "dm", label: "the Game Master" });
+            setReportTarget({ messageId: message.id, authorType: "dm", label: t("the Game Master") });
             return;
           }
           const sheet =
@@ -150,7 +152,7 @@ export function SessionChatColumn({
             messageId: message.id,
             userId: message.userId ?? undefined,
             authorType: "player",
-            label: sheet?.name ?? member?.username ?? "this player",
+            label: sheet?.name ?? member?.username ?? t("this player"),
           });
         }}
         locations={locations}
@@ -170,8 +172,8 @@ export function SessionChatColumn({
           steersStory && offersTakeBack
             ? async (message) => {
                 const sure = await appConfirm(
-                  "The GM's answer to this move is taken back with it: the lines leave the chronicle, and the sheets, the clock and the fight go back to before the answer. The move's words come back to you to correct and send again.",
-                  { title: "Take back and rewrite?", actionLabel: "Take it back", tone: "danger" },
+                  t("The GM's answer to this move is taken back with it: the lines leave the chronicle, and the sheets, the clock and the fight go back to before the answer. The move's words come back to you to correct and send again."),
+                  { title: t("Take back and rewrite?"), actionLabel: t("Take it back"), tone: "danger" },
                 );
                 if (!sure) {
                   return;
@@ -191,8 +193,8 @@ export function SessionChatColumn({
                 // the lead reads them before saying yes a second time.
                 if (response?.status === 409 && Array.isArray(data.warnings) && data.warnings.length) {
                   const again = await appConfirm((data.warnings as string[]).join(" "), {
-                    title: "Take it back anyway?",
-                    actionLabel: "Take it back",
+                    title: t("Take it back anyway?"),
+                    actionLabel: t("Take it back"),
                     tone: "danger",
                   });
                   if (!again) {
@@ -203,10 +205,10 @@ export function SessionChatColumn({
                 if (!response?.ok) {
                   onError(
                     !response
-                      ? "Could not reach the table to take that move back."
+                      ? t("Could not reach the table to take that move back.")
                       : typeof data.error === "string" && data.error
                         ? data.error
-                        : "Could not take that move back.",
+                        : t("Could not take that move back."),
                   );
                   return;
                 }
@@ -227,7 +229,7 @@ export function SessionChatColumn({
                 );
                 if (!response.ok) {
                   const data = await response.json().catch(() => ({}));
-                  onError(data.error || "Could not continue the scene.");
+                  onError(data.error || t("Could not continue the scene."));
                 }
               }
             : undefined
@@ -247,7 +249,7 @@ export function SessionChatColumn({
                 );
                 if (!response.ok) {
                   const data = await response.json().catch(() => ({}));
-                  onError(data.error || "Could not switch takes.");
+                  onError(data.error || t("Could not switch takes."));
                 }
               }
             : undefined
@@ -267,7 +269,7 @@ export function SessionChatColumn({
                 );
                 if (!response.ok) {
                   const data = await response.json().catch(() => ({}));
-                  return data.error || "Could not save that edit.";
+                  return data.error || t("Could not save that edit.");
                 }
                 offerCorrectionReason(campaignId, await response.json().catch(() => null));
                 return null;
@@ -291,15 +293,15 @@ export function SessionChatColumn({
           });
           if (!response.ok) {
             const data = await response.json().catch(() => ({}));
-            onError(data.error || "Could not pin that.");
+            onError(data.error || t("Could not pin that."));
             return;
           }
           onPinned();
           onConfirm({
             glyph: "ui-pin",
             text: isFullMessage
-              ? "Pinned: the GM keeps this message in mind every turn."
-              : "Pinned: the GM keeps this passage in mind every turn.",
+              ? t("Pinned: the GM keeps this message in mind every turn.")
+              : t("Pinned: the GM keeps this passage in mind every turn."),
           });
         }}
         onPinCanon={
@@ -329,15 +331,15 @@ export function SessionChatColumn({
                   });
                   if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
-                    onError(data.error || "Could not add that to Facts.");
+                    onError(data.error || t("Could not add that to Facts."));
                     return;
                   }
                 } catch {
-                  onError("Could not reach the table to add that to Facts.");
+                  onError(t("Could not reach the table to add that to Facts."));
                   return;
                 }
                 await refreshFacts();
-                onConfirm({ glyph: "tab-facts", text: "Added to Facts as established canon." });
+                onConfirm({ glyph: "tab-facts", text: t("Added to Facts as established canon.") });
               }
             : undefined
         }

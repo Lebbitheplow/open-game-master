@@ -9,6 +9,7 @@ import { ContextMenu, type ContextMenuItem } from "@/components/ui/ContextMenu";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { ListHead, useListHead } from "@/app/workshop/ListHead";
 import { GlyphPlate, RowMenu } from "@/app/workshop/kit";
+import { useT, useTp } from "@/lib/locale";
 import type { MapOption, PreparedEncounter, TemplateReadout } from "@/app/workshop/encounters/types";
 
 // The workshop's encounter list: one full-width row per prepared fight with
@@ -66,10 +67,12 @@ function shortVerdict(verdict: string): string {
 }
 
 export function DifficultyPill({ readout }: { readout: TemplateReadout }) {
+  const t = useT();
+  const tp = useTp();
   if (readout.unknownMonster) {
     return (
       <span className="rounded-sm border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 font-display text-[10px] tracking-wider text-red-300">
-        unknown monster
+        {t("unknown monster")}
       </span>
     );
   }
@@ -92,11 +95,12 @@ export function BudgetBar({
   readout: TemplateReadout;
   thresholds: Thresholds | null;
 }) {
+  const t = useT();
+  const tp = useTp();
   if (readout.unknownMonster) {
     return (
       <p className="text-[11px] text-red-400">
-        Nothing in this world is called &quot;{readout.unknownMonster}&quot;, so this cannot be
-        costed.
+        {t("Nothing in this world is called \"{name}\", so this cannot be costed.", { name: readout.unknownMonster })}
       </p>
     );
   }
@@ -111,7 +115,7 @@ export function BudgetBar({
       <div
         className="relative h-1.5 w-full rounded-full bg-stone-800"
         role="img"
-        aria-label={`${readout.adjustedXp} adjusted XP against a ${readout.ceiling} ceiling`}
+        aria-label={t("{xp} adjusted XP against a {ceiling} ceiling", { xp: readout.adjustedXp, ceiling: readout.ceiling })}
       >
         <div
           className={cn("bar-ease absolute inset-y-0 left-0 rounded-full", tone.bar)}
@@ -131,12 +135,11 @@ export function BudgetBar({
         ))}
       </div>
       <p className={cn("text-[10px]", readout.tooDeadly ? "text-red-400" : "text-stone-500")}>
-        {readout.count} creature{readout.count === 1 ? "" : "s"}, {readout.adjustedXp} XP against
-        a {readout.ceiling} ceiling
+        {tp("{count} creature, {xp} XP against a {ceiling} ceiling", "{count} creatures, {xp} XP against a {ceiling} ceiling", { count: readout.count, xp: readout.adjustedXp, ceiling: readout.ceiling })}
         {thresholds
-          ? `. Easy ${thresholds.easy}, medium ${thresholds.medium}, hard ${thresholds.hard}, deadly ${thresholds.deadly}.`
+          ? t(". Easy {easy}, medium {medium}, hard {hard}, deadly {deadly}.", { easy: thresholds.easy, medium: thresholds.medium, hard: thresholds.hard, deadly: thresholds.deadly })
           : "."}
-        {readout.tooDeadly ? " The engine will refuse this as written." : ""}
+        {readout.tooDeadly ? ` ${t("The engine will refuse this as written.")}` : ""}
       </p>
     </div>
   );
@@ -151,7 +154,7 @@ export function EncounterRows({
   busy,
   onOpen,
   onDeploy,
-  deployLabel = "Deploy",
+  deployLabel,
   onDuplicate,
   onDelete,
   onRemoveSetup,
@@ -170,31 +173,34 @@ export function EncounterRows({
   // Forget the set-up a test saved (issue 685); absent where nothing can.
   onRemoveSetup?: (encounter: PreparedEncounter) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const deploy = deployLabel ?? t("Deploy");
   // A linked map that has since been forgotten still says so, rather than
   // silently reading as the generator's choice, because deploy will fall
   // back to the generator and the DM should know before the table does.
   const mapName = (encounter: PreparedEncounter) =>
     encounter.map.mapId
       ? (maps.find((map) => map.id === encounter.map.mapId)?.name ??
-        "a map no longer in the drawer")
-      : "Generator's choice";
+        t("a map no longer in the drawer"))
+      : t("Generator's choice");
   const head = useListHead(encounters, readEncounter);
 
   return (
     <div className="space-y-2">
-      <ListHead head={head} noun={["fight", "fights"]} placeholder="Find a fight" className="" />
+      <ListHead head={head} noun={[t("fight"), t("fights")]} placeholder={t("Find a fight")} className="" />
       <ul className="stagger-up grid gap-3 lg:grid-cols-2" data-tour="encounters-list">
         {head.shown.map((encounter) => {
           // The kebab and the right-click or long-press menu list the same
           // doors; Deploy stays the row's one visible button.
           const items: ContextMenuItem[] = [
-            { id: "open", label: "Open", glyph: "system-encounters", onSelect: () => onOpen(encounter) },
-            { id: "deploy", label: deployLabel, glyph: "tab-battle", disabled: busy, onSelect: () => onDeploy(encounter) },
-            { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: busy, onSelect: () => onDuplicate(encounter) },
+            { id: "open", label: t("Open", { context: "action.open" }), glyph: "system-encounters", onSelect: () => onOpen(encounter) },
+            { id: "deploy", label: deploy, glyph: "tab-battle", disabled: busy, onSelect: () => onDeploy(encounter) },
+            { id: "duplicate", label: t("Duplicate"), glyph: "ui-duplicate", disabled: busy, onSelect: () => onDuplicate(encounter) },
             ...(encounter.setup && onRemoveSetup
-              ? [{ id: "remove-setup", label: "Remove its set-up", glyph: "ui-delete", disabled: busy, onSelect: () => onRemoveSetup(encounter) } satisfies ContextMenuItem]
+              ? [{ id: "remove-setup", label: t("Remove its set-up"), glyph: "ui-delete", disabled: busy, onSelect: () => onRemoveSetup(encounter) } satisfies ContextMenuItem]
               : []),
-            { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(encounter) },
+            { id: "delete", label: t("Delete"), glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(encounter) },
           ];
           return (
             <ContextMenu as="li" key={encounter.id} label={encounter.name} items={items} className={cn(ui.cardHover, "flex min-w-0 flex-col gap-2 p-3")}>
@@ -213,7 +219,7 @@ export function EncounterRows({
                     {rosterSummary(encounter.enemies, encounter.readout.names)}
                   </p>
                   {encounter.battlefield ? (
-                    <p className="reveal truncate text-xs text-stone-500">On {encounter.battlefield}</p>
+                    <p className="reveal truncate text-xs text-stone-500">{t("On {place}", { place: encounter.battlefield })}</p>
                   ) : null}
                   <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-stone-500">
                     <GameIcon icon={{ kind: "glyph", key: "system-maps" }} size="size-4" />
@@ -229,9 +235,9 @@ export function EncounterRows({
                 <details className="reveal group rounded-md border border-amber-500/25 bg-amber-500/5 px-2.5" data-encounter-setup={encounter.id}>
                   <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-xs text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40">
                     <GameIcon icon={{ kind: "glyph", key: "tab-battle" }} size="size-4" />
-                    Starts from a saved set-up
-                    <span className="ml-auto text-[10px] text-stone-400 group-open:hidden">Show</span>
-                    <span className="ml-auto hidden text-[10px] text-stone-400 group-open:inline">Hide</span>
+                    {t("Starts from a saved set-up")}
+                    <span className="ml-auto text-[10px] text-stone-400 group-open:hidden">{t("Show", { context: "admin.log.showLabel" })}</span>
+                    <span className="ml-auto hidden text-[10px] text-stone-400 group-open:inline">{t("Hide", { context: "table.hand.hide.foldHide" })}</span>
                   </summary>
                   <ul className="space-y-0.5 pb-2 text-[11px] text-stone-300">
                     {encounter.setup.map((line) => (
@@ -242,7 +248,7 @@ export function EncounterRows({
               ) : null}
               <div className="flex flex-wrap items-center gap-1.5">
                 <button type="button" disabled={busy} onClick={() => onDeploy(encounter)} className={cn(ui.btnSecondary, "h-9")} data-encounter-deploy={encounter.id}>
-                  <Swords className="size-3.5" /> {deployLabel}
+                  <Swords className="size-3.5" /> {deploy}
                 </button>
               </div>
             </ContextMenu>
@@ -262,13 +268,13 @@ export function EncounterRows({
               <GameIcon icon={{ kind: "glyph", key: "system-encounters" }} size="size-10" />
               <Plus className="absolute -bottom-1 -right-1 size-4 rounded-full bg-stone-900 text-amber-300" aria-hidden="true" />
             </span>
-            <span className="font-display tracking-wide">New encounter</span>
+            <span className="font-display tracking-wide">{t("New encounter")}</span>
           </button>
         </li>
       </ul>
       {encounters.length === 0 ? (
         <p className="reveal text-[11px] text-stone-500">
-          Nothing prepared. Write a roster and it is one button at the table.
+          {t("Nothing prepared. Write a roster and it is one button at the table.")}
         </p>
       ) : null}
     </div>

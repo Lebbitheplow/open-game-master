@@ -7,7 +7,7 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const {
-  ADHOC_LABELS,
+  ADHOC_LABEL_KEYS,
   MAX_ADHOC_TOKENS,
   adhocRefId,
   checkAdhocName,
@@ -101,7 +101,8 @@ test("a DM's own piece is recognisable from its ref id alone", () => {
     const ref = adhocRefId(kind, "abc123");
     assert.equal(ref, `${kind}:abc123`);
     assert.ok(isAdhocRef(ref));
-    assert.ok(ADHOC_LABELS[kind], `${kind} has no label`);
+    // The labels are the dictionaries' keys (board.adhoc.*), the i18n pass.
+    assert.ok(ADHOC_LABEL_KEYS[kind], `${kind} has no label key`);
   }
   // A character sheet id and an enemy id are plain uuids and must not match.
   assert.ok(!isAdhocRef("2f1c4b0e-8a1d-4a2e-9f3b-1d2c3e4f5a6b"));

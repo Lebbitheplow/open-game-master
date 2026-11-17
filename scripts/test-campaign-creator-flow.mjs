@@ -14,6 +14,9 @@ const { GROUP_STEP } = await import("../src/app/create-campaign/groups.ts");
 const { withCapabilities } = await import("../src/app/create-campaign/capabilities.ts");
 const { campaignPayload } = await import("../src/app/create-campaign/payload.ts");
 const summaries = await import("../src/app/create-campaign/summaries.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The summaries speak for the screen; the tests read them in English, the dictionary's source.
+const en = (key, vars) => translate("en", key, vars);
 
 const read = (file) => fs.readFileSync(new URL(`../src/app/create-campaign/${file}`, import.meta.url), "utf8");
 const essentials = read("EssentialsStep.tsx");
@@ -45,9 +48,9 @@ await test("every switch of the old table sheet is drawn exactly once", () => {
 });
 
 await test("characters per player offers all three answers at once", () => {
-  assert.match(experience, /\{ value: "off", label: "One each" \}/);
-  assert.match(experience, /\{ value: "one_active", label: "Several, one at a time" \}/);
-  assert.match(experience, /\{ value: "all_active", label: "Several, all at once" \}/);
+  assert.match(experience, /\{ value: "off", label: t\("One each"\) \}/);
+  assert.match(experience, /\{ value: "one_active", label: t\("Several, one at a time"\) \}/);
+  assert.match(experience, /\{ value: "all_active", label: t\("Several, all at once"\) \}/);
   assert.doesNotMatch(experience, /three-way switch/);
 });
 
@@ -118,21 +121,21 @@ await test("the payload is normalized as it always was", () => {
 
 await test("the closed groups and the review say what is set, from the draft", () => {
   const draft = { ...DEFAULT_DRAFT };
-  assert.match(summaries.narrationSummary(draft, allGates, "Heart"), /^Heart at 1\.00× · the narrator reads the characters$/);
-  assert.match(summaries.narrationSummary({ ...draft, ttsAutoCast: true }, allGates, "Heart"), /each speaker gets a voice/);
-  assert.match(summaries.narrationSummary({ ...draft, ttsEnabled: false }, allGates, "Heart"), /^Off/);
-  assert.match(summaries.narrationSummary(draft, { ...allGates, ttsAvailable: false }, "Heart"), /no speech service/);
-  assert.equal(summaries.safetySummary(draft), "Standard · X-card on · no lines or veils · by the book");
+  assert.match(summaries.narrationSummary(en, draft, allGates, "Heart"), /^Heart at 1\.00× · the narrator reads the characters$/);
+  assert.match(summaries.narrationSummary(en, { ...draft, ttsAutoCast: true }, allGates, "Heart"), /each speaker gets a voice/);
+  assert.match(summaries.narrationSummary(en, { ...draft, ttsEnabled: false }, allGates, "Heart"), /^Off/);
+  assert.match(summaries.narrationSummary(en, draft, { ...allGates, ttsAvailable: false }, "Heart"), /no speech service/);
+  assert.equal(summaries.safetySummary(en, draft), "Standard · X-card on · no lines or veils · by the book");
   assert.equal(
-    summaries.safetySummary({ ...draft, safety: { ...draft.safety, lines: ["a", "b"], veils: ["c"] }, gm: { strictness: "harsh", tone: ["grim"] } }),
+    summaries.safetySummary(en, { ...draft, safety: { ...draft.safety, lines: ["a", "b"], veils: ["c"] }, gm: { strictness: "harsh", tone: ["grim"] } }),
     "Standard · X-card on · 2 lines, 1 veil · harsh · grim",
   );
-  assert.equal(summaries.customRules(draft), null);
-  assert.equal(summaries.customRules({ ...draft, houseRules: "x", variantRules: { ...draft.variantRules, flanking: true } }), "1 variant rule · house rules");
-  assert.equal(summaries.variantSummary(draft), "None on · standard rests");
-  assert.equal(summaries.playersSummary(draft, { ...allGates, solo: true }), "one character each · changes apply at once");
-  assert.equal(summaries.voiceChatSummary({ ...draft, voiceChat: { ...draft.voiceChat, enabled: false } }), "Off");
-  assert.match(summaries.prepSummary({ ...draft, contentImport: { ...draft.contentImport, sourceId: "w", select: ["npcs"] } }, "Harbor Prep"), /prep from Harbor Prep/);
+  assert.equal(summaries.customRules(en, draft), null);
+  assert.equal(summaries.customRules(en, { ...draft, houseRules: "x", variantRules: { ...draft.variantRules, flanking: true } }), "1 variant rule · house rules");
+  assert.equal(summaries.variantSummary(en, draft), "None on · standard rests");
+  assert.equal(summaries.playersSummary(en, draft, { ...allGates, solo: true }), "one character each · changes apply at once");
+  assert.equal(summaries.voiceChatSummary(en, { ...draft, voiceChat: { ...draft.voiceChat, enabled: false } }), "Off");
+  assert.match(summaries.prepSummary(en, { ...draft, contentImport: { ...draft.contentImport, sourceId: "w", select: ["npcs"] } }, "Harbor Prep"), /prep from Harbor Prep/);
 });
 
 finish();

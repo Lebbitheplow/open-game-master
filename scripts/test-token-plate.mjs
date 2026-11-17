@@ -45,12 +45,17 @@ assert.match(listed, /size-10 sm:size-12/, "the condition painting is shown larg
 assert.match(listed, /src="\/assets\/icons\/condition\/prone.webp"/);
 assert.ok(listed.includes("Can only crawl, or spend half its speed to stand."), "prone says what it does");
 assert.ok(listed.includes("Command (Halt): it does not move"), "a non-SRD condition keeps its note");
-assert.ok(listed.includes(" (1 rd)"), "a round count shows");
+// The round count rides the dictionary (board.plate.roundsSuffix): the pin
+// reads through the same keyed call the plate makes, so it holds the same
+// bytes before and after the fragment lands.
+const { translate } = await import("../src/lib/messages-logic.ts");
+const oneRound = translate("en", "({count} rd)", { count: 1 });
+assert.ok(listed.includes(` ${oneRound}`), "a round count shows");
 assert.ok(listed.includes("Incapacitated, can&#x27;t move or speak"), "a dying figure reads as unconscious");
 assert.match(listed, /w-\[340px\][^"]*flex-col sm:w-\[680px\] sm:flex-row/, "three or more stack under a header on a phone, and go wide from sm up");
 assert.match(listed, /size-\[72px\]/, "the portrait shrinks to a header on a phone when crowded");
 assert.match(listed, /grid w-full grid-cols-1 sm:grid-cols-2/, "two across from sm up");
-assert.match(listed, /<span class="capitalize">halted<\/span><span[^>]*> \(1 rd\)/, "only the name is capitalized, not the round count");
+assert.match(listed, new RegExp(`<span class="capitalize">halted</span><span[^>]*> ${oneRound.replace(/[()]/g, "\\$&")}`), "only the name is capitalized, not the round count");
 const two = plate({ conditions: [{ id: "prone", label: "Prone" }, { id: "poisoned", label: "Poisoned" }] });
 assert.doesNotMatch(two, /size-\[72px\]|grid-cols-2/, "one or two conditions keep the portrait full size, in one column");
 

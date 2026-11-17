@@ -848,12 +848,16 @@ try {
   });
 
   // Issue 654: a link follows its player's seat to a new hero, and one that
-  // stops on its own says why, to the agent and on the player's page.
+  // stops on its own says why, to the agent and on the player's page. The
+  // stop words live in the dictionaries (agents.link.*); the readings are
+  // pinned against the English source, the way the table reads it by default.
   const { seatVerdict, stopWordsForAgent, stopWordsForPlayer } = await import("../src/lib/agents/webhook-seat-logic.ts");
   const { listPlayerWebhookStops } = await import("../src/lib/agents/webhooks.ts");
   const { endSession } = await import("../src/lib/dm/session-hold.ts");
   const { resumeDmQueue } = await import("../src/lib/dm/queue.ts");
   const { SESSION_REASON } = await import("../src/lib/dm/session-hold-logic.ts");
+  const { translate } = await import("../src/lib/messages-logic.ts");
+  const t = (key, vars) => translate("en", key, vars);
 
   await test("the seat rules: a link keeps its hero, follows the new one, or stops with a reason", () => {
     const alive = (id) => ({ id });
@@ -871,9 +875,9 @@ try {
     assert.deepEqual(v({ subscribed: null, current: null }), { kind: "stop", reason: "character_changed" });
     assert.deepEqual(v({ subscribed: { id: "a", isCompanion: true }, current: { id: "a", isCompanion: true } }), { kind: "stop", reason: "character_changed" }, "a character handed to the GM");
     assert.deepEqual(v({ member: false }), { kind: "stop", reason: "left_campaign" });
-    assert.match(stopWordsForAgent("character_changed", "poll"), /^This poll link stopped: the character it woke is no longer one its player plays/);
-    assert.match(stopWordsForPlayer("character_changed", "poll", { character: "Mira", date: "Oct 30" }), /stopped on Oct 30: Mira is no longer the character you play there\. Make a new one with Poll link\./);
-    assert.match(stopWordsForPlayer("expired", "push", { character: "Mira", date: "Oct 30" }), /this connection expired\. Connect the agent again/);
+    assert.match(stopWordsForAgent(t, "character_changed", "poll"), /^This poll link stopped: the character it woke is no longer one its player plays/);
+    assert.match(stopWordsForPlayer(t, "character_changed", "poll", { character: "Mira", date: "Oct 30" }), /stopped on Oct 30: Mira is no longer the character you play there\. Make a new one with Poll link\./);
+    assert.match(stopWordsForPlayer(t, "expired", "push", { character: "Mira", date: "Oct 30" }), /this connection expired\. Connect the agent again/);
   });
 
   setPollLinksAllowed(true);

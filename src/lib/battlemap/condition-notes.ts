@@ -11,6 +11,10 @@
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { forPlayers } from "@/lib/language/player-text";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export type ConditionMetaLike = {
   rounds?: number;
@@ -43,7 +47,7 @@ function meaningOf(name: string): string | null {
 }
 
 // Words the engine writes into `source` that are not a creature's id.
-const ENGINE_WORDS: Record<string, string> = {
+const ENGINE_WORD_KEYS: Record<string, string> = {
   stable: "stable",
   "knocked out": "knocked out",
   check: "for a check",
@@ -70,6 +74,7 @@ export function conditionNote(
   nameOf: (id: string) => string | null,
   // The creature carrying the condition, so its own turn reads "their next turn".
   holderId?: string,
+  t: T = enT,
 ): ConditionNote {
   const meaning = meaningOf(name);
   if (!meta) {
@@ -79,27 +84,32 @@ export function conditionNote(
   let counted = false;
   if (meta.untilTurnEndOf) {
     const who = meta.untilTurnEndOf === holderId ? null : nameOf(meta.untilTurnEndOf);
-    const turn = meta.turnBegun ? "turn" : "next turn";
-    duration = who ? `until the end of ${who}'s ${turn}` : `until the end of their ${turn}`;
+    duration = who
+      ? t(meta.turnBegun ? "until the end of {who}'s turn" : "until the end of {who}'s next turn", { who })
+      : t(meta.turnBegun ? "until the end of their turn" : "until the end of their next turn");
   } else if (meta.untilTurnOf) {
     const who = meta.untilTurnOf === holderId ? null : nameOf(meta.untilTurnOf);
-    duration = who ? `until ${who}'s turn` : "until their next turn";
+    duration = who ? t("until {who}'s turn", { who }) : t("until their next turn");
   } else if (typeof meta.rounds === "number" && meta.rounds > 0) {
-    duration = describeConditionDuration(meta.rounds);
+    duration = describeConditionDuration(meta.rounds, t);
     counted = true;
   }
   // A hold whose save the creature picks (Nature's Wrath) names both.
-  const save = meta.saveEnds ? `save ends (${meta.saveEnds.ability.toUpperCase()}${meta.saveEnds.or ? ` or ${meta.saveEnds.or.toUpperCase()}` : ""} ${meta.saveEnds.dc}${meta.saveEnds.beyondFeet ? `, beyond ${meta.saveEnds.beyondFeet} ft` : ""}${meta.saveEnds.unseen ? ", only out of the caster's sight; off the board, after its first turn" : ""})` : null;
+  const save = meta.saveEnds
+    ? t("save ends ({spec})", {
+        spec: `${meta.saveEnds.ability.toUpperCase()}${meta.saveEnds.or ? ` ${t("or")} ${meta.saveEnds.or.toUpperCase()}` : ""} ${meta.saveEnds.dc}${meta.saveEnds.beyondFeet ? `, ${t("beyond {feet} ft", { feet: meta.saveEnds.beyondFeet })}` : ""}${meta.saveEnds.unseen ? `, ${t("only out of the caster's sight; off the board, after its first turn")}` : ""}`,
+      })
+    : null;
   let source: string | null = null;
   const raw = meta.source?.trim() ?? "";
   if (name.trim().toLowerCase() === "readied" && raw) {
     // Ready's trigger is stored as the source (src/lib/dm/object-actions.ts).
-    source = `trigger: ${raw}`;
-  } else if (raw && ENGINE_WORDS[raw.toLowerCase()]) {
-    source = ENGINE_WORDS[raw.toLowerCase()];
+    source = t("trigger: {trigger}", { trigger: raw });
+  } else if (raw && ENGINE_WORD_KEYS[raw.toLowerCase()]) {
+    source = t(ENGINE_WORD_KEYS[raw.toLowerCase()]);
   } else if (raw) {
     const who = nameOf(raw);
-    source = who ? `from ${who}` : null;
+    source = who ? t("from {who}", { who }) : null;
   }
   if (meta.spell && !source) {
     source = meta.spell;

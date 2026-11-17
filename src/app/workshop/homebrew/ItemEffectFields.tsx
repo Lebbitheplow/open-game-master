@@ -11,6 +11,10 @@ import { IMMUNE_CONDITIONS, SPEED_MODES } from "@/lib/homebrew/item-data";
 import type { MagicItemEffect } from "@/lib/srd/magic-items";
 import { SRD_WEAPONS, UNARMED_STRIKE_KEY } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
+import { damageTypeWord } from "@/lib/dm/damage-logic";
+import { contentName } from "@/lib/content/names";
+import { useLocale, useT } from "@/lib/locale";
+import type { Locale } from "@/lib/messages-logic";
 import { CheckField, ToggleChips } from "@/app/workshop/homebrew/fields";
 import { DAMAGE_TYPES } from "@/app/workshop/homebrew/types";
 import { FieldLabel } from "@/app/workshop/kit";
@@ -18,11 +22,25 @@ import { NumberStepper } from "@/components/ui/NumberStepper";
 import { Select } from "@/components/ui/Select";
 
 const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"] as const;
+// Speed words in the reader's language: the EN labels upstream shipped, and
+// the movement words the French SRD's stat blocks print (MonsterKitFields'
+// movement family: « vol », « nage », « escalade »), capitalized here as the
+// picker's options. Values stay the SPEED_MODES ids.
 const SPEED_LABELS: Record<(typeof SPEED_MODES)[number], string> = { fly: "Flying", swim: "Swimming", climb: "Climbing" };
+const SPEED_LABELS_FR: Record<string, string> = { fly: "Vol", swim: "Nage", climb: "Escalade" };
+const speedLabel = (mode: string, locale: Locale): string =>
+  locale === "fr" ? (SPEED_LABELS_FR[mode] ?? SPEED_LABELS[mode as (typeof SPEED_MODES)[number]]) : SPEED_LABELS[mode as (typeof SPEED_MODES)[number]];
 // The unarmed strike, then the SRD's own weapons, by the key the attack engine
-// matches them on.
+// matches them on. Labels read the reader's language through the names layer
+// (the unarmed strike's FR print is official; the SRD weapons' names are data).
 const WEAPON_KEYS = [UNARMED_STRIKE_KEY, ...SRD_WEAPONS.filter((weapon) => weapon.category === "simple" || weapon.category === "martial").map((weapon) => textKey(weapon.name))];
 const WEAPON_LABELS = { [UNARMED_STRIKE_KEY]: "Unarmed strike", ...Object.fromEntries(SRD_WEAPONS.map((weapon) => [textKey(weapon.name), weapon.name])) };
+// The chips' words: damage types capitalized out of the French SRD's own list
+// (damageTypeWord's pattern, src/lib/dm/damage-logic.ts), conditions through
+// the official names layer. English keeps the raw term, exactly as shipped.
+const capital = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const damageLabel = (type: string, locale: Locale): string => (locale === "fr" ? capital(damageTypeWord(type, locale)) : type);
+const conditionLabel = (term: string, locale: Locale): string => contentName("conditions", term, locale);
 
 export const MORE_EFFECT_LABELS = {
   increase_ability: "Raises an ability score",
@@ -80,52 +98,54 @@ const abilityOptions = ABILITIES.map((ability) => ({
 }));
 
 export function MoreEffectFields({ effect, update }: { effect: MagicItemEffect; update: (next: MagicItemEffect) => void }) {
+  const t = useT();
+  const locale = useLocale();
   switch (effect.kind) {
     case "increase_ability":
       return (
         <>
           <span className="w-32">
-            <Select value={effect.ability} label="Ability" options={abilityOptions} onChange={(ability) => update({ ...effect, ability })} />
+            <Select value={effect.ability} label={t("Ability")} options={abilityOptions} onChange={(ability) => update({ ...effect, ability })} />
           </span>
-          <EffectStepper label="Raised by" value={effect.amount} min={1} max={4} onChange={(amount) => update({ ...effect, amount })} />
-          <EffectStepper label="To at most" value={effect.max} min={3} max={30} onChange={(max) => update({ ...effect, max })} />
+          <EffectStepper label={t("Raised by", { context: "workshop.homebrew.itemEffect.raisedBy" })} value={effect.amount} min={1} max={4} onChange={(amount) => update({ ...effect, amount })} />
+          <EffectStepper label={t("To at most")} value={effect.max} min={3} max={30} onChange={(max) => update({ ...effect, max })} />
         </>
       );
     case "immunity":
-      return <ToggleChips options={DAMAGE_TYPES} selected={effect.types} onChange={(types) => update({ ...effect, types })} />;
+      return <ToggleChips options={DAMAGE_TYPES} labels={Object.fromEntries(DAMAGE_TYPES.map((type) => [type, damageLabel(type, locale)]))} selected={effect.types} onChange={(types) => update({ ...effect, types })} />;
     case "condition_immunity":
-      return <ToggleChips options={IMMUNE_CONDITIONS} selected={effect.conditions} onChange={(conditions) => update({ ...effect, conditions })} />;
+      return <ToggleChips options={IMMUNE_CONDITIONS} labels={Object.fromEntries(IMMUNE_CONDITIONS.map((term) => [term, conditionLabel(term, locale)]))} selected={effect.conditions} onChange={(conditions) => update({ ...effect, conditions })} />;
     case "speed":
       return (
         <>
           <span className="w-36">
             <Select
               value={effect.mode}
-              label="Speed"
-              options={SPEED_MODES.map((mode) => ({ value: mode, label: SPEED_LABELS[mode] }))}
+              label={t("Speed")}
+              options={SPEED_MODES.map((mode) => ({ value: mode, label: speedLabel(mode, locale) }))}
               onChange={(mode) => update({ ...effect, mode })}
             />
           </span>
           <CheckField
-            label="Equal to walking speed"
+            label={t("Equal to walking speed")}
             checked={effect.feet === "walk"}
             onChange={(on) => update({ ...effect, feet: on ? "walk" : 30 })}
           />
           {effect.feet === "walk" ? null : (
-            <EffectStepper label="Feet" value={effect.feet} min={5} max={120} step={5} onChange={(feet) => update({ ...effect, feet })} />
+            <EffectStepper label={t("Feet")} value={effect.feet} min={5} max={120} step={5} onChange={(feet) => update({ ...effect, feet })} />
           )}
         </>
       );
     case "weapon_rider":
       return (
         <>
-          <ToggleChips options={WEAPON_KEYS} selected={effect.weapons} labels={WEAPON_LABELS} max={8} onChange={(weapons) => update({ ...effect, weapons, ranged: weapons.includes(UNARMED_STRIKE_KEY) ? undefined : effect.ranged })} />
-          <CheckField label="Trained with them" checked={effect.proficient === true} onChange={(on) => update({ ...effect, proficient: on || undefined })} />
-          <EffectStepper label="Bonus to hit" value={effect.attack ?? 0} min={0} max={3} onChange={(attack) => update({ ...effect, attack: attack || undefined })} />
-          <EffectStepper label="Extra damage" value={effect.damage ?? 0} min={0} max={3} onChange={(damage) => update({ ...effect, damage: damage || undefined })} />
+          <ToggleChips options={WEAPON_KEYS} selected={effect.weapons} labels={{ ...WEAPON_LABELS, [UNARMED_STRIKE_KEY]: contentName("weapons", "Unarmed strike", locale) }} max={8} onChange={(weapons) => update({ ...effect, weapons, ranged: weapons.includes(UNARMED_STRIKE_KEY) ? undefined : effect.ranged })} />
+          <CheckField label={t("Trained with them")} checked={effect.proficient === true} onChange={(on) => update({ ...effect, proficient: on || undefined })} />
+          <EffectStepper label={t("Bonus to hit")} value={effect.attack ?? 0} min={0} max={3} onChange={(attack) => update({ ...effect, attack: attack || undefined })} />
+          <EffectStepper label={t("Extra damage")} value={effect.damage ?? 0} min={0} max={3} onChange={(damage) => update({ ...effect, damage: damage || undefined })} />
           {/* A fist is never at range: left on, the effect would silently never apply. */}
           {effect.weapons.includes(UNARMED_STRIKE_KEY) ? null : (
-            <CheckField label="Only at range" checked={effect.ranged === true} onChange={(on) => update({ ...effect, ranged: on || undefined })} />
+            <CheckField label={t("Only at range")} checked={effect.ranged === true} onChange={(on) => update({ ...effect, ranged: on || undefined })} />
           )}
         </>
       );

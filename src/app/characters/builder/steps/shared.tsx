@@ -6,6 +6,7 @@ import { InfoButton, type ContentRef } from "@/components/ui/InfoDialog";
 import { Ribbon } from "@/components/ui/Ribbon";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { owedHeadline, type OwedPick } from "../owed";
 import type { BlockerTarget } from "../submit";
 
@@ -31,7 +32,8 @@ export function OwedLine({
   onShow: (target: BlockerTarget) => void;
   onFill?: () => void;
 }) {
-  const headline = owedHeadline(picks.length);
+  const t = useT();
+  const headline = owedHeadline(t, picks.length);
   if (!headline) {
     return null;
   }
@@ -62,7 +64,7 @@ export function OwedLine({
           data-quick-fill=""
           className="ml-1 rounded-md border border-sky-500/40 px-1.5 py-0.5 text-sky-200 transition-colors hover:bg-sky-500/10"
         >
-          Fill what&apos;s left
+          {t("Fill what's left")}
         </button>
       ) : null}
     </p>
@@ -72,15 +74,16 @@ export function OwedLine({
 // "Pick for me" on one card that the level brings (a subclass, an ability
 // score improvement): the card stays blank until it is pressed.
 export function PickForMe({ onPick, what }: { onPick: () => void; what: string }) {
+  const t = useT();
   return (
     <button
       type="button"
       onClick={onPick}
       data-pick-for-me=""
-      aria-label={`Pick ${what} for me`}
+      aria-label={t("Pick {what} for me", { what })}
       className="shrink-0 rounded-md border border-sky-500/40 px-1.5 py-0.5 text-xs text-sky-200 transition-colors hover:bg-sky-500/10"
     >
-      Pick for me
+      {t("Pick for me")}
     </button>
   );
 }
@@ -163,6 +166,7 @@ export function Chip({
   homebrew?: boolean;
   info?: InfoSource;
 }) {
+  const t = useT();
   return (
     <span
       className={cn(
@@ -183,7 +187,7 @@ export function Chip({
           // A 12 px cross with a 44 px reach: the ring past the edge takes
           // the tap without making the chip any taller.
           className="relative text-stone-500 after:absolute after:-inset-4 after:rounded-full after:content-[''] hover:text-red-400"
-          aria-label={`Remove ${label}`}
+          aria-label={t("Remove {label}", { label })}
         >
           <X className="size-3" />
         </button>

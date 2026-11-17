@@ -13,6 +13,7 @@ import { KitButton, LoadFailed, panelField, PanelLoading } from "./PanelKit";
 import type { CalendarDefinition, CampaignClock } from "@/lib/dm/calendar";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useT } from "@/lib/locale";
 
 // The Calendar section of the Rules panel (docs/vtt-parity-implementation-plan.md
 // 7.1 and 7.2): the year's months, the week's days, the sky's moons and the
@@ -39,6 +40,7 @@ function blankEvent(): EventDraft {
 }
 
 export function CalendarSection({ campaignId }: { campaignId: string }) {
+  const t = useT();
   const [clock, setClock] = useState<CampaignClock | null>(null);
   const [reads, setReads] = useState("");
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -56,8 +58,8 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      readLoad<{ clock?: CampaignClock; reads?: string; presets?: Preset[] }>(fetch(`/api/campaigns/${campaignId}/dm/clock`), "The clock"),
-      readLoad<{ events?: EventView[] }>(fetch(`/api/campaigns/${campaignId}/calendar/events`), "The calendar"),
+      readLoad<{ clock?: CampaignClock; reads?: string; presets?: Preset[] }>(t, fetch(`/api/campaigns/${campaignId}/dm/clock`), t("The clock")),
+      readLoad<{ events?: EventView[] }>(t, fetch(`/api/campaigns/${campaignId}/calendar/events`), t("The calendar")),
     ]).then(([clockLoad, eventLoad]) => {
       if (cancelled) {
         return;
@@ -77,8 +79,7 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [campaignId, reload, reloads, settle]);
-
+  }, [ campaignId, reload, reloads, settle, t ]);
   async function applyPreset(preset: string) {
     setSaving(true);
     try {
@@ -98,7 +99,7 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
       const response = await fetch(`/api/campaigns/${campaignId}/dm/clock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ do: "calendar", definition: { ...draft, id: "custom", name: draft.name || "Custom" } }),
+        body: JSON.stringify({ do: "calendar", definition: { ...draft, id: "custom", name: draft.name || t("Custom", { context: "calendar.customName" }) } }),
       });
       if (response.ok) {
         setReload((current) => current + 1);
@@ -134,7 +135,7 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
   }
 
   if (!clock || !draft) {
-    return <PanelLoading label="Reading the almanac..." rows={2} />;
+    return <PanelLoading label={t("Reading the almanac...")} rows={2} />;
   }
   const moons = draft.moons ?? [];
   const festivals = draft.festivals ?? [];
@@ -143,7 +144,7 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="panel space-y-3 rounded-lg p-3">
-      <SectionHead title="Calendar" glyph="daypart-day" />
+      <SectionHead title={t("Calendar")} glyph="daypart-day" />
       <p className="flex items-center gap-1.5 text-xs text-stone-400">
         <GameIcon icon={{ kind: "glyph", key: "daypart-dawn" }} size="size-5" /> Now: {reads}
       </p>
@@ -166,12 +167,12 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
         </label>
       </div>
       <div className="space-y-1.5">
-        <SectionHead title="Months" glyph="daypart-morning" level="h4" aside={draft.months.length} />
+        <SectionHead title={t("Months")} glyph="daypart-morning" level="h4" aside={draft.months.length} />
         {draft.months.map((month, index) => (
           <div key={index} className="group flex items-center gap-1.5">
             <input value={month.name} aria-label={`Month ${index + 1} name`} onChange={(event) => update({ months: draft.months.map((entry, at) => (at === index ? { ...entry, name: event.target.value } : entry)) })} maxLength={40} className={cn(field, "min-w-0 flex-1")} />
             <NumberStepper size="sm" min={1} max={400} value={month.days} label={`Days in ${month.name || `month ${index + 1}`}`} onChange={(days) => update({ months: draft.months.map((entry, at) => (at === index ? { ...entry, days: days || 1 } : entry)) })} />
-            <KitButton tone="iconDanger" always aria-label="Remove month" disabled={draft.months.length <= 1} onClick={() => update({ months: draft.months.filter((_, at) => at !== index) })} className="disabled:opacity-30">
+            <KitButton tone="iconDanger" always aria-label={t("Remove month")} disabled={draft.months.length <= 1} onClick={() => update({ months: draft.months.filter((_, at) => at !== index) })} className="disabled:opacity-30">
               <Trash2 className="size-3.5" />
             </KitButton>
           </div>
@@ -187,29 +188,29 @@ export function CalendarSection({ campaignId }: { campaignId: string }) {
         <input value={draft.weekdays.join(", ")} onChange={(event) => update({ weekdays: event.target.value.split(",").map((day) => day.trim()).filter(Boolean).slice(0, 12) })} className={cn(panelField, "mt-1")} />
       </label>
       <div className="space-y-1.5">
-        <SectionHead title="Moons" glyph="daypart-night" level="h4" aside={moons.length || null} />
+        <SectionHead title={t("Moons")} glyph="daypart-night" level="h4" aside={moons.length || null} />
         {moons.map((moon, index) => (
           <div key={index} className="flex flex-wrap items-center gap-1.5">
             <input value={moon.name} placeholder="Name" aria-label="Moon name" onChange={(event) => update({ moons: moons.map((entry, at) => (at === index ? { ...entry, name: event.target.value } : entry)) })} maxLength={40} className={cn(field, "min-w-[7rem] flex-1")} />
-            <span title="Cycle in days">
-              <NumberStepper size="sm" min={2} max={400} value={moon.cycleDays} label="Cycle in days" onChange={(cycleDays) => update({ moons: moons.map((entry, at) => (at === index ? { ...entry, cycleDays: cycleDays || 28 } : entry)) })} />
+            <span title={t("Cycle in days")}>
+              <NumberStepper size="sm" min={2} max={400} value={moon.cycleDays} label={t("Cycle in days")} onChange={(cycleDays) => update({ moons: moons.map((entry, at) => (at === index ? { ...entry, cycleDays: cycleDays || 28 } : entry)) })} />
             </span>
-            <span title="Days into the cycle on day one">
-              <NumberStepper size="sm" min={0} max={400} value={moon.offset} label="Days into the cycle on day one" onChange={(offset) => update({ moons: moons.map((entry, at) => (at === index ? { ...entry, offset: offset || 0 } : entry)) })} />
+            <span title={t("Days into the cycle on day one")}>
+              <NumberStepper size="sm" min={0} max={400} value={moon.offset} label={t("Days into the cycle on day one")} onChange={(offset) => update({ moons: moons.map((entry, at) => (at === index ? { ...entry, offset: offset || 0 } : entry)) })} />
             </span>
-            <KitButton tone="iconDanger" always aria-label="Remove moon" onClick={() => update({ moons: moons.filter((_, at) => at !== index) })}>
+            <KitButton tone="iconDanger" always aria-label={t("Remove moon")} onClick={() => update({ moons: moons.filter((_, at) => at !== index) })}>
               <Trash2 className="size-3.5" />
             </KitButton>
           </div>
         ))}
         {moons.length < 6 ? (
           <KitButton onClick={() => update({ moons: [...moons, { name: "Moon", cycleDays: 28, offset: 0 }] })}>
-            <Plus className="size-3.5" /> Moon
+            <Plus className="size-3.5" /> {t("Moons")}
           </KitButton>
         ) : null}
       </div>
       <div className="space-y-1.5">
-        <SectionHead title="Festivals" glyph="cue-festive" level="h4" aside={festivals.length || null} />
+        <SectionHead title={t("Festivals")} glyph="cue-festive" level="h4" aside={festivals.length || null} />
         {festivals.map((festival, index) => (
           <div key={index} className="flex flex-wrap items-center gap-1.5">
             <Select size="sm" label="Festival month" value={String(festival.month)} options={monthOptions} onChange={(value) => update({ festivals: festivals.map((entry, at) => (at === index ? { ...entry, month: Number(value) } : entry)) })} className="pk-w-28" />

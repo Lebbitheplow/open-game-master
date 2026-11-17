@@ -15,6 +15,7 @@ import CharacterBuilder, { type BuilderResult } from "@/app/characters/builder/C
 import LevelUpSheet from "@/app/characters/builder/LevelUpSheet";
 import type { BuilderRole } from "@/app/characters/builder/steps/FinishStep";
 import { refusalText } from "@/app/characters/builder/refusal";
+import { useT } from "@/lib/locale";
 
 type LibraryCharacter = {
   id: string;
@@ -32,6 +33,7 @@ type LibraryCharacter = {
 // ?copyOf=<id> is "Duplicate and edit": the entry is the fresh copy, and the
 // original it came from is named and left alone.
 function EditCharacterInner({ characterId }: { characterId: string }) {
+  const t = useT();
   const search = useSearchParams();
   const copyOf = search.get("copyOf") ?? "";
   // "Level up" on the character's page: the level-up sheet, only what the
@@ -144,9 +146,9 @@ function EditCharacterInner({ characterId }: { characterId: string }) {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
         <div className={cn(ui.card, "ornate texture-noise flex flex-col items-center gap-3 px-6 py-8 text-center")}>
-          <p className="font-serif text-sm text-stone-300">Character not found.</p>
+          <p className="font-serif text-sm text-stone-300">{t("Character not found.")}</p>
           <Link href="/characters" className={ui.btnSecondary}>
-            Back to your library
+            {t("Back to your library")}
           </Link>
         </div>
       </main>
@@ -160,35 +162,33 @@ function EditCharacterInner({ characterId }: { characterId: string }) {
           href={`/characters/${characterId}`}
           className="-my-1 inline-flex min-h-10 items-center gap-1.5 text-sm text-stone-400 hover:text-amber-200"
         >
-          <ArrowLeft className="size-4" /> Back without saving
+          <ArrowLeft className="size-4" /> {t("Back without saving")}
         </Link>
         <div className="mt-2 flex items-center gap-3">
           <PixelTile src={PIXEL_ICONS.characters} />
           <div className="min-w-0">
             <GoldTitle size="text-2xl">
-              {nextLevel ? `${character.name} reaches level ${nextLevel}` : `Edit ${character.name}`}
+              {nextLevel ? t("{name} reaches level {level}", { name: character.name, level: nextLevel }) : t("Edit {name}", { name: character.name })}
             </GoldTitle>
             <p className="text-sm text-stone-400">
-              Saved to your library. Every campaign you bring them to from now on starts from this build.
+              {t("Saved to your library. Every campaign you bring them to from now on starts from this build.")}
             </p>
           </div>
         </div>
         {nextLevel && slimSheet ? (
           <p className="reveal mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-100">
-            Only what level {nextLevel} brings is asked here; the rest of {character.name}&apos;s build stays as it is.
-            Edit the whole build opens every step at level {nextLevel}.
+            {t("Only what level {level} brings is asked here; the rest of {name}'s build stays as it is.", { level: nextLevel, name: character.name })}
+            {t("Edit the whole build opens every step at level {level}.", { level: nextLevel })}
           </p>
         ) : nextLevel ? (
           <p className="reveal mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-100">
-            The build opens at level {nextLevel}, on its summary. Hit points come with the level; anything it lets{" "}
-            {character.name} choose (an ability score improvement, a subclass, new spells) is listed there as still
-            to choose, with a Fix that goes to it. Save changes takes the build once nothing is owed.
+            {t("The build opens at level {level}, on its summary. Hit points come with the level; anything it lets {name} choose (an ability score improvement, a subclass, new spells) is listed there as still to choose, with a Fix that goes to it. Save changes takes the build once nothing is owed.", { level: nextLevel, name: character.name })}
           </p>
         ) : null}
         {copyOf ? (
           <div className="reveal mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2">
             <p className="min-w-0 flex-1 text-xs text-amber-100">
-              A separate copy of {sourceName || "the original"}. Saving changes this copy only; {sourceName || "the original"} stays as it is.
+              {t("A separate copy of {source}. Saving changes this copy only; {source} stays as it is.", { source: sourceName || t("the original") })}
             </p>
             <button
               type="button"
@@ -202,10 +202,10 @@ function EditCharacterInner({ characterId }: { characterId: string }) {
         ) : null}
         {tables.length ? (
           <p className="reveal mt-3 rounded-lg border border-stone-700/60 bg-stone-900/60 px-3 py-2 text-xs text-stone-300">
-            The copies already at {tables.map((table) => table.title).join(", ")} keep their own sheets; this edit does not
-            reach them. When one of those tables saves its progress to your library (Save to library, or the end of its
-            campaign), what it carries back is written over this edit. While a table holds a copy, they stay{" "}
-            {character.role === "companion" ? "an ally the GM plays" : "a character you play"}.
+            {t("The copies already at {tables} keep their own sheets; this edit does not reach them. When one of those tables saves its progress to your library (Save to library, or the end of its campaign), what it carries back is written over this edit. While a table holds a copy, they stay {role}.", {
+              tables: tables.map((table) => table.title).join(", "),
+              role: character.role === "companion" ? t("an ally the GM plays") : t("a character you play"),
+            })}
           </p>
         ) : null}
       </header>
@@ -229,7 +229,7 @@ function EditCharacterInner({ characterId }: { characterId: string }) {
         initial={character.sheet}
         initialLevel={character.level}
         startLevel={nextLevel ?? undefined}
-        submitLabel="Save changes"
+        submitLabel={t("Save changes", { context: "characters.edit.submit" })}
         onSubmit={(result) => void save(result)}
         busy={busy}
         error={error}

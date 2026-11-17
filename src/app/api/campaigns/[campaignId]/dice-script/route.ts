@@ -4,6 +4,7 @@ import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { describeDiceScript, describeUsed, diceScriptSchema } from "@/lib/dice-script-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { isPlaytest } from "@/lib/workshop/kind";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,20 +15,21 @@ type Params = { params: Promise<{ campaignId: string }> };
 // replace or clear the seed and the forced faces. Only a test fight's table
 // has one, and only its author (who holds every seat there) or whoever runs
 // it may touch it: at every other table the server's dice stay honest, and
-// this route says so.
-async function requireTestTable(campaignId: string): Promise<MemberContext | Response> {
+// this route says so. The refusals answer in the request's language (the
+// sheet shows them raw), so the translator rides with the request.
+async function requireTestTable(campaignId: string, t: (key: string, vars?: Record<string, string | number>) => string): Promise<MemberContext | Response> {
   const context = await requireMember(campaignId);
   if (isErrorResponse(context)) {
     return context;
   }
   if (!isPlaytest(context.campaign)) {
     return Response.json(
-      { error: "Only a test fight's table can script its dice. Every other table rolls them honestly." },
+      { error: t("Only a test fight's table can script its dice. Every other table rolls them honestly.") },
       { status: 403 },
     );
   }
   if (context.user.id !== context.campaign.ownerUserId && !hasPrepAuthority(context)) {
-    return Response.json({ error: "Only the person testing this fight can script its dice." }, { status: 403 });
+    return Response.json({ error: t("Only the person testing this fight can script its dice.") }, { status: 403 });
   }
   return context;
 }
@@ -52,9 +54,10 @@ function view(context: MemberContext) {
   };
 }
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   const { campaignId } = await params;
-  const context = await requireTestTable(campaignId);
+  const t = requestT(request);
+  const context = await requireTestTable(campaignId, t);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -63,7 +66,8 @@ export async function GET(_request: Request, { params }: Params) {
 
 export async function PUT(request: Request, { params }: Params) {
   const { campaignId } = await params;
-  const context = await requireTestTable(campaignId);
+  const t = requestT(request);
+  const context = await requireTestTable(campaignId, t);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -71,19 +75,20 @@ export async function PUT(request: Request, { params }: Params) {
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return Response.json(
-      { error: issue?.message && issue.code === "custom" ? issue.message : "That dice script could not be read. Check the seed and each forced face." },
+      { error: issue?.message && issue.code === "custom" ? issue.message : t("That dice script could not be read. Check the seed and each forced face.") },
       { status: 400 },
     );
   }
   if (!setDiceScript(campaignId, parsed.data)) {
-    return Response.json({ error: "The dice script could not be saved on this table." }, { status: 409 });
+    return Response.json({ error: t("The dice script could not be saved on this table.") }, { status: 409 });
   }
   return Response.json(view(context));
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   const { campaignId } = await params;
-  const context = await requireTestTable(campaignId);
+  const t = requestT(request);
+  const context = await requireTestTable(campaignId, t);
   if (isErrorResponse(context)) {
     return context;
   }

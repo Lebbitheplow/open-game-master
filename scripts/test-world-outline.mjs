@@ -29,7 +29,8 @@ const { listHomebrew } = await import("../src/lib/db/homebrew.ts");
 const { createWorkshop } = await import("../src/lib/db/workshops.ts");
 const { getCampaignById, updateStorySettings } = await import("../src/lib/db/campaigns.ts");
 const { createUser } = await import("../src/lib/db/users.ts");
-const { CREATE_CHOICES, ENABLE_DRAFTING, missingModels, offeredWays, stepUnavailable } = await import("../src/lib/workshop/create-choices.ts");
+const { CREATE_CHOICES, ENABLE_DRAFT_KEYS, missingModels, offeredWays, stepUnavailable } = await import("../src/lib/workshop/create-choices.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
 
 // ---- the stand-in model ----
 
@@ -372,7 +373,7 @@ await test("With no text model, every Create choice can still be made by hand or
   for (const choice of CREATE_CHOICES) {
     assert.ok(choice.steps.some((step) => !stepUnavailable(step, none)), `${choice.id} has no way in without AI`);
     for (const step of choice.steps.filter((entry) => !stepUnavailable(entry, none))) {
-      assert.ok(!offeredWays(step, none).includes("draft") || !step.drafts, `${choice.id}: "${step.label}" offers drafting with no model`);
+      assert.ok(!offeredWays(step, none).includes("draft") || !step.drafts, `${choice.id}: "${step.id}" offers drafting with no model`);
     }
   }
   const outlineChoice = CREATE_CHOICES.find((choice) => choice.id === "outline");
@@ -383,10 +384,10 @@ await test("With no text model, every Create choice can still be made by hand or
   assert.equal(stepUnavailable(draftStep, { story: true, images: false }), false);
   assert.ok(outlineChoice.steps.some((step) => step.ways.includes("extract") && step.view === "forge"), "extracting from notes stopped being its own way in");
   assert.deepEqual(missingModels(CREATE_CHOICES.find((choice) => choice.id === "npc"), none), ["story"]);
-  assert.match(ENABLE_DRAFTING.story, /Admin > Text model defaults/);
-  assert.match(ENABLE_DRAFTING.images, /Admin > Image generation/);
+  assert.match(translate("en", ENABLE_DRAFT_KEYS.story), /Admin > Text model defaults/);
+  assert.match(translate("en", ENABLE_DRAFT_KEYS.images), /Admin > Image generation/);
   const chooser = fs.readFileSync(new URL("../src/app/workshop/[workshopId]/CreateChooser.tsx", import.meta.url), "utf8");
-  assert.ok(chooser.includes("ENABLE_DRAFTING[") && chooser.includes("create-no-ai"), "the chooser does not explain a missing model");
+  assert.ok(chooser.includes("ENABLE_DRAFT_KEYS[") && chooser.includes("create-no-ai"), "the chooser does not explain a missing model");
   const panel = fs.readFileSync(new URL("../src/app/workshop/world/WorldForgePanel.tsx", import.meta.url), "utf8");
   assert.match(panel, /AI_VIEWS: ReadonlySet<View> = new Set\(\["outline", "forge", "ask"\]\)/, "the Outline view shows on a server with no model");
 });

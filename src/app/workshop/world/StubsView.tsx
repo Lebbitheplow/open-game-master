@@ -9,6 +9,7 @@ import { newId, type Stub } from "@/lib/worldforge/model";
 import { stubResolved, stubScan } from "@/lib/worldforge/text";
 import type { WorldApi, WorldState } from "./useWorld";
 import { tint } from "./world-ui";
+import { useT, useTp } from "@/lib/locale";
 
 // Names still to be written, after WorldForge's stubs: a name the world's
 // text keeps using that has no entry yet. The scan only suggests; a name is
@@ -17,6 +18,8 @@ import { tint } from "./world-ui";
 // is done and can be cleared.
 
 export function StubsView({ api, world, onOpen }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void }) {
+  const t = useT();
+  const tp = useTp();
   const { doc, entities } = world;
   const [found, setFound] = useState<Array<{ name: string; count: number }> | null>(null);
   const [writing, setWriting] = useState<string | null>(null);
@@ -49,10 +52,10 @@ export function StubsView({ api, world, onOpen }: { api: WorldApi; world: WorldS
 
   const typePicker = (name: string, stub?: Stub) => (
     <div className="motion-pop mt-1.5 flex flex-wrap items-center gap-1">
-      <span className="text-[11px] text-stone-500">Write {name} as</span>
+      <span className="text-[11px] text-stone-500">{t("Write {name} as", { name })}</span>
       {doc.types.map((type) => (
         <button key={type.id} type="button" onClick={() => write(name, type.id, stub)} className="rounded-md border px-1.5 py-0.5 text-[11px] motion-press" style={{ borderColor: tint(type.color, 0.45), color: type.color }}>
-          {type.name}
+          {t(type.name)}
         </button>
       ))}
     </div>
@@ -63,27 +66,27 @@ export function StubsView({ api, world, onOpen }: { api: WorldApi; world: WorldS
 
   return (
     <div className="grid gap-4 @4xl:grid-cols-2">
-      <section className="flex flex-col gap-2" aria-label="Scan">
-        <div className="flex items-center justify-between">
-          <h3 className="eyebrow text-[10px] text-amber-400/80">Names with no entry</h3>
-          <KitButton tone="primary" onClick={scan} data-tour="world-scan">
-            <ScanSearch className="size-3.5" /> Read the world for them
+      <section className="flex flex-col gap-2" aria-label={t("Scan")}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="eyebrow text-[10px] text-amber-400/80">{t("Names with no entry")}</h3>
+          <KitButton tone="primary" className="shrink-0" onClick={scan} data-tour="world-scan">
+            <ScanSearch className="size-3.5" /> {t("Read the world for them")}
           </KitButton>
         </div>
-        <p className="text-[11px] text-stone-500">Reads every article, line, note, event and secret for capitalised names nothing answers to. Nothing is kept until you say so.</p>
+        <p className="text-[11px] text-stone-500">{t("Reads every article, line, note, event and secret for capitalised names nothing answers to. Nothing is kept until you say so.")}</p>
         {found === null ? null : found.length === 0 ? (
-          <p className="text-sm text-stone-500 motion-pop">Every name the world uses has an entry.</p>
+          <p className="text-sm text-stone-500 motion-pop">{t("Every name the world uses has an entry.")}</p>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {found.map((hit, index) => (
               <li key={hit.name} className="panel wf-rise rounded-lg p-2" style={{ "--i": index } as React.CSSProperties}>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-sm text-stone-100">{hit.name}</span>
-                  <span className="text-[11px] text-stone-500">{hit.count} time{hit.count === 1 ? "" : "s"}</span>
+                  <span className="text-[11px] text-stone-500">{tp("{count} time", "{count} times", { count: hit.count })}</span>
                   <span className="ml-auto flex gap-1">
-                    <KitButton tone="small" onClick={() => setWriting(writing === hit.name ? null : hit.name)}><PenLine className="size-3.5" /> Write it</KitButton>
-                    <KitButton tone="small" onClick={() => { forget(hit.name); void keep([{ id: newId("stub"), name: hit.name, note: "", source: "scan", status: "open" }]); }}><Plus className="size-3.5" /> Keep</KitButton>
-                    <KitButton tone="small" title="Not a name: never suggested again" onClick={() => { forget(hit.name); void keep([{ id: newId("stub"), name: hit.name, note: "", source: "scan", status: "dismissed" }]); }}><Ban className="size-3.5" /></KitButton>
+                    <KitButton tone="small" onClick={() => setWriting(writing === hit.name ? null : hit.name)}><PenLine className="size-3.5" /> {t("Write it")}</KitButton>
+                    <KitButton tone="small" onClick={() => { forget(hit.name); void keep([{ id: newId("stub"), name: hit.name, note: "", source: "scan", status: "open" }]); }}><Plus className="size-3.5" /> {t("Keep")}</KitButton>
+                    <KitButton tone="small" title={t("Not a name: never suggested again")} onClick={() => { forget(hit.name); void keep([{ id: newId("stub"), name: hit.name, note: "", source: "scan", status: "dismissed" }]); }}><Ban className="size-3.5" /></KitButton>
                   </span>
                 </div>
                 {writing === hit.name ? typePicker(hit.name) : null}
@@ -93,12 +96,12 @@ export function StubsView({ api, world, onOpen }: { api: WorldApi; world: WorldS
         )}
       </section>
 
-      <section className="flex flex-col gap-2" aria-label="To write">
-        <h3 className="eyebrow text-[10px] text-amber-400/80">To write ({open.length})</h3>
+      <section className="flex flex-col gap-2" aria-label={t("To write")}>
+        <h3 className="eyebrow text-[10px] text-amber-400/80">{t("To write ({count})", { count: open.length })}</h3>
         <form className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5" onSubmit={(event) => { event.preventDefault(); if (manual.name.trim()) { void keep([{ id: newId("stub"), name: manual.name.trim(), note: manual.note.trim(), source: "manual", status: "open" }]); setManual({ name: "", note: "" }); } }}>
-          <input className={cn(ui.input, "text-xs")} placeholder="Who built the wall?" aria-label="A name or a question" maxLength={120} value={manual.name} onChange={(event) => setManual({ ...manual, name: event.target.value })} />
-          <input className={cn(ui.input, "text-xs")} placeholder="Note (optional)" aria-label="Note" maxLength={400} value={manual.note} onChange={(event) => setManual({ ...manual, note: event.target.value })} />
-          <KitButton tone="small" type="submit" disabled={!manual.name.trim()}><Plus className="size-3.5" /> Jot</KitButton>
+          <input className={cn(ui.input, "text-xs")} placeholder={t("Who built the wall?")} aria-label={t("A name or a question")} maxLength={120} value={manual.name} onChange={(event) => setManual({ ...manual, name: event.target.value })} />
+          <input className={cn(ui.input, "text-xs")} placeholder={t("Note (optional)")} aria-label={t("Note")} maxLength={400} value={manual.note} onChange={(event) => setManual({ ...manual, note: event.target.value })} />
+          <KitButton tone="small" type="submit" disabled={!manual.name.trim()}><Plus className="size-3.5" /> {t("Jot")}</KitButton>
         </form>
         <ul className="flex flex-col gap-1.5">
           {open.map((stub, index) => {
@@ -109,12 +112,12 @@ export function StubsView({ api, world, onOpen }: { api: WorldApi; world: WorldS
                   <span className="text-sm text-stone-100">{stub.name}</span>
                   {done ? (
                     <button type="button" onClick={() => onOpen(done.ref)} className="pk-chip motion-pop text-[11px] text-emerald-300">
-                      <Check className="size-3" /> written
+                      <Check className="size-3" /> {t("written")}
                     </button>
                   ) : null}
                   <span className="ml-auto flex gap-1">
-                    {done ? null : <KitButton tone="small" onClick={() => setWriting(writing === stub.id ? null : stub.id)}><PenLine className="size-3.5" /> Write it</KitButton>}
-                    <KitButton tone="icon" always aria-label={done ? `Clear ${stub.name}` : `Dismiss ${stub.name}`} onClick={() => api.patch({ stubs: done ? doc.stubs.filter((entry) => entry.id !== stub.id) : doc.stubs.map((entry) => (entry.id === stub.id ? { ...entry, status: "dismissed" } : entry)) })}>
+                    {done ? null : <KitButton tone="small" onClick={() => setWriting(writing === stub.id ? null : stub.id)}><PenLine className="size-3.5" /> {t("Write it")}</KitButton>}
+                    <KitButton tone="icon" always aria-label={done ? t("Clear {name}", { name: stub.name }) : t("Dismiss {name}", { name: stub.name })} onClick={() => api.patch({ stubs: done ? doc.stubs.filter((entry) => entry.id !== stub.id) : doc.stubs.map((entry) => (entry.id === stub.id ? { ...entry, status: "dismissed" } : entry)) })}>
                       <X className="size-3.5" />
                     </KitButton>
                   </span>
@@ -124,13 +127,13 @@ export function StubsView({ api, world, onOpen }: { api: WorldApi; world: WorldS
               </li>
             );
           })}
-          {open.length === 0 ? <li className="text-sm text-stone-500">Nothing waiting.</li> : null}
+          {open.length === 0 ? <li className="text-sm text-stone-500">{t("Nothing waiting.")}</li> : null}
         </ul>
         {dismissed.length ? (
           <details className="text-xs text-stone-500">
-            <summary className="cursor-pointer">{dismissed.length} dismissed</summary>
+            <summary className="cursor-pointer">{t("{count} dismissed", { count: dismissed.length })}</summary>
             <p className="mt-1">{dismissed.map((stub) => stub.name).join(", ")}</p>
-            <KitButton tone="link" onClick={() => api.patch({ stubs: open })}>Forget them all, so the scan may suggest them again</KitButton>
+            <KitButton tone="link" onClick={() => api.patch({ stubs: open })}>{t("Forget them all, so the scan may suggest them again")}</KitButton>
           </details>
         ) : null}
       </section>

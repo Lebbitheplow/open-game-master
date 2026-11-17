@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { UnofficialPackNotice } from "@/components/UnofficialPackNotice";
 import { Select } from "@/components/ui/Select";
-import { GENDERS, type Gender } from "@/lib/gender";
+import { GENDERS, genderLabel, type Gender } from "@/lib/gender";
+import { useLocale, useT } from "@/lib/locale";
 import type { WorldPack } from "@/lib/worlds/types";
 import type { BuilderState } from "../useBuilderState";
 import { Field } from "./shared";
@@ -20,6 +21,7 @@ export function ContentNotices({ pack, packInstalled }: { pack: WorldPack | null
   // The install command is for whoever runs the server. A player can do
   // nothing with it, and a first-timer read it as something being broken.
   const [isAdmin, setIsAdmin] = useState(false);
+  const t = useT();
   useEffect(() => {
     if (packInstalled !== false) {
       return;
@@ -34,18 +36,18 @@ export function ContentNotices({ pack, packInstalled }: { pack: WorldPack | null
     <>
       {packInstalled === null ? (
         <p role="status" className="rounded-lg border border-stone-700/60 bg-stone-900/60 p-3 text-xs text-stone-400">
-          Loading the races, classes and backgrounds this server offers…
+          {t("Loading the races, classes and backgrounds this server offers…")}
         </p>
       ) : !packInstalled ? (
         <p className="rounded-lg border border-stone-700/60 bg-stone-900/60 p-3 text-xs text-stone-400">
           {isAdmin ? (
             <>
-              Content pack not installed; showing SRD 5.1 basics only. Run
-              <span className="font-code"> node scripts/import-open5e.mjs</span> on the server
-              for the full Open5e catalog.
+              {t("Content pack not installed; showing SRD 5.1 basics only. Run")}
+              <span className="font-code"> node scripts/import-open5e.mjs</span>{" "}
+              {t("on the server for the full Open5e catalog.")}
             </>
           ) : (
-            "This server uses the basic rules set (SRD 5.1), so some races, classes and backgrounds from other books are not offered."
+            t("This server uses the basic rules set (SRD 5.1), so some races, classes and backgrounds from other books are not offered.")
           )}
         </p>
       ) : null}
@@ -55,7 +57,7 @@ export function ContentNotices({ pack, packInstalled }: { pack: WorldPack | null
             <span className="font-medium">{pack.name}</span> · {pack.blurb}
           </p>
           <p className="mt-1 text-sm text-stone-400">
-            Names only. Every race, class, spell and item below plays by the same 5e rules.
+            {t("Names only. Every race, class, spell and item below plays by the same 5e rules.")}
           </p>
           <UnofficialPackNotice
             rightsHolder={pack.rightsHolder}
@@ -86,18 +88,19 @@ export function LevelField({
   levelNote?: string;
   className?: string;
 }) {
+  const t = useT();
   return (
-    <Field label="Level" className={className}>
+    <Field label={t("Level")} className={className}>
       {fixedLevel ? (
         <span className="block rounded-lg border border-stone-700/70 bg-stone-950/60 px-3 py-2 text-sm text-stone-400">
-          {fixedLevel} (campaign)
+          {t("{level} (campaign)", { level: fixedLevel })}
         </span>
       ) : (
         <>
           <Select<string>
             value={String(state.level)}
             onChange={(next) => state.changeLevel(Number(next))}
-            label="Level"
+            label={t("Level")}
             className="w-full"
             options={Array.from({ length: 21 - state.levelFloor }, (_, index) => ({
               value: String(index + state.levelFloor),
@@ -106,10 +109,16 @@ export function LevelField({
           />
           {state.levelFloor > 1 ? (
             <span className="mt-1 block text-xs text-stone-500">
-              Improvements taken in play are in their scores, so they stay level {state.levelFloor} or higher.
+              {t("Improvements taken in play are in their scores, so they stay level {level} or higher.", { level: state.levelFloor })}
             </span>
           ) : levelNote ? (
-            <span className="mt-1 block text-xs text-stone-500">{levelNote}</span>
+            // The door's notes (door.ts) are English data; the known one says
+            // itself in the reader's language, any other passes through.
+            <span className="mt-1 block text-xs text-stone-500">
+              {/^(?:The party is built for level |Le groupe est prévu pour le niveau )(\d+)\.$/.test(levelNote)
+                ? t("The party is built for level {level}.", { level: Number(levelNote.match(/(\d+)/)?.[1]) })
+                : levelNote}
+            </span>
           ) : null}
         </>
       )}
@@ -124,21 +133,23 @@ export function LevelField({
 // pronouns for a choice nobody made. Until it is chosen the cards show a mix
 // of looks (lineage.ts previewGender), and nothing of that mix is saved.
 export function GenderField({ state, className }: { state: BuilderState; className?: string }) {
-  return (
-    <Field label="Gender" className={className} anchor="gender">
+    const t = useT();
+    const locale = useLocale();
+    return (
+      <Field label={t("Gender")} className={className} anchor="gender">
       <div className="sm:max-w-xs">
         <Select<Gender>
           value={state.gender}
           onChange={state.setGender}
-          label="Gender"
+          label={t("Gender")}
           className="w-full"
-          options={[{ value: "", label: "Not chosen" }, ...GENDERS.map((value) => ({ value, label: value }))]}
+          options={[{ value: "", label: t("Not chosen") }, ...GENDERS.map((value) => ({ value, label: genderLabel(value, locale) }))]}
         />
       </div>
       <span className="mt-1 block text-xs text-stone-500">
         {state.gender
-          ? "The cards show your choice, and the GM uses it for pronouns."
-          : "Optional. The cards show a mix of looks until you choose."}
+          ? t("The cards show your choice, and the GM uses it for pronouns.")
+          : t("Optional. The cards show a mix of looks until you choose.")}
       </span>
     </Field>
   );

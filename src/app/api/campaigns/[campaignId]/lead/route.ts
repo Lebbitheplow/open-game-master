@@ -4,6 +4,7 @@ import { insertCampaignMessage } from "@/lib/db/messages";
 import { getUserById } from "@/lib/db/users";
 import { storyNameOf } from "@/lib/characters/story-name";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,9 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  // The refusal reads the asker's language; the settings page shows it raw.
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -23,7 +26,7 @@ export async function POST(
   const { campaign, user } = context;
   if (user.id !== campaign.leadUserId && user.id !== campaign.ownerUserId) {
     return Response.json(
-      { error: "Only the party lead or the owner can transfer the lead." },
+      { error: t("Only the party lead or the owner can transfer the lead.") },
       { status: 403 },
     );
   }

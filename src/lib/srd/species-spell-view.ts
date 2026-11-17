@@ -9,6 +9,7 @@
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { textKey } from "@/lib/language/text-logic";
 import type { Ability } from "@/lib/schemas/sheet";
+import { pluralOf } from "@/lib/messages-logic";
 
 const ABILITY_WORDS: Record<Ability, string> = {
   str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma",
@@ -30,7 +31,11 @@ export type SpeciesSpellSheet = {
 // The species' spells at the character's level, but for one a class's
 // list already holds (a tiefling wizard's thaumaturgy, written there at
 // creation), which the class's book shows.
-export function speciesSpellsShown(sheet: SpeciesSpellSheet): SpeciesSpellEntry[] {
+export function speciesSpellsShown(
+  sheet: SpeciesSpellSheet,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): SpeciesSpellEntry[] {
+  const tp = pluralOf(t);
   const casting = sheet.spellcasting;
   const listed = new Set(
     [casting, ...(casting?.casters ?? [])]
@@ -40,15 +45,30 @@ export function speciesSpellsShown(sheet: SpeciesSpellSheet): SpeciesSpellEntry[
   return innateSpellsFor(sheet.race, sheet.level, undefined, { variant: sheet.racialChoices?.variant, features: sheet.features })
     .filter((spell) => !listed.has(textKey(spell.name)))
     .map((spell) => {
-      const ability = spell.ability ? ` · ${ABILITY_WORDS[spell.ability]}` : "";
+      const abilityWord = spell.ability ? (t ? ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[spell.ability] ?? String(spell.ability) : ABILITY_WORDS[spell.ability]) : "";
+      const ability = abilityWord ? ` · ${abilityWord}` : "";
       if (spell.castAt === 0) {
-        return { name: spell.name, level: 0, note: `Cantrip, at will${ability}` };
+        return {
+          name: spell.name,
+          level: 0,
+          note: t ? t("Cantrip, at will{ability}", { ability }) : `Cantrip, at will${ability}`,
+        };
       }
       const state = spell.counterId ? sheet.resources?.[spell.counterId] : undefined;
+      const leftCount = spell.uses - Math.min(state?.used ?? 0, spell.uses);
+      if (t) {
+        const higher = spell.castAt > spell.circle ? t("As a level {level} spell, ", { level: spell.castAt }) : "";
+        const times = tp("once", "{count} times", { count: spell.uses });
+        const rest = ({ "short": t("short"), "long": t("long") } as Record<string, string>)[spell.rest] ?? String(spell.rest);
+        const left = t(" ({count} left)", { count: leftCount });
+        const slots = spell.slotsToo ? t(", or with a spell slot") : "";
+        const words = t("{higher}{times} a {rest} rest{left}{slots}{ability}", { higher, times, rest, left, slots, ability });
+        return { name: spell.name, level: spell.circle, note: words.charAt(0).toUpperCase() + words.slice(1) };
+      }
       const higher = spell.castAt > spell.circle ? `As a level ${spell.castAt} spell, ` : "";
       const times = spell.uses === 1 ? "once" : `${spell.uses} times`;
       // Read at the spell's own count, as the cast guard reads it.
-      const left = ` (${spell.uses - Math.min(state?.used ?? 0, spell.uses)} left)`;
+      const left = ` (${leftCount} left)`;
       const slots = spell.slotsToo ? ", or with a spell slot" : "";
       const words = `${higher}${times} a ${spell.rest} rest${left}${slots}${ability}`;
       return { name: spell.name, level: spell.circle, note: words.charAt(0).toUpperCase() + words.slice(1) };

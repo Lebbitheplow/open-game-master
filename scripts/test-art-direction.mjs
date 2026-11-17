@@ -22,8 +22,8 @@ process.chdir(dir);
 register("./lib/register-alias.mjs", new URL(`file://${path.join(home, "scripts", "x.mjs")}`));
 
 const {
-  ART_STYLE_LABELS,
-  ART_STYLE_NOTES,
+  ART_STYLE_LABEL_KEYS,
+  ART_STYLE_NOTE_KEYS,
   ART_STYLE_PRESETS,
   MAP_NEGATIVE,
   artDirection,
@@ -62,8 +62,8 @@ try {
 
   await test("every style has a label and a note, and every preset a map and a scene", () => {
     for (const style of ART_STYLES) {
-      assert.ok(ART_STYLE_LABELS[style], style);
-      assert.ok(ART_STYLE_NOTES[style], style);
+      assert.ok(ART_STYLE_LABEL_KEYS[style], style);
+      assert.ok(ART_STYLE_NOTE_KEYS[style], style);
     }
     for (const style of ART_STYLES.filter((style) => style !== "setting" && style !== "custom")) {
       assert.ok(ART_STYLE_PRESETS[style].map && ART_STYLE_PRESETS[style].scene, style);

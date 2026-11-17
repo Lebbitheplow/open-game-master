@@ -9,10 +9,15 @@
 import { holdsDeathOrGlory } from "@/lib/dm/genre-death-or-glory";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { spendAttack } from "@/lib/dm/action-budget";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 import { hasOpenHandTechnique, hurlProblem, OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
 import { inspirationProblem, strokeOfLuckProblem } from "@/lib/dm/attack-features";
 import { weaponAttackProfile, type AttackProfile } from "@/lib/dm/attack-logic";
-import { handsRuling } from "@/lib/dm/attack-rules";
+import { dmgWithType } from "@/lib/battlemap/hand";
+import { handsRuling, longRangeTilesOf } from "@/lib/dm/attack-rules";
 import { hasFastHands, kiLeft } from "@/lib/dm/bonus-routes";
 import { checkAttackOptions, martialArtsApplies, type AnyBonusAttack } from "@/lib/dm/pc-attack-options";
 import { heldInspiration } from "@/lib/dm/roll-riders";
@@ -28,6 +33,7 @@ import {
   budgetOf,
   costGate,
   gated,
+  handsRulingReason,
   standingGate,
   type Gate,
   type HandAttackOption,
@@ -36,7 +42,7 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
-import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
+import { attackDamageLine, attackReach, attackRollLine } from "@/lib/battlemap/hand-attack-lines";
 import { RAPID_STRIKE_NEEDS_ADVANTAGE } from "@/lib/battlemap/hand-odds";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 
@@ -45,14 +51,28 @@ const holds = (sheet: CharacterSheet, name: string) =>
 
 type OptionArgs = { stunningStrike?: boolean; reckless?: boolean; nonlethal?: boolean; bonusAttack?: AnyBonusAttack };
 
-// Open Hand Technique's three riders, as the aim bar offers them.
-const OPEN_HAND_OPTIONS: Array<{ id: HandAttackOption["id"]; label: string; note: string }> = [
-  { id: "openHand:prone", label: "Knock prone", note: "Open Hand Technique: on a hit it makes a DEX save or falls prone." },
-  { id: "openHand:push", label: "Push 15 ft", note: "Open Hand Technique: on a hit it makes a STR save or is pushed up to 15 feet away." },
+// The bonus strike's range line in the reader's words, from the same reading
+// attackReach makes (hand-attack-lines.ts), as attackCards prints it (hand.ts):
+// melee feet, a thrown weapon's reach then its span.
+function strikeRange(profile: AttackProfile, t: T): string {
+  const reachFt = profile.reachTiles * 5;
+  if (!profile.ranged && !profile.thrown) return t("{feet} ft", { feet: reachFt });
+  const normalFt = profile.rangeTiles * 5;
+  const longFt = longRangeTilesOf(profile) * 5;
+  const span = longFt > normalFt ? t("{range}/{long} ft", { range: normalFt, long: longFt }) : t("{feet} ft", { feet: normalFt });
+  return profile.ranged ? span : t("{reach} ft / {span}", { reach: reachFt, span });
+}
+
+// Open Hand Technique's three riders, as the aim bar offers them. The
+// labels and notes are display words keyed here; the option ids are what
+// pc_attack reads.
+const OPEN_HAND_OPTIONS: Array<{ id: HandAttackOption["id"]; labelKey: string; noteKey: string }> = [
+  { id: "openHand:prone", labelKey: "Knock prone", noteKey: "Open Hand Technique: on a hit it makes a DEX save or falls prone." },
+  { id: "openHand:push", labelKey: "Push 15 ft", noteKey: "Open Hand Technique: on a hit it makes a STR save or is pushed up to 15 feet away." },
   {
     id: "openHand:no reactions",
-    label: "No reactions",
-    note: "Open Hand Technique: on a hit it cannot take reactions until the end of your next turn.",
+    labelKey: "No reactions",
+    noteKey: "Open Hand Technique: on a hit it cannot take reactions until the end of your next turn.",
   },
 ];
 
@@ -87,16 +107,18 @@ export function attackOptionsFor(
   // The swings the Attack action grants, and whether this card is a
   // bonus-action strike (which is never one of Flurry of Blows' strikes).
   swing: { allowed: number; bonusStrike?: boolean } = { allowed: 1 },
+  t: T = enT,
 ): HandAttackOption[] {
   const options: HandAttackOption[] = [];
   const melee = !profile.ranged;
   // Inspiration: offered while the DM's award is held; the refusal is the
-  // engine's (attack-features.ts inspirationProblem).
+  // engine's (attack-features.ts inspirationProblem). Its label is the same
+  // word in both locales.
   if (heldInspiration(sheet)) {
     options.push({
       id: "useInspiration",
       label: "Inspiration",
-      note: "Spend your Inspiration: advantage on this attack roll.",
+      note: t("Spend your Inspiration: advantage on this attack roll."),
       disabled: inspirationProblem(sheet, true)?.error ?? null,
     });
   }
@@ -104,8 +126,8 @@ export function attackOptionsFor(
   if (classLevelOf(sheet, "rogue") >= 20 || holdsFeature(sheet, "stroke of luck")) {
     options.push({
       id: "strokeOfLuck",
-      label: "Stroke of Luck",
-      note: "If this attack misses, it hits instead. Spent only on a miss; back on a short or long rest.",
+      label: t("Stroke of Luck"),
+      note: t("If this attack misses, it hits instead. Spent only on a miss; back on a short or long rest."),
       disabled: strokeOfLuckProblem(sheet, true)?.error ?? null,
     });
   }
@@ -114,8 +136,8 @@ export function attackOptionsFor(
   if (holdsFeature(sheet, "hurl through hell") || (classLevelOf(sheet, "warlock") >= 14 && subclassNamed(sheet.subclass ?? "", "The Fiend"))) {
     options.push({
       id: "hurlThroughHell",
-      label: "Hurl Through Hell",
-      note: "On a hit: gone through the lower planes until the end of your next turn, then 10d10 psychic unless a fiend. Once a long rest.",
+      label: t("Hurl Through Hell"),
+      note: t("On a hit: gone through the lower planes until the end of your next turn, then 10d10 psychic unless a fiend. Once a long rest."),
       disabled: hurlProblem(sheet, true)?.error ?? null,
     });
   }
@@ -128,9 +150,9 @@ export function attackOptionsFor(
   if (rapid && !swing.bonusStrike) {
     options.push({
       id: "rapidStrike",
-      label: "Rapid Strike",
-      note: `${rapid}: give up this attack's advantage for one more attack this turn. Only with advantage, once a turn.`,
-      disabled: RAPID_STRIKE_NEEDS_ADVANTAGE,
+      label: t("Rapid Strike"),
+      note: t("{feature}: give up this attack's advantage for one more attack this turn. Only with advantage, once a turn.", { feature: rapid }),
+      disabled: t("Rapid Strike trades this attack's advantage for one more attack, and it has none here. Aim at a creature you attack with advantage."),
       needsAdvantage: true,
     });
   }
@@ -141,7 +163,13 @@ export function attackOptionsFor(
     const spend = spendAttack(budgetOf(turn, sheet, swing.allowed), sheet.name, { unarmed: true });
     const flurry = spend.ok && (spend.budget.flurryStrikes ?? 0) < before;
     for (const option of OPEN_HAND_OPTIONS) {
-      options.push({ ...option, group: "openHand", disabled: flurry ? null : OPEN_HAND_NOT_FLURRY.error });
+      options.push({
+        ...option,
+        label: t(option.labelKey),
+        note: t(option.noteKey),
+        group: "openHand",
+        disabled: flurry ? null : OPEN_HAND_NOT_FLURRY.error,
+      });
     }
   }
   // A road warrior's Death or Glory is the same option, on any melee attack
@@ -150,10 +178,10 @@ export function attackOptionsFor(
   if ((holds(sheet, "reckless attack") || glory) && melee) {
     options.push({
       id: "reckless",
-      label: glory ? "Death or Glory" : "Reckless",
+      label: glory ? "Death or Glory" : t("Reckless"),
       note: glory
         ? `Advantage on your melee attacks this turn${holds(sheet, "ride eternal") ? "" : "; attacks against you have advantage until your next turn"}.`
-        : "Advantage on your Strength melee attacks this turn; attacks against you have advantage until your next turn.",
+        : t("Advantage on your Strength melee attacks this turn; attacks against you have advantage until your next turn."),
       disabled: optionRefusal(sheet, turn, profile, derived, { reckless: true }),
     });
   }
@@ -161,16 +189,16 @@ export function attackOptionsFor(
     const dc = 8 + derived.proficiencyBonus + derived.abilityMods.wis;
     options.push({
       id: "stunningStrike",
-      label: "Stunning Strike",
-      note: `1 ki on a hit: CON save DC ${dc} or stunned until your next turn.`,
+      label: t("Stunning Strike"),
+      note: t("1 ki on a hit: CON save DC {dc} or stunned until your next turn.", { dc }),
       disabled: optionRefusal(sheet, turn, profile, derived, { stunningStrike: true }),
     });
   }
   if (melee) {
     options.push({
       id: "nonlethal",
-      label: "Knock out",
-      note: "A blow that drops it leaves it unconscious at 0 hit points instead of dead.",
+      label: t("Knock out"),
+      note: t("A blow that drops it leaves it unconscious at 0 hit points instead of dead."),
       disabled: optionRefusal(sheet, turn, profile, derived, { nonlethal: true }),
     });
   }
@@ -189,11 +217,12 @@ export function bonusStrikeCards(
   carried: Carried[],
   // What an ally's aura adds to the roll here (HandBoardFacts.attackAura).
   aura?: { bonus: number; features: string[] } | null,
+  t: T = enT,
 ): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const profs = sheet.proficiencies.weapons;
   const cards: HandCard[] = [];
-  const standing = standingGate(sheet, turn, "bonus");
+  const standing = standingGate(sheet, turn, "bonus", t);
   // A two-handed weapon is not swung at all with a shield on the arm, as
   // build() in hand.ts shuts the Attack action's cards (handsRuling in
   // src/lib/dm/attack-rules.ts). A strike is drawn with a weapon the hands
@@ -233,8 +262,9 @@ export function bonusStrikeCards(
       name,
       cost: "bonus",
       ...attackReach(profile),
-      dice: `${line.damage} ${profile.damageType}`.trim(),
-      roll: toHitWords(rolled),
+      range: strikeRange(profile, t),
+      dice: dmgWithType(line.damage, profile.damageType, t),
+      roll: t("{bonus} to hit", { bonus: `${(rolled.toHit ?? 0) >= 0 ? "+" : ""}${rolled.toHit ?? 0}${rolled.toHitDice ?? ""}` }),
       rules,
       ...(notes.length ? { description: [rules, ...notes].join(" ") } : {}),
       resource: "",
@@ -253,14 +283,14 @@ export function bonusStrikeCards(
       spent: false,
       compose: false,
       intent: { card: "attack", weapon, attack: { bonusAttack } },
-      options: attackOptionsFor(sheet, turn, profile, derived, { allowed: 1, bonusStrike: true }).filter(
+      options: attackOptionsFor(sheet, turn, profile, derived, { allowed: 1, bonusStrike: true }, t).filter(
         (option) => option.id !== "reckless",
       ),
     };
     const refusedGate: Gate = refused ? { reason: refused, spent: false } : null;
     const hands = handsProblem(weapon, srd);
-    const handsGate: Gate = hands ? { reason: hands, spent: false } : null;
-    return gated(card, standing, handsGate, costGate("bonus", turn, sheet, name), refusedGate);
+    const handsGate: Gate = hands ? { reason: handsRulingReason(hands, weapon, sheet.name, shieldName, t), spent: false } : null;
+    return gated(card, standing, handsGate, costGate("bonus", turn, sheet, name, t), refusedGate);
   };
   if (holds(sheet, "martial arts")) {
     cards.push(
@@ -268,8 +298,8 @@ export function bonusStrikeCards(
         "martial arts",
         "Unarmed strike",
         null,
-        "Martial Arts strike",
-        "After the Attack action with an unarmed strike or a monk weapon: one more unarmed strike.",
+        t("Martial Arts strike"),
+        t("After the Attack action with an unarmed strike or a monk weapon: one more unarmed strike."),
       ),
     );
   }
@@ -280,8 +310,8 @@ export function bonusStrikeCards(
         "frenzy",
         melee?.name ?? "Unarmed strike",
         melee?.srd ?? null,
-        "Frenzy attack",
-        "While raging in a frenzy: one melee weapon attack as a bonus action. Exhaustion when the rage ends.",
+        t("Frenzy attack"),
+        t("While raging in a frenzy: one melee weapon attack as a bonus action. Exhaustion when the rage ends."),
       ),
     );
   }
@@ -298,33 +328,35 @@ export function bonusStrikeCards(
         "feature",
         weapon?.name ?? "Unarmed strike",
         weapon?.srd ?? null,
-        `${feature} attack`,
-        `${feature}: one weapon attack as a bonus action.`,
+        t("{feature} attack", { feature }),
+        t("{feature}: one weapon attack as a bonus action.", { feature }),
       ),
     );
   }
   // The bonus attacks with a use, a trigger or a weapon of their own (War
   // Priest, Unwavering Mark, Hungry Jaws, Pistol and Blade), judged by the
-  // engine's own check (src/lib/dm/feature-bonus-attacks.ts).
+  // engine's own check (src/lib/dm/feature-bonus-attacks.ts). `feature` is
+  // the sheet's own name (the card's id reads it); `label` is the chip word
+  // the card's name and rules show.
   const melee = pick((entry) => entry.srd.kind === "melee");
-  const own: Array<{ feature: string; weapon: Carried | null; rules: string }> = [];
+  const own: Array<{ feature: string; label: string; weapon: Carried | null; rules: string }> = [];
   if (holds(sheet, "war priest")) {
-    own.push({ feature: "War Priest", weapon: pick(() => true) ?? null, rules: "After the Attack action: one weapon attack as a bonus action, a use of War Priest." });
+    own.push({ feature: "War Priest", label: t("War Priest"), weapon: pick(() => true) ?? null, rules: t("After the Attack action: one weapon attack as a bonus action, a use of {feature}.", { feature: t("War Priest") }) });
   }
   if (holds(sheet, "unwavering mark")) {
-    own.push({ feature: "Unwavering Mark", weapon: melee ?? null, rules: "Against your marked creature that struck someone else: a melee attack with advantage and +half your fighter level damage." });
+    own.push({ feature: "Unwavering Mark", label: t("Unwavering Mark"), weapon: melee ?? null, rules: t("Against your marked creature that struck someone else: a melee attack with advantage and +half your fighter level damage.") });
   }
   if (holds(sheet, "hungry jaws")) {
     const bite = racialNaturalWeapon(sheet.features, "bite", sheet.feats);
-    if (bite) own.push({ feature: "Hungry Jaws", weapon: { name: bite.srd.name, srd: bite.srd } as Carried, rules: "A bite as a bonus action; on a hit you gain your Constitution modifier in temporary hit points." });
+    if (bite) own.push({ feature: "Hungry Jaws", label: t("Hungry Jaws"), weapon: { name: bite.srd.name, srd: bite.srd } as Carried, rules: t("A bite as a bonus action; on a hit you gain your Constitution modifier in temporary hit points.") });
   }
   if (holds(sheet, "pistol and blade")) {
     const firearm = pick((entry) => entry.srd.category === "firearm");
-    if (firearm) own.push({ feature: "Pistol and Blade", weapon: firearm, rules: "After a melee weapon attack: one firearm attack as a bonus action." });
+    if (firearm) own.push({ feature: "Pistol and Blade", label: t("Pistol and Blade"), weapon: firearm, rules: t("After a melee weapon attack: one firearm attack as a bonus action.") });
   }
   for (const entry of own) {
     cards.push(
-      strike("feature", entry.weapon?.name ?? "Unarmed strike", entry.weapon?.srd ?? null, `${entry.feature} attack`, entry.rules, textKey(entry.feature).replace(/\s+/g, "-")),
+      strike("feature", entry.weapon?.name ?? "Unarmed strike", entry.weapon?.srd ?? null, t("{feature} attack", { feature: entry.label }), entry.rules, textKey(entry.feature).replace(/\s+/g, "-")),
     );
   }
   return cards;
@@ -333,17 +365,17 @@ export function bonusStrikeCards(
 // Fast Hands (Thief 3): Cunning Action's bonus action also Uses an Object
 // (take_action use_object with bonus, which the engine prices through
 // hasFastHands).
-export function fastHandsCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
+export function fastHandsCards(sheet: CharacterSheet, turn: HandTurn, t: T = enT): HandCard[] {
   if (!hasFastHands(sheet)) return [];
   const card: HandCard = {
     id: "basic:use-object:bonus",
     type: "basic",
-    name: "Fast Hands: Use an object",
+    name: t("Fast Hands: Use an object"),
     cost: "bonus",
-    range: "Self",
+    range: t("Self", { context: "table.hand.range.self" }),
     dice: "",
-    roll: "no roll",
-    rules: "Drink, pull, light, throw: say what. Fast Hands: a bonus action.",
+    roll: t("no roll", { context: "table.hand.roll.none" }),
+    rules: `${t("Drink, pull, light, throw: say what.")} ${t("Fast Hands: a bonus action.")}`,
     resource: "",
     condition: "",
     icon: { kind: "action", key: "use-object" },
@@ -359,14 +391,14 @@ export function fastHandsCards(sheet: CharacterSheet, turn: HandTurn): HandCard[
     compose: true,
     intent: { card: "basic", action: "use-object", bonus: true },
   };
-  return [gated(card, standingGate(sheet, turn, "bonus"), costGate("bonus", turn, sheet, "Fast Hands (Use an Object)"))];
+  return [gated(card, standingGate(sheet, turn, "bonus", t), costGate("bonus", turn, sheet, "Fast Hands (Use an Object)", t))];
 }
 
 // Flurry of Blows: 1 ki and the bonus action, after the Attack action, for
 // two unarmed strikes (use_resource Ki, variant "flurry of blows"). Once
 // bought, the strikes are played with the Unarmed strike card, which the
 // engine's spendAttack pays from the flurry.
-export function kiCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
+export function kiCards(sheet: CharacterSheet, turn: HandTurn, t: T = enT): HandCard[] {
   // A ki counter is a monk's (Ki, monk 2), and Flurry of Blows comes with it.
   const ki = sheet.resources.ki;
   if (!ki) {
@@ -377,13 +409,13 @@ export function kiCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const card: HandCard = {
     id: "feature:ki:flurry",
     type: "feature",
-    name: "Flurry of Blows",
+    name: t("Flurry of Blows"),
     cost: "bonus",
-    range: "5 ft",
-    dice: "2 unarmed strikes",
-    roll: "then play Unarmed strike",
-    rules: "After the Attack action: two unarmed strikes as a bonus action.",
-    resource: `Ki ${left}/${ki.max} · 1 ki`,
+    range: t("5 ft"),
+    dice: t("2 unarmed strikes"),
+    roll: t("then play Unarmed strike"),
+    rules: t("After the Attack action: two unarmed strikes as a bonus action."),
+    resource: t("Ki {left}/{max} · 1 ki", { left, max: ki.max }),
     condition: "",
     icon: { kind: "feature", key: "Flurry of Blows", family: "class-monk" },
     target: "none",
@@ -402,13 +434,13 @@ export function kiCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const afterAttack: Gate =
     turn.attacksMade > 0 || bought
       ? null
-      : { reason: "Flurry of Blows follows the Attack action: attack first, then spend the ki.", spent: false };
+      : { reason: t("Flurry of Blows follows the Attack action: attack first, then spend the ki."), spent: false };
   return [
     gated(
       card,
-      standingGate(sheet, turn, "bonus"),
-      left >= 1 ? null : { reason: `${sheet.name} has no ki point left for Flurry of Blows. It comes back after a rest.`, spent: true },
-      costGate("bonus", turn, sheet, "Flurry of Blows"),
+      standingGate(sheet, turn, "bonus", t),
+      left >= 1 ? null : { reason: t("{name} has no ki point left for {feature}. It comes back after a rest.", { name: sheet.name, feature: "Flurry of Blows" }), spent: true },
+      costGate("bonus", turn, sheet, "Flurry of Blows", t),
       afterAttack,
     ),
   ];

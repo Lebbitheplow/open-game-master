@@ -22,12 +22,17 @@ export function storySetupWillRun(input: StorySetupInput): boolean {
   return input.status === "lobby" && input.dmMode !== "human" && input.aiStorySetup && !input.outlineWritten;
 }
 
-// The warning's words, the same in the wizard and the lobby.
-export const STORY_SETUP_WARNING =
-  "AI Story Setup is on, and this campaign has a story arc from your Storyboard. When the adventure begins, Story Setup writes its own premise, opening scene and secret outline. It is given your arc to build from, but its opening can still differ from the one you prepared. Turn it off to begin from your imported story; the AI still narrates.";
+// The warning's words, the same in the wizard and the lobby; the caller binds
+// the language (the tests an English-bound one).
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
-export const STORY_SETUP_WARNING_COMING =
-  "This Storyboard writes the campaign's story arc, and AI Story Setup is on. When the adventure begins, Story Setup writes its own premise, opening scene and secret outline. It is given your arc to build from, but its opening can still differ from the one you prepared. Turn it off to begin from your imported story; the AI still narrates.";
+export function storySetupWarning(t: Translate): string {
+  return t("AI Story Setup is on, and this campaign has a story arc from your Storyboard. When the adventure begins, Story Setup writes its own premise, opening scene and secret outline. It is given your arc to build from, but its opening can still differ from the one you prepared. Turn it off to begin from your imported story; the AI still narrates.");
+}
+
+export function storySetupWarningComing(t: Translate): string {
+  return t("This Storyboard writes the campaign's story arc, and AI Story Setup is on. When the adventure begins, Story Setup writes its own premise, opening scene and secret outline. It is given your arc to build from, but its opening can still differ from the one you prepared. Turn it off to begin from your imported story; the AI still narrates.");
+}
 
 // Where the lobby remembers that a creator chose to keep it on, per table.
 export function storySetupKeptKey(campaignId: string): string {

@@ -16,7 +16,10 @@ import { LoadFailed, PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import { readLoad, readWrite, useLoadStatus } from "@/lib/load-state";
 import { DraftPregensCard } from "@/app/workshop/party/DraftPregens";
 import type { TargetParty } from "@/lib/workshop/kind";
-import { classDisplayName, speciesName } from "@/lib/characters/class-words";
+import { classDisplayNameFor, speciesNameFor } from "@/lib/characters/class-words";
+import { useLocale, useT } from "@/lib/locale";
+import type { Locale } from "@/lib/messages-logic";
+import { translate } from "@/lib/messages-logic";
 
 // The Party system (docs/workshop-parity-audit.md phase 15): the party a
 // workshop is built for, already declared in the pinned bar above, and the
@@ -54,13 +57,19 @@ const faceOf = (character: Pregen) => ({
 });
 
 // "Level 5 Bhain Kwai Paladin (Oath of Devotion)": the species and class by
-// name, as the table's cards read them; the row printed their ids.
-export function describePregen(character: Pick<Pregen, "level" | "race" | "class" | "subclass">): string {
-  const parts = [speciesName(character), classDisplayName(character.class)];
+// name, as the table's cards read them — in the reader's language where the
+// official-name maps carry it; the row printed their ids.
+export function describePregen(
+  character: Pick<Pregen, "level" | "race" | "class" | "subclass">,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+  locale: Locale = "en",
+): string {
+  const parts = [speciesNameFor(character, locale), classDisplayNameFor(character.class, locale)];
   if (character.subclass) {
     parts.push(`(${character.subclass})`);
   }
-  return `Level ${character.level} ${parts.filter(Boolean).join(" ")}`;
+  const say = t ?? ((key: string, vars?: Record<string, string | number>) => translate("en", key, vars));
+  return say("Level {level} {parts}", { level: character.level, parts: parts.filter(Boolean).join(" ") });
 }
 
 export function PartyPanel({
@@ -72,6 +81,8 @@ export function PartyPanel({
   targetParty: TargetParty;
   onChanged: () => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [pregens, setPregens] = useState<Pregen[] | null>(null);
   const [library, setLibrary] = useState<LibraryEntry[]>([]);
   const [picked, setPicked] = useState("");
@@ -86,8 +97,8 @@ export function PartyPanel({
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      readLoad<{ pregens?: Pregen[] }>(fetch(`/api/workshops/${workshopId}/pregens`), "The roster"),
-      readLoad<{ characters?: LibraryEntry[] }>(fetch("/api/characters"), "Your characters"),
+      readLoad<{ pregens?: Pregen[] }>(t, fetch(`/api/workshops/${workshopId}/pregens`), t("The roster")),
+      readLoad<{ characters?: LibraryEntry[] }>(t, fetch("/api/characters"), t("Your characters")),
     ]).then(([roster, shelf]) => {
       if (cancelled) {
         return;
@@ -103,8 +114,7 @@ export function PartyPanel({
     return () => {
       cancelled = true;
     };
-  }, [workshopId, version, settle]);
-
+  }, [ workshopId, version, settle, t ]);
   // POST files a character, DELETE takes it off, PATCH ticks or unticks
   // "Offer to players" (src/lib/db/pregen-offers.ts). All three are safe to
   // send twice, so one that dies on the connection is said (WA-05) and the
@@ -113,13 +123,13 @@ export function PartyPanel({
     setBusy(true);
     setError("");
     try {
-      const sent = await readWrite<{ pregens: Pregen[] }>(
+      const sent = await readWrite<{ pregens: Pregen[] }>(t,
         fetch(`/api/workshops/${workshopId}/pregens`, {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(method === "PATCH" ? { characterId, offered } : { characterId }),
         }),
-        "That did not work.",
+        t("That did not work.", { context: "load.write.fallback" }),
       );
       if (sent.error !== null) {
         setError(sent.error);
@@ -141,16 +151,12 @@ export function PartyPanel({
 
   return (
     <section className="space-y-4">
-      <SectionHead title="The party this is built for" glyph="system-party" level="h3" className="mb-0" />
+      <SectionHead title={t("The party this is built for")} glyph="system-party" level="h3" className="mb-0" />
       <p className="text-sm text-stone-400">
-        Built for {targetParty.size} at level {targetParty.level}; every encounter and odds preview
-        budgets against that. The characters below are pregens: sheets ready for anyone who sits
-        down without one. They ride along in the bundle.
+        {t("Built for {size} at level {level}; every encounter and odds preview budgets against that. The characters below are pregens: sheets ready for anyone who sits down without one. They ride along in the bundle.", { size: targetParty.size, level: targetParty.level })}
       </p>
       <p className="text-xs text-stone-400">
-        Tick Offer to players and anyone joining a table that starts from this workshop can take
-        that pregen, as a copy at the table&apos;s level. One player each per table. A table starts
-        from it when you choose it under Start from, at creation or later in the lobby.
+        {t("Tick Offer to players and anyone joining a table that starts from this workshop can take that pregen, as a copy at the table's level. One player each per table. A table starts from it when you choose it under Start from, at creation or later in the lobby.")}
       </p>
 
       {loadError && (pregens !== null || loaded) ? <LoadFailed error={loadError} onRetry={() => setVersion((current) => current + 1)} /> : null}
@@ -158,7 +164,7 @@ export function PartyPanel({
         <LoadFailed error={loadError} onRetry={() => setVersion((current) => current + 1)} />
       ) : pregens === null ? (
         <div aria-busy="true">
-          <p className="mb-1.5 text-xs text-stone-500">Reading the roster...</p>
+          <p className="mb-1.5 text-xs text-stone-500">{t("Reading the roster...")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="skeleton-block h-20 rounded-xl" />
             <div className="skeleton-block hidden h-20 rounded-xl sm:block" />
@@ -166,7 +172,7 @@ export function PartyPanel({
         </div>
       ) : (
         <>
-        <ListHead head={head} noun={["pregen", "pregens"]} placeholder="Find a pregen" />
+        <ListHead head={head} noun={[t("pregen"), t("pregens")]} placeholder={t("Find a pregen")} />
         <ul className="stagger-up grid gap-2 sm:grid-cols-2" data-tour="party-roster">
           {head.shown.map((character) => {
             const offLevel = character.level !== targetParty.level;
@@ -185,19 +191,19 @@ export function PartyPanel({
                   >
                     {character.name}
                   </Link>
-                  <span className="block text-sm text-stone-400">{describePregen(character)}</span>
+                  <span className="block text-sm text-stone-400">{describePregen(character, t, locale)}</span>
                   <span className="mt-1 flex flex-wrap gap-1">
                     {character.role === "companion" ? (
-                      <span className={cn(chip, "border-stone-700 text-stone-400")}>Companion</span>
+                      <span className={cn(chip, "border-stone-700 text-stone-400")}>{t("Companion")}</span>
                     ) : null}
                     {character.drafted ? (
                       <span className={cn(chip, "border-sky-800 text-sky-200/90")} data-pregen-drafted={character.id}>
-                        Drafted by the AI GM
+                        {t("Drafted by the AI GM")}
                       </span>
                     ) : null}
                     {offLevel ? (
                       <span className={cn(chip, "border-amber-800 text-amber-300/90")}>
-                        Level {character.level}, the party is built for {targetParty.level}
+                        {t("Level {level}, the party is built for {partyLevel}", { level: character.level, partyLevel: targetParty.level })}
                       </span>
                     ) : null}
                   </span>
@@ -213,7 +219,7 @@ export function PartyPanel({
                         onChange={(event) => void change("PATCH", character.id, event.target.checked)}
                         className="size-4 accent-amber-500"
                       />
-                      Offer to players
+                      {t("Offer to players")}
                     </label>
                   ) : null}
                 </span>
@@ -221,8 +227,8 @@ export function PartyPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void change("DELETE", character.id)}
-                  title="Take it off the roster. It stays in your library."
-                  aria-label={`Take ${character.name} off the roster`}
+                  title={t("Take it off the roster. It stays in your library.")}
+                  aria-label={t("Take {name} off the roster", { name: character.name })}
                   className={cn(ui.iconAction, rowIcon, "hover:text-red-300 disabled:opacity-50")}
                 >
                   <X className="size-3.5" />
@@ -231,7 +237,7 @@ export function PartyPanel({
             );
           })}
           {pregens.length === 0 ? (
-            <li className="sm:col-span-2"><EmptyState art="board" title="No pregens yet. Let the AI GM draft some, pick one from your library below, or build one and come back." /></li>
+            <li className="sm:col-span-2"><EmptyState art="board" title={t("No pregens yet. Let the AI GM draft some, pick one from your library below, or build one and come back.")} /></li>
           ) : null}
         </ul>
         </>
@@ -248,18 +254,18 @@ export function PartyPanel({
       />
 
       <div className={cn(ui.card, "space-y-2 p-3")} data-tour="party-add">
-        <SectionHead title="Add to the roster" glyph="tab-characters" className="mb-0" />
+        <SectionHead title={t("Add to the roster")} glyph="tab-characters" className="mb-0" />
         <div className="flex flex-wrap items-center gap-2">
           <span className="w-full min-w-48 sm:w-80">
           <Select
             value={picked}
             onChange={setPicked}
-            label="A character from your library"
-            placeholder="From your library..."
+            label={t("A character from your library")}
+            placeholder={t("From your library...")}
             options={available.map((character) => ({
               value: character.id,
               label: character.name,
-              hint: `${describePregen(character)}${character.workshopId && character.workshopId !== workshopId ? " (in another workshop)" : ""}`,
+              hint: `${describePregen(character, t, locale)}${character.workshopId && character.workshopId !== workshopId ? t(" (in another workshop)") : ""}`,
               icon: character.class ? faceOf(character) : { kind: "glyph" as const, key: "system-party" },
             }))}
           />
@@ -270,16 +276,16 @@ export function PartyPanel({
             onClick={() => void change("POST", picked)}
             className={ui.btnPrimary}
           >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Add it
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} {t("Add it")}
           </button>
           {/* A pregen is a player character, built at the party's level: the
               builder starts there instead of asking. */}
           <Link href={newCharacterHref({ role: "pc", level: targetParty.level, from: "party" })} className={ui.btnSecondary}>
-            Build a new one
+            {t("Build a new one")}
           </Link>
         </div>
         {available.length === 0 && library.length > 0 ? (
-          <p className="reveal text-xs text-stone-500">Every character in your library is already on the roster.</p>
+          <p className="reveal text-xs text-stone-500">{t("Every character in your library is already on the roster.")}</p>
         ) : null}
         {error ? <PanelError>{error}</PanelError> : null}
       </div>

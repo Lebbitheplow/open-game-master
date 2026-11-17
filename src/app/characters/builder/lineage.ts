@@ -298,34 +298,58 @@ const COUNT_WORD: Record<number, string> = { 1: "One", 2: "Two", 3: "Three", 4: 
 export const countWord = (count: number) => COUNT_WORD[count] ?? String(count);
 
 // Everything the lineage leaves to the player, which is what the section
-// under the grid is there to collect.
-export function lineageChoices(entry: LineageEntry): string[] {
+// under the grid is there to collect. `t` reads them in the reader's
+// language (builder.lineage.choices.*); without it the test-pinned English
+// stands.
+export function lineageChoices(entry: LineageEntry, t?: (key: string, vars?: Record<string, string | number>) => string): string[] {
+  const say = (key: string, vars: Record<string, string | number>, english: string) =>
+    typeof t === "function" ? t(key, vars) : english;
   const out: string[] = [];
   if (entry.asiChoice) {
     out.push(
       entry.asiChoice.amounts
         ? `${countWord(entry.asiChoice.count)} abilities to raise, by ${entry.asiChoice.amounts.join(" and ")}`
-        : `${countWord(entry.asiChoice.count)} ${entry.asiChoice.count === 1 ? "ability" : "abilities"} to raise by ${entry.asiChoice.amount}`,
+        : say(
+            `builder.lineage.choices.ability_${entry.asiChoice.count === 1 ? "one" : "other"}`,
+            { count: entry.asiChoice.count, amount: entry.asiChoice.amount },
+            `${countWord(entry.asiChoice.count)} ${entry.asiChoice.count === 1 ? "ability" : "abilities"} to raise by ${entry.asiChoice.amount}`,
+          ),
     );
   }
   if (entry.bonusLanguages) {
     out.push(
-      `${countWord(entry.bonusLanguages)} bonus ${entry.bonusLanguages === 1 ? "language" : "languages"}`,
+      say(
+        `builder.lineage.choices.language_${entry.bonusLanguages === 1 ? "one" : "other"}`,
+        { count: entry.bonusLanguages },
+        `${countWord(entry.bonusLanguages)} bonus ${entry.bonusLanguages === 1 ? "language" : "languages"}`,
+      ),
     );
   }
   if (entry.skillChoice) {
     out.push(
-      `${countWord(entry.skillChoice.count)} skill ${entry.skillChoice.count === 1 ? "proficiency" : "proficiencies"}`,
+      say(
+        `builder.lineage.choices.skill_${entry.skillChoice.count === 1 ? "one" : "other"}`,
+        { count: entry.skillChoice.count },
+        `${countWord(entry.skillChoice.count)} skill ${entry.skillChoice.count === 1 ? "proficiency" : "proficiencies"}`,
+      ),
     );
   }
   if (entry.cantripChoice) {
     out.push(
-      `${countWord(entry.cantripChoice.count)} ${entry.cantripChoice.list} ${entry.cantripChoice.count === 1 ? "cantrip" : "cantrips"}`,
+      say(
+        `builder.lineage.choices.cantrip_${entry.cantripChoice.count === 1 ? "one" : "other"}`,
+        { count: entry.cantripChoice.count, list: entry.cantripChoice.list },
+        `${countWord(entry.cantripChoice.count)} ${entry.cantripChoice.list} ${entry.cantripChoice.count === 1 ? "cantrip" : "cantrips"}`,
+      ),
     );
   }
   if (entry.toolChoice) {
     out.push(
-      `${countWord(entry.toolChoice.count)} ${entry.toolChoice.count === 1 ? "set" : "sets"} of artisan's tools`,
+      say(
+        `builder.lineage.choices.tool_${entry.toolChoice.count === 1 ? "one" : "other"}`,
+        { count: entry.toolChoice.count },
+        `${countWord(entry.toolChoice.count)} ${entry.toolChoice.count === 1 ? "set" : "sets"} of artisan's tools`,
+      ),
     );
   }
   return out;
@@ -339,7 +363,7 @@ export type ParsedTrait = { head: string; body: string | null };
 // feature's name and the line itself is the mechanic; and a bare line, which
 // may name a choice this step collects. A bare line with nothing behind it is
 // a locked row: a name with no chevron.
-export function parseTrait(line: string, entry: LineageEntry): ParsedTrait {
+export function parseTrait(line: string, entry: LineageEntry, t?: (key: string, vars?: Record<string, string | number>) => string): ParsedTrait {
   const text = line.trim();
   const inverted = /^\+/.test(text) || /proficienc(y|ies)[^(]*\(/i.test(text);
   const match = inverted ? null : /^([^(]+?)\s*\((.+)\)$/.exec(text);
@@ -347,32 +371,49 @@ export function parseTrait(line: string, entry: LineageEntry): ParsedTrait {
     const body = match[2].trim();
     return { head: match[1].trim(), body: `${body[0].toUpperCase()}${body.slice(1)}.` };
   }
+  const say = (key: string, vars: Record<string, string | number>, english: string) =>
+    typeof t === "function" ? t(key, vars) : english;
   if (/language/i.test(text) && entry.bonusLanguages) {
     const count = entry.bonusLanguages;
     return {
       head: text,
-      body: `${countWord(count)} more ${count === 1 ? "tongue" : "tongues"} of your choice, asked for on this step.`,
+      body: say(
+        `builder.lineage.trait.language_${count === 1 ? "one" : "other"}`,
+        { count },
+        `${countWord(count)} more ${count === 1 ? "tongue" : "tongues"} of your choice, asked for on this step.`,
+      ),
     };
   }
   if (/cantrip/i.test(text) && entry.cantripChoice) {
     const { count, list } = entry.cantripChoice;
     return {
       head: text,
-      body: `${countWord(count)} ${list} ${count === 1 ? "cantrip" : "cantrips"} of your choice, asked for on this step.`,
+      body: say(
+        `builder.lineage.trait.cantrip_${count === 1 ? "one" : "other"}`,
+        { count, list },
+        `${countWord(count)} ${list} ${count === 1 ? "cantrip" : "cantrips"} of your choice, asked for on this step.`,
+      ),
     };
   }
   if (/skill/i.test(text) && entry.skillChoice) {
     const { count, from } = entry.skillChoice;
-    const among = from?.length ? ` from ${from.map((id) => SRD_SKILLS.find((skill) => skill.id === id)?.name ?? id).join(", ")}` : "";
+    const names = from?.length ? from.map((id) => SRD_SKILLS.find((skill) => skill.id === id)?.name ?? id).join(", ") : "";
+    const among = names
+      ? say(" from {list}", { list: names }, ` from ${names}`)
+      : "";
     return {
       head: text,
-      body: `${countWord(count)} ${count === 1 ? "skill" : "skills"} of your choice${among}, asked for on this step.`,
+      body: say(
+        count === 1 ? "One skill of your choice{among}, asked for on this step." : "{count} skills of your choice{among}, asked for on this step.",
+        { count, among },
+        `${countWord(count)} ${count === 1 ? "skill" : "skills"} of your choice${among}, asked for on this step.`,
+      ),
     };
   }
   if (/tool/i.test(text) && entry.toolChoice) {
     return {
       head: text,
-      body: `One of ${entry.toolChoice.from.join(", ")}, asked for on this step.`,
+      body: say("One of {tools}, asked for on this step.", { tools: entry.toolChoice.from.join(", ") }, `One of ${entry.toolChoice.from.join(", ")}, asked for on this step.`),
     };
   }
   return { head: text, body: null };
@@ -416,7 +457,16 @@ export function slidePosition(
   slide: { name: string; recommended?: boolean },
   index: number,
   total: number,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
 ): string {
+  if (typeof t === "function") {
+    return t("{name}, {index} of {total}{recommended}", {
+      name: slide.name,
+      index: index + 1,
+      total,
+      recommended: slide.recommended ? t(", recommended") : "",
+    });
+  }
   return `${slide.name}, ${index + 1} of ${total}${slide.recommended ? ", recommended" : ""}`;
 }
 

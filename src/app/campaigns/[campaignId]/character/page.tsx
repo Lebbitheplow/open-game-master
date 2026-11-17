@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { useSearchParams } from "next/navigation";
+import { useT } from "@/lib/locale";
 import { Suspense, use, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { PIXEL_ICONS, PixelTile, ui } from "@/lib/ui";
@@ -34,6 +35,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
   // join = first character; edit = rebuild the current one in place;
   // replace = switch to another or a brand-new one.
   const search = useSearchParams();
+  const t = useT();
   const requested = search.get("mode");
   // "Or build a new one" in the lobby comes straight to the builder.
   const startNew = search.get("start") === "new";
@@ -138,7 +140,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
       clearBuilderDraft(builderDraftKey("table", campaignId));
       navigateTo(`/campaigns/${campaignId}`);
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "chooser.errorUnreachable" }));
     } finally {
       setBusy(false);
     }
@@ -174,29 +176,29 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
     <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
       <header className="mb-5">
         <a href={`/campaigns/${campaignId}`} className={cn(ui.btnSmall, "text-xs")}>
-          <ChevronLeft className="size-3.5" /> {inPlay ? "Back to the table" : "Back to the lobby"}
+          <ChevronLeft className="size-3.5" /> {inPlay ? t("Back to the table") : t("Back to the lobby")}
         </a>
         <div className="mt-2 flex items-center gap-3">
           <PixelTile src={PIXEL_ICONS.characters} />
           <div>
             <h1 className="gold-title font-display text-2xl">
               {flow === "edit"
-                ? "Edit your character"
+                ? t("Edit your character")
                 : flow === "replace"
-                  ? "Switch your character"
+                  ? t("Switch your character")
                   : mode === "choose"
-                    ? "Choose your character"
-                    : "Create your character"}
+                    ? t("Choose your character")
+                    : t("Create your character")}
             </h1>
             <p className="text-sm text-stone-400">
               {fallen
-                ? `${fallen.name} has fallen. Your new hero joins at level ${level}, the level ${fallen.name} reached.`
-                : `This campaign starts at level ${level}.`}
-              {flow !== "join" ? " Changing your character clears your ready status." : ""}
+                ? t("{name} has fallen. Your new hero joins at level {level}, the level {name} reached.", { name: fallen.name, level })
+                : t("This campaign starts at level {level}.", { level })}
+              {flow !== "join" ? t(" Changing your character clears your ready status.") : ""}
             </p>
             {flow === "edit" && editCharacter && libraryLevel !== null && libraryLevel !== level ? (
               <p className="reveal mt-1 text-xs text-amber-200">
-                {editCharacter.name} stays level {libraryLevel} in your library; these changes are for this table.
+                {t("{name} stays level {level} in your library; these changes are for this table.", { name: editCharacter.name, level: libraryLevel })}
               </p>
             ) : null}
           </div>
@@ -207,7 +209,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
         <>
           {companionCount > 0 ? (
             <p className="reveal mb-4 text-xs text-stone-400">
-              {companionCount === 1 ? "One ally the GM plays is" : `${companionCount} allies the GM plays are`} not listed here: whoever runs the story brings them in from the party panel, under Build a companion.
+              {t(companionCount === 1 ? "One ally the GM plays is not listed here: whoever runs the story brings them in from the party panel, under Build a companion." : "{count} allies the GM plays are not listed here: whoever runs the story brings them in from the party panel, under Build a companion.", { count: companionCount })}
             </p>
           ) : null}
           {/* Every hero this seat can take, on one screen, each through the
@@ -236,7 +238,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
           <div className="mb-4 flex flex-wrap items-center gap-2">
             {flow !== "edit" ? (
               <button type="button" onClick={() => setMode("choose")} className={ui.btnSmall}>
-                <ChevronLeft className="size-3.5" /> Back to every hero
+                <ChevronLeft className="size-3.5" /> {t("Back to every hero")}
               </button>
             ) : null}
             {/* Building is the long way to a seat: the short one stays a tap
@@ -248,7 +250,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
                 aria-expanded={quick}
                 className={ui.btnSmall}
               >
-                <GameIcon icon={{ kind: "glyph", key: "ui-quickstart" }} size="size-5" /> In a hurry? Take a ready-made hero
+                <GameIcon icon={{ kind: "glyph", key: "ui-quickstart" }} size="size-5" /> {t("In a hurry? Take a ready-made hero")}
               </button>
             ) : null}
           </div>
@@ -266,10 +268,10 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
             initialLevel={flow === "edit" ? editCharacter?.level : undefined}
             submitLabel={
               flow === "edit"
-                ? "Save changes"
+                ? t("Save changes", { context: "chooser.saveChanges" })
                 : flow === "replace"
-                  ? "Replace your character"
-                  : "Join the party"
+                  ? t("Replace your character")
+                  : t("Join the party", { context: "chooser.join" })
             }
             onSubmit={submitNew}
             busy={busy}

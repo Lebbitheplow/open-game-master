@@ -1,5 +1,6 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { byName, textKey } from "@/lib/language/text-logic";
+import { translate } from "@/lib/messages-logic";
 import { createSheet, getSheetById, listSheetsForUser } from "@/lib/db/sheets";
 import { heroDoorOpen } from "@/lib/characters/fallen-logic";
 import { adaptSheetToLevel } from "@/lib/characters/adapt";
@@ -488,8 +489,9 @@ export function admitLibraryCharacter(
 // that gives it a bot owner and the DM's turns; the player-character doors
 // refuse it in these words, so the character's controller never changes
 // quietly (issue 192).
-export function companionRoleRefusal(character: Pick<LibraryCharacter, "name">): string {
-  return `${character.name} is filed as an ally the GM plays, not a player character. Whoever runs the story brings them in from the party panel: Build a companion, then From your library.`;
+export function companionRoleRefusal(character: Pick<LibraryCharacter, "name">, t?: (key: string, vars?: Record<string, string | number>) => string): string {
+  const say = t ?? ((key: string, vars?: Record<string, string | number>) => translate("en", key, vars));
+  return say("{name} is filed as an ally the GM plays, not a player character. Whoever runs the story brings them in from the party panel: Build a companion, then From your library.", { name: character.name });
 }
 
 // The role each of these library rows is filed under, for the snapshot: a

@@ -4,6 +4,8 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ui } from "@/lib/ui";
 import { AdminNarratorQualityCard } from "@/app/admin/AdminNarratorQualityCard";
+import { useT } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { SectionHead } from "@/components/ui/SectionHead";
 import type { AccountUsage, CampaignUsage, UsageTotals } from "@/lib/usage/ledger";
@@ -39,31 +41,35 @@ function bytes(n: number): string {
   return n ? `${n} B` : "0";
 }
 
-function when(at: string | null): string {
-  return at ? new Date(at).toLocaleDateString() : "never";
+function when(t: (key: string) => string, at: string | null): string {
+  return at ? new Date(at).toLocaleDateString() : t("never");
 }
 
 // The five usage columns every row shares: paid tokens, local tokens,
 // pictures, speech, agent turns. "in/out" reads as tokens sent and tokens
 // back; a dash is a clean zero.
-function tokens(input: number, output: number): string {
-  return input || output ? `${compact(input)} in / ${compact(output)} out` : "–";
+function tokens(t: (key: string, vars?: Record<string, string | number>) => string, input: number, output: number): string {
+  return input || output ? t("{in} in / {out} out", { in: compact(input), out: compact(output) }) : "–";
 }
 
-function pictures(paid: number, local: number): string {
+function pictures(t: (key: string, vars?: Record<string, string | number>) => string, paid: number, local: number): string {
   if (!paid && !local) {
     return "–";
   }
-  return [paid ? `${compact(paid)} paid` : "", local ? `${compact(local)} local` : ""].filter(Boolean).join(", ");
+  return [paid ? t("{count} paid", { count: compact(paid) }) : "", local ? t("{count} local", { count: compact(local) }) : ""].filter(Boolean).join(", ");
 }
 
-function speech(totals: UsageTotals): string {
+function speech(t: (key: string, vars?: Record<string, string | number>) => string, totals: UsageTotals): string {
   const parts = [
     totals.paidSpeechChars || totals.localSpeechChars
-      ? `${compact(totals.paidSpeechChars + totals.localSpeechChars)} chars${totals.paidSpeechChars ? ` (${compact(totals.paidSpeechChars)} paid)` : ""}`
+      ? t("{count} chars", {
+          count: compact(totals.paidSpeechChars + totals.localSpeechChars),
+        }) + (totals.paidSpeechChars ? t(" ({count} paid)", { count: compact(totals.paidSpeechChars) }) : "")
       : "",
     totals.paidDictationClips || totals.localDictationClips
-      ? `${compact(totals.paidDictationClips + totals.localDictationClips)} clips${totals.paidDictationClips ? ` (${compact(totals.paidDictationClips)} paid)` : ""}`
+      ? t("{count} clips", {
+          count: compact(totals.paidDictationClips + totals.localDictationClips),
+        }) + (totals.paidDictationClips ? t(" ({count} paid)", { count: compact(totals.paidDictationClips) }) : "")
       : "",
   ].filter(Boolean);
   return parts.length ? parts.join(", ") : "–";
@@ -73,16 +79,17 @@ const th = "px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wid
 const td = "px-2 py-1.5 align-top text-xs text-stone-300 tabular-nums";
 
 function UsageCells({ totals }: { totals: UsageTotals }) {
+  const t = useT();
   return (
     <>
-      <td className={td} title="Tokens on this server's keyed backends and the agent program">
-        {tokens(totals.paidInputTokens, totals.paidOutputTokens)}
+      <td className={td} title={t("Tokens on this server's keyed backends and the agent program")}>
+        {tokens(t, totals.paidInputTokens, totals.paidOutputTokens)}
       </td>
-      <td className={td} title="Tokens on local backends">
-        {tokens(totals.localInputTokens, totals.localOutputTokens)}
+      <td className={td} title={t("Tokens on local backends")}>
+        {tokens(t, totals.localInputTokens, totals.localOutputTokens)}
       </td>
-      <td className={td}>{pictures(totals.paidImages, totals.localImages)}</td>
-      <td className={td}>{speech(totals)}</td>
+      <td className={td}>{pictures(t, totals.paidImages, totals.localImages)}</td>
+      <td className={td}>{speech(t, totals)}</td>
       <td className={td}>{totals.agentTurns || "–"}</td>
     </>
   );
@@ -92,6 +99,7 @@ function UsageCells({ totals }: { totals: UsageTotals }) {
 // (issue #137). Counts come from what each backend reported; nothing here
 // was read out of a prompt or a transcript, and no price is guessed.
 export function AdminUsagePanel() {
+  const t = useT();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -103,7 +111,7 @@ export function AdminUsagePanel() {
       .then(async (response) => {
         const data = (await response.json().catch(() => null)) as (Overview & { error?: string }) | null;
         if (!response.ok || !data) {
-          setError(data?.error || "Could not load usage.");
+          setError(data?.error || t("Could not load usage."));
           return;
         }
         setError("");
@@ -135,22 +143,20 @@ export function AdminUsagePanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-stone-400">
-        Tokens, pictures and speech are counted from what each backend reports. &ldquo;Paid&rdquo; is what ran on this
-        server&rsquo;s key or the agent program; &ldquo;local&rdquo; ran on a backend of your own. No prompt or
-        transcript is kept for this, and no cost is estimated: apply the prices of the backend you pay for.
+        {t("Tokens, pictures and speech are counted from what each backend reports. “Paid” is what ran on this server's key or the agent program; “local” ran on a backend of your own. No prompt or transcript is kept for this, and no cost is estimated: apply the prices of the backend you pay for.")}
       </p>
       {error ? <p role="alert" className="motion-shake text-sm text-red-400">{error}</p> : null}
       <div className="flex items-center gap-2 text-xs text-stone-500">
-        {overview ? <span>As of {new Date(overview.generatedAt).toLocaleTimeString()}</span> : null}
+        {overview ? <span>{t("As of {time}", { time: new Date(overview.generatedAt).toLocaleTimeString() })}</span> : null}
         <button type="button" className={ui.btnSmall} onClick={refresh} disabled={loading}>
-          {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />} Refresh
+          {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />} {t("Refresh", { context: "admin.usage.refresh" })}
         </button>
       </div>
 
       <section className="panel texture-noise rounded-xl p-5">
         <SectionHead
           level="h2"
-          title="Accounts"
+          title={t("Accounts")}
           glyph="tab-party"
           aside={<span className="count-pop tabular-nums">{accounts.length}</span>}
         />
@@ -158,16 +164,16 @@ export function AdminUsagePanel() {
           <table className="w-full min-w-[900px] border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className={th}>Account</th>
-                <th className={th}>Campaigns</th>
-                <th className={th}>Characters</th>
-                <th className={th}>Last active</th>
-                <th className={th}>Storage</th>
-                <th className={th}>Paid tokens</th>
-                <th className={th}>Local tokens</th>
-                <th className={th}>Pictures</th>
-                <th className={th}>Speech</th>
-                <th className={th}>Agent turns</th>
+                <th className={th}>{t("Account")}</th>
+                <th className={th}>{t("Campaigns")}</th>
+                <th className={th}>{t("Characters")}</th>
+                <th className={th}>{t("Last active")}</th>
+                <th className={th}>{t("Storage", { context: "admin.usage.th.storage" })}</th>
+                <th className={th}>{t("Paid tokens")}</th>
+                <th className={th}>{t("Local tokens")}</th>
+                <th className={th}>{t("Pictures")}</th>
+                <th className={th}>{t("Speech")}</th>
+                <th className={th}>{t("Agent turns")}</th>
               </tr>
             </thead>
             <tbody>
@@ -175,13 +181,13 @@ export function AdminUsagePanel() {
                 <tr key={account.userId} className="border-t border-stone-800/60">
                   <td className={td}>
                     <span className="text-stone-100">{account.username}</span>
-                    {account.isAdmin ? <span className="ml-1 text-[10px] uppercase text-amber-300/80">admin</span> : null}
+                    {account.isAdmin ? <span className="ml-1 text-[10px] uppercase text-amber-300/80">{t("admin")}</span> : null}
                   </td>
-                  <td className={td} title="owned / led / joined">
+                  <td className={td} title={t("owned / led / joined")}>
                     {account.campaignsOwned} / {account.campaignsLed} / {account.campaignsJoined}
                   </td>
                   <td className={td}>{account.libraryCharacters}</td>
-                  <td className={td}>{when(account.lastActivityAt)}</td>
+                  <td className={td}>{when(t, account.lastActivityAt)}</td>
                   <td className={td}>{bytes(account.storageBytes)}</td>
                   <UsageCells totals={account} />
                 </tr>
@@ -190,15 +196,14 @@ export function AdminUsagePanel() {
           </table>
         </div>
         <p className="mt-2 text-[11px] text-stone-500">
-          Campaigns: owned / led / joined. What a campaign spends is counted for its party lead, as the paid AI setting
-          decides by the lead; storage is the account&rsquo;s own characters plus the campaigns it owns.
+          {t("Campaigns: owned / led / joined. What a campaign spends is counted for its party lead, as the paid AI setting decides by the lead; storage is the account's own characters plus the campaigns it owns.")}
         </p>
       </section>
 
       <section className="panel texture-noise rounded-xl p-5">
         <SectionHead
           level="h2"
-          title="Campaigns"
+          title={t("Campaigns")}
           glyph="tab-campaigns"
           aside={<span className="count-pop tabular-nums">{campaigns.length}</span>}
         />
@@ -206,19 +211,19 @@ export function AdminUsagePanel() {
           <table className="w-full min-w-[1000px] border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className={th}>Campaign</th>
-                <th className={th}>Lead</th>
-                <th className={th}>Members</th>
-                <th className={th}>Characters</th>
-                <th className={th}>GM turns</th>
-                <th className={th}>Active days</th>
-                <th className={th}>Last activity</th>
-                <th className={th}>Storage</th>
-                <th className={th}>Paid tokens</th>
-                <th className={th}>Local tokens</th>
-                <th className={th}>Pictures</th>
-                <th className={th}>Speech</th>
-                <th className={th}>Agent turns</th>
+                <th className={th}>{t("Campaign")}</th>
+                <th className={th}>{t("Lead", { context: "admin.usage.th.lead" })}</th>
+                <th className={th}>{t("Members")}</th>
+                <th className={th}>{t("Characters")}</th>
+                <th className={th}>{t("GM turns")}</th>
+                <th className={th}>{t("Active days")}</th>
+                <th className={th}>{t("Last activity")}</th>
+                <th className={th}>{t("Storage", { context: "admin.usage.th.storage" })}</th>
+                <th className={th}>{t("Paid tokens")}</th>
+                <th className={th}>{t("Local tokens")}</th>
+                <th className={th}>{t("Pictures")}</th>
+                <th className={th}>{t("Speech")}</th>
+                <th className={th}>{t("Agent turns")}</th>
               </tr>
             </thead>
             <tbody>
@@ -227,7 +232,11 @@ export function AdminUsagePanel() {
                   <td className={td}>
                     <span className="text-stone-100">{campaign.title}</span>
                     <span className="ml-1 text-[10px] uppercase text-stone-500">
-                      {campaign.kind === "workshop" ? "workshop" : campaign.kind === "playtest" ? "test fight" : campaign.status}
+                      {campaign.kind === "workshop"
+                        ? t("workshop")
+                        : campaign.kind === "playtest"
+                          ? t("test fight")
+                          : campaign.status}
                     </span>
                   </td>
                   <td className={td}>{campaign.leadUsername || "–"}</td>
@@ -235,7 +244,7 @@ export function AdminUsagePanel() {
                   <td className={td}>{campaign.characters}</td>
                   <td className={td}>{campaign.turns || "–"}</td>
                   <td className={td}>{campaign.activeDays || "–"}</td>
-                  <td className={td}>{when(campaign.lastActivityAt)}</td>
+                  <td className={td}>{when(t, campaign.lastActivityAt)}</td>
                   <td className={td}>{bytes(campaign.storageBytes)}</td>
                   <UsageCells totals={campaign} />
                 </tr>
@@ -244,8 +253,7 @@ export function AdminUsagePanel() {
           </table>
         </div>
         <p className="mt-2 text-[11px] text-stone-500">
-          Active days are days with at least one GM turn, which is a count of play rather than hours. Storage is every
-          picture and file the campaign&rsquo;s rows name, with the resized copies beside each.
+          {t("Active days are days with at least one GM turn, which is a count of play rather than hours. Storage is every picture and file the campaign's rows name, with the resized copies beside each.")}
         </p>
       </section>
 
@@ -253,7 +261,7 @@ export function AdminUsagePanel() {
         <section className="panel texture-noise rounded-xl p-5" data-testid="model-calls">
           <SectionHead
             level="h2"
-            title="Model calls, last 7 days"
+            title={t("Model calls, last 7 days")}
             glyph="tab-context"
             aside={<span className="count-pop tabular-nums">{overview.modelCalls.reduce((sum, row) => sum + row.calls, 0)}</span>}
           />
@@ -261,17 +269,17 @@ export function AdminUsagePanel() {
             <table className="w-full min-w-[900px] border-separate border-spacing-0">
               <thead>
                 <tr>
-                  <th className={th}>For</th>
-                  <th className={th}>Calls</th>
-                  <th className={th}>Failed</th>
-                  <th className={th}>Fell back</th>
-                  <th className={th}>Median</th>
-                  <th className={th}>95th</th>
-                  <th className={th}>First words</th>
-                  <th className={th}>Input</th>
-                  <th className={th}>Cached</th>
-                  <th className={th}>Output</th>
-                  <th className={th}>Reasoning</th>
+                  <th className={th}>{t("For")}</th>
+                  <th className={th}>{t("Calls")}</th>
+                  <th className={th}>{t("Failed", { context: "admin.usage.th.failed" })}</th>
+                  <th className={th}>{t("Fell back")}</th>
+                  <th className={th}>{t("Median")}</th>
+                  <th className={th}>{t("95th")}</th>
+                  <th className={th}>{t("First words")}</th>
+                  <th className={th}>{t("Input")}</th>
+                  <th className={th}>{t("Cached")}</th>
+                  <th className={th}>{t("Output")}</th>
+                  <th className={th}>{t("Reasoning")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,10 +304,7 @@ export function AdminUsagePanel() {
             </table>
           </div>
           <p className="mt-2 text-[11px] text-stone-500">
-            One row per kind of call: the GM&rsquo;s turns, the reader, summaries, Ask and the rest. Times are medians and
-            the 95th percentile; input, output and reasoning are averages of what the backends reported; cached is the
-            share of input a backend said it served from its prompt cache, where it says. A dash is a figure no backend
-            reported. Kept 30 days, with no prompt or reply text.
+            {t("One row per kind of call: the GM's turns, the reader, summaries, Ask and the rest. Times are medians and the 95th percentile; input, output and reasoning are averages of what the backends reported; cached is the share of input a backend said it served from its prompt cache, where it says. A dash is a figure no backend reported. Kept 30 days, with no prompt or reply text.")}
           </p>
         </section>
       ) : null}

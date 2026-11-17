@@ -24,6 +24,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { srdNameFor } from "@/lib/dm/item-logic";
 import { withoutBonus } from "@/lib/srd/item-row";
 import { bundledClassRows } from "@/lib/workshop/class-catalog";
+import { bookLocaleOf, rulebookPage } from "@/lib/rulebook/book";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -170,9 +171,20 @@ export async function GET(
         includeSubraces: url.searchParams.get("subraces") !== "0",
       });
       break;
-    case "classes":
-      results = listClasses(base);
+    case "classes": {
+      const rows = listClasses(base);
+      if (bookLocaleOf(request) === "fr") {
+        results = rows.map((entry) => {
+          const fr = rulebookPage(entry.slug, "fr");
+          if (!fr?.page.md) return entry;
+          const data = typeof entry.data === "object" && entry.data !== null ? { ...(entry.data as Record<string, unknown>), desc: fr.page.md } : entry.data;
+          return { ...entry, data };
+        });
+      } else {
+        results = rows;
+      }
       break;
+    }
     case "archetypes": {
       const classSlug = url.searchParams.get("class") ?? "";
       results = classSlug ? listArchetypes(classSlug, base) : [];

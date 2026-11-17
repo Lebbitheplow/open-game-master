@@ -7,6 +7,10 @@
 // Until a projection carries `intents`, the board draws none.
 //
 // Pure: no DOM, no React. scripts/test-board-intent.mjs drives it.
+import { translate } from "@/lib/messages-logic";
+
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+const enT: Translator = (key, vars) => translate("en", key, vars);
 
 export type IntentSource = "declared" | "likely";
 
@@ -65,10 +69,17 @@ export function visibleIntents(
 }
 
 // "Hobgoblin Warlord plans to Longsword Ysolde", hedged when it is a guess.
-export function intentSentence(intent: TokenIntent, actorName: string, targetName?: string | null): string {
-  const hedge = intent.source === "likely" ? "will likely" : "plans to";
-  const tail = targetName ? ` ${targetName}` : "";
-  return `${actorName} ${hedge} ${intent.verb}${tail}`;
+// The frame is keyed (table.hand.intent.*): the monster's and the attack's
+// names ride verbatim, as the aria reads them to the table.
+export function intentSentence(intent: TokenIntent, actorName: string, targetName?: string | null, t: Translator = enT): string {
+  const key = targetName
+    ? intent.source === "likely"
+      ? "{name} will likely {attack} {who}"
+      : "{name} plans to {attack} {who}"
+    : intent.source === "likely"
+      ? "{name} will likely {attack}"
+      : "{name} plans to {attack}";
+  return t(key, { name: actorName, attack: intent.verb, who: targetName ?? "" });
 }
 
 export type ArcScale = { x: number; y: number; size: number; tone: string; delay: number };

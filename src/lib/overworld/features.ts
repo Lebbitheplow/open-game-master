@@ -1,5 +1,10 @@
 import type { XY } from "@/lib/overworld/logic";
 
+// The translator callers pass (the agoLabel pattern): the size names a UI
+// shows come out in the interface's language, while the records below stay
+// English for the protocol prose (describeFeatures feeds the DM's prompt).
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 // What is drawn OVER the region map: roads, rivers and borders as lists of
 // tile points, and words written across a stretch of it. Plus the sizes a
 // map may be rolled at. See docs/workshop-parity-audit.md phase 15.
@@ -60,6 +65,7 @@ export const OVERWORLD_SIZES = [
   { id: "vast", label: "Vast", width: 192, height: 144 },
 ] as const;
 
+export type OverworldSizeId = (typeof OVERWORLD_SIZES)[number]["id"];
 export type OverworldSize = { width: number; height: number };
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -79,11 +85,24 @@ export function normalizeSize(raw: unknown, fallback: OverworldSize): OverworldS
   };
 }
 
-export function sizeLabel(size: OverworldSize): string {
+// A size's spoken name, read in the interface's language at render; the
+// `label` field above stays the English source for the protocol prose.
+export function sizeLabelKey(id: OverworldSizeId): string {
+  return `overworld.size.${id}`;
+}
+
+export function sizeLabel(t: T, size: OverworldSize): string {
   const preset = OVERWORLD_SIZES.find(
     (entry) => entry.width === size.width && entry.height === size.height,
   );
-  return preset ? `${preset.label} (${size.width} by ${size.height})` : `${size.width} by ${size.height}`;
+  if (!preset) {
+    return t("{width} by {height}", { width: size.width, height: size.height });
+  }
+  return t("{label} ({width} by {height})", {
+    label: t(sizeLabelKey(preset.id)),
+    width: size.width,
+    height: size.height,
+  });
 }
 
 function newId(): string {

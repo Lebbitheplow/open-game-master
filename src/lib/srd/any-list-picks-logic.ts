@@ -247,33 +247,42 @@ export function builderAnyListGroup(input: {
 // Why a spell in the group cannot be picked now, or null when it can: the
 // group's picks are all made, or the count the pick also takes a place in
 // is full. `short` is the tile's line, `long` the note a tap shows.
-export function anyListPickRefusal(input: {
-  group: AnyListGroup;
-  // The group's picks that still fit.
-  picked: number;
-  cantrip: boolean;
-  // Room the class's own counts still have after their picks: new cantrips
-  // (or cantrips known in the builder), and spells known (the builder).
-  cantripsOpen: number;
-  spellsOpen?: number;
-  name: string;
-}): { short: string; long: string } | null {
+export function anyListPickRefusal(
+  input: {
+    group: AnyListGroup;
+    // The group's picks that still fit.
+    picked: number;
+    cantrip: boolean;
+    // Room the class's own counts still have after their picks: new cantrips
+    // (or cantrips known in the builder), and spells known (the builder).
+    cantripsOpen: number;
+    spellsOpen?: number;
+    name: string;
+  },
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): { short: string; long: string } | null {
   if (input.picked >= input.group.slots) {
     return {
-      short: "All chosen",
-      long: `That is every ${input.group.feature} pick. Untick one to choose ${input.name}.`,
+      short: t ? t("All chosen") : "All chosen",
+      long: t
+        ? t("That is every {feature} pick. Untick one to choose {name}.", { feature: input.group.feature, name: input.name })
+        : `That is every ${input.group.feature} pick. Untick one to choose ${input.name}.`,
     };
   }
   if (input.cantrip && input.group.sharesCantrips && input.cantripsOpen <= 0) {
     return {
-      short: "Cantrips full",
-      long: `A cantrip chosen here also takes one of your cantrips, and they are all chosen. Untick one to choose ${input.name}.`,
+      short: t ? t("Cantrips full", { context: "sheet.anyList.cantripsFull" }) : "Cantrips full",
+      long: t
+        ? t("A cantrip chosen here also takes one of your cantrips, and they are all chosen. Untick one to choose {name}.", { name: input.name })
+        : `A cantrip chosen here also takes one of your cantrips, and they are all chosen. Untick one to choose ${input.name}.`,
     };
   }
   if (!input.cantrip && input.group.sharesSpells && (input.spellsOpen ?? 0) <= 0) {
     return {
-      short: "Known spells full",
-      long: `A spell chosen here also takes one of your spells known, and they are all chosen. Untick one above to choose ${input.name}.`,
+      short: t ? t("Known spells full", { context: "sheet.anyList.spellsFull" }) : "Known spells full",
+      long: t
+        ? t("A spell chosen here also takes one of your spells known, and they are all chosen. Untick one above to choose {name}.", { name: input.name })
+        : `A spell chosen here also takes one of your spells known, and they are all chosen. Untick one above to choose ${input.name}.`,
     };
   }
   return null;

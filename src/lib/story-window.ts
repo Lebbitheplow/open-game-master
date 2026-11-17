@@ -28,6 +28,10 @@
 // Round thousands, as the model catalog counts them, so a model sold as
 // "24K" (24,000 tokens) is not told it is short of 24K; the llama-server
 // commands the docs give (-c 24576, 40960, 49152) clear each one.
+import { translate } from "./messages-logic.ts";
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
 export const MIN_NARRATION_WINDOW = 24_000;
 export const MIN_COMBAT_WINDOW = 40_000;
 export const RECOMMENDED_WINDOW = 48_000;
@@ -44,10 +48,16 @@ export function windowLabel(tokens: number): string {
   return `${Math.round(tokens / (tokens % 1_000 !== 0 && tokens % 1_024 === 0 ? 1_024 : 1_000))}K`;
 }
 
-// "A 16K window", "An 8K window".
-export function aWindow(tokens: number): string {
+// "A 16K window", "An 8K window" — and "Une fenêtre de 16K" in French,
+// where no article changes before a digit. English keeps its two forms;
+// the size's own digits decide which.
+export function aWindow(t: T, tokens: number): string;
+export function aWindow(tokens: number): string;
+export function aWindow(tOrTokens: T | number, maybeTokens?: number): string {
+  const t = typeof tOrTokens === "function" ? tOrTokens : enT;
+  const tokens = typeof tOrTokens === "number" ? tOrTokens : (maybeTokens ?? 0);
   const size = windowLabel(tokens);
-  return `${/^(8|11|18)/.test(size) ? "An" : "A"} ${size}`;
+  return t(/^(8|11|18)/.test(size) ? "An {size}" : "A {size}", { size });
 }
 
 // The value to start llama-server with (-c) for at least this many tokens:
@@ -58,31 +68,58 @@ export function windowFlag(tokens: number): number {
   return tokens % 1_024 === 0 ? tokens : Math.ceil(tokens / 1_000) * 1_024;
 }
 
-// The one sentence every surface uses for the requirement itself.
-export const STORY_WINDOW_NEEDS = `The storyteller needs a context window of at least ${windowLabel(MIN_NARRATION_WINDOW)} tokens to narrate and ${windowLabel(MIN_COMBAT_WINDOW)} to run fights; ${windowLabel(RECOMMENDED_WINDOW)} or more is recommended.`;
+// The window sizes the requirement sentence quotes, from the constants.
+const needsVars = () => ({
+  min: windowLabel(MIN_NARRATION_WINDOW),
+  combat: windowLabel(MIN_COMBAT_WINDOW),
+  recommended: windowLabel(RECOMMENDED_WINDOW),
+});
+
+// English-bound, for the const the docs and reports quote.
+const enT: T = (key, vars) => translate("en", key, vars);
+
+// The one sentence every surface uses for the requirement itself, English
+// by source: the README and the guides quote it, and the report and the
+// request fitter's refusals carry it to places no table language reaches.
+export const STORY_WINDOW_NEEDS = enT("The storyteller needs a context window of at least {min} tokens to narrate and {combat} to run fights; {recommended} or more is recommended.", needsVars());
+
+// The same sentence in the reader's language: the surfaces that show it
+// pass their own translator, as storyWindowVerdict does. (STORY_WINDOW_NEEDS
+// stays the docs' and reports' pinned English.)
+export function storyNeeds(t: T): string {
+  return t("The storyteller needs a context window of at least {min} tokens to narrate and {combat} to run fights; {recommended} or more is recommended.", needsVars());
+}
 
 export type StoryWindowLevel = "short" | "no-fights" | "tight" | "ok";
 
 // What a table can do in a window, worded for the admin choosing a model.
 // Empty text when the window is enough for everything.
-export function storyWindowVerdict(tokens: number): { level: StoryWindowLevel; text: string } {
-  const size = aWindow(tokens);
+export function storyWindowVerdict(t: T, tokens: number): { level: StoryWindowLevel; text: string };
+export function storyWindowVerdict(tokens: number): { level: StoryWindowLevel; text: string };
+export function storyWindowVerdict(tOrTokens: T | number, maybeTokens?: number): { level: StoryWindowLevel; text: string } {
+  const t = typeof tOrTokens === "function" ? tOrTokens : enT;
+  const tokens = typeof tOrTokens === "number" ? tOrTokens : (maybeTokens ?? 0);
+  const size = aWindow(t, tokens);
   if (tokens < MIN_NARRATION_WINDOW) {
     return {
       level: "short",
-      text: `${size} window is too small to narrate: the GM's instructions and tools leave no room for the story. ${STORY_WINDOW_NEEDS}`,
+      text: t("{size} window is too small to narrate: the GM's instructions and tools leave no room for the story. {needs}", { size, needs: t("The storyteller needs a context window of at least {min} tokens to narrate and {combat} to run fights; {recommended} or more is recommended.", needsVars()) }),
     };
   }
   if (tokens < MIN_COMBAT_WINDOW) {
     return {
       level: "no-fights",
-      text: `${size} window narrates and explores, but fights need ${windowLabel(MIN_COMBAT_WINDOW)}: below that a fight turn can be refused for room. ${windowLabel(RECOMMENDED_WINDOW)} or more is recommended.`,
+      text: t("{size} window narrates and explores, but fights need {combat}: below that a fight turn can be refused for room. {recommended} or more is recommended.", {
+        size,
+        combat: windowLabel(MIN_COMBAT_WINDOW),
+        recommended: windowLabel(RECOMMENDED_WINDOW),
+      }),
     };
   }
   if (tokens < RECOMMENDED_WINDOW) {
     return {
       level: "tight",
-      text: `${size} window plays, fights included, but keeps only the last few turns in view; ${windowLabel(RECOMMENDED_WINDOW)} or more is recommended.`,
+      text: t("{size} window plays, fights included, but keeps only the last few turns in view; {recommended} or more is recommended.", { size, recommended: windowLabel(RECOMMENDED_WINDOW) }),
     };
   }
   return { level: "ok", text: "" };

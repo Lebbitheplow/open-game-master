@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent
 import { cn } from "@/lib/cn";
 import { InfoDialog, type ContentRef } from "@/components/ui/InfoDialog";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 import { OWNS_ESCAPE } from "@/lib/owned-escape";
 
 export type PickerOption = {
@@ -105,6 +106,7 @@ export function OptionList({
   listRef?: Ref<HTMLDivElement>;
 }) {
   const options = groups.flatMap((group) => group.options);
+  const t = useT();
   const anyDetails = options.some(hasDetails);
   const hintId = `${id}-hint`;
   // Each group's first index in the flat list the keys move through.
@@ -176,9 +178,9 @@ export function OptionList({
                         {/* A star, not a word: these rows sit in half-width
                             columns, and the group heading says the rest. */}
                         {group.recommended ? (
-                          <span className="shrink-0 text-amber-300" title="Recommended for this setting">
+                          <span className="shrink-0 text-amber-300" title={t("Recommended for this setting")}>
                             <Star className="size-3 fill-current" aria-hidden="true" />
-                            <span className="sr-only">Recommended for this setting</span>
+                            <span className="sr-only">{t("Recommended for this setting")}</span>
                           </span>
                         ) : null}
                       </span>
@@ -193,7 +195,7 @@ export function OptionList({
                       <span
                         aria-hidden="true"
                         data-details
-                        title={`What is ${option.name}?`}
+                        title={t("What is {label}?", { label: option.name })}
                         onClick={(event: ReactMouseEvent) => {
                           event.preventDefault();
                           event.stopPropagation();
@@ -215,7 +217,7 @@ export function OptionList({
         // Read with the list, and shown while the keyboard drives it, so
         // the details key is no secret; a mouse user sees no new text.
         <p id={hintId} className={keyboard ? "mt-1 px-1 text-sm text-stone-500" : "sr-only"}>
-          Press {DETAILS_KEY} for details on the highlighted option.
+          {t("Press {key} for details on the highlighted option.", { key: DETAILS_KEY })}
         </p>
       ) : null}
     </>
@@ -245,7 +247,7 @@ export default function OptionPicker({
   value,
   groups,
   onChange,
-  placeholder = "Choose...",
+  placeholder,
   className,
   labelledBy,
 }: {
@@ -257,6 +259,7 @@ export default function OptionPicker({
   // The id of the field caption that names this picker.
   labelledBy?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [keyboard, setKeyboard] = useState(false);
@@ -405,7 +408,7 @@ export default function OptionPicker({
         className={cn(className, "flex items-center justify-between gap-2 text-left")}
       >
         <span id={valueId} className={cn("truncate", !selected?.name && "text-stone-500")}>
-          {selected?.name || placeholder}
+          {selected?.name || placeholder || t("Choose...")}
         </span>
         <ChevronDown className="size-4 shrink-0 text-stone-500" />
       </button>

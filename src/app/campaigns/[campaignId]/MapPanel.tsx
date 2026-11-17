@@ -6,6 +6,7 @@ import { returnFocus } from "@/components/ui/return-focus";
 import { ImageOff, ImagePlus, Loader2, RefreshCw, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT, useTp } from "@/lib/locale";
 import { nameWithin, placeTree } from "@/lib/overworld/places";
 import { encodeImageForUpload } from "@/lib/image-encode";
 import { variantUrl } from "@/lib/image-variant-url";
@@ -60,6 +61,8 @@ export function MapPanel({
   inserts?: { speakers: Speaker[]; cast: CastMember[]; messageId: string } | null;
 }) {
   const current = locations.find((location) => location.isCurrent) ?? null;
+  const t = useT();
+  const tp = useTp();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [populating, setPopulating] = useState(false);
   const [populateNote, setPopulateNote] = useState("");
@@ -72,7 +75,7 @@ export function MapPanel({
     try {
       const response = await fetch(`/api/campaigns/${campaignId}/locations/${locationId}/populate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await response.json().catch(() => ({}));
-      setPopulateNote(response.ok ? `${data.npcs} people and ${data.shops} shops now live here. Hook: ${data.hook?.title ?? ""}` : String(data.error ?? "Could not populate that place."));
+      setPopulateNote(response.ok ? t("{npcs} people and {shops} shops now live here. Hook: {title}", { npcs: data.npcs, shops: data.shops, title: data.hook?.title ?? "" }) : String(data.error ?? t("Could not populate that place.")));
     } finally {
       setPopulating(false);
     }
@@ -141,7 +144,7 @@ export function MapPanel({
       });
       const payload = await uploaded.json().catch(() => ({}));
       if (!uploaded.ok) {
-        setRegenerateError(payload.error || "That image would not upload.");
+        setRegenerateError(payload.error || t("That image would not upload.", { context: "table.map.error.upload" }));
         return;
       }
       const response = await fetch(`/api/campaigns/${campaignId}/locations/${shown.id}/map`, {
@@ -151,10 +154,10 @@ export function MapPanel({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setRegenerateError(data.error ?? "Could not set the map.");
+        setRegenerateError(data.error ?? t("Could not set the map."));
       }
     } catch {
-      setRegenerateError("That image would not upload.");
+      setRegenerateError(t("That image would not upload.", { context: "table.map.error.upload" }));
     } finally {
       setUploading(false);
     }
@@ -172,10 +175,10 @@ export function MapPanel({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setRegenerateError(data.error ?? "Could not queue the redraw.");
+        setRegenerateError(data.error ?? t("Could not queue the redraw."));
       }
     } catch {
-      setRegenerateError("Could not reach the server.");
+      setRegenerateError(t("Could not reach the server.", { context: "table.ask.unreachable" }));
     } finally {
       setRegenerating(false);
     }
@@ -194,16 +197,16 @@ export function MapPanel({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setRegenerateError(data.error ?? "Could not clear the map.");
+        setRegenerateError(data.error ?? t("Could not clear the map."));
       }
     } catch {
-      setRegenerateError("Could not reach the server.");
+      setRegenerateError(t("Could not reach the server.", { context: "table.ask.unreachable" }));
     }
   }
 
   if (!locations.length) {
     return (
-      <EmptyState size="sm" art="map" title={canPaint ? "No areas charted yet. Maps appear as the party explores." : "No areas charted yet. Areas appear as the party explores, and the GM can upload a map for each."} />
+      <EmptyState size="sm" art="map" title={canPaint ? t("No areas charted yet. Maps appear as the party explores.") : t("No areas charted yet. Areas appear as the party explores, and the GM can upload a map for each.")} />
     );
   }
 
@@ -211,14 +214,14 @@ export function MapPanel({
   const mapItems: ContextMenuItem[] =
     shown && steersStory
       ? [
-          { id: "upload", label: shown.mapImage ? "Replace map with your own picture" : "Upload a map", glyph: "ui-upload", disabled: uploading || regenerating, onSelect: () => fileRef.current?.click() },
-          ...(canPaint ? [{ id: "redraw", label: "Redraw this map", glyph: "ui-paint", disabled: regenerating || uploading, onSelect: () => void regenerate() }] : []),
-          ...(shown.mapImage ? [{ id: "clear", label: "Use the placeholder instead", glyph: "ui-placeholder", disabled: uploading || regenerating, onSelect: () => void clearToPlaceholder() }] : []),
-          { id: "populate", label: "Populate", glyph: "system-party", separated: true, disabled: populating, onSelect: () => void populate(shown.id) },
-          { id: "part-of", label: parentOfShown ? "Part of another place" : "Part of a bigger place", glyph: "system-region", onSelect: () => setFilingId(shown.id) },
+          { id: "upload", label: shown.mapImage ? t("Replace map with your own picture") : t("Upload a map"), glyph: "ui-upload", disabled: uploading || regenerating, onSelect: () => fileRef.current?.click() },
+          ...(canPaint ? [{ id: "redraw", label: t("Redraw this map"), glyph: "ui-paint", disabled: regenerating || uploading, onSelect: () => void regenerate() }] : []),
+          ...(shown.mapImage ? [{ id: "clear", label: t("Use the placeholder instead"), glyph: "ui-placeholder", disabled: uploading || regenerating, onSelect: () => void clearToPlaceholder() }] : []),
+          { id: "populate", label: t("Populate"), glyph: "system-party", separated: true, disabled: populating, onSelect: () => void populate(shown.id) },
+          { id: "part-of", label: parentOfShown ? t("Part of another place") : t("Part of a bigger place"), glyph: "system-region", onSelect: () => setFilingId(shown.id) },
         ]
       : shown?.mapImage
-        ? [{ id: "enlarge", label: "Enlarge the map", glyph: "ui-zoom", onSelect: () => setEnlarged(true) }]
+        ? [{ id: "enlarge", label: t("Enlarge the map"), glyph: "ui-zoom", onSelect: () => setEnlarged(true) }]
         : [];
 
   return (
@@ -231,7 +234,7 @@ export function MapPanel({
                 {shown.name}
                 {shown.isCurrent ? (
                   <span className="ml-1.5 rounded-full border border-emerald-500/40 bg-emerald-950 px-1.5 py-0.5 align-middle font-sans text-[10px] normal-case tracking-normal text-emerald-300">
-                    here
+                    {t("here")}
                   </span>
                 ) : null}
               </>
@@ -260,14 +263,14 @@ export function MapPanel({
                     onClick={() => fileRef.current?.click()}
                     disabled={uploading || regenerating}
                     busy={uploading}
-                    title={shown.mapImage ? "Replace map with your own picture" : "Upload a map"}
-                    aria-label={shown.mapImage ? "Replace map" : "Upload a map"}
+                    title={shown.mapImage ? t("Replace map with your own picture") : t("Upload a map")}
+                    aria-label={shown.mapImage ? t("Replace map") : t("Upload a map")}
                     className="disabled:opacity-50"
                   >
                     {uploading ? null : <ImagePlus className="size-3.5" />}
                   </KitButton>
                   {canPaint ? (
-                    <KitButton tone="icon" always onClick={regenerate} disabled={regenerating || uploading} busy={regenerating} title="Redraw this map" aria-label="Redraw this map" className="disabled:opacity-50">
+                    <KitButton tone="icon" always onClick={regenerate} disabled={regenerating || uploading} busy={regenerating} title={t("Redraw this map")} aria-label={t("Redraw this map")} className="disabled:opacity-50">
                       {regenerating ? null : <RefreshCw className="size-3.5" />}
                     </KitButton>
                   ) : null}
@@ -277,8 +280,8 @@ export function MapPanel({
                       always
                       onClick={() => void clearToPlaceholder()}
                       disabled={uploading || regenerating}
-                      title="Take the map away and show the stand-in for this kind of place"
-                      aria-label="Use the placeholder instead"
+                      title={t("Take the map away and show the stand-in for this kind of place")}
+                      aria-label={t("Use the placeholder instead")}
                       className="disabled:opacity-50"
                     >
                       <ImageOff className="size-3.5" />
@@ -291,7 +294,7 @@ export function MapPanel({
           />
           {parentOfShown ? (
             <p className="-mt-1 mb-1.5 text-xs text-stone-500">
-              Part of{" "}
+              {t("Part of")}{" "}
               <button
                 type="button"
                 onClick={() => setSelectedId(parentOfShown.id)}
@@ -307,7 +310,7 @@ export function MapPanel({
             <button
               type="button"
               onClick={() => setEnlarged(true)}
-              aria-label={`Enlarge the map of ${shown.name}`}
+              aria-label={t("Enlarge the map of {name}", { name: shown.name })}
               className="panel motion-card relative block w-full overflow-hidden rounded-lg"
             >
               {/* The slow drift and the sky's tint over the scene art: the
@@ -315,7 +318,7 @@ export function MapPanel({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={variantUrl(shown.mapImage.url, 1024)}
-                alt={`Map of ${shown.name}`}
+                alt={t("Map of {name}", { name: shown.name })}
                 loading="lazy"
                 decoding="async"
                 className="ken-burns w-full"
@@ -327,8 +330,8 @@ export function MapPanel({
             <div role="status" className="skeleton-block flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-lg text-xs text-stone-400">
               <Loader2 className="size-4 animate-spin text-amber-400" />
               {mediaStatus[shown.id].state === "queued"
-                ? "Waiting for the render queue..."
-                : "Drawing the map..."}
+                ? t("Waiting for the render queue...")
+                : t("Drawing the map...")}
             </div>
           ) : (
             // The stand-in plate for the kind of place this is, with the
@@ -349,11 +352,11 @@ export function MapPanel({
                 <GameIcon icon={{ kind: "glyph", key: "system-maps" }} size="size-5" className="shrink-0" />
                 {mediaStatus[shown.id]?.state === "failed"
                   ? mediaStatus[shown.id]?.reason
-                    ? `Map render failed: ${mediaStatus[shown.id]?.reason}`
-                    : "Map render failed"
+                    ? t("Map render failed: {reason}", { reason: mediaStatus[shown.id]?.reason ?? "" })
+                    : t("Map render failed")
                   : !canPaint && steersStory
-                    ? "Not yet mapped. Upload one above."
-                    : "Not yet mapped"}
+                    ? t("Not yet mapped. Upload one above.")
+                    : t("Not yet mapped")}
               </p>
             </div>
           )}
@@ -362,15 +365,15 @@ export function MapPanel({
             <p className="mt-1.5 text-xs leading-5 text-stone-400">{shown.layoutDescription}</p>
           ) : null}
           {steersStory ? (
-            <KitButton disabled={populating} busy={populating} onClick={() => void populate(shown.id)} title="Invent this place's people, shops, rumours and a hook" className="mt-1.5">
-              {populating ? null : <GameIcon icon={{ kind: "glyph", key: "system-party" }} size="size-4" />} Populate
+            <KitButton disabled={populating} busy={populating} onClick={() => void populate(shown.id)} title={t("Invent this place's people, shops, rumours and a hook")} className="mt-1.5">
+              {populating ? null : <GameIcon icon={{ kind: "glyph", key: "system-party" }} size="size-4" />} {t("Populate")}
             </KitButton>
           ) : null}
           {populateNote ? <p role="status" className="live-in mt-1 text-xs text-amber-300/80">{populateNote}</p> : null}
           {shown.connections.length ? (
             <p className="mt-1 flex items-start gap-1 text-xs text-stone-500">
               <GameIcon icon={{ kind: "glyph", key: "pace-normal" }} size="size-4" className="mt-0.5 shrink-0" />
-              <span>Routes: {shown.connections.join(", ")}</span>
+              <span>{t("Routes: {routes}", { routes: shown.connections.join(", ") })}</span>
             </p>
           ) : null}
         </ContextMenu>
@@ -378,7 +381,7 @@ export function MapPanel({
 
       {locations.length > 1 ? (
         <div>
-          <SectionHead title="Charted areas" glyph="system-region" level="h4" aside={locations.length} />
+          <SectionHead title={t("Charted areas")} glyph="system-region" level="h4" aside={locations.length} />
           <ul className="space-y-1">
             {rows.map(({ location, depth, label }) => (
               <li
@@ -392,7 +395,11 @@ export function MapPanel({
                     setSelectedId(location.id === shown?.id ? null : location.id)
                   }
                   aria-pressed={location.id === shown?.id}
-                  aria-label={label === location.name ? undefined : `${location.name}${location.isCurrent ? " (here)" : ""}${location.mapImage ? "" : ", unmapped"}`}
+                  aria-label={
+                    label === location.name
+                      ? undefined
+                      : `${location.name}${location.isCurrent ? ` ${t("(here)")}` : ""}${location.mapImage ? "" : t(", unmapped")}`
+                  }
                   className={cn(
                     "pk-tap flex w-full items-center gap-1.5 rounded-md border border-transparent px-2 py-1.5 text-left text-xs motion-press",
                     location.id === shown?.id
@@ -402,11 +409,11 @@ export function MapPanel({
                 >
                   <GameIcon icon={{ kind: "glyph", key: location.mapImage ? "tab-map" : "quest-hidden" }} size="size-4" className="shrink-0" />
                   {label}
-                  {location.isCurrent ? " (here)" : ""}
-                  {location.mapImage ? "" : " · unmapped"}
+                  {location.isCurrent ? ` ${t("(here)")}` : ""}
+                  {location.mapImage ? "" : ` · ${t("unmapped")}`}
                   {!depth && tree.childrenOf.get(location.id)?.length ? (
                     <span className="ml-auto shrink-0 rounded-full border border-stone-700 px-1.5 text-[10px] text-stone-500">
-                      {tree.descendantsOf(location.id).length} inside
+                      {tp("{n} inside", "{n} inside", { count: tree.descendantsOf(location.id).length, n: tree.descendantsOf(location.id).length })}
                     </span>
                   ) : null}
                 </button>
@@ -423,12 +430,12 @@ export function MapPanel({
             <Dialog.Content {...returnFocus} className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[min(94vw,64rem)] -translate-x-1/2 -translate-y-1/2 overflow-auto panel rounded-xl p-4">
               <div className="mb-2 flex items-center justify-between">
                 <Dialog.Title className="gold-title font-display text-lg">{shown.name}</Dialog.Title>
-                <Dialog.Close aria-label="Close" className="pk-tap rounded p-1 text-stone-400 hover:bg-stone-900 hover:text-amber-200 motion-nudge">
+                <Dialog.Close aria-label={t("Close", { context: "action.close" })} className="pk-tap rounded p-1 text-stone-400 hover:bg-stone-900 hover:text-amber-200 motion-nudge">
                   <X className="size-4" />
                 </Dialog.Close>
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={shown.mapImage.url} alt={`Map of ${shown.name}`} className="w-full rounded" />
+              <img src={shown.mapImage.url} alt={t("Map of {name}", { name: shown.name })} className="w-full rounded" />
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>

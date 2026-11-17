@@ -31,7 +31,7 @@ await test("the confirmation names a split's classes and an owed subclass in wor
   // subclass for plague_doctor" (the 0.31.1 playtest's setting class).
   const split = { ...LEGAL_FIGHTER, level: 5, classes: [{ id: "fighter", subclass: "", level: 3 }, { id: "plague_doctor", subclass: "", level: 2 }] };
   const { changes } = joinChanges(split, 5, { ...LEGAL_FIGHTER, classes: [{ id: "fighter", subclass: "", level: 1 }] }, 1);
-  assert.ok(changes.includes("Classes: fighter 3 / plague doctor 2 becomes fighter 1."), changes.join(" | "));
+  assert.ok(changes.includes("Classes: Fighter 3 / Plague Doctor 2 becomes Fighter 1."), changes.join(" | "));
   const owed = owedChoices({ ...LEGAL_FIGHTER, class: "plague_doctor", subclass: "", level: 3, classes: [] });
   assert.ok(!owed.some((line) => line.includes("plague_doctor")), owed.join(" | "));
 });
@@ -99,7 +99,7 @@ await test("the join page opens on the chooser, and every pick goes through the 
 
 await test("Help me build opens the quiz at the table's level, and its hero goes through the confirm sheet", () => {
   const chooser = read("src/app/campaigns/[campaignId]/HeroChooser.tsx");
-  assert.match(chooser, /onClick=\{onHelpMeBuild\}[\s\S]*Help me build/);
+  assert.match(chooser, /onClick=\{onHelpMeBuild\}[\s\S]*\{t\("Help me build"\)\}/, "the door's label reads through the dictionary (the chooser and builder i18n passes)");
   const page = read("src/app/campaigns/[campaignId]/character/page.tsx");
   // The chooser's door opens the builder on its own quiz (no second engine).
   assert.match(page, /onHelpMeBuild=\{\(\) => \{\s*setHelped\(true\);\s*setMode\("create"\);/);

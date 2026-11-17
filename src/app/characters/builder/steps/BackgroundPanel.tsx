@@ -5,7 +5,9 @@ import { GameTerm } from "@/components/ui/GameTerm";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
 import { describeSkill } from "@/lib/help";
-import { SRD_SKILLS } from "@/lib/srd";
+import { backgroundFeatureLabel, contentName } from "@/lib/content/names";
+import { skillLabel } from "@/lib/srd";
+import { useLocale, useT, useTp } from "@/lib/locale";
 import OptionPicker, { type PickerGroup } from "../OptionPicker";
 import { backgroundInfoText } from "../usePickerGroups";
 import type { BackgroundOption } from "../useBuilderOptions";
@@ -38,9 +40,12 @@ export function BackgroundPanel({
   // Why the list may be short (TableScopeNote).
   note?: ReactNode;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   return (
-    <StepPanel title="What did they do before adventuring?" help="Their background: the skills and kit their past gave them.">
-      <Field label="Background" anchor="background">
+    <StepPanel title={t("What did they do before adventuring?")} help={t("Their background: the skills and kit their past gave them.")}>
+      <Field label={t("Background", { context: "builder.owed.background" })} anchor="background">
         <OptionPicker
           value={background?.id ?? ""}
           groups={backgroundGroups}
@@ -52,7 +57,7 @@ export function BackgroundPanel({
           // The playstyle's backgrounds, one tap each; the list above keeps
           // every other.
           <span key={suggestedKey} className="reveal mt-1.5 flex flex-wrap items-center gap-1 text-xs text-stone-500" data-background-hints>
-            Suits that job:
+            {t("Suits that job:")}
             {suggested.map((entry) => (
               <button
                 key={entry.id}
@@ -61,7 +66,7 @@ export function BackgroundPanel({
                 aria-pressed={background?.id === entry.id}
                 className="rounded-md border border-stone-700/70 px-1.5 py-0.5 text-sm text-stone-300 transition-colors hover:border-amber-500/40 hover:text-amber-100 aria-pressed:border-amber-400/60 aria-pressed:text-amber-100"
               >
-                {entry.name}
+                {contentName("backgrounds", entry.name, locale)}
               </button>
             ))}
           </span>
@@ -69,10 +74,10 @@ export function BackgroundPanel({
         {background ? (
           <span className="mt-1 flex items-start gap-1 text-xs text-stone-500">
             <span className="grow">
-              {background.skills.length ? "Grants " : null}
+              {background.skills.length ? t("Grants ") : null}
               {background.skills.length
                 ? background.skills.map((skillId, index) => {
-                    const name = SRD_SKILLS.find((skill) => skill.id === skillId)?.name ?? skillId;
+                    const name = skillLabel(skillId, locale);
                     return (
                       <span key={skillId} className="whitespace-nowrap">
                         {index ? ", " : null}
@@ -80,17 +85,17 @@ export function BackgroundPanel({
                         {/* Each granted skill says what it is, so "Grants
                             Deception, Sleight of Hand" is a sentence a new
                             player can read. */}
-                        <InfoButton label={name} text={describeSkill(skillId)} />
+                        <InfoButton label={name} text={describeSkill(t, skillId, locale)} />
                       </span>
                     );
                   })
-                : "What your character did before adventuring."}
+                : t("What your character did before adventuring.")}
               {background.feature ? (
                 <span className="whitespace-nowrap">
                   {background.skills.length ? " · " : " "}
-                  Feature: {background.feature}
+                  {t("Feature: {feature}", { feature: backgroundFeatureLabel(background.name, background.feature, locale) })}
                   <InfoButton
-                    label={background.feature}
+                    label={backgroundFeatureLabel(background.name, background.feature, locale)}
                     text={background.featureDesc || undefined}
                     reference={background.featureDesc ? undefined : { kind: "backgrounds", slug: background.id }}
                   />
@@ -98,7 +103,7 @@ export function BackgroundPanel({
               ) : null}
             </span>
             <InfoButton
-              label={background.name}
+              label={contentName("backgrounds", background.name, locale)}
               text={backgroundInfoText(background)}
               reference={{ kind: "backgrounds", slug: background.id }}
             />
@@ -108,8 +113,7 @@ export function BackgroundPanel({
           // What the background adds to the language list on this same
           // step, said here so the extra slots are no surprise (issue #117).
           <span className="mt-1 block text-xs text-stone-500">
-            This background adds {background.languages === 1 ? "one more language" : `${background.languages} more languages`} to
-            your bonus languages, picked below{raceChosen ? "" : " once a lineage is chosen"}.
+            {tp("This background adds {count} more language to your bonus languages, picked below{wait}.", "This background adds {count} more languages to your bonus languages, picked below{wait}.", { count: background.languages, wait: raceChosen ? "" : t(" once a lineage is chosen") })}
           </span>
         ) : null}
         {background?.skillChoice ? (
@@ -118,10 +122,6 @@ export function BackgroundPanel({
       </Field>
     </StepPanel>
   );
-}
-
-function skillName(skillId: string) {
-  return SRD_SKILLS.find((skill) => skill.id === skillId)?.name ?? skillId;
 }
 
 // The skills a content-pack background leaves to the player ("Persuasion,
@@ -136,13 +136,16 @@ function BackgroundSkillChoice({
   background: BackgroundOption;
   choice: NonNullable<BackgroundOption["skillChoice"]>;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const picks = state.backgroundSkills;
   const taken = new Set([...background.skills, ...state.chosenSkills, ...state.racialSkills]);
   return (
     <div className="mt-2" data-builder-target="backgroundSkills">
       <span className="mb-1 flex flex-wrap items-center gap-1 text-xs text-stone-400">
-        <GameTerm id="skill">Skill</GameTerm> {choice.count === 1 ? "proficiency" : "proficiencies"} (
-        {choice.count} of your choice)
+        <GameTerm id="skill">Skill</GameTerm>
+        {t(" proficiencies ({count} of your choice)", { count: choice.count })}
       </span>
       <div className="grid grid-cols-1 gap-2">
         {Array.from({ length: choice.count }, (_, index) => (
@@ -157,16 +160,16 @@ function BackgroundSkillChoice({
                 })
               }
               className="min-w-0 grow"
-              label={`Background skill ${index + 1}`}
-              placeholder="Choose a skill..."
+              label={t("Background skill {n}", { n: index + 1 })}
+              placeholder={t("Choose a skill...")}
               options={[
-                { value: "", label: "Choose a skill..." },
+                { value: "", label: t("Choose a skill...") },
                 ...choice.from
                   .filter((skill) => picks[index] === skill || (!picks.includes(skill) && !taken.has(skill)))
-                  .map((skill) => ({ value: skill, label: skillName(skill) })),
+                  .map((skill) => ({ value: skill, label: skillLabel(skill, locale) })),
               ]}
             />
-            {picks[index] ? <InfoButton label={skillName(picks[index])} text={describeSkill(picks[index])} /> : null}
+            {picks[index] ? <InfoButton label={skillLabel(picks[index], locale)} text={describeSkill(t, picks[index], locale)} /> : null}
           </span>
         ))}
       </div>

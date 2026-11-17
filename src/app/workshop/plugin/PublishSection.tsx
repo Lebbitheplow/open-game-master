@@ -16,6 +16,7 @@ import { notInDraft, type PackOmission, type SettingLists } from "@/lib/workshop
 import { OmissionReport } from "@/app/workshop/plugin/OmissionReport";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import type { Flushed, SectionProps } from "@/app/workshop/plugin/types";
+import { useT, useTp } from "@/lib/locale";
 
 // The last tab: what is still missing, and the three ways out. Download
 // hands over the manifest as a file, the same file Admin, Campaign plugins
@@ -44,7 +45,8 @@ function download(name: string, payload: unknown) {
   URL.revokeObjectURL(url);
 }
 
-// Said when Download or Install stops for a save that did not land.
+// Said when Download or Install stops for a save that did not land; the
+// state keeps the key and the panel translates it.
 const NOT_SAVED = "The draft on screen is not saved, so nothing was built from the older copy on the server. Your changes are kept here. Try again.";
 
 export function PublishSection({
@@ -77,6 +79,8 @@ export function PublishSection({
   const fileRef = useRef<HTMLInputElement>(null);
   const [report, setReport] = useState<{ pulled: SettingLists; omissions: PackOmission[] } | null>(null);
   const [reportError, setReportError] = useState("");
+  const t = useT();
+  const tp = useTp();
 
   useEffect(() => {
     let live = true;
@@ -85,16 +89,16 @@ export function PublishSection({
         const data = await response.json().catch(() => ({}));
         if (!live) return;
         if (!response.ok) {
-          setReportError(data.error ?? "What the pack leaves out could not be read.");
+          setReportError(data.error ?? t("What the pack leaves out could not be read."));
           return;
         }
         setReport({ pulled: data.pulled, omissions: data.omissions ?? [] });
       })
-      .catch(() => live && setReportError("Could not reach the server to read what the pack leaves out."));
+      .catch(() => live && setReportError(t("Could not reach the server to read what the pack leaves out.")));
     return () => {
       live = false;
     };
-  }, [workshopId]);
+  }, [workshopId, t]);
 
   const omissions = useMemo(() => {
     if (!report) return [];
@@ -131,23 +135,26 @@ export function PublishSection({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error ?? "That could not be built.");
+        setError(data.error ?? t("That could not be built.", { context: "workshop.plugin.publish.buildFailed" }));
         setServerProblems(data.problems ?? []);
         return;
       }
       if (install) {
         setNotice(
-          `${data.installed?.name ?? "The world"} is installed on this server${data.replaced ? ", replacing the copy that was there" : ""}. It is in the campaign creator now.`,
+          t("{name} is installed on this server{replaced}. It is in the campaign creator now.", {
+            name: data.installed?.name ?? t("The world"),
+            replaced: data.replaced ? t(", replacing the copy that was there") : "",
+          }),
         );
       } else {
         download(`${data.pack.id}.json`, data.pack);
-        setNotice(`Downloaded ${data.pack.id}.json. Hand it to an admin, or install it from Admin, Campaign plugins.`);
+        setNotice(t("Downloaded {file}. Hand it to an admin, or install it from Admin, Campaign plugins.", { file: `${data.pack.id}.json` }));
       }
       if (data.contentChecked === false) {
-        setNotice((current) => `${current} The content pack is not installed here, so monster slugs and spell names were not checked.`);
+        setNotice((current) => `${current} ${t("The content pack is not installed here, so monster slugs and spell names were not checked.")}`);
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "workshop.plugin.publish.unreachable" }));
     } finally {
       setBusy("");
     }
@@ -156,29 +163,29 @@ export function PublishSection({
   async function replaceDraft(next: WorldPackDraft, from: string): Promise<boolean> {
     if (
       draft.name.trim() &&
-      !(await appConfirm(`Replace the draft "${draft.name}" with ${from}? The current draft is lost.`, {
-        title: "Replace the draft",
-        actionLabel: "Replace",
+      !(await appConfirm(t("Replace the draft \"{name}\" with {from}? The current draft is lost.", { name: draft.name, from }), {
+        title: t("Replace the draft"),
+        actionLabel: t("Replace", { context: "workshop.plugin.publish.replaceAction" }),
       }))
     ) {
       return false;
     }
     onDraft(next);
-    setNotice(`Started from ${from}.`);
+    setNotice(t("Started from {from}.", { from }));
     return true;
   }
 
   async function onFile(file: File) {
     setError("");
     if (file.size > MAX_MANIFEST_BYTES) {
-      setError("That file is larger than 16 MB, so it is not a world pack.");
+      setError(t("That file is larger than 16 MB, so it is not a world pack."));
       return;
     }
     let raw: unknown;
     try {
       raw = JSON.parse(await file.text());
     } catch {
-      setError("That file is not JSON.");
+      setError(t("That file is not JSON."));
       return;
     }
     const parsed = draftFromPack(raw);
@@ -197,7 +204,7 @@ export function PublishSection({
       const response = await fetch(`/api/worlds/${encodeURIComponent(packId)}`);
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error ?? "That world could not be read.");
+        setError(data.error ?? t("That world could not be read."));
         return;
       }
       const parsed = draftFromPack(data.pack);
@@ -205,13 +212,13 @@ export function PublishSection({
         setError(parsed.error);
         return;
       }
-      if (await replaceDraft({ ...parsed, id: "" }, `the installed world "${data.pack.name}"`)) {
+      if (await replaceDraft({ ...parsed, id: "" }, t("the installed world \"{name}\"", { name: data.pack.name }))) {
         setNotice(
-          `Started from "${data.pack.name}". Its pictures stay with the installed copy; give this one a new name so the two do not share an id.`,
+          t("Started from \"{name}\". Its pictures stay with the installed copy; give this one a new name so the two do not share an id.", { name: data.pack.name }),
         );
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "workshop.plugin.publish.unreachable" }));
     } finally {
       setBusy("");
       setStartFrom("");
@@ -226,11 +233,11 @@ export function PublishSection({
       <section className={ui.card + " p-4"}>
         <SectionHead
           glyph={ready ? "quest-done" : "quest-active"}
-          title={ready ? "Ready to export" : `${check.problems.length} thing${check.problems.length === 1 ? "" : "s"} to fix first`}
+          title={ready ? t("Ready to export") : tp("{count} thing to fix first", "{count} things to fix first", { count: check.problems.length })}
           aside={ready ? <CheckCircle2 className="size-4 text-emerald-400" /> : <AlertTriangle className="size-4 text-amber-400" />}
         />
         <p className="mb-3 text-[11px] text-stone-500">
-          Will install as <span className="text-stone-300">{id}.json</span>, {bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`} of {MAX_MANIFEST_BYTES / 1024 / 1024} MB.
+          {t("Will install as")} <span className="text-stone-300">{id}.json</span>, {t("{size} of {max} MB.", { size: bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`, max: MAX_MANIFEST_BYTES / 1024 / 1024 })}
         </p>
         {check.problems.length || serverProblems.length ? (
           <ul className="stagger mb-3 space-y-1">
@@ -245,7 +252,7 @@ export function PublishSection({
         {check.advice.length ? (
           <details className="text-xs text-stone-400">
             <summary className="cursor-pointer text-stone-500">
-              {check.advice.length} suggestion{check.advice.length === 1 ? "" : "s"} before sharing
+              {tp("{count} suggestion before sharing", "{count} suggestions before sharing", { count: check.advice.length })}
             </summary>
             <ul className="stagger mt-2 space-y-1">
               {check.advice.map((line) => (
@@ -264,32 +271,32 @@ export function PublishSection({
       <UnofficialPackNotice rightsHolder={draft.rightsHolder} inspiredBy={draft.inspiredBy.trim() || undefined} />
 
       <section className={ui.card + " p-4"}>
-        <SectionHead title="Share it" glyph="system-share" />
+        <SectionHead title={t("Share it")} glyph="system-share" />
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void exportPack(false)} disabled={!ready || Boolean(busy)} className={ui.btnPrimary}>
             {busy === "download" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            Download the pack
+            {t("Download the pack")}
           </button>
           {isAdmin ? (
             <button type="button" onClick={() => void exportPack(true)} disabled={!ready || Boolean(busy)} className={ui.btnSecondary}>
               {busy === "install" ? <Loader2 className="size-4 animate-spin" /> : <Server className="size-4" />}
-              Install on this server
+              {t("Install on this server")}
             </button>
           ) : null}
         </div>
         <p className="mt-2 text-[11px] text-stone-500">
           {isAdmin
-            ? "Download hands you the manifest as a file for other servers and registries. Install writes it to this server's data directory, where it appears in the campaign creator at once."
-            : "The file installs from Admin, Campaign plugins, Install from a file, on any server whose admin trusts it. Only an admin can install here."}
+            ? t("Download hands you the manifest as a file for other servers and registries. Install writes it to this server's data directory, where it appears in the campaign creator at once.")
+            : t("The file installs from Admin, Campaign plugins, Install from a file, on any server whose admin trusts it. Only an admin can install here.")}
         </p>
         {notice ? <p className="live-in mt-2 text-xs text-amber-200/90">{notice}</p> : null}
-        {error && !(error === NOT_SAVED && saved) ? <PanelError className="mt-2">{error}</PanelError> : null}
+        {error && !(error === NOT_SAVED && saved) ? <PanelError className="mt-2">{error === NOT_SAVED ? t(NOT_SAVED) : error}</PanelError> : null}
       </section>
 
       <section className={ui.card + " p-4"}>
-        <SectionHead title="Start from something" glyph="tab-reference" />
+        <SectionHead title={t("Start from something")} glyph="tab-reference" />
         <p className="mb-3 text-[11px] text-stone-500">
-          Read a pack into the draft to keep working on it: one you downloaded, one somebody sent you, or a world installed here.
+          {t("Read a pack into the draft to keep working on it: one you downloaded, one somebody sent you, or a world installed here.")}
         </p>
         <input
           ref={fileRef}
@@ -304,14 +311,14 @@ export function PublishSection({
         />
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => fileRef.current?.click()} disabled={Boolean(busy)} className={cn(ui.btnSmall, "text-xs")}>
-            <FileUp className="size-3.5" /> A pack file
+            <FileUp className="size-3.5" /> {t("A pack file")}
           </button>
           {installed.length ? (
             <span className="w-56">
               <Select
                 value={startFrom}
-                label="An installed world"
-                placeholder="An installed world..."
+                label={t("An installed world")}
+                placeholder={t("An installed world")}
                 size="sm"
                 disabled={busy === "installed"}
                 onChange={(next) => {
@@ -326,9 +333,9 @@ export function PublishSection({
             type="button"
             onClick={async () => {
               if (
-                await appConfirm("Throw the draft away and start blank? Pictures go with it.", {
-                  title: "Start blank",
-                  actionLabel: "Throw it away",
+                await appConfirm(t("Throw the draft away and start blank? Pictures go with it."), {
+                  title: t("Start blank", { context: "workshop.plugin.publish.startBlank" }),
+                  actionLabel: t("Throw it away", { context: "workshop.plugin.publish.throwAway" }),
                 })
               ) {
                 void onClear();
@@ -337,7 +344,7 @@ export function PublishSection({
             disabled={Boolean(busy)}
             className={cn(ui.btnSmall, "ml-auto text-xs text-red-300/80 hover:text-red-200")}
           >
-            <Trash2 className="size-3.5" /> Start blank
+            <Trash2 className="size-3.5" /> {t("Start blank", { context: "workshop.plugin.publish.startBlank" })}
           </button>
         </div>
       </section>

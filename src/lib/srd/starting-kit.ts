@@ -59,8 +59,15 @@ const SLOT_WORDS: Record<KitSlot["filter"], string> = {
   instrument: "a musical instrument",
 };
 
-export function describeSlot(slot: KitSlot): string {
-  return slot.except?.length ? `${SLOT_WORDS[slot.filter]} other than the ${slot.except.join(", ")}` : SLOT_WORDS[slot.filter];
+export function describeSlot(
+  slot: KitSlot,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+  itemLabel?: (name: string) => string,
+): string {
+  const base = t ? t(SLOT_WORDS[slot.filter]) : SLOT_WORDS[slot.filter];
+  if (!slot.except?.length) return base;
+  const list = slot.except.map((name) => (itemLabel ? itemLabel(name) : name)).join(", ");
+  return t ? t("{slot} other than the {list}", { slot: base, list }) : `${base} other than the ${list}`;
 }
 
 // Domains whose bonus proficiencies reach the cleric kit's "(if proficient)"

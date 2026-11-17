@@ -18,6 +18,7 @@ import {
 } from "@/lib/bestiary/monster-draft";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
 import { textKey } from "@/lib/language/text-logic";
+import { translate, type Locale } from "@/lib/messages-logic";
 
 // Building a monster out of the parts the app already has.
 //
@@ -445,16 +446,27 @@ export function applyClassChassis(draft: MonsterDraft, pick: ChassisPick): Monst
 }
 
 // What applying a chassis would say, for the line under the button. A DM
-// deserves to know a pick raises hit points to 94 before it does.
-export function describeChassis(pick: ChassisPick): string {
+// deserves to know a pick raises hit points to 94 before it does. The
+// caller's translator and locale read it in the reader's language (the save
+// abbreviations are workshop.bestiary.stats.saveAbbr.*); the English default
+// keeps any non-UI caller byte-identical (seat-preview.ts's idiom).
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
+export function describeChassis(pick: ChassisPick, t: T = enT, locale: Locale = "en"): string {
   const klass = findClassKit(pick.classId);
   if (!klass) {
     return "";
   }
   const level = Math.max(1, Math.min(20, Math.round(pick.level)));
   const hp = suggestedStartingHp(pick.classId, pick.ancestryId, pick.con, level);
-  const saves = klass.saves.map((ability) => ability.toUpperCase()).join(" and ");
-  return `d${klass.hitDie} hit die: at least ${hp} hit points, ${saves} saves at +${proficiencyBonus(
-    level,
-  )} or better.`;
+  const saves = klass.saves
+    .map((ability) => ({ "cha": t("CHA"), "con": t("CON"), "dex": t("DEX"), "int": t("INT"), "str": t("STR"), "wis": t("WIS") } as Record<string, string>)[ability] ?? String(ability))
+    .join(t(" and ", { context: "workshop.bestiary.catalogue.chassisJoin" }));
+  return t("d{die} hit die: at least {hp} hit points, {saves} saves at +{pb} or better.", {
+    die: klass.hitDie,
+    hp,
+    saves,
+    pb: proficiencyBonus(level),
+  });
 }

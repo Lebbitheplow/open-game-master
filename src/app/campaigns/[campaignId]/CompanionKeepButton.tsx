@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BookmarkPlus } from "lucide-react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { useT } from "@/lib/locale";
 import { KitButton } from "./PanelKit";
 
 // "Save to my characters" on a lasting companion's card, for whoever runs
@@ -14,6 +15,7 @@ export function CompanionKeepButton({ campaignId, sheet }: { campaignId: string;
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
   const [said, setSaid] = useState("");
   const [error, setError] = useState("");
+  const t = useT();
 
   async function keep() {
     setState("saving");
@@ -22,16 +24,16 @@ export function CompanionKeepButton({ campaignId, sheet }: { campaignId: string;
       const response = await fetch(`/api/campaigns/${campaignId}/companions/${sheet.id}/keep`, { method: "POST" });
       const data = (await response.json().catch(() => ({}))) as { how?: string; keptLevel?: number | null; error?: string };
       if (!response.ok) {
-        setError(data.error ?? "Could not save them to your characters.");
+        setError(data.error ?? t("Could not save them to your characters."));
         setState("idle");
         return;
       }
       setSaid(
         data.how === "saved"
           ? typeof data.keptLevel === "number"
-            ? `Gear and notes saved; your library keeps level ${data.keptLevel}.`
-            : "Level, gear and spells saved."
-          : `${sheet.name} is in your characters.`,
+            ? t("Gear and notes saved; your library keeps level {level}.", { level: data.keptLevel })
+            : t("Level, gear and spells saved.")
+          : t("{name} is in your characters.", { name: sheet.name }),
       );
       setState("done");
       setTimeout(() => {
@@ -39,7 +41,7 @@ export function CompanionKeepButton({ campaignId, sheet }: { campaignId: string;
         setSaid("");
       }, 4_000);
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
       setState("idle");
     }
   }
@@ -50,11 +52,11 @@ export function CompanionKeepButton({ campaignId, sheet }: { campaignId: string;
         onClick={keep}
         disabled={state === "saving"}
         busy={state === "saving"}
-        title={`Keep ${sheet.name} in your characters, to bring to another campaign. Their level, gear and spells are saved; saving again updates them.`}
+        title={t("Keep {name} in your characters, to bring to another campaign. Their level, gear and spells are saved; saving again updates them.", { name: sheet.name })}
         className="w-full justify-center"
       >
         {state === "saving" ? null : <BookmarkPlus className="size-3.5" aria-hidden="true" />}
-        Save to my characters
+        {t("Save to my characters")}
       </KitButton>
       {said ? (
         <p role="status" className="text-xs text-emerald-300">

@@ -7,6 +7,10 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The gate's words come from the dictionaries; this suite reads the English ones.
+const en = (key, vars) => translate("en", key, vars);
+
 const {
   AI_CAPS,
   capsForRole,
@@ -134,7 +138,7 @@ test("steered mode: the AI narrates, the seat steers without a character, and th
   assert.equal(isDmSeat(seats, "steerer"), true);
   assert.equal(isPrimaryDm(seats, "steerer"), true);
   assert.equal(partySlotCount(seats, ["steerer", "lead", "p2"]), 2);
-  assert.equal(lobbyBlocker(seats, [{ userId: "steerer", ready: true, hasSheet: false }, { userId: "lead", ready: true, hasSheet: true }]), "");
+  assert.equal(lobbyBlocker(en, seats, [{ userId: "steerer", ready: true, hasSheet: false }, { userId: "lead", ready: true, hasSheet: true }]), "");
 });
 
 test("only human mode silences the AI narrator", () => {

@@ -1,6 +1,7 @@
 import { currentUser, unauthorized } from "@/lib/auth";
 import { getPdfImportForUser, importRuns, pendingImportRefusal, savePages } from "@/lib/db/pdf-imports";
 import { MAX_IMPORT_RUNS, pageBatchSchema } from "@/lib/pdf-import/reading";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,22 +13,25 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request, { params }: { params: Promise<{ importId: string }> }) {
   const user = await currentUser();
   if (!user) return unauthorized();
+  // The page shows these raw (send-book's call throws data.error straight
+  // into the button's error line), so they answer in the request's language.
+  const t = requestT(request);
   const { importId } = await params;
   const item = getPdfImportForUser(importId, user.id);
-  if (!item) return Response.json({ error: "That import is gone. Pick the PDF again." }, { status: 404 });
+  if (!item) return Response.json({ error: t("That import is gone. Pick the PDF again.") }, { status: 404 });
   if (item.state !== "reading" && item.state !== "failed") {
-    return Response.json({ error: "This import has all its pages already." }, { status: 409 });
+    return Response.json({ error: t("This import has all its pages already.") }, { status: 409 });
   }
   const parsed = pageBatchSchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) return Response.json({ error: "Those pages could not be read. Try the PDF again." }, { status: 400 });
+  if (!parsed.success) return Response.json({ error: t("Those pages could not be read. Try the PDF again.") }, { status: 400 });
   if (parsed.data.pages.some((page) => page.n > item.pageCount)) {
-    return Response.json({ error: "A page past the end of the book arrived." }, { status: 400 });
+    return Response.json({ error: t("A page past the end of the book arrived.") }, { status: 400 });
   }
   // A book's text is held to a total (reading.ts): ten times a big
   // hardcover's, and the bound on the work the layout pass can be asked.
   const runs = parsed.data.pages.reduce((sum, page) => sum + page.runs.length, 0);
   if (importRuns(item.id, parsed.data.pages.map((page) => page.n)) + runs > MAX_IMPORT_RUNS) {
-    return Response.json({ error: "This book has more text than an import can read. Split the PDF and import it in parts." }, { status: 413 });
+    return Response.json({ error: t("This book has more text than an import can read. Split the PDF and import it in parts.") }, { status: 413 });
   }
   // Pages wait in the database until the import lands: held to the
   // account's room for unfinished imports and the disk's floor.

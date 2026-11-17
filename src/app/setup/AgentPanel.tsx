@@ -7,20 +7,38 @@ import { CopyLine } from "@/components/CopyLine";
 import { shellHost } from "@/lib/shell-host";
 import type { Draft } from "@/app/setup/draft";
 import { ModelPicker } from "@/app/setup/SetupParts";
-import { BLANK } from "@/app/admin/model-blanks";
+import { blanks } from "@/app/admin/model-blanks";
 import { useRecheckOnReturn } from "@/app/admin/recheck-on-return";
+import { useT } from "@/lib/locale";
+import type { MessageKey } from "@/lib/messages-logic";
 import type { HarnessId, HarnessStatus } from "@/lib/harness/types";
 
 type Update = (change: (draft: Draft) => Draft) => void;
 
 const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π" };
 
-function statusTone(status: HarnessStatus): { tone: "ready" | "warn" | "off"; text: string } {
-  if (status.availability !== "ok") return { tone: "off", text: "Not available here" };
-  if (!status.installed) return { tone: "off", text: "Not installed" };
-  if (status.auth.state === "signed-out") return { tone: "warn", text: "Sign in needed" };
-  if (status.auth.state === "unknown") return { tone: "warn", text: "Installed" };
-  return { tone: "ready", text: "Ready" };
+// The status pill's word, keyed by the machine state the status carries.
+const STATUS_KEYS: Record<string, MessageKey> = {
+  notAvailable: "Not available here",
+  notInstalled: "Not installed",
+  signIn: "Sign in needed",
+  installed: "Installed",
+  ready: "Ready",
+};
+
+function statusKey(status: HarnessStatus): MessageKey {
+  if (status.availability !== "ok") return STATUS_KEYS.notAvailable;
+  if (!status.installed) return STATUS_KEYS.notInstalled;
+  if (status.auth.state === "signed-out") return STATUS_KEYS.signIn;
+  if (status.auth.state === "unknown") return STATUS_KEYS.installed;
+  return STATUS_KEYS.ready;
+}
+
+function statusTone(status: HarnessStatus): "ready" | "warn" | "off" {
+  if (status.availability !== "ok") return "off";
+  if (!status.installed) return "off";
+  if (status.auth.state === "signed-out" || status.auth.state === "unknown") return "warn";
+  return "ready";
 }
 
 // "An agent you already pay for": each program this server can run, whether
@@ -28,6 +46,8 @@ function statusTone(status: HarnessStatus): { tone: "ready" | "warn" | "off"; te
 // it is not. Nothing is saved until the step's Continue; the live test turn
 // waits on the last step, once the choice is the server's.
 export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) {
+  const t = useT();
+  const BLANK = blanks(t);
   const [statuses, setStatuses] = useState<HarnessStatus[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const phone = shellHost()?.platform === "android";
@@ -65,7 +85,7 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
   if (!statuses) {
     return (
       <div className="flex items-center gap-2 text-xs text-stone-400">
-        <span className="su-scan" aria-hidden="true" /> Looking for agent programs on this computer…
+        <span className="su-scan" aria-hidden="true" /> {t("Looking for agent programs on this computer…")}
       </div>
     );
   }
@@ -77,14 +97,15 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
     <div className="space-y-3">
       {unavailable && statuses[0]?.message ? <p className="su-note">{statuses[0].message}</p> : null}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-stone-400">Choose the program</span>
+        <span className="text-xs font-medium text-stone-400">{t("Choose the program")}</span>
         <button type="button" onClick={refresh} disabled={refreshing} aria-busy={refreshing} className={ui.btnSmall}>
-          <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} /> Check again
+          <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} /> {t("Check again")}
         </button>
       </div>
-      <div role="radiogroup" aria-label="Agent program" className="hx-cards stagger">
+      <div role="radiogroup" aria-label={t("Agent program")} className="hx-cards stagger">
         {statuses.map((status) => {
           const pill = statusTone(status);
+          const pillText = t(statusKey(status));
           const picked = draft.agent.id === status.id;
           return (
             <button
@@ -103,13 +124,13 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-stone-100">{status.label}</span>
                   <span className="block truncate text-[11px] text-stone-500">
-                    {status.version ? `v${status.version}` : status.installed ? "installed" : "not on this computer"}
+                    {status.version ? `v${status.version}` : status.installed ? t("installed") : t("not on this computer")}
                     {status.auth.plan ? ` · ${status.auth.plan}` : ""}
                   </span>
                 </span>
               </span>
-              <span key={pill.text} className="hx-pill reveal-pop self-start" data-tone={pill.tone}>
-                {pill.text}
+              <span key={pillText} className="hx-pill reveal-pop self-start" data-tone={pill}>
+                {pillText}
               </span>
             </button>
           );
@@ -120,44 +141,45 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
         <div key={chosen.id} className="reveal-height space-y-3">
           {chosen.availability === "ok" && !chosen.installed ? (
             <div className="su-row flex-col items-stretch">
-              <span className="text-sm text-stone-200">1. Install {chosen.label} on this computer</span>
-              <CopyLine text={chosen.installHint ?? ""} label="install command" />
-              <span className="text-sm text-stone-200">2. Sign it in</span>
-              <CopyLine text={chosen.signInHint ?? ""} label="sign-in command" />
-              <span className="text-xs text-stone-500">Run both in a terminal on the server&apos;s computer, then press Check again.</span>
+              <span className="text-sm text-stone-200">{t("1. Install {name} on this computer", { name: chosen.label })}</span>
+              <CopyLine text={chosen.installHint ?? ""} label={t("install command")} />
+              <span className="text-sm text-stone-200">{t("2. Sign it in")}</span>
+              <CopyLine text={chosen.signInHint ?? ""} label={t("sign-in command")} />
+              <span className="text-xs text-stone-500">{t("Run both in a terminal on the server's computer, then press Check again.")}</span>
             </div>
           ) : chosen.installed && chosen.auth.state === "signed-out" ? (
             <div className="su-row flex-col items-stretch">
-              <span className="text-sm text-stone-200">Sign {chosen.label} in on this computer</span>
-              <CopyLine text={chosen.signInHint ?? ""} label="sign-in command" />
-              <span className="text-xs text-stone-500">It opens a browser to sign in with your own plan. Then press Check again.</span>
+              <span className="text-sm text-stone-200">{t("Sign {name} in on this computer", { name: chosen.label })}</span>
+              <CopyLine text={chosen.signInHint ?? ""} label={t("sign-in command")} />
+              <span className="text-xs text-stone-500">{t("It opens a browser to sign in with your own plan. Then press Check again.")}</span>
             </div>
           ) : chosen.message ? (
             <p className="su-note">{chosen.message}</p>
           ) : null}
           {chosen.installed ? (
             <p className="text-xs text-stone-500">
-              {chosen.path}
-              {chosen.auth.account ? ` · signed in as ${chosen.auth.account}` : ""}. It runs with none of its own tools: it can only
-              touch the table&apos;s rules engine, and this server never sees its password or key.
+              {t("{path}{account}. It runs with none of its own tools: it can only touch the table's rules engine, and this server never sees its password or key.", {
+                path: chosen.path ?? "",
+                account: chosen.auth.account ? t(" · signed in as {account}", { account: chosen.auth.account }) : "",
+              })}
             </p>
           ) : null}
           {chosen.models.length ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <ModelPicker
-                label="Story model"
+                label={t("Story model")}
                 models={[{ id: "", label: BLANK.programDefault }, ...chosen.models.map((model) => ({ id: model.id, label: model.label }))]}
                 value={draft.agent.model}
                 recommended=""
                 onChange={(model) => setAgent({ model })}
               />
               <ModelPicker
-                label="Bookkeeping model (summaries, Ask)"
+                label={t("Bookkeeping model (summaries, Ask)")}
                 models={[
                   { id: "", label: BLANK.utility },
                   ...[...chosen.models]
                     .sort((a, b) => Number(Boolean(b.cheap)) - Number(Boolean(a.cheap)))
-                    .map((model) => ({ id: model.id, label: model.cheap ? `${model.label} (light)` : model.label })),
+                    .map((model) => ({ id: model.id, label: model.cheap ? `${model.label}${t(" (light)")}` : model.label })),
                 ]}
                 value={draft.agent.utilityModel}
                 recommended=""

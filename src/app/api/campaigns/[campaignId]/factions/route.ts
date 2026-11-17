@@ -2,7 +2,7 @@ import { isErrorResponse, requireMember, requireStoryAuthority, steersStory } fr
 import { insertFaction, listFactions } from "@/lib/db/factions";
 import { listNpcs } from "@/lib/db/npcs";
 import { getParty } from "@/lib/db/party";
-import { normalizeFactionAttitude, reputationLabel } from "@/lib/dm/faction-logic";
+import { normalizeFactionAttitude } from "@/lib/dm/faction-logic";
 import { publishEphemeral } from "@/lib/events";
 import { isUploadedImagePath } from "@/lib/uploads";
 
@@ -13,11 +13,11 @@ export const dynamic = "force-dynamic";
 // reads the table's view: name, blurb, attitude, standing in words and the
 // members they know of. Goal and power are the DM's.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -35,7 +35,6 @@ export async function GET(
       tags: faction.tags,
       portraitPath: faction.portraitPath,
       standing,
-      standingLabel: reputationLabel(standing),
       members,
     };
     return dm ? { ...base, goal: faction.goal, power: faction.power } : base;
@@ -48,7 +47,7 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireStoryAuthority(campaignId);
+  const context = await requireStoryAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

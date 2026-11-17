@@ -45,6 +45,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { matchGear } from "@/lib/srd/adventuring-gear";
+import { pluralOf } from "@/lib/messages-logic";
 
 export const LIFESTYLE_COST_CP: Record<Lifestyle, number> = {
   wretched: 0,
@@ -327,15 +328,63 @@ export function spendDowntime(campaign: Campaign, turnId: string, entry: Downtim
 }
 
 // One line of lifestyle and downtime for the GAME STATE block, or null.
-export function lifestyleLine(campaignId: string, sheetId: string): string | null {
+export function lifestyleLine(
+  campaignId: string,
+  sheetId: string,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string | null {
+  const tp = pluralOf(t);
   const lifestyle = lifestyleOf(campaignId, sheetId);
   const progress = downtimeOf(campaignId, sheetId);
   const parts = [
-    ...(lifestyle ? [`lifestyle ${lifestyle} (${formatPrice(LIFESTYLE_COST_CP[lifestyle])} a day, paid at each dawn in town)`] : []),
-    ...(progress.crafting ? [`crafting ${progress.crafting.item} ${formatPrice(progress.crafting.progressCp)} of ${formatPrice(progress.crafting.valueCp)}`] : []),
-    ...(progress.training ? [`training ${progress.training.subject} ${progress.training.days}/250 days`] : []),
-    ...(progress.research ? [`researching ${progress.research.topic} (${progress.research.days} days)`] : []),
-    ...(progress.recuperating ? [`recuperating ${progress.recuperating.days}/3 days`] : []),
+    ...(lifestyle
+      ? [
+          t
+            ? t("lifestyle {name} ({price} a day, paid at each dawn in town)", {
+                name: ({ "wretched": t("wretched"), "squalid": t("squalid"), "poor": t("poor", { context: "sheet.between.lifestyle.poor" }), "modest": t("modest"), "comfortable": t("comfortable"), "wealthy": t("wealthy"), "aristocratic": t("aristocratic") } as Record<string, string>)[lifestyle] ?? String(lifestyle),
+                price: formatPrice(LIFESTYLE_COST_CP[lifestyle]),
+              })
+            : `lifestyle ${lifestyle} (${formatPrice(LIFESTYLE_COST_CP[lifestyle])} a day, paid at each dawn in town)`,
+        ]
+      : []),
+    ...(progress.crafting
+      ? [
+          t
+            ? t("crafting {item} {progress} of {value}", {
+                item: progress.crafting.item,
+                progress: formatPrice(progress.crafting.progressCp),
+                value: formatPrice(progress.crafting.valueCp),
+              })
+            : `crafting ${progress.crafting.item} ${formatPrice(progress.crafting.progressCp)} of ${formatPrice(progress.crafting.valueCp)}`,
+        ]
+      : []),
+    ...(progress.training
+      ? [
+          t
+            ? t("training {subject} {days}/250 days", {
+                subject: progress.training.subject,
+                days: progress.training.days,
+              })
+            : `training ${progress.training.subject} ${progress.training.days}/250 days`,
+        ]
+      : []),
+    ...(progress.research
+      ? [
+          t
+            ? tp("researching {topic} ({count} day)", "researching {topic} ({count} days)", {
+                topic: progress.research.topic,
+                count: progress.research.days,
+              })
+            : `researching ${progress.research.topic} (${progress.research.days} days)`,
+        ]
+      : []),
+    ...(progress.recuperating
+      ? [
+          t
+            ? t("recuperating {days}/3 days", { days: progress.recuperating.days })
+            : `recuperating ${progress.recuperating.days}/3 days`,
+        ]
+      : []),
   ];
   return parts.length ? parts.join("; ") : null;
 }

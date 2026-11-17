@@ -3,6 +3,7 @@
 import { BookOpenText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { KitButton } from "@/app/campaigns/[campaignId]/PanelKit";
+import { useT } from "@/lib/locale";
 
 // The way between a record's own tool and its WorldForge entry, both ways
 // (audit finding WF-11; the URL is src/lib/workshop/links.ts). The native
@@ -24,9 +25,10 @@ export function useOpenOnArrival<T extends { id: string }>(openId: string | null
 
 // "World entry": the record's WorldForge page.
 export function WorldEntryLink({ onOpen }: { onOpen: () => void }) {
+  const t = useT();
   return (
-    <KitButton tone="small" onClick={onOpen} title="Open this record's WorldForge entry" data-testid="world-entry-link">
-      <BookOpenText className="size-3.5" /> World entry
+    <KitButton tone="small" onClick={onOpen} title={t("Open this record's WorldForge entry")} data-testid="world-entry-link">
+      <BookOpenText className="size-3.5" /> {t("World entry")}
     </KitButton>
   );
 }
@@ -50,6 +52,7 @@ export async function linkedEntries(campaignId: string, kind: "monster" | "item"
 // `record` is the linked record's ref ("homebrew:<id>"); React keeps the
 // name "ref" for itself.
 export function LinkedEntries({ campaignId, kind, record, onWorldEntry }: { campaignId: string; kind: "monster" | "item"; record: string; onWorldEntry: (entryRef: string) => void }) {
+  const t = useT();
   const [entries, setEntries] = useState<Array<{ ref: string; name: string }> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +77,7 @@ export function LinkedEntries({ campaignId, kind, record, onWorldEntry }: { camp
     const data = (await response?.json().catch(() => ({}))) as { entity?: { ref: string }; error?: string } | undefined;
     setBusy(false);
     if (!response?.ok || !data?.entity) {
-      setError(data?.error ?? "That entry could not be made.");
+      setError(data?.error ?? t("That entry could not be made."));
       return;
     }
     onWorldEntry(data.entity.ref);
@@ -84,9 +87,9 @@ export function LinkedEntries({ campaignId, kind, record, onWorldEntry }: { camp
   if (!entries.length) {
     return (
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-stone-400" data-testid="linked-entries-none">
-        <span>No World entry tells its story yet.</span>
-        <KitButton tone="small" busy={busy} disabled={busy} onClick={() => void giveEntry()} data-testid="give-world-entry" title="Make a lore entry linked to it, and open it">
-          <BookOpenText className="size-3.5" /> Give it a World entry
+        <span>{t("No World entry tells its story yet.")}</span>
+        <KitButton tone="small" busy={busy} disabled={busy} onClick={() => void giveEntry()} data-testid="give-world-entry" title={t("Make a lore entry linked to it, and open it")}>
+          <BookOpenText className="size-3.5" /> {t("Give it a World entry")}
         </KitButton>
         {error ? <span className="text-red-300">{error}</span> : null}
       </div>
@@ -94,7 +97,7 @@ export function LinkedEntries({ campaignId, kind, record, onWorldEntry }: { camp
   }
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-stone-400" data-testid="linked-entries">
-      <span>Used in the World by</span>
+      <span>{t("Used in the World by")}</span>
       {entries.map((entry) => (
         <KitButton key={entry.ref} tone="small" onClick={() => onWorldEntry(entry.ref)}>
           <BookOpenText className="size-3.5" /> {entry.name}

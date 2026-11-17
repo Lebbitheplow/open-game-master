@@ -6,9 +6,13 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { healthWord, HEALTH_RING, HEALTH_LABEL } = await import(
+const { healthWord, HEALTH_RING, HEALTH_KEYS } = await import(
   "../src/lib/battlemap/health-words.ts"
 );
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The labels are the dictionaries' (board.health.*), the i18n pass; the
+// suite reads them in English, the source.
+const enT = (key, vars) => translate("en", key, vars);
 const { CONDITION_GLYPHS, glyphFor, MAX_BADGES } = await import(
   "../src/lib/battlemap/condition-glyphs.ts"
 );
@@ -39,7 +43,7 @@ test("health words walk the thresholds from the plan", () => {
 test("every word has a ring colour and a label", () => {
   for (const word of ["unharmed", "scratched", "bloodied", "critical", "down", "dead"]) {
     assert.match(HEALTH_RING[word], /^#[0-9a-f]{6}$/);
-    assert.ok(HEALTH_LABEL[word].length > 0);
+    assert.ok(enT(HEALTH_KEYS[word]).length > 0);
   }
 });
 

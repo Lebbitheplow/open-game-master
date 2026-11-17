@@ -5,6 +5,7 @@ import { useUndoRing } from "@/lib/use-undo-ring";
 import { terrainDiffStrokes } from "@/lib/overworld/undo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT, useTp } from "@/lib/locale";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { KitButton, PanelError } from "./PanelKit";
 import { skinForGenre, type XY } from "@/lib/overworld/logic";
@@ -83,6 +84,8 @@ export function OverworldPanel({
   // under its place), so a map left open during play follows the story.
   placesKey?: string;
 }) {
+  const t = useT();
+  const tp = useTp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<OverworldData | null>(null);
@@ -342,7 +345,7 @@ export function OverworldPanel({
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setError((payload as { error?: string }).error ?? "That did not work.");
+      setError((payload as { error?: string }).error ?? t("That did not work.", { context: "overworld.error.fallback" }));
       return null;
     }
     if (asked === answerRef.current) {
@@ -555,7 +558,7 @@ export function OverworldPanel({
     setImportNote("");
     setError("");
     try {
-      const result = await importAzgaarFiles<OverworldData>(campaignId, files, size);
+      const result = await importAzgaarFiles<OverworldData>(t, campaignId, files, size);
       if ("error" in result) {
         setError(result.error);
         return;
@@ -571,11 +574,11 @@ export function OverworldPanel({
   const focusedPlace = places.find((place) => place.id === focused) ?? null;
   const skin = data ? skinForGenre(genre) : null;
   const heldName = data?.locations.find((entry) => entry.id === held)?.name ?? "";
-  const ask = askCopy(asking, labelSize, heldName);
+  const ask = askCopy(t, asking, labelSize, heldName);
 
   return (
     <div className="space-y-2">
-      <SectionHead title="The region" glyph="system-region" />
+      <SectionHead title={t("The region")} glyph="system-region" />
       <div
         ref={containerRef}
         className="panel relative overflow-hidden rounded-lg"
@@ -583,7 +586,7 @@ export function OverworldPanel({
       >
         {loading ? (
           <p role="status" className="skeleton-block reveal flex aspect-[4/3] items-center justify-center gap-1.5 text-xs text-stone-400">
-            <Loader2 className="size-3.5 animate-spin" /> Charting the region...
+            <Loader2 className="size-3.5 animate-spin" /> {t("Charting the region…")}
           </p>
         ) : (
           <canvas
@@ -650,25 +653,29 @@ export function OverworldPanel({
           >
             <span className="font-semibold text-amber-200">{focusedPlace.name}</span>
             {" · "}
-            {focusedPlace.isCurrent ? "the party is here" : focusedPlace.visited ? "visited" : "not reached yet"}
+            {focusedPlace.isCurrent
+              ? t("the party is here")
+              : focusedPlace.visited
+                ? t("visited")
+                : t("not reached yet")}
             {focusedPlace.parts.length ? (
-              <span className="block text-stone-400">Inside: {focusedPlace.parts.join(", ")}</span>
+              <span className="block text-stone-400">{t("Inside: {names}", { names: focusedPlace.parts.join(", ") })}</span>
             ) : null}
           </p>
         ) : null}
         {!loading ? (
           <div className="absolute bottom-2 right-2 flex flex-col gap-1">
-            <KitButton tone="secondary" onClick={() => zoomBy(1.25)} aria-label="Zoom in" className="size-10 bg-stone-950/85 px-0">
+            <KitButton tone="secondary" onClick={() => zoomBy(1.25)} aria-label={t("Zoom in")} className="size-10 bg-stone-950/85 px-0">
               <Plus className="size-4" />
             </KitButton>
-            <KitButton tone="secondary" onClick={() => zoomBy(0.8)} aria-label="Zoom out" className="size-10 bg-stone-950/85 px-0">
+            <KitButton tone="secondary" onClick={() => zoomBy(0.8)} aria-label={t("Zoom out")} className="size-10 bg-stone-950/85 px-0">
               <Minus className="size-4" />
             </KitButton>
           </div>
         ) : null}
         {strokeCount ? (
           <span key={strokeCount} className="count-pop pointer-events-none absolute left-2 top-2 rounded-md border border-amber-500/30 bg-stone-950/85 px-1.5 py-0.5 text-[11px] text-amber-200">
-            {strokeCount} {strokeCount === 1 ? "tile" : "tiles"}
+            {tp("{n} tile", "{n} tiles", { count: strokeCount, n: strokeCount })}
           </span>
         ) : null}
       </div>
@@ -688,13 +695,15 @@ export function OverworldPanel({
           />
           {held ? (
             <p className="reveal flex flex-wrap items-center gap-2 text-xs text-amber-200">
-              Holding {heldName}. Tap where it belongs.
-              <KitButton onClick={() => setAsking({ kind: "rename", locationId: held })}>Rename it</KitButton>
+              {t("Holding {name}. Tap where it belongs.", { name: heldName })}
+              <KitButton onClick={() => setAsking({ kind: "rename", locationId: held })}>{t("Rename it")}</KitButton>
             </p>
           ) : null}
           {followed ? (
             <p role="status" className="reveal flex flex-wrap items-center gap-2 text-xs text-emerald-200" data-testid="region-pin-followed">
-              {followed.pins.length === 1 ? `${followed.name}'s pin on the Atlas moved with it.` : `${followed.pins.length} Atlas pins moved with ${followed.name}.`}
+              {followed.pins.length === 1
+                ? t("{name}'s pin on the Atlas moved with it.", { name: followed.name })
+                : t("{n} Atlas pins moved with {name}.", { n: followed.pins.length, name: followed.name })}
               {followed.before ? (
                 <KitButton
                   onClick={() => {
@@ -704,10 +713,10 @@ export function OverworldPanel({
                     void patch({ anchor: { locationId: back.locationId, x: back.before!.x, y: back.before!.y } });
                   }}
                 >
-                  Undo
+                  {t("Undo")}
                 </KitButton>
               ) : null}
-              <KitButton onClick={() => setFollowed(null)}>Dismiss</KitButton>
+              <KitButton onClick={() => setFollowed(null)}>{t("Dismiss")}</KitButton>
             </p>
           ) : null}
           {mode === "paint" && skin ? (
@@ -740,7 +749,7 @@ export function OverworldPanel({
           ) : null}
           {mode === "label" ? <LabelTools size={labelSize} onSize={setLabelSize} /> : null}
           {mode === "erase" ? (
-            <p className="reveal text-xs text-stone-500">Tap a line, a label or a pin to take it off the map.</p>
+            <p className="reveal text-xs text-stone-500">{t("Tap a line, a label or a pin to take it off the map.")}</p>
           ) : null}
           <FileTools
             backdropPath={data.map.backdropPath}
@@ -757,9 +766,7 @@ export function OverworldPanel({
         </>
       ) : null}
       <p className="text-[11px] text-stone-500">
-        {workshop
-          ? "Drag to pan, scroll or pinch to zoom, tap a place to name it. At a table made from this workshop, a place appears to the players as the party discovers it."
-          : "Drag to pan, scroll or pinch to zoom, tap a place to name it. Locations appear as the party discovers them."}
+        {workshop ? t("Drag to pan, scroll or pinch to zoom, tap a place to name it. At a table made from this workshop, a place appears to the players as the party discovers it.") : t("Drag to pan, scroll or pinch to zoom, tap a place to name it. Locations appear as the party discovers them.")}
       </p>
       <PromptDialog
         open={asking !== null}

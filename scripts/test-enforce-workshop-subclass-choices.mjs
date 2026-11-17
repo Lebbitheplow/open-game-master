@@ -33,6 +33,9 @@ const owedRoute = await world.route("campaigns/[campaignId]/sheet/owed");
 const { subclassExtrasForTable } = await import("../src/lib/db/subclass-extras.ts");
 const { registerBrowserSubclassExtras } = await import("../src/lib/srd/subclass-tables.ts");
 const { extraSubclassOf } = await import("../src/lib/srd/subclass-tables.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The gate reads through the dictionary; the suite reads it in English.
+const enT = (key, vars) => translate("en", key, vars);
 const { subclassSpellsFor, populateFeaturesForClasses } = await import("../src/lib/srd/features.ts");
 const { subclassFindings } = await import("../src/lib/rulesets/validate-options.ts");
 const { pcResistances } = await import("../src/lib/dm/pc-defenses.ts");
@@ -175,7 +178,7 @@ await test("The builder offers the choice and keeps the pick; the payload sends 
   const slot = built.derived.subclassChoiceSlots.find((entry) => entry.label === "Bloodline");
   assert.ok(slot, "the builder offers the Bloodline");
   assert.deepEqual(slot.options.map((option) => option.name), ["Storm", "Frost"]);
-  const blocks = builder.submit.callingBlocks(sorcerer, built.state, built.derived).map((entry) => entry.message);
+  const blocks = builder.submit.callingBlocks(enT, sorcerer, built.state, built.derived).map((entry) => entry.message);
   assert.ok(blocks.some((message) => /Pick your Bloodline \(Storm-Blooded\)/.test(message)), `a choice left open stops the builder: ${blocks.join(" | ")}`);
   const picked = builder.build({ race: "human", class: sorcerer, background: "sage", level: 1, subclass: "Storm-Blooded", optionPicks: ["Bloodline (Storm)"] });
   assert.equal(picked.derived.subclassChoiceSlots[0].chosen?.name, "Storm");

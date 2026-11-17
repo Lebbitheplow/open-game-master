@@ -6,6 +6,7 @@ import { Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { filterCommands } from "@/lib/palette/fuzzy";
 
 // The command palette (docs/visual-overhaul-plan.md 8c.7): "/" when nothing
@@ -41,9 +42,9 @@ function typingInto(target: EventTarget | null): boolean {
 
 export function CommandPalette({
   commands,
-  title = "Commands",
-  placeholder = "Type a command",
-  chipLabel = "Commands",
+  title,
+  placeholder,
+  chipLabel,
   className,
 }: {
   commands: PaletteCommand[];
@@ -53,6 +54,10 @@ export function CommandPalette({
   // Extra classes for the hint chip.
   className?: string;
 }) {
+  const t = useT();
+  const resolvedTitle = title ?? t("Commands");
+  const resolvedPlaceholder = placeholder ?? t("Type a command");
+  const resolvedChip = chipLabel ?? t("Commands");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -123,14 +128,14 @@ export function CommandPalette({
       <button
         type="button"
         onClick={show}
-        aria-label={`${title}: open the command palette`}
+        aria-label={t("{title}: open the command palette", { title: resolvedTitle })}
         aria-keyshortcuts="/ Control+K Meta+K"
-        title="Press / or Ctrl K"
+        title={t("Press / or Ctrl K")}
         // A finger gets 40 px on a phone (audit WA-08).
         className={cn("kbd-chip shrink-0 pointer-coarse:min-h-10", className)}
       >
         <span className="kbd-key" aria-hidden="true">/</span>
-        {chipLabel}
+        {resolvedChip}
       </button>
       <RadixDialog.Root open={open} onOpenChange={setOpen}>
         <RadixDialog.Portal>
@@ -150,7 +155,7 @@ export function CommandPalette({
                   setActive(0);
                 }}
                 onKeyDown={onInputKey}
-                placeholder={placeholder}
+                placeholder={resolvedPlaceholder}
                 role="combobox"
                 aria-expanded="true"
                 aria-controls={listId}

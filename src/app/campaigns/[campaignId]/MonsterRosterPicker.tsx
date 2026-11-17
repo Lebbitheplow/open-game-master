@@ -7,6 +7,7 @@ import { MonsterTile } from "@/lib/ui";
 import { crLabel } from "@/lib/bestiary/derive-cr";
 import { addToRoster, formatRoster, parseRoster } from "@/lib/dm/encounter-template-logic";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 const input =
   "rounded-md border border-stone-700 bg-stone-950 px-2 py-1 text-xs text-stone-200 focus:border-amber-500/50 focus:outline-none pointer-coarse:min-h-10";
@@ -30,6 +31,7 @@ export function MonsterRosterPicker({
   roster: string;
   onChange: (roster: string) => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<
     Array<{ slug: string; name: string; cr: number; type: string; art?: string; rosterName?: string }>
@@ -109,8 +111,8 @@ export function MonsterRosterPicker({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search monsters to add: goblin, owlbear, the boss you built..."
-          aria-label="Search monsters to add"
+          placeholder={t("Search monsters to add: goblin, owlbear, the boss you built...")}
+          aria-label={t("Search monsters to add")}
           className={cn(input, "w-full pl-7")}
         />
         {loading ? (
@@ -139,7 +141,7 @@ export function MonsterRosterPicker({
                 className="mr-1 inline-flex align-middle"
               />
               {entry.name}
-              <span className="ml-1 text-stone-600">CR {crLabel(entry.cr)}</span>
+              <span className="ml-1 text-stone-600">{t("CR {cr}", { cr: crLabel(entry.cr) })}</span>
             </button>
           ))}
         </div>

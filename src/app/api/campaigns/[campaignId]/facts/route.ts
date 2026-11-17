@@ -11,6 +11,7 @@ import {
 import { listSheets } from "@/lib/db/sheets";
 import { publishEphemeral } from "@/lib/events";
 import { FACT_CATEGORIES } from "@/lib/dm/fact-logic";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export async function GET(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -65,12 +66,14 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  // The refusals read the asker's language; the facts panel shows them raw.
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   if (!steersStory(context)) {
-    return Response.json({ error: "Only the party lead can add facts." }, { status: 403 });
+    return Response.json({ error: t("Only the party lead can add facts.") }, { status: 403 });
   }
   const parsed = createSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
@@ -102,7 +105,8 @@ export async function PATCH(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -118,7 +122,7 @@ export async function PATCH(
   const editing = status !== undefined || Object.keys(text).length > 0;
   if (editing && !steersStory(context)) {
     return Response.json(
-      { error: "Only the party lead can edit or retire facts." },
+      { error: t("Only the party lead can edit or retire facts.") },
       { status: 403 },
     );
   }

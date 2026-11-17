@@ -11,7 +11,7 @@ import { HotkeyOverlay } from "@/components/ui/HotkeyOverlay";
 import { Select } from "@/components/ui/Select";
 import { SAVE_LABEL, type SaveState } from "@/lib/use-autosave";
 import { useMapSelection } from "@/app/campaigns/[campaignId]/useMapSelection";
-import { BRUSH_LABELS, type Brush as BrushName } from "@/lib/battlemap/paint";
+import { brushLabel, type Brush as BrushName } from "@/lib/battlemap/paint";
 import { TERRAIN, tileAt } from "@/lib/battlemap/types";
 import { collectTags } from "@/lib/workshop/pickers";
 import { MapDetailsPanel, MapNameField, useMapWords } from "@/app/workshop/maps/MapDetails";
@@ -39,6 +39,7 @@ import {
 } from "@/app/campaigns/[campaignId]/MapToolbox";
 import { usePainter } from "@/app/campaigns/[campaignId]/usePainter";
 import { THEME_LABELS, type LibraryState, type PreparedMap } from "@/app/workshop/maps/types";
+import { useT } from "@/lib/locale";
 
 // One prepared map, open for editing, in the editor's shape (docs/visual-
 // overhaul-plan.md 4.2): the name and the big actions along the top, the tool
@@ -60,12 +61,13 @@ const EMPTY_SKIN: MapSkin = { id: "", bind: {} };
 const LAYERS: MapLayer[] = ["labels", "props", "lights", "zones", "doors", "terrain", "backdrop", "overlay", "drawings"];
 
 function SaveDot({ state }: { state: SaveState }) {
+  const t = useT();
   const tone = state === "error" ? "bg-red-400 text-red-300" : state === "saving" || state === "dirty" ? "bg-amber-400 text-stone-400" : "bg-emerald-400 text-emerald-300";
   const [dot, text] = tone.split(" ");
   return (
     <span aria-live="polite" className={cn("flex shrink-0 items-center gap-1.5 font-mono text-[10px]", text)}>
       <span aria-hidden="true" className={cn("size-1.5 rounded-full", dot, state === "saving" && "map-save-pulse")} />
-      {state === "idle" ? "saved" : SAVE_LABEL[state].toLowerCase()}
+      {state === "idle" ? t("saved") : SAVE_LABEL[state].toLowerCase()}
     </span>
   );
 }
@@ -234,7 +236,8 @@ export function MapEditor({
   }
 
   const held = MODES.find((entry) => entry.mode === tools.mode);
-  const holding = held ? (isPaintMode(tools.mode) ? `${held.label} · ${BRUSH_LABELS[tools.brush]}` : held.label) : "Nothing";
+  const t = useT();
+  const holding = held ? (isPaintMode(tools.mode) ? `${held.label} · ${brushLabel(t, tools.brush)}` : held.label) : t("Nothing");
   const backdropPanel = (
     <BackdropControls
       backdrop={selected.backdrop}
@@ -253,17 +256,17 @@ export function MapEditor({
         <button
           type="button"
           disabled={busy || !canDeploy}
-          title={canDeploy ? "Replace the board's ground with this map" : "Nothing is on the table to replace"}
+          title={canDeploy ? t("Replace the board's ground with this map") : t("Nothing is on the table to replace")}
           onClick={() => void act("deploy")}
           className="flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 px-3 text-amber-950 shadow-[0_1px_0_rgba(253,247,231,0.6)_inset,0_2px_8px_rgba(4,2,12,0.5)] disabled:opacity-45 motion-magnet"
         >
           <Upload className="size-3.5" />
-          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.12em]">Put it on the table</span>
+          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.12em]">{t("Put it on the table")}</span>
         </button>
       )}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <button type="button" aria-label="More for this map" className="flex size-9 items-center justify-center rounded-lg border border-stone-700 text-stone-300 hover:text-amber-200">
+          <button type="button" aria-label={t("More for this map")} className="flex size-9 items-center justify-center rounded-lg border border-stone-700 text-stone-300 hover:text-amber-200">
             <MoreVertical className="size-4" />
           </button>
         </DropdownMenu.Trigger>
@@ -274,22 +277,22 @@ export function MapEditor({
                 disabled={busy || !state.hasParty || state.board !== null}
                 title={
                   !state.hasParty
-                    ? "There is nobody to put on it yet"
+                    ? t("There is nobody to put on it yet")
                     : state.board
-                      ? "Something is already on the table"
-                      : "Put the party on this map with nobody to fight"
+                      ? t("Something is already on the table")
+                      : t("Put the party on this map with nobody to fight")
                 }
                 onSelect={() => void act("open-scene")}
                 className={menuItem}
               >
-                <Play className="size-4" /> Open it as a scene
+                <Play className="size-4" /> {t("Open it as a scene")}
               </DropdownMenu.Item>
             )}
-            <DropdownMenu.Item disabled={busy} aria-label={`Duplicate ${selected.name}`} onSelect={() => void duplicate()} className={menuItem}>
-              <Copy className="size-4" /> Duplicate
+            <DropdownMenu.Item disabled={busy} aria-label={t("Duplicate {name}", { name: selected.name })} onSelect={() => void duplicate()} className={menuItem}>
+              <Copy className="size-4" /> {t("Duplicate")}
             </DropdownMenu.Item>
             <DropdownMenu.Item disabled={busy} onSelect={() => void remove()} className={cn(menuItem, "data-[highlighted]:text-red-300")}>
-              <Trash2 className="size-4" /> Forget it
+              <Trash2 className="size-4" /> {t("Forget it")}
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
@@ -413,7 +416,7 @@ export function MapEditor({
             extra={
               selected.seed ? (
                 <span className="flex shrink-0 items-baseline gap-1.5">
-                  <span className="font-display text-[8px] uppercase tracking-[0.16em] text-stone-600">Seed</span>
+                  <span className="font-display text-[8px] uppercase tracking-[0.16em] text-stone-600">{t("Seed")}</span>
                   <span className="font-code text-[10px] text-stone-300">{selected.seed}</span>
                 </span>
               ) : null
@@ -472,7 +475,7 @@ export function MapEditor({
               <div className="grid grid-cols-2 gap-1.5">
                 <Select<string>
                   value={selected.theme}
-                  label="Theme"
+                  label={t("Theme")}
                   size="sm"
                   onChange={(theme) => void patch({ theme })}
                   className="w-full"
@@ -480,14 +483,14 @@ export function MapEditor({
                 />
                 <Select<string>
                   value={selected.ambient}
-                  label="Ambient light"
+                  label={t("Light")}
                   size="sm"
                   onChange={(ambient) => void patch({ ambient })}
                   className="w-full"
                   options={[
-                    { value: "bright", label: "Daylight" },
-                    { value: "dim", label: "Dim" },
-                    { value: "dark", label: "Dark" },
+                    { value: "bright", label: t("Daylight") },
+                    { value: "dim", label: t("Dim", { context: "workshop.maps.addon.dim" }) },
+                    { value: "dark", label: t("Dark", { context: "workshop.maps.addon.dark" }) },
                   ]}
                 />
               </div>

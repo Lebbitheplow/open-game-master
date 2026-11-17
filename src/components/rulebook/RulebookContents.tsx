@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import type { ContentsChapter, ContentsEntry, RulebookContents as Contents, RulebookPart, SearchHit } from "@/lib/rulebook/types";
 import { Digits } from "./RulebookPage";
 import { splitWords, textKey } from "@/lib/language/text-logic";
+import { useLocale, useT, useTp } from "@/lib/locale";
 
 // The left-hand page: the book's name, a search line, the rules a table
 // reaches for mid-session, the reader's bookmarks, and the contents, book by
@@ -44,6 +45,33 @@ function aside(entry: ContentsEntry): string | null {
   if (entry.kind === "monster") return entry.meta.split(",")[0];
   return null;
 }
+
+// The three books' blurbs, keyed by the part id the data carries
+// (srd-5.1.json parts); a part the dictionaries do not know falls back to its
+// own words.
+const PART_BLURB: Record<string, string> = {
+  players: "The Player's Handbook, as far as the SRD opens it: making a hero, playing the game, and every spell.",
+  "dungeon-master": "The Dungeon Master's Guide, as far as the SRD opens it: hazards to run and every magic item.",
+  monsters: "The Monster Manual, as far as the SRD opens it: every stat block, the beasts, and the people of the world.",
+};
+
+// The quick links' words (QUICK_LINKS in src/lib/rulebook/book.ts), keyed by
+// the English label, which is the link's own id in the data; an unlisted
+// label falls back to itself.
+const QUICK_KEY: Record<string, string> = {
+  Conditions: "Conditions",
+  "Actions in combat": "Actions in combat",
+  "Opportunity attacks": "Opportunity attacks",
+  Grappling: "Grappling",
+  Cover: "Cover",
+  "Death saves": "Death saves",
+  Advantage: "Advantage",
+  Hiding: "Hiding",
+  Concentration: "Concentration",
+  Resting: "Resting",
+  Exhaustion: "Exhaustion",
+  "Travel pace": "Travel pace",
+};
 
 function EntryRow({ entry, current, onOpen }: { entry: ContentsEntry; current: boolean; onOpen: (id: string) => void }) {
   const note = aside(entry);
@@ -109,6 +137,11 @@ export function RulebookContents({
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<{ query: string; hits: SearchHit[] } | null>(null);
   const [searching, setSearching] = useState(false);
+  const t = useT();
+  const tp = useTp();
+  // The search asks for the book the reader reads (Accept-Language), so the
+  // server stems the query as that book's words.
+  const locale = useLocale();
   const currentChapter = useMemo(
     () => contents?.chapters.find((chapter) => chapter.entries.some((entry) => entry.id === current))?.id ?? null,
     [contents, current],
@@ -134,7 +167,7 @@ export function RulebookContents({
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const response = await fetch(`/api/rulebook/search?q=${encodeURIComponent(q)}`);
+        const response = await fetch(`/api/rulebook/search?q=${encodeURIComponent(q)}`, { headers: { "Accept-Language": locale } });
         const data = response.ok ? await response.json() : { hits: [] };
         if (asked.current === q) setResult({ query: q, hits: data.hits ?? [] });
       } finally {
@@ -142,7 +175,7 @@ export function RulebookContents({
       }
     }, 180);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, locale]);
 
   const entries = useMemo(() => {
     const map = new Map<string, ContentsEntry>();
@@ -185,8 +218,8 @@ export function RulebookContents({
     <div className="rb-contents" data-no-motion>
       <header className="rb-contents-head">
         <p className="rb-running">Open Game Master</p>
-        <h2 className="rb-book-title">The Rulebook</h2>
-        <p className="rb-book-sub">Fifth Edition &middot; System Reference Document 5.1</p>
+        <h2 className="rb-book-title">{t("The Rulebook")}</h2>
+        <p className="rb-book-sub">{t("Fifth Edition · System Reference Document 5.1")}</p>
       </header>
 
       <label className="rb-search">
@@ -205,8 +238,8 @@ export function RulebookContents({
               onOpen(hit.page, hit.at, hit.words);
             }
           }}
-          placeholder="Seek a rule, a spell, a monster"
-          aria-label="Search the rulebook"
+          placeholder={t("Seek a rule, a spell, a monster")}
+          aria-label={t("Search the rulebook")}
           spellCheck={false}
           enterKeyHint="search"
         />
@@ -214,7 +247,7 @@ export function RulebookContents({
           // eslint-disable-next-line @next/next/no-img-element
           <img src="/assets/ui/quill.webp" alt="" className="rb-quill" />
         ) : query ? (
-          <button type="button" className="rb-search-clear" aria-label="Clear the search" onClick={() => setQuery("")}>
+          <button type="button" className="rb-search-clear" aria-label={t("Clear the search")} onClick={() => setQuery("")}>
             <X className="size-3.5" />
           </button>
         ) : null}
@@ -227,8 +260,10 @@ export function RulebookContents({
             <>
               <p className="rb-results-count">
                 {shown.hits.length
-                  ? `${shown.hits.length === 40 ? "The first 40" : shown.hits.length} passage${shown.hits.length === 1 ? "" : "s"} found`
-                  : "Nothing in the book matches that."}
+                  ? shown.hits.length === 40
+                    ? t("The first 40 passages found")
+                    : tp("{n} passage found", "{n} passages found", { count: shown.hits.length, n: shown.hits.length })
+                  : t("Nothing in the book matches that.")}
               </p>
               <ol className="rb-hits" key={shown.query}>
                 {shown.hits.map((hit, index) => (
@@ -257,28 +292,28 @@ export function RulebookContents({
               </ol>
             </>
           ) : (
-            <p className="rb-results-count">Turning the pages&hellip;</p>
+            <p className="rb-results-count">{t("Turning the pages…")}</p>
           )}
         </section>
       ) : (
         <div className="rb-contents-body">
           {contents ? (
             <>
-              <section className="rb-quick" aria-label="At the table">
-                <p className="rb-section-label">At the table</p>
+              <section className="rb-quick" aria-label={t("At the table")}>
+                <p className="rb-section-label">{t("At the table")}</p>
                 <div className="rb-chips">
                   {contents.quick.map((link) => (
                     <button key={link.label} type="button" className="rb-chip motion-press" onClick={() => onOpen(link.page, link.at)}>
-                      {link.label}
+                      {QUICK_KEY[link.label] ? t(QUICK_KEY[link.label]) : link.label}
                     </button>
                   ))}
                 </div>
               </section>
 
               {marks.length ? (
-                <section className="rb-marks" aria-label="Bookmarks">
+                <section className="rb-marks" aria-label={t("Bookmarks")}>
                   <p className="rb-section-label">
-                    <Bookmark className="size-3.5" aria-hidden="true" /> Bookmarks
+                    <Bookmark className="size-3.5" aria-hidden="true" /> {t("Bookmarks")}
                   </p>
                   {marks.map((entry) => (
                     <EntryRow key={entry.id} entry={entry} current={entry.id === current} onOpen={(id) => onOpen(id)} />
@@ -286,15 +321,15 @@ export function RulebookContents({
                 </section>
               ) : null}
 
-              <nav aria-label="Contents">
-                <p className="rb-section-label">Contents</p>
+              <nav aria-label={t("Contents")}>
+                <p className="rb-section-label">{t("Contents")}</p>
                 {sections.map((section) => (
                   <section key={section.part?.id ?? "appendices"} className="rb-part" aria-label={section.part?.title}>
                     {section.part ? (
                       <header className="rb-part-head" style={{ animationDelay: `${120 + section.delay * 30}ms` }}>
-                        <p className="rb-part-numeral">Book {section.part.numeral}</p>
+                        <p className="rb-part-numeral">{t("Book {numeral}", { numeral: section.part.numeral })}</p>
                         <h3 className="rb-part-title">{section.part.title}</h3>
-                        <p className="rb-part-blurb">{section.part.blurb}</p>
+                        <p className="rb-part-blurb">{PART_BLURB[section.part.id] ? t(PART_BLURB[section.part.id]) : section.part.blurb}</p>
                       </header>
                     ) : null}
                     <ol className="rb-chapters">
@@ -331,14 +366,14 @@ export function RulebookContents({
                 <a href={contents.source.licenseUrl} target="_blank" rel="noreferrer">
                   CC-BY-4.0
                 </a>
-                .{" "}
+                {t(". ")}
                 <button type="button" className="rb-xref" onClick={() => onOpen("legal-information")}>
-                  Legal information
+                  {t("Legal information")}
                 </button>
               </p>
             </>
           ) : (
-            <p className="rb-results-count">Opening the book&hellip;</p>
+            <p className="rb-results-count">{t("Opening the book…")}</p>
           )}
         </div>
       )}

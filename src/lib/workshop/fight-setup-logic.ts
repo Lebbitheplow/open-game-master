@@ -3,6 +3,7 @@ import { conditionMetaSchema, type ConditionMetaMap } from "@/lib/schemas/condit
 import { describeDiceScript, diceScriptSchema, type DiceScript } from "@/lib/dice-script-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { GENDERS } from "@/lib/gender";
+import { pluralOf } from "@/lib/messages-logic";
 
 // A prepared fight's set-up (issue 685): the moment a test of it was saved
 // to start from, so the next test, a coding agent's bench or #570's scorer
@@ -334,33 +335,54 @@ function heroWords(hero: SetupHero): string | null {
 
 // The lines the Workshop shows under a fight with a set-up, and the table
 // note a test opened from one posts. Plain words, the changed things only.
-export function describeFightSetup(setup: FightSetup): string[] {
+export function describeFightSetup(
+  setup: FightSetup,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string[] {
+  const tp = pluralOf(t);
   const lines: string[] = [];
   const party =
     setup.party.kind === "stand-ins"
-      ? `the stand-in party (${setup.party.size} at level ${setup.party.level})`
+      ? t
+        ? t("the stand-in party ({size} at level {level})", { size: setup.party.size, level: setup.party.level })
+        : `the stand-in party (${setup.party.size} at level ${setup.party.level})`
       : setup.party.kind === "elsewhere"
-        ? "a party that sat at another table; a test here seats its own, fresh"
-        : `${setup.party.characterIds.length} character${setup.party.characterIds.length === 1 ? "" : "s"} from your library`;
-  lines.push(`Saved ${setup.savedAt.slice(0, 10)} from a test with ${party}.`);
+        ? t
+          ? t("a party that sat at another table; a test here seats its own, fresh")
+          : "a party that sat at another table; a test here seats its own, fresh"
+        : t
+          ? tp("{count} character from your library", "{count} characters from your library", { count: setup.party.characterIds.length })
+          : `${setup.party.characterIds.length} character${setup.party.characterIds.length === 1 ? "" : "s"} from your library`;
+  const date = setup.savedAt.slice(0, 10);
+  lines.push(t ? t("Saved {date} from a test with {party}.", { date, party }) : `Saved ${date} from a test with ${party}.`);
   const foes = setup.foes.map(hurtWords).filter((entry): entry is string => Boolean(entry));
-  lines.push(foes.length ? `Foes: ${listed(foes)}.` : "Foes: as the roster makes them, where the test left them.");
+  lines.push(
+    foes.length
+      ? t
+        ? t("Foes: {foes}.", { foes: listed(foes) })
+        : `Foes: ${listed(foes)}.`
+      : t
+        ? t("Foes: as the roster makes them, where the test left them.")
+        : "Foes: as the roster makes them, where the test left them.",
+  );
   // Another table's party is nobody's here: its wounds and its order are not
   // what a test here starts with.
   const ours = setup.party.kind !== "elsewhere";
   const heroes = ours ? setup.heroes.map(heroWords).filter((entry): entry is string => Boolean(entry)) : [];
   if (heroes.length) {
-    lines.push(`Party: ${listed(heroes)}.`);
+    lines.push(t ? t("Party: {heroes}.", { heroes: listed(heroes) }) : `Party: ${listed(heroes)}.`);
   }
   const order = [...(ours ? setup.heroes : []).map((hero) => ({ name: hero.name, initiative: hero.initiative })), ...setup.foes.filter((foe) => foe.status === "alive").map((foe) => ({ name: foe.name, initiative: foe.initiative }))]
     .filter((entry): entry is { name: string; initiative: number } => entry.initiative !== null)
     .sort((a, b) => b.initiative - a.initiative);
   if (order.length) {
-    lines.push(`Initiative: ${order.map((entry) => `${entry.name} ${entry.initiative}`).join(", ")}.`);
+    const orderList = order.map((entry) => `${entry.name} ${entry.initiative}`).join(", ");
+    lines.push(t ? t("Initiative: {order}.", { order: orderList }) : `Initiative: ${orderList}.`);
   }
   const dice = setupDice(setup);
   if (dice) {
-    lines.push(`Dice: ${describeDiceScript(dice)}`);
+    const diceText = describeDiceScript(dice);
+    lines.push(t ? t("Dice: {dice}", { dice: diceText }) : `Dice: ${diceText}`);
   }
   return lines;
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useLocale, useT } from "@/lib/locale";
 import { CampaignCover } from "@/components/CampaignCover";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ContextMenu, type ContextMenuItem } from "@/components/ui/ContextMenu";
@@ -37,12 +38,13 @@ export function YourTables({
   onDelete: (campaign: HomeCampaign) => void;
   onNewCampaign: () => void;
 }) {
+  const t = useT();
   if (!loading && campaigns.length === 0 && !actionError) {
     return null;
   }
   return (
-    <section className="ts-slots ts-reveal" style={{ animationDelay: "900ms" }} aria-label="Your tables">
-      <h2 className="ts-slots-eyebrow">{campaigns.length === 1 ? "Your table" : "Your tables"}</h2>
+    <section className="ts-slots ts-reveal" style={{ animationDelay: "900ms" }} aria-label={t("Your tables")}>
+      <h2 className="ts-slots-eyebrow">{campaigns.length === 1 ? t("Your table") : t("Your tables")}</h2>
       {actionError ? <p className="motion-shake ts-error">{actionError}</p> : null}
       {loading ? (
         <div className="ts-slot-row" aria-busy="true">
@@ -67,7 +69,7 @@ export function YourTables({
               <span className="ts-slot-new-plus" aria-hidden="true">
                 <Plus className="size-5" />
               </span>
-              <span className="ts-slot-title">Forge a new world</span>
+              <span className="ts-slot-title">{t("Forge a new world")}</span>
             </button>
           </li>
         </ul>
@@ -89,25 +91,27 @@ function SaveSlot({
   onClone: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const ended = campaign.status === "ended";
   const router = useRouter();
   // The same doors as the slot and its three buttons, under a right-click or
   // a long press. The buttons stay: the menu is a second way, not the only one.
   const menu: ContextMenuItem[] = [
-    { id: "open", label: "Open", glyph: "tab-campaigns", onSelect: () => router.push(`/campaigns/${campaign.id}`) },
+    { id: "open", label: t("Open", { context: "action.open" }), glyph: "tab-campaigns", onSelect: () => router.push(`/campaigns/${campaign.id}`) },
     // A running campaign's prep (issue 530), for whoever steers its story:
     // the second door, the slot itself still opening the table.
     ...(campaign.status === "active" && steersStory(campaign, userId)
-      ? [{ id: "prep", label: "Open prep", glyph: "tab-journal", onSelect: () => router.push(`/campaigns/${campaign.id}?view=prep`) }]
+      ? [{ id: "prep", label: t("Open prep"), glyph: "tab-journal", onSelect: () => router.push(`/campaigns/${campaign.id}?view=prep`) }]
       : []),
-    { id: "export-html", label: "Export story: HTML page", glyph: "ui-export", separated: true, onSelect: () => downloadStory(campaign.id, "html") },
-    { id: "export-odt", label: "Export story: OpenDocument (.odt)", glyph: "ui-export", onSelect: () => downloadStory(campaign.id, "odt") },
-    { id: "export-docx", label: "Export story: Word (.docx)", glyph: "ui-export", onSelect: () => downloadStory(campaign.id, "docx") },
+    { id: "export-html", label: t("Export story: HTML page"), glyph: "ui-export", separated: true, onSelect: () => downloadStory(campaign.id, "html") },
+    { id: "export-odt", label: t("Export story: OpenDocument (.odt)"), glyph: "ui-export", onSelect: () => downloadStory(campaign.id, "odt") },
+    { id: "export-docx", label: t("Export story: Word (.docx)"), glyph: "ui-export", onSelect: () => downloadStory(campaign.id, "docx") },
     ...(steersStory(campaign, userId)
-      ? [{ id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", separated: true, disabled: cloning, onSelect: onClone }]
+      ? [{ id: "duplicate", label: t("Duplicate"), glyph: "ui-duplicate", separated: true, disabled: cloning, onSelect: onClone }]
       : []),
     ...(campaign.role === "owner"
-      ? [{ id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger" as const, separated: !steersStory(campaign, userId), onSelect: onDelete }]
+      ? [{ id: "delete", label: t("Delete"), glyph: "ui-delete", tone: "danger" as const, separated: !steersStory(campaign, userId), onSelect: onDelete }]
       : []),
   ];
   return (
@@ -131,23 +135,23 @@ function SaveSlot({
                 ended && "ts-slot-badge-ended",
               )}
             >
-              {statusLabel(campaign)}
+              {statusLabel(t, campaign)}
             </span>
           </span>
           <span className="ts-slot-title">{campaign.title}</span>
-          <span className="ts-slot-line">{slotLine(campaign, userId)}</span>
+          <span className="ts-slot-line">{slotLine(t, campaign, userId, locale)}</span>
           <span className="ts-slot-meta">
-            Level {campaign.startingLevel} start · {campaign.difficulty}
-            {campaign.maxPlayers === 1 ? " · solo" : ""}
+            {t("Level {level} start · {difficulty}", { level: campaign.startingLevel, difficulty: campaign.difficulty })}
+            {campaign.maxPlayers === 1 ? t(" · solo") : ""}
           </span>
         </Link>
         <span className="ts-slot-actions">
           <ExportMenu campaignId={campaign.id} variant="tile-icon" />
           {steersStory(campaign, userId) ? (
-            <Tooltip content="Copy the world into a new campaign, without the transcript">
+            <Tooltip content={t("Copy the world into a new campaign, without the transcript")}>
               <button
                 type="button"
-                aria-label="Duplicate this campaign"
+                aria-label={t("Duplicate this campaign")}
                 disabled={cloning}
                 onClick={(event) => {
                   event.preventDefault();
@@ -161,10 +165,10 @@ function SaveSlot({
             </Tooltip>
           ) : null}
           {campaign.role === "owner" ? (
-            <Tooltip content="Delete this campaign">
+            <Tooltip content={t("Delete this campaign")}>
               <button
                 type="button"
-                aria-label="Delete this campaign"
+                aria-label={t("Delete this campaign")}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();

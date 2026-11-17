@@ -47,7 +47,9 @@ await test("The party roster's chips print a counter's name and uses, not its id
 // The dialog opens through a portal, which a static render leaves empty.
 await test("The sheet names a counter through the same lookup as the roster.", () => {
   const source = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/CharacterSheetDialog.tsx", import.meta.url), "utf8");
-  assert.ok(source.includes("name={resourceName(id)}"));
+  // Upstream's read layers the FR display name over the same lookup: the
+  // roster's def first, then the plain name, then the id in title case.
+  assert.ok(source.includes("name={resourceDisplayName(id, locale) ?? resourceName(id) ?? titleCase(id)}"));
 });
 
 await test("A card paid from a shared pool names the pool, ready or spent.", () => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PIXEL_ICONS } from "@/lib/ui";
 import { PageSection, PageShell } from "@/components/PageShell";
+import { T } from "@/components/T";
 
 export const metadata = {
   title: "Terms of Service | Open Game Master",
@@ -11,11 +12,11 @@ export default function TermsPage() {
     <PageShell
       icon={PIXEL_ICONS.story}
       glyph="ui-terms"
-      title="Terms of service"
-      blurb="What the software is, what it is not, and who is responsible for what."
+      title={<T k="Terms of service" />}
+      blurb={<T k="What the software is, what it is not, and who is responsible for what." />}
       actions={
         <Link href="/" className="text-sm text-amber-200 hover:text-amber-100">
-          Back to Open Game Master
+          <T k="Back to Open Game Master" />
         </Link>
       }
     >
@@ -32,7 +33,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Who these terms are between">
+      <PageSection heading={<T k="Who these terms are between" />}>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-stone-400">
           <li>
             <span className="text-stone-200">If you run the server.</span> Your relationship with
@@ -58,7 +59,7 @@ export default function TermsPage() {
         </ul>
       </PageSection>
 
-      <PageSection heading="No service, no support, no uptime">
+      <PageSection heading={<T k="No service, no support, no uptime" />}>
         <p className="text-sm leading-6 text-stone-400">
           Nothing here is a subscription or a hosted product. There is no service level, no
           guaranteed availability, no support desk, and no promise that future versions will keep
@@ -67,7 +68,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="If you run a server">
+      <PageSection heading={<T k="If you run a server" />}>
         <p className="text-sm leading-6 text-stone-400">
           Running an install makes you the operator, and the obligations that would normally fall
           on a service provider fall on you:
@@ -106,7 +107,7 @@ export default function TermsPage() {
         </ul>
       </PageSection>
 
-      <PageSection heading="Acceptable use">
+      <PageSection heading={<T k="Acceptable use" />}>
         <p className="text-sm leading-6 text-stone-400">
           Whether you are the operator or a player, do not use Open Game Master to:
         </p>
@@ -139,7 +140,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="AI generated content">
+      <PageSection heading={<T k="AI generated content" />}>
         <p className="text-sm leading-6 text-stone-400">
           The Game Master is a language model. Its narration is fiction produced by software,
           and it can be wrong, inconsistent, unfair, or upsetting. It is not advice of any kind,
@@ -163,7 +164,7 @@ export default function TermsPage() {
         </ul>
       </PageSection>
 
-      <PageSection heading="Optional third-party services">
+      <PageSection heading={<T k="Optional third-party services" />}>
         <p className="text-sm leading-6 text-stone-400">
           By default everything runs on your own hardware. An operator can enable integrations that
           reach outside it, for example Discord sign-in, a hosted OpenAI-compatible model provider,
@@ -173,7 +174,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Game content and trademarks">
+      <PageSection heading={<T k="Game content and trademarks" />}>
         <p className="text-sm leading-6 text-stone-400">
           The code is MIT licensed. The bundled rules data derives from the System Reference
           Document 5.1 by Wizards of the Coast LLC, licensed under Creative Commons Attribution
@@ -192,7 +193,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Your content">
+      <PageSection heading={<T k="Your content" />}>
         <p className="text-sm leading-6 text-stone-400">
           You keep whatever rights you already have in what you write and upload. It is stored in
           your operator&apos;s database and nowhere else. This project takes no license in it,
@@ -201,7 +202,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="No warranty and no liability">
+      <PageSection heading={<T k="No warranty and no liability" />}>
         <p className="text-sm leading-6 text-stone-400">
           As stated in the MIT license, the software is provided &quot;as is&quot;, without
           warranty of any kind, express or implied, including the warranties of merchantability,
@@ -216,7 +217,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Stopping">
+      <PageSection heading={<T k="Stopping" />}>
         <p className="text-sm leading-6 text-stone-400">
           You can stop using the software at any time, delete your account and content from within
           the app, or delete the whole database from your server. An operator can shut a server
@@ -224,7 +225,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Changes to these terms">
+      <PageSection heading={<T k="Changes to these terms" />}>
         <p className="text-sm leading-6 text-stone-400">
           These terms are part of the open source project and change only when the code changes.
           Each release carries the version of these terms that shipped with it, and you can review
@@ -237,7 +238,7 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Contact">
+      <PageSection heading={<T k="Contact" />}>
         <p className="text-sm leading-6 text-stone-400">
           There is no company behind this project. Questions about the software, including
           license and security reports, belong in the project repository or with{" "}

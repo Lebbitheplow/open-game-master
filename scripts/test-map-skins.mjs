@@ -21,6 +21,11 @@ process.env.SQLITE_DB_PATH = dbPath;
 process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
 register("./lib/register-alias.mjs", import.meta.url);
+
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
 globalThis.__odmEmbedderPromise = Promise.resolve((texts) =>
   Promise.resolve({ tolist: () => texts.map(() => new Array(384).fill(0.1)) }),
 );
@@ -102,13 +107,13 @@ test("the cache key tells two skins apart and calls the empty one nothing", () =
 });
 
 test("the picker leads with the campaign's own setting and offers every skin exactly once", () => {
-  const fantasy = skinChoices("high_fantasy");
+  const fantasy = skinChoices("high_fantasy", enT);
   assert.equal(fantasy[0].group, "This setting");
   assert.ok(fantasy[0].skins.every((skin) => !skin.genre));
-  const cyber = skinChoices("cyberpunk");
+  const cyber = skinChoices("cyberpunk", enT);
   assert.ok(cyber[0].skins.length > 0 && cyber[0].skins.every((skin) => skin.genre === "cyberpunk"));
   assert.equal(cyber[1].group, "Fantasy");
-  for (const groups of [fantasy, cyber, skinChoices("post-apocalyptic"), skinChoices(null)]) {
+  for (const groups of [fantasy, cyber, skinChoices("post-apocalyptic", enT), skinChoices(null, enT)]) {
     const ids = groups.flatMap((group) => group.skins.map((skin) => skin.id));
     assert.equal(ids.length, SKINS.length);
     assert.equal(new Set(ids).size, SKINS.length);

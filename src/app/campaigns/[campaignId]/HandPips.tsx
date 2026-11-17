@@ -1,6 +1,8 @@
 "use client";
 
+import { useT, useTp } from "@/lib/locale";
 import type { TurnPip } from "@/lib/battlemap/hand-table";
+import { costShort } from "@/app/campaigns/[campaignId]/HandCardFace";
 
 // The Hand's turn pips, the engine's count (src/lib/battlemap/hand-table.ts
 // turnPips), and the Flurry of Blows strikes bought and not yet made (the
@@ -16,6 +18,8 @@ export function HandPips({
   pips: TurnPip[];
   flurryStrikes?: number;
 }) {
+  const t = useT();
+  const tp = useTp();
   return (
     <>
       {pips.map((pip) => (
@@ -25,18 +29,20 @@ export function HandPips({
           data-used={pip.used ? "true" : undefined}
           // The strike through a spent pip is drawn by hand-motion.css, which eases it in.
           className="hand-pip rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider"
-          aria-label={`${pip.label} ${pip.used ? "spent" : "available"}`}
+          aria-label={t(pip.used ? "{label} spent" : "{label} available", { label: costShort(t, pip.cost) })}
         >
-          {pip.label}
+          {/* The engine's pip labels are data ("Reaction"); the reader's word
+              comes from the cost keys, the same one the card corner wears. */}
+          {costShort(t, pip.cost)}
         </span>
       ))}
       {flurryStrikes ? (
         <span
           key={`flurry-${flurryStrikes}`}
           className="hand-pip motion-pop rounded-full border border-amber-500/45 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-amber-200"
-          aria-label={`${flurryStrikes} Flurry of Blows strikes left`}
+          aria-label={tp("{count} Flurry of Blows strike left", "{count} Flurry of Blows strikes left", { count: flurryStrikes })}
         >
-          Flurry {flurryStrikes}
+          {t("Flurry {count}", { count: flurryStrikes })}
         </span>
       ) : null}
     </>

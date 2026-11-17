@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PageLoading, PageNotice } from "@/components/PageShell";
+import { useT } from "@/lib/locale";
 import type { EnvDefaults, MaskedConfig } from "@/app/admin/AdminSettingsFields";
 import { SetupWizard, type SetupInfo } from "@/app/setup/SetupWizard";
 
@@ -12,6 +13,7 @@ type Me = { id: string; username: string; isAdmin: boolean; avatar?: { url: stri
 // account lands here; an admin can come back from the admin panel any time.
 // Every API it calls re-checks the admin flag server-side.
 export default function SetupPage() {
+  const t = useT();
   const [me, setMe] = useState<Me | null>(null);
   const [config, setConfig] = useState<MaskedConfig | null>(null);
   const [env, setEnv] = useState<EnvDefaults | null>(null);
@@ -51,9 +53,9 @@ export default function SetupPage() {
   if (!me?.isAdmin) {
     return (
       <PageNotice user={me}>
-        Only the server&apos;s admins can set it up.{" "}
+        {t("Only the server's admins can set it up.")}{" "}
         <Link href="/" className="text-amber-200 hover:text-amber-400">
-          Back to campaigns
+          {t("Back to campaigns")}
         </Link>
       </PageNotice>
     );
@@ -63,9 +65,9 @@ export default function SetupPage() {
   if (info?.deviceWorld) {
     return (
       <PageNotice user={me}>
-        This world runs inside the app, which sets up its storyteller on its Story AI screen.{" "}
+        {t("This world runs inside the app, which sets up its storyteller on its Story AI screen.")}{" "}
         <Link href="/admin" className="text-amber-200 hover:text-amber-400">
-          Open the admin panel
+          {t("Open the admin panel")}
         </Link>
       </PageNotice>
     );
@@ -74,9 +76,9 @@ export default function SetupPage() {
   if (!config || !env || !info) {
     return (
       <PageNotice user={me}>
-        The setup could not load this server&apos;s settings.{" "}
+        {t("The setup could not load this server's settings.")}{" "}
         <Link href="/admin" className="text-amber-200 hover:text-amber-400">
-          Open the admin panel
+          {t("Open the admin panel")}
         </Link>
       </PageNotice>
     );

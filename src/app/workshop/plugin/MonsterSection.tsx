@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { MonsterTile, ui } from "@/lib/ui";
 import { packArtKey } from "@/lib/worlds/art";
 import { input, removeAt, replaceAt, type SectionProps } from "@/app/workshop/plugin/types";
+import { useT } from "@/lib/locale";
 
 // The pack's bestiary: real stat blocks wearing the world's names. A row is
 // picked from the content pack, which supplies the slug, the challenge
@@ -25,13 +26,14 @@ function formatCr(cr: number): string {
 }
 
 export function MonsterSection({ draft, onDraft }: SectionProps) {
+  const t = useT();
   const list = draft.monsters;
   const set = (next: typeof list) => onDraft({ ...draft, monsters: next });
   return (
     <section className={ui.card + " p-4"}>
-      <SectionHead title="Monsters" glyph="system-bestiary" className="mb-0" />
+      <SectionHead title={t("Bestiary")} glyph="system-bestiary" className="mb-0" />
       <p className="mb-3 text-[11px] text-stone-500">
-        Pick a creature from the content pack and give it the world&apos;s name. The stat block, rating and type come with it. Upload a picture for it under Pictures.
+        {t("Pick a creature from the content pack and give it the world's name. The stat block, rating and type come with it. Upload a picture for it under Pictures.")}
       </p>
       <div className="stagger space-y-1.5">
         {list.map((entry, index) => (
@@ -49,30 +51,30 @@ export function MonsterSection({ draft, onDraft }: SectionProps) {
             <span className="w-full text-[11px] text-stone-400 sm:w-40">
               {entry.slug}
               <span className="block text-stone-600">
-                CR {formatCr(entry.cr)}
+                {t("CR {cr}", { cr: formatCr(entry.cr) })}
                 {entry.type ? `, ${entry.type}` : ""}
               </span>
             </span>
             <input
               value={entry.name}
               maxLength={60}
-              placeholder="Called here"
-              aria-label={`Name for ${entry.slug}`}
+              placeholder={t("Called here")}
+              aria-label={t("Name for {slug}", { slug: entry.slug })}
               onChange={(event) => set(replaceAt(list, index, { ...entry, name: event.target.value }))}
               className={cn(input, "w-40 min-w-0")}
             />
             <input
               value={entry.blurb}
               maxLength={200}
-              placeholder="One line about it"
-              aria-label="Blurb"
+              placeholder={t("One line about it")}
+              aria-label={t("Blurb")}
               onChange={(event) => set(replaceAt(list, index, { ...entry, blurb: event.target.value }))}
               className={cn(input, "min-w-0 flex-1")}
             />
             <button
               type="button"
               onClick={() => set(removeAt(list, index))}
-              aria-label={`Remove ${entry.slug}`}
+              aria-label={t("Remove {name}", { name: entry.slug })}
               className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}
             >
               <X className="size-3.5" />
@@ -83,8 +85,8 @@ export function MonsterSection({ draft, onDraft }: SectionProps) {
       <div className="mt-2">
         <ContentPick
           kind="monsters"
-          label="Find a monster to rename"
-          placeholder="Find a monster to rename"
+          label={t("Find a monster to rename")}
+          placeholder={t("Find a monster to rename")}
           onPick={(entry) => {
             if (entry.source !== "open5e" || list.some((current) => current.slug === entry.slug)) {
               return;
@@ -102,7 +104,7 @@ export function MonsterSection({ draft, onDraft }: SectionProps) {
           }}
         />
         <p className="mt-1 text-[11px] text-stone-500">
-          Only content-pack creatures can be listed; a hand-built monster has no stat block on the other server.
+          {t("Only content-pack creatures can be listed; a hand-built monster has no stat block on the other server.")}
         </p>
       </div>
     </section>

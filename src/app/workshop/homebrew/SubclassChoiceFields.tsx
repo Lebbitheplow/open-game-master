@@ -16,11 +16,19 @@ import { addChip } from "@/app/workshop/kit";
 import type { Data } from "@/app/workshop/homebrew/draft";
 import { LANGUAGES } from "@/lib/workshop/pickers";
 import { SKILL_IDS } from "@/lib/homebrew/item-magic-schema";
-import { DAMAGE_TYPES } from "@/lib/dm/damage-logic";
+import { DAMAGE_TYPES, damageTypeWord } from "@/lib/dm/damage-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { SUBCLASS_CHOICE_LIMITS } from "@/lib/homebrew/subclass-choice-check";
 import { subclassChoiceSummary, type SubclassChoiceOption } from "@/lib/content/subclass-choices";
 import { uniqueVariantId } from "@/lib/content/species-variants";
+import { useLocale, useT } from "@/lib/locale";
+import type { Locale } from "@/lib/messages-logic";
+
+// The chips' damage words in the reader's language: capitalized out of the
+// French SRD's own list (damageTypeWord's pattern,
+// src/lib/dm/damage-logic.ts). English keeps the raw term, exactly as shipped.
+const capital = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const damageLabel = (type: string, locale: Locale): string => (locale === "fr" ? capital(damageTypeWord(type, locale)) : type);
 
 // A subclass whose player picks one of several options at a class level: a
 // bloodline, an elemental affinity (issue #833). Hidden behind one button
@@ -54,6 +62,7 @@ const SRD_SPELLS = { srd: "1" };
 // The option's spells by the class level they arrive at, picked from the
 // SRD's and the author's own (ContentPick), as the subclass's own are.
 function OptionSpells({ option, put }: { option: Data; put: (spells: Record<string, string[]> | undefined) => void }) {
+  const t = useT();
   const spells = (option.spells ?? {}) as Record<string, string[]>;
   const rows = Object.entries(spells).sort(([a], [b]) => Number(a) - Number(b));
   const [level, setLevel] = useState(1);
@@ -62,16 +71,16 @@ function OptionSpells({ option, put }: { option: Data; put: (spells: Record<stri
   const levelsFull = rows.length >= L.spellLevels && !spells[String(level)];
   return (
     <div className="col-span-2 space-y-1 sm:col-span-4" data-subclass-option-spells>
-      <span className="text-[11px] text-stone-400">Spells it always has prepared</span>
+      <span className="text-[11px] text-stone-400">{t("Spells it always has prepared")}</span>
       {rows.map(([at, names]) => (
         <div key={at} className="live-in flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="w-20 shrink-0 text-stone-400">Level {at}</span>
+          <span className="w-20 shrink-0 text-stone-400">{t("Level {level}", { level: at })}</span>
           {names.map((name) => (
             <span key={name} className="inline-flex items-center gap-1 rounded-md border border-stone-700 px-1.5 py-0.5 text-stone-200">
               {name}
               <button
                 type="button"
-                aria-label={`Remove ${name}`}
+                aria-label={t("Remove {name}", { name })}
                 onClick={() => {
                   const left = names.filter((entry) => entry !== name);
                   const next = { ...spells };
@@ -89,8 +98,8 @@ function OptionSpells({ option, put }: { option: Data; put: (spells: Record<stri
       ))}
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1 text-[11px] text-stone-400">
-          From class level
-          <NumberStepper size="sm" label="Class level the spell arrives at" min={1} max={20} value={level} onChange={setLevel} />
+          {t("From class level")}
+          <NumberStepper size="sm" label={t("Class level the spell arrives at")} min={1} max={20} value={level} onChange={setLevel} />
         </span>
         {atLevel.length < L.spellsPerLevel && !levelsFull ? (
           <ContentPick
@@ -99,8 +108,8 @@ function OptionSpells({ option, put }: { option: Data; put: (spells: Record<stri
             // (srd=1, issue #833), so a bare server offers them here as it
             // does for the subclass's own spells just above.
             extraParams={SRD_SPELLS}
-            label="Find a spell this option always has prepared"
-            placeholder="Add a spell..."
+            label={t("Find a spell this option always has prepared")}
+            placeholder={t("Add a spell...")}
             className="min-w-48 flex-1"
             onPick={(entry) => {
               if (atLevel.some((name) => textKey(name) === textKey(entry.name))) return;
@@ -109,7 +118,7 @@ function OptionSpells({ option, put }: { option: Data; put: (spells: Record<stri
           />
         ) : (
           <span role="status" className="live-in text-[11px] text-stone-400">
-            {levelsFull ? `An option grants spells at ${L.spellLevels} levels at most.` : `Level ${level} holds ${L.spellsPerLevel}, the most a level keeps.`}
+            {levelsFull ? t("An option grants spells at {count} levels at most.", { count: L.spellLevels }) : t("Level {level} holds {total}, the most a level keeps.", { level, total: L.spellsPerLevel })}
           </span>
         )}
       </div>
@@ -118,39 +127,41 @@ function OptionSpells({ option, put }: { option: Data; put: (spells: Record<stri
 }
 
 function OptionFields({ option, put }: { option: Data; put: (next: Data) => void }) {
+  const t = useT();
+  const locale = useLocale();
   const field = (key: string, value: unknown) => put(withField(option, key, value));
   return (
     <>
-      <TextField label="Option name" value={String(option.name ?? "")} onChange={(name) => put({ ...option, name })} maxLength={L.name} className="col-span-2" />
+      <TextField label={t("Option name")} value={String(option.name ?? "")} onChange={(name) => put({ ...option, name })} maxLength={L.name} className="col-span-2" />
       <SelectField
-        label="Its element"
+        label={t("Its element")}
         value={String(option.damageType ?? "")}
-        options={[{ value: "", label: "none" }, ...DAMAGE_TYPES.map((type) => ({ value: type, label: type }))]}
+        options={[{ value: "", label: t("none", { context: "workshop.homebrew.hazard.none" }) }, ...DAMAGE_TYPES.map((type) => ({ value: type, label: damageLabel(type, locale) }))]}
         onChange={(damageType) => field("damageType", damageType || undefined)}
         className="col-span-2"
-        hint="The damage type this option deals in. Elemental Affinity, if the subclass has it, adds to and resists this type."
+        hint={t("The damage type this option deals in. Elemental Affinity, if the subclass has it, adds to and resists this type.")}
       />
       <div className="col-span-2 sm:col-span-4">
         <TextArea
-          label="What it says"
+          label={t("What it says")}
           value={String(option.description ?? "")}
           onChange={(description) => field("description", description)}
           maxLength={L.description}
           rows={3}
-          hint="The player reads this; the table runs only the grants below."
+          hint={t("The player reads this; the table runs only the grants below.", { context: "workshop.homebrew.subclassChoice.whatItSaysHint" })}
         />
       </div>
       <div className="col-span-2 space-y-1 sm:col-span-4">
-        <span className="text-[11px] text-stone-400">Damage it resists</span>
-        <ToggleChips options={DAMAGE_TYPES} selected={list(option.resistances)} max={L.resistances} onChange={(next) => field("resistances", next)} />
+        <span className="text-[11px] text-stone-400">{t("Damage it resists")}</span>
+        <ToggleChips options={DAMAGE_TYPES} labels={Object.fromEntries(DAMAGE_TYPES.map((type) => [type, damageLabel(type, locale)]))} selected={list(option.resistances)} max={L.resistances} onChange={(next) => field("resistances", next)} />
       </div>
       <div className="col-span-2 space-y-1 sm:col-span-4">
-        <span className="text-[11px] text-stone-400">Skills it is proficient in</span>
+        <span className="text-[11px] text-stone-400">{t("Skills it is proficient in")}</span>
         <ToggleChips options={SKILL_IDS} labels={SKILL_LABELS} selected={list(option.skills)} max={L.skills} onChange={(next) => field("skills", next)} />
       </div>
-      <div className="col-span-2 space-y-1">
-        <span className="text-[11px] text-stone-400">Languages it speaks</span>
-        <ChipList items={list(option.languages)} onChange={(next) => field("languages", next)} options={LANGUAGES} prompt="Add a language" max={L.languages} />
+      <div className="col-span-2 space-y-1 sm:col-span-4">
+        <span className="text-[11px] text-stone-400">{t("Languages it speaks")}</span>
+        <ChipList items={list(option.languages)} onChange={(next) => field("languages", next)} options={LANGUAGES} prompt={t("Add a language")} max={L.languages} />
       </div>
       <OptionSpells option={option} put={(spells) => field("spells", spells)} />
     </>
@@ -158,6 +169,7 @@ function OptionFields({ option, put }: { option: Data; put: (next: Data) => void
 }
 
 export function SubclassChoiceFields({ data, set }: { data: Data; set: (patch: Data) => void }) {
+  const t = useT();
   const choices = Array.isArray(data.choices) ? (data.choices as Data[]) : [];
   const putChoices = (next: Data[]) => set({ choices: next.length ? next : undefined });
   // Each choice keeps an id from when it is made: a sheet's pick holds it,
@@ -167,39 +179,38 @@ export function SubclassChoiceFields({ data, set }: { data: Data; set: (patch: D
   if (!choices.length) {
     return (
       <div className="space-y-1.5 text-sm" data-subclass-choice>
-        <SectionHead title="The player's choice" glyph="tab-characters" className="mb-1" />
+        <SectionHead title={t("The player's choice")} glyph="tab-characters" className="mb-1" />
         <p className="text-[11px] text-stone-400">
-          For a subclass whose players each pick one of several options at a level: a bloodline, an element, a
-          patron&apos;s aspect, each with its own element, resistances, training or spells.
+          {t("For a subclass whose players each pick one of several options at a level: a bloodline, an element, a patron's aspect, each with its own element, resistances, training or spells.")}
         </p>
         <button type="button" onClick={add} className={cn(ui.btnSmall, addChip)}>
-          <Plus className="size-3" /> Let the player choose (bloodline, element)
+          <Plus className="size-3" /> {t("Let the player choose (bloodline, element)")}
         </button>
       </div>
     );
   }
   return (
     <div className="space-y-3 text-sm" data-subclass-choice>
-      <SectionHead title="The player's choice" glyph="tab-characters" className="mb-1" />
+      <SectionHead title={t("The player's choice")} glyph="tab-characters" className="mb-1" />
       {choices.map((choice, index) => {
         const putChoice = (patch: Data) => putChoices(choices.map((entry, at) => (at === index ? { ...entry, ...patch } : entry)));
         const options = Array.isArray(choice.options) ? (choice.options as Data[]) : [];
-        const label = String(choice.label ?? "").trim() || `Choice ${index + 1}`;
+        const label = String(choice.label ?? "").trim() || t("Choice {index}", { index: index + 1 });
         return (
           <div key={String(choice.id ?? "") || `at-${index}`} className="live-in space-y-2 rounded-lg border border-stone-800 p-2" role="group" aria-label={label}>
             <div className="flex flex-wrap items-end gap-2">
               <TextField
-                label="What the player chooses"
+                label={t("What the player chooses")}
                 value={String(choice.label ?? "")}
                 onChange={(next) => putChoice({ label: next })}
-                placeholder="Bloodline, Element"
+                placeholder={t("Bloodline, Element")}
                 maxLength={L.label}
                 className="min-w-48 grow"
-                hint="The builder asks for it under this name, and the sheet records the pick as it."
+                hint={t("The builder asks for it under this name, and the sheet records the pick as it.", { context: "workshop.homebrew.subclassChoice.whatPlayerChoosesHint" })}
               />
               <span className="flex items-center gap-1 pb-1 text-[11px] text-stone-400">
-                Chosen at class level
-                <NumberStepper label={`Class level ${label} is chosen at`} min={1} max={20} value={Number(choice.level ?? 1) || 1} onChange={(level) => putChoice({ level })} />
+                {t("Chosen at class level")}
+                <NumberStepper label={t("Class level {label} is chosen at", { label })} min={1} max={20} value={Number(choice.level ?? 1) || 1} onChange={(level) => putChoice({ level })} />
               </span>
             </div>
             <ChoiceOptionList
@@ -209,17 +220,17 @@ export function SubclassChoiceFields({ data, set }: { data: Data; set: (patch: D
               summary={(option) => subclassChoiceSummary(readOption(option))}
               attr="subclass"
               limits={{ options: L.options, minOptions: L.minOptions, name: L.name }}
-              placeholder="Storm"
+              placeholder={t("Storm")}
             />
             <button type="button" onClick={() => putChoices(choices.filter((_, at) => at !== index))} className={cn(ui.btnSmall, addChip, "hover:text-red-300")}>
-              <X className="size-3" /> Remove {label}
+              <X className="size-3" /> {t("Remove {name}", { name: label })}
             </button>
           </div>
         );
       })}
       {choices.length < L.choices ? (
         <button type="button" onClick={add} className={cn(ui.btnSmall, addChip)}>
-          <Plus className="size-3" /> Add another choice
+          <Plus className="size-3" /> {t("Add another choice")}
         </button>
       ) : null}
     </div>

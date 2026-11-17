@@ -3,6 +3,7 @@ import { isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { getMember } from "@/lib/db/campaigns";
 import { setMemberMuted } from "@/lib/db/moderation";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,13 +21,15 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requireMember(campaignId);
+  // The refusals read the asker's language; the roster's alert shows them raw.
+  const t = requestT(request);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   const { campaign, user } = context;
   if (user.id !== campaign.leadUserId && user.id !== campaign.ownerUserId) {
-    return Response.json({ error: "Only the party lead can mute players." }, { status: 403 });
+    return Response.json({ error: t("Only the party lead can mute players.") }, { status: 403 });
   }
   const raw = await request.json().catch(() => ({}));
   const parsed = muteSchema.safeParse(raw);

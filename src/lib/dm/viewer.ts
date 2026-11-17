@@ -227,19 +227,26 @@ export type LobbySeat = { userId: string; ready: boolean; hasSheet: boolean };
 //
 // Readiness still counts every seat, DM included: the DM readies up to say the
 // table is set, which is the whole point of their ready button.
-export function lobbyBlocker(seats: DmSeats, lobby: LobbySeat[]): string {
+//
+// The caller binds the language: the lobby passes its own translator, the
+// server route and the tests an English-bound one.
+export function lobbyBlocker(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  seats: DmSeats,
+  lobby: LobbySeat[],
+): string {
   if (!lobby.length) {
-    return "The table is empty.";
+    return t("The table is empty.");
   }
   // A DM alone at the table has nobody to run the game for.
   if (lobby.every((seat) => isDmSeat(seats, seat.userId))) {
-    return "Waiting for a player to join.";
+    return t("Waiting for a player to join.");
   }
   if (lobby.some((seat) => !isDmSeat(seats, seat.userId) && !seat.hasSheet)) {
-    return "Every player needs a character before the adventure starts.";
+    return t("Every player needs a character before the adventure starts.");
   }
   if (lobby.some((seat) => !seat.ready)) {
-    return "Waiting for everyone to ready up.";
+    return t("Waiting for everyone to ready up.");
   }
   return "";
 }

@@ -6,6 +6,9 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { computeEncounterSummary, describeEncounterSummary, fightGameTime, fightGameTimeWords, fightTableTime } = await import("../src/lib/dm/encounter-summary.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The words are the dictionary's; the tests read them in English, the source.
+const t = (key, vars) => translate("en", key, vars);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const { FightSummaryCard } = await import("../src/app/campaigns/[campaignId]/FightSummaryCard.tsx");
@@ -55,7 +58,7 @@ test("kills, fled, rounds and seconds are counted, and the line reads", () => {
   assert.equal(summary.fled, 1);
   assert.equal(summary.rounds, 4);
   assert.equal(summary.seconds, 750);
-  const line = describeEncounterSummary(summary);
+  const line = describeEncounterSummary(t, summary);
   assert.match(line, /victory after 4 rounds/);
   assert.match(line, /18 damage dealt, 10 taken, 5 healed/);
   assert.match(line, /2 slain/);
@@ -70,16 +73,16 @@ test("a fight's length is its game time, six seconds a round", () => {
   assert.equal(fightGameTime(10), "1 min");
   assert.equal(fightGameTime(12), "1 min 12 s");
   assert.equal(fightGameTime(0), "6 s", "a fight lasts at least a round");
-  assert.equal(fightGameTimeWords(4), "24 seconds");
-  assert.equal(fightGameTimeWords(10), "1 minute");
-  assert.equal(fightGameTimeWords(21), "2 minutes 6 seconds");
-  assert.match(describeEncounterSummary(summary), /victory after 4 rounds \(24 seconds\)/);
+  assert.equal(fightGameTimeWords(t, 4), "24 seconds");
+  assert.equal(fightGameTimeWords(t, 10), "1 minute");
+  assert.equal(fightGameTimeWords(t, 21), "2 minutes 6 seconds");
+  assert.match(describeEncounterSummary(t, summary), /victory after 4 rounds \(24 seconds\)/);
 });
 
 test("the real time reads as time at the table", () => {
-  assert.equal(fightTableTime(750), "13 minutes at the table");
-  assert.equal(fightTableTime(20), "1 minute at the table");
-  assert.equal(fightTableTime(0), "");
+  assert.equal(fightTableTime(t, 750), "13 minutes at the table");
+  assert.equal(fightTableTime(t, 20), "1 minute at the table");
+  assert.equal(fightTableTime(t, 0), "");
 });
 
 test("the fight card shows game time on its tile and the real minutes as time at the table", () => {

@@ -4,6 +4,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { NumberStepper } from "@/components/ui/NumberStepper";
+import { useT } from "@/lib/locale";
 import { cn } from "@/lib/cn";
 
 // The kit's date and time picker (docs/visual-overhaul-plan.md 8c.4), a
@@ -34,7 +35,7 @@ export function DateTimePicker({
   dateOnly = false,
   min,
   disabled = false,
-  placeholder = "Pick a date",
+  placeholder,
   className,
 }: {
   value: string;
@@ -47,6 +48,7 @@ export function DateTimePicker({
   placeholder?: string;
   className?: string;
 }) {
+  const t = useT();
   const chosen = parse(value);
   const earliest = min ? parse(min) : null;
   const [shown, setShown] = useState(() => {
@@ -75,7 +77,7 @@ export function DateTimePicker({
 
   const reads = chosen
     ? chosen.toLocaleString(undefined, dateOnly ? { dateStyle: "medium" } : { dateStyle: "medium", timeStyle: "short" })
-    : placeholder;
+    : (placeholder ?? t("Pick a date"));
 
   return (
     <DropdownMenu.Root>
@@ -90,7 +92,7 @@ export function DateTimePicker({
           <div className="kit-date-head">
             <button
               type="button"
-              aria-label="Earlier month"
+              aria-label={t("Earlier month")}
               className="kit-date-nav"
               onClick={() => {
                 setTurn("prev");
@@ -102,7 +104,7 @@ export function DateTimePicker({
             <span className="kit-date-month">{shown.toLocaleString(undefined, { month: "long", year: "numeric" })}</span>
             <button
               type="button"
-              aria-label="Later month"
+              aria-label={t("Later month")}
               className="kit-date-nav"
               onClick={() => {
                 setTurn("next");
@@ -140,7 +142,7 @@ export function DateTimePicker({
             <div className="kit-date-time">
               <NumberStepper label="Hour" size="sm" min={0} max={23} value={chosen?.getHours() ?? 19} onChange={(hours) => setTime(hours, chosen?.getMinutes() ?? 0)} />
               <span className="text-stone-500">:</span>
-              <NumberStepper label="Minute" size="sm" min={0} max={55} step={5} value={chosen?.getMinutes() ?? 0} onChange={(minutes) => setTime(chosen?.getHours() ?? 19, minutes)} />
+              <NumberStepper label={t("Minute")} size="sm" min={0} max={55} step={5} value={chosen?.getMinutes() ?? 0} onChange={(minutes) => setTime(chosen?.getHours() ?? 19, minutes)} />
             </div>
           )}
         </DropdownMenu.Content>

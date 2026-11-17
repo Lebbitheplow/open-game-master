@@ -5,11 +5,13 @@ import { useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatModifier } from "@/lib/srd";
 import { FIGHTING_STYLES } from "@/lib/srd/feature-effects";
-import { levelProgressionRows, ordinal, progressionColumns, slotWords, type ProgressionInput, type ProgressionRow } from "./levelProgression";
+import { levelProgressionRows, progressionColumns, slotWords, spellCapLabel, type ProgressionInput, type ProgressionRow } from "./levelProgression";
+import { ordinalOf } from "@/lib/characters/join-changes";
 import type { ClassOption } from "./useBuilderOptions";
 import type { BuilderDerived } from "./useBuilderDerived";
 import type { BuilderState } from "./useBuilderState";
 import { StepPanel } from "./steps/shared";
+import { useLocale, useT } from "@/lib/locale";
 
 // The level progression table (backlog F8): a real table, with a header
 // row and each level as a row header, so a screen reader moves across a
@@ -34,6 +36,7 @@ export function LevelProgressionTable({
   const captionId = useId();
   const boxId = useId();
   const [open, setOpen] = useState(defaultOpen);
+  const t = useT();
   const columns = progressionColumns(rows);
   const last = rows[rows.length - 1]?.level ?? 1;
   const cell = "border-t border-stone-800/70 px-2.5 py-2 align-top";
@@ -43,15 +46,15 @@ export function LevelProgressionTable({
       <span aria-hidden="true" className="text-stone-600">
         -
       </span>
-      <span className="sr-only">None</span>
+      <span className="sr-only">{t("None", { context: "builder.levels.none" })}</span>
     </>
   );
-  const toChoose = <span className="text-amber-300">Still to choose</span>;
+  const toChoose = <span className="text-amber-300">{t("Still to choose")}</span>;
   return (
-    <StepPanel title="Level by level" className={cn("border-amber-500/20", className)}>
+    <StepPanel title={t("Level by level")} className={cn("border-amber-500/20", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="min-w-0 flex-1 text-xs text-stone-500">
-          What each level from 1 to {last} grants, with {who}&apos;s pick where there is one.
+          {t("What each level from 1 to {last} grants, with {who}'s pick where there is one.", { last, who })}
         </p>
         <button
           type="button"
@@ -61,7 +64,7 @@ export function LevelProgressionTable({
           data-level-table-toggle=""
           className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-sm text-sky-300 transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400"
         >
-          {open ? "Hide the levels" : "Show each level"}
+          {open ? t("Hide the levels") : t("Show each level")}
           <ChevronDown aria-hidden="true" className={cn("size-4 transition-transform", open && "rotate-180")} />
         </button>
       </div>
@@ -78,42 +81,42 @@ export function LevelProgressionTable({
       >
         <table data-level-table="" className="w-full min-w-[36rem] border-collapse text-xs text-stone-300">
           <caption id={captionId} className="sr-only">
-            {who}&apos;s levels, 1 to {last}
+            {t("{who}'s levels, 1 to {last}", { who, last })}
           </caption>
           <thead className="bg-stone-950/60">
             <tr>
               <th scope="col" className={cn(head, "sticky left-0 bg-stone-950")}>
-                Level
+                {t("Level")}
               </th>
               {columns.classes ? (
                 <th scope="col" className={head}>
-                  Class
+                  {t("Class")}
                 </th>
               ) : null}
               <th scope="col" className={head}>
-                Proficiency bonus
+                {t("Proficiency bonus")}
               </th>
               <th scope="col" className={head}>
-                Features
+                {t("Features", { context: "builder.levels.features" })}
               </th>
               {columns.subclass ? (
                 <th scope="col" className={head}>
-                  Subclass
+                  {t("Subclass")}
                 </th>
               ) : null}
               <th scope="col" className={head}>
-                Ability score improvement or feat
+                {t("Ability score improvement or feat")}
               </th>
               {columns.casting ? (
                 <>
                   <th scope="col" className={head}>
-                    Cantrips
+                    {t("Cantrips", { context: "sheet.spells.cantrips" })}
                   </th>
                   <th scope="col" className={head}>
-                    Spells
+                    {t("Spells")}
                   </th>
                   <th scope="col" className={head}>
-                    Spell slots
+                    {t("Spell slots")}
                   </th>
                 </>
               ) : null}
@@ -149,7 +152,7 @@ export function LevelProgressionTable({
                         row.mark === "next" ? "border-amber-500/50 text-amber-200" : "border-stone-600 text-stone-300",
                       )}
                     >
-                      {row.mark === "next" ? "New" : "Now"}
+                      {row.mark === "next" ? t("New", { context: "builder.levels.new" }) : t("Now", { context: "builder.levels.now" })}
                     </span>
                   ) : null}
                 </th>
@@ -161,7 +164,7 @@ export function LevelProgressionTable({
                 ) : null}
                 <td className={cell}>
                   {row.improvement
-                    ? (row.improvement.pick ?? (row.improvement.takenInPlay ? "Taken in play, already in the scores" : toChoose))
+                    ? (row.improvement.pick ?? (row.improvement.takenInPlay ? t("Taken in play, already in the scores") : toChoose))
                     : none}
                 </td>
                 {columns.casting ? (
@@ -176,14 +179,14 @@ export function LevelProgressionTable({
                         row.casters
                           .map((caster) =>
                             caster.spells
-                              ? `${caster.name}: ${caster.spells.count} ${caster.spells.label}${caster.spells.spellbook ? `, ${caster.spells.spellbook} in the spellbook` : ""}`
-                              : `${caster.name}: none yet`,
+                              ? `${t("{name}: {count} {label}", { name: caster.name, count: caster.spells.count, label: spellCapLabel(t, caster.spells.label) })}${caster.spells.spellbook ? t(", {count} in the spellbook", { count: caster.spells.spellbook }) : ""}`
+                              : t("{name}: none yet", { name: caster.name }),
                           )
                           .join("; ")
                       ) : row.spells ? (
                         <>
-                          {row.spells.count} {row.spells.label}
-                          {row.spells.spellbook ? `, ${row.spells.spellbook} in the spellbook` : ""}
+                          {row.spells.count} {spellCapLabel(t, row.spells.label)}
+                          {row.spells.spellbook ? t(", {count} in the spellbook", { count: row.spells.spellbook }) : ""}
                         </>
                       ) : (
                         none
@@ -192,8 +195,8 @@ export function LevelProgressionTable({
                     <td className={cn(cell, "whitespace-nowrap")}>
                       {row.slots.length || row.pact ? (
                         <>
-                          {row.slots.length ? slotWords(row.slots) : null}
-                          {row.pact ? `${row.slots.length ? "; " : ""}pact ${row.pact.count} at ${ordinal(row.pact.level)}` : null}
+                          {row.slots.length ? slotWords(row.slots, t) : null}
+                          {row.pact ? `${row.slots.length ? "; " : ""}${t("pact {count} at {ordinal}", { count: row.pact.count, ordinal: ordinalOf(t, row.pact.level) })}` : null}
                         </>
                       ) : (
                         none
@@ -258,13 +261,15 @@ export function BuilderLevelTable({
   derived: BuilderDerived;
   klass: ClassOption | undefined;
 }) {
+  const t = useT();
+  const locale = useLocale();
   // A first-level build is one row, with nothing yet to compare it to.
   if (!klass || derived.effectiveLevel <= 1) {
     return null;
   }
   return (
     <LevelProgressionTable
-      rows={levelProgressionRows(builderProgressionInput(state, derived, klass))}
+      rows={levelProgressionRows(builderProgressionInput(state, derived, klass), t, locale)}
       who={state.name.trim() || "your hero"}
     />
   );
