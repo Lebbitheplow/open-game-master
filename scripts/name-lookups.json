@@ -3875,20 +3875,6 @@
         "home types comparison"
       ]
     ],
-    "app/workshop/homebrew/HomebrewEditor.tsx#keyed": [
-      [
-        "key",
-        2,
-        "homebrew editor lookup by key"
-      ]
-    ],
-    "app/workshop/homebrew/HomebrewPanel.tsx#keyed": [
-      [
-        "key",
-        3,
-        "homebrew panel lookup by key"
-      ]
-    ],
     "lib/roll-labels.ts#whole-single": [
       [
         "key",
