@@ -969,6 +969,19 @@ function ensureSchema(db: SqliteDatabase) {
       zones_json TEXT NOT NULL DEFAULT '[]',
       PRIMARY KEY (campaign_id, place)
     );
+    -- What each first-tier mind feels toward each person it took in acting
+    -- (docs/specs/ogm-npc-perception.md §10), moved only by perceived events.
+    CREATE TABLE IF NOT EXISTS npc_bonds (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      npc_id TEXT NOT NULL,
+      toward_key TEXT NOT NULL,
+      toward TEXT NOT NULL,
+      trust INTEGER NOT NULL DEFAULT 0,
+      affection INTEGER NOT NULL DEFAULT 0,
+      fear INTEGER NOT NULL DEFAULT 0,
+      reasons_json TEXT NOT NULL DEFAULT '[]',
+      PRIMARY KEY (campaign_id, npc_id, toward_key)
+    );
     CREATE TABLE IF NOT EXISTS scene_positions (
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
       name_key TEXT NOT NULL,

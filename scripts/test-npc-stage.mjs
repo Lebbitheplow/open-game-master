@@ -311,5 +311,22 @@ await test("the body: a storm soaks and chills a mind on stage hour by hour; hun
   setClock(world.campaignId, { ...getClock(world.campaignId), weather: clock.weather });
 });
 
+await test("bonds: after a theft it saw, the robbed mind distrusts the thief with the reason, and its frame says so (perception slice 5)", async () => {
+  const { witness } = await import("../src/lib/dm/npc-stage.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const { getBond } = await import("../src/lib/db/npc-bonds.ts");
+  const campaign = getCampaignById(world.campaignId);
+  npc("Ottone");
+  witness(campaign, { actor: "Ottone", verb: "steal", targets: ["Kaku"], object: "Ciotola", zoneTo: "", volume: "normal", covert: false, speech: "", outcome: "Ottone strappa la ciotola a Kaku." });
+  const kaku = getNpcByName(world.campaignId, "Kaku");
+  const bond = getBond(world.campaignId, kaku.id, "Ottone");
+  assert.equal(bond.trust, -25);
+  assert.deepEqual(bond.reasons, ["stole from you (Ciotola)"]);
+  model.script([reply({ text: "Kaku fissa Ottone." }), ego("Guardo Ottone.")]);
+  await model.turn(world, "Resto a guardare.", brakk.id);
+  const asked = sentTo("You are one character").map(textOf);
+  assert.ok(asked.some((text) => /- Ottone: you are wary of them \(they stole from you \(Ciotola\)\)/.test(text)), "the robbed mind reads its distrust and why");
+});
+
 model.close();
 finish();

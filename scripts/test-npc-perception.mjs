@@ -136,4 +136,21 @@ await test("things advertise what they ease: with hunger at 2 the frame names th
   assert.match(ads, /Nothing in sight would ease your cold\./);
 });
 
+const bonds = await import("../src/lib/dm/bonds-logic.ts");
+
+await test("bonds: a theft seen by the robbed leaves distrust with the reason; a bystander judges less, more if the victim is dear; a heard blow moves nothing", () => {
+  const theft = { actor: "Ottone", verb: "steal", targets: ["Kaku"], object: "Ciotola" };
+  const [own] = bonds.bondDeltas(theft, "Kaku", ["sight", "touch"], () => 0);
+  assert.deepEqual(own, { toward: "Ottone", trust: -25, affection: -10, fear: 0, reason: "stole from you (Ciotola)" });
+  const kaku = bonds.applyDelta(null, own);
+  assert.equal(bonds.bondWords(kaku), "Ottone: you are wary of them (they stole from you (Ciotola))");
+  const twice = bonds.applyDelta(bonds.applyDelta(kaku, own), { ...own, reason: "struck you" });
+  assert.match(bonds.bondWords(twice), /^Ottone: you do not trust them, you dislike them \(they stole from you \(Ciotola\); struck you\)$/, "reasons kept once each, newest last");
+  assert.equal(bonds.bondDeltas(theft, "Mairon", ["sight"], () => 0)[0].trust, -10);
+  assert.equal(bonds.bondDeltas(theft, "Mairon", ["sight"], () => 40)[0].trust, -20, "a dear one robbed doubles the blame");
+  assert.deepEqual(bonds.bondDeltas({ actor: "Ottone", verb: "strike", targets: ["Kaku"], object: "" }, "Mairon", ["hearing"], () => 0), [], "a blow only heard moves no bond");
+  assert.deepEqual(bonds.bondDeltas(theft, "Ottone", ["sight"], () => 0), [], "one's own deed moves nothing");
+  assert.equal(bonds.bondDeltas({ actor: "Ottone", verb: "threaten", targets: ["Kaku"], object: "" }, "Kaku", ["hearing"], () => 0)[0].fear, 10, "a threat is heard");
+});
+
 finish();

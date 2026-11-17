@@ -2,6 +2,7 @@
 // who perceived each, and each mind's cursor. Recording an event also leaves
 // each perceiver one memory line of it, as they took it in: the memory is of
 // the event, never of the narrator's prose.
+import { bondsFromEvent } from "@/lib/db/npc-bonds";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { addNpcMemories } from "@/lib/db/npc-minds";
 import { ON_STAGE_SOURCE } from "@/lib/dm/npc-mind-logic";
@@ -87,6 +88,8 @@ export function recordSceneEvent(
   const names = new Map(observers.map((observer) => [observer.id, observer.name]));
   for (const perception of perceptions) {
     insert.run(seq, campaignId, perception.observerId, JSON.stringify(perception.channels));
+    // An attempt counts as the deed: a failed theft still shows the hand.
+    bondsFromEvent(campaignId, perception.observerId, names.get(perception.observerId) ?? "", event, perception.channels);
     const line = perceivedLine(event, names.get(perception.observerId) ?? "", perception.channels);
     if (line) {
       addNpcMemories(campaignId, [perception.observerId], { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: line, learnedAt: event.instant }, event.turnId);

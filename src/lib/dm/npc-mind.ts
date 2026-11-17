@@ -13,6 +13,8 @@ import { recordSceneEvent, speechHeardInTurn } from "@/lib/db/scene-events";
 import { perceive, type Observer } from "@/lib/dm/senses-logic";
 import { senseScene, whereEveryoneIs, zoneOf } from "@/lib/dm/scene-place";
 import { bodyFrame } from "@/lib/dm/body";
+import { listBonds } from "@/lib/db/npc-bonds";
+import { bondWords } from "@/lib/dm/bonds-logic";
 import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
 import { recordExtractedFacts } from "@/lib/db/facts";
@@ -374,6 +376,16 @@ function lyingHere(campaign: Campaign, npc: Npc): string {
   return things.length ? `Lying here where you stand, belonging to nobody, for anyone to take: ${things.join("; ")}.` : "";
 }
 
+// What it feels toward each person whose deeds it took in (docs/specs/
+// ogm-npc-perception.md §10), strongest first, with why.
+function feltBonds(campaign: Campaign, npc: Npc): string[] {
+  return listBonds(campaign.id, npc.id)
+    .sort((a, b) => Math.abs(b.trust) + Math.abs(b.affection) + b.fear - (Math.abs(a.trust) + Math.abs(a.affection) + a.fear))
+    .map(bondWords)
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
 // The relationship meter with each hero, and what it remembers of them:
 // how a betrayal it lived changes it, traced from the table's own records.
 function bondsOf(campaign: Campaign, npc: Npc, memories: NpcMemory[]): string[] {
@@ -413,7 +425,7 @@ async function askMind(
     scores: scoresFor(campaign, npc),
     memories,
     present,
-    bonds: bondsOf(campaign, npc, memories),
+    bonds: [...bondsOf(campaign, npc, memories), ...feltBonds(campaign, npc)],
     perceives,
     offscreen,
   });
