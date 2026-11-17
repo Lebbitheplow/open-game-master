@@ -143,6 +143,11 @@ Ogni fetta si chiude con test verdi, prova sui turni registrati e 10 turni dal v
 3. **Interprete degli oggetti e arbitro senza oggetti.** Il palco smette di proporre `moves`; il master perde
    gli strumenti di passaggio; l'interprete legge le parole e comanda. Prova: i 10 turni della Zattera
    (fixture dal DB) devono finire con schede uguali ai fatti raccontati.
+   *Fatto:* `src/lib/dm/items-reader.ts` legge a fine turno (dopo la guardia della narrazione) parole
+   degli eroi, esiti del palco e racconto finale, e fa eseguire al proprietario passaggi, cadute a terra,
+   raccolte e perdite. Con il palco attivo il master non usa più `handle_item` "hand" né `remove_item`;
+   `grant_item` (cose nuove) e `use_item` (regole) restano suoi. Prova: `scripts/trial-items-reader.mjs`
+   sui 10 turni registrati: 8 puliti; i rifiuti restanti sono stati vecchi mai registrati.
 4. **Narratore dai fatti.** Il master si divide in arbitro e narratore; il racconto si scrive dopo gli eventi.
 5. **Corpo** (91 punti su `conditions`, HP).
 6. **Risorse.**

@@ -309,6 +309,7 @@ import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
 import { withCastSheets } from "@/lib/dm/cast-sheet-refs";
 import { grantRefusal } from "@/lib/owners/items";
+import { itemsReaderOn, masterItemRefusal, recordStoryItems } from "@/lib/dm/items-reader";
 import { npcStageOn, runStage } from "@/lib/dm/npc-stage";
 import type { HeroLine } from "@/lib/dm/npc-stage-logic";
 import { awayArrivalNote, everyoneHears, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
@@ -2960,7 +2961,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({ role: "user", content: stateGuardPrompt(stateRead) });
+        turn.conversation.push({ role: "user", content: stateGuardPrompt(stateRead, itemsReaderOn(campaign)) });
         saveDmTurn(turn);
         continue;
       }
@@ -3237,6 +3238,11 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // the engine records a declared one, or the GM reads a note next turn
     // (issue 641, src/lib/dm/story-moves-settle.ts).
     settleStoryMoves(campaign, { turn, sheets, claims: [...guarded.deeds, ...(guarded.bonds ?? [])], record: true });
+    // Who holds which thing, read from the story as it was finally told: the
+    // items reader names the moves, the items owner makes them or refuses
+    // them (src/lib/dm/items-reader.ts). Here, before the turn is done, so a
+    // revert takes them back with the rest of the turn.
+    await recordStoryItems(campaign, turn, heroLinesOf(context), turn.narrationParts.join("\n\n"));
     // The narration told the table a player's turn is over ("It is now
     // Bram's turn") and no call ended it: it ends after the narration, as
     // the table was told, and the enemies it passes act then
@@ -3473,6 +3479,7 @@ async function resolveModelCall(
       return unable;
     }
     const result =
+      masterItemRefusal(campaign, name, gated.args) ??
       grantRefusal(campaign.id, name, gated.args, sheetsById) ??
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
       runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () => applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result);

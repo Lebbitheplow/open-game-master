@@ -1,0 +1,102 @@
+// The items reader (docs/specs/ogm-domain-owners.md slice 3,
+// src/lib/dm/items-reader.ts): at a staged table the story's moves of things
+// are read once, at the turn's end, and made by the items owner. The model is
+// scripted; what is pinned is what the server does with what it names.
+import assert from "node:assert/strict";
+import { openWorld } from "./lib/enforce-world.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
+import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
+
+const { test, finish } = suite("test-items-reader");
+const world = await openWorld({ gameSettings: { ttsEnabled: false, npcMinds: true, npcStage: true, tableLanguage: "italian" } });
+const model = await fakeModel();
+model.pointAt(world);
+const logic = await import("../src/lib/dm/items-reader-logic.ts");
+const reader = await import("../src/lib/dm/items-reader.ts");
+const { upsertNpc, getNpcByName, setNpcState } = await import("../src/lib/db/npcs.ts");
+const minds = await import("../src/lib/db/npc-minds.ts");
+const cast = await import("../src/lib/db/cast-sheets.ts");
+const sheets = await import("../src/lib/db/sheets.ts");
+const { writeItems } = await import("../src/lib/owners/items.ts");
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+const { listDroppedItems } = await import("../src/lib/db/dropped-items.ts");
+const { runInTurnScope } = await import("../src/lib/dm/job-control.ts");
+const { applyDmMutation } = await import("../src/lib/dm/mutations.ts");
+const { withoutLeadingStopWords } = await import("../src/lib/language/language.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
+const italian = (word) => withoutLeadingStopWords(textKey(word), "italian");
+
+const brakk = world.addHero({ name: "Brakk", race: "half-orc", class: "barbarian" });
+const row = upsertNpc({ campaignId: world.campaignId, name: "Kaku" });
+minds.setNpcTier(row.id, "primary");
+setNpcState(row.id, { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: true, disarmed: false, carries: ["una lenza"] });
+cast.castSheetFor(getNpcByName(world.campaignId, "Kaku"));
+writeItems(brakk.id, { equipment: [{ name: "Pesce", qty: 2 }, { name: "una bussola d'ottone", qty: 1 }] });
+
+const json = (value) => reply({ text: JSON.stringify(value) });
+const brakkHas = () => sheets.getSheetById(brakk.id).equipment.map((item) => `${item.name}${(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}`);
+const kakuHas = () => cast.npcThings(getNpcByName(world.campaignId, "Kaku"));
+async function endOfTurn(moves, narration = "Il racconto del turno.", heroLines = [], before = () => {}) {
+  model.items([json({ moves })]);
+  const turn = createDmTurn(world.campaignId, []);
+  return runInTurnScope(turn.id, async () => {
+    before(turn);
+    return reader.recordStoryItems(getCampaignById(world.campaignId), turn, heroLines, narration);
+  });
+}
+
+await test("pure rules: who takes part, the ground, loss, and nothing made", () => {
+  const people = [{ name: "Brakk", hero: true, carries: ["Pesce"] }, { name: "Kaku", hero: false, carries: [] }];
+  assert.deepEqual(logic.planItemMove({ thing: "pesce", from: "Brakk", to: "Kaku" }, people, italian), { kind: "hand", thing: "pesce", from: "Brakk", to: "Kaku" });
+  assert.equal(logic.planItemMove({ thing: "pesce", from: "Brakk", to: "ground" }, people, italian).kind, "drop");
+  assert.equal(logic.planItemMove({ thing: "pesce", from: "terra", to: "Kaku" }, people, italian).kind, "pickup", "the table's own word for the ground");
+  assert.equal(logic.planItemMove({ thing: "pesce", from: "Brakk", to: "" }, people, italian).kind, "lose");
+  assert.equal(logic.planItemMove({ thing: "un tesoro", from: "", to: "Brakk" }, people, italian).kind, "refused", "nothing is made by the record");
+  assert.equal(logic.planItemMove({ thing: "pesce", from: "Brakk", to: "Ugo" }, people, italian).kind, "refused", "only people here");
+  assert.equal(logic.parseItemMoves("niente").ok, false);
+  assert.deepEqual(logic.parseItemMoves('{"moves":[{"thing":"","from":"a","to":"b"}]}'), { ok: true, moves: [] }, "a move without a thing is dropped");
+  assert.match(logic.renderItemsReaderPrompt({ people, ground: ["una lenza"], heroLines: [{ name: "Brakk", text: "Do il pesce a Kaku." }], narration: "Brakk porge il pesce.", stage: "", recorded: ["Brakk: use Pesce"] }), /On the ground here: una lenza[\s\S]*- Brakk: Do il pesce a Kaku\.[\s\S]*Already recorded this turn:\n- Brakk: use Pesce/);
+});
+
+await test("a hand-over the story told reaches both sheets, read once at the turn's end", async () => {
+  const out = await endOfTurn([{ thing: "il pesce", from: "Brakk", to: "Kaku" }], "Brakk porge un pesce a Kaku.", [{ name: "Brakk", text: "Do un pesce a Kaku." }]);
+  assert.deepEqual(out.refused, []);
+  assert.deepEqual(brakkHas(), ["Pesce", "una bussola d'ottone"]);
+  assert.deepEqual(kakuHas(), ["una lenza", "Pesce"]);
+  const read = model.itemsRequests.at(-1).messages.map((message) => message.content).join("\n");
+  assert.match(read, /- Brakk \(hero\): Pesce x2; una bussola/, "the reader sees what each holds");
+  assert.match(read, /- Brakk: Do un pesce a Kaku\./, "and the hero's own words");
+});
+
+await test("a thing put down lies on the ground here, and is picked up from it", async () => {
+  await endOfTurn([{ thing: "la lenza", from: "Kaku", to: "ground" }], "Kaku posa la lenza sulle assi.");
+  assert.deepEqual(kakuHas(), ["Pesce"]);
+  assert.deepEqual(listDroppedItems(world.campaignId).map((item) => item.item.name), ["una lenza"], "it lies here, not gone");
+  await endOfTurn([{ thing: "una lenza", from: "ground", to: "Brakk" }], "Brakk raccoglie la lenza.");
+  assert.ok(brakkHas().includes("una lenza"));
+  assert.deepEqual(listDroppedItems(world.campaignId), []);
+});
+
+await test("a thing used up is lost once: the rules' use_item and the story's telling are one loss", async () => {
+  const out = await endOfTurn([{ thing: "Pesce", from: "Kaku", to: "" }], "Kaku divora il pesce.");
+  assert.deepEqual(out.applied.length, 1);
+  assert.deepEqual(kakuHas(), []);
+  writeItems(brakk.id, { equipment: [...sheets.getSheetById(brakk.id).equipment, { name: "Pane", qty: 2 }] });
+  await endOfTurn([{ thing: "il pane", from: "Brakk", to: "" }], "Brakk mangia un pane.", [], (turn) => {
+    const all = sheets.listSheets(world.campaignId);
+    applyDmMutation(getCampaignById(world.campaignId), turn.id, "remove_item", JSON.stringify({ characterId: brakk.id, item: "Pane", qty: 1, reason: "eaten" }), all, new Map(all.map((sheet) => [sheet.id, sheet])));
+  });
+  assert.equal(sheets.getSheetById(brakk.id).equipment.find((item) => item.name === "Pane")?.qty ?? 1, 1, "one bread eaten, not two");
+});
+
+await test("what the story cannot have done is refused, and nothing is made", async () => {
+  const before = brakkHas();
+  const out = await endOfTurn([{ thing: "una spada d'oro", from: "", to: "Brakk" }, { thing: "la bussola d'ottone", from: "Kaku", to: "Brakk" }], "Kaku dà a Brakk una bussola e una spada d'oro.");
+  assert.equal(out.applied.length, 0);
+  assert.equal(out.refused.length, 2);
+  assert.deepEqual(brakkHas(), before);
+});
+
+model.close();
+finish();

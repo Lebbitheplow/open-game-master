@@ -39,7 +39,7 @@ const ego = (intent, speech = "") => json({ speech, intent, conclusion: "", lie:
 const textOf = (request) => request.messages.map((message) => String(message.content ?? "")).join("\n");
 const sentTo = (start) => model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith(start));
 
-await test("pure rules: the order rotates, the die picks the branch, a thing changes hands by its words", () => {
+await test("pure rules: the order rotates, the die picks the branch, the referee moves no thing", () => {
   const cast = [{ name: "Volodar" }, { name: "Amleth" }, { name: "Kranz" }];
   assert.deepEqual(logic.stageOrder(cast, 0).map((entry) => entry.name), ["Amleth", "Kranz", "Volodar"]);
   assert.deepEqual(logic.stageOrder(cast, 4).map((entry) => entry.name), ["Kranz", "Volodar", "Amleth"]);
@@ -47,8 +47,7 @@ await test("pure rules: the order rotates, the die picks the branch, a thing cha
   assert.equal(parsed.ok, true);
   assert.equal(parsed.ruling.modifier, 4, "the modifier is held to its range");
   assert.equal(parsed.ruling.success.changes[0].condition, "", "the referee never kills");
-  assert.deepEqual(parsed.ruling.success.moves, [{ thing: "la chiave", from: "", to: "Kranz" }], "a move without a thing is dropped");
-  assert.deepEqual(parsed.ruling.failure.moves, []);
+  assert.equal("moves" in parsed.ruling.success, false, "who holds what is the items reader's, not the referee's");
   assert.equal(logic.settleRuling(parsed.ruling, 10).succeeded, true);
   assert.equal(logic.settleRuling(parsed.ruling, 9).branch.outcome, "Respinto.");
   assert.equal(logic.settleRuling({ ...parsed.ruling, uncertain: false }, 1).succeeded, true, "nothing to roll");
@@ -73,11 +72,12 @@ await test("the engine gives each mind on stage its turn, the referee's ruling i
     dc: 12,
     modifier: 1,
     hero: "",
-    success: { outcome: "Amleth strappa la chiave dal pugno di Volodar.", changes: [], moves: [{ thing: "la chiave del barile", from: "Volodar", to: "Amleth" }] },
+    success: { outcome: "Amleth strappa la chiave dal pugno di Volodar.", changes: [] },
     failure: { outcome: "Volodar respinge Amleth e tiene la chiave.", changes: [] },
   });
   // The minds answer side by side, then the referee rules in order.
   model.script([reply({ text: "Brakk resta seduto a guardare il barile." }), oneTurn, oneTurn, grab, drink, reply({ text: "La chiave cambia mano; poi qualcuno beve." })]);
+  model.items([json({ moves: [{ thing: "la chiave del barile", from: "Volodar", to: "Amleth" }] })]);
   dice(15);
   const dm = await model.turn(world, "Resto seduto e guardo.", brakk.id);
   assert.match(dm.content, /La chiave cambia mano/);
@@ -89,7 +89,11 @@ await test("the engine gives each mind on stage its turn, the referee's ruling i
   assert.equal(asked.length, 2, "both minds were asked, by the engine");
   assert.match(textOf(asked[0]), /Brakk resta seduto a guardare il barile/, "a mind perceives what the table was told");
   assert.match(textOf(asked[1]), /Brakk resta seduto a guardare il barile/, "every mind perceives the same moment");
-  assert.deepEqual(thingsOf("Amleth"), ["la chiave del barile d'acqua"], "16 against 12: the key changed hands on the server's sheets");
+  const read = textOf(model.itemsRequests.at(-1));
+  assert.match(read, /Volodar: la chiave del barile d'acqua/, "the items reader sees who held what");
+  assert.match(read, /Amleth strappa la chiave dal pugno di Volodar/, "and what the stage decided");
+  assert.match(read, /La chiave cambia mano/, "and how the narrator told it");
+  assert.deepEqual(thingsOf("Amleth"), ["la chiave del barile d'acqua"], "16 against 12: the key changed hands on the server's sheets, recorded from the story");
   assert.deepEqual(thingsOf("Volodar"), []);
   assert.equal(sheetOf("Amleth").drankAt, now, "the drink is recorded");
   assert.equal(sheetOf("Volodar").drankAt, now - 40 * 60);
@@ -112,32 +116,16 @@ await test("an action aimed at a hero is left to the table as an attempt, and a 
   assert.match(notes.at(-1), /did not answer this turn/);
 });
 
-await test("pure rules: a hero only gains what the actor really carried and gives up; the heroes' own words reach every mind", () => {
+await test("pure rules: a thing is named by its words; the heroes' own words reach every mind", () => {
   assert.equal(logic.thingNamed(["una bottiglia di rum", "un remo"], "la bottiglia di rum", italian), "una bottiglia di rum", "the article does not hide a thing");
-  const people = [{ name: "Brakk", state: "", carries: ["Pesce"], hero: true }, { name: "Mairon", state: "", carries: ["una bottiglia di rum"] }, { name: "Kranz", state: "", carries: [] }];
-  assert.deepEqual(logic.planMove({ thing: "la bottiglia di rum", from: "Mairon", to: "Brakk" }, "Mairon", people), { kind: "hand", thing: "la bottiglia di rum", from: "Mairon", to: "Brakk" });
-  assert.equal(logic.planMove({ thing: "la bottiglia di rum", from: "Mairon", to: "Brakk" }, "Kranz", people).kind, "refused", "only the actor's own moves");
-  assert.equal(logic.planMove({ thing: "Pesce", from: "Brakk", to: "Mairon" }, "Mairon", people).kind, "refused", "the stage never takes from a hero");
-  const offered = [{ name: "Brakk", text: "Brakk porge il suo pesce a Mairon: «Mangia.»" }];
-  assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Mairon" }, "Mairon", people, offered, italian).kind, "hand", "a thing the hero offered in their own words, the actor takes");
-  assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Kranz" }, "Kranz", people, [{ name: "Brakk", text: "Guardo il mare." }], italian).kind, "refused", "a thing the hero never named stays theirs");
-  const pack = [{ name: "Brakk", state: "", carries: ["una bussola d'ottone", "Pesce"], hero: true }, ...people.slice(1)];
-  assert.equal(logic.planMove({ thing: "la bussola d'ottone", from: "Brakk", to: "Mairon" }, "Mairon", pack, [{ name: "Brakk", text: "Poi porge la bussola a Mairon: «Tua.»" }], italian).kind, "hand", "its first word names it when nothing else of theirs shares it");
-  const two = [{ name: "Brakk", state: "", carries: ["una bussola d'ottone", "una bussola rotta"], hero: true }, ...people.slice(1)];
-  assert.equal(logic.planMove({ thing: "la bussola d'ottone", from: "Brakk", to: "Mairon" }, "Mairon", two, [{ name: "Brakk", text: "Porge la bussola a Mairon." }], italian).kind, "refused", "but not when two of their things share it");
-  assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Kranz" }, "Mairon", people, offered, italian).kind, "refused", "and only the actor takes it");
-  assert.equal(logic.planMove({ thing: "un tesoro", from: "", to: "Brakk" }, "Mairon", people).kind, "refused", "nothing made up for a hero");
-  assert.equal(logic.planMove({ thing: "un pesce", from: "", to: "Mairon" }, "Mairon", people).kind, "grant", "a character finds a thing");
-  assert.equal(logic.planMove({ thing: "il remo", from: "Mairon", to: "" }, "Mairon", people).kind, "remove", "and loses one");
-  assert.equal(logic.planMove({ thing: "il remo", from: "Mairon", to: "Ugo" }, "Mairon", people).kind, "refused", "only people present");
   const senses = logic.stageSenses("La zattera dondola. ".repeat(120), [], [{ name: "Brakk", text: "Mairon, passami il rum. Divido il pesce in sette pezzi." }]);
   assert.match(senses, /^What the heroes just did and said, in their own words[^\n]*\n- Brakk: Mairon, passami il rum\. Divido il pesce in sette pezzi\./, "the hero's own words come first and whole");
   assert.ok(senses.length <= 2000, "it still fits npc_speak's perceives");
   const prompt = logic.renderRefereePrompt({ actor: "Mairon", intent: "porgo il rum", speech: "", people: [], scene: "", facts: [], heroLines: [{ name: "Brakk", text: "Mairon, passami il rum." }] });
   assert.match(prompt, /What the heroes did and said this turn, in their own words:\n- Brakk: Mairon, passami il rum\./);
-  const note = logic.stageNote([{ actor: "Mairon", speech: "", outcome: "Mairon getta il remo.", roll: "", hero: "", undone: ["il remo: Mairon has no remo"] }], [], [{ thing: "una bottiglia di rum", from: "Mairon", to: "Brakk" }]);
-  assert.match(note, /Already recorded, do not record again: Mairon → Brakk: una bottiglia di rum/);
-  assert.match(note, /the engine could not record: il remo: Mairon has no remo; tell it as not happening/);
+  const note = logic.stageNote([{ actor: "Mairon", speech: "", outcome: "Mairon getta il remo.", roll: "", hero: "" }], []);
+  assert.match(note, /who holds which thing is recorded from your narration when the turn ends/);
+  assert.match(note, /A thing new to the world in these outcomes \(a fish caught, something found\) is made now with grant_item/);
   assert.match(note, /If it left out something a hero did or said this turn, tell that first/);
 });
 
@@ -155,12 +143,15 @@ await test("the rum: a hero asks a mind for its thing; the mind hears the hero's
     dc: 5,
     modifier: 0,
     hero: "",
-    success: { outcome: "Mairon porge la bottiglia di rum a Brakk.", changes: [], moves: [{ thing: "bottiglia di rum", from: "Mairon", to: "Brakk" }] },
+    success: { outcome: "Mairon porge la bottiglia di rum a Brakk.", changes: [] },
     failure: { outcome: "", changes: [] },
   });
   // The narrator's own retelling leaves the request out on purpose: the
   // minds must still hear it from the player's own line.
   model.script([reply({ text: "Il sole picchia sulla zattera." }), hand, ruling, reply({ text: "Il rum passa di mano." })]);
+  // The reader names the rum, and the fish too, as if misreading a plan for a deed:
+  // the owner moves only what the giver holds, and the fish is still Brakk's to give.
+  model.items([json({ moves: [{ thing: "bottiglia di rum", from: "Mairon", to: "Brakk" }, { thing: "la bottiglia di rum", from: "Mairon", to: "Brakk" }] })]);
   await model.turn(world, "Mairon, passami il rum: ne ho bisogno. Poi divido il pesce in sette pezzi.", brakk.id);
   const asked = model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You are one character"));
   assert.equal(asked.length, 1, "the one mind on stage was asked");
@@ -172,11 +163,22 @@ await test("the rum: a hero asks a mind for its thing; the mind hears the hero's
   assert.match(textOf(referee[0]), /- Brakk: Mairon, passami il rum/, "and what the hero asked");
   const pack = listSheets(world.campaignId).find((sheet) => sheet.name === "Brakk").equipment.map((item) => item.name);
   assert.equal(pack.filter((name) => /rum/i.test(name)).length, 1, "the rum is on Brakk's sheet, once, not twice");
-  assert.ok(pack.includes("Pesce"), "and the fish is still his: the stage never takes from a hero");
+  assert.ok(pack.includes("Pesce"), "and the fish is still his");
   assert.deepEqual(thingsOf("Mairon"), [], "and gone from Mairon");
   const note = textOf(model.requests.at(-1));
-  assert.match(note, /Already recorded, do not record again: Mairon → Brakk: una bottiglia di rum/);
-  assert.match(note, /A hero giving their own thing is the hero's deed, not a request: record it now/, "the narrator keeps the hero's own deeds (the fish) on its side");
+  assert.match(note, /A hero giving their own thing is the hero's deed, not a request: narrate it as done/, "the narrator tells the hero's own deeds; the record follows the story");
+  assert.match(note, /never call handle_item "hand" or remove_item here/);
+});
+
+await test("the master does not move things at a staged table: hand and remove_item are refused with the reason", async () => {
+  const { masterItemRefusal } = await import("../src/lib/dm/items-reader.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const campaign = getCampaignById(world.campaignId);
+  assert.match(masterItemRefusal(campaign, "handle_item", JSON.stringify({ action: "hand" }))?.error ?? "", /recorded from your narration/);
+  assert.match(masterItemRefusal(campaign, "remove_item", "{}")?.error ?? "", /recorded from your narration/);
+  assert.equal(masterItemRefusal(campaign, "handle_item", JSON.stringify({ action: "equip" })), null, "putting a thing on is still the master's");
+  assert.equal(masterItemRefusal(campaign, "grant_item", "{}"), null, "and making a new one");
+  assert.equal(masterItemRefusal({ ...campaign, gameSettings: { ...campaign.gameSettings, npcStage: false } }, "remove_item", "{}"), null, "a table without a stage keeps its tools");
 });
 
 model.close();

@@ -155,7 +155,7 @@ export function heldInScene(campaignId: string, target: CharacterSheet, things: 
       const line = thingNamed(held, thing, keyOf);
       if (line) {
         return {
-          error: `${npc.name} has "${line}". If ${target.name} took it or got it from ${npc.name}, it moves, it is not made: send handle_item with action "hand", characterId "${npc.name}", item "${line}", toCharacterId "${target.name}". If it is another one of ${target.name}'s own, grant it under a name that tells it apart.`,
+          error: `${npc.name} has "${line}". If ${target.name} took it or got it from ${npc.name}, it moves, it is not made: at a staged table narrate it plainly and it is recorded from your words when the turn ends; elsewhere send handle_item with action "hand", characterId "${npc.name}", item "${line}", toCharacterId "${target.name}". If it is another one of ${target.name}'s own, grant it under a name that tells it apart.`,
           retry: true,
         };
       }

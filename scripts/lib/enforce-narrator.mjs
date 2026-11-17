@@ -105,6 +105,10 @@ export async function fakeModel({ slots = 0 } = {}) {
   const readerRequests = [];
   let knowledgeScript = [];
   const knowledgeRequests = [];
+  // The items reader (src/lib/dm/items-reader.ts) answers from its own
+  // queue, so its end-of-turn read never takes a reply meant for the story.
+  let itemsScript = [];
+  const itemsRequests = [];
   const fallback = reply({ text: "The moment settles, and the table waits on the next move." });
 
   function sse(res, entry) {
@@ -226,6 +230,16 @@ export async function fakeModel({ slots = 0 } = {}) {
         answerReader(res, readerScript.shift() ?? []);
         return;
       }
+      if (String(body.messages?.[0]?.content ?? "").startsWith("You keep the record of who holds which thing")) {
+        itemsRequests.push(body);
+        const entry = itemsScript.shift() ?? reply({ text: '{"moves":[]}' });
+        if (body.stream) {
+          sse(res, entry);
+        } else {
+          completion(res, entry);
+        }
+        return;
+      }
       if (isKnowledgeRequest(body)) {
         knowledgeRequests.push(body);
         answerKnowledge(res, knowledgeScript.shift() ?? []);
@@ -282,6 +296,12 @@ export async function fakeModel({ slots = 0 } = {}) {
       readerScript = [...entries];
       readerRequests.length = 0;
       globalThis.__odmReaderReplies?.clear();
+    },
+    // What the items reader answers, one reply per turn's end.
+    itemsRequests,
+    items: (entries) => {
+      itemsScript = [...entries];
+      itemsRequests.length = 0;
     },
     // What the voice-knowledge reader answers, one list of leaks per call.
     knowledgeRequests,

@@ -92,7 +92,7 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
   // a list rewritten here would be the half-recorded hand-over the sheet ends.
   if (args.carries && (npc.castSheetId || getNpcTier(npc.id) === "primary")) {
     return {
-      error: `${npc.name} keeps their things on their own sheet, not in carries. A thing changing hands: handle_item with action "hand" (characterId the giver, toCharacterId the taker; ${npc.name} is named by name). A thing found or made: grant_item. A thing lost or destroyed: remove_item. Send npc_state again without carries for anything else that changed.`,
+      error: `${npc.name} keeps their things on their own sheet, not in carries. A thing changing hands moves from sheet to sheet (at a staged table it is recorded from your narration when the turn ends; elsewhere handle_item with action "hand", characterId the giver, toCharacterId the taker, ${npc.name} named by name). A thing found or made: grant_item. A thing lost or destroyed: told in the story at a staged table, remove_item elsewhere. Send npc_state again without carries for anything else that changed.`,
       retry: true,
     };
   }

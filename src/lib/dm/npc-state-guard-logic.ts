@@ -123,12 +123,18 @@ export function parseStateReading(reply: string, narration: string, people: read
 // The note that sends the narrator back once. A clash takes the narration
 // back to be told again, corrected; a change alone keeps it and asks only for
 // the calls.
-export function stateGuardPrompt(reading: StateReading): string {
+// itemsFromStory: a staged table, where who holds which thing is recorded
+// from the narration when the turn ends (src/lib/dm/items-reader.ts).
+export function stateGuardPrompt(reading: StateReading, itemsFromStory = false): string {
   const changes = reading.unrecorded.map((entry) => `- ${entry.name}: ${entry.change}`).join("\n");
   const clashes = reading.clashes.map((entry) => `- ${entry.name} (${entry.problem}). You wrote: "${entry.quote}"`).join("\n");
   return [
     "[Table note] The server's record of who is a prisoner, bound or down does not match your narration.",
-    changes ? `The narration shows these changes, which no call recorded. Record each now, with what really happened: a thing that changed hands with handle_item action "hand" (giver and taker by name), a thing found with grant_item, a thing lost with remove_item, anything else with npc_state:\n${changes}` : "",
+    changes
+      ? itemsFromStory
+        ? `The narration shows these changes, which no call recorded. Record each now, with what really happened: a thing found with grant_item, anything else of a body with npc_state (a thing that only changed hands, fell or was lost needs no call: it is recorded from your narration):\n${changes}`
+        : `The narration shows these changes, which no call recorded. Record each now, with what really happened: a thing that changed hands with handle_item action "hand" (giver and taker by name), a thing found with grant_item, a thing lost with remove_item, anything else with npc_state:\n${changes}`
+      : "",
     clashes
       ? `These passages contradict the record:\n${clashes}\nIf the record is out of date because the story changed it, call npc_state to set it right. Then narrate this moment again in full, consistent with the record; your previous narration of it has been withdrawn.`
       : "Your narration stands: do not narrate it again.",
