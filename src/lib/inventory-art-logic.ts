@@ -29,7 +29,7 @@ const MAGIC_NAMES: Record<string, string> = {
   "handy-haversack": "bag", "instant-fortress": "cube", "scarab-of-protection": "brooch",
   "efficient-quiver": "quiver", "dust-of-disappearance": "dust",
   "dust-of-dryness": "dust", "dust-of-sneezing-and-choking": "dust",
-  "cubic-gate": "cube",
+  "cubic-gate": "cube", "feather-token": "feather",
 };
 const GEAR_NAMES: Record<string, string> = {
   "acid-vial": "gear-acid", "alchemists-fire-flask": "gear-alchemists-fire",
@@ -53,11 +53,16 @@ const GEAR_NAMES: Record<string, string> = {
 function magicPainting(name: string, known = false): string | null {
   const key = iconSlug(name);
   const special = Object.entries(MAGIC_NAMES).find(([prefix]) => key === prefix || key.startsWith(`${prefix}-`))?.[1];
+  // The first word is the form only while it is the thing itself: alone, or
+  // before "of", a comma or a bracket (Ring of Keys, Bottle, glass, Gem (50
+  // gp)). Before another word it only describes that word: a Boot Knife is a
+  // knife, a Stone Tablet no ioun stone and a Stone Staff a staff.
+  const head = /^\s*[^\s,(]+(?:\s*$|\s*[,(]|\s+(?:of|de|du|des)\s|\s+d['’])/i.test(name);
   // Published names also put the form last (Aurochs Bracers, Alliance
   // Rings). Only a resolved catalog row gets this extra interpretation.
   const last = key.split("-").at(-1)!;
   const suffix = known ? MAGIC_FORMS[last] ?? MAGIC_FORMS[last.replace(/s$/, "")] : undefined;
-  const form = special ?? MAGIC_FORMS[key.split("-")[0]] ?? suffix;
+  const form = special ?? (head ? MAGIC_FORMS[key.split("-")[0]] : undefined) ?? suffix;
   return form ? GEAR_NAMES[form] ?? `magic-${form}` : null;
 }
 
@@ -95,7 +100,8 @@ export function inventoryItemIcon(item: CategoryItem): IconRef {
   const gear = iconSlug(gearName);
   const direct = painting(GEAR_NAMES[gear] ?? `gear-${gear}`);
   if (direct) return withGenre(direct);
-  if (/^potions?(?:-|$)/.test(gear)) return withGenre(painting("gear-potion-of-healing")!);
+  // "Healing potion" is how a GM often writes the Potion of Healing.
+  if (/(?:^|-)potions?(?:-|$)/.test(gear)) return withGenre(painting("gear-potion-of-healing")!);
   if (/^(?:spell-)?scrolls?(?:-|$)/.test(gear)) return withGenre(painting("gear-spell-scroll")!);
   if (/^ropes?(?:-|$)/.test(gear)) return withGenre(painting("gear-rope")!);
   // A gear alias can name a more specific visible form than its catalog row

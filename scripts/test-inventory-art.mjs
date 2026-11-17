@@ -94,6 +94,14 @@ expect("Blue Wrists", "magic-bracers", { srdName: "Bracers of Defense" });
 expect("Unknown trinket", "item-gear", { identified: false, srdName: "Bracers of Defense", slug: "bracers-of-defense" });
 expect("Dinner Plate", "item-gear");
 expect("Signet Ring", "item-gear");
+// A leading form word that only describes the next word is not the item:
+// these drew boots, an ioun stone, a belt, gloves and a horn before.
+for (const name of ["Boot knife", "Stone tablet", "Belt buckle", "Glove puppet", "Horn bow", "Candle holder"]) expect(name, "item-gear");
+expect("Stone Staff", "magic-staff");
+expect("Feather Token", "magic-feather");
+for (const [name, key] of [["Ring of keys", "magic-ring"], ["Bag of flour", "magic-bag"], ["Gem (50 gp)", "magic-gem"], ["Bottle, glass", "magic-bottle"], ["Cape de voyage", "magic-cloak"]]) expect(name, key);
+// The potion's name comes first or last as the GM writes it.
+for (const name of ["Healing potion", "Greater healing potion", "Potion of Healing", "Potion de soins"]) expect(name, "gear-potion-of-healing");
 expect("Moonblade", "weapon-rapier", { slug: "homebrew:example", gear: { weapon: { name: "Rapier", kind: "melee" } } });
 expect("Amber ring blade", "item-melee", { slug: "homebrew:example", gear: { weapon: { name: "Amber ring blade", kind: "melee" } } });
 

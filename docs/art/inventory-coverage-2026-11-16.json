@@ -7,9 +7,9 @@
     "generic": 1046
   },
   "after": {
-    "circular": 769,
+    "circular": 772,
     "existing-genre": 24,
-    "generic": 1011
+    "generic": 1008
   },
   "recoveredEntries": [
     {
@@ -177,6 +177,7 @@
   "notes": [
     "Base coverage and genre availability are separate columns in the accompanying CSV.",
     "Generic entries include vehicles, trade goods and named gear with no reliable known physical base.",
-    "No live campaign data or installed content databases were read."
+    "No live campaign data or installed content databases were read.",
+    "Review fix: a leading form word counts only when it is the thing itself (alone, or before of, a comma or a bracket), so Stone Staff takes the staff and Book Shroud the generic picture; a potion named anywhere in a name takes the potion (Bloodlink Potion and the three Potions of Troll Blood)."
   ]
 }

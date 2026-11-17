@@ -3311,7 +3311,7 @@
     "lib/setup/patches.ts#whole-single": [["key", 1, "the picked server language against the saved one (a language id)"]],
     "components/ui/GameIcon.tsx#keyed": [["key",2,"inventory and genre painting ids select measured image scales from the asset metadata"]],
     "lib/inventory-art-logic.ts#whole": [["key",1,"a normalized illustration slug matched to an authored special painting key; this selects art, never a rules record"]],
-    "lib/inventory-art-logic.ts#partial": [["key",3,"illustration slug prefixes and leading or trailing physical-form tokens select decorative categories after canonical equipment matching"],["pattern",5,"fixed focus, wooden-shield, potion, scroll and rope patterns select artwork only; unknown names retain their category icon and no equipment rules depend on the painting"]],
+    "lib/inventory-art-logic.ts#partial": [["key",3,"illustration slug prefixes and leading or trailing physical-form tokens select decorative categories after canonical equipment matching"],["pattern",6,"fixed focus, wooden-shield, potion, scroll and rope patterns and the head-word test (a leading form word alone or before of, de, a comma or a bracket) select artwork only; unknown names retain their category icon and no equipment rules depend on the painting"]],
     "lib/inventory-art-logic.ts#keyed": [["key",3,"approved painting ids, physical-form slug keys and shared gear paintings select illustrative assets; a miss keeps the category icon and changes no item identity"]],
     "lib/i18n/locale.ts#partial": [
       [
