@@ -69,6 +69,7 @@ export function renderRefereePrompt(input: {
   speech: string;
   people: readonly StagePerson[];
   ground?: readonly string[];
+  place?: string;
   scene: string;
   facts: readonly string[];
   heroLines?: readonly HeroLine[];
@@ -77,6 +78,7 @@ export function renderRefereePrompt(input: {
     (person) => `- ${person.name}${person.hero ? " (a hero)" : ""}${person.state ? `: ${person.state}` : ""}${person.carries.length ? `; has: ${person.carries.join(", ")}` : ""}`,
   );
   return [
+    input.place ? `Where this happens: ${input.place}` : "",
     `Who is here:\n${people.join("\n")}`,
     input.ground?.length ? `Lying here, nobody's, for anyone to take: ${input.ground.join("; ")}` : "",
     heroLinesBlock(input.heroLines ?? [], "What the heroes did and said this turn, in their own words:"),

@@ -217,7 +217,7 @@ await test("the stage's outcomes handed over and never told are narrated with to
 
 // The observer Zattera, 2026-11-17: food lay on the deck for hours while a
 // starving mind begged the hero for some; neither it nor the referee saw it.
-await test("what lies here is seen by every mind and by the referee, as nobody's", async () => {
+await test("where they stand and what lies there, as nobody's, are seen by every mind and by the referee", async () => {
   const { handleLocationCall } = await import("../src/lib/dm/turn.ts");
   const { insertDroppedItem } = await import("../src/lib/db/dropped-items.ts");
   const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
@@ -231,6 +231,9 @@ await test("what lies here is seen by every mind and by the referee, as nobody's
   const mind = sentTo("You are one character").at(-1);
   assert.match(textOf(mind), /Lying here where you stand, belonging to nobody, for anyone to take: Galletta x40/);
   assert.match(textOf(sentTo("You are the referee").at(-1)), /Lying here, nobody's, for anyone to take: Galletta x40/);
+  // And where they stand: the place, the hour, the sky (2026-11-17).
+  assert.match(textOf(mind), /Where you are now: La zattera\. .*The hour: \d\d:00/s);
+  assert.match(textOf(sentTo("You are the referee").at(-1)), /Where this happens: La zattera.*Hour \d\d:00/s);
 });
 
 model.close();

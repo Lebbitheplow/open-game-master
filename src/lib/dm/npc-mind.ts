@@ -9,6 +9,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { listSheets, getSheetById } from "@/lib/db/sheets";
 import { listRelationships } from "@/lib/db/relationships";
 import { listDroppedItems } from "@/lib/db/dropped-items";
+import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
 import { recordExtractedFacts } from "@/lib/db/facts";
 import {
@@ -313,6 +314,7 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     // Its own things, which only the sheet held: two days on the raft the
     // minds forgot who had the key and the bread (2026-11-16).
     npcThings(npc).length ? `What you have on you now (yours, and nobody else's): ${npcThings(npc).join("; ")}.` : "You carry nothing that matters beyond your clothes.",
+    whereYouStand(campaign, npc),
     lyingHere(campaign, npc),
     needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
     (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
@@ -324,12 +326,41 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
   ];
 }
 
+// The party's place, when this character stands in it.
+function placeOf(campaign: Campaign, npc: Npc) {
+  const place = getCurrentLocation(campaign.id);
+  if (!place?.name || (npc.location && textKey(npc.location) !== textKey(place.name) && !npc.state.withParty)) {
+    return null;
+  }
+  return place;
+}
+
+// Where it stands and what it sees around it: the place, its shape, the hour
+// and the sky. On the observer Zattera the minds were told only the turn's
+// narration, so seven castaways spoke of "the sea" while knowing neither the
+// raft's shape, nor the hour, nor the storm on them (2026-11-17).
+function whereYouStand(campaign: Campaign, npc: Npc): string {
+  const place = placeOf(campaign, npc);
+  if (!place) {
+    return "";
+  }
+  const scene = currentScene(campaign);
+  const hour = `${String(scene.hour).padStart(2, "0")}:00, ${scene.dayPart}${scene.isDark ? ", dark" : ""}`;
+  return [
+    `Where you are now: ${place.name}.`,
+    place.layoutDescription ? `What it looks like around you: ${clipText(place.layoutDescription, 600)}` : "",
+    `The hour: ${hour}.${scene.summary ? ` The sky: ${scene.summary}.` : ""}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 // What lies loose where this character stands, free to whoever takes it: on
 // the observer Zattera the biscuits and the water sat on the deck for hours
 // while a starving Kaku begged a catatonic hero for food (2026-11-17).
 function lyingHere(campaign: Campaign, npc: Npc): string {
-  const here = getCurrentLocation(campaign.id)?.name ?? "";
-  if (!here || (npc.location && textKey(npc.location) !== textKey(here) && !npc.state.withParty)) {
+  const here = placeOf(campaign, npc)?.name ?? "";
+  if (!here) {
     return "";
   }
   const things = listDroppedItems(campaign.id)
