@@ -172,7 +172,9 @@ export function familyIconPath(family: string): string {
   return iconPath("family", family);
 }
 
-export type IconRef = { kind: IconKind; key: string; family?: string | null };
+// Inventory gear retains its canonical name so a genre painting can override
+// a shared form or a generic fallback. Unidentified items never carry it.
+export type IconRef = { kind: IconKind; key: string; family?: string | null; genreItem?: string };
 
 // The slugs each kind has a painting for (written by scripts/generate-icons.mjs
 // beside the manifest; scripts/test-hand-look.mjs holds it to the folders).
