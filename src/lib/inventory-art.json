@@ -67,13 +67,25 @@
     "scale": 1.8,
     "item": "antitoxin"
   },
+  "gear-backpack": {
+    "scale": 0.9481,
+    "item": "backpack"
+  },
   "gear-ball-bearings": {
     "scale": 0.8785,
     "item": "ball-bearings"
   },
+  "gear-bedroll": {
+    "scale": 0.8791,
+    "item": "bedroll"
+  },
   "gear-caltrops": {
     "scale": 0.936,
     "item": "caltrops"
+  },
+  "gear-component-pouch": {
+    "scale": 0.9341,
+    "item": "component-pouch"
   },
   "gear-drum": {
     "scale": 0.9776,
@@ -82,6 +94,10 @@
   "gear-healers-kit": {
     "scale": 0.8856,
     "item": "healers-kit"
+  },
+  "gear-holy-symbol": {
+    "scale": 0.8496,
+    "item": "holy-symbol"
   },
   "gear-holy-water": {
     "scale": 1.7092,
@@ -107,6 +123,10 @@
     "scale": 0.9104,
     "item": "quiver"
   },
+  "gear-rations": {
+    "scale": 0.9264,
+    "item": "rations-1-day"
+  },
   "gear-rope": {
     "scale": 0.9181,
     "item": "rope"
@@ -115,6 +135,10 @@
     "scale": 0.8818,
     "item": "spell-scroll"
   },
+  "gear-thieves-tools": {
+    "scale": 0.7937,
+    "item": "thieves-tools"
+  },
   "gear-tinderbox": {
     "scale": 0.8867,
     "item": "tinderbox"
@@ -122,6 +146,10 @@
   "gear-torch": {
     "scale": 0.8587,
     "item": "torch"
+  },
+  "gear-waterskin": {
+    "scale": 0.9407,
+    "item": "waterskin"
   },
   "magic-amulet": {
     "scale": 0.9195

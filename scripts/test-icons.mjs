@@ -109,7 +109,7 @@ if (existsSync(path.join(ICONS, "manifest.json"))) {
   });
 
   test("the icon set and the UI furniture fit the budgets the apps carry them under", () => {
-    // The 112 approved circular inventory paintings add 1.6 MB independently
+    // The 119 approved circular inventory paintings add 1.7 MB independently
     // of the rectangular card assets, which remain unchanged.
     assert.ok(folderBytes(ICONS) <= 14 * 1024 * 1024, `icons are ${(folderBytes(ICONS) / 1048576).toFixed(1)} MB`);
     if (existsSync(UI)) assert.ok(folderBytes(UI) <= 3 * 1024 * 1024, `ui is ${(folderBytes(UI) / 1048576).toFixed(1)} MB`);

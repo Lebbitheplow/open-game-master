@@ -697,6 +697,13 @@ for (const viewport of ["desktop", "phone"]) {
         { name: "Lute", qty: 1 },
         { name: "Drum", qty: 1 },
         { name: "Dust of Disappearance", qty: 1 },
+        { name: "Backpack", qty: 1 },
+        { name: "Thieves' Tools", qty: 1 },
+        { name: "Holy Symbol", qty: 1 },
+        { name: "Component Pouch", qty: 1 },
+        { name: "Rations (1 day)", qty: 1 },
+        { name: "Waterskin", qty: 1 },
+        { name: "Bedroll", qty: 1 },
       ],
     }),
   );
