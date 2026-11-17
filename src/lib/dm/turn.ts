@@ -4268,9 +4268,16 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   }
 
   // A purely private exchange (whispers in, send_whisper out, no narration,
-  // no rolls) writes nothing to the shared chat; the fallback line below
-  // would leak that a secret exchange happened at all.
-  if (turn.playerWhisperIds.length && !turn.narrationParts.join("").trim() && !turn.rollIds.length) {
+  // no rolls the table is sent) writes nothing to the shared chat; the
+  // fallback line below would leak that a secret exchange happened at all.
+  // A roll behind the screen is no reason to speak: the tool that answered
+  // the whisper may have thrown one (romance_advance's consent die), and it
+  // is on the turn like every other roll of a GM call (roll-record.ts).
+  const tableRolls = turn.rollIds.some((id) => {
+    const visibility = getRoll(id)?.visibility;
+    return visibility === "public" || visibility === "blind";
+  });
+  if (turn.playerWhisperIds.length && !turn.narrationParts.join("").trim() && !tableRolls) {
     if (claimed !== null) {
       // Nothing takes the slot a player's message reserved; the draft
       // bubble stops pointing at it.

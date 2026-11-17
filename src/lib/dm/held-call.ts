@@ -145,6 +145,10 @@ export function inHeldCall(): boolean {
 export function heldCallTurn(): DmTurn | null {
   return globalThis.__odmHeldTrial?.turn ?? null;
 }
+// The door a roll goes on record through reads it here (roll-record.ts,
+// which the clock's paths import and so cannot import this module): every
+// roll a call stores joins the call's turn, whatever its site was handed.
+globalThis.__odmHeldCallTurn = heldCallTurn;
 
 // The roll this character's run already has, of this kind, if any.
 export function takeDecided(characterId: string, kind: RollKind): DecidedRoll | null {
@@ -195,6 +199,18 @@ function noteRollRecorded(roll: { id: string; characterId: string | null; kind: 
   trial.recorded.set(entry.at, roll.id);
 }
 globalThis.__odmRollRecorded = noteRollRecorded;
+
+// How the dice a record is about to store came in (roll-record.ts): those of
+// the decided roll noteRollRecorded is about to match it to, the first taken
+// for that character and kind and not yet on record. Null for dice the run
+// throws itself. So a roll the player entered is on record, and sent, as
+// theirs, with nothing for its site to carry.
+function takenLanding(characterId: string | null, kind: RollKind): NonNullable<DecidedRoll["landing"]> | null {
+  const trial = globalThis.__odmHeldTrial;
+  const entry = trial && characterId ? trial.taken.find((taken) => taken.characterId === characterId && taken.kind === kind) : undefined;
+  return entry ? (trial?.decided[entry.at]?.landing ?? null) : null;
+}
+globalThis.__odmTakenLanding = takenLanding;
 
 // How many faces the run has drawn by chance so far: a park after its own
 // throw keeps only the faces before it, since the next run is handed that
