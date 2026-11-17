@@ -33,8 +33,9 @@ function CatalogGate({ locale, children }: { locale: Locale; children: ReactNode
 
 export function LocaleProvider({ initialLocale, serverLocale = null, children }: { initialLocale: Locale; serverLocale?: Locale | null; children: ReactNode }) {
   // Read by "auto" before the browser's languages (resolveLocale), as the
-  // server's own render read it (layout.tsx).
-  serverDefault = serverLocale;
+  // server's own render read it (layout.tsx). Set before the children read
+  // it, with nothing told: they have not rendered yet.
+  adoptServerLocale(serverLocale);
   return (
     <ServerLocaleContext.Provider value={initialLocale}>
       {initialLocale === "en" ? (
@@ -55,6 +56,10 @@ const listeners = new Set<() => void>();
 // layout hands it over on the website; in the apps, which have no layout,
 // the host's capabilities do (use-capabilities.ts).
 let serverDefault: Locale | null = null;
+
+function adoptServerLocale(locale: Locale | null) {
+  serverDefault = locale;
+}
 
 export function setServerLocale(locale: Locale | null) {
   if (locale === serverDefault) {
