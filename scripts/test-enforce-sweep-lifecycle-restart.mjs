@@ -93,6 +93,7 @@ const REGISTRY = {
   "queue.ts:__odmDmDropped": { kind: PLUMBING, what: "the queue" },
   "queue.ts:__odmDmDepths": { kind: PLUMBING, what: "the queue" },
   "status.ts:__odmDmStatus": { kind: PLUMBING, what: "the status line" },
+  "steed-fall.ts:decided": { kind: PLUMBING, what: "a rider's fall, decided as the steed went and read by the same call" },
   "table-wait.ts:__odmTableWait": { kind: PLUMBING, what: "timers for a waiting table" },
   "token-calibration.ts:__odmTokenCalibration": { kind: PLUMBING, what: "a learned ratio" },
   "tool-profiles.ts:GROUPED": { kind: PLUMBING, what: "built at load" },

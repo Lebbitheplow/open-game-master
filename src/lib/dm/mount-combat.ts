@@ -32,6 +32,7 @@ import { mountVitals } from "@/lib/dm/mount-link";
 import { handleDismount, mountFalls } from "@/lib/dm/mount-tools";
 import { applyPcDamage, type PcDamageInput } from "@/lib/dm/pc-damage";
 import { mountedPet } from "@/lib/dm/pet-mount";
+import { takeSteedFall } from "@/lib/dm/steed-fall";
 import { mountBlow, mountRider } from "@/lib/dm/mount-blow";
 import { blowByType, resolveOnHit } from "@/lib/dm/enemy-hit";
 import { hasTrait } from "@/lib/dm/monster-abilities";
@@ -129,8 +130,13 @@ export function hurtSteed(
 // The mount went down under its rider, who jumps clear with their reaction or
 // falls prone (mount-tools.ts). A creature's sheet at 0 has already ended the
 // ride as it went (summon-store.ts removeSummon); a mount on record has not.
-export function riderOfDownedMount(input: { campaign: Campaign; turn: DmTurn; rider: CharacterSheet; mountName: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> }): ToolResult {
+export function riderOfDownedMount(input: { campaign: Campaign; turn: DmTurn; rider: CharacterSheet; mountName: string; sheetId?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> }): ToolResult {
   const { campaign, rider } = input;
+  // A steed that disappeared has already taken its rider down (steed-fall.ts).
+  const fallen = input.sheetId ? takeSteedFall(input.turn.id, input.sheetId, rider.id) : null;
+  if (fallen) {
+    return fallen;
+  }
   return getMounts(campaign.id)[rider.id]
     ? handleDismount(campaign, JSON.stringify({ characterId: rider.id, cause: "mount-prone" }), input.sheets, input.sheetsById, input.turn)
     : mountFalls(campaign, rider, input.mountName, input.sheets, input.sheetsById, input.turn);
@@ -294,7 +300,7 @@ export function strikeMount(input: {
   if (!mount.sheetId) {
     setMount(campaign.id, rider.id, { ...mount, hp: 0 });
   }
-  const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheets: input.sheets, sheetsById: input.sheetsById });
+  const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheetId: mount.sheetId, sheets: input.sheets, sheetsById: input.sheetsById });
   return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountDown: `${mount.name} drops to 0 hit points.`, fall, ...(notes.length ? { notes } : {}) };
 }
 

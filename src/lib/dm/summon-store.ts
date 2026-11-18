@@ -439,6 +439,12 @@ export function sweepSummons(campaign: Campaign): string[] {
   return lines;
 }
 
+// Phantom Steed's horse, which goes at any damage and fades as it goes:
+// "the steed gradually fades, giving the rider 1 minute to dismount".
+export function fadesAway(sheet: Pick<CharacterSheet, "summon">): boolean {
+  return sheet.summon?.spell === "Phantom Steed";
+}
+
 // A summoned creature at 0 hit points disappears (SRD 5.1: "disappears
 // when it drops to 0 hit points"), and Phantom Steed's horse at any damage;
 // the death engine never sees it.
@@ -446,7 +452,7 @@ export function summonAfterDamage(campaign: Campaign, sheet: CharacterSheet, dro
   if (!sheet.summon) {
     return null;
   }
-  const fragile = sheet.summon.spell === "Phantom Steed" && taken > 0;
+  const fragile = fadesAway(sheet) && taken > 0;
   if (!dropped && !fragile) {
     return null;
   }

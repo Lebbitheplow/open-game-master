@@ -90,6 +90,7 @@
     "lib/dm/mount-area.ts#keyed": [["identity",1,"a mount's stored ref, an SRD mount id, into its Dexterity table"]],
     "lib/dm/mount-link.ts#fallback": [["identity",1,"a creature of the rider's making by its whole name, else by its whole form; two that answer to the form are neither"]],
     "lib/dm/mount-link.ts#whole": [["identity",2,"a creature of the rider's making by its whole name, else its whole form (textKey on both sides), and only when one creature answers to it"]],
+    "lib/dm/steed-fall.ts#keyed": [["key",1,"the fall decided for a rider, by the turn's id and the ids of the steed's sheet and the rider's"]],
     "lib/dm/casting-answered.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/casting-answered.ts#whole": [["identity",1,"an innate spell by whole name"]],
     "lib/srd/authored-effects-more.ts#bypass": [["identity",1,"a carried line's own name, textKey'd, against the focus a feature names (Alchemical Savant's alchemist's supplies): the line itself, by its whole name"]],

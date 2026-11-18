@@ -205,6 +205,11 @@ export function aoeOnCharacters(input: {
       if (applied.dying) {
         row.dying = applied.dying;
       }
+      // A ridden steed named by the area, gone under its rider: the row
+      // said nothing of the rider's fall the engine had already laid.
+      if (Array.isArray(applied.riderFall)) {
+        row.riderFall = applied.riderFall;
+      }
       if (applied.dead) {
         row.dead = true;
       }

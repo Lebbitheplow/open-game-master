@@ -1101,6 +1101,9 @@ export function handleEnemyAttack(
       damage: taken,
       ...(typeof applied.resistance === "string" ? { resistance: applied.resistance } : {}),
       ...(byType ? { damageByType: byType } : {}),
+      // A ridden steed struck on its own sheet and gone: its rider's fall
+      // (steed-fall.ts), which the swing left out.
+      ...(Array.isArray(applied.riderFall) ? { riderFall: applied.riderFall } : {}),
       ...(onHit ?? {}),
       ...(charged.length ? { charge: charged } : {}),
       ...(retort ? { retort } : {}),

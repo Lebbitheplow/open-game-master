@@ -56,10 +56,15 @@ export function onFoot<T extends { id: string }>(campaignId: string, sheets: T[]
   return ridden.size ? sheets.filter((sheet) => !ridden.has(sheet.id)) : sheets;
 }
 
+// Who rides this creature now.
+export function ridersOf(campaignId: string, sheetId: string): string[] {
+  return Object.entries(getMounts(campaignId)).flatMap(([riderId, mount]) => (mount.sheetId === sheetId ? [riderId] : []));
+}
+
 // The creature is gone (0 hit points, its spell's end, a new casting in its
 // place): whoever rode it rides nothing. Returns the riders' ids.
 export function unseatRidersOf(campaignId: string, sheetId: string): string[] {
-  const riders = Object.entries(getMounts(campaignId)).flatMap(([riderId, mount]) => (mount.sheetId === sheetId ? [riderId] : []));
+  const riders = ridersOf(campaignId, sheetId);
   for (const riderId of riders) {
     setMount(campaignId, riderId, null);
   }
