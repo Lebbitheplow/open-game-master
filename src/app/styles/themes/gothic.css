@@ -1,7 +1,32 @@
 /* gothic: both brightness palettes. See docs/appearance-themes.md. */
 [data-appearance="gothic"] {
-  --theme-table-corner-size: 48px;
-  --theme-table-corner-size-small: 23px;
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #160e13;
+  --theme-night-foreground: #efe3e7;
+  --theme-night-stone-950: #170f15;
+  --theme-night-stone-900: #271a22;
+  --theme-night-stone-800: #3a2832;
+  --theme-night-stone-700: #523b48;
+  --theme-night-stone-600: #816774;
+  --theme-night-stone-500: #b098a5;
+  --theme-night-stone-400: #c5afba;
+  --theme-night-stone-300: #dac6cf;
+  --theme-night-stone-200: #e9d8e0;
+  --theme-night-stone-100: #f4eaf0;
+  --theme-night-stone-50: #fcf6f9;
+  --theme-night-amber-950: #30111e;
+  --theme-night-amber-900: #4d1e31;
+  --theme-night-amber-800: #70324a;
+  --theme-night-amber-700: #974c68;
+  --theme-night-amber-600: #b7758e;
+  --theme-night-amber-500: #cf97ad;
+  --theme-night-amber-400: #e0b7c6;
+  --theme-night-amber-300: #ebccd7;
+  --theme-night-amber-200: #f2dfe7;
+  --theme-night-amber-100: #f9edf2;
+  --theme-night-amber-50: #fff7fa;
   --material-fitting-radius: 50% 50% 3px 3px;
   --material-control-radius: 12px 12px 2px 2px;
   --material-panel-radius: 18px 18px 3px 3px;

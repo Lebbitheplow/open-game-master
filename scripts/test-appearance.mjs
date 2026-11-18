@@ -73,6 +73,20 @@ test("every registered theme ships imported palettes and traceable local artwork
     }
   }
 });
+// The title screen paints its top fold in the night palette in either
+// brightness, so each theme repeats its dark tokens as --theme-night-*.
+test("every theme's night mirror equals its dark palette", () => {
+  for (const definition of APPEARANCE_THEMES) {
+    const css = readFileSync(new URL(`../${themeStylesheet(definition.id)}`, import.meta.url), "utf8");
+    const dark = css.slice(css.indexOf(`[data-appearance="${definition.id}"][data-theme="dark"]`)).split("}")[0];
+    const tokens = [...dark.matchAll(/--(background|foreground|color-(?:stone|amber)-\d+):\s*(#[0-9a-f]{6})/g)];
+    assert.equal(tokens.length, 24, `${definition.id}: dark palette`);
+    for (const [, name, value] of tokens) {
+      const night = `--theme-night-${name.replace("color-", "")}: ${value};`;
+      assert.ok(css.includes(night), `${definition.id}: missing or stale ${night}`);
+    }
+  }
+});
 test("every registered palette has the full token set and legible text", () => {
   const required = ["--background", "--foreground", ...["stone", "amber"].flatMap(ramp => [50,100,200,300,400,500,600,700,800,900,950].map(step => `--color-${ramp}-${step}`))];
   function luminance(hex) {

@@ -24,7 +24,7 @@ written story theme. A player can use Woodland in either day or night mode.
 | Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
-| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four rotated corners, table/overlay border, phone sizing and forced-colors behavior |
+| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece turns), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
 | Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
 | Symbols | `src/components/ThemeIcon.tsx`, `ThemeEmblem.tsx` | One checked icon map serves the picker and lobby fitting |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |
@@ -205,9 +205,14 @@ the document root and uses the same frame and corner geometry as the table.
 Keep overlay containers positioned (the battle map uses `fixed`) and place the
 ornaments inside them; do not change their positioning to `relative`.
 
-The shared painted layout uses a 10px table and overlay rail on desktop and 4px
-on phones. The enlarged map also reserves inner padding from the declared frame
-width, so its heading, controls and initiative rows stay inside the painted rail.
+The shared painted layout uses a 10px table and overlay border on desktop and
+4px on phones. On desktop the table also pads its sides to the painted rail's
+inner edge, starts the header's first row below the rail and ends the side
+panel above it; the board's column takes no padding, so a laptop's board and
+Hand keep their height. Phones take no padding: the 12px rail clears the bottom
+bar, header and story as they are. The enlarged map also reserves inner padding
+from the declared frame width, so its heading, controls and initiative rows stay
+inside the painted rail.
 Its lobby rail is 26px on desktop and 12px on phones, with additional inner padding.
 Session headers give the back link and title separate phone grid cells; larger
 headers wrap controls and initiative instead of shrinking the title to a letter.
@@ -219,18 +224,17 @@ Shared ornament measurements can be overridden in the theme selector:
 | Variable | Default |
 | --- | --- |
 | `--theme-table-ornament-inset` / `-small` | `-10px` / `-4px` |
-| `--theme-table-frame-width` / `-small` | `40px` / `20px` |
-| `--theme-table-corner-size` / `-small` | `128px` / `56px` |
+| `--theme-table-frame-width` / `-small` | `24px` / `12px` |
+| `--theme-table-corner-size` / `-small` | `80px` / `36px` |
 | `--theme-lobby-ornament-inset` / `-small` | `-34px` / `-16px` |
 | `--theme-lobby-corner-size` / `-small` | `196px` / `112px` |
 
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane, Gothic, Hearth and High Kingdoms override table corners to 48px on
-desktop and 23px on phones: their corner is a crop of their frame, so it keeps
-the frame's rail width, and their opaque fittings need less space than
-Woodland's open leaves. The phone sizes keep the art off the bottom bar's end
+Arcane, Gothic, Hearth and High Kingdoms crop their corner from their frame, so
+`themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
+and it keeps the frame's rail width. The phone sizes keep the art off the bottom bar's end
 labels and the session title, which sit 8 to 17px from the screen's edge; the
 browser scenario `phone-frame` reads every painted theme at 360 to 430px wide. Inspect
 the actual artwork over headings and close buttons; geometry checks alone cannot

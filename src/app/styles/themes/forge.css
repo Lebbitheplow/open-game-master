@@ -73,6 +73,33 @@
 /* Materials that hold in both brightness modes: dark basalt rails, hammered
    bronze fittings, and square-cut keys with barely eased corners. */
 [data-appearance="forge"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #120e0c;
+  --theme-night-foreground: #efe6da;
+  --theme-night-stone-950: #15110f;
+  --theme-night-stone-900: #1f1915;
+  --theme-night-stone-800: #2c241e;
+  --theme-night-stone-700: #43372e;
+  --theme-night-stone-600: #6f6052;
+  --theme-night-stone-500: #b5a595;
+  --theme-night-stone-400: #bfb0a0;
+  --theme-night-stone-300: #d4c7b9;
+  --theme-night-stone-200: #e5dbcf;
+  --theme-night-stone-100: #f0e9e0;
+  --theme-night-stone-50: #f8f4ee;
+  --theme-night-amber-950: #2a1408;
+  --theme-night-amber-900: #45210c;
+  --theme-night-amber-800: #6b3410;
+  --theme-night-amber-700: #934a16;
+  --theme-night-amber-600: #b8641f;
+  --theme-night-amber-500: #d98432;
+  --theme-night-amber-400: #eaa052;
+  --theme-night-amber-300: #f2b978;
+  --theme-night-amber-200: #f7d3a6;
+  --theme-night-amber-100: #fbe7cc;
+  --theme-night-amber-50: #fdf5e8;
   --material-rail-wash: linear-gradient(#1a130f99, #1a130f99);
   --material-metal-finish: linear-gradient(135deg, #f1d2a4, #a9743c 48%, #e2b27a 52%, #7e5226);
   --material-metal-ink: #2b190b;
@@ -96,14 +123,8 @@
 html[data-appearance="forge"] .ornate::before,
 html[data-appearance="forge"] .ornate::after { width: 18px; height: 18px; border-width: 2px; }
 [data-appearance="forge"] {
-  /* The stone rail is opaque to its inner edge. At the shared 40px it sat
-     over the last letter of the desktop rail's labels with enlarged text
-     and over the party cards' left edge; at the shared 28px on a phone it
-     covered the first letter of the bottom bar. */
-  --theme-table-frame-width: 30px;
-  --theme-table-frame-width-small: 18px;
-  /* A solid plate, unlike an open leaf, hides the bottom bar's end labels
-     at the shared phone size; at 60px it still reached the first label on a
-     360px phone. The desktop corner keeps the shared size. */
-  --theme-table-corner-size-small: 48px;
+  /* A solid plate, unlike an open leaf, hides what lies under it, so the
+     phone corner stays small enough to clear the bottom bar's end labels.
+     The rail widths and the desktop corner keep the shared sizes. */
+  --theme-table-corner-size-small: 30px;
 }

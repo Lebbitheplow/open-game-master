@@ -1,7 +1,32 @@
 /* arcane: both brightness palettes. See docs/appearance-themes.md. */
 [data-appearance="arcane"] {
-  --theme-table-corner-size: 48px;
-  --theme-table-corner-size-small: 23px;
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #0a0817;
+  --theme-night-foreground: #e9e6f4;
+  --theme-night-stone-950: #0d0b1c;
+  --theme-night-stone-900: #151229;
+  --theme-night-stone-800: #211b3a;
+  --theme-night-stone-700: #302853;
+  --theme-night-stone-600: #575170;
+  --theme-night-stone-500: #8f8aab;
+  --theme-night-stone-400: #aeaac6;
+  --theme-night-stone-300: #c9c6db;
+  --theme-night-stone-200: #dedbec;
+  --theme-night-stone-100: #edeaf7;
+  --theme-night-stone-50: #f7f6fc;
+  --theme-night-amber-950: #2b2008;
+  --theme-night-amber-900: #4a390f;
+  --theme-night-amber-800: #6d5517;
+  --theme-night-amber-700: #95761f;
+  --theme-night-amber-600: #b8922a;
+  --theme-night-amber-500: #d4ab3a;
+  --theme-night-amber-400: #e3c15c;
+  --theme-night-amber-300: #ecd287;
+  --theme-night-amber-200: #f4e0a6;
+  --theme-night-amber-100: #f9ecc8;
+  --theme-night-amber-50: #fdf7e7;
   --material-fitting-radius: 50%;
   --material-control-radius: 6px;
   --material-panel-radius: 12px 4px;

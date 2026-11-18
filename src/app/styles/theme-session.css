@@ -11,6 +11,33 @@ html[data-theme-ornaments="true"][data-theme] :is(.theme-table, .theme-overlay) 
   background: var(--material-rail-wash), var(--material-grain) center / 420px;
   box-shadow: inset 0 0 0 1px var(--material-edge);
 }
+/* The painted rail reaches 2px + its width in from the screen's edge (the
+   ornaments box sits on this border box, its ::before 2px inside), and the
+   10px border clears only part of that. Padding the whole table to the
+   rail's inner edge took 32px of height from a laptop's board and Hand
+   (scenarios hand-on-board, hand-share), so only what meets the rail moves:
+   the sides are padded, the header's first row starts below the rail at the
+   same height (its rows close up instead), and the side panel ends above it.
+   The board's column needs nothing: only the desk's own foot lies under the
+   rail. A phone's 12px rail clears the bar, the header and the story with
+   no padding at all (scenario phone-frame reads every painted theme). */
+@media (min-width: 1024px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table {
+    padding-inline: calc(var(--theme-table-frame-width, 24px) - 8px);
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
+    padding-top: max(calc(var(--theme-table-frame-width, 24px) - 8px), calc(0.5rem + env(safe-area-inset-top)));
+    row-gap: 4px;
+  }
+  /* One row from 1440px: the initiative ribbon, its tallest item, gives back
+     what the top took, so a desktop's board keeps its height (hand-share). */
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-ribbon-slot {
+    margin-bottom: calc(16px - var(--theme-table-frame-width, 24px));
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-panel {
+    padding-bottom: calc(var(--theme-table-frame-width, 24px) - 8px);
+  }
+}
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-backdrop {
   background-color: var(--material-paper);
 }
@@ -31,7 +58,6 @@ html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
   position: relative;
   flex-shrink: 0;
   flex-wrap: wrap;
-  padding-left: 36px;
   background: var(--material-control-wash), var(--material-grain) center / 620px;
   border-bottom: 2px ridge var(--material-edge);
 }
@@ -192,7 +218,6 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .hand {
 }
 @media (max-width: 1023px) {
   html[data-theme-ornaments="true"][data-theme] .theme-table { border-width: 4px; }
-  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header { padding-left: 24px; }
   html[data-theme-ornaments="true"][data-theme] .theme-table .cine-bottombar { flex-shrink: 0; }
 }
 @media (forced-colors: active) {
@@ -222,7 +247,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-overlay {
   border: 10px solid transparent;
   /* The painted rail extends farther inward than the transparent CSS border.
      Keep header controls and initiative rows inside its quiet interior. */
-  --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width, 40px) - 10px + 8px));
+  --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width, 24px) - 10px + 8px));
   padding: max(var(--theme-overlay-gutter), env(safe-area-inset-top)) var(--theme-overlay-gutter) max(var(--theme-overlay-gutter), env(safe-area-inset-bottom));
   background: linear-gradient(var(--material-paper), var(--material-paper)) padding-box,
     var(--material-grain) center / 420px border-box;
@@ -250,7 +275,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-tabletop-clos
 @media (max-width: 1023px) {
   html[data-theme-ornaments="true"][data-theme] .theme-overlay {
     border-width: 4px;
-    --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width-small, 20px) - 4px + 8px));
+    --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width-small, 12px) - 4px + 8px));
   }
 }
 @media (forced-colors: active) {

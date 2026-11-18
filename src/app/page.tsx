@@ -133,7 +133,7 @@ function AuthScreen({ onAuthed }: { onAuthed: (user: SessionUser) => void }) {
         <div className="w-full max-w-sm animate-fade-up-slow">
           <div className="mb-6 flex flex-col items-center gap-3 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/ui/book-closed.webp" alt="" className="auth-mark" />
+            <img src="/assets/ui/d20-mark.svg" alt="" className="auth-mark" />
             <div>
               <h1 className="gold-title text-balance font-display text-3xl tracking-wide sm:text-4xl">
                 Open Game Master
