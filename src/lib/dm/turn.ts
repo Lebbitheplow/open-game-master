@@ -96,7 +96,7 @@ import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { generateImageTool, parseGenerateImageToolCall } from "@/lib/image-tool";
 import { createStreamingArtifactFilter, extractReplyText, extractStoryText } from "@/lib/story-prompt";
-import { salvageJsonToolCalls } from "@/lib/dm/json-salvage";
+import { salvageJsonToolCalls, salvageWrittenCalls } from "@/lib/dm/json-salvage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { fulfillAutoImage } from "@/lib/dm/images";
 import { imagesAvailable } from "@/lib/capabilities";
@@ -2284,8 +2284,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const replyText = extractReplyText(message?.content);
     const onlyStrayJson = (text: string) => {
       const xml = salvageXmlToolCalls(text);
-      const salvaged = salvageJsonToolCalls(xml.text, tools);
-      return !xml.calls.length && !salvaged.calls.length && !withoutServerLines(extractStoryText(salvaged.text)).trim();
+      const written = salvageWrittenCalls(xml.text, tools);
+      const salvaged = salvageJsonToolCalls(written.text, tools);
+      return !xml.calls.length && !written.calls.length && !salvaged.calls.length && !withoutServerLines(extractStoryText(salvaged.text)).trim();
     };
     lastReplyEmpty =
       !extractToolCalls(message?.tool_calls).length && (!replyText.trim() || onlyStrayJson(replyText));
@@ -2309,14 +2310,17 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
 
     // Salvage tool calls the model wrote as literal text so they still run
     // (and never reach players as raw text), then merge them with the
-    // structured calls under synthetic ids for tool-result pairing. Four
+    // structured calls under synthetic ids for tool-result pairing. Five
     // nets, in order: the model's native XML dialect (llama-server's
-    // extraction intermittently misses it), bare JSON arguments (read before
-    // extractStoryText, which takes a reply that is one JSON object for the
-    // structured story format and would swallow it), bracket leaks, prose
-    // roll-asks.
+    // extraction intermittently misses it), a call written as a function or
+    // as argument lines (issue 1025; before the JSON, so a function's JSON
+    // arguments keep the name it gives them), bare JSON arguments (read
+    // before extractStoryText, which takes a reply that is one JSON object
+    // for the structured story format and would swallow it), bracket leaks,
+    // prose roll-asks.
     const xmlSalvage = salvageXmlToolCalls(extractReplyText(message?.content));
-    const jsonSalvage = salvageJsonToolCalls(xmlSalvage.text, tools);
+    const writtenSalvage = salvageWrittenCalls(xmlSalvage.text, tools);
+    const jsonSalvage = salvageJsonToolCalls(writtenSalvage.text, tools);
     const salvage = salvageTextualToolCalls(extractStoryText(jsonSalvage.text));
     // The reply's prose, read once by the claims reader (src/lib/dm/claims.ts)
     // for the rolls it asks in words, a fight it announces, a blow it lands,
@@ -2329,6 +2333,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const structuredCalls = [
       ...extractToolCalls(message?.tool_calls),
       ...xmlSalvage.calls,
+      ...writtenSalvage.calls,
       ...jsonSalvage.calls,
       ...salvage.calls,
     ];
@@ -2343,7 +2348,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       : null;
     const claims = inEncounter ? read?.claims ?? [] : initiativeStartsFight(read?.claims ?? []);
     const proseRolls = rollAsksFromClaims(salvage.text, claims, sheets);
-    const salvagedCalls = [...xmlSalvage.calls, ...jsonSalvage.calls, ...salvage.calls, ...proseRolls.calls];
+    const salvagedCalls = [...xmlSalvage.calls, ...writtenSalvage.calls, ...jsonSalvage.calls, ...salvage.calls, ...proseRolls.calls];
     const visibleText = proseRolls.text;
     const echoedToolCalls = salvagedCalls.length
       ? [
@@ -3882,11 +3887,13 @@ async function ensureWhisperReplies(context: TurnContext, turn: DmTurn) {
   noteTurnCall(turn, "whisper_backstop", [sendWhisperTool], backstop);
   const { message } = backstop;
   const xmlSalvage = salvageXmlToolCalls(extractReplyText(message?.content));
-  const jsonSalvage = salvageJsonToolCalls(xmlSalvage.text, [sendWhisperTool]);
+  const writtenSalvage = salvageWrittenCalls(xmlSalvage.text, [sendWhisperTool]);
+  const jsonSalvage = salvageJsonToolCalls(writtenSalvage.text, [sendWhisperTool]);
   const salvage = salvageTextualToolCalls(extractStoryText(jsonSalvage.text));
   const whisperCalls = [
     ...extractToolCalls(message?.tool_calls),
     ...xmlSalvage.calls,
+    ...writtenSalvage.calls,
     ...jsonSalvage.calls,
     ...salvage.calls,
   ].filter((toolCall) => toolCall.name === "send_whisper");
