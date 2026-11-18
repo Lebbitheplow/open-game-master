@@ -95,6 +95,7 @@ import {
 import type { ChatMessage } from "@/lib/model-client";
 import { describeIntent } from "@/lib/dm/intent-logic";
 import { withoutServerLines } from "@/lib/dm/tool-text";
+import { withoutWrittenCalls } from "@/lib/dm/written-calls";
 import { describeEquipmentItem } from "@/lib/dm/equipment-line";
 import { summonStateLine } from "@/lib/dm/summon-rules";
 import { dmSystemText, encounterRulesText, tracksAmmunition, type RuleContext } from "@/lib/dm/prompt-rules";
@@ -2022,8 +2023,9 @@ export function buildDmMessages(
   // place of the attack. The short rules leave them out of the transcript.
   // A passage stored before issue 900's fix may hold the card line the model
   // copied then: read back as the model's own words, it would be copied again.
+  // So would a call it wrote out as argument lines before issue 1025's fix.
   const dmText = (text: string) => {
-    const said = withoutServerLines(text);
+    const said = withoutWrittenCalls(withoutServerLines(text));
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 

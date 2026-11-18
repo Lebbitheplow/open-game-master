@@ -31,7 +31,8 @@ process.env.OPENAI_COMPAT_CONTEXT = "65536";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { findBareJsonObjects, stripToolText } = await import("../src/lib/dm/tool-text.ts");
+const { DM_TOOL_NAME_PATTERN, findBareJsonObjects, stripToolText } = await import("../src/lib/dm/tool-text.ts");
+const { TOOL_GROUPS } = await import("../src/lib/dm/tool-profiles.ts");
 const { salvageJsonToolCalls } = await import("../src/lib/dm/json-salvage.ts");
 const { createStreamingArtifactFilter, extractReplyText, extractStoryText } = await import("../src/lib/story-prompt.ts");
 const { createUser } = await import("../src/lib/db/users.ts");
@@ -79,6 +80,20 @@ const probe = createCampaign(lead.id, {
   gameSettings: { ttsEnabled: false },
 });
 const catalogue = dmTurnToolCatalogue(getCampaignById(probe.id), false, false);
+// Every tool a turn can offer is one the leak nets know by name: 33 were
+// missing (issue 1025), so their bracket leaks reached the table, their XML
+// calls were dropped, and a sentence planning one was read out.
+{
+  const known = new Set(DM_TOOL_NAME_PATTERN.split("|"));
+  const offered = [
+    ...dmTurnToolCatalogue(getCampaignById(probe.id), true, false),
+    ...dmTurnToolCatalogue(getCampaignById(probe.id), false, true),
+  ].map((tool) => tool.function?.name ?? tool.name);
+  const grouped = Object.values(TOOL_GROUPS).flatMap((group) => group.tools);
+  const missing = [...new Set([...offered, ...grouped])].filter((name) => name && name !== "more_tools" && !known.has(name));
+  assert.deepEqual(missing, [], `add these tools to DM_TOOL_NAME_PATTERN (src/lib/dm/tool-text.ts): ${missing.join(", ")}`);
+  console.log("ok: every tool a turn offers is one the leak nets know");
+}
 {
   const question = salvageJsonToolCalls('{"characterIds": ["c1"], "prompt": "Where do you move?"}', catalogue);
   assert.equal(question.text, "");
@@ -161,6 +176,8 @@ const toolCall = (name, args) => ({
 const askJson = () => JSON.stringify({ characterIds: [sheetId], prompt: QUESTION });
 const invokeAskText = () =>
   `<invoke name="mcp__odm__request_player_input">\n<parameter name="characterIds">["${sheetId}"]</parameter>\n<parameter name="prompt">${QUESTION}</parameter>\n</invoke>`;
+const askLines = () => `characterIds: ["${sheetId}"]\nprompt: "${QUESTION}"`;
+const SECRET = "A cold voice in your blood whispers your true name.";
 const invokeDamageText = () =>
   `<invoke name="mcp__odm__apply_damage">\n<parameter name="characterId">${sheetId}</parameter>\n<parameter name="amount">5</parameter>\n</invoke>`;
 const server = http.createServer((req, res) => {
@@ -197,6 +214,14 @@ const server = http.createServer((req, res) => {
       sse(res, [{ content: invokeDamageText() }]);
     } else if (reply === "narrate-invoke-damage") {
       sse(res, [{ content: `${NARRATION}\n\n${invokeDamageText()}` }]);
+    } else if (reply === "lines-ask") {
+      sse(res, [{ content: askLines() }]);
+    } else if (reply === "narrate-lines-ask") {
+      // Split inside a key, as a provider's chunks may (issue 1025).
+      const block = askLines();
+      sse(res, [{ content: `${NARRATION}\n\n${block.slice(0, 7)}` }, { content: block.slice(7) }]);
+    } else if (reply === "narrate-lines-whisper") {
+      sse(res, [{ content: `${NARRATION}\n\ncharacterIds: ["${sheetId}"]\nmessage: "${SECRET}"` }]);
     } else if (reply === "qwen-unknown") {
       sse(res, [{ content: "<tool_call><function=dance_wildly><parameter=style>jig</parameter></function></tool_call>" }]);
     } else if (reply === "unknown-tool") {
@@ -408,6 +433,37 @@ assert.equal(invokeHurtOnly.text, NARRATION, `expected narration, got: ${invokeH
 assert.equal(invokeHurtOnly.calls, 2, "a reply that was only the block is asked again");
 assert.equal(getSheetById(sheetId).currentHp, getSheetById(sheetId).maxHp, "the retry did not run it either");
 console.log("ok: a reply that is only a mutation written as text is asked again");
+
+// Issue 1025: gpt-oss-20b ended the opening scene on its request_player_input
+// arguments one to a line, and made no call. The question runs and hands the
+// floor over; the lines reach nobody, and are not read back to the model.
+const linesAsk = await run("Argument lines beside prose", ["narrate-lines-ask"]);
+assert.equal(linesAsk.text, NARRATION, `expected clean prose, got: ${linesAsk.text}`);
+assert.equal(linesAsk.calls, 1, "narration was already there; no extra call");
+const linesFloor = getFloor(linesAsk.campaign.id);
+assert.equal(linesFloor.mode, "spotlight");
+assert.equal(linesFloor.prompt, QUESTION);
+console.log("ok: an input request written as argument lines hands the players the floor, and they never read it");
+
+const linesOnly = await run("Argument lines alone", ["lines-ask", "narrate"]);
+assert.equal(linesOnly.text, NARRATION, `expected narration, got: ${linesOnly.text}`);
+assert.equal(linesOnly.calls, 2, "the salvaged question gets the question-only narration call");
+assert.match(toolResults(linesOnly.requests[1]).get("text-salvaged-0")?.note ?? "", /The floor is theirs/);
+console.log("ok: a reply that is only argument lines runs as the call and is narrated");
+
+const linesWhisper = await run("Whisper as argument lines", ["narrate-lines-whisper"]);
+assert.equal(linesWhisper.text, NARRATION, `expected clean prose, got: ${linesWhisper.text}`);
+assert.ok(
+  !linesWhisper.messages.some((message) => message.authorType === "dm" && message.content.includes(SECRET)),
+  "the whisper never reached the shared table",
+);
+console.log("ok: a whisper written as argument lines is never read by the whole table");
+
+const leakedBefore = await run("A leak stored before the fix", ["narrate"], `${LAST_TURN}\n\ncharacterIds: ["${"0".repeat(8)}-0000-0000-0000-000000000000"]\nprompt: "${QUESTION}"`);
+const readBack = leakedBefore.requests[0].messages.map((message) => String(message.content ?? "")).join("\n");
+assert.ok(readBack.includes(LAST_TURN), "the passage itself is read back");
+assert.ok(!/characterIds:|prompt: "/.test(readBack), "the lines a passage stored before the fix holds are not read back as the model's own words");
+console.log("ok: argument lines in an earlier passage are not read back to the model");
 
 const qwenStray = await run("Qwen unknown tool alone", ["qwen-unknown", "narrate"]);
 assert.equal(qwenStray.text, NARRATION, `expected narration, got: ${qwenStray.text}`);

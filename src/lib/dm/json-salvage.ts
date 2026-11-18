@@ -1,5 +1,6 @@
 import type { ParsedToolCall } from "@/lib/dm/rolls";
 import { cutSpans, findBareJsonObjects } from "@/lib/dm/tool-text";
+import { argumentLinesAreCall, findArgumentLines, findFunctionCalls } from "@/lib/dm/written-calls";
 
 // gpt-oss on vLLM sometimes writes a call into its reply as bare JSON instead
 // of a structured tool call: just the arguments ('{"characterIds":[...],
@@ -61,6 +62,36 @@ function asToolCall(
     (shape) => keys.every((key) => shape.properties.has(key)) && shape.required.every((key) => key in value),
   );
   return fits.length === 1 ? { name: fits[0].name, args: value } : null;
+}
+
+// The same for a call written as a function ("request_player_input(...)") or
+// as argument lines ("characterIds: [...]" over "prompt: ..."), issue 1025:
+// a named tool runs when it is offered, unnamed lines when they fit one tool
+// alone, by the rule above. Every function form is cut, and every block of
+// lines that is a call or holds what no story writes (written-calls.ts
+// argumentLinesAreCall); a story's own "Note: ..." line stays.
+export function salvageWrittenCalls(text: string, tools: unknown[]): { text: string; calls: ParsedToolCall[] } {
+  if (!text) {
+    return { text, calls: [] };
+  }
+  const shapes = toolShapes(tools);
+  const calls: ParsedToolCall[] = [];
+  const add = (call: { name: string; args: Record<string, unknown> } | null) => {
+    if (call) {
+      calls.push({ id: `text-salvaged-${calls.length}`, name: call.name, rawArguments: JSON.stringify(call.args) });
+    }
+  };
+  const functions = findFunctionCalls(text);
+  for (const written of functions) {
+    add(written.args ? asToolCall({ name: written.tool, arguments: written.args }, shapes) : null);
+  }
+  const spoken = functions.length ? cutSpans(text, functions) : text;
+  const cut = findArgumentLines(spoken).filter((block) => {
+    const call = asToolCall(block.tool ? { name: block.tool, arguments: block.args } : block.args, shapes);
+    add(call);
+    return call !== null || argumentLinesAreCall(block);
+  });
+  return { text: cut.length ? cutSpans(spoken, cut) : spoken, calls };
 }
 
 export function salvageJsonToolCalls(
