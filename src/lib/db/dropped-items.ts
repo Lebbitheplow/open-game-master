@@ -1,6 +1,7 @@
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { keepNew, keepRow } from "@/lib/db/turn-rows";
+import { textKey } from "@/lib/language/text-logic";
 import { listEnemies } from "@/lib/db/encounters";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 
@@ -162,4 +163,18 @@ export function settleDroppedOnFightEnd(campaignId: string, encounterId: string)
     }
   }
   return left;
+}
+
+// The things lying loose at a place the party carries along (a raft's deck, a
+// cart's bed) go where it goes: on carlitose's raft table a compass dropped on
+// the deck stayed at the sandbank when the raft beached (fork PR 1019,
+// 2026-11-17). Things on a board square or in an enemy's hand stay. Returns
+// how many moved.
+export function carryDroppedItems(campaignId: string, from: string, to: string): number {
+  const moving = listDroppedItems(campaignId).filter((item) => !item.heldByEnemy && item.x === null && textKey(item.place) === textKey(from));
+  for (const item of moving) {
+    keepRow("dropped_items", item.id);
+    getDatabase().prepare(`UPDATE dropped_items SET place = ? WHERE id = ?`).run(to.slice(0, 120), item.id);
+  }
+  return moving.length;
 }

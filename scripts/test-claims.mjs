@@ -14,7 +14,7 @@ import { READER_PROMPT_START } from "./lib/claims-reader.mjs";
 const { test, finish } = suite("test-claims");
 const world = await openWorld({ gameSettings: { ttsEnabled: false } });
 
-const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides } = await import(
+const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides, withoutSentences } = await import(
   "../src/lib/dm/claims-logic.ts"
 );
 const { askedThisTurn, leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
@@ -569,6 +569,29 @@ await test("A turn asked for its player's answer is one the GM waits on: the cha
   assert.equal(askedThisTurn(campaign(), ask([mira.id]), sheets(), tamsin.id), true, "her commander's character was asked");
   assert.equal(askedThisTurn(campaign(), ask([tamsin.id]), sheets(), tamsin.id), true, "she was asked by her own id");
   setCompanionCommander(tamsin.id, null);
+});
+
+// Fork PR 1019 (2026-11-17): a sentence of speech cut by the guard left its
+// closing mark alone on the page ("Kaku nods.” Mairon is silent.", and
+// "Kaku hoche la tête. »" at a French table, its no-break spaces too).
+await test("A cut sentence of speech takes its closing mark, and one left of a longer speech keeps the rest quoted.", () => {
+  const nb = "\u00a0";
+  assert.equal(withoutSentences("Kaku annuisce. «Tienila tu.» Mairon tace.", ["Tienila tu."]), "Kaku annuisce. Mairon tace.");
+  assert.equal(withoutSentences(`Kaku hoche la tête. «${nb}Garde-la.${nb}» Mairon se tait.`, ["Garde-la."]), "Kaku hoche la tête. Mairon se tait.");
+  assert.equal(withoutSentences("Kaku nods. “Keep it.” Mairon is silent.", ["Keep it."]), "Kaku nods. Mairon is silent.");
+  assert.equal(withoutSentences('Kaku nods. "Keep it." Mairon is silent.', ["Keep it."]), "Kaku nods. Mairon is silent.");
+  assert.equal(withoutSentences("«Ho sete. Dammi da bere.»\n\nGruoch beve.", ["Ho sete.", "Dammi da bere."]), "Gruoch beve.");
+  assert.equal(withoutSentences("Ioshua parla. «Il sacco è tuo.» Brakk tace.", ["Ioshua parla."]), "«Il sacco è tuo.» Brakk tace.", "the whole speech stays");
+  // The sentence after a speech no longer takes the speech's closing mark.
+  assert.equal(withoutSentences("“Keep it.” Mairon is silent. Rain falls.", ["Mairon is silent."]), "“Keep it.” Rain falls.");
+  assert.equal(withoutSentences('"Keep it." Mairon is silent. Rain falls.', ["Mairon is silent."]), '"Keep it." Rain falls.');
+  // Part of a speech cut: what stays of it is still speech.
+  assert.equal(withoutSentences("“I'm thirsty. Give me a drink.” She waits.", ["I'm thirsty."]), "“Give me a drink.” She waits.");
+  assert.equal(withoutSentences("“I'm thirsty. Give me a drink.” She waits.", ["Give me a drink."]), "“I'm thirsty.” She waits.");
+  assert.equal(withoutSentences('"I\'m thirsty. Give me a drink." She waits.', ["I'm thirsty."]), '"Give me a drink." She waits.');
+  assert.equal(withoutSentences(`«${nb}J'ai soif. Donne-moi à boire.${nb}» Elle attend.`, ["J'ai soif."]), `«${nb}Donne-moi à boire.${nb}» Elle attend.`);
+  assert.equal(withoutSentences("“A. B. C.” Done.", ["A.", "B."]), "“C.” Done.");
+  assert.equal(withoutSentences("“A. B. C.” Done.", ["A.", "B.", "C."]), "Done.");
 });
 
 world.close();

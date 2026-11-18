@@ -392,6 +392,10 @@ export const SERVER_FEATURES = {
   // /api/campaigns/[id]/messages/[messageId]/take-back, which an older host
   // answers with a 404, so the screens offer nothing there.
   takeBackMove: true,
+  // "Aboard a boat or cart" on the console's Move the party (move_party
+  // `aboard`): what lies on its deck comes along. An older host drops it
+  // unread and leaves the deck's things behind, so the field stays hidden.
+  carriedDeck: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

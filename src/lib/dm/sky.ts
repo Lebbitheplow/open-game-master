@@ -38,13 +38,22 @@ export function currentScene(campaign: Campaign): SceneState {
 
 // Whether the sky should be rolled again after the clock moved: on the
 // first read ever, at each dawn crossed, and after four hours on the road.
+// Rough weather (rain, snow, a storm, a gale) is rolled again too each time
+// the clock crosses a two-hour mark: it blows over in hours, not at the next
+// dawn. A storm set at noon held through every short step to the next day
+// (fork PR 1019, 2026-11-17). Fair weather still waits for dawn.
 export function skyIsDue(before: CampaignClock, after: CampaignClock, minutes: number): boolean {
   if (!after.weather) {
     return true;
   }
   const dayBefore = Math.floor(before.instant / (24 * 60));
   const dayAfter = Math.floor(after.instant / (24 * 60));
-  return dayAfter > dayBefore || minutes >= 4 * 60;
+  if (dayAfter > dayBefore || minutes >= 4 * 60) {
+    return true;
+  }
+  const { sky, wind } = after.weather;
+  const rough = sky === "storm" || sky === "rain" || sky === "snow" || wind === "gale";
+  return rough && Math.floor(after.instant / 120) > Math.floor(before.instant / 120);
 }
 
 export function refreshSky(
