@@ -27,6 +27,9 @@ await test('scoping guard rejects leaks rather than merely finding an owner subs
   }
   assert.throws(()=>assertThemeCss('@font-face {font-family: global;src:url(x)}','probe'));
   assert.throws(()=>assertThemeCss('[data-appearance="probe"] {--theme-frame-slice: 40%}','probe'),/catalog/);
+  assert.throws(()=>assertThemeCss('[data-appearance="probe"] {--theme-corner-flip: 1}','probe'),/catalog/);
+  assert.throws(()=>assertThemeCss('html[data-appearance="probe"] .ornate::before,\nhtml[data-appearance="probe"] .ornate::after { width: 18px; border-width: 2px; }','probe'),/own border widths/);
+  assertThemeCss('html[data-appearance="probe"] .ornate::before,\nhtml[data-appearance="probe"] .ornate::after { width: 18px; }\nhtml[data-appearance="probe"] .ornate::before { border-width: 2px 0 0 2px; }','probe');
   assert.throws(()=>assertThemeCss('[data-appearance="probe"] {body {color:red}}','probe'));
   assert.throws(()=>assertSharedCss('[data-appearance="probe"] {color:red}','shared.css'));
   assertThemeCss('@media (width < 40rem) {html[data-appearance="probe"] :is(.a,.b), [data-appearance="probe"] > .c {color:red}}','probe');

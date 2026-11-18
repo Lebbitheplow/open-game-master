@@ -119,9 +119,13 @@
   --appearance-motif-size: 120px 120px;
   --appearance-corner: 0.2rem;
 }
-/* Riveted corner brackets where a flat panel keeps the app's own. */
+/* Riveted corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides: one border-width for both drew a
+   closed box at each corner. */
 html[data-appearance="forge"] .ornate::before,
-html[data-appearance="forge"] .ornate::after { width: 18px; height: 18px; border-width: 2px; }
+html[data-appearance="forge"] .ornate::after { width: 18px; height: 18px; }
+html[data-appearance="forge"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="forge"] .ornate::after { border-width: 0 2px 2px 0; }
 [data-appearance="forge"] {
   /* A solid plate, unlike an open leaf, hides what lies under it, so the
      phone corner stays small enough to clear the bottom bar's end labels.

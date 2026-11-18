@@ -127,11 +127,11 @@ export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, 
 // at each of the four, upright as painted: rotating the top-left crop turned
 // High Kingdoms' shields on their sides and upside down. It is sized from
 // the rail so the crop meets the border at the border's own scale. A
-// separate corner piece is one painting turned to each corner.
+// separate corner piece is one painting mirrored into each corner.
 function cornerStyle(definition: AppearanceDefinition): Record<`--theme-${string}`, string> {
   if (!definition.cornerScale) {
     return {
-      "--theme-corner-turn": "1",
+      "--theme-corner-flip": "-1",
       "--theme-corner-crop": "0",
       "--theme-corner-background-position": "center",
       "--theme-corner-2-position": "center",
@@ -147,7 +147,7 @@ function cornerStyle(definition: AppearanceDefinition): Record<`--theme-${string
   }
   const ratio = (1 / definition.cornerScale / ((definition.frameSlice ?? 22) / 100)).toFixed(4);
   return {
-    "--theme-corner-turn": "0",
+    "--theme-corner-flip": "1",
     "--theme-corner-crop": "1",
     "--theme-corner-background-position": "top left",
     "--theme-corner-2-position": "top right",

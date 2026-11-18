@@ -104,6 +104,9 @@ html[data-appearance="hearth"] .ornate::after {
   border-style: double;
   border-radius: 3px;
 }
+/* A double line needs 3px to draw two strokes; at the shared 1px it drew one. */
+html[data-appearance="hearth"] .ornate::before { border-width: 3px 0 0 3px; }
+html[data-appearance="hearth"] .ornate::after { border-width: 0 3px 3px 0; }
 
 /* The hand stays over the dark map painting even when surrounding paper is
    light. Keep the player's label bright; monster-hand semantic red is separate. */
