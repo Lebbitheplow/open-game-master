@@ -325,17 +325,43 @@
       "id": "gear-case-crossbow-bolt",
       "label": "Case, Crossbow Bolt",
       "source": "Built-in image_gen",
-      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
-      "sourceSha256": "aec2e2e43567c08f9a573ef97227e5fc158824b35dedf0ac07366e45edc6d9d3",
-      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A short cylindrical brown leather bolt case, open hinged cap and several short broad-headed crossbow bolts visible inside. Clearly shorter and squatter than an arrow quiver.",
+      "subjectBasis": "Original illustration edited from the initial case, using our approved Crossbow Bolts (20) painting as the bolt-design reference. Historical text informed the heads-up storage and deeper, flared case; no museum image was used.",
+      "sourceSha256": "e36b1595a565bc93f370aa27f9f7f7cadecfd1a3bbca6847131babbfbd2bb60f",
+      "prompt": "Edit image 1 (the open leather crossbow-bolt case) using image 2 (our approved bundle of crossbow bolts) as the EXACT design reference for the bolts. Produce ONE cohesive premium hand-painted medieval RPG inventory icon on TRUE TRANSPARENT background. The case should be a deeper, elongated rigid leather-covered bolt quiver with a slightly flared lower body, believable capacity for the full shafts, warm russet stitched leather and restrained aged brass hardware. Keep its attractive open hinged lid and front buckle, three-quarter view, complete object. Inside it show five bolts stored POINTS UP, their lower shafts and all tail feathers completely hidden inside the case. The visible bolt heads MUST match image 2: narrow elongated pointed gray steel heads with a central ridge, small brass socket collars and straight honey-brown wooden shafts. These are scaled copies of the design in image 2, not chunky pyramid knobs or broad arrowheads. NO feathers near the heads, NO visible feathers anywhere in this case icon, NO mixed orientations. Make the heads realistically modest compared with the case. Entire complete case and open lid centered within a circle occupying 82% of square canvas, ample clear margin, strong silhouette readable at 32px. Match the references' tactile sculptural brushwork, warm ivory highlights and natural materials. No painted circle, backdrop, ground, external shadow, text, symbols or extra props. Historical construction guidance only: medieval European crossbow quivers carried bolts heads upward with fletchings protected at the bottom; this remains an original fantasy equipment illustration, not a reproduction of a museum object.",
       "export": {
         "src": "/assets/icons/inventory/gear-case-crossbow-bolt.webp",
-        "sha256": "2f608ad16caec20f956c764b179e354962326b3ff03d084341eba6888184e5fc",
-        "bytes": 15744,
+        "sha256": "bb5073b547e136b3948ec089f41e549b36323b7898df3729dd25fe5d5954ff6c",
+        "bytes": 14448,
         "width": 256,
         "height": 256
       },
-      "scale": 1.0666
+      "scale": 0.9462,
+      "editReason": "Match the visible bolts to the approved Crossbow Bolts (20) artwork, with the fletchings protected inside the case.",
+      "referenceSources": [
+        {
+          "id": "gear-case-crossbow-bolt",
+          "sourceSha256": "aec2e2e43567c08f9a573ef97227e5fc158824b35dedf0ac07366e45edc6d9d3"
+        },
+        {
+          "id": "gear-crossbow-bolts-20",
+          "sourceSha256": "d33695f940332f474754e777755f9da6298332befb4cd08e4a46197871954b3e"
+        }
+      ],
+      "historicalReference": "https://resources.metmuseum.org/resources/metpublications/pdf/A_Deadly_Art_European_Crossbows_1250_1850.pdf",
+      "previousVersions": [
+        {
+          "sourceSha256": "aec2e2e43567c08f9a573ef97227e5fc158824b35dedf0ac07366e45edc6d9d3",
+          "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A short cylindrical brown leather bolt case, open hinged cap and several short broad-headed crossbow bolts visible inside. Clearly shorter and squatter than an arrow quiver.",
+          "export": {
+            "src": "/assets/icons/inventory/gear-case-crossbow-bolt.webp",
+            "sha256": "2f608ad16caec20f956c764b179e354962326b3ff03d084341eba6888184e5fc",
+            "bytes": 15744,
+            "width": 256,
+            "height": 256
+          },
+          "scale": 1.0666
+        }
+      ]
     },
     {
       "id": "gear-case-map-or-scroll",
