@@ -64,10 +64,10 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   height: var(--theme-table-corner-size, 80px);
   filter: drop-shadow(0 2px 3px #0005);
 }
-/* The table and the enlarged map pad their content past the rail's inner
-   edge (theme-session.css), so the rail is a margin, not a cover: these
-   widths are what that margin costs: 24px on desktop and 12px on a phone,
-   where 40px and 20px left the table cramped once it had to clear them. */
+/* The table and the enlarged map keep their text inside the rail's inner
+   edge (theme-session.css), so the rail is a margin, not a cover. It is 24px
+   on desktop and 12px on a phone: 40px and 20px left the table cramped once
+   it had to clear them. */
 @media (max-width: 1023px) {
   .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) { inset: var(--theme-table-ornament-inset-small, -4px); }
   .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 12px); }

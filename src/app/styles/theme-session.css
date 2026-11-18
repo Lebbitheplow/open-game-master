@@ -13,11 +13,30 @@ html[data-theme-ornaments="true"][data-theme] :is(.theme-table, .theme-overlay) 
 }
 /* The painted rail reaches 2px + its width in from the screen's edge (the
    ornaments box sits on this border box, its ::before 2px inside), and the
-   10px border clears only part of that. The padding clears the rest, no
-   more, so the header, rail labels and bottom bar start at the rail's inner
-   edge instead of under it; the backdrop still fills under the rail. */
-html[data-theme-ornaments="true"][data-theme] .theme-table {
-  padding: calc(var(--theme-table-frame-width, 24px) - 8px);
+   10px border clears only part of that. Padding the whole table to the
+   rail's inner edge took 32px of height from a laptop's board and Hand
+   (scenarios hand-on-board, hand-share), so only what meets the rail moves:
+   the sides are padded, the header's first row starts below the rail at the
+   same height (its rows close up instead), and the side panel ends above it.
+   The board's column needs nothing: only the desk's own foot lies under the
+   rail. A phone's 12px rail clears the bar, the header and the story with
+   no padding at all (scenario phone-frame reads every painted theme). */
+@media (min-width: 1024px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table {
+    padding-inline: calc(var(--theme-table-frame-width, 24px) - 8px);
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
+    padding-top: max(calc(var(--theme-table-frame-width, 24px) - 8px), calc(0.5rem + env(safe-area-inset-top)));
+    row-gap: 4px;
+  }
+  /* One row from 1440px: the initiative ribbon, its tallest item, gives back
+     what the top took, so a desktop's board keeps its height (hand-share). */
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-ribbon-slot {
+    margin-bottom: calc(16px - var(--theme-table-frame-width, 24px));
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-panel {
+    padding-bottom: calc(var(--theme-table-frame-width, 24px) - 8px);
+  }
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-backdrop {
   background-color: var(--material-paper);
@@ -198,11 +217,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .hand {
   overflow-y: auto;
 }
 @media (max-width: 1023px) {
-  /* Phone geometry: border 4px, the rail 1px inside the border box. */
-  html[data-theme-ornaments="true"][data-theme] .theme-table {
-    border-width: 4px;
-    padding: calc(var(--theme-table-frame-width-small, 12px) - 3px);
-  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table { border-width: 4px; }
   html[data-theme-ornaments="true"][data-theme] .theme-table .cine-bottombar { flex-shrink: 0; }
 }
 @media (forced-colors: active) {
