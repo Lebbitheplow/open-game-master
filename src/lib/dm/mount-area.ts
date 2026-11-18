@@ -32,6 +32,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { holdsFeat } from "@/lib/srd/feat-use";
+import { computeSheetDerived } from "@/lib/srd";
 import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
 
 // Dexterity modifiers of the SRD 5.1 mounts (Dexterity 10 where not listed:
@@ -71,7 +72,9 @@ export function areaOnMount(input: {
   // 5.1, Paladin), and the mount shares its rider's square (aura.ts
   // saveAuraBeside). The steed's save took only its Dexterity before.
   const aura = saveAuraBeside(campaign.id, rider)?.bonus ?? 0;
-  const bonus = (steed ? Math.floor((steed.abilities.dex - 10) / 2) : (MOUNT_DEX[mount.ref] ?? 0)) + aura;
+  // A creature's sheet saves as its sheet does: its Dexterity and the save
+  // proficiency its block lists. It took the bare modifier before.
+  const bonus = (steed ? computeSheetDerived(steed).saves.dex : (MOUNT_DEX[mount.ref] ?? 0)) + aura;
   const outcome = rollExpression(`1d20${bonus < 0 ? bonus : `+${bonus}`}`);
   const roll = insertRoll({
     campaignId: campaign.id,
@@ -116,6 +119,6 @@ export function areaOnMount(input: {
     publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
     return { ...row, ...landed, mountHp: `${hp}/${vitals.maxHp}` };
   }
-  const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheets: input.sheets, sheetsById: input.sheetsById });
+  const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheetId: mount.sheetId, sheets: input.sheets, sheetsById: input.sheetsById });
   return { ...row, ...landed, mountDown: `${mount.name} drops to 0 hit points.`, fall };
 }
