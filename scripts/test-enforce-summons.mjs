@@ -737,6 +737,34 @@ await test("A ridden steed dropped by damage sent to its own sheet takes its rid
   }
 });
 
+// The fall is laid wherever the steed goes; the GM hears of it there too. An
+// area naming the steed and an attack at its sheet laid it and said nothing.
+await test("An area that names a ridden steed, and an attack aimed at the steed's own sheet, say in their result how its rider came down.", async () => {
+  for (const door of ["area", "attack"]) {
+    const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+    await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+    const [steed] = summonsOf(world, "Find Steed");
+    const [enemy] = await thenFight(world, paladin.id);
+    holdTurn(world, paladin.id);
+    place(world, paladin.id, 3, 3);
+    place(world, steed.id, 4, 3);
+    place(world, enemy.id, 3, 4);
+    const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+    assert.equal(up.ok, true, up.error);
+    world.patch(steed.id, { currentHp: 1 });
+    world.clearDice();
+    world.dice(...(door === "area" ? [1] : [15, 3]));
+    const out = door === "area"
+      ? await world.invoke("aoe_damage", { characterIds: [steed.id], damage: 4, type: "fire", saveAbility: "dex", dc: 30, halfOnSave: false })
+      : await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: steed.id });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+    assert.equal(world.sheet(steed.id), null, `setup (${door}): the steed at 1 hit point did not disappear`);
+    assert.ok(world.encounter().reactionsUsed.includes(paladin.id), `setup (${door}): the rider spent no reaction landing`);
+    assert.match(JSON.stringify(out.result), /"riderFall":\[\{"rider":"[^"]+","ok":true,"dismounted":"Warhorse","landed":"on their feet"/, `the ${door}'s result says nothing of the rider's fall: ${JSON.stringify(out.result).slice(0, 400)}`);
+  }
+});
+
 // A fall decided as the steed went, on a turn later undone, brings the same
 // sheet back with its rider on it. A later blow at that steed, already at 0,
 // read the undone turn's fall as its own: the rider kept the saddle, no
