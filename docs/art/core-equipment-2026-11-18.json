@@ -1,0 +1,1845 @@
+{
+  "description": "115 base equipment paintings, exported with unchanged transparency. Original generated sources retained outside the repository.",
+  "records": [
+    {
+      "id": "gear-abacus",
+      "label": "Abacus",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "397edc487fd3ccbb4dad9b166bbe92c27dffe8ccc54dd8dbd76fd210c4d97637",
+      "prompt": "Use case: stylized-concept. Create ONE premium painted medieval RPG inventory icon: an ABACUS, a compact rectangular honey-oak counting frame with five parallel rods, chunky ivory and russet wooden beads grouped unevenly, brass corner fittings. Front three-quarter view, the complete standalone object. Match a cohesive sculptural hand-painted RPG equipment collection: warm ivory highlights, natural rich brown leather where appropriate, honey wood and restrained aged brass, convincing construction, clean broad silhouette readable at 32px. Square canvas, TRUE TRANSPARENT background. Center the entire object within a circle occupying 82% of the canvas. No painted circle, border, text, numbers, glow, fog, backdrop, external shadow, character or hands. Do not crop any part.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-abacus.webp",
+        "sha256": "439c071a3a1d3bcad0bf57ee9922a293079929869e8cba6a7a116780555d5c97",
+        "bytes": 28924,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8497
+    },
+    {
+      "id": "gear-alchemists-supplies",
+      "label": "Alchemist's Supplies",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "87d0a5e8c81d573e1c94f45d0942536375a3049e04d8294838121bde98d5ceba",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A coherent compact alchemy kit: a squat glass alembic with curved copper neck, a small mortar and pestle and two stoppered reagent jars in a shallow wooden carrying tray. No smoke or fire.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-alchemists-supplies.webp",
+        "sha256": "bf548b62375d523a68c7284231ed8ee4163f91598ef24f7c166e22f03f728018",
+        "bytes": 20710,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8879
+    },
+    {
+      "id": "gear-alms-box",
+      "label": "Alms Box",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "7cddac74da8a73f2773a2e65b3f9ba56eb6e44ba6bd88c51783d0e29e9dc9aeb",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small stout oak donation box with iron corner bands, a narrow coin slot in its lid and a small front latch. Three-quarter view, closed box.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-alms-box.webp",
+        "sha256": "238473e892eae3acd73979d26d8ea1c6aeb6a0eb21735c09d4a1dbf1ffe0af57",
+        "bytes": 19298,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.011
+    },
+    {
+      "id": "gear-arrows-20",
+      "label": "Arrows (20)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "5477f4801e24f133238bcd476a7fce000f5bb669b551fca1f3a4b0c4b4faf69d",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A neatly bound sheaf of long wooden arrows with pale feather fletching and simple triangular steel heads, no bow or quiver. All tips and feathers visible.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-arrows-20.webp",
+        "sha256": "617c8626defcbbf30cc90a3914006d1c0f6e45e3af69141ee96abeafc2c4b26d",
+        "bytes": 15642,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8622
+    },
+    {
+      "id": "gear-bagpipes",
+      "label": "Bagpipes",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "9d61ed7834a746f2f64ca570ea850109596d1d71fed9a275773bfbc64500c39b",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete set of medieval bagpipes: russet leather air bag, three dark wooden drone pipes with ivory ferrules and a distinct shorter finger-holed chanter. No player.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-bagpipes.webp",
+        "sha256": "6dfd446547cfcb9e052e834a322678bff0257dec06319587f6fb59f5b5ce6be1",
+        "bytes": 18432,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7928
+    },
+    {
+      "id": "gear-barrel",
+      "label": "Barrel",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "95b1ad1e42ab4c4a69aad9cde9fab2d0f08fb315d72c551ab714a081124217dd",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single stout closed oak barrel with four dark iron hoops, visible round wooden lid, warm honey staves, three-quarter view.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-barrel.webp",
+        "sha256": "df90342e7ae5859a5f71ccc95bcf54223108f274614eb43d3eeaf9f86cc6c0ee",
+        "bytes": 20098,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0041
+    },
+    {
+      "id": "gear-basket",
+      "label": "Basket",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "e416bdfed59b31c365a62434dc65bae1517d24189541563cad55c4211e82b141",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A round woven willow carrying basket with one arched handle, open empty interior and thick woven rim. Three-quarter view.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-basket.webp",
+        "sha256": "61ee3075a023326e42ccf8c7b09ca9609308699ff0fb3cd7cfeaedd9e82891de",
+        "bytes": 21618,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0367
+    },
+    {
+      "id": "gear-bell",
+      "label": "Bell",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "511f31f7a22505f82fc5d936015d6d4a5a0ab488a82c436c6494745b7e282c8f",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single brass handbell with flared mouth and short carved walnut handle, visible clapper. Tilted slightly to show its hollow bell.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-bell.webp",
+        "sha256": "1109cbcaa979745617e223442dc8faf37d646415e5c4e313fcc27c60e956322f",
+        "bytes": 11104,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9105
+    },
+    {
+      "id": "gear-bit-and-bridle",
+      "label": "Bit and Bridle",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "6126fec55eed2f82a6c32ec85f40f90dcaaf2776df7c9e5321316c545eb466d7",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete brown leather horse bridle arranged without a horse: shaped browband, cheek straps and noseband, clearly connected silver bit and reins neatly looped. No saddle.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-bit-and-bridle.webp",
+        "sha256": "6a84d17bd2878d93441364a4f475eb49808722f95271a31d3f9f338b30c836d2",
+        "bytes": 23858,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8586
+    },
+    {
+      "id": "gear-blanket",
+      "label": "Blanket",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "038c1389e490da0d0be6ed605b67b95e529dcfa5a0f547df091a9ccd9ab85029",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A thick folded muted olive wool blanket, three broad soft folds, stitched ivory edge, no straps or bedroll shape.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-blanket.webp",
+        "sha256": "2a2db36a8b49e39438bc3ef11afbc79c34d46c6a897861788aafbe817e1b6466",
+        "bytes": 13790,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0005
+    },
+    {
+      "id": "gear-block-and-tackle",
+      "label": "Block and Tackle",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "c90038a06f3ee3467692cec2fdd4de9fde9b9a0ffb078c7998acdf9fa7eb216b",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact lifting tackle: two wooden pulley blocks with visible brass wheels, threaded thick hemp rope connecting them and a sturdy iron hook. Neatly arranged as one complete lifting device.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-block-and-tackle.webp",
+        "sha256": "fa9b7fc2dd08b4374342fbe3be2b2a4e80547df62c108ae8f77fe71c8e55a2de",
+        "bytes": 11226,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9505
+    },
+    {
+      "id": "gear-block-of-incense",
+      "label": "Block of Incense",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "048213338dbf7370c26a1cd5bb99c217d1f1f89488f1cc9694d22da120923ac0",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: Two compact dark amber incense bricks, one on a small shallow brass dish; unlit, no smoke or flame.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-block-of-incense.webp",
+        "sha256": "db70228f1c91b14146c436711f90da9d0dab44fb86f3a3e1922e7037ef353e6e",
+        "bytes": 16376,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.027
+    },
+    {
+      "id": "gear-blowgun-needles-50",
+      "label": "Blowgun Needles (50)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "33f865169482c39261dd49fc36339d097c1267ee4e8c443731a7ce31a91b64fc",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact bundle of very thin steel blowgun darts with small cream fiber tufts, beside a short open leather dart tube. No blowgun or syringe.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-blowgun-needles-50.webp",
+        "sha256": "b07e07b726860595a25a6cfb163d6e91242ab4967aee8e4fe93906104997e7c8",
+        "bytes": 18726,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9951
+    },
+    {
+      "id": "gear-brewers-supplies",
+      "label": "Brewer's Supplies",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "7e14e47afccfbb1e2e48722aa8bd6e6fd503948b5353c4cdbd701b62c7d25788",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact medieval brewing kit in an oak tray: a copper funnel, a wooden mash spoon, a small ceramic fermentation crock and a tied pouch of grain. No labels.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-brewers-supplies.webp",
+        "sha256": "909d8efebe4d2b197aa799c025ab8dc2af31c3130204c08b51712b9af4d525d2",
+        "bytes": 24382,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9056
+    },
+    {
+      "id": "gear-bucket",
+      "label": "Bucket",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "289296bd0bc8bce3e0fa560b0e8ffaa32770f8cd245c962928aab5741a69e01e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single open wooden stave bucket with dark iron hoops and an arched iron carrying handle. Empty interior visible.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-bucket.webp",
+        "sha256": "1cc7d92d48aef950cc9bfcf899c18e3befdc840dc4868f4cbc77ac3f64eeefe7",
+        "bytes": 17528,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9719
+    },
+    {
+      "id": "gear-burglars-pack",
+      "label": "Burglar's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "b34521d17db01915dc9e4216794741d9bc745fd4fef0550b74541464f29e20a3",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact closed dark brown burglar backpack with a loop of rope, small crowbar and discreet leather tool roll strapped outside. Emphasize the crowbar and tools; no person.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-burglars-pack.webp",
+        "sha256": "28b0e2e524e9a7b387a939afd283896a93aea34993b610674ef72bbdda00fe75",
+        "bytes": 24134,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8645
+    },
+    {
+      "id": "gear-calligraphers-supplies",
+      "label": "Calligrapher's Supplies",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "45fde42ad7147c903e6e88dc16d0a1a9df5c41b9fbfbe547f7034b621d2a350e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open brown leather writing roll with three ivory quills, brass pen nibs and a squat capped inkpot, compact arrangement, no written text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-calligraphers-supplies.webp",
+        "sha256": "a02b3ab9a7798dffc6556de61014134b43daea5843ea3d43ab852719757b24fa",
+        "bytes": 22676,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8566
+    },
+    {
+      "id": "gear-camel",
+      "label": "Camel",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3bcf48cf11e40dcddeff45f0b3b958b6d08ea7baf72a74460390072554b08d24",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete natural dromedary camel standing in three-quarter side view, single hump, sandy tan coat, simple leather halter, four anatomically correct legs and cloven padded feet. No rider, saddle, scenery or ground shadow. Original animal illustration.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-camel.webp",
+        "sha256": "8e67d2b841df44a0f0d17793bb7e75db4e4440396c62884482eb64599e1b5e7f",
+        "bytes": 22774,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8136
+    },
+    {
+      "id": "gear-carpenters-tools",
+      "label": "Carpenter's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "59bff8f156f2291672cf44f0a1b6820159de74d1dccf9f4a9bb3d902065942c1",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open leather tool roll holding a small hand saw, a wooden smoothing plane and a steel chisel with oak handle. Distinct recognizable woodworker tools, compact arrangement.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-carpenters-tools.webp",
+        "sha256": "de164ffceb92eacd1aa16bb98f3e4ddaf359ff7c321cf12b2540734a00840bf0",
+        "bytes": 21232,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8223
+    },
+    {
+      "id": "gear-cartographers-tools",
+      "label": "Cartographer's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "44c1504df8a5c67d79c2352cfe450ad8acfb18867a7b09d9b04d17856912f535",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A tightly composed mapmaking kit: brass dividers, a straight wooden ruler without markings, a rolled blank parchment and an inkpot, on a small leather folio.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-cartographers-tools.webp",
+        "sha256": "ccdb8e2eeeda6bd28625d61accdc6edd7bba9f4188e65fa1c322bd2198c2f51e",
+        "bytes": 19186,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9152
+    },
+    {
+      "id": "gear-case-crossbow-bolt",
+      "label": "Case, Crossbow Bolt",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "aec2e2e43567c08f9a573ef97227e5fc158824b35dedf0ac07366e45edc6d9d3",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A short cylindrical brown leather bolt case, open hinged cap and several short broad-headed crossbow bolts visible inside. Clearly shorter and squatter than an arrow quiver.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-case-crossbow-bolt.webp",
+        "sha256": "2f608ad16caec20f956c764b179e354962326b3ff03d084341eba6888184e5fc",
+        "bytes": 15744,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0666
+    },
+    {
+      "id": "gear-case-map-or-scroll",
+      "label": "Case, Map or Scroll",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3b6cfc8f1087afed040020165d954f492ef072001e94ec034fac16b45a83f601",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A long cylindrical brown leather scroll tube with brass end caps and a short shoulder strap; one partially exposed rolled blank parchment at the open end.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-case-map-or-scroll.webp",
+        "sha256": "7724f5616a640c6ff4835ae522efe455e0245cfa3313ff50714ca4bf1cf73794",
+        "bytes": 13182,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9428
+    },
+    {
+      "id": "gear-chain-10-feet",
+      "label": "Chain (10 feet)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "d76541d496e6f556f0ebf0b4dc9638711b53ee3d259af65d6d27013fcda5fccc",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact loosely coiled heavy dark steel chain with large clearly interlinked oval links. Entire coil contained, no lock or hook.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-chain-10-feet.webp",
+        "sha256": "5fd0603ea96fd111519323d03ea08b2d313dad410500219232e0c4a58879ee35",
+        "bytes": 20864,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1075
+    },
+    {
+      "id": "gear-chalk-1-piece",
+      "label": "Chalk (1 piece)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "546cf456d36404c2cee8e9ce70a5b2a326373bceb5582ea2a91a17e515134235",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One thick short ivory-white chalk stick with naturally chipped end, diagonally arranged, lightly faceted mineral surface.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-chalk-1-piece.webp",
+        "sha256": "750b47cc582edbc10451e7a770bae0b80ea774bf2ba4870ed64079a4075a856e",
+        "bytes": 8262,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0653
+    },
+    {
+      "id": "gear-chest",
+      "label": "Chest",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "141bddf22abed51335cf424deb177f50a156a464fb53be7e9512d0b4ee065223",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A stout closed oak treasure chest with slightly curved lid, restrained iron bands and central brass latch; no coins or treasures outside.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-chest.webp",
+        "sha256": "02d706905664a0b1283562c75a1f0ffd2fbb92c7158a49866668e72e11651cd9",
+        "bytes": 20090,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9043
+    },
+    {
+      "id": "gear-climbers-kit",
+      "label": "Climber's Kit",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "6a83b03906c63fcf13ae06526bc61cf67c3f75cdfcfe959fcc16ec80652c0515",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact leather climber kit with a coiled short rope, three iron pitons, one climbing hammer and a leather harness strap arranged together. Complete recognizable kit.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-climbers-kit.webp",
+        "sha256": "59671876b7b629d94ae645514a6b6f72c0980202fb042a4da79043bbe3172d23",
+        "bytes": 28156,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9291
+    },
+    {
+      "id": "gear-clothes-common",
+      "label": "Clothes, Common",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "59545aff420dbd6f0fb9c7a3a6ce6518b973011994f7d801e7e137881e46e9cd",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A simple unworn coarse tan linen tunic with a plain rope belt and folded brown trousers underneath. Hollow neck, no body or hanger.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-clothes-common.webp",
+        "sha256": "53b85566ca1ece745cf163dbc9e00596af0b2300cdd2f0cccc6e0053fc090576",
+        "bytes": 21128,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9487
+    },
+    {
+      "id": "gear-clothes-costume",
+      "label": "Clothes, Costume",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3e8f1c6386baf0573166e1977bc6b8e9e436f9d37da9614ff5b487b8afd3bace",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An unworn theatrical costume: burgundy and mustard doublet with scalloped sleeves and a small matching feathered cap beside it. No face, person or armor.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-clothes-costume.webp",
+        "sha256": "134e58f53b5752b60b6460ad739bd6045fbb33de8cf04276ceaff122ff08208b",
+        "bytes": 24494,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8729
+    },
+    {
+      "id": "gear-clothes-fine",
+      "label": "Clothes, Fine",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "2b18cd7730d8daff6879c6143b373587e91adf46ca98c8b00e6cbb7c85f565d3",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An unworn elegant deep teal velvet doublet with restrained gold embroidery, ivory collar and burgundy sash. Hollow neck, no wearer or mannequin.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-clothes-fine.webp",
+        "sha256": "75d2cf39aa0459d96383ea6322eec606624a1151d8ee77291756208d0d2a829a",
+        "bytes": 23680,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8965
+    },
+    {
+      "id": "gear-clothes-travelers",
+      "label": "Clothes, Traveler's",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3c91d45ce2c98707e5418889ef81f0e847d8df393337a5dc9faac8deeb7421f9",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An unworn practical brown wool traveling coat with short shoulder cape, sturdy belt and simple green scarf at its hollow collar. No wearer, no hooded head.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-clothes-travelers.webp",
+        "sha256": "d030b2f3d4d761aa63a588cad58b47bb8935bc0fd242f3138c8bd4f567b1a140",
+        "bytes": 18116,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8961
+    },
+    {
+      "id": "gear-cobblers-tools",
+      "label": "Cobbler's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "8f37f12659ca5a14fa3afa9f382a6107cdb20b890d29e8b250868a8908fe3739",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact cobbler kit: wooden shoe last, curved leatherworking knife, stitching awl and waxed thread spool in an open leather roll. No modern tools.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-cobblers-tools.webp",
+        "sha256": "fd85385139bf0579350d0962110e8e7754bc99275014fd86270cdbbf3151fc5a",
+        "bytes": 24606,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8632
+    },
+    {
+      "id": "gear-cooks-utensils",
+      "label": "Cook's Utensils",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "a044c12351b98e8fe3e7d6c91d53c9f8ead691d979b25c79235b1e6da1dcd5ef",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact medieval cooking kit: a small black iron skillet, wooden stirring spoon, brass ladle and short kitchen knife laid together. Entire tools visible.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-cooks-utensils.webp",
+        "sha256": "7a0fa1d617fc31800516ebb40445697cd5cb9c2db8fa8947c8860d5ca45f2d57",
+        "bytes": 22886,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8713
+    },
+    {
+      "id": "gear-crossbow-bolts-20",
+      "label": "Crossbow Bolts (20)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "d33695f940332f474754e777755f9da6298332befb4cd08e4a46197871954b3e",
+      "prompt": "One hand-painted medieval role-playing game inventory icon, isolated on a truly transparent background. Warm natural wood, aged steel and restrained brass, painterly realistic materials, clear silhouette at 32 pixels. Square image, complete object centered with generous clear margin, fitting within the central 82 percent circle. No background, frame, writing, people or scenery. Subject: a small bundle of short medieval crossbow bolts tied with a simple leather cord, wooden shafts, small steel arrowheads and ivory feather fletching. Static collectible equipment illustration.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-crossbow-bolts-20.webp",
+        "sha256": "b31facfb7b3ac50d16e6b64edf43f9434cdd93e6ef68ef1e9b89f8fcb8a9b51c",
+        "bytes": 14330,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9489
+    },
+    {
+      "id": "gear-dice-set",
+      "label": "Dice Set",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "6d4716567c272a041d60a107f0405e34b712fe3883b2cb749725ac3e746004e2",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: Three chunky ivory six-sided gaming dice with simple dark recessed pips, natural beveled corners, compact cluster. No numerals.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-dice-set.webp",
+        "sha256": "02041b765baefdf295d24918d7e2f373bb747234719434633a2487f2c3b76d50",
+        "bytes": 17086,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0223
+    },
+    {
+      "id": "gear-diplomats-pack",
+      "label": "Diplomat's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "f9ffcdcc6d226d43ffb0230de1e7b73f71bb9d3d05b69b0f07e3491e9e2841f3",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact elegant burgundy leather travel satchel with brass clasp, a rolled blank document and a small sealed writing case attached. Distinguished formal luggage, no text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-diplomats-pack.webp",
+        "sha256": "4e3aa05e203f2a8eeeac44fb92c32dedd8beebb33a1e88ca47527048a2130531",
+        "bytes": 21518,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9392
+    },
+    {
+      "id": "gear-disguise-kit",
+      "label": "Disguise Kit",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "fcf8aba5080e0f5b7063f8e6a85ad677a44d04f6f8fbc5eee20fa7da3a71c1d6",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open leather disguise case containing a plain half-face theater mask, small brush, two pigment pots and folded fabric. No human face or disembodied realistic flesh.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-disguise-kit.webp",
+        "sha256": "0cd056eb88bbfb94989158eacd43be76898209f948b7d2d5b8c11767e5e6375d",
+        "bytes": 19874,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9891
+    },
+    {
+      "id": "gear-donkey-or-mule",
+      "label": "Donkey or Mule",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "956696881312139b582b1d03067f6a0c8ecbb17cce2a431407314ae6704adfe1",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete sturdy gray-brown mule standing in three-quarter side view, long ears, short dark mane, pale muzzle, four correct legs with hooves and a thin tasseled tail. Simple halter, no load, rider or scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-donkey-or-mule.webp",
+        "sha256": "e4631634024450ea51677c77860e99b3115b764dad6b36f82293f65527c36221",
+        "bytes": 17744,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.788
+    },
+    {
+      "id": "gear-druidic-focus",
+      "label": "Druidic Focus",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "c93271678f0dec4d0d468d09a4752fd28db3df1c7ee17a6431fdbbd072261ee6",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact living-looking sprig of oak with three broad green leaves and acorns bound with rawhide to a short polished root. A non-glowing natural focus, no staff.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-druidic-focus.webp",
+        "sha256": "386863097138274435922418f405162af686d0b8d09ac9ca0b8f85cc905eaa05",
+        "bytes": 21048,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8513
+    },
+    {
+      "id": "gear-dulcimer",
+      "label": "Dulcimer",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3bb481a3f484dfc01fe6958754ab2e07421bb4bff4baa48d4073976f492e8fff",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete small hammered dulcimer: trapezoidal honey-wood soundbox with parallel fine strings and two small wooden beaters resting across one corner. View from above at slight angle.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-dulcimer.webp",
+        "sha256": "33e76cbc662ced50279c79a7db137c9a4bc61ec22c61e01a7ba664c9c86f0966",
+        "bytes": 16822,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8504
+    },
+    {
+      "id": "gear-dungeoneers-pack",
+      "label": "Dungeoneer's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "737a1b35d3d40c200e00aaf2364a39bbec567e26dda63bc9b4155fbdeeed34e4",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact rugged brown dungeon backpack with coiled rope, iron pitons and an unlit torch strapped outside. Strong readable explorer kit, no person.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-dungeoneers-pack.webp",
+        "sha256": "aa9f8c5d3fbc7b086d085ec7fb778f2fdefb1699745f40843d40f6757c91456e",
+        "bytes": 25010,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9141
+    },
+    {
+      "id": "gear-elephant",
+      "label": "Elephant",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "af09c7d7301c0cb60ae103777bbd45b438dd04085baa5649a6ce17334f8c8849",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete natural gray elephant standing three-quarter side view, large ears, curved trunk held gently forward, two short tusks and four correctly placed thick legs. No rider, armor or scenery. Original animal illustration.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-elephant.webp",
+        "sha256": "ca545a1d9e3c9726c481ac8f555acc8be9ed2fa1cd87c6ad81c17d83be7dfc2f",
+        "bytes": 22644,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8457
+    },
+    {
+      "id": "gear-emblem-holy-symbol",
+      "label": "Emblem (holy symbol)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "17095936016e88be82877742e5d05f432bd86786f3bdefa7e67ce8f28f254470",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small solid golden sun emblem mounted on a plain square leather backing for fastening to a shield; raised sun rays, no pendant chain or text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-emblem-holy-symbol.webp",
+        "sha256": "47e43c04b7e47508081930a30b8af79310be3f0b0f1ab56df32bf42f993c522e",
+        "bytes": 17700,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9974
+    },
+    {
+      "id": "gear-entertainers-pack",
+      "label": "Entertainer's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "af2a6027e38384f33ae841491903f9f63454138091186caa19e9167169d41880",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact burgundy leather entertainer travel pack with a small tambourine and three colorful wooden juggling balls secured in outer pockets. No person or instrument floating.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-entertainers-pack.webp",
+        "sha256": "006a29fa2cc2a0906f6a3dbdf0918a1309ee423c29f724f9189b62db4ad49f02",
+        "bytes": 23428,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.935
+    },
+    {
+      "id": "gear-explorers-pack",
+      "label": "Explorer's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "a6330deb08e350c3f3f656d6f1241704082754fe9a021dccd2c9931592f7b315",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact practical olive canvas explorer backpack with brown leather straps, a rolled blanket across the top and a pewter cup attached to the side. Entire pack visible, no person.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-explorers-pack.webp",
+        "sha256": "e691bc2402daa17a205110950e9fb3ac26fb6287ff6d1e2f2103c9fe054cd26d",
+        "bytes": 23632,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8964
+    },
+    {
+      "id": "gear-feed-per-day",
+      "label": "Feed (per day)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "fc5c8adee5ea5440eb5c6246dc38eb07863ec2686f156ded982ea5beb0dc7b26",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open small burlap feed sack filled with golden oats, a few stalks of hay tied against its side. No animal, no text or scattered ground.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-feed-per-day.webp",
+        "sha256": "f62cc3f827484824b1bbd1df6197600a8447346fdb47cdadc5e6ab447f5c2769",
+        "bytes": 26102,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8448
+    },
+    {
+      "id": "gear-fishing-tackle",
+      "label": "Fishing Tackle",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "0addfed4898fe0d25018291817a06be20aff2a4874b22c25ce611f79031bd262",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact open wooden tackle box containing cork floats, a spool of line and several curved metal fishing hooks; small folded net beside it. No fish or rod.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-fishing-tackle.webp",
+        "sha256": "10f46ba4ab2d3925642aed8bd02a92398ea97dbb042de339a23062e4d1e941c8",
+        "bytes": 23578,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9317
+    },
+    {
+      "id": "gear-flask",
+      "label": "Flask",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "4f6419c8c4dc37f8db582354ce13232a01eedf13cd6b165d2e389619bb578d03",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single squat rounded pewter drinking flask with narrow screw-top brass stopper and simple leather carrying loop, no label.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-flask.webp",
+        "sha256": "90aa60601297221d76db5e75eb699ecd4fb1538797ca11ad5cc4d75329701270",
+        "bytes": 15658,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9675
+    },
+    {
+      "id": "gear-flute",
+      "label": "Flute",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "ecdcc1db8bd2964597e3156c0bead4efdf6c95452f8611cae51be1af24c20b56",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete medieval transverse flute of dark polished wood with brass rings, visible finger holes, diagonal composition; no player.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-flute.webp",
+        "sha256": "640a88a3927a41dc23fd1e16a70f73f0de59c2c395ab33ffd2809deac987aee6",
+        "bytes": 7956,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8077
+    },
+    {
+      "id": "gear-forgery-kit",
+      "label": "Forgery Kit",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "b86c1da3accfe645dd67d779f7f06794788bb041bf25eba03c16404208463ea5",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact leather folio with blank parchment, an ivory quill, two wax-seal stamps and a small red wax stick. No visible writing.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-forgery-kit.webp",
+        "sha256": "8004c18f1d0da335af139e440848932e5de16b0ea7542406ab6c34bd6fc44917",
+        "bytes": 17904,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9476
+    },
+    {
+      "id": "gear-glassblowers-tools",
+      "label": "Glassblower's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "e14534d4e02242422998a7346bc05d947858e1d976c5514245c90b966d029832",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact glassworker tool kit: a shortened steel blowpipe with hollow tip, long iron shaping tongs, and a small rounded amber glass vessel, all fully visible. No fire or molten splash.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-glassblowers-tools.webp",
+        "sha256": "8853cad076177885a1adf601131c4fd66e1b9cfb00cf1a19d48f758f20a147dc",
+        "bytes": 17758,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9164
+    },
+    {
+      "id": "gear-grappling-hook",
+      "label": "Grappling Hook",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "cdff81cfc45798e711425a0c47e3b622b104cce0f7ff62a5fa43875346edb8e1",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single sturdy four-pronged dark steel grappling hook with a rope eye and a short neatly coiled length of hemp rope. Broad readable curved hooks, no weapon blade.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-grappling-hook.webp",
+        "sha256": "45008302d955861be0028542f5896c7ec0009f49ab86a20883958957a1b79517",
+        "bytes": 20184,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8893
+    },
+    {
+      "id": "gear-hammer",
+      "label": "Hammer",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "5c71b42da79c7fac9812b1f6350a3660fa50f6684e63ef4c3949d389356f59af",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A simple one-handed carpenter hammer with flat steel striking face, split claw at the back and sturdy honey-oak handle. Entire tool visible.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-hammer.webp",
+        "sha256": "3d83db3d93f28f118de503e1a5c4d06784b33dbc8b70de8e331fda240678783f",
+        "bytes": 10840,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9434
+    },
+    {
+      "id": "gear-hammer-sledge",
+      "label": "Hammer, Sledge",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "64c95215374e4508c77b64cc72c10978a23a25d787128b7183612e9e9b8334f2",
+      "prompt": "One hand-painted medieval role-playing game inventory icon, isolated on a truly transparent background. Warm natural wood, aged steel and restrained brass, painterly realistic materials, clear silhouette at 32 pixels. Square image, complete object centered with generous clear margin, fitting within the central 82 percent circle. No background, frame, writing, people or scenery. Subject: a traditional carpenter's sledgehammer with one broad rectangular dark steel head and a sturdy honey-brown wooden handle, resting diagonally. Static workshop hand tool illustration.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-hammer-sledge.webp",
+        "sha256": "a5e7451fdf4133c8e092bdeb78e77da46e4c1578bf704b9d1d9c67f48c6442f5",
+        "bytes": 11078,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8257
+    },
+    {
+      "id": "gear-herbalism-kit",
+      "label": "Herbalism Kit",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "8d9ec16b1e4daa24dba5e5d8d6889a85ee7a4d456a3ff16cd04e83a20eacb8c0",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open brown leather herbalist pouch with dried green herb bundles, a stone mortar and pestle and two tiny corked bottles. Compact natural kit, no glow.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-herbalism-kit.webp",
+        "sha256": "95df275ec27864cb09d6630e47b495d3a66f3bfab770b0f51e2597a3d4961a29",
+        "bytes": 22268,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9567
+    },
+    {
+      "id": "gear-horse-draft",
+      "label": "Horse, Draft",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "5f2e522993dcb68797241d0bae02204cb763884da9656e749740e468d4929bc1",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete heavy chestnut draft horse with broad muscular torso, thick neck, pale feathering at the hooves and a simple leather halter. Four correct legs, no saddle, rider or scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-horse-draft.webp",
+        "sha256": "b2e421393891f5253891c633a693877ca26e69619724ca6699b36ea8c4e8a1a7",
+        "bytes": 21608,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8199
+    },
+    {
+      "id": "gear-horse-riding",
+      "label": "Horse, Riding",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3f598ba66eb4f77c31f4ca0371c2270a89ee62966d6b38dc4565b6e6e83dd87f",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete graceful bay riding horse with black mane and tail, lean athletic build and a simple brown leather riding saddle and bridle. Four correct legs, no rider or scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-horse-riding.webp",
+        "sha256": "ec9d037c90903e36d06f7a12d963c658176575cc0edcadd742f9a92dbee4cb89",
+        "bytes": 19498,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7972
+    },
+    {
+      "id": "gear-hourglass",
+      "label": "Hourglass",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "c519ded63c6b9c070f8949177b3d6335a9214647b660815c281122f2216c8718",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete squat hourglass with two connected glass bulbs, pale sand, three brass support pillars and dark wooden circular end plates.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-hourglass.webp",
+        "sha256": "dd9c3b2acade35fce0f39ed910483f3fbca9c4e9a5e462669db7cc0284c96ce2",
+        "bytes": 17382,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0206
+    },
+    {
+      "id": "gear-hunting-trap",
+      "label": "Hunting Trap",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "cfbaa08a78c9e9c60f1b00861a961b728b0d997e0f2d4355db71a907c391c48d",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A heavy iron spring jaw trap shown open, two toothed semicircular jaws surrounding a pressure plate, short attached chain neatly curved beside it. No animal, blood or injury.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-hunting-trap.webp",
+        "sha256": "c102ae392fc221df9368857886e425a22dd1ada4b9d3b91106d67cb03505ce70",
+        "bytes": 25568,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9455
+    },
+    {
+      "id": "gear-ink-pen",
+      "label": "Ink Pen",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "93c43153704769a05ab37a832102333ee764f58f6499f0474732bd8920e733db",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single elegant ivory goose-feather quill with visibly cut dark writing tip, curved feather spine, no inkpot or writing.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-ink-pen.webp",
+        "sha256": "f41f52812bc5aae25b6eb3847a30d525a1e4ea8bf9ca1bd5c040a3725176dafd",
+        "bytes": 13922,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8181
+    },
+    {
+      "id": "gear-jewelers-tools",
+      "label": "Jeweler's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "bb6e7b3a9b66bf22589c211a60a11bb3b645935eb2343c22c997b4a651c9d4dd",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact jeweler kit: tiny brass-handled pliers, a delicate steel file, a small loupe and a plain silver ring on an open leather mat. No gemstones scattered outside.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-jewelers-tools.webp",
+        "sha256": "fc228c77dfa51d4f42d2acdcd7ba3c47d7b4169ec8db91b845f0da969f558dc6",
+        "bytes": 21450,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9518
+    },
+    {
+      "id": "gear-jug",
+      "label": "Jug",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "1a1f3f73803f52759d6315c6eda94d57872c348108346ac577c0bfdab5afd602",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single rounded honey-brown glazed earthenware jug with narrow spout and one sturdy loop handle, cork stopper, complete silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-jug.webp",
+        "sha256": "834dd9d23462ace2edab40d633c1dd01236c90950bde944d17002e67586ecb7b",
+        "bytes": 15644,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0035
+    },
+    {
+      "id": "gear-ladder-10-foot",
+      "label": "Ladder (10-foot)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "f093549df26546cd299329ba65abb92e24dce9a7348341047bc274b108f90064",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete simple wooden ladder with two straight side rails and seven evenly spaced rungs, steep diagonal with gentle perspective shortening. Both ends visible, no scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-ladder-10-foot.webp",
+        "sha256": "e30bf75c589539ffdcc6093caa301a18905e8f30dcf9ca7c7db7f04a04f5e847",
+        "bytes": 15872,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8565
+    },
+    {
+      "id": "gear-lamp",
+      "label": "Lamp",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "33f21033a9fec90e8265c20091a31c864102a6ee5fbb7aa7fcfcf076089d35a3",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small medieval brass oil lamp with rounded reservoir, curved carrying handle and short spout with an unlit wick. No flame, no genie, no smoke.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-lamp.webp",
+        "sha256": "dc746e83fe69037457be11e7c6833dc209412d5cf50cce2536886478b543bc18",
+        "bytes": 13908,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0237
+    },
+    {
+      "id": "gear-leatherworkers-tools",
+      "label": "Leatherworker's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "e2167e6e60158213d9a7110ab408e77fbc9a1d716c10959153bf7353cf07812e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open leather tool roll with a broad crescent head knife, stitching awl, wooden mallet and a roll of thick tan hide. Compact kit, no hands.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-leatherworkers-tools.webp",
+        "sha256": "5d8d0502f230d8898880f30ddaa3be74f7e049e2f392297863e072708f9e74b6",
+        "bytes": 22178,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.951
+    },
+    {
+      "id": "gear-lock",
+      "label": "Lock",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "59106b3d87306ac3004d068066e22adb8e49e61839b535b914cf8c56a60d5581",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single medieval dark iron padlock with rounded shackle, stout rectangular body and a small matching brass key beside it. No text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-lock.webp",
+        "sha256": "87ec2b27d80a5587473a41bc7375d466e688e3e73d73c005671f4c7a5647518a",
+        "bytes": 20158,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.893
+    },
+    {
+      "id": "gear-lyre",
+      "label": "Lyre",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "d573b028386e80a8238d800595bccf4b3b5a0c4d5ff89084185077244b074d23",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete compact seven-string lyre, U-shaped honey-wood frame with carved rounded arms, small rounded soundbox and brass tuning pegs. No player.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-lyre.webp",
+        "sha256": "1a2d1cc98fc084a612a74c4ac33460d2c3c0e5ec0a2d4c0519a435f3ceb2ceea",
+        "bytes": 28276,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8837
+    },
+    {
+      "id": "gear-magnifying-glass",
+      "label": "Magnifying Glass",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "6e6e4897375821349a382b728d1a91a526a65fdd2b88ccd70fdf85451da3e134",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single round magnifying lens in a brass rim with short dark wooden handle; transparent pale glass with restrained highlight, diagonal angle.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-magnifying-glass.webp",
+        "sha256": "7bf62cb2657ad9c2d0d76f7ed998c4a8baba4663d2b531fef2cb766bfc0c3c86",
+        "bytes": 15774,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8481
+    },
+    {
+      "id": "gear-masons-tools",
+      "label": "Mason's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "fa297938a1941b503aac1cdc931a4304da288d092844b6265b1f5e6ae01b594d",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact mason kit: broad steel masonry chisel, short stone hammer and triangular trowel with wooden handles on a folded canvas tool roll. No scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-masons-tools.webp",
+        "sha256": "0afb268b661f82e2485c35e30a14ed8a613a6c5782692e49a563707752e404fc",
+        "bytes": 21698,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8973
+    },
+    {
+      "id": "gear-mastiff",
+      "label": "Mastiff",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "15c745cf099bdf3ee05b92be7ec0fe197e60584d88e61470fca7819094a3e260",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete stocky fawn mastiff dog with black muzzle, folded ears, broad chest and a plain leather collar. Calm standing three-quarter view, four correct paws, no scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-mastiff.webp",
+        "sha256": "70f0db1d836144938d019fb46b75fb37a3e7174a23ee99c8521d02188d7b88ab",
+        "bytes": 18138,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8709
+    },
+    {
+      "id": "gear-mess-kit",
+      "label": "Mess Kit",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "ae47b71e2b4373c61fcabe74fcc2be70be377224c0c7d7700c49edd7449d4e47",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact camping mess kit: nested pewter bowl and cup with a simple spoon and folded cloth, tied together by a brown leather strap.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-mess-kit.webp",
+        "sha256": "6b84e41eacd6899a0c989b9497730f9fd336316bc20a982e8a80396495d7df46",
+        "bytes": 15282,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1787
+    },
+    {
+      "id": "gear-navigators-tools",
+      "label": "Navigator's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "b1a60dc2faa2e176ccc1992c50ca678cc05009d87a88e864c0cf24806dd21e06",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact medieval navigation kit: a round brass compass with simple pointer and no letters, brass dividers and a rolled blank chart on a leather folio.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-navigators-tools.webp",
+        "sha256": "66d592b810c47d6ee02cb308342a6215b3e9bf88cab598030c8ce62bd253ca74",
+        "bytes": 20412,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9367
+    },
+    {
+      "id": "gear-painters-supplies",
+      "label": "Painter's Supplies",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "26a2cedb794f772d2cc73ca5c524c739679d6ac93b048dab4e5c391fa00a48d4",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A wooden oval palette with daubs of earthy pigment, three bristle brushes and two small pigment pots. Compact arrangement, no painted scene or text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-painters-supplies.webp",
+        "sha256": "1a8965fd6c92a3c70a2f0b3038dedd8c1f2448b075a29c5bdfded2d94631f024",
+        "bytes": 22696,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9502
+    },
+    {
+      "id": "gear-pan-flute",
+      "label": "Pan Flute",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "6a50670f8061271f38e03481f9bc9384db57be52b7d10bf121a82744acb29c73",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete pan flute of seven descending lengths of honey-colored cane, firmly lashed side by side with brown cord. Clearly open circular pipe ends.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-pan-flute.webp",
+        "sha256": "927c40614c09acf6a38052ddfa0d0227ed925fb5825bfd4036ace27f76728bae",
+        "bytes": 18388,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8554
+    },
+    {
+      "id": "gear-paper-one-sheet",
+      "label": "Paper (one sheet)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "0f5c67dd724c44362945d673a688128cccd79940446197bb15d8d3b9cb30edc2",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One single blank ivory paper sheet with slightly curled top corner, clean rectangular edges, mild angled perspective, no marks or text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-paper-one-sheet.webp",
+        "sha256": "b8d0f5ee05d048cf4df96d712f5f58d42c83c3135c1dc95790f97f0b3b568802",
+        "bytes": 9686,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9567
+    },
+    {
+      "id": "gear-parchment-one-sheet",
+      "label": "Parchment (one sheet)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "e5eb0e62779c857259fff0004349948f80eeba50408a490f6ac2299ab3747fa0",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One blank warm tan parchment sheet with irregular natural edges and both ends lightly curling inward, leathery texture, no text or map.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-parchment-one-sheet.webp",
+        "sha256": "dea4cd702cd3dfb211996cb016e76706d1ff6690957bdea6f693b2744c50dffd",
+        "bytes": 15064,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.919
+    },
+    {
+      "id": "gear-perfume-vial",
+      "label": "Perfume (vial)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "b9c3780738a732142907a3a369ba9425609b4813a1ec4ba6ee38101a7c4af368",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small elegant amber glass perfume vial with rounded teardrop body, ornate restrained brass stopper and a tiny ivory ribbon. No label or spray pump.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-perfume-vial.webp",
+        "sha256": "48d4e839ddd0086db804e6edb78164c01e7d722197dd6046d174b87ff635619a",
+        "bytes": 13036,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0567
+    },
+    {
+      "id": "gear-pick-miners",
+      "label": "Pick, Miner's",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "555bfa7600af155ace8b24af6f955dcd100588dd4381d51dbac8fd299c6fd1dd",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A sturdy mining pick with a long curved pointed steel head on one side and short chisel blade opposite, strong oak handle, complete diagonal silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-pick-miners.webp",
+        "sha256": "bf9447e7a7cf6c5f3a6cd889d9d36055bc9f2dd4f0d94d991d5fcd8005031cf3",
+        "bytes": 12338,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8306
+    },
+    {
+      "id": "gear-piton",
+      "label": "Piton",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "6001584ab4a7e903d001b8cdc7143b5297ff3323f3be56313fbe384af1ae7fbe",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One stout iron climbing piton: broad tapered wedge spike with a large ring eye at its thick head, three-quarter view, no rope.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-piton.webp",
+        "sha256": "040bd1633b8ab89808e4c5ebb666452be641cd822c486c532e52be410b5006c2",
+        "bytes": 12930,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9076
+    },
+    {
+      "id": "gear-poison-basic-vial",
+      "label": "Poison, Basic (vial)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "cb63141c8464e40f24bd0e104fca3838f2ab8296242a5588dd9ce4377311024d",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small dark green glass poison vial with a tightly sealed cork and a tiny bone skull-shaped charm tied around the neck. No writing, no fumes, no glow.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-poison-basic-vial.webp",
+        "sha256": "a5e9908f80d970dec70972eb93d9a638c6e8f02879312f526780dd59eb74d548",
+        "bytes": 11546,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1344
+    },
+    {
+      "id": "gear-poisoners-kit",
+      "label": "Poisoner's Kit",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "d58c229a89547a73ad95bdfc389b943d372aaef838a1270549fd25bc224faf96",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact open leather poisoner case holding three tiny stoppered dark green and amber vials, a small mortar and a narrow measuring spoon. No labels, smoke or glow.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-poisoners-kit.webp",
+        "sha256": "2c20362f7f0f50532db3cdd42fdc3100502f437b8812f63fde230fe952806f41",
+        "bytes": 19810,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9786
+    },
+    {
+      "id": "gear-pole-10-foot",
+      "label": "Pole (10-foot)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "1b966e4551b8db72842000f481638fb0636876ec0d10a14a07e3ccec26bf1ef6",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete long straight wooden utility pole, smooth honey-oak with modest iron ferrules at both ends, no weapon head. Strong diagonal perspective shortening, both ends visible.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-pole-10-foot.webp",
+        "sha256": "baa80d944c04895b849bb54fb224839c849aa6c05c453d4c76ce0d8457eee40e",
+        "bytes": 8588,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7739
+    },
+    {
+      "id": "gear-pony",
+      "label": "Pony",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "761301feea198337a467e622b71357dc0ab1732b70273656d4bd188fd51d5cb9",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete small shaggy cream-and-chestnut pony with a thick mane, short sturdy legs and simple halter. Clearly compact pony proportions, four correct hooves, no rider or scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-pony.webp",
+        "sha256": "a2ca0f63eda0567f581811cb515c251da21efba511ada1523ece557e35a27e7b",
+        "bytes": 22078,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8578
+    },
+    {
+      "id": "gear-pot-iron",
+      "label": "Pot, Iron",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "cdfe3926ef04c85e956c20794624a587271d92d0bef0c55e5094809f9f861c62",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single round black cast-iron cooking pot with three short feet and a curved bail handle, open empty top. No fire or contents.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-pot-iron.webp",
+        "sha256": "e1a8f468ad9dc542258c541bffdf4f7898de2a33d0715a02e408d5fef83396b9",
+        "bytes": 15828,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0059
+    },
+    {
+      "id": "gear-potters-tools",
+      "label": "Potter's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "845c2d4b3d8f581c9743257ad255b08aa1a998dfe0e02b99a752bb336e533006",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact pottery kit: a loop trimming tool, wooden modeling spatula, wire cutter with two wooden handles and a small unfinished clay bowl on a rolled canvas cloth.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-potters-tools.webp",
+        "sha256": "f6d795d037878de4850e604b045cc9644b67843606e1fc6af4526311a208b906",
+        "bytes": 20844,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9324
+    },
+    {
+      "id": "gear-priests-pack",
+      "label": "Priest's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "3f8aa3e7b12cda58fc6769c642f6e2fdfc729b649b9937f617a8e28d3f78b711",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact brown leather priest travel pack with a small brass sun emblem, a rolled ivory cloth and a closed prayer book secured outside. No text or human.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-priests-pack.webp",
+        "sha256": "9b4e885e5e12a1fbfe64300ce8869b595883ea078ca21f5866566df73ef657d8",
+        "bytes": 23234,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9214
+    },
+    {
+      "id": "gear-ram-portable",
+      "label": "Ram, Portable",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "fb66ac6a103c3d081c70572b9ad5534b65b3bd43b24afec069f6a5da0cc88559",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A portable battering ram: a short thick oak log with a broad flat iron cap at one end, two stout iron bands and two carrying handles. Entire horizontal object in three-quarter view.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-ram-portable.webp",
+        "sha256": "34a33dc9a764b23bded53c01e88fac85a614ef5fbdd3cbece72319889a873eb8",
+        "bytes": 16470,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9352
+    },
+    {
+      "id": "gear-reliquary-holy-symbol",
+      "label": "Reliquary (holy symbol)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "79a6ea640d0d807fc47c3a2b6a26927ff89eab3fba92632022d87a8b1e4209a9",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small ornate brass reliquary box with a domed lid, a simple raised sun motif and a tiny clear window showing a folded ivory cloth. Closed, no human remains.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-reliquary-holy-symbol.webp",
+        "sha256": "ad5869c19716fca32db75bdf39278b23187804756926c69f839b2c6a30e9868f",
+        "bytes": 20918,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9294
+    },
+    {
+      "id": "gear-saddle-exotic",
+      "label": "Saddle, Exotic",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "f52fbce71097ef0a1a9915d328ad4b7432973843fc7af51e71dd04022eef313e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete exotic riding saddle for a broad-backed unusual mount: wide reinforced leather seat, four adjustable girth straps, high padded supports and brass harness rings. Empty saddle, no animal.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-saddle-exotic.webp",
+        "sha256": "291f037d48e559e5ff9245b97686304b4a483b084f2d59fcf922a632944cba0a",
+        "bytes": 25282,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.783
+    },
+    {
+      "id": "gear-saddle-military",
+      "label": "Saddle, Military",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "1244e410513e161bae84a8ab39c02c9b48342988e24247b4b7ccaac017194e99",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete military horse saddle with high protective pommel and cantle, sturdy dark leather seat, reinforced straps and two stirrups. Empty saddle, no horse or rider.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-saddle-military.webp",
+        "sha256": "2cc10c6f3c096144543fc8c541f761e35b382d309358401cdabd4f22697c75dd",
+        "bytes": 22172,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8463
+    },
+    {
+      "id": "gear-saddle-pack",
+      "label": "Saddle, Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "1998eb6e69ef14baa76a200fda062774e115f12244576bddf8ddc0af1cfb7504",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete pack saddle: sturdy wooden crossbuck frame, thick folded wool padding and broad leather load straps, no riding seat, no animal.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-saddle-pack.webp",
+        "sha256": "e7821147c228abb214c2422933a7f2974e46705f390ecd8b2a71296c1d5d8a60",
+        "bytes": 21782,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9379
+    },
+    {
+      "id": "gear-saddle-riding",
+      "label": "Saddle, Riding",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "7b6ac429d0b4f407102a5459514b80a98d2cdcd157cd883927066c6b65d90c6e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete simple everyday brown leather riding saddle with low pommel, modest cantle, smooth seat and two hanging stirrups. Empty saddle, no horse.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-saddle-riding.webp",
+        "sha256": "d0e6fa3487638a822c48147c084599f2b2b948e4bc9247feee0926beb5d1104c",
+        "bytes": 17118,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8816
+    },
+    {
+      "id": "gear-saddlebags",
+      "label": "Saddlebags",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "7948b992eda339626c2ec16a7a768a6e43ede789c9190ce730eababf2b97a10e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A matched pair of brown leather saddlebags joined by a broad leather bridge, brass buckle closures, three-quarter view, no saddle or animal.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-saddlebags.webp",
+        "sha256": "1a6b4abe7734303770f29b3e672d59ea914a6943675871d28bf99a4b2e467fb8",
+        "bytes": 17668,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9293
+    },
+    {
+      "id": "gear-scale-merchants",
+      "label": "Scale, Merchant's",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "2bb9c146036dd2f7193de1992d58133e8c3c0f637409ccf80b6f24baa0ebe78d",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small brass balance scale, central upright pillar, horizontal beam and two equal suspended shallow pans. Complete stable tabletop instrument, no coins.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-scale-merchants.webp",
+        "sha256": "78cfed4e538c2f43f506247f7c6c4d280c065f21d36b304f57e4f47cc7bf4df2",
+        "bytes": 21502,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9702
+    },
+    {
+      "id": "gear-scholars-pack",
+      "label": "Scholar's Pack",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "582eab8cd601932d1461e41386f8c1dbf0ece4c1037ee1c846e723509fea4d6d",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact scholarly tan leather satchel with two closed books, a scroll tube and an ivory quill secured in outer pockets. No readable text or person.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-scholars-pack.webp",
+        "sha256": "d3f3803a3040d6b00483e6f9a57aea6b366e52fbf2a0824b8942bdce4f7e6da7",
+        "bytes": 23256,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9039
+    },
+    {
+      "id": "gear-sealing-wax",
+      "label": "Sealing Wax",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "de6a017918f1554bb357285d39c7360f3d79fe7c404ad54fdafab3bbe152d72e",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: Two short burgundy sealing-wax sticks beside a single round wax seal with a simple geometric impression, no letters or writing.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-sealing-wax.webp",
+        "sha256": "b48e298b55db194e03f98186c71042654e8ef2801cb16abc18a648893a5262a2",
+        "bytes": 12476,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0798
+    },
+    {
+      "id": "gear-shawm",
+      "label": "Shawm",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "298a4d5012f58585115fba2b3eff19856ad8f925a2bb0a4d5400dd017b88ee4a",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete medieval shawm: tapered honey-wood double-reed wind instrument with six finger holes, small reed mouthpiece and wide flared bell, brass bands. No player.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-shawm.webp",
+        "sha256": "c91cc73f386611684313e59d52cbfe5050c48c032ae0c4a3e0ed9b611cc80bb5",
+        "bytes": 9592,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7423
+    },
+    {
+      "id": "gear-shovel",
+      "label": "Shovel",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "7095036b6f251883a04d5cf56906e6273ba245af10241c5892f8331098c1726a",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete sturdy spade with broad slightly pointed steel blade and short perspective-foreshortened oak shaft ending in a D grip. Clearly digging tool, no scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-shovel.webp",
+        "sha256": "aa57a6ddfdadfd6b999a3ffadf00ba088a76377324b8cc28823c81ab0a152e03",
+        "bytes": 11584,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8672
+    },
+    {
+      "id": "gear-signal-whistle",
+      "label": "Signal Whistle",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "69844ea34792c6ad957cf44dcbd69970badaec23329ddd9f649b00f0730b45ac",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small brass tubular signal whistle with visible mouthpiece and sound slot, short leather lanyard loop neatly curled beside it. No lettering.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-signal-whistle.webp",
+        "sha256": "2601e9ee87baa2f7b30ef9ef9f95bd2805659a10cb24a6ed18fba66d8db8c6e9",
+        "bytes": 15760,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9901
+    },
+    {
+      "id": "gear-signet-ring",
+      "label": "Signet Ring",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "e14ee05178edbd289eb462e06effc855000bb8461d025cbae37800c4a63cd408",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single stout golden signet ring with broad oval face engraved with a simple geometric tree symbol, visible circular band, no letters or gemstone.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-signet-ring.webp",
+        "sha256": "ec5d0e3af5dd0f4e3d891a74ba2b822a1177ecac3956e3e093020f42383099d3",
+        "bytes": 22004,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0021
+    },
+    {
+      "id": "gear-sling-bullets-20",
+      "label": "Sling Bullets (20)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "1d1fed277f10e7e2bea25d23137bd6449868f1e9b48dc493868b18a775a25873",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small open brown leather pouch holding a cluster of smooth oval dull gray lead sling bullets. No stones with markings, no sling or firearm.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-sling-bullets-20.webp",
+        "sha256": "5c505a0a4378e8e3c4e846c40e60cf443331bef82c16705fa5f857ae03acde4c",
+        "bytes": 19488,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0561
+    },
+    {
+      "id": "gear-small-knife",
+      "label": "Small Knife",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "38b7c1d6c741238af17c4e2cebc12106ec900407a2ff81653e446db5f58003ab",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A short practical utility knife with plain steel blade and simple brown wooden handle, no crossguard or ornament. Complete compact diagonal silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-small-knife.webp",
+        "sha256": "515d246885c03ac2e198e141c4ff6ed739d48b74874a041265c6af3c36fed635",
+        "bytes": 8670,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8728
+    },
+    {
+      "id": "gear-smiths-tools",
+      "label": "Smith's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "1a215c6a682dce277e83e7dd98e39b4bdd91af4ad1ca316920b469c26184bc23",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact blacksmith kit: small steel forging hammer, sturdy iron tongs and a broad file arranged on a worn leather roll. No anvil, flames or sparks.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-smiths-tools.webp",
+        "sha256": "94cceb06efbc77b4a67574cf8b15ba76c380128b7fe299bbec18ffd8e1634a6c",
+        "bytes": 21506,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.897
+    },
+    {
+      "id": "gear-soap",
+      "label": "Soap",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "b70fb8abe69217c1b06527a01020eb9ef190cfed4c1423ca11a78cb1aa748638",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One simple rectangular cream-colored soap bar with rounded worn edges and a thin hemp cord around its middle. No bubbles, wrapper or text.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-soap.webp",
+        "sha256": "b411ee1ef2c6a18f17fc3025f1d5904ec1e6485e7446dbeaf26b0eadf83510b4",
+        "bytes": 10916,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1216
+    },
+    {
+      "id": "armor-spiked-armor",
+      "label": "Spiked Armor",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "0e0a03a345ba13c9dff3678a38ebb2fce1be388735dc67b6d89cb66390026007",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete unworn torso of spiked armor: dark brown thick leather coat reinforced with steel bands and several short sturdy conical steel spikes on shoulders and forearms. Hollow neck, no wearer, no helmet. Not full plate armor.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-spiked-armor.webp",
+        "sha256": "d38fcdf720c52deda3f7f93718f79b91bacb239a9c7f0e8dc272a7707eb3ba28",
+        "bytes": 27290,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8741
+    },
+    {
+      "id": "gear-spikes-iron-10",
+      "label": "Spikes, Iron (10)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "4ec95be215a98f9f678e724c6d2006513f2a82bf326c65ea645946becfefaac2",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact bundle of thick pointed iron spikes with broad flat heads, bound at the middle by a simple leather thong. No weapon handles.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-spikes-iron-10.webp",
+        "sha256": "96b676c741c1671c3922fb50ddfed0d92f447af7306002a76ffa9ce72ea66d4a",
+        "bytes": 15290,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0801
+    },
+    {
+      "id": "gear-spyglass",
+      "label": "Spyglass",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "74f42631f93e5c705cb10af87310fe833a8d949934f15c1a022e4e1f4579d033",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single partially extended brass telescope with three nested tubes, dark brown leather grip and visible blue-gray front lens, complete diagonal silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-spyglass.webp",
+        "sha256": "08a1ba53f660fec7834e244a06c3a03db7afe83c29e569a26e9afd702812739d",
+        "bytes": 11230,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8573
+    },
+    {
+      "id": "gear-string-10-feet",
+      "label": "String (10 feet)",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "e42c92ebc9bdadaa652db038fb2ee3b4d62c691a24cb6434b7f9a1f274ac53f9",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A small loose coil of thin natural flax string, one short free end, clearly much thinner than rope, entire coil visible.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-string-10-feet.webp",
+        "sha256": "5effad0ad27e1ef5d79e8b4581f6323986c3d8add02190418ee3ee27858cae16",
+        "bytes": 19828,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.2018
+    },
+    {
+      "id": "gear-tent-two-person",
+      "label": "Tent, Two-Person",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "d5ff1b826b0403d285ba0ca82f4e859f6121248fe53dc468e306ddfb38f9c68a",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact pitched medieval two-person A-frame canvas tent, warm ivory fabric, visible triangular entrance partly open, simple wooden poles and short guy ropes. No ground patch or landscape, whole tent isolated.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-tent-two-person.webp",
+        "sha256": "be7ec5373ae6f1c846b33f5d4e2b4e4266581a032ea395ac4f30b6acec3c4384",
+        "bytes": 16984,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7813
+    },
+    {
+      "id": "gear-tinkers-tools",
+      "label": "Tinker's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "8501142a2756cc2b1477425ad6618a16993ed885d408968fa4e60edfd63bd92f",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open leather tinkering roll with tiny pliers, small hammer, fine file, screwdriver and a few brass cogs in an attached pocket. Medieval hand tools, no modern plastic.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-tinkers-tools.webp",
+        "sha256": "7cc946e888fa31ca8914f0f6f00e72b68f4672e79eda8d724278d564b5b752c3",
+        "bytes": 22956,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8898
+    },
+    {
+      "id": "gear-vial",
+      "label": "Vial",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "bf0bee12f0b0088a3f466fee3a9f089edfcdfb7876a539a9c3f054934df4dc28",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single narrow clear glass vial with rounded base, visible thick lip and a plain cork stopper. Empty, no label, no magic.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-vial.webp",
+        "sha256": "0ae7ffb4dd13f71a482f49d8397e456121c0f36ef5e87889fa12ddf3fbd179ae",
+        "bytes": 8280,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1021
+    },
+    {
+      "id": "gear-viol",
+      "label": "Viol",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "bf14a7993f62ed0b8a4ce368a2a277e94fecb2f0033cc9194c0114d630ec799f",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A complete medieval bowed viol with warm walnut pear-shaped body, six strings, fretted neck, carved scroll and a slender bow resting diagonally beside it. No player.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-viol.webp",
+        "sha256": "ecb1f7b0e3fd49dba422e3c0d7fec0111027f9e3c699ded1f5e1c4e5ef766bfe",
+        "bytes": 18538,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8539
+    },
+    {
+      "id": "gear-warhorse",
+      "label": "Warhorse",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "561fc9c34ff034546928225eefed69c006391f975264128684b436c7ca712def",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: One complete powerful dark bay warhorse with a strong arched neck, dark leather military saddle and simple restrained steel chamfron on its face. Four correct legs, no rider, weapon or scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-warhorse.webp",
+        "sha256": "ace05e94074318c23cca13b4e4c5b3366b1e45ca02170650adc4b365201989e9",
+        "bytes": 18842,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7727
+    },
+    {
+      "id": "gear-weavers-tools",
+      "label": "Weaver's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "d37c8dd279a090481148f62d681f25042a4fb406e8f9967e602d09e5fbcec168",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A compact weaving kit: a small wooden weaving shuttle wound with cream thread, two wooden bobbins and a narrow woven fabric sample. No large loom.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-weavers-tools.webp",
+        "sha256": "8189e3acf8c9227359e6dca17fafa3811e0d958734d02b5bf3cc3e836254eeed",
+        "bytes": 26206,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9385
+    },
+    {
+      "id": "gear-whetstone",
+      "label": "Whetstone",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "4549c33a82f023bd507cd11e8905b234fb8451ece498ef51f1d3af5dfd276eb4",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: A single rectangular slate-gray sharpening stone in a shallow oak holder, softly worn flat surface, three-quarter view. No knife.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-whetstone.webp",
+        "sha256": "60d10c15ccee83dabeddde07f770fb4226837209eba4344719dffbb51a1961d5",
+        "bytes": 15344,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9499
+    },
+    {
+      "id": "gear-woodcarvers-tools",
+      "label": "Woodcarver's Tools",
+      "source": "Built-in image_gen",
+      "subjectBasis": "Original illustration of ordinary equipment or a natural animal; no outside image reference.",
+      "sourceSha256": "786941db3c869fc7413c5558e9bb18903b5d4d5389b68cc4afadfcd80b758739",
+      "prompt": "Use case: stylized-concept. ONE premium hand-painted medieval RPG inventory asset. Warm ivory highlights, rich natural browns, honey wood and restrained aged brass where appropriate, tactile believable materials, sculptural brushwork and clean broad silhouettes readable at 32px. Square canvas with TRUE TRANSPARENT alpha background. Center the COMPLETE object or compact kit within a circle occupying 82% of the canvas; generous clear margin, every part inside frame. No painted circle, border, label, text, numbers, glow, fog, backdrop, external shadow, hands or people. No unrelated decoration. Subject: An open leather roll with three short woodcarving gouges of distinct curved steel profiles, a small wooden mallet and a partly carved wooden acorn. No hands.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-woodcarvers-tools.webp",
+        "sha256": "600e1d90d5bb5904679f0ec590e07522684232bdaef53f8fcf49dc39fde6a914",
+        "bytes": 20828,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9005
+    }
+  ]
+}

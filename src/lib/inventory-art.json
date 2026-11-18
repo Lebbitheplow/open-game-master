@@ -43,6 +43,10 @@
     "scale": 0.8671,
     "item": "shield"
   },
+  "armor-spiked-armor": {
+    "scale": 0.8741,
+    "item": "Spiked Armor"
+  },
   "armor-splint": {
     "scale": 0.9585,
     "item": "splint"
@@ -55,6 +59,10 @@
     "scale": 0.9425,
     "item": "shield"
   },
+  "gear-abacus": {
+    "scale": 0.8497,
+    "item": "Abacus"
+  },
   "gear-acid": {
     "scale": 1.8,
     "item": "acid"
@@ -63,37 +71,249 @@
     "scale": 0.9027,
     "item": "alchemists-fire"
   },
+  "gear-alchemists-supplies": {
+    "scale": 0.8879,
+    "item": "Alchemist's Supplies"
+  },
+  "gear-alms-box": {
+    "scale": 1.011,
+    "item": "Alms Box"
+  },
   "gear-antitoxin": {
     "scale": 1.8,
     "item": "antitoxin"
+  },
+  "gear-arrows-20": {
+    "scale": 0.8622,
+    "item": "Arrows (20)"
   },
   "gear-backpack": {
     "scale": 0.9481,
     "item": "backpack"
   },
+  "gear-bagpipes": {
+    "scale": 0.7928,
+    "item": "Bagpipes"
+  },
   "gear-ball-bearings": {
     "scale": 0.8785,
     "item": "ball-bearings"
+  },
+  "gear-barrel": {
+    "scale": 1.0041,
+    "item": "Barrel"
+  },
+  "gear-basket": {
+    "scale": 1.0367,
+    "item": "Basket"
   },
   "gear-bedroll": {
     "scale": 0.8791,
     "item": "bedroll"
   },
+  "gear-bell": {
+    "scale": 0.9105,
+    "item": "Bell"
+  },
+  "gear-bit-and-bridle": {
+    "scale": 0.8586,
+    "item": "Bit and Bridle"
+  },
+  "gear-blanket": {
+    "scale": 1.0005,
+    "item": "Blanket"
+  },
+  "gear-block-and-tackle": {
+    "scale": 0.9505,
+    "item": "Block and Tackle"
+  },
+  "gear-block-of-incense": {
+    "scale": 1.027,
+    "item": "Block of Incense"
+  },
+  "gear-blowgun-needles-50": {
+    "scale": 0.9951,
+    "item": "Blowgun Needles (50)"
+  },
+  "gear-brewers-supplies": {
+    "scale": 0.9056,
+    "item": "Brewer's Supplies"
+  },
+  "gear-bucket": {
+    "scale": 0.9719,
+    "item": "Bucket"
+  },
+  "gear-burglars-pack": {
+    "scale": 0.8645,
+    "item": "Burglar's Pack"
+  },
+  "gear-calligraphers-supplies": {
+    "scale": 0.8566,
+    "item": "Calligrapher's Supplies"
+  },
   "gear-caltrops": {
     "scale": 0.936,
     "item": "caltrops"
+  },
+  "gear-camel": {
+    "scale": 0.8136,
+    "item": "Camel"
+  },
+  "gear-carpenters-tools": {
+    "scale": 0.8223,
+    "item": "Carpenter's Tools"
+  },
+  "gear-cartographers-tools": {
+    "scale": 0.9152,
+    "item": "Cartographer's Tools"
+  },
+  "gear-case-crossbow-bolt": {
+    "scale": 1.0666,
+    "item": "Case, Crossbow Bolt"
+  },
+  "gear-case-map-or-scroll": {
+    "scale": 0.9428,
+    "item": "Case, Map or Scroll"
+  },
+  "gear-chain-10-feet": {
+    "scale": 1.1075,
+    "item": "Chain (10 feet)"
+  },
+  "gear-chalk-1-piece": {
+    "scale": 1.0653,
+    "item": "Chalk (1 piece)"
+  },
+  "gear-chest": {
+    "scale": 0.9043,
+    "item": "Chest"
+  },
+  "gear-climbers-kit": {
+    "scale": 0.9291,
+    "item": "Climber's Kit"
+  },
+  "gear-clothes-common": {
+    "scale": 0.9487,
+    "item": "Clothes, Common"
+  },
+  "gear-clothes-costume": {
+    "scale": 0.8729,
+    "item": "Clothes, Costume"
+  },
+  "gear-clothes-fine": {
+    "scale": 0.8965,
+    "item": "Clothes, Fine"
+  },
+  "gear-clothes-travelers": {
+    "scale": 0.8961,
+    "item": "Clothes, Traveler's"
+  },
+  "gear-cobblers-tools": {
+    "scale": 0.8632,
+    "item": "Cobbler's Tools"
   },
   "gear-component-pouch": {
     "scale": 0.9341,
     "item": "component-pouch"
   },
+  "gear-cooks-utensils": {
+    "scale": 0.8713,
+    "item": "Cook's Utensils"
+  },
+  "gear-crossbow-bolts-20": {
+    "scale": 0.9489,
+    "item": "Crossbow Bolts (20)"
+  },
+  "gear-dice-set": {
+    "scale": 1.0223,
+    "item": "Dice Set"
+  },
+  "gear-diplomats-pack": {
+    "scale": 0.9392,
+    "item": "Diplomat's Pack"
+  },
+  "gear-disguise-kit": {
+    "scale": 0.9891,
+    "item": "Disguise Kit"
+  },
+  "gear-donkey-or-mule": {
+    "scale": 0.788,
+    "item": "Donkey or Mule"
+  },
+  "gear-druidic-focus": {
+    "scale": 0.8513,
+    "item": "Druidic Focus"
+  },
   "gear-drum": {
     "scale": 0.9776,
     "item": "drum"
   },
+  "gear-dulcimer": {
+    "scale": 0.8504,
+    "item": "Dulcimer"
+  },
+  "gear-dungeoneers-pack": {
+    "scale": 0.9141,
+    "item": "Dungeoneer's Pack"
+  },
+  "gear-elephant": {
+    "scale": 0.8457,
+    "item": "Elephant"
+  },
+  "gear-emblem-holy-symbol": {
+    "scale": 0.9974,
+    "item": "Emblem (holy symbol)"
+  },
+  "gear-entertainers-pack": {
+    "scale": 0.935,
+    "item": "Entertainer's Pack"
+  },
+  "gear-explorers-pack": {
+    "scale": 0.8964,
+    "item": "Explorer's Pack"
+  },
+  "gear-feed-per-day": {
+    "scale": 0.8448,
+    "item": "Feed (per day)"
+  },
+  "gear-fishing-tackle": {
+    "scale": 0.9317,
+    "item": "Fishing Tackle"
+  },
+  "gear-flask": {
+    "scale": 0.9675,
+    "item": "Flask"
+  },
+  "gear-flute": {
+    "scale": 0.8077,
+    "item": "Flute"
+  },
+  "gear-forgery-kit": {
+    "scale": 0.9476,
+    "item": "Forgery Kit"
+  },
+  "gear-glassblowers-tools": {
+    "scale": 0.9164,
+    "item": "Glassblower's Tools"
+  },
+  "gear-grappling-hook": {
+    "scale": 0.8893,
+    "item": "Grappling Hook"
+  },
+  "gear-hammer": {
+    "scale": 0.9434,
+    "item": "Hammer"
+  },
+  "gear-hammer-sledge": {
+    "scale": 0.8257,
+    "item": "Hammer, Sledge"
+  },
   "gear-healers-kit": {
     "scale": 0.8856,
     "item": "healers-kit"
+  },
+  "gear-herbalism-kit": {
+    "scale": 0.9567,
+    "item": "Herbalism Kit"
   },
   "gear-holy-symbol": {
     "scale": 0.8496,
@@ -107,33 +327,245 @@
     "scale": 1.8,
     "item": "hooded-lantern"
   },
+  "gear-horse-draft": {
+    "scale": 0.8199,
+    "item": "Horse, Draft"
+  },
+  "gear-horse-riding": {
+    "scale": 0.7972,
+    "item": "Horse, Riding"
+  },
+  "gear-hourglass": {
+    "scale": 1.0206,
+    "item": "Hourglass"
+  },
+  "gear-hunting-trap": {
+    "scale": 0.9455,
+    "item": "Hunting Trap"
+  },
+  "gear-ink-pen": {
+    "scale": 0.8181,
+    "item": "Ink Pen"
+  },
+  "gear-jewelers-tools": {
+    "scale": 0.9518,
+    "item": "Jeweler's Tools"
+  },
+  "gear-jug": {
+    "scale": 1.0035,
+    "item": "Jug"
+  },
+  "gear-ladder-10-foot": {
+    "scale": 0.8565,
+    "item": "Ladder (10-foot)"
+  },
+  "gear-lamp": {
+    "scale": 1.0237,
+    "item": "Lamp"
+  },
+  "gear-leatherworkers-tools": {
+    "scale": 0.951,
+    "item": "Leatherworker's Tools"
+  },
+  "gear-lock": {
+    "scale": 0.893,
+    "item": "Lock"
+  },
   "gear-lute": {
     "scale": 0.8094,
     "item": "lute"
+  },
+  "gear-lyre": {
+    "scale": 0.8837,
+    "item": "Lyre"
+  },
+  "gear-magnifying-glass": {
+    "scale": 0.8481,
+    "item": "Magnifying Glass"
+  },
+  "gear-masons-tools": {
+    "scale": 0.8973,
+    "item": "Mason's Tools"
+  },
+  "gear-mastiff": {
+    "scale": 0.8709,
+    "item": "Mastiff"
+  },
+  "gear-mess-kit": {
+    "scale": 1.1787,
+    "item": "Mess Kit"
+  },
+  "gear-navigators-tools": {
+    "scale": 0.9367,
+    "item": "Navigator's Tools"
   },
   "gear-oil": {
     "scale": 1.7432,
     "item": "oil"
   },
+  "gear-painters-supplies": {
+    "scale": 0.9502,
+    "item": "Painter's Supplies"
+  },
+  "gear-pan-flute": {
+    "scale": 0.8554,
+    "item": "Pan Flute"
+  },
+  "gear-paper-one-sheet": {
+    "scale": 0.9567,
+    "item": "Paper (one sheet)"
+  },
+  "gear-parchment-one-sheet": {
+    "scale": 0.919,
+    "item": "Parchment (one sheet)"
+  },
+  "gear-perfume-vial": {
+    "scale": 1.0567,
+    "item": "Perfume (vial)"
+  },
+  "gear-pick-miners": {
+    "scale": 0.8306,
+    "item": "Pick, Miner's"
+  },
+  "gear-piton": {
+    "scale": 0.9076,
+    "item": "Piton"
+  },
+  "gear-poison-basic-vial": {
+    "scale": 1.1344,
+    "item": "Poison, Basic (vial)"
+  },
+  "gear-poisoners-kit": {
+    "scale": 0.9786,
+    "item": "Poisoner's Kit"
+  },
+  "gear-pole-10-foot": {
+    "scale": 0.7739,
+    "item": "Pole (10-foot)"
+  },
+  "gear-pony": {
+    "scale": 0.8578,
+    "item": "Pony"
+  },
+  "gear-pot-iron": {
+    "scale": 1.0059,
+    "item": "Pot, Iron"
+  },
   "gear-potion-of-healing": {
     "scale": 1.1491,
     "item": "potion-of-healing"
+  },
+  "gear-potters-tools": {
+    "scale": 0.9324,
+    "item": "Potter's Tools"
+  },
+  "gear-priests-pack": {
+    "scale": 0.9214,
+    "item": "Priest's Pack"
   },
   "gear-quiver": {
     "scale": 0.9104,
     "item": "quiver"
   },
+  "gear-ram-portable": {
+    "scale": 0.9352,
+    "item": "Ram, Portable"
+  },
   "gear-rations": {
     "scale": 0.9264,
     "item": "rations-1-day"
+  },
+  "gear-reliquary-holy-symbol": {
+    "scale": 0.9294,
+    "item": "Reliquary (holy symbol)"
   },
   "gear-rope": {
     "scale": 0.9181,
     "item": "rope"
   },
+  "gear-saddle-exotic": {
+    "scale": 0.783,
+    "item": "Saddle, Exotic"
+  },
+  "gear-saddle-military": {
+    "scale": 0.8463,
+    "item": "Saddle, Military"
+  },
+  "gear-saddle-pack": {
+    "scale": 0.9379,
+    "item": "Saddle, Pack"
+  },
+  "gear-saddle-riding": {
+    "scale": 0.8816,
+    "item": "Saddle, Riding"
+  },
+  "gear-saddlebags": {
+    "scale": 0.9293,
+    "item": "Saddlebags"
+  },
+  "gear-scale-merchants": {
+    "scale": 0.9702,
+    "item": "Scale, Merchant's"
+  },
+  "gear-scholars-pack": {
+    "scale": 0.9039,
+    "item": "Scholar's Pack"
+  },
+  "gear-sealing-wax": {
+    "scale": 1.0798,
+    "item": "Sealing Wax"
+  },
+  "gear-shawm": {
+    "scale": 0.7423,
+    "item": "Shawm"
+  },
+  "gear-shovel": {
+    "scale": 0.8672,
+    "item": "Shovel"
+  },
+  "gear-signal-whistle": {
+    "scale": 0.9901,
+    "item": "Signal Whistle"
+  },
+  "gear-signet-ring": {
+    "scale": 1.0021,
+    "item": "Signet Ring"
+  },
+  "gear-sling-bullets-20": {
+    "scale": 1.0561,
+    "item": "Sling Bullets (20)"
+  },
+  "gear-small-knife": {
+    "scale": 0.8728,
+    "item": "Small Knife"
+  },
+  "gear-smiths-tools": {
+    "scale": 0.897,
+    "item": "Smith's Tools"
+  },
+  "gear-soap": {
+    "scale": 1.1216,
+    "item": "Soap"
+  },
   "gear-spell-scroll": {
     "scale": 0.8818,
     "item": "spell-scroll"
+  },
+  "gear-spikes-iron-10": {
+    "scale": 1.0801,
+    "item": "Spikes, Iron (10)"
+  },
+  "gear-spyglass": {
+    "scale": 0.8573,
+    "item": "Spyglass"
+  },
+  "gear-string-10-feet": {
+    "scale": 1.2018,
+    "item": "String (10 feet)"
+  },
+  "gear-tent-two-person": {
+    "scale": 0.7813,
+    "item": "Tent, Two-Person"
   },
   "gear-thieves-tools": {
     "scale": 0.7937,
@@ -143,13 +575,41 @@
     "scale": 0.8867,
     "item": "tinderbox"
   },
+  "gear-tinkers-tools": {
+    "scale": 0.8898,
+    "item": "Tinker's Tools"
+  },
   "gear-torch": {
     "scale": 0.8587,
     "item": "torch"
   },
+  "gear-vial": {
+    "scale": 1.1021,
+    "item": "Vial"
+  },
+  "gear-viol": {
+    "scale": 0.8539,
+    "item": "Viol"
+  },
+  "gear-warhorse": {
+    "scale": 0.7727,
+    "item": "Warhorse"
+  },
   "gear-waterskin": {
     "scale": 0.9407,
     "item": "waterskin"
+  },
+  "gear-weavers-tools": {
+    "scale": 0.9385,
+    "item": "Weaver's Tools"
+  },
+  "gear-whetstone": {
+    "scale": 0.9499,
+    "item": "Whetstone"
+  },
+  "gear-woodcarvers-tools": {
+    "scale": 0.9005,
+    "item": "Woodcarver's Tools"
   },
   "magic-amulet": {
     "scale": 0.9195

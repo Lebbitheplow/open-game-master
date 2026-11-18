@@ -7,6 +7,7 @@ import { equipmentArtwork } from "@/lib/equipment-art-logic";
 import { useEquipmentGenre } from "@/components/ui/EquipmentArtProvider";
 import inventoryArt from "@/lib/inventory-art.json";
 import inventoryGenreScales from "@/lib/inventory-genre-scales.json";
+import legacyInventoryArt from "@/lib/legacy-inventory-art.json";
 
 // Action illustrations are wide paintings (256x128): they fill the box the
 // caller gives them, uncropped and unzoomed. Every other icon sits on the lit
@@ -35,8 +36,11 @@ export function GameIcon({ icon, size = "size-6", className }: { icon: IconRef; 
   const actionArt = icon.kind === "action" && candidates[attempt]?.startsWith("/assets/icons/action/");
   const inventoryKey = /^\/assets\/icons\/inventory\/([^/]+)\.webp$/.exec(candidates[attempt])?.[1];
   const genreKey = /^\/assets\/icons\/item\/([^/]+)\.webp$/.exec(candidates[attempt])?.[1];
+  const legacyKey = /^\/assets\/icons\/((?:item|family)\/[^/]+)\.webp$/.exec(candidates[attempt])?.[1];
+  const replacement = legacyKey ? (legacyInventoryArt as Record<string, string>)[legacyKey] : undefined;
   const inventoryScale = inventoryKey
     ? (inventoryArt as Record<string, { scale: number }>)[inventoryKey]?.scale
+    : replacement ? (inventoryArt as Record<string, { scale: number }>)[replacement]?.scale
     : genreKey ? (inventoryGenreScales as Record<string, number>)[genreKey] : undefined;
   return (
     <span

@@ -1024,9 +1024,12 @@
       "key": "Plate",
       "label": "Plate",
       "src": "/assets/icons/item/plate.webp",
-      "bytes": 2706,
+      "bytes": 10634,
       "seed": 1066632175,
-      "kind": "armor"
+      "kind": "armor",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-shield",
@@ -1034,9 +1037,12 @@
       "key": "Shield",
       "label": "Shield",
       "src": "/assets/icons/item/shield.webp",
-      "bytes": 2490,
+      "bytes": 16778,
       "seed": 1209757732,
-      "kind": "armor"
+      "kind": "armor",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-armorweave-vest",
@@ -1132,9 +1138,12 @@
       "key": "amulet-of-health",
       "label": "Amulet of Health",
       "src": "/assets/icons/item/amulet-of-health.webp",
-      "bytes": 1566,
+      "bytes": 16558,
       "seed": 2025873884,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-amulet-of-proof-against-detection-and-location",
@@ -1252,9 +1261,12 @@
       "key": "bag-of-holding",
       "label": "Bag of Holding",
       "src": "/assets/icons/item/bag-of-holding.webp",
-      "bytes": 1682,
+      "bytes": 19058,
       "seed": 956058247,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-bag-of-tricks",
@@ -1292,9 +1304,12 @@
       "key": "belt-of-giant-strength",
       "label": "Belt of Giant Strength",
       "src": "/assets/icons/item/belt-of-giant-strength.webp",
-      "bytes": 1352,
+      "bytes": 19348,
       "seed": 1533468408,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-berserker-axe",
@@ -1312,9 +1327,12 @@
       "key": "boots-of-elvenkind",
       "label": "Boots of Elvenkind",
       "src": "/assets/icons/item/boots-of-elvenkind.webp",
-      "bytes": 2368,
+      "bytes": 18498,
       "seed": 400692989,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-boots-of-levitation",
@@ -1362,9 +1380,12 @@
       "key": "bowl-of-commanding-water-elementals",
       "label": "Bowl of Commanding Water Elementals",
       "src": "/assets/icons/item/bowl-of-commanding-water-elementals.webp",
-      "bytes": 2890,
+      "bytes": 19538,
       "seed": 1018699502,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-bracers-of-archery",
@@ -1382,9 +1403,12 @@
       "key": "bracers-of-defense",
       "label": "Bracers of Defense",
       "src": "/assets/icons/item/bracers-of-defense.webp",
-      "bytes": 2746,
+      "bytes": 25138,
       "seed": 1737025063,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-brazier-of-commanding-fire-elementals",
@@ -1392,9 +1416,12 @@
       "key": "brazier-of-commanding-fire-elementals",
       "label": "Brazier of Commanding Fire Elementals",
       "src": "/assets/icons/item/brazier-of-commanding-fire-elementals.webp",
-      "bytes": 2736,
+      "bytes": 20368,
       "seed": 1136943173,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-brooch-of-shielding",
@@ -1402,9 +1429,12 @@
       "key": "brooch-of-shielding",
       "label": "Brooch of Shielding",
       "src": "/assets/icons/item/brooch-of-shielding.webp",
-      "bytes": 2382,
+      "bytes": 19962,
       "seed": 74090877,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-broom-of-flying",
@@ -1412,9 +1442,12 @@
       "key": "broom-of-flying",
       "label": "Broom of Flying",
       "src": "/assets/icons/item/broom-of-flying.webp",
-      "bytes": 2272,
+      "bytes": 11810,
       "seed": 1387946113,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-candle-of-invocation",
@@ -1422,9 +1455,12 @@
       "key": "candle-of-invocation",
       "label": "Candle of Invocation",
       "src": "/assets/icons/item/candle-of-invocation.webp",
-      "bytes": 1432,
+      "bytes": 16566,
       "seed": 1161401975,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-cape-of-the-mountebank",
@@ -1442,9 +1478,12 @@
       "key": "carpet-of-flying",
       "label": "Carpet of Flying",
       "src": "/assets/icons/item/carpet-of-flying.webp",
-      "bytes": 2076,
+      "bytes": 24890,
       "seed": 1506963225,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-censer-of-controlling-air-elementals",
@@ -1452,9 +1491,12 @@
       "key": "censer-of-controlling-air-elementals",
       "label": "Censer of Controlling Air Elementals",
       "src": "/assets/icons/item/censer-of-controlling-air-elementals.webp",
-      "bytes": 4730,
+      "bytes": 18910,
       "seed": 691639901,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-chime-of-opening",
@@ -1472,9 +1514,12 @@
       "key": "circlet-of-blasting",
       "label": "Circlet of Blasting",
       "src": "/assets/icons/item/circlet-of-blasting.webp",
-      "bytes": 6074,
+      "bytes": 12660,
       "seed": 960439561,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-cloak-of-arachnida",
@@ -1542,9 +1587,12 @@
       "key": "crystal-ball",
       "label": "Crystal Ball",
       "src": "/assets/icons/item/crystal-ball.webp",
-      "bytes": 2004,
+      "bytes": 16458,
       "seed": 1876403525,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-cube-of-force",
@@ -1552,9 +1600,12 @@
       "key": "cube-of-force",
       "label": "Cube of Force",
       "src": "/assets/icons/item/cube-of-force.webp",
-      "bytes": 1586,
+      "bytes": 21428,
       "seed": 1291763200,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-cubic-gate",
@@ -1612,9 +1663,12 @@
       "key": "deck-of-many-things",
       "label": "Deck of Many Things",
       "src": "/assets/icons/item/deck-of-many-things.webp",
-      "bytes": 1474,
+      "bytes": 21654,
       "seed": 866659721,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-defender",
@@ -1642,9 +1696,12 @@
       "key": "dimensional-shackles",
       "label": "Dimensional Shackles",
       "src": "/assets/icons/item/dimensional-shackles.webp",
-      "bytes": 2562,
+      "bytes": 20496,
       "seed": 467219250,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-dragon-scale-mail",
@@ -1732,9 +1789,12 @@
       "key": "efreeti-bottle",
       "label": "Efreeti Bottle",
       "src": "/assets/icons/item/efreeti-bottle.webp",
-      "bytes": 1800,
+      "bytes": 15920,
       "seed": 427677788,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-elemental-gem",
@@ -1802,9 +1862,12 @@
       "key": "feather-token",
       "label": "Feather Token",
       "src": "/assets/icons/item/feather-token.webp",
-      "bytes": 1692,
+      "bytes": 16540,
       "seed": 1631528321,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-figurine-of-wondrous-power",
@@ -1812,9 +1875,12 @@
       "key": "figurine-of-wondrous-power",
       "label": "Figurine of Wondrous Power",
       "src": "/assets/icons/item/figurine-of-wondrous-power.webp",
-      "bytes": 2338,
+      "bytes": 18454,
       "seed": 253129719,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-flame-tongue",
@@ -1852,9 +1918,12 @@
       "key": "gauntlets-of-ogre-power",
       "label": "Gauntlets of Ogre Power",
       "src": "/assets/icons/item/gauntlets-of-ogre-power.webp",
-      "bytes": 3698,
+      "bytes": 25668,
       "seed": 89249195,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-gem-of-brightness",
@@ -1872,9 +1941,12 @@
       "key": "gem-of-seeing",
       "label": "Gem of Seeing",
       "src": "/assets/icons/item/gem-of-seeing.webp",
-      "bytes": 2020,
+      "bytes": 18894,
       "seed": 938415120,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-giant-slayer",
@@ -1902,9 +1974,12 @@
       "key": "gloves-of-missile-snaring",
       "label": "Gloves of Missile Snaring",
       "src": "/assets/icons/item/gloves-of-missile-snaring.webp",
-      "bytes": 3698,
+      "bytes": 21048,
       "seed": 2125581021,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-gloves-of-swimming-and-climbing",
@@ -1922,9 +1997,12 @@
       "key": "goggles-of-night",
       "label": "Goggles of Night",
       "src": "/assets/icons/item/goggles-of-night.webp",
-      "bytes": 1422,
+      "bytes": 18666,
       "seed": 441551917,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-hammer-of-thunderbolts",
@@ -1952,9 +2030,12 @@
       "key": "hat-of-disguise",
       "label": "Hat of Disguise",
       "src": "/assets/icons/item/hat-of-disguise.webp",
-      "bytes": 1512,
+      "bytes": 13622,
       "seed": 1671944005,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-headband-of-intellect",
@@ -1962,9 +2043,12 @@
       "key": "headband-of-intellect",
       "label": "Headband of Intellect",
       "src": "/assets/icons/item/headband-of-intellect.webp",
-      "bytes": 1658,
+      "bytes": 15918,
       "seed": 1315260444,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-helm-of-brilliance",
@@ -1982,9 +2066,12 @@
       "key": "helm-of-comprehending-languages",
       "label": "Helm of Comprehending Languages",
       "src": "/assets/icons/item/helm-of-comprehending-languages.webp",
-      "bytes": 2422,
+      "bytes": 16690,
       "seed": 1151371940,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-helm-of-telepathy",
@@ -2022,9 +2109,12 @@
       "key": "horn-of-blasting",
       "label": "Horn of Blasting",
       "src": "/assets/icons/item/horn-of-blasting.webp",
-      "bytes": 3214,
+      "bytes": 17160,
       "seed": 1562076515,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-horn-of-valhalla",
@@ -2042,9 +2132,12 @@
       "key": "horseshoes-of-speed",
       "label": "Horseshoes of Speed",
       "src": "/assets/icons/item/horseshoes-of-speed.webp",
-      "bytes": 3062,
+      "bytes": 20952,
       "seed": 1870859443,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-horseshoes-of-a-zephyr",
@@ -2122,9 +2215,12 @@
       "key": "lantern-of-revealing",
       "label": "Lantern of Revealing",
       "src": "/assets/icons/item/lantern-of-revealing.webp",
-      "bytes": 1508,
+      "bytes": 5744,
       "seed": 1089525065,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-luck-blade",
@@ -2242,9 +2338,12 @@
       "key": "mirror-of-life-trapping",
       "label": "Mirror of Life Trapping",
       "src": "/assets/icons/item/mirror-of-life-trapping.webp",
-      "bytes": 2150,
+      "bytes": 10812,
       "seed": 1664571364,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-mithral-armor",
@@ -2282,9 +2381,12 @@
       "key": "necklace-of-prayer-beads",
       "label": "Necklace of Prayer Beads",
       "src": "/assets/icons/item/necklace-of-prayer-beads.webp",
-      "bytes": 3292,
+      "bytes": 20414,
       "seed": 1828624015,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-nine-lives-stealer",
@@ -2352,9 +2454,12 @@
       "key": "pearl-of-power",
       "label": "Pearl of Power",
       "src": "/assets/icons/item/pearl-of-power.webp",
-      "bytes": 1416,
+      "bytes": 11126,
       "seed": 1208047879,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-periapt-of-health",
@@ -2402,9 +2507,12 @@
       "key": "pipes-of-haunting",
       "label": "Pipes of Haunting",
       "src": "/assets/icons/item/pipes-of-haunting.webp",
-      "bytes": 2652,
+      "bytes": 18282,
       "seed": 1158496128,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-pipes-of-the-sewers",
@@ -2702,9 +2810,12 @@
       "key": "ring-of-protection",
       "label": "Ring of Protection",
       "src": "/assets/icons/item/ring-of-protection.webp",
-      "bytes": 2378,
+      "bytes": 17562,
       "seed": 1770913429,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-ring-of-regeneration",
@@ -2872,9 +2983,12 @@
       "key": "robe-of-the-archmagi",
       "label": "Robe of the Archmagi",
       "src": "/assets/icons/item/robe-of-the-archmagi.webp",
-      "bytes": 1818,
+      "bytes": 15440,
       "seed": 340164531,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-rod-of-absorption",
@@ -3162,9 +3276,12 @@
       "key": "stone-of-good-luck-luckstone",
       "label": "Stone of Good Luck (Luckstone)",
       "src": "/assets/icons/item/stone-of-good-luck-luckstone.webp",
-      "bytes": 2006,
+      "bytes": 16134,
       "seed": 630603031,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-sun-blade",
@@ -3242,9 +3359,12 @@
       "key": "tome-of-clear-thought",
       "label": "Tome of Clear Thought",
       "src": "/assets/icons/item/tome-of-clear-thought.webp",
-      "bytes": 2158,
+      "bytes": 24446,
       "seed": 241934077,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-tome-of-leadership-and-influence",
@@ -3462,9 +3582,12 @@
       "key": "wind-fan",
       "label": "Wind Fan",
       "src": "/assets/icons/item/wind-fan.webp",
-      "bytes": 2950,
+      "bytes": 15350,
       "seed": 1925007483,
-      "kind": "magic_item"
+      "kind": "magic_item",
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "item-winged-boots",
@@ -4041,8 +4164,11 @@
       "key": "item-armor",
       "label": "armor",
       "src": "/assets/icons/family/item-armor.webp",
-      "bytes": 2728,
-      "seed": 1080564482
+      "bytes": 18416,
+      "seed": 1080564482,
+      "width": 256,
+      "height": 256,
+      "generator": "image_gen"
     },
     {
       "id": "family-item-gear",
@@ -25139,6 +25265,1271 @@
       "label": "Bedroll",
       "src": "/assets/icons/inventory/gear-bedroll.webp",
       "bytes": 20844,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-abacus",
+      "group": "inventory",
+      "key": "gear-abacus",
+      "label": "Abacus",
+      "src": "/assets/icons/inventory/gear-abacus.webp",
+      "bytes": 28924,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-alchemists-supplies",
+      "group": "inventory",
+      "key": "gear-alchemists-supplies",
+      "label": "Alchemist's Supplies",
+      "src": "/assets/icons/inventory/gear-alchemists-supplies.webp",
+      "bytes": 20710,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-alms-box",
+      "group": "inventory",
+      "key": "gear-alms-box",
+      "label": "Alms Box",
+      "src": "/assets/icons/inventory/gear-alms-box.webp",
+      "bytes": 19298,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-arrows-20",
+      "group": "inventory",
+      "key": "gear-arrows-20",
+      "label": "Arrows (20)",
+      "src": "/assets/icons/inventory/gear-arrows-20.webp",
+      "bytes": 15642,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-bagpipes",
+      "group": "inventory",
+      "key": "gear-bagpipes",
+      "label": "Bagpipes",
+      "src": "/assets/icons/inventory/gear-bagpipes.webp",
+      "bytes": 18432,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-barrel",
+      "group": "inventory",
+      "key": "gear-barrel",
+      "label": "Barrel",
+      "src": "/assets/icons/inventory/gear-barrel.webp",
+      "bytes": 20098,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-basket",
+      "group": "inventory",
+      "key": "gear-basket",
+      "label": "Basket",
+      "src": "/assets/icons/inventory/gear-basket.webp",
+      "bytes": 21618,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-bell",
+      "group": "inventory",
+      "key": "gear-bell",
+      "label": "Bell",
+      "src": "/assets/icons/inventory/gear-bell.webp",
+      "bytes": 11104,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-bit-and-bridle",
+      "group": "inventory",
+      "key": "gear-bit-and-bridle",
+      "label": "Bit and Bridle",
+      "src": "/assets/icons/inventory/gear-bit-and-bridle.webp",
+      "bytes": 23858,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-blanket",
+      "group": "inventory",
+      "key": "gear-blanket",
+      "label": "Blanket",
+      "src": "/assets/icons/inventory/gear-blanket.webp",
+      "bytes": 13790,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-block-and-tackle",
+      "group": "inventory",
+      "key": "gear-block-and-tackle",
+      "label": "Block and Tackle",
+      "src": "/assets/icons/inventory/gear-block-and-tackle.webp",
+      "bytes": 11226,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-block-of-incense",
+      "group": "inventory",
+      "key": "gear-block-of-incense",
+      "label": "Block of Incense",
+      "src": "/assets/icons/inventory/gear-block-of-incense.webp",
+      "bytes": 16376,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-blowgun-needles-50",
+      "group": "inventory",
+      "key": "gear-blowgun-needles-50",
+      "label": "Blowgun Needles (50)",
+      "src": "/assets/icons/inventory/gear-blowgun-needles-50.webp",
+      "bytes": 18726,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-brewers-supplies",
+      "group": "inventory",
+      "key": "gear-brewers-supplies",
+      "label": "Brewer's Supplies",
+      "src": "/assets/icons/inventory/gear-brewers-supplies.webp",
+      "bytes": 24382,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-bucket",
+      "group": "inventory",
+      "key": "gear-bucket",
+      "label": "Bucket",
+      "src": "/assets/icons/inventory/gear-bucket.webp",
+      "bytes": 17528,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-burglars-pack",
+      "group": "inventory",
+      "key": "gear-burglars-pack",
+      "label": "Burglar's Pack",
+      "src": "/assets/icons/inventory/gear-burglars-pack.webp",
+      "bytes": 24134,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-calligraphers-supplies",
+      "group": "inventory",
+      "key": "gear-calligraphers-supplies",
+      "label": "Calligrapher's Supplies",
+      "src": "/assets/icons/inventory/gear-calligraphers-supplies.webp",
+      "bytes": 22676,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-camel",
+      "group": "inventory",
+      "key": "gear-camel",
+      "label": "Camel",
+      "src": "/assets/icons/inventory/gear-camel.webp",
+      "bytes": 22774,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-carpenters-tools",
+      "group": "inventory",
+      "key": "gear-carpenters-tools",
+      "label": "Carpenter's Tools",
+      "src": "/assets/icons/inventory/gear-carpenters-tools.webp",
+      "bytes": 21232,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-cartographers-tools",
+      "group": "inventory",
+      "key": "gear-cartographers-tools",
+      "label": "Cartographer's Tools",
+      "src": "/assets/icons/inventory/gear-cartographers-tools.webp",
+      "bytes": 19186,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-case-crossbow-bolt",
+      "group": "inventory",
+      "key": "gear-case-crossbow-bolt",
+      "label": "Case, Crossbow Bolt",
+      "src": "/assets/icons/inventory/gear-case-crossbow-bolt.webp",
+      "bytes": 15744,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-case-map-or-scroll",
+      "group": "inventory",
+      "key": "gear-case-map-or-scroll",
+      "label": "Case, Map or Scroll",
+      "src": "/assets/icons/inventory/gear-case-map-or-scroll.webp",
+      "bytes": 13182,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-chain-10-feet",
+      "group": "inventory",
+      "key": "gear-chain-10-feet",
+      "label": "Chain (10 feet)",
+      "src": "/assets/icons/inventory/gear-chain-10-feet.webp",
+      "bytes": 20864,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-chalk-1-piece",
+      "group": "inventory",
+      "key": "gear-chalk-1-piece",
+      "label": "Chalk (1 piece)",
+      "src": "/assets/icons/inventory/gear-chalk-1-piece.webp",
+      "bytes": 8262,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-chest",
+      "group": "inventory",
+      "key": "gear-chest",
+      "label": "Chest",
+      "src": "/assets/icons/inventory/gear-chest.webp",
+      "bytes": 20090,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-climbers-kit",
+      "group": "inventory",
+      "key": "gear-climbers-kit",
+      "label": "Climber's Kit",
+      "src": "/assets/icons/inventory/gear-climbers-kit.webp",
+      "bytes": 28156,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-clothes-common",
+      "group": "inventory",
+      "key": "gear-clothes-common",
+      "label": "Clothes, Common",
+      "src": "/assets/icons/inventory/gear-clothes-common.webp",
+      "bytes": 21128,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-clothes-costume",
+      "group": "inventory",
+      "key": "gear-clothes-costume",
+      "label": "Clothes, Costume",
+      "src": "/assets/icons/inventory/gear-clothes-costume.webp",
+      "bytes": 24494,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-clothes-fine",
+      "group": "inventory",
+      "key": "gear-clothes-fine",
+      "label": "Clothes, Fine",
+      "src": "/assets/icons/inventory/gear-clothes-fine.webp",
+      "bytes": 23680,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-clothes-travelers",
+      "group": "inventory",
+      "key": "gear-clothes-travelers",
+      "label": "Clothes, Traveler's",
+      "src": "/assets/icons/inventory/gear-clothes-travelers.webp",
+      "bytes": 18116,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-cobblers-tools",
+      "group": "inventory",
+      "key": "gear-cobblers-tools",
+      "label": "Cobbler's Tools",
+      "src": "/assets/icons/inventory/gear-cobblers-tools.webp",
+      "bytes": 24606,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-cooks-utensils",
+      "group": "inventory",
+      "key": "gear-cooks-utensils",
+      "label": "Cook's Utensils",
+      "src": "/assets/icons/inventory/gear-cooks-utensils.webp",
+      "bytes": 22886,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-crossbow-bolts-20",
+      "group": "inventory",
+      "key": "gear-crossbow-bolts-20",
+      "label": "Crossbow Bolts (20)",
+      "src": "/assets/icons/inventory/gear-crossbow-bolts-20.webp",
+      "bytes": 14330,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-dice-set",
+      "group": "inventory",
+      "key": "gear-dice-set",
+      "label": "Dice Set",
+      "src": "/assets/icons/inventory/gear-dice-set.webp",
+      "bytes": 17086,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-diplomats-pack",
+      "group": "inventory",
+      "key": "gear-diplomats-pack",
+      "label": "Diplomat's Pack",
+      "src": "/assets/icons/inventory/gear-diplomats-pack.webp",
+      "bytes": 21518,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-disguise-kit",
+      "group": "inventory",
+      "key": "gear-disguise-kit",
+      "label": "Disguise Kit",
+      "src": "/assets/icons/inventory/gear-disguise-kit.webp",
+      "bytes": 19874,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-donkey-or-mule",
+      "group": "inventory",
+      "key": "gear-donkey-or-mule",
+      "label": "Donkey or Mule",
+      "src": "/assets/icons/inventory/gear-donkey-or-mule.webp",
+      "bytes": 17744,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-druidic-focus",
+      "group": "inventory",
+      "key": "gear-druidic-focus",
+      "label": "Druidic Focus",
+      "src": "/assets/icons/inventory/gear-druidic-focus.webp",
+      "bytes": 21048,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-dulcimer",
+      "group": "inventory",
+      "key": "gear-dulcimer",
+      "label": "Dulcimer",
+      "src": "/assets/icons/inventory/gear-dulcimer.webp",
+      "bytes": 16822,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-dungeoneers-pack",
+      "group": "inventory",
+      "key": "gear-dungeoneers-pack",
+      "label": "Dungeoneer's Pack",
+      "src": "/assets/icons/inventory/gear-dungeoneers-pack.webp",
+      "bytes": 25010,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-elephant",
+      "group": "inventory",
+      "key": "gear-elephant",
+      "label": "Elephant",
+      "src": "/assets/icons/inventory/gear-elephant.webp",
+      "bytes": 22644,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-emblem-holy-symbol",
+      "group": "inventory",
+      "key": "gear-emblem-holy-symbol",
+      "label": "Emblem (holy symbol)",
+      "src": "/assets/icons/inventory/gear-emblem-holy-symbol.webp",
+      "bytes": 17700,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-entertainers-pack",
+      "group": "inventory",
+      "key": "gear-entertainers-pack",
+      "label": "Entertainer's Pack",
+      "src": "/assets/icons/inventory/gear-entertainers-pack.webp",
+      "bytes": 23428,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-explorers-pack",
+      "group": "inventory",
+      "key": "gear-explorers-pack",
+      "label": "Explorer's Pack",
+      "src": "/assets/icons/inventory/gear-explorers-pack.webp",
+      "bytes": 23632,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-feed-per-day",
+      "group": "inventory",
+      "key": "gear-feed-per-day",
+      "label": "Feed (per day)",
+      "src": "/assets/icons/inventory/gear-feed-per-day.webp",
+      "bytes": 26102,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-fishing-tackle",
+      "group": "inventory",
+      "key": "gear-fishing-tackle",
+      "label": "Fishing Tackle",
+      "src": "/assets/icons/inventory/gear-fishing-tackle.webp",
+      "bytes": 23578,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-flask",
+      "group": "inventory",
+      "key": "gear-flask",
+      "label": "Flask",
+      "src": "/assets/icons/inventory/gear-flask.webp",
+      "bytes": 15658,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-flute",
+      "group": "inventory",
+      "key": "gear-flute",
+      "label": "Flute",
+      "src": "/assets/icons/inventory/gear-flute.webp",
+      "bytes": 7956,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-forgery-kit",
+      "group": "inventory",
+      "key": "gear-forgery-kit",
+      "label": "Forgery Kit",
+      "src": "/assets/icons/inventory/gear-forgery-kit.webp",
+      "bytes": 17904,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-glassblowers-tools",
+      "group": "inventory",
+      "key": "gear-glassblowers-tools",
+      "label": "Glassblower's Tools",
+      "src": "/assets/icons/inventory/gear-glassblowers-tools.webp",
+      "bytes": 17758,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-grappling-hook",
+      "group": "inventory",
+      "key": "gear-grappling-hook",
+      "label": "Grappling Hook",
+      "src": "/assets/icons/inventory/gear-grappling-hook.webp",
+      "bytes": 20184,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-hammer",
+      "group": "inventory",
+      "key": "gear-hammer",
+      "label": "Hammer",
+      "src": "/assets/icons/inventory/gear-hammer.webp",
+      "bytes": 10840,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-hammer-sledge",
+      "group": "inventory",
+      "key": "gear-hammer-sledge",
+      "label": "Hammer, Sledge",
+      "src": "/assets/icons/inventory/gear-hammer-sledge.webp",
+      "bytes": 11078,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-herbalism-kit",
+      "group": "inventory",
+      "key": "gear-herbalism-kit",
+      "label": "Herbalism Kit",
+      "src": "/assets/icons/inventory/gear-herbalism-kit.webp",
+      "bytes": 22268,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-horse-draft",
+      "group": "inventory",
+      "key": "gear-horse-draft",
+      "label": "Horse, Draft",
+      "src": "/assets/icons/inventory/gear-horse-draft.webp",
+      "bytes": 21608,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-horse-riding",
+      "group": "inventory",
+      "key": "gear-horse-riding",
+      "label": "Horse, Riding",
+      "src": "/assets/icons/inventory/gear-horse-riding.webp",
+      "bytes": 19498,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-hourglass",
+      "group": "inventory",
+      "key": "gear-hourglass",
+      "label": "Hourglass",
+      "src": "/assets/icons/inventory/gear-hourglass.webp",
+      "bytes": 17382,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-hunting-trap",
+      "group": "inventory",
+      "key": "gear-hunting-trap",
+      "label": "Hunting Trap",
+      "src": "/assets/icons/inventory/gear-hunting-trap.webp",
+      "bytes": 25568,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-ink-pen",
+      "group": "inventory",
+      "key": "gear-ink-pen",
+      "label": "Ink Pen",
+      "src": "/assets/icons/inventory/gear-ink-pen.webp",
+      "bytes": 13922,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-jewelers-tools",
+      "group": "inventory",
+      "key": "gear-jewelers-tools",
+      "label": "Jeweler's Tools",
+      "src": "/assets/icons/inventory/gear-jewelers-tools.webp",
+      "bytes": 21450,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-jug",
+      "group": "inventory",
+      "key": "gear-jug",
+      "label": "Jug",
+      "src": "/assets/icons/inventory/gear-jug.webp",
+      "bytes": 15644,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-ladder-10-foot",
+      "group": "inventory",
+      "key": "gear-ladder-10-foot",
+      "label": "Ladder (10-foot)",
+      "src": "/assets/icons/inventory/gear-ladder-10-foot.webp",
+      "bytes": 15872,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-lamp",
+      "group": "inventory",
+      "key": "gear-lamp",
+      "label": "Lamp",
+      "src": "/assets/icons/inventory/gear-lamp.webp",
+      "bytes": 13908,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-leatherworkers-tools",
+      "group": "inventory",
+      "key": "gear-leatherworkers-tools",
+      "label": "Leatherworker's Tools",
+      "src": "/assets/icons/inventory/gear-leatherworkers-tools.webp",
+      "bytes": 22178,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-lock",
+      "group": "inventory",
+      "key": "gear-lock",
+      "label": "Lock",
+      "src": "/assets/icons/inventory/gear-lock.webp",
+      "bytes": 20158,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-lyre",
+      "group": "inventory",
+      "key": "gear-lyre",
+      "label": "Lyre",
+      "src": "/assets/icons/inventory/gear-lyre.webp",
+      "bytes": 28276,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-magnifying-glass",
+      "group": "inventory",
+      "key": "gear-magnifying-glass",
+      "label": "Magnifying Glass",
+      "src": "/assets/icons/inventory/gear-magnifying-glass.webp",
+      "bytes": 15774,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-masons-tools",
+      "group": "inventory",
+      "key": "gear-masons-tools",
+      "label": "Mason's Tools",
+      "src": "/assets/icons/inventory/gear-masons-tools.webp",
+      "bytes": 21698,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-mastiff",
+      "group": "inventory",
+      "key": "gear-mastiff",
+      "label": "Mastiff",
+      "src": "/assets/icons/inventory/gear-mastiff.webp",
+      "bytes": 18138,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-mess-kit",
+      "group": "inventory",
+      "key": "gear-mess-kit",
+      "label": "Mess Kit",
+      "src": "/assets/icons/inventory/gear-mess-kit.webp",
+      "bytes": 15282,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-navigators-tools",
+      "group": "inventory",
+      "key": "gear-navigators-tools",
+      "label": "Navigator's Tools",
+      "src": "/assets/icons/inventory/gear-navigators-tools.webp",
+      "bytes": 20412,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-painters-supplies",
+      "group": "inventory",
+      "key": "gear-painters-supplies",
+      "label": "Painter's Supplies",
+      "src": "/assets/icons/inventory/gear-painters-supplies.webp",
+      "bytes": 22696,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-pan-flute",
+      "group": "inventory",
+      "key": "gear-pan-flute",
+      "label": "Pan Flute",
+      "src": "/assets/icons/inventory/gear-pan-flute.webp",
+      "bytes": 18388,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-paper-one-sheet",
+      "group": "inventory",
+      "key": "gear-paper-one-sheet",
+      "label": "Paper (one sheet)",
+      "src": "/assets/icons/inventory/gear-paper-one-sheet.webp",
+      "bytes": 9686,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-parchment-one-sheet",
+      "group": "inventory",
+      "key": "gear-parchment-one-sheet",
+      "label": "Parchment (one sheet)",
+      "src": "/assets/icons/inventory/gear-parchment-one-sheet.webp",
+      "bytes": 15064,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-perfume-vial",
+      "group": "inventory",
+      "key": "gear-perfume-vial",
+      "label": "Perfume (vial)",
+      "src": "/assets/icons/inventory/gear-perfume-vial.webp",
+      "bytes": 13036,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-pick-miners",
+      "group": "inventory",
+      "key": "gear-pick-miners",
+      "label": "Pick, Miner's",
+      "src": "/assets/icons/inventory/gear-pick-miners.webp",
+      "bytes": 12338,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-piton",
+      "group": "inventory",
+      "key": "gear-piton",
+      "label": "Piton",
+      "src": "/assets/icons/inventory/gear-piton.webp",
+      "bytes": 12930,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-poison-basic-vial",
+      "group": "inventory",
+      "key": "gear-poison-basic-vial",
+      "label": "Poison, Basic (vial)",
+      "src": "/assets/icons/inventory/gear-poison-basic-vial.webp",
+      "bytes": 11546,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-poisoners-kit",
+      "group": "inventory",
+      "key": "gear-poisoners-kit",
+      "label": "Poisoner's Kit",
+      "src": "/assets/icons/inventory/gear-poisoners-kit.webp",
+      "bytes": 19810,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-pole-10-foot",
+      "group": "inventory",
+      "key": "gear-pole-10-foot",
+      "label": "Pole (10-foot)",
+      "src": "/assets/icons/inventory/gear-pole-10-foot.webp",
+      "bytes": 8588,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-pony",
+      "group": "inventory",
+      "key": "gear-pony",
+      "label": "Pony",
+      "src": "/assets/icons/inventory/gear-pony.webp",
+      "bytes": 22078,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-pot-iron",
+      "group": "inventory",
+      "key": "gear-pot-iron",
+      "label": "Pot, Iron",
+      "src": "/assets/icons/inventory/gear-pot-iron.webp",
+      "bytes": 15828,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-potters-tools",
+      "group": "inventory",
+      "key": "gear-potters-tools",
+      "label": "Potter's Tools",
+      "src": "/assets/icons/inventory/gear-potters-tools.webp",
+      "bytes": 20844,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-priests-pack",
+      "group": "inventory",
+      "key": "gear-priests-pack",
+      "label": "Priest's Pack",
+      "src": "/assets/icons/inventory/gear-priests-pack.webp",
+      "bytes": 23234,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-ram-portable",
+      "group": "inventory",
+      "key": "gear-ram-portable",
+      "label": "Ram, Portable",
+      "src": "/assets/icons/inventory/gear-ram-portable.webp",
+      "bytes": 16470,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-reliquary-holy-symbol",
+      "group": "inventory",
+      "key": "gear-reliquary-holy-symbol",
+      "label": "Reliquary (holy symbol)",
+      "src": "/assets/icons/inventory/gear-reliquary-holy-symbol.webp",
+      "bytes": 20918,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-saddle-exotic",
+      "group": "inventory",
+      "key": "gear-saddle-exotic",
+      "label": "Saddle, Exotic",
+      "src": "/assets/icons/inventory/gear-saddle-exotic.webp",
+      "bytes": 25282,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-saddle-military",
+      "group": "inventory",
+      "key": "gear-saddle-military",
+      "label": "Saddle, Military",
+      "src": "/assets/icons/inventory/gear-saddle-military.webp",
+      "bytes": 22172,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-saddle-pack",
+      "group": "inventory",
+      "key": "gear-saddle-pack",
+      "label": "Saddle, Pack",
+      "src": "/assets/icons/inventory/gear-saddle-pack.webp",
+      "bytes": 21782,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-saddle-riding",
+      "group": "inventory",
+      "key": "gear-saddle-riding",
+      "label": "Saddle, Riding",
+      "src": "/assets/icons/inventory/gear-saddle-riding.webp",
+      "bytes": 17118,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-saddlebags",
+      "group": "inventory",
+      "key": "gear-saddlebags",
+      "label": "Saddlebags",
+      "src": "/assets/icons/inventory/gear-saddlebags.webp",
+      "bytes": 17668,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-scale-merchants",
+      "group": "inventory",
+      "key": "gear-scale-merchants",
+      "label": "Scale, Merchant's",
+      "src": "/assets/icons/inventory/gear-scale-merchants.webp",
+      "bytes": 21502,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-scholars-pack",
+      "group": "inventory",
+      "key": "gear-scholars-pack",
+      "label": "Scholar's Pack",
+      "src": "/assets/icons/inventory/gear-scholars-pack.webp",
+      "bytes": 23256,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-sealing-wax",
+      "group": "inventory",
+      "key": "gear-sealing-wax",
+      "label": "Sealing Wax",
+      "src": "/assets/icons/inventory/gear-sealing-wax.webp",
+      "bytes": 12476,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-shawm",
+      "group": "inventory",
+      "key": "gear-shawm",
+      "label": "Shawm",
+      "src": "/assets/icons/inventory/gear-shawm.webp",
+      "bytes": 9592,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-shovel",
+      "group": "inventory",
+      "key": "gear-shovel",
+      "label": "Shovel",
+      "src": "/assets/icons/inventory/gear-shovel.webp",
+      "bytes": 11584,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-signal-whistle",
+      "group": "inventory",
+      "key": "gear-signal-whistle",
+      "label": "Signal Whistle",
+      "src": "/assets/icons/inventory/gear-signal-whistle.webp",
+      "bytes": 15760,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-signet-ring",
+      "group": "inventory",
+      "key": "gear-signet-ring",
+      "label": "Signet Ring",
+      "src": "/assets/icons/inventory/gear-signet-ring.webp",
+      "bytes": 22004,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-sling-bullets-20",
+      "group": "inventory",
+      "key": "gear-sling-bullets-20",
+      "label": "Sling Bullets (20)",
+      "src": "/assets/icons/inventory/gear-sling-bullets-20.webp",
+      "bytes": 19488,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-small-knife",
+      "group": "inventory",
+      "key": "gear-small-knife",
+      "label": "Small Knife",
+      "src": "/assets/icons/inventory/gear-small-knife.webp",
+      "bytes": 8670,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-smiths-tools",
+      "group": "inventory",
+      "key": "gear-smiths-tools",
+      "label": "Smith's Tools",
+      "src": "/assets/icons/inventory/gear-smiths-tools.webp",
+      "bytes": 21506,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-soap",
+      "group": "inventory",
+      "key": "gear-soap",
+      "label": "Soap",
+      "src": "/assets/icons/inventory/gear-soap.webp",
+      "bytes": 10916,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-armor-spiked-armor",
+      "group": "inventory",
+      "key": "armor-spiked-armor",
+      "label": "Spiked Armor",
+      "src": "/assets/icons/inventory/armor-spiked-armor.webp",
+      "bytes": 27290,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-spikes-iron-10",
+      "group": "inventory",
+      "key": "gear-spikes-iron-10",
+      "label": "Spikes, Iron (10)",
+      "src": "/assets/icons/inventory/gear-spikes-iron-10.webp",
+      "bytes": 15290,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-spyglass",
+      "group": "inventory",
+      "key": "gear-spyglass",
+      "label": "Spyglass",
+      "src": "/assets/icons/inventory/gear-spyglass.webp",
+      "bytes": 11230,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-string-10-feet",
+      "group": "inventory",
+      "key": "gear-string-10-feet",
+      "label": "String (10 feet)",
+      "src": "/assets/icons/inventory/gear-string-10-feet.webp",
+      "bytes": 19828,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-tent-two-person",
+      "group": "inventory",
+      "key": "gear-tent-two-person",
+      "label": "Tent, Two-Person",
+      "src": "/assets/icons/inventory/gear-tent-two-person.webp",
+      "bytes": 16984,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-tinkers-tools",
+      "group": "inventory",
+      "key": "gear-tinkers-tools",
+      "label": "Tinker's Tools",
+      "src": "/assets/icons/inventory/gear-tinkers-tools.webp",
+      "bytes": 22956,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-vial",
+      "group": "inventory",
+      "key": "gear-vial",
+      "label": "Vial",
+      "src": "/assets/icons/inventory/gear-vial.webp",
+      "bytes": 8280,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-viol",
+      "group": "inventory",
+      "key": "gear-viol",
+      "label": "Viol",
+      "src": "/assets/icons/inventory/gear-viol.webp",
+      "bytes": 18538,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-warhorse",
+      "group": "inventory",
+      "key": "gear-warhorse",
+      "label": "Warhorse",
+      "src": "/assets/icons/inventory/gear-warhorse.webp",
+      "bytes": 18842,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-weavers-tools",
+      "group": "inventory",
+      "key": "gear-weavers-tools",
+      "label": "Weaver's Tools",
+      "src": "/assets/icons/inventory/gear-weavers-tools.webp",
+      "bytes": 26206,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-whetstone",
+      "group": "inventory",
+      "key": "gear-whetstone",
+      "label": "Whetstone",
+      "src": "/assets/icons/inventory/gear-whetstone.webp",
+      "bytes": 15344,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-woodcarvers-tools",
+      "group": "inventory",
+      "key": "gear-woodcarvers-tools",
+      "label": "Woodcarver's Tools",
+      "src": "/assets/icons/inventory/gear-woodcarvers-tools.webp",
+      "bytes": 20828,
       "generator": "image_gen",
       "width": 256,
       "height": 256
