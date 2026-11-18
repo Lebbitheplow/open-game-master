@@ -234,9 +234,7 @@ export function rollContest(
   return { name: opponent.name, skill: label, total, dc: Math.max(1, answering ? total : total + 1), answering };
 }
 
-// request_roll's gate: a Stealth check refused during a normal or fast
-// march, and a contested check given the DC its opponent's roll sets.
-export function applyRollGates<A extends {
+type GatedArgs = {
   kind: string;
   skill?: string;
   ability?: SaveAbility;
@@ -245,13 +243,21 @@ export function applyRollGates<A extends {
   againstMonster?: string;
   contestSkill?: string;
   terrain?: string;
-}>(
+};
+
+// request_roll's gate: a Stealth check refused during a normal or fast
+// march, and the creature a contested check is against, found but not yet
+// rolled. Its side is thrown by throwGatedContest once nothing can refuse the
+// character's own roll: thrown here, it was on the table and on the turn
+// before the later refusals, so a refused call ("Nothing was rolled") the
+// model sent again threw the creature's die again, and the character's own
+// check never landed (issue 1028).
+export function applyRollGates<A extends GatedArgs>(
   campaign: Campaign,
-  turn: DmTurn | null,
   args: A,
-  // The character rolling, for the charm the opponent may hold over them.
+  // The character rolling, for a ranger travelling alone (Natural Explorer).
   roller: (Charmable & { id?: string; features?: ReadonlyArray<{ name: string }> }) | null = null,
-): { args: A; contest?: ContestRoll } | ToolError {
+): { args: A; opponent?: Opponent } | ToolError {
   if (args.kind === "skill_check") {
     const marching = marchStealthProblem(campaign.id, args.skill, { roller, terrain: args.terrain });
     if (marching) {
@@ -268,6 +274,19 @@ export function applyRollGates<A extends {
   if ("error" in opponent) {
     return opponent;
   }
+  return { args, opponent };
+}
+
+// The opponent's side of the contest applyRollGates found, thrown once the
+// character's roll is sure to be made, and the DC it sets for that roll.
+export function throwGatedContest<A extends GatedArgs>(
+  campaign: Campaign,
+  turn: DmTurn | null,
+  args: A,
+  opponent: Opponent,
+  // The character rolling, whose charm by the opponent gives its social check advantage.
+  roller: Charmable | null = null,
+): { args: A; contest: ContestRoll } {
   const contest = rollContest(campaign, turn, opponent, {
     skill: args.kind === "skill_check" ? args.skill : undefined,
     ability: args.ability,
