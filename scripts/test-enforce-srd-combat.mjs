@@ -25,6 +25,7 @@ const { getMounts, setMount } = await import("../src/lib/db/mounts.ts");
 const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const { settleTurn, turnHolder } = await import("../src/lib/dm/encounter-tools.ts");
 const { applyDmMutation } = await import("../src/lib/dm/mutations.ts");
+const { pushTokenAway } = await import("../src/lib/dm/map-tools.ts");
 const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
 
 const SLOTS = { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } };
@@ -751,6 +752,59 @@ await test("A rider whose mount is moved against its will keeps the saddle on a 
     assert.equal(failed.out.ok, true, failed.out.error);
     assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the save is still mounted");
     assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "a rider who fell off did not land prone");
+  });
+});
+
+// The same rule, asked by the server where the board moved the rider: the
+// rider and the mount are the rider's one token.
+await test("A rider the GM moves by force is asked the save to stay mounted as that call finishes", async () => {
+  await riding(async () => {
+    kit.giveTurn(mage.id);
+    const made = await forced([20], "move_token", { token: fighter.id, x: 7, y: 5, forced: true });
+    assert.equal(made.out.ok, true, made.out.error);
+    assert.equal(made.unused, 0, "a rider moved by force rolled no save to stay mounted");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+    assert.ok(!world.sheet(fighter.id).conditions.includes("prone"), "a rider who kept the saddle is prone");
+  });
+});
+
+await test("A rider moved by force who fails the save falls prone off the mount", async () => {
+  await riding(async () => {
+    kit.giveTurn(mage.id);
+    const failed = await forced([1], "move_token", { token: fighter.id, x: 7, y: 5, forced: true });
+    assert.equal(failed.out.ok, true, failed.out.error);
+    assert.equal(failed.unused, 0, "a rider moved by force rolled no save to stay mounted");
+    assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the save is still mounted");
+    assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "a rider thrown by the move did not land prone");
+  });
+});
+
+await test("A rider pushed two squares by one call makes one save", async () => {
+  await riding(async () => {
+    const [enemy] = world.enemies();
+    kit.place(enemy.id, 4, 5);
+    world.clearDice();
+    world.diceLog();
+    world.dice(20, 1);
+    onPersonsTurn(world.campaign(), () => {
+      const first = pushTokenAway(world.campaign(), world.encounter().id, enemy.id, fighter.id);
+      const second = pushTokenAway(world.campaign(), world.encounter().id, enemy.id, fighter.id);
+      assert.ok(first.moved && second.moved, "the push did not move the rider");
+    });
+    const unused = world.clearDice();
+    assert.equal(unused, 1, "each square of the push asked the rider's save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+  });
+});
+
+await test("A rider who rides their own move is asked nothing", async () => {
+  await riding(async () => {
+    world.clearDice();
+    world.dice(1);
+    const moved = await walk(fighter, 6, 5);
+    assert.equal(moved.status, 200, JSON.stringify(moved.body));
+    assert.equal(world.clearDice(), 1, "a rider's own move rolled a save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider's own move took them off the horse");
   });
 });
 

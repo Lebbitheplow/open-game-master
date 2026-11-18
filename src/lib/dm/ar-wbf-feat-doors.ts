@@ -25,6 +25,7 @@ import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { pushTokenAway } from "@/lib/dm/map-tools";
+import { mountWentWillingly } from "@/lib/dm/mount-moved";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -80,6 +81,10 @@ function telekineticShove(campaign: Campaign, sheet: CharacterSheet, args: DoorA
     return { ok: true, resource: "Telekinetic", cost: "their bonus action", dc, save: save.total, saved: true, applied: `${targetName} holds its ground (a ${save.total ?? "success"} against DC ${dc}).` };
   }
   const pushed = pushTokenAway(campaign, encounter.id, sheet.id, targetId);
+  // A willing ally and their mount go where they agreed to: no save to stay on (mount-moved.ts).
+  if (!save) {
+    mountWentWillingly(campaign.id, targetId);
+  }
   publishEncounter(campaign.id);
   return {
     ok: true,
