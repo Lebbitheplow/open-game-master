@@ -620,6 +620,21 @@ export function fightNames(campaignId: string, since: string): string[] {
     .flatMap((encounter) => [...encounter.order.map((entry) => entry.name), ...listEnemies(encounter.id).map((enemy) => enemy.displayName)]);
 }
 
+// The foes that died in a fight since `since`, by the names they fought
+// under. A fled or spared foe is not among them. The story arc reads this
+// for a boss it was saving for a later act (src/lib/dm/arc.ts
+// fallenPlannedBosses).
+export function slainFoeNames(campaignId: string, since: string): string[] {
+  const rows = getDatabase()
+    .prepare(
+      `SELECT enemy.display_name AS name FROM encounter_enemies enemy
+       JOIN encounters fight ON fight.id = enemy.encounter_id
+       WHERE fight.campaign_id = ? AND fight.kind = 'fight' AND fight.updated_at >= ? AND enemy.status = 'dead'`,
+    )
+    .all(campaignId, since) as Array<{ name: string }>;
+  return rows.map((row) => row.name);
+}
+
 // A prepared encounter's overrides: this one is called Snik, that one has
 // 3 hit points. Written before anybody has acted, so the stat snapshot
 // keeps the printed block. The damage a creature already carries stays
