@@ -451,13 +451,13 @@ export function handleCheckNotice(
   // core costs nothing more.
   const deceiver = sense === "insight" && args.againstMonster && !args.againstEnemyId ? npcDeceiver(campaign, args.againstMonster, sheets) : null;
   if (deceiver) {
-    contest = rollContest(campaign, null, deceiver, { skill: sense, hiding: true, contestSkill: "deception" });
+    contest = rollContest(campaign, turn, deceiver, { skill: sense, hiding: true, contestSkill: "deception" });
   } else if (args.againstEnemyId || args.againstMonster) {
     const opponent = contestOpponent(campaign, { enemyId: args.againstEnemyId, monster: args.againstMonster });
     if ("error" in opponent) {
       return opponent;
     }
-    contest = rollContest(campaign, null, opponent, {
+    contest = rollContest(campaign, turn, opponent, {
       skill: sense,
       hiding: true,
       contestSkill: sense === "insight" ? "deception" : "stealth",

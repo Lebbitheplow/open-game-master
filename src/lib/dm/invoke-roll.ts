@@ -47,6 +47,7 @@ import {
   resolveRollExpression,
   resolveSheetRef,
   rollArgsSchema,
+  unknownSheetRef,
   rollDcFor,
   type RollArgs,
 } from "@/lib/dm/rolls";
@@ -54,7 +55,7 @@ import { strictnessShift } from "@/lib/dm/safety-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
-import { applyRollGates } from "@/lib/dm/roll-gates";
+import { applyRollGates, throwGatedContest } from "@/lib/dm/roll-gates";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { badArguments, invalidArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swayUnasked } from "@/lib/dm/player-word";
@@ -133,9 +134,26 @@ export function handleRequestRoll(
       return unasked;
     }
   }
-  // No stealth on a normal or fast march, and a contest rolls the
-  // creature's own check for the DC (src/lib/dm/roll-gates.ts).
-  const gated = applyRollGates(campaign, turn, args, sheet ? (getSheetById(sheet.id) ?? sheet) : null);
+  // A contest is the character's check against the creature, and the server
+  // rolls the creature's side. A call that named the creature in characterId,
+  // or no one, was refused only as "needs a valid characterId", which says
+  // nothing about where the creature goes, and the model sent it again for
+  // the creature's other skill (issue 1028).
+  if (!sheet && (args.againstEnemyId || args.againstMonster)) {
+    return toolError(
+      unknownSheetRef(
+        "characterId",
+        args.characterId,
+        sheets,
+        "A contest is ONE request_roll for the party character who makes the check, with their own skill; the creature goes in againstEnemyId or againstMonster, and the server rolls its side. Nothing was rolled.",
+      ),
+    );
+  }
+  // No stealth on a normal or fast march, and the creature a contest is
+  // against (src/lib/dm/roll-gates.ts). Its check, which sets the DC, is
+  // thrown below once nothing here can refuse the character's own roll.
+  const roller = sheet ? (getSheetById(sheet.id) ?? sheet) : null;
+  const gated = applyRollGates(campaign, args, roller);
   if ("error" in gated) {
     return toolError(gated);
   }
@@ -261,6 +279,14 @@ export function handleRequestRoll(
       }`,
     };
   }
+  // Every refusal is behind us, so the creature's side of a contest is thrown
+  // now, once, and the character's roll is set against it (issue 1028). A
+  // character who fails outright, above, leaves it unthrown: the contest is
+  // already lost.
+  const contest = gated.opponent ? throwGatedContest(campaign, turn, args, gated.opponent, roller) : null;
+  if (contest) {
+    args = contest.args;
+  }
 
   // The inspiration die and a held Help are already baked into the
   // expression, so they are spent either way.
@@ -270,7 +296,7 @@ export function handleRequestRoll(
     spendRollCarriers(campaignId, sheet.id, resolved.spendInspiration);
   }
 
-  const contestLine = gated.contest ? `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
+  const contestLine = contest ? `${contest.contest.name} rolled ${contest.contest.skill} ${contest.contest.total}; ${contest.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
   // Portent replaces the d20 before it is thrown, so a wizard holding a number
   // decides here: the roll waits unthrown, and the model waits with it. So
   // does a druid's Weal or a sorcerer's Restore Balance on their own roll
