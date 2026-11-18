@@ -23,6 +23,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { unseatRidersOf } from "@/lib/dm/mount-link";
 import { mountFalls } from "@/lib/dm/mount-tools";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -47,6 +48,10 @@ export function ridersFallWith(
   if (!riders.length) {
     return [];
   }
+  // A creature sent away has unseated its riders already (summon-store.ts
+  // removeSummon); one that turned on the party lies dead where it fell, and
+  // its rider was told they came down and still rode it.
+  unseatRidersOf(campaign.id, steed.id);
   const sheets = listSheets(campaign.id).map((sheet) => getSheetById(sheet.id) ?? sheet);
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const turn = getDmTurn(turnId) ?? undefined;

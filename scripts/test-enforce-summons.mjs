@@ -765,6 +765,36 @@ await test("An area that names a ridden steed, and an attack aimed at the steed'
   }
 });
 
+// A conjured creature that turned on the party stays where it falls, dead,
+// and is not sent away (summon-store.ts), so nothing unseated whoever still
+// rode it: the fall was laid and they stayed in the saddle of a dead mount.
+await test("A ridden elemental that turned hostile and drops to 0 throws its rider: off the mount, with the reaction spent landing.", async () => {
+  for (const door of ["mount", "sheet"]) {
+    const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Conjure Elemental"])]);
+    await world.invoke("cast_buff", { characterId: wizard.id, spell: "Conjure Elemental", level: 5, variant: "water elemental" });
+    const [elemental] = summonsOf(world, "Conjure Elemental");
+    const [enemy] = await thenFight(world, wizard.id);
+    await layMap(world, OPEN(), { [wizard.id]: { x: 3, y: 3 }, [elemental.id]: { x: 4, y: 3 }, [enemy.id]: { x: 3, y: 4 } });
+    holdTurn(world, wizard.id);
+    const up = await world.invoke("mount_up", { characterId: wizard.id, mount: "Water Elemental" });
+    assert.equal(up.ok, true, up.error);
+    // A 1 on the concentration save: the elemental turns hostile.
+    world.dice(1);
+    await world.invoke("apply_damage", { characterId: wizard.id, amount: 4, type: "slashing" });
+    world.clearDice();
+    assert.equal(world.sheet(elemental.id).summon.unbound, true, "setup: the elemental did not turn hostile");
+    assert.equal(getMounts(world.campaignId)[wizard.id]?.sheetId, elemental.id, "setup: the wizard no longer rides the elemental");
+    world.patch(elemental.id, { currentHp: 1 });
+    const out = door === "mount"
+      ? await strikeMount(world, enemy, wizard)
+      : await world.invoke("apply_damage", { characterId: elemental.id, amount: 40, type: "slashing" });
+    assert.equal(out.ok, true, out.error);
+    assert.ok(world.sheet(elemental.id).deathSaves.dead, `setup (${door}): the hostile elemental did not fall dead`);
+    assert.equal(getMounts(world.campaignId)[wizard.id], undefined, `the wizard still rides a dead elemental (${door})`);
+    assert.ok(world.encounter().reactionsUsed.includes(wizard.id), `the wizard spent no reaction landing (${door})`);
+  }
+});
+
 // A fall decided as the steed went, on a turn later undone, brings the same
 // sheet back with its rider on it. A later blow at that steed, already at 0,
 // read the undone turn's fall as its own: the rider kept the saddle, no
