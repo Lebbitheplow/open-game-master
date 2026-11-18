@@ -702,15 +702,145 @@ const MONSTER_FAMILY_PLATES = [
   { id: "young-gold-dragon", subject: "a young gold dragon with gleaming scales" },
   { id: "young-silver-dragon", subject: "a young silver dragon breathing frost" },
   { id: "young-white-dragon", subject: "a young white dragon among ice" },
+  // Core SRD batch 1: the most-met stat blocks that still drew a type plate.
+  { id: "goblin", subject: "a goblin, a snarling bestial yellow-green goblinoid with huge ears and fangs" },
+  { id: "orc", subject: "an orc, a tusked grey-green brute with a topknot roaring" },
+  { id: "bugbear", subject: "a bugbear, a shaggy hairy goblinoid with pointed ears and a flat nose" },
+  { id: "lizardfolk", subject: "a lizardfolk, a crocodile-headed green reptilian warrior with a bone necklace" },
+  { id: "drow", subject: "a drow, a grey-skinned white-haired elf in spider-motif armour, snarling" },
+  { id: "wolf", subject: "a grey wolf snarling" },
+  { id: "dire-wolf", subject: "a dire wolf, a huge black wolf baring its fangs" },
+  { id: "worg", subject: "a worg, a matted evil wolf with red eyes and a cruel grin" },
+  { id: "ogre", subject: "an ogre, a lumpy tusked brute bellowing" },
+  { id: "hill-giant", subject: "a hill giant, a crude shaggy-haired giant roaring" },
+  { id: "manticore", subject: "a manticore, a winged lion with a humanlike face and a spiked tail" },
+  { id: "skeleton", subject: "a skeleton in a rusted helm with glowing blue eyes" },
+  { id: "shadow", subject: "a shadow, a living silhouette of black smoke with white eyes and clawed hands" },
+  { id: "specter", subject: "a specter, a pale blue screaming ghost reaching out" },
+  { id: "wight", subject: "a wight, a crowned undead warrior with a withered face" },
+  { id: "wraith", subject: "a wraith, a hooded shroud of shadow with violet eyes and a clawed hand" },
+  { id: "vampire", subject: "a vampire, a pale noble with fangs and a high red-lined collar" },
+  { id: "ogre-zombie", subject: "an ogre zombie, a rotting hulking ogre corpse" },
+  { id: "minotaur-skeleton", subject: "a minotaur skeleton, a horned bull skull with green-glowing sockets" },
+  { id: "warhorse-skeleton", subject: "a warhorse skeleton, a horse skull in a rusted chanfron with a blue eye" },
+  { id: "fire-elemental", subject: "a fire elemental, a roaring humanoid of living flame" },
+  { id: "werebear", subject: "a werebear, a snarling brown bear-man in torn clothes" },
+  { id: "wereboar", subject: "a wereboar, a tusked boar-man in rags" },
+  { id: "wererat", subject: "a wererat, a hooded rat-man with yellow teeth" },
+  { id: "weretiger", subject: "a weretiger, a striped tiger-man roaring" },
+  { id: "balor", subject: "a balor, a horned winged demon of flame with a fiery whip" },
+  { id: "oni", subject: "an oni, a blue-skinned horned ogre mage with white hair in ornate armour" },
+  { id: "stone-golem", subject: "a stone golem, a carved stone giant with glowing blue runes" },
+  { id: "aboleth", subject: "an aboleth, a tentacled fish-like aberration with three red eyes" },
+  { id: "tarrasque", subject: "the tarrasque, a colossal horned reptile roaring" },
+  { id: "young-red-dragon", subject: "a young red dragon breathing fire" },
+  { id: "young-green-dragon", subject: "a young green dragon exhaling poison gas" },
+  { id: "young-brass-dragon", subject: "a young brass dragon with a broad fan-shaped head crest" },
+  { id: "young-bronze-dragon", subject: "a young bronze dragon crackling with lightning" },
+  { id: "young-copper-dragon", subject: "a young copper dragon dripping acid" },
+  // Core SRD batch 2: fiends, celestials, elementals, constructs and the rest.
+  { id: "bone-devil", subject: "a bone devil, a skeletal fiend with a scorpion tail" },
+  { id: "dretch", subject: "a dretch, a squat pot-bellied lesser demon drooling" },
+  { id: "erinyes", subject: "an erinyes, a pale horned devil with black feathered wings" },
+  { id: "lemure", subject: "a lemure, a melting blob of devil flesh with a moaning face" },
+  { id: "nightmare", subject: "a nightmare, a black horse with a mane of flame" },
+  { id: "succubusincubus", subject: "a succubus or incubus, a ram-horned lavender fiend with bat wings" },
+  { id: "couatl", subject: "a couatl, a rainbow-winged feathered serpent" },
+  { id: "deva", subject: "a deva, a silver-skinned angel with a halo and white wings" },
+  { id: "planetar", subject: "a planetar, an emerald-skinned angel with a golden halo" },
+  { id: "solar", subject: "a solar, a gold-skinned six-winged angel with a sunburst halo" },
+  { id: "djinni", subject: "a djinni, a blue air genie with a braided beard over a whirlwind" },
+  { id: "efreeti", subject: "an efreeti, a horned lava-red fire genie roaring" },
+  { id: "ice-mephit", subject: "an ice mephit, a spiky imp of ice" },
+  { id: "invisible-stalker", subject: "an invisible stalker, a wind-shape with glowing eyes" },
+  { id: "magma-mephit", subject: "a magma mephit, a winged imp of cracked rock and lava" },
+  { id: "magmin", subject: "a magmin, a squat grinning lump of living magma" },
+  { id: "salamander", subject: "a salamander, a fire serpent-person with a flame crest" },
+  { id: "steam-mephit", subject: "a steam mephit, an imp of boiling vapour" },
+  { id: "clay-golem", subject: "a clay golem, a rune-carved hulk of red-brown clay" },
+  { id: "rug-of-smothering", subject: "a rug of smothering, a living patterned carpet" },
+  { id: "shield-guardian", subject: "a shield guardian, an iron-plated construct with a rune amulet" },
+  { id: "gibbering-mouther", subject: "a gibbering mouther, a blob of eyes and mouths" },
+  { id: "behir", subject: "a behir, a blue many-legged serpent with lightning in its jaws" },
+  { id: "doppelganger", subject: "a doppelganger, a grey shapeshifter mid-change" },
+  { id: "gorgon", subject: "a gorgon, an iron-plated bull breathing green gas" },
+  { id: "phase-spider", subject: "a phase spider, a shimmering violet spider" },
+  { id: "winter-wolf", subject: "a winter wolf, a white wolf breathing ice" },
+  { id: "gray-ooze", subject: "a gray ooze, a slick grey slime dissolving metal" },
+  { id: "ochre-jelly", subject: "an ochre jelly, a yellow amoeba with bones inside" },
+  { id: "shambling-mound", subject: "a shambling mound, a hulk of rotting vines" },
+  { id: "awakened-shrub", subject: "an awakened shrub, a leafy bush with a face" },
+  { id: "blink-dog", subject: "a blink dog, a tawny dog flickering with blue light" },
+  { id: "sprite", subject: "a sprite, a green fey with dragonfly wings and leaf armour" },
+  { id: "grimlock", subject: "a grimlock, an eyeless grey subterranean brute" },
+  { id: "deep-gnome-svirfneblin", subject: "a deep gnome, a bald grey-skinned gnome in mail" },
+  { id: "half-red-dragon-veteran", subject: "a half-red-dragon veteran, a scale-patched horned warrior" },
+  // Core SRD batch 3: the plain beasts.
+  { id: "ape", subject: "an ape, a black-furred chimpanzee baring its teeth" },
+  { id: "axe-beak", subject: "an axe beak, a flightless bird with a hatchet-shaped beak" },
+  { id: "baboon", subject: "a baboon showing its long fangs" },
+  { id: "badger", subject: "a badger with a black-and-white striped face" },
+  { id: "blood-hawk", subject: "a blood hawk, a crimson-feathered raptor screeching" },
+  { id: "camel", subject: "a camel braying" },
+  { id: "cat", subject: "a ginger cat hissing" },
+  { id: "constrictor-snake", subject: "a constrictor snake, a coiled patterned boa" },
+  { id: "crab", subject: "a red crab with raised pincers" },
+  { id: "deer", subject: "a deer, a white-tailed buck" },
+  { id: "draft-horse", subject: "a draft horse, a black feathered workhorse with a white blaze" },
+  { id: "elephant", subject: "an elephant with raised trunk and tusks" },
+  { id: "elk", subject: "an elk bull bugling" },
+  { id: "flying-snake", subject: "a flying snake, a green serpent with feathered wings" },
+  { id: "frog", subject: "a bright green tree frog" },
+  { id: "giant-ape", subject: "a giant ape, a huge scarred gorilla roaring" },
+  { id: "giant-badger", subject: "a giant badger snarling with huge claws" },
+  { id: "giant-centipede", subject: "a giant centipede rearing" },
+  { id: "giant-constrictor-snake", subject: "a giant constrictor snake with its jaws wide" },
+  { id: "giant-crab", subject: "a giant crab encrusted with barnacles" },
+  { id: "giant-elk", subject: "a giant elk, a colossal stag with glaring eyes" },
+  { id: "giant-fire-beetle", subject: "a giant fire beetle with glowing glands" },
+  { id: "giant-frog", subject: "a giant frog lashing out its tongue" },
+  { id: "giant-goat", subject: "a giant goat with curled ram horns" },
+  { id: "giant-hyena", subject: "a giant hyena, a shaggy dark hyena slavering" },
+  { id: "giant-lizard", subject: "a giant lizard, a monitor flicking its tongue" },
+  { id: "giant-owl", subject: "a giant owl, a great horned owl glaring" },
+  { id: "giant-sea-horse", subject: "a giant sea horse with spiny fins" },
+  { id: "giant-toad", subject: "a giant toad gaping" },
+  { id: "giant-vulture", subject: "a giant vulture with red eyes and black plumage" },
+  { id: "giant-wasp", subject: "a giant wasp with its stinger forward" },
+  { id: "giant-weasel", subject: "a giant weasel snarling" },
+  { id: "giant-wolf-spider", subject: "a giant wolf spider with eight eyes" },
+  { id: "goat", subject: "a white goat" },
+  { id: "hawk", subject: "a red-tailed hawk" },
+  { id: "hyena", subject: "a spotted hyena grinning" },
+  { id: "jackal", subject: "a jackal with large ears" },
+  { id: "killer-whale", subject: "a killer whale breaching" },
+  { id: "lion", subject: "a maned lion roaring" },
+  { id: "lizard", subject: "a small green lizard" },
+  { id: "mammoth", subject: "a woolly mammoth with curved tusks" },
+  { id: "mastiff", subject: "a mastiff growling in a spiked collar" },
+  { id: "mule", subject: "a grey mule with long ears" },
+  { id: "owl", subject: "a barn owl" },
+  { id: "panther", subject: "a black panther snarling" },
+  { id: "plesiosaurus", subject: "a plesiosaurus, a long-necked sea reptile" },
+  { id: "pony", subject: "a shaggy piebald pony" },
+  { id: "quipper", subject: "a quipper, a red-bellied piranha" },
+  { id: "raven", subject: "a raven cawing" },
+  { id: "rhinoceros", subject: "a rhinoceros with a long horn" },
+  { id: "riding-horse", subject: "a riding horse, a chestnut with a bridle" },
+  { id: "sea-horse", subject: "a golden sea horse" },
+  { id: "tiger", subject: "a tiger roaring" },
+  { id: "triceratops", subject: "a triceratops with frill and three horns" },
+  { id: "vulture", subject: "a vulture with a bare neck" },
+  { id: "weasel", subject: "a weasel" },
 ];
 
 // Enemy NPC roles: a humanoid foe drawn by what it does at the table (the
 // bandit, the cultist, the dark knight), keyed like a family and looked up
 // the same way, from the NPC stat block it fights with (bandit-captain,
 // cult-fanatic, knight, scout, thug, archmage...) or the name it goes by
-// (MONSTER_FAMILIES in src/lib/placeholders.ts). One face per role here; the
-// four most common roles are painted again per race and presentation below
-// (ENEMY_NPC_VARIANTS).
+// (MONSTER_FAMILIES in src/lib/placeholders.ts). One face per role here; every
+// role is painted again per race and presentation below
+// (ENEMY_NPC_VARIANT_ROLES).
 const ENEMY_ROLE_PLATES = [
   { id: "bandit", subject: "a masked roadside bandit with a short sword" },
   { id: "cultist", subject: "a hooded cultist holding a ritual dagger" },
@@ -727,21 +857,31 @@ const ENEMY_ROLE_PLATES = [
   { id: "tyrant", subject: "a crowned tyrant sorcerer on a dark throne" },
 ];
 
-// The four most common enemy roles, painted for each of the four most common
-// races in each presentation: enemy-npc/<role>-<race>-<presentation>.webp, 48
-// plates (enemyNpcPlaceholder in src/lib/placeholders.ts). A role token above
+// Every enemy role, painted for each of the four most common races in each
+// presentation: enemy-npc/<role>-<race>-<presentation>.webp, 156 plates (enemyNpcPlaceholder in src/lib/placeholders.ts). A role token above
 // stays the picture for an NPC with no race recorded. The shipped WebPs are
 // hand-picked painted art at 256 px, not renders of these subjects, so the
 // same --force / --reencode caution applies; the subjects name each plate
 // for the manifest and give a regeneration its starting prompt. Poses are
 // aggressive because these people are usually the enemy. Dwarf archers carry
 // crossbows; the longbow archers draw canted near-vertical. Every dark knight
-// wears the same open-faced horned helm with cheek guards, sword raised.
+// wears the same open-faced horned helm with cheek guards, sword raised. The
+// other nine roles each keep one signature costume and prop on all 12 plates;
+// the executioner wears an iron cage mask, never a pointed hood.
 const ENEMY_NPC_VARIANT_ROLES = [
   { id: "bandit", subject: "roadside bandit, hooded and masked, drawing a short sword and dagger" },
   { id: "cultist", subject: "cultist in a deep red hood with a forehead sigil, raising a ritual dagger" },
   { id: "archer", subject: "archer in a green hood drawing a longbow at a canted near-vertical angle" },
   { id: "dark-knight", subject: "dark knight in black plate and an open-faced horned helm with cheek guards, sword raised" },
+  { id: "assassin", subject: "assassin in a charcoal hood and face scarf, a curved dagger held close in reverse grip" },
+  { id: "necromancer", subject: "necromancer in black funerary robes with a green glow, a horned-skull bone staff beside the face" },
+  { id: "gladiator", subject: "arena gladiator in a bronze scale cuirass, shoulder guard and manica, a bronze trident held upright" },
+  { id: "pirate", subject: "pirate in a black tricorn over a red bandana and a navy coat, a cutlass raised" },
+  { id: "battle-shaman", subject: "battle shaman in a wolf pelt with a tooth necklace and blue war paint, a lightning-wreathed fist raised" },
+  { id: "alchemical-saboteur", subject: "alchemical saboteur in brass goggles and a leather coat with a vial bandolier, a lit flask bomb raised" },
+  { id: "executioner", subject: "executioner in an iron cage mask, black leather and chains, a single-bladed headsman's axe raised" },
+  { id: "houndmaster", subject: "houndmaster in a fur mantle with a wrapped chain, a snarling spiked-collar mastiff at the shoulder" },
+  { id: "tyrant", subject: "tyrant in a jagged black-iron crown, purple ermine mantle and black-gold plate, a flanged mace sceptre raised" },
 ];
 const ENEMY_NPC_VARIANT_RACES = [
   { id: "human", name: "human" },
