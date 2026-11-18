@@ -754,6 +754,24 @@ await test("A rider whose mount is moved against its will keeps the saddle on a 
   });
 });
 
+// equipment, Tack, Harness, and Drawn Vehicles: 'A military saddle braces the rider, helping you keep your seat on an active mount in battle. It gives you advantage on any check you make to remain mounted.'
+await test("A rider with a military saddle rolls the save to stay mounted with advantage; one without rolls one die", async () => {
+  await riding(async () => {
+    const plain = await forced([20, 20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+    assert.equal(plain.out.ok, true, plain.out.error);
+    assert.equal(plain.unused, 1, "a rider with no military saddle rolled the save twice");
+    world.patch(fighter.id, { equipment: [...world.sheet(fighter.id).equipment, { name: "Saddle, Military", qty: 1 }] });
+    try {
+      const braced = await forced([1, 20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+      assert.equal(braced.out.ok, true, braced.out.error);
+      assert.equal(braced.unused, 0, "the military saddle gave no second die");
+      assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "the higher die did not keep the rider mounted");
+    } finally {
+      world.patch(fighter.id, { equipment: world.sheet(fighter.id).equipment.filter((item) => item.name !== "Saddle, Military") });
+    }
+  });
+});
+
 // ---- Initiative ----
 
 // combat, Initiative: 'The GM makes one roll for an entire group of identical creatures, so each member of the group acts at the same time.'
