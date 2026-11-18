@@ -737,6 +737,34 @@ await test("A ridden steed dropped by damage sent to its own sheet takes its rid
   }
 });
 
+// A fall decided as the steed went, on a turn later undone, brings the same
+// sheet back with its rider on it. A later blow at that steed, already at 0,
+// read the undone turn's fall as its own: the rider kept the saddle, no
+// reaction was spent, and the result said one was.
+await test("A rider's fall decided on a turn that was undone is not read by a later blow: the steed at 0 under them throws them as a mount that went down, with their reaction.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  const [enemy] = await thenFight(world, paladin.id);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 4, 3);
+  place(world, enemy.id, 3, 4);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const out = await world.invoke("apply_damage", { characterId: steed.id, amount: 40, type: "slashing" });
+  assert.equal(out.ok, true, out.error);
+  const undone = await revertTurn(world, out.turnId);
+  assert.equal(undone.status, 200, JSON.stringify(undone.json));
+  assert.equal(getMounts(world.campaignId)[paladin.id]?.sheetId, steed.id, "setup: the undo did not seat the paladin on the steed again");
+  assert.ok(!world.encounter().reactionsUsed.includes(paladin.id), "setup: the undo kept the reaction spent");
+  world.patch(steed.id, { currentHp: 0 });
+  const hit = await strikeMount(world, enemy, paladin);
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, `the paladin still rides a steed at 0: ${JSON.stringify(hit.fall)}`);
+  assert.ok(world.encounter().reactionsUsed.includes(paladin.id), "the rider landed standing and spent no reaction");
+});
+
 await test("A ridden steed saves against an area as its own sheet saves: a Dexterity save proficiency on the sheet counts.", async () => {
   const totals = [];
   for (const trained of [false, true]) {

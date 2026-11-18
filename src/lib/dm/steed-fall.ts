@@ -28,9 +28,12 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // What became of each rider, kept for the mount's door that struck the
-// steed: keyed by the steed's sheet, which is gone and never names another.
+// steed: keyed by the turn, the steed's sheet and the rider. A turn undone
+// brings the same sheet back, and a fall decided before the undo that no
+// door took was read by a later blow as its own: the rider kept the saddle
+// of a steed at 0, no reaction spent, and the result said one was.
 const decided = new Map<string, ToolResult>();
-const key = (steedId: string, riderId: string) => `${steedId}:${riderId}`;
+const key = (turnId: string, steedId: string, riderId: string) => `${turnId}:${steedId}:${riderId}`;
 
 // The steed `riders` sat on has just disappeared under them. Returns what
 // became of each, for the result of the call that did the damage.
@@ -59,14 +62,15 @@ export function ridersFallWith(
     if (decided.size > 200) {
       decided.clear();
     }
-    decided.set(key(steed.id, riderId), fall);
+    decided.set(key(turnId, steed.id, riderId), fall);
     return [{ rider: rider.name, ...fall }];
   });
 }
 
-// The fall already decided for this rider as the steed went, taken once.
-export function takeSteedFall(steedId: string, riderId: string): ToolResult | null {
-  const fall = decided.get(key(steedId, riderId)) ?? null;
-  decided.delete(key(steedId, riderId));
+// The fall already decided for this rider as the steed went on this turn,
+// taken once.
+export function takeSteedFall(turnId: string, steedId: string, riderId: string): ToolResult | null {
+  const fall = decided.get(key(turnId, steedId, riderId)) ?? null;
+  decided.delete(key(turnId, steedId, riderId));
   return fall;
 }

@@ -133,7 +133,7 @@ export function hurtSteed(
 export function riderOfDownedMount(input: { campaign: Campaign; turn: DmTurn; rider: CharacterSheet; mountName: string; sheetId?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> }): ToolResult {
   const { campaign, rider } = input;
   // A steed that disappeared has already taken its rider down (steed-fall.ts).
-  const fallen = input.sheetId ? takeSteedFall(input.sheetId, rider.id) : null;
+  const fallen = input.sheetId ? takeSteedFall(input.turn.id, input.sheetId, rider.id) : null;
   if (fallen) {
     return fallen;
   }
