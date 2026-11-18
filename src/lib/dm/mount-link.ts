@@ -18,6 +18,8 @@ import { publishPersisted } from "@/lib/events";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { MountState } from "@/lib/srd/mounts";
+import { carriedBarding } from "@/lib/srd/barding";
+import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 
 // The creature `rider` called up that `ref` names, by its own name
 // ("Warhorse 2") or, when no creature of theirs has that name, by its form
@@ -33,6 +35,18 @@ export function summonedSteed(campaignId: string, rider: Pick<CharacterSheet, "i
   const byName = made.filter((sheet) => textKey(sheet.name) === wanted);
   const fits = byName.length ? byName : made.filter((sheet) => textKey(sheet.summon?.form ?? "") === wanted);
   return fits.length === 1 ? fits[0] : null;
+}
+
+// The barding a rider carries for their mount, when it protects the mount
+// better than its own hide does (src/lib/srd/barding.ts). The mount's
+// Dexterity is its sheet's or its stat block's; a mount with neither has no
+// Armor Class to better.
+export function mountBarding(rider: Pick<CharacterSheet, "equipment">, mount: MountState, ownAc: number): { name: string; ac: number } | null {
+  const dex = mount.sheetId
+    ? getSheetById(mount.sheetId)?.abilities.dex
+    : SRD_CREATURES.find((creature) => creature.slug === mount.ref)?.abilities.dex;
+  const barding = dex === undefined ? null : carriedBarding(rider.equipment, dex);
+  return barding && barding.ac > ownAc ? barding : null;
 }
 
 // The mount's Armor Class and hit points as they stand: its sheet's when it
