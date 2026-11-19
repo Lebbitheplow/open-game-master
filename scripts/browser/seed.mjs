@@ -717,6 +717,47 @@ for (const viewport of ["desktop", "phone"]) {
   wardrobe[viewport] = table.id;
 }
 
+// A table per viewport for a mount's tack (issue 1038): the lead's rider
+// carries a military saddle nobody has spoken for, which is on her mount,
+// and saddlebags she packed.
+const tackTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `Tack (${viewport})`,
+    description: "A stable yard at first light.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false },
+  });
+  campaigns.setCampaignStatus(table.id, "active");
+  sheets.createSheet(
+    table.id,
+    world.owner.id,
+    3,
+    heroInput({
+      name: "Tamsin Reed",
+      class: "fighter",
+      level: 3,
+      equipment: [
+        { name: "Chain Mail", qty: 1, equipped: true },
+        { name: "Longsword", qty: 1, equipped: true },
+        { name: "Saddle, Military", qty: 1 },
+        { name: "Saddlebags", qty: 1, equipped: false },
+      ],
+    }),
+  );
+  messages.insertCampaignMessage({
+    campaignId: table.id,
+    seq: campaigns.allocateSeq(table.id),
+    authorType: "dm",
+    speech: [],
+    content: "The warhorse stamps in its stall, already saddled.",
+  });
+  tackTables[viewport] = table.id;
+}
+
 // A table per viewport whose GM has put the lead's character in the
 // spotlight after a short rest, so the lead can answer it with a direction.
 // Its own table, since that direction wakes the GM.
@@ -4585,6 +4626,7 @@ const ids = {
   stopTables,
   questTables,
   wardrobe,
+  tackTables,
   spotlightTables,
   directed,
   longOpening,
@@ -4692,6 +4734,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(stopTables).map(([viewport, id]) => [id, `Stop Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(questTables).map(([viewport, table]) => [table.id, `Quest Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(wardrobe).map(([viewport, id]) => [id, `Wardrobe (${viewport})`])),
+    ...Object.fromEntries(Object.entries(tackTables).map(([viewport, id]) => [id, `Tack (${viewport})`])),
     ...Object.fromEntries(Object.entries(spotlightTables).map(([viewport, id]) => [id, `${SPOTLIGHT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(directed).map(([viewport, table]) => [table.id, `Directed Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(enemyTurns).map(([viewport, table]) => [table.id, `Enemy Turn Table (${viewport})`])),
