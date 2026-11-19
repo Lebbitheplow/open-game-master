@@ -447,8 +447,18 @@ export async function buildIconList() {
 
   // Approved circular exports are independent of both item hover art and
   // rectangular action cards; generator runs must preserve them.
-  for (const { id, label } of readJson("docs/art/inventory-2026-11-16.json").records) {
+  for (const { id, label } of ["inventory-2026-11-16", "core-equipment-2026-11-18"].flatMap(name => readJson(`docs/art/${name}.json`).records)) {
     list.push(entry("inventory", id, label, label, { externalArt: true, width: 256, height: 256 }));
+  }
+
+  // These established paths now reuse the circular paintings. A generator
+  // rebuild must not bring back the superseded artwork at those paths.
+  for (const { group, key, label } of readJson("docs/art/legacy-inventory-replacements-2026-11-18.json").records) {
+    const id = `${group}-${key}`;
+    const at = list.findIndex(icon => icon.id === id);
+    const preserved = { externalArt: true, width: 256, height: 256 };
+    if (at >= 0) Object.assign(list[at], preserved);
+    else list.push(entry(group, key, label, label, preserved));
   }
 
   // Damage types, for the log and the delivery table's chips.

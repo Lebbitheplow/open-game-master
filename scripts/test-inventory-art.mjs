@@ -93,7 +93,7 @@ expect("Moonblade", "weapon-longsword", { srdName: "Longsword" });
 expect("Blue Wrists", "magic-bracers", { srdName: "Bracers of Defense" });
 expect("Unknown trinket", "item-gear", { identified: false, srdName: "Bracers of Defense", slug: "bracers-of-defense" });
 expect("Dinner Plate", "item-gear");
-expect("Signet Ring", "item-gear");
+expect("Signet Ring", "gear-signet-ring");
 // A leading form word that only describes the next word is not the item:
 // these drew boots, an ioun stone, a belt, gloves and a horn before.
 for (const name of ["Boot knife", "Stone tablet", "Belt buckle", "Glove puppet", "Horn bow", "Candle holder"]) expect(name, "item-gear");
