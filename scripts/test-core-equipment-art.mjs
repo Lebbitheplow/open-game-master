@@ -59,16 +59,17 @@ for (const [name, key] of [
   ["Druidic Focus", "gear-druidic-focus"], ["Tent", "gear-tent-two-person"],
 ]) assert.equal(inventoryItemIcon({ name }).key, key, name);
 assert.equal(inventoryItemIcon({ name: "Local name", srdName: "Spyglass" }).key, "gear-spyglass");
+// A legacy path draws its circular painting from icons/inventory and keeps
+// no copy of its own, so the apps carry each painting once and a generator
+// run cannot paint the superseded artwork back there.
 for (const row of legacy) {
-  const bytes = fs.readFileSync(path.join(root, "public", row.src));
-  const replacement = fs.readFileSync(path.join(root, "public", row.replacement));
-  assert.deepEqual(bytes, replacement, row.src);
-  assert.equal(hash(bytes), row.sha256);
-  assert.notEqual(hash(bytes), row.previousSha256);
-  const entry = catalogue.find(icon => icon.id === `${row.group}-${row.key}`);
-  assert.equal(entry?.externalArt, true, row.src);
+  assert.equal(iconPath(row.group, row.key), row.replacement, row.src);
+  assert.equal(fs.existsSync(path.join(root, "public", row.src)), false, `${row.src} is a second copy of ${row.replacement}`);
+  assert.notEqual(hash(fs.readFileSync(path.join(root, "public", row.replacement))), row.previousSha256);
+  assert.equal(catalogue.some(icon => icon.id === `${row.group}-${row.key}`), false, row.src);
+  assert.equal(manifest.some(icon => icon.src === row.src), false, row.src);
   const rendered = renderToStaticMarkup(createElement(GameIcon, { icon: { kind: row.group, key: row.key } }));
-  assert.ok(rendered.includes(row.src), row.src);
+  assert.ok(rendered.includes(row.replacement), row.src);
   assert.ok(rendered.includes(`transform:scale(${metadata[row.inventoryKey].scale})`), row.src);
   assert.ok(!rendered.includes("scale-[1.7]"), row.src);
 }

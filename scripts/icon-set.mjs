@@ -451,16 +451,6 @@ export async function buildIconList() {
     list.push(entry("inventory", id, label, label, { externalArt: true, width: 256, height: 256 }));
   }
 
-  // These established paths now reuse the circular paintings. A generator
-  // rebuild must not bring back the superseded artwork at those paths.
-  for (const { group, key, label } of readJson("docs/art/legacy-inventory-replacements-2026-11-18.json").records) {
-    const id = `${group}-${key}`;
-    const at = list.findIndex(icon => icon.id === id);
-    const preserved = { externalArt: true, width: 256, height: 256 };
-    if (at >= 0) Object.assign(list[at], preserved);
-    else list.push(entry(group, key, label, label, preserved));
-  }
-
   // Damage types, for the log and the delivery table's chips.
   for (const [type, subject] of Object.entries({
     fire: "a flame", cold: "a snowflake of ice", lightning: "a lightning bolt", acid: "a dripping green drop", poison: "a skull and a green vial",
@@ -488,6 +478,13 @@ export async function buildIconList() {
       e.prompt = `a symbolic icon of ${overrides[e.id]}${tone ? `, ${tone}` : ""}, a wordless pictogram, ${ICON_STYLE}`;
     }
   }
+
+  // The legacy paths that now draw a circular painting (src/lib/icons.ts
+  // sends them to icons/inventory) keep no file of their own: a copy there
+  // shipped the same bytes twice in every app, and a generator rebuild must
+  // not paint the superseded artwork back.
+  const replaced = new Set(readJson("docs/art/legacy-inventory-replacements-2026-11-18.json").records.map(({ group, key }) => `${group}-${key}`));
+  for (let at = list.length - 1; at >= 0; at -= 1) if (replaced.has(list[at].id)) list.splice(at, 1);
 
   const ids = new Set();
   for (const e of list) {

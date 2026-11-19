@@ -41,7 +41,8 @@ test("paths are root relative and the fallback chain is own icon, then family", 
   assert.equal(familyIconPath("spell-evocation"), "/assets/icons/family/spell-evocation.webp");
   assert.deepEqual(iconCandidates({ kind: "item", key: "Chain Mail", family: "item-armor" }), [
     "/assets/icons/item/chain-mail.webp",
-    "/assets/icons/family/item-armor.webp",
+    // The armor family draws the breastplate's circular painting.
+    "/assets/icons/inventory/armor-breastplate.webp",
   ]);
   // A name the catalogue never painted is not asked for: its family's icon
   // is the first and only try.

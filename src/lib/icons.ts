@@ -10,6 +10,7 @@
 // Pure, so scripts/test-icons.mjs drives it.
 
 import paintedIcons from "@/lib/painted-icons.json";
+import legacyInventoryArt from "@/lib/legacy-inventory-art.json";
 
 export type IconKind = "spell" | "item" | "inventory" | "feature" | "option" | "feat" | "condition" | "action" | "glyph" | "family";
 
@@ -161,8 +162,15 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "family/option-gadget": { kind: "family", slug: "option-infusion" },
 };
 
+// Older item and family paths whose picture is now a circular inventory
+// painting. They point at that file instead of keeping a copy of it, so the
+// apps carry each painting once.
+const INVENTORY_PAINTED = legacyInventoryArt as Record<string, string>;
+
 export function iconPath(kind: IconKind, key: string): string {
   const slug = iconSlug(key);
+  const painting = INVENTORY_PAINTED[`${kind}/${slug}`];
+  if (painting) return `/assets/icons/inventory/${painting}.webp`;
   const alias = ICON_ALIASES[`${kind}/${slug}`];
   return alias ? `/assets/icons/${alias.kind}/${alias.slug}.webp` : `/assets/icons/${kind}/${slug}.webp`;
 }

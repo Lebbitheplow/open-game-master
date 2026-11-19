@@ -1,5 +1,5 @@
 {
-  "description": "42 legacy paths now contain the approved circular inventory artwork. Original hashes are retained; replacement sources and prompts are recorded in inventory-2026-11-16.json.",
+  "description": "42 legacy paths now draw the approved circular inventory artwork. Original hashes are retained; replacement sources and prompts are recorded in inventory-2026-11-16.json and core-equipment-2026-11-18.json. Since the 1118b release review each legacy path resolves to its replacement (src/lib/icons.ts, src/lib/legacy-inventory-art.json) and keeps no file of its own: the copies were byte-identical to the replacements and shipped twice in the apps. sha256 and bytes describe the replacement as merged.",
   "records": [
     {
       "group": "family",

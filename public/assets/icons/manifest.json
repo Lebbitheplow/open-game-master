@@ -1019,32 +1019,6 @@
       "kind": "armor"
     },
     {
-      "id": "item-plate",
-      "group": "item",
-      "key": "Plate",
-      "label": "Plate",
-      "src": "/assets/icons/item/plate.webp",
-      "bytes": 10634,
-      "seed": 1066632175,
-      "kind": "armor",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-shield",
-      "group": "item",
-      "key": "Shield",
-      "label": "Shield",
-      "src": "/assets/icons/item/shield.webp",
-      "bytes": 16778,
-      "seed": 1209757732,
-      "kind": "armor",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-armorweave-vest",
       "group": "item",
       "key": "armorweave-vest",
@@ -1131,19 +1105,6 @@
       "bytes": 3700,
       "seed": 196803178,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-amulet-of-health",
-      "group": "item",
-      "key": "amulet-of-health",
-      "label": "Amulet of Health",
-      "src": "/assets/icons/item/amulet-of-health.webp",
-      "bytes": 16558,
-      "seed": 2025873884,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-amulet-of-proof-against-detection-and-location",
@@ -1256,19 +1217,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-bag-of-holding",
-      "group": "item",
-      "key": "bag-of-holding",
-      "label": "Bag of Holding",
-      "src": "/assets/icons/item/bag-of-holding.webp",
-      "bytes": 19058,
-      "seed": 956058247,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-bag-of-tricks",
       "group": "item",
       "key": "bag-of-tricks",
@@ -1299,19 +1247,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-belt-of-giant-strength",
-      "group": "item",
-      "key": "belt-of-giant-strength",
-      "label": "Belt of Giant Strength",
-      "src": "/assets/icons/item/belt-of-giant-strength.webp",
-      "bytes": 19348,
-      "seed": 1533468408,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-berserker-axe",
       "group": "item",
       "key": "berserker-axe",
@@ -1320,19 +1255,6 @@
       "bytes": 2410,
       "seed": 1349265788,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-boots-of-elvenkind",
-      "group": "item",
-      "key": "boots-of-elvenkind",
-      "label": "Boots of Elvenkind",
-      "src": "/assets/icons/item/boots-of-elvenkind.webp",
-      "bytes": 18498,
-      "seed": 400692989,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-boots-of-levitation",
@@ -1375,19 +1297,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-bowl-of-commanding-water-elementals",
-      "group": "item",
-      "key": "bowl-of-commanding-water-elementals",
-      "label": "Bowl of Commanding Water Elementals",
-      "src": "/assets/icons/item/bowl-of-commanding-water-elementals.webp",
-      "bytes": 19538,
-      "seed": 1018699502,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-bracers-of-archery",
       "group": "item",
       "key": "bracers-of-archery",
@@ -1396,71 +1305,6 @@
       "bytes": 3086,
       "seed": 2119754636,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-bracers-of-defense",
-      "group": "item",
-      "key": "bracers-of-defense",
-      "label": "Bracers of Defense",
-      "src": "/assets/icons/item/bracers-of-defense.webp",
-      "bytes": 25138,
-      "seed": 1737025063,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-brazier-of-commanding-fire-elementals",
-      "group": "item",
-      "key": "brazier-of-commanding-fire-elementals",
-      "label": "Brazier of Commanding Fire Elementals",
-      "src": "/assets/icons/item/brazier-of-commanding-fire-elementals.webp",
-      "bytes": 20368,
-      "seed": 1136943173,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-brooch-of-shielding",
-      "group": "item",
-      "key": "brooch-of-shielding",
-      "label": "Brooch of Shielding",
-      "src": "/assets/icons/item/brooch-of-shielding.webp",
-      "bytes": 19962,
-      "seed": 74090877,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-broom-of-flying",
-      "group": "item",
-      "key": "broom-of-flying",
-      "label": "Broom of Flying",
-      "src": "/assets/icons/item/broom-of-flying.webp",
-      "bytes": 11810,
-      "seed": 1387946113,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-candle-of-invocation",
-      "group": "item",
-      "key": "candle-of-invocation",
-      "label": "Candle of Invocation",
-      "src": "/assets/icons/item/candle-of-invocation.webp",
-      "bytes": 16566,
-      "seed": 1161401975,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-cape-of-the-mountebank",
@@ -1473,32 +1317,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-carpet-of-flying",
-      "group": "item",
-      "key": "carpet-of-flying",
-      "label": "Carpet of Flying",
-      "src": "/assets/icons/item/carpet-of-flying.webp",
-      "bytes": 24890,
-      "seed": 1506963225,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-censer-of-controlling-air-elementals",
-      "group": "item",
-      "key": "censer-of-controlling-air-elementals",
-      "label": "Censer of Controlling Air Elementals",
-      "src": "/assets/icons/item/censer-of-controlling-air-elementals.webp",
-      "bytes": 18910,
-      "seed": 691639901,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-chime-of-opening",
       "group": "item",
       "key": "chime-of-opening",
@@ -1507,19 +1325,6 @@
       "bytes": 1922,
       "seed": 962756959,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-circlet-of-blasting",
-      "group": "item",
-      "key": "circlet-of-blasting",
-      "label": "Circlet of Blasting",
-      "src": "/assets/icons/item/circlet-of-blasting.webp",
-      "bytes": 12660,
-      "seed": 960439561,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-cloak-of-arachnida",
@@ -1582,32 +1387,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-crystal-ball",
-      "group": "item",
-      "key": "crystal-ball",
-      "label": "Crystal Ball",
-      "src": "/assets/icons/item/crystal-ball.webp",
-      "bytes": 16458,
-      "seed": 1876403525,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-cube-of-force",
-      "group": "item",
-      "key": "cube-of-force",
-      "label": "Cube of Force",
-      "src": "/assets/icons/item/cube-of-force.webp",
-      "bytes": 21428,
-      "seed": 1291763200,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-cubic-gate",
       "group": "item",
       "key": "cubic-gate",
@@ -1658,19 +1437,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-deck-of-many-things",
-      "group": "item",
-      "key": "deck-of-many-things",
-      "label": "Deck of Many Things",
-      "src": "/assets/icons/item/deck-of-many-things.webp",
-      "bytes": 21654,
-      "seed": 866659721,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-defender",
       "group": "item",
       "key": "defender",
@@ -1689,19 +1455,6 @@
       "bytes": 3224,
       "seed": 564892106,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-dimensional-shackles",
-      "group": "item",
-      "key": "dimensional-shackles",
-      "label": "Dimensional Shackles",
-      "src": "/assets/icons/item/dimensional-shackles.webp",
-      "bytes": 20496,
-      "seed": 467219250,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-dragon-scale-mail",
@@ -1784,19 +1537,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-efreeti-bottle",
-      "group": "item",
-      "key": "efreeti-bottle",
-      "label": "Efreeti Bottle",
-      "src": "/assets/icons/item/efreeti-bottle.webp",
-      "bytes": 15920,
-      "seed": 427677788,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-elemental-gem",
       "group": "item",
       "key": "elemental-gem",
@@ -1857,32 +1597,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-feather-token",
-      "group": "item",
-      "key": "feather-token",
-      "label": "Feather Token",
-      "src": "/assets/icons/item/feather-token.webp",
-      "bytes": 16540,
-      "seed": 1631528321,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-figurine-of-wondrous-power",
-      "group": "item",
-      "key": "figurine-of-wondrous-power",
-      "label": "Figurine of Wondrous Power",
-      "src": "/assets/icons/item/figurine-of-wondrous-power.webp",
-      "bytes": 18454,
-      "seed": 253129719,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-flame-tongue",
       "group": "item",
       "key": "flame-tongue",
@@ -1913,19 +1627,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-gauntlets-of-ogre-power",
-      "group": "item",
-      "key": "gauntlets-of-ogre-power",
-      "label": "Gauntlets of Ogre Power",
-      "src": "/assets/icons/item/gauntlets-of-ogre-power.webp",
-      "bytes": 25668,
-      "seed": 89249195,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-gem-of-brightness",
       "group": "item",
       "key": "gem-of-brightness",
@@ -1934,19 +1635,6 @@
       "bytes": 1806,
       "seed": 1229575010,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-gem-of-seeing",
-      "group": "item",
-      "key": "gem-of-seeing",
-      "label": "Gem of Seeing",
-      "src": "/assets/icons/item/gem-of-seeing.webp",
-      "bytes": 18894,
-      "seed": 938415120,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-giant-slayer",
@@ -1969,19 +1657,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-gloves-of-missile-snaring",
-      "group": "item",
-      "key": "gloves-of-missile-snaring",
-      "label": "Gloves of Missile Snaring",
-      "src": "/assets/icons/item/gloves-of-missile-snaring.webp",
-      "bytes": 21048,
-      "seed": 2125581021,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-gloves-of-swimming-and-climbing",
       "group": "item",
       "key": "gloves-of-swimming-and-climbing",
@@ -1990,19 +1665,6 @@
       "bytes": 2510,
       "seed": 1681771025,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-goggles-of-night",
-      "group": "item",
-      "key": "goggles-of-night",
-      "label": "Goggles of Night",
-      "src": "/assets/icons/item/goggles-of-night.webp",
-      "bytes": 18666,
-      "seed": 441551917,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-hammer-of-thunderbolts",
@@ -2025,32 +1687,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-hat-of-disguise",
-      "group": "item",
-      "key": "hat-of-disguise",
-      "label": "Hat of Disguise",
-      "src": "/assets/icons/item/hat-of-disguise.webp",
-      "bytes": 13622,
-      "seed": 1671944005,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
-      "id": "item-headband-of-intellect",
-      "group": "item",
-      "key": "headband-of-intellect",
-      "label": "Headband of Intellect",
-      "src": "/assets/icons/item/headband-of-intellect.webp",
-      "bytes": 15918,
-      "seed": 1315260444,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-helm-of-brilliance",
       "group": "item",
       "key": "helm-of-brilliance",
@@ -2059,19 +1695,6 @@
       "bytes": 3746,
       "seed": 158942330,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-helm-of-comprehending-languages",
-      "group": "item",
-      "key": "helm-of-comprehending-languages",
-      "label": "Helm of Comprehending Languages",
-      "src": "/assets/icons/item/helm-of-comprehending-languages.webp",
-      "bytes": 16690,
-      "seed": 1151371940,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-helm-of-telepathy",
@@ -2104,19 +1727,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-horn-of-blasting",
-      "group": "item",
-      "key": "horn-of-blasting",
-      "label": "Horn of Blasting",
-      "src": "/assets/icons/item/horn-of-blasting.webp",
-      "bytes": 17160,
-      "seed": 1562076515,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-horn-of-valhalla",
       "group": "item",
       "key": "horn-of-valhalla",
@@ -2125,19 +1735,6 @@
       "bytes": 2120,
       "seed": 686903935,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-horseshoes-of-speed",
-      "group": "item",
-      "key": "horseshoes-of-speed",
-      "label": "Horseshoes of Speed",
-      "src": "/assets/icons/item/horseshoes-of-speed.webp",
-      "bytes": 20952,
-      "seed": 1870859443,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-horseshoes-of-a-zephyr",
@@ -2208,19 +1805,6 @@
       "bytes": 4104,
       "seed": 940010717,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-lantern-of-revealing",
-      "group": "item",
-      "key": "lantern-of-revealing",
-      "label": "Lantern of Revealing",
-      "src": "/assets/icons/item/lantern-of-revealing.webp",
-      "bytes": 5744,
-      "seed": 1089525065,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-luck-blade",
@@ -2333,19 +1917,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-mirror-of-life-trapping",
-      "group": "item",
-      "key": "mirror-of-life-trapping",
-      "label": "Mirror of Life Trapping",
-      "src": "/assets/icons/item/mirror-of-life-trapping.webp",
-      "bytes": 10812,
-      "seed": 1664571364,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-mithral-armor",
       "group": "item",
       "key": "mithral-armor",
@@ -2374,19 +1945,6 @@
       "bytes": 4242,
       "seed": 274676707,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-necklace-of-prayer-beads",
-      "group": "item",
-      "key": "necklace-of-prayer-beads",
-      "label": "Necklace of Prayer Beads",
-      "src": "/assets/icons/item/necklace-of-prayer-beads.webp",
-      "bytes": 20414,
-      "seed": 1828624015,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-nine-lives-stealer",
@@ -2449,19 +2007,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-pearl-of-power",
-      "group": "item",
-      "key": "pearl-of-power",
-      "label": "Pearl of Power",
-      "src": "/assets/icons/item/pearl-of-power.webp",
-      "bytes": 11126,
-      "seed": 1208047879,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-periapt-of-health",
       "group": "item",
       "key": "periapt-of-health",
@@ -2500,19 +2045,6 @@
       "bytes": 1278,
       "seed": 1823891303,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-pipes-of-haunting",
-      "group": "item",
-      "key": "pipes-of-haunting",
-      "label": "Pipes of Haunting",
-      "src": "/assets/icons/item/pipes-of-haunting.webp",
-      "bytes": 18282,
-      "seed": 1158496128,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-pipes-of-the-sewers",
@@ -2805,19 +2337,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-ring-of-protection",
-      "group": "item",
-      "key": "ring-of-protection",
-      "label": "Ring of Protection",
-      "src": "/assets/icons/item/ring-of-protection.webp",
-      "bytes": 17562,
-      "seed": 1770913429,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-ring-of-regeneration",
       "group": "item",
       "key": "ring-of-regeneration",
@@ -2976,19 +2495,6 @@
       "bytes": 2462,
       "seed": 920341446,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-robe-of-the-archmagi",
-      "group": "item",
-      "key": "robe-of-the-archmagi",
-      "label": "Robe of the Archmagi",
-      "src": "/assets/icons/item/robe-of-the-archmagi.webp",
-      "bytes": 15440,
-      "seed": 340164531,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-rod-of-absorption",
@@ -3271,19 +2777,6 @@
       "kind": "magic_item"
     },
     {
-      "id": "item-stone-of-good-luck-luckstone",
-      "group": "item",
-      "key": "stone-of-good-luck-luckstone",
-      "label": "Stone of Good Luck (Luckstone)",
-      "src": "/assets/icons/item/stone-of-good-luck-luckstone.webp",
-      "bytes": 16134,
-      "seed": 630603031,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
-    },
-    {
       "id": "item-sun-blade",
       "group": "item",
       "key": "sun-blade",
@@ -3352,19 +2845,6 @@
       "bytes": 2494,
       "seed": 291363353,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-tome-of-clear-thought",
-      "group": "item",
-      "key": "tome-of-clear-thought",
-      "label": "Tome of Clear Thought",
-      "src": "/assets/icons/item/tome-of-clear-thought.webp",
-      "bytes": 24446,
-      "seed": 241934077,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-tome-of-leadership-and-influence",
@@ -3575,19 +3055,6 @@
       "bytes": 2866,
       "seed": 1135655055,
       "kind": "magic_item"
-    },
-    {
-      "id": "item-wind-fan",
-      "group": "item",
-      "key": "wind-fan",
-      "label": "Wind Fan",
-      "src": "/assets/icons/item/wind-fan.webp",
-      "bytes": 15350,
-      "seed": 1925007483,
-      "kind": "magic_item",
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "item-winged-boots",
@@ -4157,18 +3624,6 @@
       "src": "/assets/icons/family/item-weapon.webp",
       "bytes": 1918,
       "seed": 583825739
-    },
-    {
-      "id": "family-item-armor",
-      "group": "family",
-      "key": "item-armor",
-      "label": "armor",
-      "src": "/assets/icons/family/item-armor.webp",
-      "bytes": 18416,
-      "seed": 1080564482,
-      "width": 256,
-      "height": 256,
-      "generator": "image_gen"
     },
     {
       "id": "family-item-gear",
