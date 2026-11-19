@@ -365,11 +365,14 @@ export async function readClaims(
   const speakers = input.kinds.includes("speaker")
     ? speakerRoster(campaign.id, input.sheets, creatures, input.registering, campaign.storyArc)
     : new Map<string, Speaker>();
-  // Who speaks is asked only when the passage names someone it could be.
+  // The listed people the passage names: the only refs offered. Who speaks is
+  // asked of a passage that names none of them too, so long as it quotes
+  // someone, for a name the narrator gave a newcomer it never registered
+  // (issue 1027).
   const named = namedSpeakers(input.text, speakers);
   // A bond only of a passage that names someone tracked (issue 641).
   const bonds = input.kinds.includes("bond") ? bondRefs(campaign, input.sheets, input.text, input.words ?? [], Boolean(input.outcomes.liveFight)) : null;
-  const kinds = input.kinds.filter((kind) => (kind !== "speaker" || named.size > 0) && (kind !== "bond" || bonds !== null));
+  const kinds = input.kinds.filter((kind) => (kind !== "speaker" || named.size > 0 || hasQuotedLine(input.text)) && (kind !== "bond" || bonds !== null));
   if (!kinds.length) {
     return [];
   }

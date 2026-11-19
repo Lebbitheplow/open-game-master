@@ -488,12 +488,20 @@ await test("Who speaks is read from the public cast, the party and an NPC the re
     ["Benvenuti.", "Bruno", ""],
   ]);
   assert.match(model.readerRequests[0].messages[1].content, new RegExp(`^Speaker refs: "${marla.id}" for Marla Venn, "new:Bruno" for Bruno$`, "m"), "only the people the passage names are listed");
-  model.claims([]);
-  assert.deepEqual(
-    await readClaims(world.campaign(), { label: "turn test", text: "Una voce nel buio: «Chi va là?»", kinds: ["speaker"], outcomes, sheets: world.sheets() }),
-    [],
-  );
-  assert.equal(model.readerRequests.length, 0, "a passage naming nobody is not read for its speakers");
+  // A passage that quotes someone and names nobody listed is still read, for
+  // a newcomer the narrator named and never registered (issue 1027); the
+  // name stays only proposed until the prose confirms it (speech-lines.ts).
+  model.claims([[{ kind: "speaker", name: "Una voce", quote: "Chi va là?" }]]);
+  const unlisted = await readClaims(world.campaign(), { label: "turn test", text: "Una voce nel buio: «Chi va là?»", kinds: ["speaker"], outcomes, sheets: world.sheets() });
+  assert.deepEqual(unlisted.map((claim) => [claim.line, claim.speaker.name, claim.speaker.id, claim.speaker.proposed]), [["Chi va là?", "Una voce", "", true]]);
+  assert.match(model.readerRequests.at(-1).messages[1].content, /^Speaker refs: \(none\)$/m, "nobody listed is offered");
+  const asked = model.readerRequests.length;
+  assert.deepEqual(await readClaims(world.campaign(), { label: "turn test", text: "Nobody speaks.", kinds: ["speaker"], outcomes, sheets: world.sheets() }), []);
+  assert.equal(model.readerRequests.length, asked, "a passage quoting nobody is not read for its speakers");
+  // A name the passage gives a listed person is that person.
+  model.claims([[{ kind: "speaker", name: "Marla Venn", quote: "Sei tornato" }]]);
+  const byName = await readClaims(world.campaign(), { label: "turn test", text: "Marla Venn alza lo sguardo: «Sei tornato.»", kinds: ["speaker"], outcomes, sheets: world.sheets() });
+  assert.deepEqual(byName.map((claim) => [claim.speaker.id, claim.speaker.proposed]), [[marla.id, undefined]]);
   model.close();
 });
 

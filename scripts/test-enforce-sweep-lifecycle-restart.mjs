@@ -63,6 +63,8 @@ const REGISTRY = {
   "call-tracker.ts:__odmUtilityCalls": { kind: PLUMBING, what: "model calls in flight" },
   "cast.ts:__odmCastSent": { kind: PLUMBING, what: "digests of the cast last sent: empty, the next write sends it again" },
   "cast.ts:__odmCastPending": { kind: PLUMBING, what: "a send already queued this tick" },
+  "cast.ts:__odmCastNames": { kind: PLUMBING, what: "the cast's names as last seen: empty, the next table open records them and the backfill reads the transcript again" },
+  "speech-reread.ts:__odmSpeechBackfilled": { kind: PLUMBING, what: "campaigns whose transcript was read again this start: empty, the next table open reads it again, and a line already given keeps its speaker" },
   "chapter-close.ts:__odmChapterPacing": { kind: PLUMBING, what: "chapter pacing counters, rebuilt from the transcript" },
   "chronal-shift.ts:__odmArmedShifts": { kind: PLUMBING, what: "armed only while one call runs" },
   "claims.ts:__odmReaderReplies": { kind: PLUMBING, what: "a cache of reader replies" },

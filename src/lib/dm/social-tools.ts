@@ -229,12 +229,14 @@ function bootstrapAgency(
   return patchNpcAgency(npc.id, patch) ?? npc;
 }
 
-// The story plan's cast member a line of narration was given to, registered
-// as set_npc registers a name with nothing more said: the narrator brought
-// them on stage without the call, and a speaker with no row has no face, no
-// voice and no place in the people panel (issue 1027). Their attitude stays
-// the default until the story or a social_check moves it.
-export function registerPlannedNpc(campaign: Pick<Campaign, "id" | "storyArc">, name: string): Npc {
+// Someone a line of narration was given to who has no row yet (one of the
+// story plan's cast, or a newcomer the prose names), registered as set_npc
+// registers a name with nothing more said: the narrator brought them on stage
+// without the call, and a speaker with no row has no face, no voice and no
+// place in the people panel (issue 1027). A planned person is linked to the
+// plan's cast. Their attitude stays the default until the story or a
+// social_check moves it.
+export function registerSpeakingNpc(campaign: Pick<Campaign, "id" | "storyArc">, name: string): Npc {
   return bootstrapAgency(campaign, upsertNpc({ campaignId: campaign.id, name }), {});
 }
 

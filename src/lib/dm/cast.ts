@@ -4,6 +4,7 @@ import { departedSheet } from "@/lib/db/companion-conscience";
 import { characterPlaceholder } from "@/lib/placeholders";
 import { publishEphemeral } from "@/lib/events";
 import { heardKey, knownCast } from "@/lib/dm/cast-logic";
+import { textKey } from "@/lib/language/text-logic";
 import type { SpokenLine } from "@/lib/dm/speech";
 
 // The cast as the seats may see it (docs/vtt-parity-implementation-plan.md
@@ -69,7 +70,32 @@ export function wholeCast(campaignId: string): CastMember[] {
 export function castForSeat(campaignId: string, secretStory: boolean): CastMember[] {
   lastSent().delete(campaignId);
   const cast = wholeCast(campaignId);
+  // The names the cast answers to from here on, and the transcript read
+  // again for lines that went to nobody (src/lib/dm/speech-reread.ts).
+  addedNames(campaignId);
+  void import("@/lib/dm/speech-reread").then((reread) => reread.scheduleSpeakerBackfill(campaignId)).catch(() => undefined);
   return secretStory ? cast : knownCast(cast);
+}
+
+declare global {
+  var __odmCastNames: Map<string, Set<string>> | undefined;
+}
+
+// The names the cast answers to that it did not the last time it was looked
+// at, keyed (textKey). The first look at a campaign since the server started
+// finds none: the backfill above reads the transcript then.
+function addedNames(campaignId: string): string[] {
+  const seen = (globalThis.__odmCastNames ??= new Map<string, Set<string>>());
+  const names = new Set(
+    listCastNpcs(campaignId)
+      .filter((npc) => !npc.archived)
+      .flatMap((npc) => [npc.name, ...npc.aliases])
+      .map(textKey)
+      .filter(Boolean),
+  );
+  const before = seen.get(campaignId);
+  seen.set(campaignId, names);
+  return before ? [...names].filter((name) => !before.has(name)) : [];
 }
 
 function departedPlate(npc: Npc): string {
@@ -159,6 +185,16 @@ onCastTouched((campaignId) => {
       syncCast(campaignId);
     } catch (error) {
       console.error(`[cast] ${campaignId}: the cast was not sent (${error instanceof Error ? error.message : "error"})`);
+    }
+    // Someone new the table can now name: the lines they spoke before they
+    // were registered find them (issue 1027).
+    const added = addedNames(campaignId);
+    if (added.length) {
+      void import("@/lib/dm/speech-reread")
+        .then((reread) => reread.rereadSpeakers(campaignId, added))
+        .catch((error: unknown) => {
+          console.error(`[cast] ${campaignId}: earlier lines were not read again (${error instanceof Error ? error.message : "error"})`);
+        });
     }
   });
 });

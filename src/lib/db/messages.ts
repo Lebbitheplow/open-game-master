@@ -384,6 +384,18 @@ export function updateMessageContent(messageId: string, content: string, speech:
   return message;
 }
 
+// A message's speakers read again (src/lib/dm/speech-reread.ts): only who
+// speaks its lines changes, and only while its words are still the ones that
+// were read. The caller publishes message_updated.
+export function setMessageSpeech(messageId: string, content: string, speech: readonly SpokenLine[]): CampaignMessage | null {
+  const result = getDatabase()
+    .prepare(`UPDATE campaign_messages SET speech_json = ? WHERE id = ? AND content = ?`)
+    .run(speech.length ? JSON.stringify(speech) : null, messageId, content);
+  const message = result.changes > 0 ? getCampaignMessage(messageId) : null;
+  namesHeardIn(message);
+  return message;
+}
+
 // The newest DM narration in the campaign. Rerolls are offered on this
 // message only: an older one has already been read, reacted to, and built on.
 // An out-of-character answer is not narration (src/lib/dm/ooc-question.ts),
