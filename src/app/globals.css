@@ -668,6 +668,15 @@ body::before {
       opacity var(--dur-quick) var(--ease-snap),
       transform var(--dur-move) var(--ease-spring);
   }
+  /* A card that is also .texture-noise shares ::before with the grain, and
+     the grain's 5% opacity, noise fill and rounded corners fell on the
+     top-left bracket, which all but vanished (the login card, the invite
+     letter). The bracket wins; the grain was already cut to its 14px box. */
+  .ornate.texture-noise::before {
+    opacity: 1;
+    background-image: none;
+    border-radius: 0;
+  }
   .ornate.motion-card::before,
   .ornate.motion-card::after {
     opacity: 0;

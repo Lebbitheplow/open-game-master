@@ -24,7 +24,7 @@ written story theme. A player can use Woodland in either day or night mode.
 | Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
-| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece turns), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
+| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece is mirrored into the other three), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
 | Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
 | Symbols | `src/components/ThemeIcon.tsx`, `ThemeEmblem.tsx` | One checked icon map serves the picker and lobby fitting |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |
@@ -131,7 +131,7 @@ explicit reset prevents one theme from inheriting another theme's artwork.
 | --- | --- | --- |
 | `texture` | `--theme-art-texture` | Repeating, evenly lit material with restrained contrast; no baked-in borders |
 | `frame` | `--theme-art-frame` | Square border with a transparent center, suitable for nine-slice rendering; default slice is 22% |
-| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; rotates for the other three corners |
+| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; mirrored for the other three corners, so anything with an up in it stays upright |
 | `backdrop` | `--theme-art-backdrop` | Wide opaque scene that remains readable when cropped for a shallow banner |
 
 The shared renderer automatically uses the frame and corner slots. Registering
@@ -165,13 +165,22 @@ button's fill, so inspect that visible highlight when testing the chosen color.
 
 Arcane and Gothic reuse their frame image for the `corner` slot. Their catalog
 entries set `cornerScale: 4`, which displays the top-left 25% of each image axis
-(one sixteenth of its area) before rotation. The registry writes the matching
+(one sixteenth of its area) at each corner, that corner of the frame as
+painted. The registry writes the matching
 background size and position for both the page and picker; do not override those
 geometry variables in CSS. The optional `frameSlice` sets the nine-slice inset as
 a percentage (default 22). The art checker reads the same scale and inset. Keep that
 crop's lower-right interior transparent. For a separate complete corner image,
 omit `cornerScale` to use the defaults `contain` and `center`.
 This avoids generating a second fitting that does not match its frame.
+A separate corner image is the top-left corner; the other three are it
+mirrored, never turned, so a gem, crest or leaf keeps its up.
+
+A flat panel's corner brackets are `.ornate::before` (top left) and
+`::after` (bottom right). A theme that thickens them gives each its own two
+sides, as `border-width: 2px 0 0 2px` and `0 2px 2px 0`: one width for both
+draws a closed box, and the contract check refuses it. A `double` style
+needs at least 3px to show two lines.
 
 The neutral hooks already exist in the components:
 

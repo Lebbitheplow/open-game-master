@@ -15,12 +15,16 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   position: absolute;
   background: var(--theme-art-corner, none) var(--theme-corner-background-position, center) / var(--theme-corner-background-size, contain) no-repeat;
 }
+/* A corner cropped from the frame shows that corner of the frame as painted.
+   A separate corner piece is mirrored into the other three, as a frame
+   maker cuts them: turned by 90 degrees instead, Forge's ember gem lay on
+   its side at the top right. --theme-corner-flip is -1 for a separate piece
+   and 1 for a crop (themeArtStyle sets it). The bottom pair are flipped top
+   to bottom, so their shadow's offset flips with them and still falls down. */
 .theme-ornaments > :nth-child(1) { top: 0; left: 0; }
-/* A separate corner piece turns to each corner; a corner cropped from the
-   frame shows that corner of the frame, unturned (themeArtStyle sets both). */
-.theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: rotate(calc(90deg * var(--theme-corner-turn, 1))); background-position: var(--theme-corner-2-position, center); }
-.theme-ornaments > :nth-child(3) { bottom: 0; right: 0; transform: rotate(calc(180deg * var(--theme-corner-turn, 1))); background-position: var(--theme-corner-3-position, center); }
-.theme-ornaments > :nth-child(4) { bottom: 0; left: 0; transform: rotate(calc(270deg * var(--theme-corner-turn, 1))); background-position: var(--theme-corner-4-position, center); }
+.theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: scale(var(--theme-corner-flip, -1), 1); background-position: var(--theme-corner-2-position, center); }
+.theme-ornaments > :nth-child(3) { bottom: 0; right: 0; transform: scale(var(--theme-corner-flip, -1)); background-position: var(--theme-corner-3-position, center); --ornament-shadow-flip: var(--theme-corner-flip, -1); }
+.theme-ornaments > :nth-child(4) { bottom: 0; left: 0; transform: scale(1, var(--theme-corner-flip, -1)); background-position: var(--theme-corner-4-position, center); --ornament-shadow-flip: var(--theme-corner-flip, -1); }
 .theme-ornaments[data-surface="lobby"] {
   inset: var(--theme-lobby-ornament-inset, -34px);
   z-index: 2;
@@ -43,7 +47,7 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   margin: calc(var(--theme-lobby-rail-offset) * var(--theme-corner-crop, 0));
   width: var(--theme-lobby-corner-size, 196px);
   height: var(--theme-lobby-corner-size, 196px);
-  filter: drop-shadow(0 3px 3px #0006);
+  filter: drop-shadow(0 calc(3px * var(--ornament-shadow-flip, 1)) 3px #0006);
 }
 .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) {
   inset: var(--theme-table-ornament-inset, -10px);
@@ -62,7 +66,7 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   margin: 2px;
   width: var(--theme-table-corner-size, 80px);
   height: var(--theme-table-corner-size, 80px);
-  filter: drop-shadow(0 2px 3px #0005);
+  filter: drop-shadow(0 calc(2px * var(--ornament-shadow-flip, 1)) 3px #0005);
 }
 /* The table and the enlarged map keep their text inside the rail's inner
    edge (theme-session.css), so the rail is a margin, not a cover. It is 24px

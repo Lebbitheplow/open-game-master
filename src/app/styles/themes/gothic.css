@@ -100,4 +100,7 @@
 }
 html[data-appearance="gothic"] .ornate::before,
 html[data-appearance="gothic"] .ornate::after { width: 20px; height: 20px; border-style: double; }
+/* A double line needs 3px to draw two strokes; at the shared 1px it drew one. */
+html[data-appearance="gothic"] .ornate::before { border-width: 3px 0 0 3px; }
+html[data-appearance="gothic"] .ornate::after { border-width: 0 3px 3px 0; }
 [data-appearance="gothic"] > .appearance-preview-frame { border-radius: 48% 48% 0.2rem 0.2rem; }

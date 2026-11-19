@@ -10,7 +10,15 @@ export function assertThemeCss(css, id) {
   const root = postcss.parse(css);
   const owner = new RegExp(`^(?:html)?\\[data-appearance=(?:"${id}"|'${id}')\\](?=[\\s.#:[>]|$)`);
   root.walkAtRules(rule => assert.ok(['media', 'supports', 'container'].includes(rule.name), `${id}: put global @${rule.name} rules in shared styles`));
-  root.walkDecls(decl => assert.ok(!['--theme-frame-slice','--theme-corner-background-size','--theme-corner-background-position'].includes(decl.prop), `${id}: declare artwork geometry in the catalog so rendering and validation agree`));
+  root.walkDecls(decl => assert.ok(!['--theme-frame-slice','--theme-corner-background-size','--theme-corner-background-position','--theme-corner-flip'].includes(decl.prop), `${id}: declare artwork geometry in the catalog so rendering and validation agree`));
+  // The top-left bracket draws its top and left sides, the bottom-right its
+  // bottom and right. One width for both reaches all four sides of each and
+  // draws closed boxes, as Forge's 2px once did.
+  root.walkRules(rule => {
+    const selectors = postcss.list.comma(rule.selector);
+    if (!selectors.some(s => /\.ornate::before$/.test(s)) || !selectors.some(s => /\.ornate::after$/.test(s))) return;
+    rule.walkDecls(/^border(-width)?$/, decl => assert.fail(`${id}: give .ornate::before and ::after their own border widths, not one for both: ${decl.prop}: ${decl.value}`));
+  });
   root.walkRules(rule => {
     assert.notEqual(rule.parent.type, 'rule', `${id}: use full scoped selectors instead of CSS nesting`);
     for (const selector of postcss.list.comma(rule.selector)) {
