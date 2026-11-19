@@ -26,6 +26,9 @@ const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const { settleTurn, turnHolder } = await import("../src/lib/dm/encounter-tools.ts");
 const { applyDmMutation } = await import("../src/lib/dm/mutations.ts");
 const { pushTokenAway } = await import("../src/lib/dm/map-tools.ts");
+const { getBattleMapForEncounter, getTokenByRef } = await import("../src/lib/db/battle-maps.ts");
+const { saveZones } = await import("../src/lib/dm/zone-store.ts");
+const { zoneTurnStart } = await import("../src/lib/dm/zone-triggers.ts");
 const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
 
 const SLOTS = { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } };
@@ -794,6 +797,30 @@ await test("A rider pushed two squares by one call makes one save", async () => 
     const unused = world.clearDice();
     assert.equal(unused, 1, "each square of the push asked the rider's save");
     assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+  });
+});
+
+// Gust of Wind: "Each creature that starts its turn in the line must succeed on a Strength saving throw or be pushed 15 feet away from you."
+await test("A rider Gust of Wind pushes makes the save to stay mounted as the call finishes", async () => {
+  await riding(async () => {
+    const encounter = world.encounter();
+    const map = getBattleMapForEncounter(encounter.id);
+    const cells = [3, 4, 5, 6, 7, 8, 9].map((x) => 5 * map.width + x);
+    saveZones(map.id, [{ id: "gust-rider", spell: "Gust of Wind", casterId: mage.id, casterKind: "pc", casterName: mage.name, origin: { x: 2, y: 5 }, toward: { x: 12, y: 5 }, cells, concentration: false, castRound: encounter.round, untilRound: null, slotLevel: 2, dc: 15 }]);
+    try {
+      world.clearDice();
+      world.diceLog();
+      // The STR save fails, the DEX save to stay mounted is made.
+      world.dice(1, 20);
+      onPersonsTurn(world.campaign(), () => {
+        zoneTurnStart(world.campaign(), world.encounter(), [fighter.id]);
+      });
+      assert.notEqual(getTokenByRef(map.id, fighter.id)?.x, 5, "the gust did not push the rider");
+      assert.equal(world.clearDice(), 0, "the gust's push asked no save to stay mounted");
+      assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+    } finally {
+      saveZones(map.id, []);
+    }
   });
 });
 
