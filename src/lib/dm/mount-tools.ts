@@ -94,7 +94,7 @@ export const mountTools: ToolDef[] = [
           customName: { type: "string", description: "Only for an animal no list has, by its name, with a speed and a size." },
           speed: { type: "integer", minimum: 0, maximum: 200, description: "For a custom mount." },
           size: { type: "string", enum: [...MOUNT_SIZES], description: "For a custom mount." },
-          controlled: { type: "boolean", description: "Default true: it moves on its rider's turn. False only for a creature they called up that acts as it wishes (an independent mount): it keeps its own turn in the order, you play that turn, and its move carries the rider, who has no movement of their own on it." },
+          controlled: { type: "boolean", description: "Default: true, it moves on its rider's turn. False only for a creature they called up that acts as it wishes (an independent mount): it keeps its own turn in the order, you play that turn, and its move carries the rider, who has no movement of their own on it." },
         },
         required: ["characterId"],
       },

@@ -89,8 +89,12 @@ export function independentMountOf(campaignId: string, riderId: string): (MountS
 // stands on that rider's token (db/battle-maps.ts getTokenByRef), and the
 // creature's turn starts that token's movement again.
 export function riderCarriedBy(campaignId: string, sheetId: string): string | null {
-  const found = Object.entries(getMounts(campaignId)).find(([, mount]) => independentMount(mount) && mount.sheetId === sheetId);
-  return found ? found[0] : null;
+  for (const [riderId, mount] of Object.entries(getMounts(campaignId))) {
+    if (independentMount(mount) && mount.sheetId === sheetId) {
+      return riderId;
+    }
+  }
+  return null;
 }
 
 // Who rides this creature now.

@@ -490,8 +490,12 @@ function carriedRider(mapId: string, refId: string): string | null {
   if (!map?.campaign_id) {
     return null;
   }
-  const found = Object.entries(getMounts(map.campaign_id)).find(([, mount]) => independentMount(mount) && mount.sheetId === refId);
-  return found ? found[0] : null;
+  for (const [riderId, mount] of Object.entries(getMounts(map.campaign_id))) {
+    if (independentMount(mount) && mount.sheetId === refId) {
+      return riderId;
+    }
+  }
+  return null;
 }
 
 // The squares each token stood in since its turn's movement began, oldest
