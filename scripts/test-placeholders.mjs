@@ -42,7 +42,28 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // which took the set to 11.98 MiB, 21 KB under the old ceiling. Every byte
 // here ships in the desktop and Android app payloads, so the ceiling moves
 // only by the half MiB that leaves room for one more batch of this size.
-const BUDGET_TOTAL_BYTES = 12.5 * 1024 * 1024;
+//
+// Raised from 12.5 MiB to 13 MiB on 2026-11-17 for core SRD monster batch 2
+// (36 plates), which took the set to
+// 12.70 MiB. Albert approved going past the old ceiling to replace the
+// remaining type-plate fallbacks; it moves again only by a half MiB per batch.
+//
+// Raised from 13 MiB to 13.25 MiB on 2026-11-17 for core SRD monster batch 3
+// (the 56 plain beasts, 440 KB), which took the set to 13.15 MiB. A quarter
+// MiB is the smallest step that fits them; only the 9 ordinary NPC stat
+// blocks still fall back to a type plate, and they stay generic on purpose.
+//
+// Raised from 13.25 MiB to 14.75 MiB on 2026-11-17 for the 108 enemy NPC race
+// plates (the nine remaining roles x four races x three presentations,
+// 1.53 MiB), which took the set to 14.65 MiB. They are encoded at cwebp q90
+// -sharp_yuv so their detail matches the archer and dark knight plates
+// (13-18 KB each); Albert's rule is no visible quality loss over a small cap.
+// Raised again to 15.25 MiB on 2026-11-18 after repainting 96 of the plates
+// waist-up so every weapon hand and arm is visible (no outpainted edges).
+// Raised to 15.5 MiB on 2026-11-18 for 30 dragon age plates (wyrmling,
+// adult and ancient for all ten colours, about 0.27 MiB) so each age gets
+// its own painting instead of sharing the young plate.
+const BUDGET_TOTAL_BYTES = 15.5 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 128 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 48 * 1024;
@@ -222,17 +243,34 @@ if (goodDoctor.includes("/werewolf.")) {
 // ...while the SRD creature under its own name still draws its plate there.
 expectPlate("cyberpunk plain troll", R.monsterPlaceholder("giant", { cr: 5, genre: "cyberpunk", slug: "troll", name: "Troll 1" }), "troll");
 // Unknown creature: falls back to its type.
-expectPlate("unknown creature", R.monsterPlaceholder("beast", { cr: 1, genre: "high_fantasy", slug: "axe-beak", name: "Axe Beak" }), "beast");
+expectPlate("unknown creature", R.monsterPlaceholder("beast", { cr: 1, genre: "high_fantasy", slug: "swamp-gulper", name: "Swamp Gulper" }), "beast");
+// Core batch 3: the plain beasts draw their own plates, giant and normal apart.
+expectPlate("axe beak", R.monsterPlaceholder("beast", { cr: 0.25, genre: "high_fantasy", slug: "axe-beak", name: "Axe Beak" }), "axe-beak");
+expectPlate("giant elk", R.monsterPlaceholder("beast", { cr: 2, genre: "high_fantasy", slug: "giant-elk", name: "Giant Elk" }), "giant-elk");
+expectPlate("elk", R.monsterPlaceholder("beast", { cr: 0.25, genre: "high_fantasy", slug: "elk", name: "Elk" }), "elk");
+expectPlate("tiger", R.monsterPlaceholder("beast", { cr: 1, genre: "high_fantasy", slug: "tiger", name: "Tiger" }), "tiger");
 expectPlate("custom enemy", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", slug: "custom", name: "Bandit Captain's Second" }), "humanoid");
 // A family word inside a longer name is not the family.
 expectPlate("name containing a family", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", name: "Troll Hunter" }), "humanoid");
 
-// The second batch. A dragon of any age shares its colour's young plate,
+// The second batch. Each age of a dragon colour has its own plate (2026-11-18),
 // and an ancient one (CR 23) beats the boss override like the lich does.
-expectPlate("ancient black dragon", R.monsterPlaceholder("dragon", { cr: 21, genre: "high_fantasy", slug: "ancient-black-dragon", name: "Ancient Black Dragon" }), "young-black-dragon");
-expectPlate("silver wyrmling", R.monsterPlaceholder("dragon", { cr: 2, genre: "high_fantasy", slug: "silver-dragon-wyrmling", name: "Silver Dragon Wyrmling" }), "young-silver-dragon");
-// Green and red keep the plates they already had.
-expectPlate("young green dragon", R.monsterPlaceholder("dragon", { cr: 8, genre: "high_fantasy", slug: "young-green-dragon", name: "Young Green Dragon" }), "dragon");
+expectPlate("ancient black dragon", R.monsterPlaceholder("dragon", { cr: 21, genre: "high_fantasy", slug: "ancient-black-dragon", name: "Ancient Black Dragon" }), "ancient-black-dragon");
+expectPlate("silver wyrmling", R.monsterPlaceholder("dragon", { cr: 2, genre: "high_fantasy", slug: "silver-dragon-wyrmling", name: "Silver Dragon Wyrmling" }), "silver-dragon-wyrmling");
+// Core batch 1: green, red, brass, bronze and copper have their own young
+// plates, and every other age has its own plate too.
+expectPlate("young green dragon", R.monsterPlaceholder("dragon", { cr: 8, genre: "high_fantasy", slug: "young-green-dragon", name: "Young Green Dragon" }), "young-green-dragon");
+expectPlate("ancient red dragon", R.monsterPlaceholder("dragon", { cr: 24, genre: "high_fantasy", slug: "ancient-red-dragon", name: "Ancient Red Dragon" }), "ancient-red-dragon");
+expectPlate("brass wyrmling", R.monsterPlaceholder("dragon", { cr: 1, genre: "high_fantasy", slug: "brass-dragon-wyrmling", name: "Brass Dragon Wyrmling" }), "brass-dragon-wyrmling");
+expectPlate("adult gold dragon", R.monsterPlaceholder("dragon", { cr: 17, genre: "high_fantasy", slug: "adult-gold-dragon", name: "Adult Gold Dragon" }), "adult-gold-dragon");
+expectPlate("goblin by name", R.monsterPlaceholder("humanoid", { cr: 0.25, genre: "high_fantasy", name: "Goblin 3" }), "goblin");
+expectPlate("tarrasque over the boss plate", R.monsterPlaceholder("monstrosity", { cr: 30, genre: "high_fantasy", slug: "tarrasque", name: "Tarrasque" }), "tarrasque");
+// Core batch 2: fiends, celestials, genies and the rest have their own plates.
+expectPlate("erinyes over the boss plate", R.monsterPlaceholder("fiend", { cr: 12, genre: "high_fantasy", slug: "erinyes", name: "Erinyes" }), "erinyes");
+expectPlate("solar over the boss plate", R.monsterPlaceholder("celestial", { cr: 21, genre: "high_fantasy", slug: "solar", name: "Solar" }), "solar");
+expectPlate("succubus/incubus", R.monsterPlaceholder("fiend", { cr: 4, genre: "high_fantasy", slug: "succubusincubus", name: "Succubus/Incubus" }), "succubusincubus");
+expectPlate("ice mephit", R.monsterPlaceholder("elemental", { cr: 0.5, genre: "high_fantasy", slug: "ice-mephit", name: "Ice Mephit" }), "ice-mephit");
+expectPlate("deep gnome", R.monsterPlaceholder("humanoid", { cr: 0.5, genre: "high_fantasy", slug: "deep-gnome-svirfneblin", name: "Deep Gnome (Svirfneblin)" }), "deep-gnome-svirfneblin");
 expectPlate("swarm of wasps", R.monsterPlaceholder("beast", { cr: 0.5, genre: "high_fantasy", slug: "swarm-of-wasps", name: "Swarm of Wasps" }), "swarm-of-insects");
 expectPlate("reef shark", R.monsterPlaceholder("beast", { cr: 0.5, genre: "", slug: "reef-shark", name: "Reef Shark" }), "giant-shark");
 expectPlate("will-o'-wisp by name", R.monsterPlaceholder("undead", { cr: 2, genre: "high_fantasy", name: "Will-o'-Wisp 2" }), "will-o-wisp");
@@ -279,9 +317,11 @@ for (const [label, url, want] of [
   // A race the role was not painted for keeps its own face, never a human one.
   ["drow bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "high_fantasy", slug: "bandit", name: "Bandit", race: "drow", gender: "Female" }), "character-race/drow-feminine"],
   ["tiefling assassin", R.monsterPlaceholder("humanoid", { cr: 8, genre: "high_fantasy", slug: "assassin", name: "Assassin", race: "tiefling" }), "character-race/tiefling-neutral"],
-  // A role with no variants does the same for a covered race: a dwarf
-  // assassin is still a dwarf, so it draws the dwarf portrait.
-  ["dwarf assassin", R.monsterPlaceholder("humanoid", { cr: 8, genre: "high_fantasy", slug: "assassin", name: "Assassin", race: "hill_dwarf", gender: "Male" }), "character-race/dwarf-masculine"],
+  // Every role is painted per race now: a hill dwarf assassin and a spy (an
+  // assassin by stat block) draw their own race's plate.
+  ["dwarf assassin", R.monsterPlaceholder("humanoid", { cr: 8, genre: "high_fantasy", slug: "assassin", name: "Assassin", race: "hill_dwarf", gender: "Male" }), "enemy-npc/assassin-dwarf-masculine"],
+  ["spy, half-orc, Female", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", slug: "spy", name: "Spy", race: "half-orc", gender: "Female" }), "enemy-npc/assassin-half-orc-feminine"],
+  ["tyrant by name, elf, neutral", R.monsterPlaceholder("humanoid", { cr: 10, genre: "high_fantasy", slug: "custom", name: "Tyrant", race: "high_elf", presentation: "neutral" }), "enemy-npc/tyrant-elf-neutral"],
   // An unrecognised race word is not a race we can draw: the role token.
   ["spacefolk bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "high_fantasy", slug: "bandit", name: "Bandit", race: "spacefolk" }), "monster/bandit"],
   // The genre's own token still comes first: a cyberpunk bandit is a ganger.
