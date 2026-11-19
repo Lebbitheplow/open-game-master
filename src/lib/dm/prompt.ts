@@ -18,6 +18,7 @@ import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { isTack } from "@/lib/srd/tack";
 import { classFeatureDescription, findCustomClass } from "@/lib/classes";
 import { backgroundWords, classWords, raceWords } from "@/lib/sheet-words";
 import { selectedCharacter } from "@/lib/player-characters";
@@ -912,7 +913,8 @@ export function describeSheet(
   // #424): an attack with anything else draws it first, the turn's free
   // object interaction.
   if (wearingIsExplicit(sheet.equipment)) {
-    const worn = sheet.equipment.filter((item) => item.equipped === true).map((item) => item.name);
+    // Tack is on the mount, not the rider, and its line above says which.
+    const worn = sheet.equipment.filter((item) => item.equipped === true && !isTack(item)).map((item) => item.name);
     lines.push(`  Worn and in hand: ${worn.length ? worn.join(", ") : "nothing"} (everything else is packed away)`);
   }
   if (sheet.background || sheet.alignment) {

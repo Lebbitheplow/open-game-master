@@ -10,6 +10,7 @@
 import { magicItemLine } from "@/lib/dm/item-summary";
 import { sentienceLine } from "@/lib/homebrew/sentience";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
+import { isTack, onMount } from "@/lib/srd/tack";
 
 // `equipment` is the whole list: when no row says what is worn, the armor
 // engine treats everything as worn, and so does the line.
@@ -26,5 +27,8 @@ export function describeEquipmentItem(item: EquipmentItem, equipment: readonly E
   if (mind) {
     return `[${item.name}${mind}]${count}`;
   }
-  return `${item.name}${count}${item.identified === false ? " (unidentified)" : ""}`;
+  // A saddle or barding is on the mount or packed (src/lib/srd/tack.ts); the
+  // magic line above says so itself, an ordinary one says it here.
+  const mount = isTack(item) ? (onMount(item) ? " (on the mount)" : " (packed, not on the mount)") : "";
+  return `${item.name}${count}${mount}${item.identified === false ? " (unidentified)" : ""}`;
 }

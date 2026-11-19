@@ -28,6 +28,7 @@ import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed } from "@/lib/srd/item-row";
+import { isTack, rowIsOn } from "@/lib/srd/tack";
 import { srdNameFor } from "@/lib/dm/item-logic";
 import { ITEM_TAGS, listedItemTags } from "@/lib/schemas/item-tags";
 import { drop, enemyHandles, pickUp, standing } from "@/lib/dm/gear-ground";
@@ -216,8 +217,11 @@ function changeWear(
   helped = false,
 ): ToolResult {
   const kind = gearKindOf(row);
-  if (inHand(row, sheet.equipment) === on && sheet.equipment.some((item) => item.equipped !== undefined)) {
-    return { ok: true, unchanged: true, note: `${row.name} is already ${on ? (kind === "weapon" ? "in hand" : "on") : "put away"}; nothing changed or was spent.` };
+  // A saddle or barding nobody packed is on the mount, marked or not
+  // (src/lib/srd/tack.ts): taking an unmarked one off is a change.
+  const tack = isTack(row);
+  if ((tack ? rowIsOn(row, sheet.equipment) : inHand(row, sheet.equipment)) === on && (tack || sheet.equipment.some((item) => item.equipped !== undefined))) {
+    return { ok: true, unchanged: true, note: `${row.name} is already ${tack ? (on ? "on the mount" : "packed") : on ? (kind === "weapon" ? "in hand" : "on") : "put away"}; nothing changed or was spent.` };
   }
   const armor = acBreakdownFor(sheet);
   // A weapon taken in hand needs a hand free for it; putting another away
