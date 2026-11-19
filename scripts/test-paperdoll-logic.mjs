@@ -47,7 +47,7 @@ test("each side of the figure reads from the head down", () => {
     assert.deepEqual(heights, [...heights].sort((a, b) => a - b), `${side}: ${heights.join(", ")}`);
     assert.equal(heights.length, 5, `${side} holds five places`);
   }
-  assert.deepEqual(DOLL_PLACES.filter((id) => DOLL_PLACE[id].side === "below"), ["held", "shield", "other"]);
+  assert.deepEqual(DOLL_PLACES.filter((id) => DOLL_PLACE[id].side === "below"), ["held", "shield", "other", "mount"]);
 });
 
 test("a row goes where the engines put it", () => {
@@ -77,6 +77,21 @@ test("a wand, staff or rod is in hand beside the weapons, by its row's tags", ()
   assert.notEqual(dollPlaceOf(item("A carved stick", { srdName: "Wand of Magic Missiles", identified: false })), "held");
   // The place says the two-hands rule leaves a focus out.
   assert.match(DOLL_PLACE.held.rule, /does not stop a weapon being drawn/);
+});
+
+test("a saddle has its own place, on the mount: there unless it was packed", () => {
+  for (const name of ["Saddle, Riding", "Saddle, Military", "Saddle, Exotic", "Saddle, Pack", "Saddlebags", "Bit and Bridle"]) {
+    assert.equal(dollPlaceOf(item(name)), "mount", name);
+  }
+  assert.equal(dollPlaceOf(item("Feed (per day)")), null);
+  // On a sheet that says what it wears, an unmarked saddle is still on the mount.
+  const pack = [item("Chain Mail", { equipped: true }), item("Saddle, Riding"), item("Saddlebags", { equipped: false })];
+  const tile = dollView(pack, { armorName: "Chain Mail", shieldName: null }).tiles.mount;
+  assert.deepEqual(tile.fits.map((row) => row.name), ["Saddle, Riding", "Saddlebags"]);
+  assert.deepEqual(tile.worn.map((row) => row.name), ["Saddle, Riding"]);
+  assert.equal(dollTileLabel(tile), "On your mount: Saddle, Riding.");
+  // No tack carried: nothing fits, and the tile is not drawn.
+  assert.equal(dollView([item("Chain Mail")], none).tiles.mount.fits.length, 0);
 });
 
 test("what has a button and no place on the body shares the Other tile; what has neither has no tile", () => {

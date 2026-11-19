@@ -858,6 +858,15 @@ await test("EQP-24", async () => {
   world.patch(rider.id, { equipment: [{ name: "Saddle, Exotic", qty: 1 }] });
   const saddled = await world.invoke("mount_up", { characterId: rider.id, mount: "Griffon" });
   assert.equal(saddled.ok && !saddled.result?.error, true, JSON.stringify(saddled.result ?? saddled.error));
+  assert.equal(saddled.result?.saddle, undefined, "a saddle already on the mount was reported as moved");
+  // Issue #1038: one they packed goes on the griffon as they mount, and is
+  // never a reason to refuse them.
+  const packer = world.addHero({ class: "fighter", level: 3, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Saddle, Exotic", qty: 1, equipped: false }] });
+  const packed = await world.invoke("mount_up", { characterId: packer.id, mount: "Griffon" });
+  assert.equal(packed.ok && !packed.result?.error, true, JSON.stringify(packed.result ?? packed.error));
+  assert.match(packed.result.saddle, /Saddle, Exotic was in .* pack and is on the Griffon now/);
+  const rows = Object.fromEntries(world.sheet(packer.id).equipment.map((item) => [item.name, item.equipped]));
+  assert.deepEqual(rows, { "Chain Mail": true, "Saddle, Exotic": true });
 });
 
 // adventuring-gear, Block and Tackle: "a block and tackle allows you to hoist

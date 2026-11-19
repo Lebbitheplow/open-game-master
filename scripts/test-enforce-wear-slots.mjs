@@ -215,6 +215,27 @@ await test("gearPatch: a second of a kind is refused with what to take off; a sw
   assert.equal(gearPatch(sheet, { "Cloak of Elvenkind": { attuned: true } }, { corrects: false, armor }).status, 409);
 });
 
+// Issue #1038: a saddle is on the mount unless its player packed it.
+await test("gearPatch: a saddle stays on the mount through other changes, and is packed or put back by its own press", () => {
+  const armor = { armorName: "Chain Mail", shieldName: null };
+  // The first press on a sheet that never said what it wears: the ring comes
+  // off, the suit stays on, and the saddle is not marked off with the rest.
+  const unsaid = { name: "Tavi", equipment: [row("Chain Mail"), row("Ring of Protection"), row("Saddle, Riding")] };
+  const first = gearPatch(unsaid, { "Ring of Protection": { equipped: false } }, { corrects: false, armor });
+  assert.deepEqual(first.equipment.map((item) => item.equipped), [true, false, undefined]);
+  // A saddle handed to a sheet that already says what it wears.
+  const said = { name: "Tavi", equipment: [row("Chain Mail", { equipped: true }), row("Ring of Protection", { equipped: false }), row("Saddle, Riding")] };
+  const ring = gearPatch(said, { "Ring of Protection": { equipped: true } }, { corrects: false, armor });
+  assert.equal(ring.equipment[2].equipped, undefined, "wearing a ring packed the saddle");
+  // Asking for what is already so changes nothing; packing it is a change.
+  assert.deepEqual(gearChanges(said, { "Saddle, Riding": { equipped: true } }).held, []);
+  assert.deepEqual(gearChanges(said, { "Saddle, Riding": { equipped: false } }).held, ["Saddle, Riding"]);
+  const packed = gearPatch(said, { "Saddle, Riding": { equipped: false } }, { corrects: false, armor });
+  assert.equal(packed.equipment[2].equipped, false);
+  const back = gearPatch({ name: "Tavi", equipment: packed.equipment }, { "Saddle, Riding": { equipped: true } }, { corrects: false, armor });
+  assert.equal(back.equipment[2].equipped, true);
+});
+
 await test("gearPatch: the exception is the DM's and the lead's, and taking the row off ends it", () => {
   const sheet = { name: "Tavi", equipment: [row("Helm of Brilliance", { equipped: true }), row("Circlet of Blasting", { equipped: false })] };
   const armor = { armorName: null, shieldName: null };

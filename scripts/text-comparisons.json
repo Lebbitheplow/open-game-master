@@ -29,6 +29,7 @@
     "lib/dm/written-calls.ts#\\b": [["key",3,"a call's argument keys, the DM's own tool names and a code fence's language tag, as a model writes a call out in words: protocol, the same at every table (issue 1025)"]],
     "lib/dm/written-calls.ts#\\w": [["key",3,"a call's argument keys, the DM's own tool names and a code fence's language tag, as a model writes a call out in words: protocol, the same at every table (issue 1025)"]],
     "lib/srd/authored-effects-genre-cc-a.ts#str-list": [["english-source",1,"ODM's authored effect rows (bundled data): the creature types a feature names"]],
+    "lib/srd/tack.ts#str-list": [["english-source",1,"the English names of the reference gear rows a mount wears (saddles, saddlebags, bit and bridle), each resolved to its row by matchGear and compared as a row, never as text"]],
     "lib/srd/full-duration.ts#str-list": [["key", 1, "the four SRD creature types Banishment sends home, in the block's normalized type"]],
     "lib/srd/genre-a-cyberpunk-focus.ts#str-list": [["english-source",1,"the English names of the reference item rows that are a plague doctor's kit and mask (Herbalism Kit, Healer's Kit), found by the carried-line rule of src/lib/srd/item-row.ts lineNamed, as the cyberdeck is"]],
     "lib/dm/invoke-roll.ts#re-word": [["table-language",1,"backstop reader: the model naming a request_roll a hit die (#932), in English; the reading that serves every language is take_rest itself, which the rest result and the rest rule point to"]],

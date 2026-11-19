@@ -32,6 +32,7 @@ import { gearDefFor } from "@/lib/srd/magic-gear";
 import { matchMagicItem } from "@/lib/srd/magic-items";
 import { oneOfKind, wearSlotOf, wornButIdle } from "@/lib/srd/wear-slots";
 import { isWorn, matchArmor, wearingIsExplicit } from "@/lib/srd/armor";
+import { isTack, rowIsOn } from "@/lib/srd/tack";
 import { conditionNote, conditionNoteLine } from "@/lib/battlemap/condition-notes";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { checkRidersOf } from "@/lib/srd/item-check-riders";
@@ -316,7 +317,8 @@ export function otherSpeedsLine(t: Translator, speeds: { fly?: number; swim?: nu
 const HELD_FOCI: readonly ItemTag[] = ["staff", "rod", "wand"];
 
 export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName" | "tags" | "gear" | "identified">): boolean {
-  if (wearSlotOf(item) !== null) {
+  // A saddle is put on too, on the mount (src/lib/srd/tack.ts).
+  if (wearSlotOf(item) !== null || isTack(item)) {
     return true;
   }
   if (item.gear?.armor || item.gear?.weapon || matchArmor(item) || matchWeapon(item) || gearDefFor(item)?.base) {
@@ -363,7 +365,8 @@ export function wearableGear(equipment: EquipmentItem[]): EquipmentItem[] {
       magicItemBonus(item.name) > 0 ||
       matchMagicItem(item) !== null ||
       Boolean(item.gear?.magic) ||
-      wearSlotOf(item) !== null,
+      wearSlotOf(item) !== null ||
+      isTack(item),
   );
 }
 
@@ -375,7 +378,7 @@ export function gearWornState(
   equipment: EquipmentItem[],
   armor: { armorName: string | null; shieldName: string | null },
 ): { worn: boolean; idle: string | null } {
-  const worn = isWorn(item, equipment);
+  const worn = rowIsOn(item, equipment);
   const slot = wearSlotOf(item);
   if (!worn || !slot) {
     return { worn, idle: null };
@@ -392,7 +395,7 @@ export function gearWornState(
 // says what it wears (the route wears an item it attunes there).
 export function changeWears(item: EquipmentItem, equipment: EquipmentItem[], change: { equipped?: boolean; attuned?: boolean }): boolean {
   if (change.equipped !== undefined) {
-    return change.equipped && !isWorn(item, equipment);
+    return change.equipped && !rowIsOn(item, equipment);
   }
   return change.attuned === true && wearingIsExplicit(equipment) && !isWorn(item, equipment);
 }

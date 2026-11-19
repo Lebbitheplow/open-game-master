@@ -8,8 +8,9 @@
 //
 // Database-free like the other *-logic modules, so the route stays a thin
 // shell and scripts can exercise every branch.
-import { armorOfRow, isWorn, wearingIsExplicit } from "@/lib/srd/armor";
+import { armorOfRow, wearingIsExplicit } from "@/lib/srd/armor";
 import { gearDefOfRow } from "@/lib/srd/magic-gear";
+import { isTack, rowIsOn } from "@/lib/srd/tack";
 import { attunementProblem } from "@/lib/srd/magic-items";
 import { countedWorn, firstWearConflict, wearConflictText, wearSlotOf, type WearConflict } from "@/lib/srd/wear-slots";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -75,7 +76,7 @@ export function gearChanges(
     if (entry.attuned !== undefined && entry.attuned !== Boolean(item.attuned)) {
       changes.attunement.push(item.name);
     }
-    const worn = isWorn(item, sheet.equipment);
+    const worn = rowIsOn(item, sheet.equipment);
     if (entry.equipped === undefined || entry.equipped === worn) {
       continue;
     }
@@ -195,7 +196,8 @@ export function gearPatch(
     const wornByAttuning = explicit && entry?.attuned === true && entry.equipped === undefined;
     const equipped = wornByAttuning
       ? true
-      : (entry?.equipped ?? item.equipped ?? (explicit ? (stillWorn?.has(item) ?? false) : undefined));
+      : // An unmarked saddle is on the mount and stays unmarked (src/lib/srd/tack.ts).
+        (entry?.equipped ?? item.equipped ?? (explicit && !isTack(item) ? (stillWorn?.has(item) ?? false) : undefined));
     // Attuning takes a short rest spent with the item (SRD 5.1, Attunement):
     // asked for here, the row waits as `attuning` until the next rest.
     // Letting go ends it at once, pending or not.

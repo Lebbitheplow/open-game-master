@@ -220,4 +220,24 @@ test("a stated weight of zero is not weightless, so it is not counted as 0 lb", 
   assert.equal(line.totalLb, null);
 });
 
+// Issue #1038: tack is on the animal, so its rider does not carry it.
+test("a saddle on the mount weighs nothing for its rider; packed, it weighs what it weighs", () => {
+  const plate = { name: "Plate", qty: 1, equipped: true };
+  const on = loadLines([plate, { name: "Saddle, Military", qty: 1 }, { name: "Saddlebags", qty: 1, equipped: true }]);
+  assert.deepEqual(on.map((line) => [line.name, line.eachLb, line.totalLb, line.onMount ?? false]), [
+    ["Plate", 65, 65, false],
+    ["Saddle, Military", 30, 0, true],
+    ["Saddlebags", 8, 0, true],
+  ]);
+  assert.equal(carriedWeight([plate, { name: "Saddle, Military", qty: 1 }]).pounds, 65);
+  // Packed by the player: dead weight.
+  assert.equal(carriedWeight([plate, { name: "Saddle, Military", qty: 1, equipped: false }]).pounds, 95);
+  // Only what the animal wears: feed is carried, worn armor still weighs.
+  assert.equal(carriedWeight([{ name: "Feed (per day)", qty: 2 }]).pounds, 20);
+  // The tier follows: Strength 10 is encumbered past 50 lb.
+  const rider = (saddle) => encumbranceFor({ strength: 10, equipment: [{ name: "Chain Shirt", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: true }, saddle] });
+  assert.equal(rider({ name: "Saddle, Exotic", qty: 1 }).tier, "unencumbered");
+  assert.equal(rider({ name: "Saddle, Exotic", qty: 1, equipped: false }).tier, "encumbered");
+});
+
 console.log(`encumbrance: ${passed} tests passed`);
