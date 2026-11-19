@@ -27,6 +27,8 @@ const { wearSlotOf, countedWorn, wearConflict, wornButIdle, firstWearConflict } 
 const { magicItemRiders } = await import("../src/lib/srd/magic-items.ts");
 const { itemCheckRiders } = await import("../src/lib/srd/item-check-riders.ts");
 const { gearPatch, gearChanges } = await import("../src/lib/dm/usage-rules.ts");
+const { defaultHeld, wearGained } = await import("../src/lib/dm/held-default.ts");
+const { onMount } = await import("../src/lib/srd/tack.ts");
 const { wearsHeavyArmor } = await import("../src/lib/dm/damage-logic.ts");
 const { wearsHeavy } = await import("../src/lib/srd/authored-effects.ts");
 const { armorChangeMinutes } = await import("../src/lib/dm/don-doff.ts");
@@ -234,6 +236,30 @@ await test("gearPatch: a saddle stays on the mount through other changes, and is
   assert.equal(packed.equipment[2].equipped, false);
   const back = gearPatch({ name: "Tavi", equipment: packed.equipment }, { "Saddle, Riding": { equipped: true } }, { corrects: false, armor });
   assert.equal(back.equipment[2].equipped, true);
+});
+
+// The marks a new sheet and a fight's start write (held-default.ts), and the
+// ones a gained row arrives with, keep a saddle on the mount: an unmarked
+// pack read as packed weighed the saddle on its rider and took the military
+// saddle's advantage away.
+await test("defaultHeld and wearGained leave tack on the mount", () => {
+  const armor = { armorName: "Chain Mail", shieldName: null };
+  const marked = defaultHeld([row("Chain Mail"), row("Saddle, Military"), row("Chain Mail Barding"), row("Longsword"), row("Rope, Hempen (50 feet)")], armor, ["martial"]);
+  assert.deepEqual(marked.map((item) => [item.name, onMount(item)]), [
+    ["Chain Mail", false],
+    ["Saddle, Military", true],
+    ["Chain Mail Barding", true],
+    ["Longsword", false],
+    ["Rope, Hempen (50 feet)", false],
+  ]);
+  assert.deepEqual(marked.map((item) => item.equipped), [true, true, true, true, false]);
+  // A saddle bought or handed over on a sheet that says what it wears.
+  const before = [row("Chain Mail", { equipped: true }), row("Longsword", { equipped: true })];
+  const gained = wearGained(before, [...before, row("Saddle, Riding"), row("Bit and Bridle"), row("Shortsword")]);
+  assert.deepEqual(gained.map((item) => item.equipped), [true, true, true, true, false]);
+  // One its player packed stays packed.
+  const packed = wearGained(before, [...before, row("Saddle, Riding", { equipped: false })]);
+  assert.equal(packed[2].equipped, false);
 });
 
 await test("gearPatch: the exception is the DM's and the lead's, and taking the row off ends it", () => {

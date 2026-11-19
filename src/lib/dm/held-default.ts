@@ -28,6 +28,7 @@ import { implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { wearConflict, wearSlotOf } from "@/lib/srd/wear-slots";
+import { isTack } from "@/lib/srd/tack";
 import { isWeaponProficient } from "@/lib/srd/weapons";
 
 // The pack with every row marked worn or not, or null when it already says
@@ -61,9 +62,11 @@ export function defaultHeld(
     return srd?.kind === "melee" && new Set(srd.properties ?? []).has("light");
   };
   const second = main && !shieldHand && !caster && lightMelee(main) ? (weapons.find((item) => item !== main && lightMelee(item)) ?? null) : null;
+  // A saddle nobody has packed is on the mount (src/lib/srd/tack.ts): the
+  // marks a fight's start writes must not put it in the rider's pack.
   return equipment.map((item) => ({
     ...item,
-    equipped: worn.has(item) || item === main || item === second,
+    equipped: isTack(item) || worn.has(item) || item === main || item === second,
     ...(gearKindOf(item) === "weapon" ? { heldGuess: true as const } : {}),
   }));
 }
@@ -152,7 +155,9 @@ export function wearGained(
     }
     const row = view[at];
     const slot = wearSlotOf(row);
-    const worn = Boolean(slot) && slot !== "armor" && slot !== "shield" && gearKindOf(row) !== "weapon" && !wearConflict(row, view);
+    // A saddle or barding handed over goes on the mount, where it weighs
+    // nothing for its rider (src/lib/srd/tack.ts).
+    const worn = isTack(row) || (Boolean(slot) && slot !== "armor" && slot !== "shield" && gearKindOf(row) !== "weapon" && !wearConflict(row, view));
     next[at] = { ...item, equipped: worn };
     view[at] = { ...row, equipped: worn };
   });
