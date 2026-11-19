@@ -1,0 +1,2350 @@
+{
+  "recordedOn": "2026-11-18",
+  "author": "Smoebo",
+  "pullRequest": 1035,
+  "source": "Painted outside the repository's ComfyUI job list and shipped as 256x256 WebP. The generation tool, prompts and original images were not supplied with the art; scripts/placeholder-set.mjs describes each subject for the silhouette generator and is not the prompt these paintings came from.",
+  "missing": [
+    "generation prompts",
+    "original image hashes"
+  ],
+  "subjectBasis": "Monster plates are named SRD 5.1 creatures (including every dragon age of the ten SRD colours). Enemy NPC plates are original designs of generic enemy roles painted per race and presentation, per docs/art/creature-art-guidance.md.",
+  "review": "The contributor checked each plate at full size and as a 40px token (contact sheets linked on the pull request).",
+  "plates": [
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-dwarf-feminine.webp",
+      "subject": "alchemical saboteur dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "2c5077dcd155d60fc6c80b9a4710ae746c8dc6f63d534164a1dda267e4147da2",
+      "previousSha256": "f79b068fef2d648a04f7b348d070b8fb0780e1a6643768524b964028eb5e7845",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-dwarf-masculine.webp",
+      "subject": "alchemical saboteur dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "5e11ae0849963366244a52a6dca2fb12f1c235aeb296b9b5e7a5b3cbe498fdf8",
+      "previousSha256": "d9c58ebdefcfdaba5624b79af9a50200c060aa783adb03974e6527806ea25741",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-dwarf-neutral.webp",
+      "subject": "alchemical saboteur dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "11d2fc6f9ec6ff31f04ec1808fd348aa61cc57a822304e3885682f0fc6a2d62b",
+      "previousSha256": "77cbdb9e635da185f9bae2f2087d00e9bfc55fff414311a0809b0361172ed8c7",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-elf-feminine.webp",
+      "subject": "alchemical saboteur elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "0bb93a84a02855527451360c34faafd6b316fe1c840a4d3842565923fda5fd9c",
+      "previousSha256": "40ac3c50d688b6c1ad260a2d3add31773125969c2c6a5c73b405bdccba5c283c",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-elf-masculine.webp",
+      "subject": "alchemical saboteur elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "7f1b20a30bfb8d8b8593af22b9fc91826725717fffe4fca90ef7e11cb2fa0399",
+      "previousSha256": "4f9e4fe4e9e10675a149024813cbec4998a82c99d14831da6c860a222bb26754",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-elf-neutral.webp",
+      "subject": "alchemical saboteur elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "e08397d8bb9ce8a9b2d1b47090137191c8fafb5d532ca2b7b70b73308628b673",
+      "previousSha256": "980bb3718193a9cace03f51cff5da22ed63373864f1a9d6c7d764bddb76b435a",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-half-orc-feminine.webp",
+      "subject": "alchemical saboteur half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "209c48f0c24def1e36eac6a90ae97a265b05b658dcf194b0d2f0a8822222e4cd",
+      "previousSha256": "effd33fc3e8addffc39bc15de46a03431ab633069b15dfcb0cacc390e4469da4",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-half-orc-masculine.webp",
+      "subject": "alchemical saboteur half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "551bfc067923bf362dfd0cd6f93f280e0340e2fcd15e8dfedf2a58c7045bfc99",
+      "previousSha256": "084b17610044fff0facff0eda47053f1dd845cad994baefa37ca78aa025c9999",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-half-orc-neutral.webp",
+      "subject": "alchemical saboteur half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "d6c5d831bde9153749398f56dcac4a608998c80d73891567d9b00a3b42766794",
+      "previousSha256": "6cf1fca1459a1acc1c4244cada51105da5506b1921815775f0faf8d5c0898f0e",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-human-feminine.webp",
+      "subject": "alchemical saboteur human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "2430b135e0654c891fede04f3084949b34d776b4f37860d92b15a19efb4c697f",
+      "previousSha256": "88cff7f91e0c6f2929e4f357cff2ec7f0bf6543ef52933216591d62223f4870f",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-human-masculine.webp",
+      "subject": "alchemical saboteur human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "0e895115dc27d449ac2f28d071bbba5e686c7c4609e44cebd2d46c8a929eb852",
+      "previousSha256": "f836fc0bd5b5247b1ce189fbbfe450b840d196ffd2146bd891c2c2267918ce7d",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/alchemical-saboteur-human-neutral.webp",
+      "subject": "alchemical saboteur human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "fb5fff2558748e8f0ed01dbeba95f504f07fa73b9e091b4428313e049c509032",
+      "previousSha256": "4087150cba0d0153a7565d2072c08247c10d3f83544138d9a32108c4039a6d64",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-dwarf-feminine.webp",
+      "subject": "assassin dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "7036a2736ccf0eef6b65b6687bb5625d3c45c5dfa40efb35d58a312f7c3ae9bc",
+      "previousSha256": "96104e3705887764bf58c5924266c2c528675ba197b5aed4953d184568d91d13",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-dwarf-masculine.webp",
+      "subject": "assassin dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "f2b9a916dc109381997c66aebcabc2f7c55ee16c02331d2cd53ced8aa1578e00",
+      "previousSha256": "5c33d24352a8eb6f1549cffc4510723619826f80cd6e7a5fae088ef3cb7acf1c",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-dwarf-neutral.webp",
+      "subject": "assassin dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "d952b2e93d1ddbbebd32778179eb0d95ca0d38c9934e186d5477e9ea9ef26aef",
+      "previousSha256": "50eacd524486cc98cd05da2aead140145a23de87fc9306e84321c044d51a2817",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-elf-feminine.webp",
+      "subject": "assassin elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "9834dab765919bb565543cf9ab40c79b624736fc9056b4737483a3c7510548bf",
+      "previousSha256": "d469c5007bc874ed9c2392d43785c94f696c6bc3ab2390d1fadbd57f43995c73",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-elf-masculine.webp",
+      "subject": "assassin elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "ec36d6cee888a90d201995a1de8526fd718bd3632c03f07ea561532823aa92aa",
+      "previousSha256": "c42d4cfdffe870d4ee1e19e23b445d9d66cafb6858e018d4566e25b3028203bb",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-elf-neutral.webp",
+      "subject": "assassin elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "70f13827c267dfa1ff3af745c618ada743fa6ac546a5e537d2cce866f258008d",
+      "previousSha256": "09628808fd66d4bf068e66ac6af40187d4eb0093babfcd184bc4d7ffcc51e7fa",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-half-orc-feminine.webp",
+      "subject": "assassin half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "de9a2284e30e8f2a4ac91eeaf6ee3a77d83d126b712688bc30b3646bcfb171c9",
+      "previousSha256": "90f80508635ffca4baa4c1e88e9cfbfaf2fdc716f3f83b4748740027b3fa7cc1",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-half-orc-masculine.webp",
+      "subject": "assassin half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "8a29d6c4b61c8e87ecd22bbe997fdb91648dc240336d5d4fb671e781cbf582be",
+      "previousSha256": "16b0bb1d148dcd0450c720c8eb8536d0da023259aaa224f9d2fd5f80bedd20ba",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-half-orc-neutral.webp",
+      "subject": "assassin half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "fc84cc6d687b0da02b6e776db1c73fc68fe1ec98355ff95221328a3fa3e7ef7f",
+      "previousSha256": "bc425353c8abf55a54b13f2e6c75cb8fee25c144971ff2fe37b4c31eb70d41cb",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-human-feminine.webp",
+      "subject": "assassin human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "63b43fccb5c1dcf23b6c07a36f278847897decb3f49bc023cd781042c370b76b",
+      "previousSha256": "fd05d97678ec45ad5123d6b476a5f761e9428b817dc5d2f545a5b32cd99a4a23",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-human-masculine.webp",
+      "subject": "assassin human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "dcb70fc74a425ecee5dd27d3a246de20c26b9342c243d398dcc37389e70d967e",
+      "previousSha256": "39ff9319c48ccf266fc01fedf8e3e1dc7e82272f7ca6b753fa594e648e8b6a35",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/assassin-human-neutral.webp",
+      "subject": "assassin human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "56a622efd2b42b784d6a5e2c0cbcba907f0a872dbecdd6c470694ff2c8e11381",
+      "previousSha256": "743b9070ac0265e76090093c71263276c1ebc45e496fc82f831a23ba8b39aab1",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-dwarf-feminine.webp",
+      "subject": "battle shaman dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "7cda1c98e000272dc07e38eb6671dcc405f2df92fd94b649e2ab9bd34bce43ba",
+      "previousSha256": "4eba72226e96eecbab55f6a59a2532c6d11650b6b21d54c9b343b6c962a037ac",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-dwarf-masculine.webp",
+      "subject": "battle shaman dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "9ea838803ac9dd59605723afa606f6e69b57f648feeb534fdf5f8b9034166142",
+      "previousSha256": "cd213b91cfe3328585c90735188593f3e56de2bcfa9cb5f18d24fe261c3f3503",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-dwarf-neutral.webp",
+      "subject": "battle shaman dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "766191d05d8da857a82f5a1387be138620d72086646f015d3cba963c7b938cc4",
+      "previousSha256": "28459ef132ed6610a89a3574c3d939a5709389973f21bf4e58c09465de8dc2c8",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-elf-feminine.webp",
+      "subject": "battle shaman elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "4277feb59ca7062992d4da0b6a3ab2bf6c4a4c9043f5d87d0e3df8d13d260075",
+      "previousSha256": "f14f32f4367434895e23e7a36aace287afb75d65007285c2a4414f7b436cde0c",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-elf-masculine.webp",
+      "subject": "battle shaman elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "5f8ffe5efd43932aeb7f0be3ee44f01a7c4f155c26d661c8cb291e665d00be42",
+      "previousSha256": "805f8f9f13d9afe960710a6250c8d30aa4fd303a04eaf577b990a82885045750",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-elf-neutral.webp",
+      "subject": "battle shaman elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "22b586c229868e6445e6b2ec0e0740b9475060a43817eea78a757569572eb63c",
+      "previousSha256": "8a1915d80d041c6cbc79062fa097d726f152253c807629338f9057e31a303533",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-half-orc-feminine.webp",
+      "subject": "battle shaman half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "9e2756272909ef28c2ca11e486b04f1347a69b7d702ddcb5d10d325e6e7ac478",
+      "previousSha256": "f4591e7af9bb9a136d106d3b11be784da0fa638a6bc209b08c3461270e61f1f7",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-half-orc-masculine.webp",
+      "subject": "battle shaman half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "0c8ce7517b009d8d4bc1b8148ad7f9f411b23033499f388ada74fdeb28ad0415",
+      "previousSha256": "5e7ac5a4f8ddbbe4ecbe05bd9cfe3aea639fc49cc081c9a3ba8146153a57b7bf",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-half-orc-neutral.webp",
+      "subject": "battle shaman half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "caf2f1f17a8e47c1ae8f416a01fbbf6a8ef9a8394a69657bfb448e1249f9f443",
+      "previousSha256": "690700d4bbe4dff2d686d42e80b18198a7ffc99c119e93a1c63a18449c851a56",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-human-feminine.webp",
+      "subject": "battle shaman human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "b562ce1ea711d5a58ed132f83859ff73ec4c71c30a4bb09b37616e8140a9b238",
+      "previousSha256": "52504a621da7edcc22d6ca1a71fe3c2540d8801f4a3c675e5301a71a83b7487d",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-human-masculine.webp",
+      "subject": "battle shaman human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "fe8658278e85f02a5149c2595c84f662d53262bf2c390775aec1698acdd493e0",
+      "previousSha256": "ddb035a6bcc1cca4a74215b366de827ac1b5a5f2be1396a5c35f91fd9d77c5e9",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/battle-shaman-human-neutral.webp",
+      "subject": "battle shaman human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "d064fd12092b190232ddeb42f76f55ceaf0b216d1f7de1357c2c6dbdd11acb27",
+      "previousSha256": "3a6491e273202e2f592a638e2ddf5445ae1bfd86fe09f1bc5526b15cffbc8c2b",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-dwarf-feminine.webp",
+      "subject": "executioner dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "467be590f11b9de32934beb14885622fbd7fa86d7d2f53e6e2b535f55ffeaab2",
+      "previousSha256": "687969f952fc9d200d4396326caa7828bec0bb10aed937311e9768e1c94cde8b",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-dwarf-masculine.webp",
+      "subject": "executioner dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "a62fbdbb22633f90c02c7feae9d90f03226207c63df34345cb8e6e3784a75c08",
+      "previousSha256": "857c5970cfa5a874721a127bac5e06ae2c3a166b3ff8529fe9be09849361f179",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-dwarf-neutral.webp",
+      "subject": "executioner dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "fb915890eced71c0a79c58b7bfcf3ac27e32f0fde522fc49e429bd97cf03fb1b",
+      "previousSha256": "998213453f67afd326d1e74eaed31cc8350cb7f799c5613b66db6e2b6a730803",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-elf-feminine.webp",
+      "subject": "executioner elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3621e53d7b0d91a01e3a4d402df775a0e3cbe96cae5d079801b7e477d4edfd0a",
+      "previousSha256": "f5cacf34480f81c843c6d2e3406ce93540035dd5e519ec9ddfa942deff500c21",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-elf-masculine.webp",
+      "subject": "executioner elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3eab00a6275c1851180a2beb76bb552e8e29d177c4905666fe5288fafa6a12c2",
+      "previousSha256": "5b476073fe1a819dfd23f38d5ee0c02ef4c0745ac8b5dc3efd69496d3a3c9e60",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-elf-neutral.webp",
+      "subject": "executioner elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "a7082cb1ea366649c34603370db94e8474306b7c67617e41bb8915482eae47df",
+      "previousSha256": "89d32b1e4af4d9a825eb6c21890206d0152074337e4c8295786daaedd8e166e8",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-half-orc-feminine.webp",
+      "subject": "executioner half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3d3c855bfa5b40a1bfd45917f54050a69a852a233984a7ed94c7b50cdaa80edc",
+      "previousSha256": "e6cdaa4c88428ec551b53012b686de53dfd9603e6196fdea403a570a2d68ac63",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-half-orc-masculine.webp",
+      "subject": "executioner half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "9364ac6793f4628eec022b479e6fa5ff17cc7de457192b10f2de77f80b405a8f",
+      "previousSha256": "ed4809a1430986f864884e2efbb18dc1867dafb116d433226ea56828ed1f4a25",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-half-orc-neutral.webp",
+      "subject": "executioner half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "1d7040ec535e75b3a76f5b418c176548d17a3be4860cfcf6cf32d73bc7b43840",
+      "previousSha256": "7c96a079000b1fead814cfe37f06debc0ebd7a139319f3e71865878667bd6927",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-human-feminine.webp",
+      "subject": "executioner human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3361f67389d17b96237d16aa0391b9b8ea3a9dc86e5114261d0ac012a8b5ccef",
+      "previousSha256": "ace3ad13233e104904193c60f5650f57303f7416fbf308ff8deb4d53eede340f",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-human-masculine.webp",
+      "subject": "executioner human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "aa9367bcca8127f52055dc588c56ab1ea657c91ecd1dc1b75fb1d15f41a0a919",
+      "previousSha256": "97760e0a311fc7c4b36201f54e24bebc587c1aa206a68cc422baeac1996ff905",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/executioner-human-neutral.webp",
+      "subject": "executioner human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "5b4bea07aed401e666badcb4243eb1f34c45def288b7ae36a52127f4b30a5ff0",
+      "previousSha256": "632340c8b90fcee5cc31c8669abc9e3b2e2476e18de36e0b3bf34f4fb7ffaaa2",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-dwarf-feminine.webp",
+      "subject": "gladiator dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "c904382031b6c51c31fd98ca4b65a40b4964f772199575b4a028ab9422133c78",
+      "previousSha256": "794308eb7a61fb70430993b941822d02027113f66ef1c32656e4ede177dbbd55",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-dwarf-masculine.webp",
+      "subject": "gladiator dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "a5d6e96b7a6bfe039a7439672d8a7dfb21ce96a61e86662b0212fc3574bb50a2",
+      "previousSha256": "977511c725825770aa3902c579da36f7cf69b47171b0edef6934f31c621f7fa0",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-dwarf-neutral.webp",
+      "subject": "gladiator dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "919a2b4e93a9018f7e346090a2d6040af46258d4372a56f23031031101894e1d",
+      "previousSha256": "aa7876d48c270e7202017b944ed3b36c7ffb5a3f90da5838d112c5583b33dd7c",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-elf-feminine.webp",
+      "subject": "gladiator elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "e70e9a1eb4d90aa950fb69345acc0d7cb4cae9a4715430845b56fac6f2708c30",
+      "previousSha256": "2a60b46dd381cfa09fd917628c3949cdb89cc6bd2bf619cdc5a1729766565acd",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-elf-masculine.webp",
+      "subject": "gladiator elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "605c12165a326d742fff5ae27530ac5824416624795c875461ca00764310fb5e",
+      "previousSha256": "b71c0c7cdbff05fa2b9e735b9d10712a037e8aa17de19f63004b07a8fed0dda4",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-elf-neutral.webp",
+      "subject": "gladiator elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "ec4f55679f3b496635eb924c7d5db1f42a16e730906a044f3921b612b543054f",
+      "previousSha256": "81738cca7427c3de56e2acad6e1b6a39874377cf3f970cf81b739c55b74dfbed",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-half-orc-feminine.webp",
+      "subject": "gladiator half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "2caf42573298996b7bdb366378f2e6bf4611fd14ea20188c9058ef7c7b8ff108",
+      "previousSha256": "da32bb0371fa2cd6f2313badc1ce0f2305cb5ba0e46e497558f201adcc366a77",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-half-orc-masculine.webp",
+      "subject": "gladiator half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "d6e5e12e1c598dd7430f752a851cfb559e3f683ac6124190a865cf681703a309",
+      "previousSha256": "adecb169bc96b801fdcb66ff7b77f2bedcc2831aaf3eb0a6ff82d2917ba88e34",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-half-orc-neutral.webp",
+      "subject": "gladiator half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "42f0969c48f83114459172b8b4a2a0cdf4b833d49e97d427a2b6b49aa10b3032",
+      "previousSha256": "9b92c22ceaea53d4002cc1745243ac1046c5861b923871b458c2443127b95d9b",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-human-feminine.webp",
+      "subject": "gladiator human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "49630a34d7842977c8249a04ae7323d62e730e965b4db2d72878dccf15810298",
+      "previousSha256": "dafce7a57380eaaf6bb869e3d467088847eea4a6336ee4a73525bdcb156ff02a",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-human-masculine.webp",
+      "subject": "gladiator human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "1856e9f7d9724d8a0fc54adde04325477da4b9caba0d6318fb8630abb8ea8c54",
+      "previousSha256": "deb1c4e9e902ea6ff1c72284eab8f8233b74575ac6f8df0b764aff0ec02e9bf5",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/gladiator-human-neutral.webp",
+      "subject": "gladiator human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "19ce9c8ffd32b66a6da44afc7513d24993cbd85f16ce71b951afe17dba52319b",
+      "previousSha256": "5137d60ead7958b98f87f4e6ce02c9886c5fad73ea937750250470b0eb3256d5",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-dwarf-feminine.webp",
+      "subject": "houndmaster dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "d596565b6d563f8ad1b51cf1e010137d4df99f03802cf4359d78415578280e88",
+      "previousSha256": "0d5892091b1b0a84f6d7d270fda89f39bd09d0a34d245bb14f2d1993fdb2d109",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-dwarf-masculine.webp",
+      "subject": "houndmaster dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "20cdd00e7a975f0e9d90215dee5b41ea5cf64522513b35818bcb8f816bb17b67",
+      "previousSha256": "bc0f3a48d96710849f32bd059b0ff1b4599793c1167ebb657d4bb149f7960683",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-dwarf-neutral.webp",
+      "subject": "houndmaster dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "baf61e656e5b36c38bdf7fecbaecccf4e7ba628af745a1cca7f21f593d419949",
+      "previousSha256": "d4563c1003ec52285651bacb13b4a0ad9d161e64c21a64a51660c880ced6067c",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-elf-feminine.webp",
+      "subject": "houndmaster elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "108dea68aafd97c0eb0fb2763dd21c1c70743c0617defead3e1048a6636e8193",
+      "previousSha256": "d3dc668707d6a875256586b7d0a03924385c01c5cff864f817e29d60680b6757",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-elf-masculine.webp",
+      "subject": "houndmaster elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "8ac43f5e01483e5e6aac509d3334f6ab46b8a2ca1ff5ec4afcfb9cb9055801dc",
+      "previousSha256": "2514f39c8e1b025b15e3f352b1cb7e43dd6e22cba889d9c06755970e4b7a47d3",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-elf-neutral.webp",
+      "subject": "houndmaster elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "6fa4cd96ad4f106c5c50052e5ba4d9ae03b25411e5a4179139ccf644ab8fe9e4",
+      "previousSha256": "f1afe4bbbc38d2d758dfc737387389d194fd90b0ec103b1cfcdf8a8016c5c124",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-half-orc-feminine.webp",
+      "subject": "houndmaster half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "829835fb03441bb5e5e515f058bdaac58f5d2cf6b629ecffaec4a2cb59e49801",
+      "previousSha256": "8b9289fc6abaa5339622d9e5d08a7a74b1ba624562480795a4036ee73613c0b1",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-half-orc-masculine.webp",
+      "subject": "houndmaster half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "d31e2b467d2233a12a8a4a172e3779252520fc3933bdd1363b8e38aa2c4c0ff7",
+      "previousSha256": "3598f21507cb6fc0f5415fc99179e025e18fcb88762b441e1ec05031b88115c9",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-half-orc-neutral.webp",
+      "subject": "houndmaster half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "8ab166fab0e6089fce528cb1d1e1cd445d7aa3b30ca3da480fd312d6d3d859e7",
+      "previousSha256": "4cb4c16862ea3a2fb3e67caa19a8b9e882e8e9e7d4d11b1156ed0d6adf06247a",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-human-feminine.webp",
+      "subject": "houndmaster human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "c308477fd11a8b90c44baff6030c5d0c8541f62c885328871b9a138752cc859f",
+      "previousSha256": "ae71635c42cf4dfe558aa92fcbfdbbd57c484166ea7865b508160335bf024305",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-human-masculine.webp",
+      "subject": "houndmaster human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "2b279f2a00e8455de4fc25469b2cc5c87b43086618b92cfa812a0a2748e71e8f",
+      "previousSha256": "41ce200607705a77cd1f4bf7aaa711c99de797b6684e8bb972c3320f393bebf8",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/houndmaster-human-neutral.webp",
+      "subject": "houndmaster human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "c75b9a137e0975a9f1e8f0eb72ff1561b5ee71d818c3c32ca2d42a56637285a0",
+      "previousSha256": "3b2e99522601c43d5a2074c72a3aa8817fdf602c2d8672296fa4305aa466e794",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-dwarf-feminine.webp",
+      "subject": "necromancer dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "079660b9a31fbf4bd2d20bccfedd00a33e694b2e3276f6b11426b5b5dc03abee",
+      "previousSha256": "681bfeab3a035f692228d177c91ccfff74b05ec8539bcb832455442dfb1dbfaf",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-dwarf-masculine.webp",
+      "subject": "necromancer dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3c6476aea4972688bf5f963ce7101de16285751c18c7c5d40cf7b87dcb8e134b",
+      "previousSha256": "a97bebab38c65c4ed449ec32bef99c44b7b5dfff4de6ff2712ca5b009f004496",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-dwarf-neutral.webp",
+      "subject": "necromancer dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "006008109db1cf6d53a8b0acc51b88b38a7a52462aeac4d3b5295f678652a01e",
+      "previousSha256": "f360e848752a07a1cbf0b15e2bc46a519f59e0a00f5542ed5b48377a82cdc23a",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-elf-feminine.webp",
+      "subject": "necromancer elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "cbba0421c382e7a34e881302f4e2499c01f028b9e76659208ebefc35e994db6f",
+      "previousSha256": "fd49755e2fcf4301596a2b0fa38db58a4c095b32f69af5ba651d092f872f93ca",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-elf-masculine.webp",
+      "subject": "necromancer elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3d7c0da7da928f0cf0efe5199dfd7e99399e939515e2de263dcbf04169906ab6",
+      "previousSha256": "45ad1ecf1482e88211a341c7b26f0a3196a733d1c3f1f19b9be4679bb56d10c1",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-elf-neutral.webp",
+      "subject": "necromancer elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "2cd40216cd879d43772fc730ab9894b6b73558b618ef46584b51a3eff1dd7d64",
+      "previousSha256": "13e5b094b0ea6d6d457f3a37a564589772e3bbf13baaf2384522bbca83a230cd",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-half-orc-feminine.webp",
+      "subject": "necromancer half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "184f535632ab1f8c4eef93f5ae04f90831112e627c69a89c81ffbe6f02f2247b",
+      "previousSha256": "c29002f3a2393e61c25fb44923d4ff9b6032c60ae10478a6a675d8d8e0a0f5aa",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-half-orc-masculine.webp",
+      "subject": "necromancer half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "f539c87e096818c8afbe6ac6cbc8ada817baab285437852de74bf8b177076188",
+      "previousSha256": "19bedbc2901bba401a88d3899e01a0416f09108fb9346ed0c5020751dc99a12c",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-half-orc-neutral.webp",
+      "subject": "necromancer half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "c129217683f5a1a842e05dbb6cb3e3cc534ba4256c34add998adf5ddc7260126",
+      "previousSha256": "6e54208998fcabac7ccec9e734b321d76dd0a06c1f06aef6df3cbd7c332f1f65",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-human-feminine.webp",
+      "subject": "necromancer human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "470a894c19aaffac13e027011aaf9e9f978c65956a74dbc4e18ffd72c9c765b1",
+      "previousSha256": "6edc29f3e74a3d4f9fde7376895ae0985e96c3ba76b1957c2f65692492b956a7",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-human-masculine.webp",
+      "subject": "necromancer human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "70a833c25e865cb5d953214b73ec894c16d54b20a9621d2ee0bea1761e398c06",
+      "previousSha256": "525f302d590fa21803131047ab1522659f14d11134984f3c776f9147d5628cd5",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/necromancer-human-neutral.webp",
+      "subject": "necromancer human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "fbce685212470a59992465d2825ca3dc0101009598772e116a782a5d7d0bb05e",
+      "previousSha256": "2bdb0ac2bac3d91a9b9248302b87520da18fdb6427ef555e1ecf8757c9bf09b7",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-dwarf-feminine.webp",
+      "subject": "pirate dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "43a8eba0d709493f789f93fc7b2f9fbfe56843a38f475086fedf771f2d1de3ab",
+      "previousSha256": "db3457bdf6d0e92f465f2f610cad7c495eabde1599e5560085a38d5d0dfadfab",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-dwarf-masculine.webp",
+      "subject": "pirate dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "1556b45465a7b9fabf6a0538d545a9759fbd47780385b0ea0e12b8b2723a1f4e",
+      "previousSha256": "4cb9b56095dc2003b5ca47bc6181a5c49159e95c6ddb0b3a8fef1318d1bd39ba",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-dwarf-neutral.webp",
+      "subject": "pirate dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "2309f8909a41dc50d334fcc8a19efa8b30efa1b5ee1fad8005378fd8a1a9c5e0",
+      "previousSha256": "f469c1149766e6492e1e66286af60c07a1457d18def31742903452c9b26bdd61",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-elf-feminine.webp",
+      "subject": "pirate elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "7fb2d9bcb532d5bf0817a03a0e103f1e6eaa80dc5e7c2e21e073ac4da847ec9d",
+      "previousSha256": "76bf920d232f5cedd87cf42965d94c2deb7a0dc67e895abaa5eb234525fc0323",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-elf-masculine.webp",
+      "subject": "pirate elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "a7a694547acd45fa2496983ea2720c47d267bbbf5107fe3f0d2f04ccf65dad8a",
+      "previousSha256": "55007e4e1ec94c464359bb72ebbaecaca660434635d468bd2ae3af89f5194574",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-elf-neutral.webp",
+      "subject": "pirate elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "5f3b9f3f5089fa8ac2e26c785792bcd186fad27bc9aa0da1cf068ef269d5f18f",
+      "previousSha256": "7ff8ad062ae8d5309c4b9702f10a3f2b7dc02a0341a2df1588da926d4c0eba70",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-half-orc-feminine.webp",
+      "subject": "pirate half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "eaaa33e8c9c27723bc4dbf0d97be9854d9e790b36c28233dbceed9fb884c0dbf",
+      "previousSha256": "f684ccfe3a940ac4085226572ba6a6eb78a68b0b3b1bc403eaa5cd063fe8d640",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-half-orc-masculine.webp",
+      "subject": "pirate half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "c941b2b0d7cea39dba9800327b9eda06557593a03d540eb2dc7ae77c71b5643e",
+      "previousSha256": "8c5336d550d5e0f92202595b7886655c4661eaecf894130da5faee9adc7cebe1",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-half-orc-neutral.webp",
+      "subject": "pirate half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "b54099b5a593f12ea3cc3da6c63e934a4776526cc6092ed481229a72e3823e8c",
+      "previousSha256": "e85c4b17b9ba13928f4c00854a4b7e8543e9f53f354a69ec28fac4d3019d3cc2",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-human-feminine.webp",
+      "subject": "pirate human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "e37593a3a75995c50b3537064fab06acd2c37c66f4de0a69193559a483e0aefd",
+      "previousSha256": "c74f84cc52669d3873343ba4cb6a50fd93a6dd933c1ce70d0bc0953f91788b2b",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-human-masculine.webp",
+      "subject": "pirate human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "cd9e6fead29390a016afa111afe9040dd136dccd404fa3805aaa3c15a3b4dc7c",
+      "previousSha256": "e62de1db28b6e8f98e0ceb8cbfe3be388000a94f517334069ceebadea009a043",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/pirate-human-neutral.webp",
+      "subject": "pirate human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3e48e27bdebbf9f77a4eadfe07a03348e1e63fdf83de2811f08af791bc9a0382",
+      "previousSha256": "e1034db4b586c11dd2919f8ad9578e896395f62d7df5ccedadc00d214296c9ab",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-dwarf-feminine.webp",
+      "subject": "tyrant dwarf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "43aa5e265c4cef0c837187a7b20758389b865ba4d414a6d4f930d16389b420ee",
+      "previousSha256": "0645c3dead0a43f3e31f022ba44c967c9a371ddc570e26c6c62e7d6e35358c34",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-dwarf-masculine.webp",
+      "subject": "tyrant dwarf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "f463242dd0e42c8a943c35167a5b02c7f4fa923970cc729a12af90ab24ec7093",
+      "previousSha256": "61dbb3de6ba5a83a9a5f8fabbe4f12e883d8a89a5856d48b3a80de70cffecb5e",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-dwarf-neutral.webp",
+      "subject": "tyrant dwarf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "7c4346a357d6b34284e607aefed7a21b7277aa7c2839bd75b4f664c9e3e7be9d",
+      "previousSha256": "82acf72ec2742209ee63e19720dccee7cd79eeddcb97c998a0efe0bb7f17a9be",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-elf-feminine.webp",
+      "subject": "tyrant elf feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "b1600cafd2c48a81b0e94c4a22cf4abd58ace0a53f5c1805b8107689f6ea75c4",
+      "previousSha256": "8ef58c93e0582a831b338f1a3d96c0c6e470c1bb24ebc7f3ca037b623d9f6756",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-elf-masculine.webp",
+      "subject": "tyrant elf masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "82ffef2931e83034e87078580835d7768219f95110f061d30cfb7d29d2342ab1",
+      "previousSha256": "dc40904de38f53b8c6c26667769280ac3038b51757e3ea676c603c3e537ea8d1",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-elf-neutral.webp",
+      "subject": "tyrant elf neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "bc94975789563e8187098a5ccb629ecac6fb842466d0fa7eeb7ab438c3445b35",
+      "previousSha256": "947c01d16aa6eb1eaafaf8ad22dc25f0d2df4f4d16a1f91d2d95e4c2257b5e8d",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-half-orc-feminine.webp",
+      "subject": "tyrant half orc feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "3c773e97e415d3759794ba9cf2768044e1f162ee18b67af10c98258964e34854",
+      "previousSha256": "0a0ff6906ab5d1c74e7a54577f7fcff6064a5c7ddd1fba13f06aab7017f3ae5e",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-half-orc-masculine.webp",
+      "subject": "tyrant half orc masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "4969c61fe7227a1efa4b9068264f9a3366bb9b25a660d3fbe1b1b6fcc810ed47",
+      "previousSha256": "e5f3a75c449c9b48d489736ebf3fa4cb28ecb556b55b0030739985f26d9fb5a3",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-half-orc-neutral.webp",
+      "subject": "tyrant half orc neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "fb6d135e5c0470d90b61f36985b8771bb4ff39af651e7509d2c66184d5bd1f45",
+      "previousSha256": "7b39f2538d69ec42143d27af46a887930a546c86a975aa103641ae7dbce39fbe",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-human-feminine.webp",
+      "subject": "tyrant human feminine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "e224d4cef54bf1a20bf0b69e3609cb133099065b4b798fe6ae62d54be4af169e",
+      "previousSha256": "42e6478b41dc2c27c37bc0799962e671a5b1eddddfbebf88dd5f3f118ba6962d",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-human-masculine.webp",
+      "subject": "tyrant human masculine",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "c29cc74816eb56e435b48ea6394e64b912f1857130c22e3ede3ecd704eae7913",
+      "previousSha256": "f9a2f6f18a369fa50fbdc479c9278ff0df7adb5f69abc92cd9d2dece8fad482a",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/enemy-npc/tyrant-human-neutral.webp",
+      "subject": "tyrant human neutral",
+      "basis": "original enemy role (race and presentation variant)",
+      "width": 256,
+      "height": 256,
+      "sha256": "dd6e7dd0ae5d7c0225b688ff6442ecf88b307822fd87a077371bcb761886cf73",
+      "previousSha256": "0350727b637a1d328307521d4b9ed5c767d463d9e8eb381112a9eca33a1215e9",
+      "edit": "re-encoded from WebP q90 to q75 on 2026-11-18 for the app payload; same pixels size and path"
+    },
+    {
+      "file": "public/assets/placeholders/monster/aboleth.webp",
+      "subject": "aboleth",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "790e237352ea3c54825d4e3415fd097d8f414c4d2892330ffeb39228c6cd990f"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-black-dragon.webp",
+      "subject": "adult black dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "76b18677aa1f05fce24839571de10839e2156624aef0e63f7df2243bb0944c46"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-blue-dragon.webp",
+      "subject": "adult blue dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "ab2cb70a53a4fd2e3fcabe8b35b8b8c5c4862542803bee6bcff04f86308b01f7"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-brass-dragon.webp",
+      "subject": "adult brass dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "57bc676c9b0b5cc282eaeb02ca9ae2cc4133757adeb8fdc3646b063cb6801d3a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-bronze-dragon.webp",
+      "subject": "adult bronze dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "91db877c57990748f184714036a46985524484d15b91103cc64f8f4f94358d9c"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-copper-dragon.webp",
+      "subject": "adult copper dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "78fd5bde9033e341713867b37f155d109c9ec7030c2cf3a85f48a43a1ce03df4"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-gold-dragon.webp",
+      "subject": "adult gold dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "7aa3c6d61492895ce58461bd82646b25b3a1568e891b2af24d8a75877d540de0"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-green-dragon.webp",
+      "subject": "adult green dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "19d597b642d35e087b69f33070ebfc4f3492b9b7f0ff1678f56183240e9e6786"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-red-dragon.webp",
+      "subject": "adult red dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "af41f4892c771b9cd5fafcf72d139adcea11392e5b3a14e308704b58cfcf51bb"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-silver-dragon.webp",
+      "subject": "adult silver dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "93d17ca1a1010bdf4d6ce839cc2b1caf3726e4af7072333888e49b6d55a4505e"
+    },
+    {
+      "file": "public/assets/placeholders/monster/adult-white-dragon.webp",
+      "subject": "adult white dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "d6e77342fc18e4f0acc78188e5b7bebe6615f98dc93e85b319a72e74166f018b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-black-dragon.webp",
+      "subject": "ancient black dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "5b1498d840bb4cbbdcf258cba30e171890ad45567a5b07ec2ad8fd8686bd0589"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-blue-dragon.webp",
+      "subject": "ancient blue dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "83cf04c53d6539127e8537a3da26ac0cdf01da2b81fc04724cd089a447bcc98e"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-brass-dragon.webp",
+      "subject": "ancient brass dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "2a432d3e0b06b9f3be64a4aaffaba8ab59c34f3083dea01a618f8245f5948294"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-bronze-dragon.webp",
+      "subject": "ancient bronze dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "98c664e48e408113fff9130372d646933f338b223c9ed15a610367af3e413c17"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-copper-dragon.webp",
+      "subject": "ancient copper dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "f0c96b6668470cd58a95ccfea290e775d1808cba9cca87ef0cd319a35b60742c"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-gold-dragon.webp",
+      "subject": "ancient gold dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "5b88a634408e7dd7de699f08d9357e4c10ed378ef2ea882114dcb2fb23ef760f"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-green-dragon.webp",
+      "subject": "ancient green dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "61e5973ed66c96e400b9fb8c380fe90af52d746a48683ac7d930256db609a2f2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-red-dragon.webp",
+      "subject": "ancient red dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "2d4f9a4994635beebb03dcb9369b68025036ec09ca59ae52d59911e76dc63529"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-silver-dragon.webp",
+      "subject": "ancient silver dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "09a4c2b280bab0f4d8df0d77772ba918cb45a23a615608b9fabf8576bf04766e"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ancient-white-dragon.webp",
+      "subject": "ancient white dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "a42ec0276f8c86e94e1c2b55c83c48f3e47c4f457f1bce1eb271f0f897ba248a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ape.webp",
+      "subject": "ape",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "56b35af6690559b88eadcc178edc5b81d8e8184ed2c355ba6bcec73c71ffe235"
+    },
+    {
+      "file": "public/assets/placeholders/monster/awakened-shrub.webp",
+      "subject": "awakened shrub",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "21520d2088ee27194b0142c89435fa9f4ce3fc1d2a8b4f82a030a6454792e82b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/axe-beak.webp",
+      "subject": "axe beak",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "13ad4e237e431dc766f72a4ca754bb5ae0d647169fa96d1597701cd03076c815"
+    },
+    {
+      "file": "public/assets/placeholders/monster/baboon.webp",
+      "subject": "baboon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "7900da2d87310199dec76ddd4f7292a29e83e8fc98d349b41f65bf7d24dafc45"
+    },
+    {
+      "file": "public/assets/placeholders/monster/badger.webp",
+      "subject": "badger",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "eefce671e6921893d1ea08ed3ad082148e5a315e7e001b367f541a4b92b9cd85"
+    },
+    {
+      "file": "public/assets/placeholders/monster/balor.webp",
+      "subject": "balor",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "661ad6ce103bf39573618b010e671bc797068e220170eab08b7b45c8c4599f12"
+    },
+    {
+      "file": "public/assets/placeholders/monster/behir.webp",
+      "subject": "behir",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b233da7b6596d7cb530c4554928cd87e9e12c8dc19e4c63fb47353ae8bf325ec"
+    },
+    {
+      "file": "public/assets/placeholders/monster/black-dragon-wyrmling.webp",
+      "subject": "black dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "e921f29c866a404ae00472b9bea88cd476b1fba2fc792a4b66992be3d5e260ff"
+    },
+    {
+      "file": "public/assets/placeholders/monster/blink-dog.webp",
+      "subject": "blink dog",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "742208a1ac511bb54147aab596d25b5a31a7b8f55986ff5bb460284f476456e8"
+    },
+    {
+      "file": "public/assets/placeholders/monster/blood-hawk.webp",
+      "subject": "blood hawk",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "7e2f1030d3a6c42da566e42e9caee1259d2d2078db05f5b227f17dea3b66e1d2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/blue-dragon-wyrmling.webp",
+      "subject": "blue dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "8b2bf3bb18f2d327ee957ee066b108c8d588b1919877cfec74980129c33d2162"
+    },
+    {
+      "file": "public/assets/placeholders/monster/bone-devil.webp",
+      "subject": "bone devil",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "9f902a74134b23f5d0c6e625618dde4e7b860e5e6fbd420c4c70796ffcf6762b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/brass-dragon-wyrmling.webp",
+      "subject": "brass dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "2c1f9b52a4e7b6e0ad17b577155a4b8f5ddb701bea84c28af97e8da3552cfeeb"
+    },
+    {
+      "file": "public/assets/placeholders/monster/bronze-dragon-wyrmling.webp",
+      "subject": "bronze dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "884aa4aa691386970d101ad4dafa0d647a77476a1dd4bd8cda360f05249ea10b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/bugbear.webp",
+      "subject": "bugbear",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4b6eb45acb31fecf66ac9fa25cf22884f88a704f9b86d0c5b35625898ed4c917"
+    },
+    {
+      "file": "public/assets/placeholders/monster/camel.webp",
+      "subject": "camel",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "cc3d60bcc46a616297094d06dc58704c8f1f23b24024ba141e84fc80552fc197"
+    },
+    {
+      "file": "public/assets/placeholders/monster/cat.webp",
+      "subject": "cat",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4fc30ea2d94310395788bda45cdd71f16b0041e410daca5b890166e168a2d1b2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/clay-golem.webp",
+      "subject": "clay golem",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "dff00786c584bc7ccae83de626ee09a39d0fc8ca8d178d4984b6eb87ab71868d"
+    },
+    {
+      "file": "public/assets/placeholders/monster/constrictor-snake.webp",
+      "subject": "constrictor snake",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "31646c20970d5fa44b33e748b629ad2334e8f2570ac655fdee1a79aa52183140"
+    },
+    {
+      "file": "public/assets/placeholders/monster/copper-dragon-wyrmling.webp",
+      "subject": "copper dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "fabfa08518a55acf6b4ffab7bbe0169d6a77e952f0a0d62c0c65f6a772ecbc6b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/couatl.webp",
+      "subject": "couatl",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3604f349b7f43c9240d91b13a43019f8de69070c613a9a2c2f07be02a0075734"
+    },
+    {
+      "file": "public/assets/placeholders/monster/crab.webp",
+      "subject": "crab",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "abf9fe75e869ed362459b5907ac17b09f193c34a255ba31b5d8ed38668208a1e"
+    },
+    {
+      "file": "public/assets/placeholders/monster/deep-gnome-svirfneblin.webp",
+      "subject": "deep gnome svirfneblin",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "fc0435079250a3007ad9e5cdda13290f0517a012c9c1ce6830a5877bce9f04dc"
+    },
+    {
+      "file": "public/assets/placeholders/monster/deer.webp",
+      "subject": "deer",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "c2c43d8cf6ca1982534e01c149da1bf86e7ba3d82d5c02343f5f2de67ed40187"
+    },
+    {
+      "file": "public/assets/placeholders/monster/deva.webp",
+      "subject": "deva",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "f40c4aaf0fbeb8089269ff3091c242d80c142b7c302e2a093d29707adfcc7063"
+    },
+    {
+      "file": "public/assets/placeholders/monster/dire-wolf.webp",
+      "subject": "dire wolf",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "6be3375168c641b0a9ada33551fd89241a1d68214028eefbe3987157acc06992"
+    },
+    {
+      "file": "public/assets/placeholders/monster/djinni.webp",
+      "subject": "djinni",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "cb6fb5116ec0b345b4bd20cd058d518e6c6b9c74f811d639a4a828d906a82fae"
+    },
+    {
+      "file": "public/assets/placeholders/monster/doppelganger.webp",
+      "subject": "doppelganger",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "c9b6504754c73f055f86100dc628d0a19d3d72149ea76f29f6ced98173bf6da5"
+    },
+    {
+      "file": "public/assets/placeholders/monster/draft-horse.webp",
+      "subject": "draft horse",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "768c3d3f1a12189c8a1a8bd82c7f2f4fa00f50b24dd296e168ed6c63e7550f73"
+    },
+    {
+      "file": "public/assets/placeholders/monster/dretch.webp",
+      "subject": "dretch",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "1b0ca43bac28b35a74c602fd3448f38fedb4cfe34fc15c0be52e6713835c267f"
+    },
+    {
+      "file": "public/assets/placeholders/monster/drow.webp",
+      "subject": "drow",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "f5a64e242f6d05d8c050b3eacb230130abdb4901734e72e74fe06c02f19ea4f6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/efreeti.webp",
+      "subject": "efreeti",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "458df72a06ea308ad1c266d4c0d010d3c776d9bf8b6261b82fffd816de99e897"
+    },
+    {
+      "file": "public/assets/placeholders/monster/elephant.webp",
+      "subject": "elephant",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "f352e7edaf0f7694918a5199dd7ea436b43001b66e5f58bc01475b01687398c5"
+    },
+    {
+      "file": "public/assets/placeholders/monster/elk.webp",
+      "subject": "elk",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4fd5abb866c0e0af64455cc84afd203c5c4296e7ad1f07b80226b2a1c924dbaf"
+    },
+    {
+      "file": "public/assets/placeholders/monster/erinyes.webp",
+      "subject": "erinyes",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "129469573896216723a3fb4e3f39f87541833a3b7fe2a969470d745e30504a02"
+    },
+    {
+      "file": "public/assets/placeholders/monster/fire-elemental.webp",
+      "subject": "fire elemental",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "c4aa8f5333f0403278fee30a2c57cf35c54b77f6857e60d2e34714218d4f31b3"
+    },
+    {
+      "file": "public/assets/placeholders/monster/flying-snake.webp",
+      "subject": "flying snake",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3119c155f163fc4b78ea828c57805b23096e4f7e92391535b085562e7b183bf5"
+    },
+    {
+      "file": "public/assets/placeholders/monster/frog.webp",
+      "subject": "frog",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "c621435be0b8a7de828528604b97afc8742d44d5070f6c9e4ada37a2c34fe474"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-ape.webp",
+      "subject": "giant ape",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "8b2fba89c582d65c2e222454026aea1f637068f8e4aba8f4a4a09feec673c4cb"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-badger.webp",
+      "subject": "giant badger",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "1b284b14d1a74c75c812b5f13dc3f346d421bdb3e33e4094572172a1f9a0cc70"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-centipede.webp",
+      "subject": "giant centipede",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "faeabbb98cdcdff7bfea339a584af8790502df2752006188b4fa44ded5843a4d"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-constrictor-snake.webp",
+      "subject": "giant constrictor snake",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "968e0c6ab87117af9ab107125313f4d9dba68fb21ed645496a0a5937d7abcaa7"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-crab.webp",
+      "subject": "giant crab",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "86f709f393e4371808549901194f91bf6345da7faae5ab8c62597a229897f864"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-elk.webp",
+      "subject": "giant elk",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "8c646b9e370d54fd533c4c1724f443c22c205fd2cee32ba94eff8f427305b9a8"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-fire-beetle.webp",
+      "subject": "giant fire beetle",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3e392ac537792ec51cb22a6d432f729b056d94cabdc9d7b77257d8272b8968ab"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-frog.webp",
+      "subject": "giant frog",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "1246a22f7924947a43d4b5c338442a07f958a0e47ac555c6643ff8f5a34f13b0"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-goat.webp",
+      "subject": "giant goat",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "afc8eb2a8f2a7a5877c0b31f0607964573cd2febbbc27c8ac90feb5a3f83e03f"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-hyena.webp",
+      "subject": "giant hyena",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3c61451d779b3d553f6c8b778c57e4d6a84c882d8c3c8df45538a53a73ad420a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-lizard.webp",
+      "subject": "giant lizard",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "bb8888c6e9abc194573e182f1eac1aa565c038c548ed41a0193cb12402dbdfea"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-owl.webp",
+      "subject": "giant owl",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "6ae619ae429a0b8082b696a4e63dad28ae07ec0b77162116f5ebb7e5e4f047b9"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-sea-horse.webp",
+      "subject": "giant sea horse",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "92c35c0000a51b55db891705768a70ffcfa1456e2048270a577cd1134184454a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-toad.webp",
+      "subject": "giant toad",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "7a225d7765d33d712d726a9cfcbb1c265db8fbd3b389ef3ebd0684672ff6b3ef"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-vulture.webp",
+      "subject": "giant vulture",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "e95305a96038a47de796565a9e1073f3ce8a8ba5b4583b91052d10e6ce3f55d2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-wasp.webp",
+      "subject": "giant wasp",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3087748e0236130d93437a7f1d104b26a898f763581f247f583d5571d1977db5"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-weasel.webp",
+      "subject": "giant weasel",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4190d40fb005669a163123f46555132e25917c7db87573cd2ef1d2d31f317ad8"
+    },
+    {
+      "file": "public/assets/placeholders/monster/giant-wolf-spider.webp",
+      "subject": "giant wolf spider",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4622343588f1f7b0e8549c28d1968f0750be833013fd3add81ae41e33094deac"
+    },
+    {
+      "file": "public/assets/placeholders/monster/gibbering-mouther.webp",
+      "subject": "gibbering mouther",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "782630c9c28db82d5d1400b53ad77610f017ca18b1cc3ff4b059e4dc7511e328"
+    },
+    {
+      "file": "public/assets/placeholders/monster/goat.webp",
+      "subject": "goat",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "d9d8c2feac8a7427b9a2cfed4a3ee70603ef52ccb78d5a41bb52ce3fa3d4201a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/goblin.webp",
+      "subject": "goblin",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "811d6a2d5b6f5e9d73a53837ddb3bfacec57b011b072e486182d7182ae43122b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/gold-dragon-wyrmling.webp",
+      "subject": "gold dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "79669529cb0bb6f14815f6bb3c8e3a86ad2040b491da8a93f7d40a8ddae3b6d4"
+    },
+    {
+      "file": "public/assets/placeholders/monster/gorgon.webp",
+      "subject": "gorgon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "e85e3d3e370290aa42c192105b87d1436d90bc50cf6bf7805dca288cee0d8a58"
+    },
+    {
+      "file": "public/assets/placeholders/monster/gray-ooze.webp",
+      "subject": "gray ooze",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "d9793428068a96d1e696c209d878775cc10f1109693572ead60135a9da336b9f"
+    },
+    {
+      "file": "public/assets/placeholders/monster/green-dragon-wyrmling.webp",
+      "subject": "green dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3602bf61568bdf919b1a915a69f5156683fbd9f5e9d7a62834cc433617ff37f1"
+    },
+    {
+      "file": "public/assets/placeholders/monster/grimlock.webp",
+      "subject": "grimlock",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3e574ff758bc6069acdd341ee0d23abfde5bbd905538e853c6352f74086c70d0"
+    },
+    {
+      "file": "public/assets/placeholders/monster/half-red-dragon-veteran.webp",
+      "subject": "half red dragon veteran",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "7223d53355221796db27f5e59c74c2be14ade234786a6103afc07414a4c08898"
+    },
+    {
+      "file": "public/assets/placeholders/monster/hawk.webp",
+      "subject": "hawk",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "0eb0efb084d1b84ce4c6bf5254c4cdd281ccf81d7adf893acba1d13a9018bf4c"
+    },
+    {
+      "file": "public/assets/placeholders/monster/hill-giant.webp",
+      "subject": "hill giant",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "541e07f236c2496981735ca8ed554a3853d25f25d2710a87b9e795b33be06f45"
+    },
+    {
+      "file": "public/assets/placeholders/monster/hyena.webp",
+      "subject": "hyena",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "9238cf8539d8beb482267bb007cd399e2f0b34791e3434782e063a3828de67e1"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ice-mephit.webp",
+      "subject": "ice mephit",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "bbd0a1073cf1291ef21967a7a3e041f7edeedb236d69dace4b316645370970b8"
+    },
+    {
+      "file": "public/assets/placeholders/monster/invisible-stalker.webp",
+      "subject": "invisible stalker",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "f88b4a9060c465acb17add7528b5c10ce6468efc88929301242850ed415ea40b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/jackal.webp",
+      "subject": "jackal",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "700adc5d465fcf31a1bf149b7d8f83a2e9f0944241c4f60cdef08f671d8bab75"
+    },
+    {
+      "file": "public/assets/placeholders/monster/killer-whale.webp",
+      "subject": "killer whale",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "9b039c3b459b25f5b90bdacd887dab488537eafe6625b2eb4c53f68f9a514a38"
+    },
+    {
+      "file": "public/assets/placeholders/monster/lemure.webp",
+      "subject": "lemure",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "948fc5b00944e7d3677f4c898f248275c1acd05373dd13918152dce8c17f3d89"
+    },
+    {
+      "file": "public/assets/placeholders/monster/lion.webp",
+      "subject": "lion",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "85b858e1e8a19966a4fe8fa0214e68b469a40e03e41da119cec8bd7a751897dc"
+    },
+    {
+      "file": "public/assets/placeholders/monster/lizard.webp",
+      "subject": "lizard",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "0aa5fd278bcf0453e15de272332c0750484548fa2b92551b1736528918a3db1b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/lizardfolk.webp",
+      "subject": "lizardfolk",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "59d7fb897b9020adb2ab81503bf8e901b9a3a11896d8bdef02f8c3e03e1c4afe"
+    },
+    {
+      "file": "public/assets/placeholders/monster/magma-mephit.webp",
+      "subject": "magma mephit",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "773fb9210126853912606409bb9bd0b7e3cb5035d93b5e23e10c73c6890d6f1b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/magmin.webp",
+      "subject": "magmin",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "588ef9291b3d5b1fdba36d0e4f4b47bc83295e1c0a4ef95f40f7fc6ac9b76dd4"
+    },
+    {
+      "file": "public/assets/placeholders/monster/mammoth.webp",
+      "subject": "mammoth",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b5daca53f243a1f92d4c478bfb6109cf4ff894eece0f20da1c4b8e64c67c2be6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/manticore.webp",
+      "subject": "manticore",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "3374c9254e90b20398dbddaa158f097d116f5d152ccd879fb28ede1ab5cc68c9"
+    },
+    {
+      "file": "public/assets/placeholders/monster/mastiff.webp",
+      "subject": "mastiff",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "d35796e59ba3cf76ac9e0463db47bd8cf997535cb0d3643d98ddb1b551dda297"
+    },
+    {
+      "file": "public/assets/placeholders/monster/minotaur-skeleton.webp",
+      "subject": "minotaur skeleton",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "723060aaa1b77438a5a8d4701f0274ee76465ec847357cb21e1e03c906d5d6a7"
+    },
+    {
+      "file": "public/assets/placeholders/monster/mule.webp",
+      "subject": "mule",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "765dd3dcb93b7ae4137b2aad27910b5f4f51a48defb69482e86ddbdf64c3d044"
+    },
+    {
+      "file": "public/assets/placeholders/monster/nightmare.webp",
+      "subject": "nightmare",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "742fa8c1b34d9147e87a00ec36349c3b8bd57c98e2dc700bde1afa7ba22b8ee6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ochre-jelly.webp",
+      "subject": "ochre jelly",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "5126bed32caa20940a1bdf467d4e11e251edec14b02a1e5cd516d1230984ae5d"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ogre-zombie.webp",
+      "subject": "ogre zombie",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "ef9ccb518674f842d4dc6d1d499732e4e252cec1faffca8b5da20e899b550ea6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/ogre.webp",
+      "subject": "ogre",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "03843837c507618ae3b79ec15bd2d6a1f496266c0769ef9e1be12f95cd3f57b1"
+    },
+    {
+      "file": "public/assets/placeholders/monster/oni.webp",
+      "subject": "oni",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b2f473f88fd682687a2431848bba1d44efd9091927c7dd1ea9b0b1f061a65ff7"
+    },
+    {
+      "file": "public/assets/placeholders/monster/orc.webp",
+      "subject": "orc",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b319469c61699406ba2f29d6bf4f261579ed4e8391846fae7b9bec0bdce75a6a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/owl.webp",
+      "subject": "owl",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "421a4e30f6453e608fdb4ce6652332e2a8cc5410b7f0341464e55e95ba05f3c3"
+    },
+    {
+      "file": "public/assets/placeholders/monster/panther.webp",
+      "subject": "panther",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b01ef7371718ab16db495a8bf5d7e0fa7dbcb5b75d45de67dd260f5dcd7049a6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/phase-spider.webp",
+      "subject": "phase spider",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "bf878be2dcfe5a8e23f4b04e9a391ee602c48d03950462896c657504f8b49044"
+    },
+    {
+      "file": "public/assets/placeholders/monster/planetar.webp",
+      "subject": "planetar",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "e27e357938570088d2f77506f8b984b2137f54e60f1105713ca4baa776035d96"
+    },
+    {
+      "file": "public/assets/placeholders/monster/plesiosaurus.webp",
+      "subject": "plesiosaurus",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "f76a3f76fe164a78dc4058ddb70e78bca1fa7e0d67ecb518bcd1bd3dc3e17ff6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/pony.webp",
+      "subject": "pony",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "9fef8cb5a01c043dcd12720e0730e143e85c5941190598ea03ed7f4710eaee0d"
+    },
+    {
+      "file": "public/assets/placeholders/monster/quipper.webp",
+      "subject": "quipper",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "6d50ffe9a3f85fae601257ad5eb9157038767ac3b48466e5dd74c492c719298b"
+    },
+    {
+      "file": "public/assets/placeholders/monster/raven.webp",
+      "subject": "raven",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "87359084150e83c183e077970dbb12c8162289b7518989d1f7d9a49122ada336"
+    },
+    {
+      "file": "public/assets/placeholders/monster/red-dragon-wyrmling.webp",
+      "subject": "red dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "d30663ada721435d200db9846acea8f5a0f466163024eb70fb72cec365f1b2f2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/rhinoceros.webp",
+      "subject": "rhinoceros",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "c67906e34a17c524e476c0e5eee5b0ed663ebbc125acec4487f2e2b6377af7c2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/riding-horse.webp",
+      "subject": "riding horse",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "086785e412291e2d3b68038b99c60854c74faa374abaf3fba1268cfd0bbfcf53"
+    },
+    {
+      "file": "public/assets/placeholders/monster/rug-of-smothering.webp",
+      "subject": "rug of smothering",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4272ed9dc24bc797c4dfe60e692c371775c42a8ffe4c9010c77d17c778ce43b1"
+    },
+    {
+      "file": "public/assets/placeholders/monster/salamander.webp",
+      "subject": "salamander",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "edab976ef4eafa0f3e23ff004af87f9d8378bcd434ae0cc99234f7278bbe1cde"
+    },
+    {
+      "file": "public/assets/placeholders/monster/sea-horse.webp",
+      "subject": "sea horse",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "2d49a19fd93d671c1dd96d0ce62876059fa94a2df9db27c685201b358d20ab8f"
+    },
+    {
+      "file": "public/assets/placeholders/monster/shadow.webp",
+      "subject": "shadow",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b088ac34d7bcb91bac142b64a81a749c53c4b0ad2316507ecf0da160869ff37d"
+    },
+    {
+      "file": "public/assets/placeholders/monster/shambling-mound.webp",
+      "subject": "shambling mound",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "09034df80e4706537384103691b7856ded8b1b7d7f47e16d74aa24a942da2591"
+    },
+    {
+      "file": "public/assets/placeholders/monster/shield-guardian.webp",
+      "subject": "shield guardian",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "aa63cc03895f970eeee66088f5d7649fde37d9fd63983904ee76d407c74cf52e"
+    },
+    {
+      "file": "public/assets/placeholders/monster/silver-dragon-wyrmling.webp",
+      "subject": "silver dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "935aefb3548be25bedb95336ddab09ab6c5b0eaf60d277407359b3fb511729b1"
+    },
+    {
+      "file": "public/assets/placeholders/monster/skeleton.webp",
+      "subject": "skeleton",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "7c5f115ea21a76ac0b935cf6e4e282a621cc62a5f1c3876025129d3041fdea60"
+    },
+    {
+      "file": "public/assets/placeholders/monster/solar.webp",
+      "subject": "solar",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "ed8c48fd11ee7392f19b7a8ff34108a5f62082d313d4c0b3d529e79c87c67278"
+    },
+    {
+      "file": "public/assets/placeholders/monster/specter.webp",
+      "subject": "specter",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "ba389fcde489a518128835210b4403775172c8e11538984dbbcaef82de337cca"
+    },
+    {
+      "file": "public/assets/placeholders/monster/sprite.webp",
+      "subject": "sprite",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "1bc45aa19f31f29293ddc793afceb3809ce9794661434cb702ff110248b6c132"
+    },
+    {
+      "file": "public/assets/placeholders/monster/steam-mephit.webp",
+      "subject": "steam mephit",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "11b218c35af53db1335a0a2cf9681bb8773e032bf4cfe6e4b0fc4a7a657b5bfb"
+    },
+    {
+      "file": "public/assets/placeholders/monster/stone-golem.webp",
+      "subject": "stone golem",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "b9a0e7167fb93247c29c9babb8fa0ec04a2d2c3185ede07ecd33240a310ee39e"
+    },
+    {
+      "file": "public/assets/placeholders/monster/succubusincubus.webp",
+      "subject": "succubusincubus",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "eccf0a7784268ef3925ad6cf740c8d1ea7b89a068d928f14148da412e11848b8"
+    },
+    {
+      "file": "public/assets/placeholders/monster/tarrasque.webp",
+      "subject": "tarrasque",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "5f3d6fbea87fc4b54d37cab5b11da207ecb0d0f2d5398b165980a354347cb5bc"
+    },
+    {
+      "file": "public/assets/placeholders/monster/tiger.webp",
+      "subject": "tiger",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "8cd7e2d6e77cf20276bc2c6da52da2a7b7a291c27aa4de48c2475377b9322de4"
+    },
+    {
+      "file": "public/assets/placeholders/monster/triceratops.webp",
+      "subject": "triceratops",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "db7e5ead9d862fea13d4ef991275dca1188366e5179f7c14571246d928adbddc"
+    },
+    {
+      "file": "public/assets/placeholders/monster/vampire.webp",
+      "subject": "vampire",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "fb54b6574812bf190ff5ea237f03f64ee20514237f952b90a94c0f38899e2336"
+    },
+    {
+      "file": "public/assets/placeholders/monster/vulture.webp",
+      "subject": "vulture",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "2e9dec5bd70fc707b99700bf9af2cdb030550cc97de36410315f5d7b9727714a"
+    },
+    {
+      "file": "public/assets/placeholders/monster/warhorse-skeleton.webp",
+      "subject": "warhorse skeleton",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "0a45d55e695672317c9c39a29629cbfc7e56dd893bf018932958d036f89390ea"
+    },
+    {
+      "file": "public/assets/placeholders/monster/weasel.webp",
+      "subject": "weasel",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "0d6b6a8809ba12772782256bcd18b01b47b1ec9d398a0d30198975af8449fae2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/werebear.webp",
+      "subject": "werebear",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "8810864688ecf6e93148fcdbfacb54809dc4d03d18c98b22b8bc48816e63c102"
+    },
+    {
+      "file": "public/assets/placeholders/monster/wereboar.webp",
+      "subject": "wereboar",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "2a6465283c43049c9fafca5a5cab92c16a41c71af70969fb93bd9fe68de9b039"
+    },
+    {
+      "file": "public/assets/placeholders/monster/wererat.webp",
+      "subject": "wererat",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "c51dcfce62a7c2004dd15ab22ef1a9dad0a2c31291aa66bbd818744e00a6d210"
+    },
+    {
+      "file": "public/assets/placeholders/monster/weretiger.webp",
+      "subject": "weretiger",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "764ed24fd8af4f919251b93356232346f9758d8ecd10da7f3246096adb01c1e6"
+    },
+    {
+      "file": "public/assets/placeholders/monster/white-dragon-wyrmling.webp",
+      "subject": "white dragon wyrmling",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "d7b70f4a835fcf9daaab45171da7358d131dab7db36f4d5bf50691f245947ac2"
+    },
+    {
+      "file": "public/assets/placeholders/monster/wight.webp",
+      "subject": "wight",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "6aa5831a80e3c71c12b8f03579d001a20cd48a99b7dd6f73407ba7cf72c1d8c9"
+    },
+    {
+      "file": "public/assets/placeholders/monster/winter-wolf.webp",
+      "subject": "winter wolf",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "4cc5938635ff890c78c7b72040b72c4d8a9703e1a976a567daaa45d0f0038435"
+    },
+    {
+      "file": "public/assets/placeholders/monster/wolf.webp",
+      "subject": "wolf",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "87fbf88b2046815b796ce5efd453d40322fb45f21b5186ee6e7c7c50b218a2e8"
+    },
+    {
+      "file": "public/assets/placeholders/monster/worg.webp",
+      "subject": "worg",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "48a272667969b0b69f15a4257bfaa749d006ba5afd968dd70b8dbefc281aecd1"
+    },
+    {
+      "file": "public/assets/placeholders/monster/wraith.webp",
+      "subject": "wraith",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "ff63bf86aae6de92fe1794cab159bd526bbf1c208fa7ca886f3c4d812d756355"
+    },
+    {
+      "file": "public/assets/placeholders/monster/young-brass-dragon.webp",
+      "subject": "young brass dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "29c73d744cbd1d5d9c1eee58e70703fce88cdcf3be1580617355061b2c2d0c35"
+    },
+    {
+      "file": "public/assets/placeholders/monster/young-bronze-dragon.webp",
+      "subject": "young bronze dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "e3126b7790796ada550512c7f223e782d63595a3c7951cad6dfc74b8d3572910"
+    },
+    {
+      "file": "public/assets/placeholders/monster/young-copper-dragon.webp",
+      "subject": "young copper dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "bb90b66cbfacd23dd34f5de9932e2b63f73873e0eea8dcfb6b9e76fa5dfa50a3"
+    },
+    {
+      "file": "public/assets/placeholders/monster/young-green-dragon.webp",
+      "subject": "young green dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "e50a7307103e62a6e00c954e517d8eeb42d610f45f9e9e12cb77b5253a7a03f4"
+    },
+    {
+      "file": "public/assets/placeholders/monster/young-red-dragon.webp",
+      "subject": "young red dragon",
+      "basis": "named SRD 5.1 creature",
+      "width": 256,
+      "height": 256,
+      "sha256": "a58ca8f65803dc3c5b6ffe5db2601970f8f04e12790e32c5fa2a318dcbd46028"
+    }
+  ]
+}
