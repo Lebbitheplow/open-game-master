@@ -18,6 +18,8 @@ const messages = await import("../src/lib/db/messages.ts");
 const { narratedLines, personLines } = await import("../src/lib/dm/speech-lines.ts");
 const { mergeLines } = await import("../src/lib/dm/speech.ts");
 const { runRenarrate, selectRenarrateVariant } = await import("../src/lib/dm/renarrate.ts");
+const { setStoryArc } = await import("../src/lib/db/campaigns.ts");
+const { normalizeStoryArc } = await import("../src/lib/dm/arc-logic.ts");
 
 const kara = world.addHero({ name: "Kara", class: "fighter", level: 3 });
 const marla = npcs.upsertNpc({ campaignId: world.campaignId, name: "Marla Venn", gender: "Female" });
@@ -74,6 +76,68 @@ await test("An NPC the same reply registers speaks their first line under their 
   const bruno = npcs.getNpcByName(world.campaignId, "Bruno");
   assert.ok(bruno);
   assert.deepEqual(message.speech, [{ line: "Benvenuti alla forgia.", speaker: { kind: "npc", id: bruno.id, name: "Bruno" } }]);
+});
+
+// Issue 1027: the story plan named Captain Mira, GAME STATE listed her, and the
+// narrator brought her on stage without set_npc. With no row she was nobody
+// the table knew, so her lines had no face, no theatre insert and no voice.
+await test("The story plan's cast speaks before the narrator registers them, and is registered by the line.", async () => {
+  const jason = english.addHero({ name: "Jason", class: "rogue", level: 3 });
+  setStoryArc(
+    english.campaignId,
+    normalizeStoryArc({
+      premise: "A bandit lord raids Blackhaven.",
+      beats: [{ text: "Take the contract.", status: "active", act: 1 }, { text: "Find Kethan.", act: 1 }],
+      cast: [
+        { name: "Captain Mira", role: "town protector", agenda: "End Kethan's raids." },
+        { name: "Old Sabel", role: "fence", agenda: "Stay rich." },
+      ],
+    }),
+  );
+  const [mira, sabel] = english.campaign().storyArc.cast;
+  const text =
+    "Across from you, a stout clerk—Captain Mira, the town’s unofficial protector—leans back in a chair. Her eyes narrow as she watches you. She slides a parchment across the table, her voice low and urgent. “Word’s that the bandit lord has been raiding the outskirts.”\n\nShe hands you the contract. “Pay’s enough to keep you off the streets.”";
+  model.pointAt(english);
+  model.script([reply({ text })]);
+  model.claims([[{ kind: "speaker", ref: `plan:${mira.id}`, quote: "Word’s that the bandit lord" }]]);
+  const message = await model.turn(english, "I head to the tavern.", jason.id);
+  const turnRead = model.readerRequests.findLast((request) => /Speaker refs:/.test(request.messages[1].content));
+  assert.match(turnRead.messages[1].content, new RegExp(`"plan:${mira.id}" for Captain Mira`), "the reader is offered the planned speaker");
+  const row = npcs.getNpcByName(english.campaignId, "Captain Mira");
+  assert.ok(row, "the line registered her");
+  assert.equal(row.arcCastId, mira.id, "linked to the plan's cast, as set_npc links her");
+  assert.equal(row.agency.goals.ambition, "End Kethan's raids.");
+  assert.deepEqual(said(message), [
+    "Captain Mira: Word’s that the bandit lord has been raiding the outskirts.",
+    "Captain Mira: Pay’s enough to keep you off the streets.",
+  ]);
+  assert.ok(message.speech.every((entry) => entry.speaker.id === row.id), "both lines carry her row, so they find her face and voice");
+  assert.equal(npcs.getNpcByName(english.campaignId, "Old Sabel"), null, "a planned person who never speaks is not registered");
+
+  // Left to the structural reading when the reader gives nobody, the set-off
+  // name still finds a planned speaker.
+  model.script([reply({ text: "At the counter, a thin man—Old Sabel—counts his coins. He does not look up. “No credit.”" })]);
+  model.claims([[]]);
+  const unread = await model.turn(english, "I ask the fence for credit.", jason.id);
+  const fence = npcs.getNpcByName(english.campaignId, "Old Sabel");
+  assert.ok(fence);
+  assert.deepEqual(unread.speech, [{ line: "No credit.", speaker: { kind: "npc", id: fence.id, name: "Old Sabel" } }]);
+  assert.equal(fence.arcCastId, sabel.id);
+});
+
+await test("A planned person the story has written out, or one sharing a hero's name, is never registered by a line.", () => {
+  const gone = normalizeStoryArc({
+    premise: "A bandit lord raids Blackhaven.",
+    beats: [{ text: "Take the contract.", status: "active", act: 1 }, { text: "Find Kethan.", act: 1 }],
+    cast: [{ name: "Brother Tam", role: "priest", agenda: "Pray." }, { name: "Jason", role: "a hero's double", agenda: "None." }],
+  });
+  gone.cast[0].status = "gone";
+  setStoryArc(english.campaignId, gone);
+  assert.deepEqual(personLines(english.campaign(), "“Pray with me,” says Brother Tam."), []);
+  assert.equal(npcs.getNpcByName(english.campaignId, "Brother Tam"), null);
+  const lines = personLines(english.campaign(), "“Follow me,” says Jason.");
+  assert.equal(lines[0]?.speaker.kind, "pc", "the hero speaks as their sheet");
+  assert.equal(npcs.getNpcByName(english.campaignId, "Jason"), null);
 });
 
 await test("A person's prose is read from its words: structure at every table, pronouns at an English one.", () => {

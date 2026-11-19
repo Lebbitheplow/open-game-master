@@ -9,6 +9,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { listRecentMessages } from "@/lib/db/messages";
 import { getNpcByName, standsBehindLiveCompanion } from "@/lib/db/npcs";
+import { registerPlannedNpc } from "@/lib/dm/social-tools";
 import { listSheets } from "@/lib/db/sheets";
 import { guardOutcomes } from "@/lib/dm/engine-boundary";
 import { liveStateFor, readClaims, speakerRoster } from "@/lib/dm/claims";
@@ -20,28 +21,63 @@ import { keyOf } from "@/lib/dm/speech-prose";
 // cost never grows with the campaign.
 const COMMON_WORDS_MESSAGES = 80;
 
+// The table a passage is read for: the story plan rides along when the caller
+// has it, so its cast may speak before they are registered (claims.ts
+// speakerRoster).
+type Table = Pick<Campaign, "id" | "gameSettings"> & Partial<Pick<Campaign, "storyArc">>;
+
 // Who may speak at the table and the words its story uses, as the
 // structural reading reads them.
-function structuralReading(campaign: Pick<Campaign, "id" | "gameSettings">) {
+function structuralReading(campaign: Table) {
   const sheets = listSheets(campaign.id);
   const creatures = new Map([...guardOutcomes([], liveStateFor(campaign.id), campaign.gameSettings.tableLanguage).creatures].map(([ref, fact]) => [ref, fact.display]));
   const recent = listRecentMessages(campaign.id, COMMON_WORDS_MESSAGES)
     .filter((message) => message.authorType === "dm")
     .map((message) => message.content);
   return {
-    speakers: [...speakerRoster(campaign.id, sheets, creatures).values()],
+    speakers: [...speakerRoster(campaign.id, sheets, creatures, [], campaign.storyArc ?? null).values()],
     options: { common: commonWords(recent), englishPronouns: campaign.gameSettings.tableLanguage === "english" },
   };
 }
 
-// Person-written text: the human DM's narration, a beat, an edit, an
-// accepted rewrite. No model call.
-export function personLines(campaign: Pick<Campaign, "id" | "gameSettings">, text: string): SpokenLine[] {
+// Every line's speaker as stored: an id-less NPC (a name the reply registered,
+// or one of the story plan's cast) is found by name now that the reply's tools
+// have run, and a planned cast member nobody registered is registered here, as
+// set_npc would have: without a row the line had a name and nothing else, no
+// face, no voice, no place among the people (issue 1027). Any other id-less
+// speaker stays as read.
+function seated(campaign: Table, lines: readonly SpokenLine[]): SpokenLine[] {
+  return lines.map((entry) => {
+    const { speaker } = entry;
+    if (speaker.kind !== "npc" || speaker.id) {
+      return entry;
+    }
+    const found = getNpcByName(campaign.id, speaker.name);
+    if (found) {
+      return standsBehindLiveCompanion(found) ? entry : { line: entry.line, speaker: { kind: "npc", id: found.id, name: found.name } };
+    }
+    const planned = campaign.storyArc?.cast.some((cast) => cast.status !== "gone" && textKey(cast.name) === textKey(speaker.name));
+    if (!planned) {
+      return entry;
+    }
+    const npc = registerPlannedNpc({ id: campaign.id, storyArc: campaign.storyArc ?? null }, speaker.name);
+    return { line: entry.line, speaker: { kind: "npc", id: npc.id, name: npc.name } };
+  });
+}
+
+// The lines the structural reading finds, before anyone is seated.
+function readLines(campaign: Table, text: string): SpokenLine[] {
   if (!hasQuotedLine(text)) {
     return [];
   }
   const { speakers, options } = structuralReading(campaign);
   return linesOf(attributeSpeech(text, speakers, options));
+}
+
+// Person-written text: the human DM's narration, a beat, an edit, an
+// accepted rewrite. No model call.
+export function personLines(campaign: Table, text: string): SpokenLine[] {
+  return seated(campaign, readLines(campaign, text));
 }
 
 // Model-written text outside a turn (a reroll, a continued scene, an
@@ -78,9 +114,11 @@ export async function modelLines(campaign: Campaign, text: string, label: string
 // who does speak, needs no such check. A speaker the reply itself registered
 // had no row when it was read, and is found by name now that its tools have
 // run.
-export function modelTextLines(campaign: Pick<Campaign, "id" | "gameSettings">, text: string, read: readonly SpokenLine[]): SpokenLine[] {
+export function modelTextLines(campaign: Table, text: string, read: readonly SpokenLine[]): SpokenLine[] {
   const sheets = listSheets(campaign.id);
-  const fromWords = personLines(campaign, text);
+  // Seated once, below, so nobody is registered for a line the reader gave
+  // to someone else.
+  const fromWords = readLines(campaign, text);
   // A line the prose gives to someone the table does not list is the
   // reader's to give only to a person its paragraph names: offered a scene
   // with a companion in it, the reader put "The heir. Give us the fragment"
@@ -113,9 +151,12 @@ export function modelTextLines(campaign: Pick<Campaign, "id" | "gameSettings">, 
     }
     return [{ line, speaker: sheet ? { kind: "pc", id: sheet.id, name: sheet.name } : storedSpeaker(speaker) }];
   }).filter((entry) => !guessed(entry));
-  return mergeLines(
-    resolved,
-    fromWords.filter((entry) => entry.speaker.kind !== "pc"),
+  return seated(
+    campaign,
+    mergeLines(
+      resolved,
+      fromWords.filter((entry) => entry.speaker.kind !== "pc"),
+    ),
   );
 }
 
@@ -124,7 +165,7 @@ export function modelTextLines(campaign: Pick<Campaign, "id" | "gameSettings">, 
 // reader's for an agent program's prose; a person's prose read from its
 // words.
 export function narratedLines(
-  campaign: Pick<Campaign, "id" | "gameSettings">,
+  campaign: Table,
   text: string,
   from: { speaker: Speaker | null; agentLines: SpokenLine[] | null },
 ): SpokenLine[] {

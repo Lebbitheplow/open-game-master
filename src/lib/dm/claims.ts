@@ -236,15 +236,20 @@ const SKILL_IDS = SRD_SKILLS.map((skill) => skill.id);
 
 // Everyone who may speak a line at this table, by the ref the reader copies:
 // the cast (src/lib/dm/cast.ts wholeCast), the party, the
-// fight's creatures, and the NPCs the reply being read registers, whose row
-// does not exist yet (an id-less speaker, resolved by name when the message
-// is written: src/lib/dm/speech-lines.ts). Aliases and the gender field ride
-// along for the reading of person-written text.
+// fight's creatures, the NPCs the reply being read registers, whose row does
+// not exist yet, and the story plan's cast still in play, who has no row until
+// the narrator registers them (both id-less speakers, resolved by name when
+// the message is written: src/lib/dm/speech-lines.ts). The plan's cast is
+// listed because the narrator brings them on stage by name, as GAME STATE
+// names them, without always calling set_npc first: Captain Mira's lines
+// went to nobody (issue 1027). Aliases and the gender field ride along for
+// the reading of person-written text.
 export function speakerRoster(
   campaignId: string,
   sheets: readonly CharacterSheet[],
   creatures: ReadonlyMap<string, string> = new Map(),
   registering: readonly string[] = [],
+  planned: Campaign["storyArc"] = null,
 ): Map<string, Speaker> {
   const roster = new Map<string, Speaker>();
   // A companion's own row stands behind its sheet, which speaks for them.
@@ -264,6 +269,17 @@ export function speakerRoster(
   for (const name of registering) {
     if (!taken.has(textKey(name))) {
       roster.set(`new:${name}`, { kind: "npc", id: "", name });
+      taken.add(textKey(name));
+    }
+  }
+  // A party character answers to their sheet, never to a planned row.
+  for (const sheet of sheets) {
+    taken.add(textKey(sheet.name));
+  }
+  for (const entry of planned?.cast ?? []) {
+    if (entry.status !== "gone" && entry.name.trim() && !taken.has(textKey(entry.name))) {
+      roster.set(`plan:${entry.id}`, { kind: "npc", id: "", name: entry.name.trim() });
+      taken.add(textKey(entry.name));
     }
   }
   return roster;
@@ -347,7 +363,7 @@ export async function readClaims(
     })
     .map((spend, index) => ({ ...spend, ref: `s${index + 1}` }));
   const speakers = input.kinds.includes("speaker")
-    ? speakerRoster(campaign.id, input.sheets, creatures, input.registering)
+    ? speakerRoster(campaign.id, input.sheets, creatures, input.registering, campaign.storyArc)
     : new Map<string, Speaker>();
   // Who speaks is asked only when the passage names someone it could be.
   const named = namedSpeakers(input.text, speakers);

@@ -230,18 +230,37 @@ export function subjectOf(sentence: string, reading: Reading, atStart = true): S
     const found = nameAt(body, reading, start);
     return found ? { kind: "name", speaker: found.speaker, text: body, end: found.end } : null;
   };
+  // A name set off after a few words saying who they are: "a stout
+  // clerk—Captain Mira, the town's protector—leans back" is about Captain
+  // Mira, whose lines after it went to nobody (issue 1027). The words before
+  // the mark hold no capital past their first letter; the name comes straight
+  // after it, with its capital, and not as somebody's ("the guard—Mira's
+  // brother—steps up" is about the guard).
+  const setOff = (body: string): Pointer | null => {
+    const mark = /^([^,;:—–]{1,40}?)\s*[—–,]\s*(?=\p{Lu})/u.exec(body);
+    if (!mark || wordCount(mark[1]) > 4 || /\s\p{Lu}/u.test(mark[1])) {
+      return null;
+    }
+    const rest = body.slice(mark[0].length);
+    const found = nameAt(rest, reading, false);
+    if (!found || /^['’]s(?!\p{L})/u.test(rest.slice(found.end))) {
+      return null;
+    }
+    return { kind: "name", speaker: found.speaker, text: rest, end: found.end };
+  };
   const direct = at(text, atStart);
   if (direct) {
     return direct;
   }
   const opening = /^([^,;:]{1,60}),\s+/u.exec(text);
-  if (opening && wordCount(opening[1]) <= 4 && !/\s\p{Lu}/u.test(opening[1])) {
-    const after = at(text.slice(opening[0].length), false);
+  const opened = opening && wordCount(opening[1]) <= 4 && !/\s\p{Lu}/u.test(opening[1]) ? text.slice(opening[0].length) : null;
+  if (opened !== null) {
+    const after = at(opened, false);
     if (after) {
       return after;
     }
   }
-  return { kind: "other" };
+  return setOff(text) ?? (opened !== null ? setOff(opened) : null) ?? { kind: "other" };
 }
 
 // What a sentence says about the person it opens with, up to where
