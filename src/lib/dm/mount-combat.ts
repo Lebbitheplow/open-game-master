@@ -28,7 +28,7 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { attackSight, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { attackContext, DODGING, mergeAdvantage, type AdvantageState } from "@/lib/dm/condition-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
-import { mountVitals } from "@/lib/dm/mount-link";
+import { mountBarding, mountVitals } from "@/lib/dm/mount-link";
 import { handleDismount, mountFalls } from "@/lib/dm/mount-tools";
 import { applyPcDamage, type PcDamageInput } from "@/lib/dm/pc-damage";
 import { mountedPet } from "@/lib/dm/pet-mount";
@@ -174,6 +174,8 @@ export function strikeMount(input: {
     return { error: mountTargetProblem(campaign.id, rider) ?? "No mount to strike.", retry: true };
   }
   let hp = vitals.hp;
+  // Barding the rider carries for it, where that is the better Armor Class.
+  const barding = mountBarding(getSheetById(rider.id) ?? rider, mount, vitals.ac);
   const dodging = rider.conditions.some((entry) => isConditionNamed(entry, MOUNT_DODGING));
   // The mount stands where its rider does: the same light and the same line.
   const sight = attackSight({
@@ -232,7 +234,7 @@ export function strikeMount(input: {
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
     turn.rollIds.push(hitRoll.id);
-    const ac = vitals.ac + input.cover;
+    const ac = (barding?.ac ?? vitals.ac) + input.cover;
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= ac);
     if (!hit) {
       rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false, ...(swing.underwater ? { situation: swing.underwater } : {}) });
@@ -287,7 +289,7 @@ export function strikeMount(input: {
       return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountProne: `${mount.name} is knocked prone.`, fall, ...(light.notes.length || dodging ? { notes: [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])] } : {}) };
     }
   }
-  const notes = [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])];
+  const notes = [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : []), ...(barding ? [`${mount.name} wears ${barding.name}: Armor Class ${barding.ac}`] : [])];
   // A creature's sheet keeps its own hit points; a mount on record keeps them here.
   if (hp > 0) {
     if (!mount.sheetId) {

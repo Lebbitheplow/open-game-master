@@ -16,6 +16,7 @@
 // to carry until animals hold items of their own.
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { isWorn } from "@/lib/srd/armor";
+import { bardingSuit } from "@/lib/srd/barding";
 import { rowName, type RowItem } from "@/lib/srd/item-row";
 
 // The SRD's rows under Tack, Harness, and Drawn Vehicles that an animal
@@ -25,8 +26,10 @@ const TACK = new Set(
 );
 
 export function isTack(item: RowItem): boolean {
-  const gear = matchGear(rowName(item));
-  return gear !== null && TACK.has(gear);
+  const name = rowName(item);
+  const gear = matchGear(name);
+  // Barding is a suit made for the animal (src/lib/srd/barding.ts).
+  return (gear !== null && TACK.has(gear)) || bardingSuit(name) !== null;
 }
 
 // Whether this row is on the animal now.

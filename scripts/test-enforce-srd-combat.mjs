@@ -826,6 +826,47 @@ await test("A rider with a military saddle rolls the save to stay mounted with a
   });
 });
 
+// equipment, Mounts and Vehicles: 'Barding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding.'
+await test("A mount whose rider carries barding for it is struck against the barding's Armor Class, when that is the better one", async () => {
+  const [enemy] = await stage(fighter);
+  kit.place(fighter.id, 5, 5, 0);
+  kit.place(enemy.id, 5, 6);
+  const up = await world.invoke("mount_up", { characterId: fighter.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const plain = world.sheet(fighter.id).equipment;
+  const swing = async (face) => {
+    kit.freshRound();
+    const { out } = await forced([face, 3], "enemy_attack", { enemyId: enemy.id, targetCharacterId: fighter.id, targetMount: true });
+    assert.equal(out.ok, true, out.error);
+    return out.result ?? out;
+  };
+  try {
+    // The dummy swings at +4. A 9 makes 13: a hit on the warhorse's AC 11.
+    const bare = await swing(9);
+    assert.equal(bare.swings[0].hit, true, "a 13 missed an unbarded warhorse (AC 11)");
+    // Chain mail barding is AC 16 on any mount: the same 13 misses.
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1 }] });
+    const barded = await swing(9);
+    assert.equal(barded.swings[0].hit, false, "a 13 hit a warhorse in chain mail barding (AC 16)");
+    assert.equal(barded.swings[0].vsAc, 16);
+    assert.match(JSON.stringify(barded.notes ?? []), /Chain Mail Barding/, "the result does not name the barding");
+    // Packed, it is cargo: the same 13 hits the bare warhorse again.
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1, equipped: false }] });
+    const cargo = await swing(9);
+    assert.equal(cargo.swings[0].hit, true, "barding in the rider's pack protected the mount");
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1 }] });
+    // A mount whose own Armor Class is higher keeps its own.
+    setMount(world.campaignId, fighter.id, { ...getMounts(world.campaignId)[fighter.id], ac: 18 });
+    const tough = await swing(13);
+    assert.equal(tough.swings[0].hit, false, "barding lowered a mount's own Armor Class of 18 to 16");
+    assert.equal(tough.swings[0].vsAc, 18);
+  } finally {
+    setMount(world.campaignId, fighter.id, null);
+    world.clearDice();
+    world.patch(fighter.id, { equipment: plain, conditions: [], conditionMeta: {} });
+  }
+});
+
 // ---- Initiative ----
 
 // combat, Initiative: 'The GM makes one roll for an entire group of identical creatures, so each member of the group acts at the same time.'
