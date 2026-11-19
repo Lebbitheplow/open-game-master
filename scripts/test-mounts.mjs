@@ -133,6 +133,18 @@ test("barding is the suit it is named for, with as much of the mount's Dexterity
     "the better of two bardings is the one worn",
   );
   assert.equal(carriedBarding([{ name: "Chain Mail" }], 12), null);
+  // Issue #1038: barding is tack. Packed, it is cargo and protects nothing.
+  assert.equal(carriedBarding([{ name: "Chain Mail Barding", equipped: false }], 12), null);
+  assert.deepEqual(carriedBarding([{ name: "Chain Mail Barding", equipped: false }, { name: "Leather Barding" }], 12), { name: "Leather Barding", ac: 12 });
+  const { isTack, onMount } = await import("../src/lib/srd/tack.ts");
+  assert.equal(isTack({ name: "Barding (Plate)" }), true);
+  assert.equal(isTack({ name: "Plate" }), false);
+  assert.equal(onMount({ name: "Chain Mail Barding" }), true);
+  // "Weighs twice as much": 110 lb of chain mail barding, on the mount and not on its rider.
+  const { loadLines } = await import("../src/lib/srd/encumbrance.ts");
+  const [on, packed] = loadLines([{ name: "Chain Mail Barding", qty: 1 }]).concat(loadLines([{ name: "Chain Mail Barding", qty: 1, equipped: false }]));
+  assert.deepEqual([on.eachLb, on.totalLb, on.onMount], [110, 0, true]);
+  assert.deepEqual([packed.eachLb, packed.totalLb, packed.onMount], [110, 110, undefined]);
 });
 
 test("a rider moves at the mount's speed, not their own", () => {

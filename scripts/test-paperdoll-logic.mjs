@@ -80,7 +80,7 @@ test("a wand, staff or rod is in hand beside the weapons, by its row's tags", ()
 });
 
 test("a saddle has its own place, on the mount: there unless it was packed", () => {
-  for (const name of ["Saddle, Riding", "Saddle, Military", "Saddle, Exotic", "Saddle, Pack", "Saddlebags", "Bit and Bridle"]) {
+  for (const name of ["Saddle, Riding", "Saddle, Military", "Saddle, Exotic", "Saddle, Pack", "Saddlebags", "Bit and Bridle", "Chain Mail Barding"]) {
     assert.equal(dollPlaceOf(item(name)), "mount", name);
   }
   assert.equal(dollPlaceOf(item("Feed (per day)")), null);

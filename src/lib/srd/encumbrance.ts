@@ -19,6 +19,7 @@ import { gearWeightLb } from "@/lib/srd/adventuring-gear";
 import { matchArmor } from "@/lib/srd/armor";
 import { rowName } from "@/lib/srd/item-row";
 import { onMount } from "@/lib/srd/tack";
+import { bardingWeightLb } from "@/lib/srd/barding";
 import { matchWeapon, SRD_WEAPON_WEIGHT_LB } from "@/lib/srd/weapons";
 import { ammoCount, ammoKindForItem, AMMO_WEIGHT_LB } from "@/lib/srd/ammunition";
 import { itemAbilityScore, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
@@ -130,6 +131,11 @@ export function loadLine(item: CarriedItem, index = 0): LoadLine {
   const armor = matchArmor(item);
   if (armor) {
     return weighed(armor.weightLb, "armor");
+  }
+  // Barding weighs twice its suit (src/lib/srd/barding.ts).
+  const barding = bardingWeightLb(rowName(item));
+  if (barding !== null) {
+    return weighed(barding, "armor");
   }
   // Adventuring gear and tools by their SRD weights (adventuring-gear.ts),
   // for a kit the content pack did not stamp.

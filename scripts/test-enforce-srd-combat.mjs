@@ -778,6 +778,11 @@ await test("A mount whose rider carries barding for it is struck against the bar
     assert.equal(barded.swings[0].hit, false, "a 13 hit a warhorse in chain mail barding (AC 16)");
     assert.equal(barded.swings[0].vsAc, 16);
     assert.match(JSON.stringify(barded.notes ?? []), /Chain Mail Barding/, "the result does not name the barding");
+    // Packed, it is cargo: the same 13 hits the bare warhorse again.
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1, equipped: false }] });
+    const cargo = await swing(9);
+    assert.equal(cargo.swings[0].hit, true, "barding in the rider's pack protected the mount");
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1 }] });
     // A mount whose own Armor Class is higher keeps its own.
     setMount(world.campaignId, fighter.id, { ...getMounts(world.campaignId)[fighter.id], ac: 18 });
     const tough = await swing(13);

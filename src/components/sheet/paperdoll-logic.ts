@@ -84,7 +84,7 @@ export const DOLL_PLACE: Record<DollPlaceId, DollPlace> = {
   mount: {
     id: "mount",
     label: "On your mount",
-    goes: "A saddle, saddlebags, a bit and bridle",
+    goes: "A saddle, barding, saddlebags, a bit and bridle",
     rule: "What your mount wears weighs nothing for you. Packed, it does nothing and you carry its weight.",
     side: "below",
     at: null,

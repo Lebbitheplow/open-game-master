@@ -6,12 +6,16 @@
 // its own, so it is the suit it is named for: that suit's Armor Class with
 // as much of the mount's Dexterity as the suit lets through.
 //
-// A mount has no pack of its own. Barding its rider carries is what the
-// mount wears, as a saddle is read (src/lib/dm/mount-tools.ts): a row named
-// for a suit and the word barding ("Chain Mail Barding", "Barding (Plate)",
-// "Barding, Leather").
+// A mount has no pack of its own. Barding is a row in its rider's equipment
+// named for a suit and the word barding ("Chain Mail Barding", "Barding
+// (Plate)", "Barding, Leather"), and it is tack (src/lib/srd/tack.ts): on
+// the mount unless its player packed it, where it protects the mount and
+// weighs nothing for the rider. Packed, it protects nothing and "weighs
+// twice as much" as the suit.
+//
+// No import of the srd index here: the weight counter reads this module and
+// the index reads the weight counter.
 
-import { abilityMod } from "@/lib/srd";
 import { armorNamed, type SrdArmor } from "@/lib/srd/armor";
 import { rowName, type RowItem } from "@/lib/srd/item-row";
 import { textKey, words } from "@/lib/language/text-logic";
@@ -32,17 +36,28 @@ export function bardingSuit(name: string): SrdArmor | null {
   return suit && suit.category !== "shield" ? suit : null;
 }
 
+// "Barding ... weighs twice as much" as the equivalent armor made for
+// humanoids (SRD 5.1, Mounts and Vehicles).
+export function bardingWeightLb(name: string): number | null {
+  const suit = bardingSuit(name);
+  return suit ? suit.weightLb * 2 : null;
+}
+
 export function bardingAc(suit: SrdArmor, dexScore: number): number {
-  const dex = abilityMod(dexScore);
+  const dex = Math.floor((dexScore - 10) / 2);
   // Heavy armor takes none of the modifier, in either direction (armor.ts dexThrough).
   return suit.baseAc + (suit.category === "heavy" ? 0 : Math.min(dex, suit.dexCap ?? dex));
 }
 
-// The best barding among what a rider carries, on a mount of this
-// Dexterity: its name as carried and the Armor Class it gives.
-export function carriedBarding(equipment: readonly RowItem[], dexScore: number): { name: string; ac: number } | null {
+// The best barding on the mount among a rider's rows, for a mount of this
+// Dexterity: its name as carried and the Armor Class it gives. One the
+// player packed is cargo and protects nothing.
+export function carriedBarding(equipment: ReadonlyArray<RowItem & { equipped?: boolean }>, dexScore: number): { name: string; ac: number } | null {
   let best: { name: string; ac: number } | null = null;
   for (const item of equipment) {
+    if (item.equipped === false) {
+      continue;
+    }
     const name = rowName(item);
     const suit = bardingSuit(name);
     const ac = suit ? bardingAc(suit, dexScore) : 0;
