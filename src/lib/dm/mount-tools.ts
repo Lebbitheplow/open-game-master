@@ -84,7 +84,7 @@ export const mountTools: ToolDef[] = [
     type: "function",
     function: {
       name: "mount_up",
-      description: `Put a character on a mount: a known one in mount by its listed name (${MOUNTS.map((mount) => mount.name).join(", ")}), or customName. While mounted they move at the mount's speed rather than their own (the board lets them walk that far), and mounting costs half their movement, taken from their own turn's movement in a fight. A mount must be one size larger than its rider. A mount is controlled unless a creature mount is sent controlled false.`,
+      description: `Put a character on a mount: a known one in mount by its listed name (${MOUNTS.map((mount) => mount.name).join(", ")}), or customName. While mounted they move at the mount's speed rather than their own (the board lets them walk that far), and mounting costs half their movement, taken from their own turn's movement in a fight. A mount must be one size larger than its rider.`,
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -94,7 +94,7 @@ export const mountTools: ToolDef[] = [
           customName: { type: "string", description: "Only for an animal no list has, by its name, with a speed and a size." },
           speed: { type: "integer", minimum: 0, maximum: 200, description: "For a custom mount." },
           size: { type: "string", enum: [...MOUNT_SIZES], description: "For a custom mount." },
-          controlled: { type: "boolean", description: "Default: true, it moves on its rider's turn. False only for a creature they called up that acts as it wishes (an independent mount): it keeps its own turn in the order, you play that turn, and its move carries the rider, who has no movement of their own on it." },
+          controlled: { type: "boolean", description: "Default: true, it moves on its rider's turn. False only for a creature they called up that acts as it wishes: it keeps its own turn, which you play, and its move carries the rider." },
         },
         required: ["characterId"],
       },
