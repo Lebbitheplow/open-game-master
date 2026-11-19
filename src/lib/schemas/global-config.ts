@@ -196,7 +196,7 @@ export const globalConfigSchema = z.object({
   // the program uses the sign-in it already has on this machine.
   harness: z
     .object({
-      id: z.enum(["", "claude", "codex", "opencode", "grok", "pi"]).default(""),
+      id: z.enum(["", "claude", "codex", "opencode", "grok", "pi", "antigravity"]).default(""),
       // Blank = find it (PATH, the login shell's PATH, the usual install
       // folders). Set when it lives somewhere unusual.
       binaryPath: z.string().trim().max(500).default(""),

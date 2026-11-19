@@ -5,7 +5,7 @@
 import { keyForListing, keyProvider, normalizeBaseUrl, type KeyProviderId } from "./discovery-logic.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
-export type HarnessChoiceId = "claude" | "codex" | "opencode" | "grok" | "pi";
+export type HarnessChoiceId = "claude" | "codex" | "opencode" | "grok" | "pi" | "antigravity";
 
 // The agent programs with an image tool of their own (src/lib/harness
 // adapters' `paints`), for the wizard, which cannot import the adapters.

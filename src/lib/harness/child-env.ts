@@ -74,6 +74,9 @@ const PER_HARNESS: Record<string, readonly string[]> = {
   grok: ["GROK_HOME", "XAI_API_KEY"],
   // Pi keeps its sign-in and settings in its own folder (~/.pi/agent).
   pi: ["PI_CODING_AGENT_DIR"],
+  // A Gemini API key works only with "modelProvider": "gemini" in agy's own
+  // settings; AGY_ADC_AUTH signs in with Application Default Credentials.
+  antigravity: ["GEMINI_API_KEY", "GOOGLE_GEMINI_BASE_URL", "AGY_ADC_AUTH", "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT"],
 };
 
 // Names that must never pass, whatever an allowlist entry above might

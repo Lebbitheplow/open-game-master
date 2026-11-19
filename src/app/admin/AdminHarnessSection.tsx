@@ -29,7 +29,7 @@ type Payload = {
   recent: Array<{ tool: string; ok: boolean; ms: number; createdAt: string; campaignId: string | null }>;
 };
 
-const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π" };
+const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π", antigravity: "Ag" };
 
 // The efforts the chosen models offer (src/lib/harness/effort-choices.ts). A
 // saved effort they do not list, after the program's list changed, stays
@@ -272,7 +272,7 @@ export function AdminHarnessSection({
   return (
     <PageSection id="admin-harness" heading={t("Agent program")} glyph="ui-agent">
       <p className="mb-3 text-xs text-stone-500">
-        {t("Let an agent you already have, Claude Code, Codex, opencode, Grok Build or Pi, narrate the tables on its own sign-in. It is started with none of its own tools: the only thing it can touch is the table's rules engine, turn by turn, under the same rules and caps as the built-in storyteller. ODM never asks for or stores its password or key.")}
+        {t("Let an agent you already have, Claude Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI, narrate the tables on its own sign-in. It is started with none of its own tools: the only thing it can touch is the table's rules engine, turn by turn, under the same rules and caps as the built-in storyteller. ODM never asks for or stores its password or key.")}
       </p>
       {everywhereUnavailable ? (
         <p className="reveal mb-3 rounded-lg border border-amber-700/40 bg-amber-950/30 p-3 text-xs text-amber-200">
@@ -399,7 +399,7 @@ export function AdminHarnessSection({
                   />
                 </>
               ) : null}
-              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" || chosen.id === "pi" ? (
+              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" || chosen.id === "pi" || chosen.id === "antigravity" ? (
                 <>
                   <EffortField status={chosen} draft={draft} onChange={(effort) => setDraft({ ...draft, effort })} />
                   <UtilityEffortField status={chosen} draft={draft} onChange={(utilityEffort) => setDraft({ ...draft, utilityEffort })} />

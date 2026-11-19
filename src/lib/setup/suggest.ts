@@ -26,6 +26,7 @@ export const AGENT_LABELS: Record<HarnessChoiceId, string> = {
   opencode: "opencode",
   grok: "Grok Build",
   pi: "Pi",
+  antigravity: "Antigravity CLI",
 };
 
 export function suggestPictures(

@@ -15,7 +15,7 @@ import type { HarnessId, HarnessStatus } from "@/lib/harness/types";
 
 type Update = (change: (draft: Draft) => Draft) => void;
 
-const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π" };
+const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π", antigravity: "Ag" };
 
 // The status pill's word, keyed by the machine state the status carries.
 const STATUS_KEYS: Record<string, MessageKey> = {

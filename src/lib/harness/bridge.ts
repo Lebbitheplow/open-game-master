@@ -717,6 +717,7 @@ async function startSession(
       effort: config.effort,
       ...(speed ? { speed } : {}),
       mcp: { url: harnessMcpUrl(), token },
+      toolNames: catalogue.map((tool) => tool.name),
       cwd,
       env,
       onEvent: session.onEvent,

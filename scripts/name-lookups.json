@@ -2493,6 +2493,8 @@
     "lib/export/odt.ts#partial": [["parse",1,"story text cut into paragraphs; act keys"]],
     "lib/export/story-document.ts#whole": [["parse",1,"story text cut into paragraphs; act keys"]],
     "lib/genres.ts#fallback": [["key",1,"a genre preset id, its documented default"]],
+    "lib/harness/adapters/antigravity.ts#keyed": [["key",4,"a stream-json event's payload, read by the event's own name (protocol)"]],
+    "lib/harness/adapters/antigravity.ts#partial": [["key",11,"CLI output, tool names, model slugs, env names, file names"]],
     "lib/harness/adapters/claude.ts#partial": [["key",5,"CLI output, tool names, model slugs, env names, file names"],["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/harness/adapters/codex.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/harness/adapters/codex.ts#partial": [["pattern",6,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",3,"CLI output, tool names, model slugs, env names, file names"]],
