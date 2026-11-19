@@ -1976,7 +1976,9 @@
       "basis": "named SRD 5.1 creature",
       "width": 256,
       "height": 256,
-      "sha256": "421a4e30f6453e608fdb4ce6652332e2a8cc5410b7f0341464e55e95ba05f3c3"
+      "sha256": "8567cc0b8766c7bd1073f7ba55a13692986bc7fc9c51dbaaa4b6e71c2efccf90",
+      "previousSha256": "421a4e30f6453e608fdb4ce6652332e2a8cc5410b7f0341464e55e95ba05f3c3",
+      "edit": "repainted 2026-11-19 by the contributor: perched on a branch, no fade at the bottom edge"
     },
     {
       "file": "public/assets/placeholders/monster/panther.webp",
@@ -2184,7 +2186,9 @@
       "basis": "named SRD 5.1 creature",
       "width": 256,
       "height": 256,
-      "sha256": "8cd7e2d6e77cf20276bc2c6da52da2a7b7a291c27aa4de48c2475377b9322de4"
+      "sha256": "d6297a8198bf7ef48f1b72be667d8948593678428212c21da222b762aac11852",
+      "previousSha256": "8cd7e2d6e77cf20276bc2c6da52da2a7b7a291c27aa4de48c2475377b9322de4",
+      "edit": "repainted 2026-11-19 by the contributor: the whole stalking body instead of a floating head"
     },
     {
       "file": "public/assets/placeholders/monster/triceratops.webp",
