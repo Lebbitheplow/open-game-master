@@ -30,6 +30,7 @@ import { translate } from "@/lib/messages-logic";
 // translator).
 const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 import { acceptsCall } from "@/lib/dm/tool-merge-logic";
+import { compactTool, type ToolDefLike } from "@/lib/dm/tool-profiles";
 import { randomBytes, createHash } from "node:crypto";
 import os from "node:os";
 import type { ChatMessage, ChatRequestOptions, UpstreamResult } from "@/lib/model-client";
@@ -604,6 +605,14 @@ export type HarnessRequestContext = {
   turn?: boolean;
 };
 
+function sameToolNames(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const name of a) {
+    if (!b.has(name)) return false;
+  }
+  return true;
+}
+
 // The model call, for provider "harness".
 export async function requestHarnessMessage(
   messages: ChatMessage[],
@@ -628,8 +637,19 @@ export async function requestHarnessMessage(
 
   const live = findSession(messages);
   if (live) {
-    state().byConversation.set(messages as object, live);
-    return live.next(messages, options, timeoutMs);
+    // If the offered toolset changed mid-turn (e.g. start_encounter or
+    // more_tools), close the old CLI process and start a fresh one with the
+    // updated tools/list; narrate-only calls (toolChoice: "none") reuse it.
+    if (
+      options.tools?.length &&
+      options.toolChoice !== "none" &&
+      !sameToolNames(live.allowed, toolNames(options.tools))
+    ) {
+      live.close();
+    } else {
+      state().byConversation.set(messages as object, live);
+      return live.next(messages, options, timeoutMs);
+    }
   }
   if (!options.tools?.length || options.toolChoice === "none") {
     return completeWithHarness(messages, options, context, timeoutMs);
@@ -688,7 +708,11 @@ async function startSession(
     return { error: harnessError("Every agent slot is busy with other tables; try again in a moment.", "timeout") };
   }
   const token = randomBytes(32).toString("base64url");
-  const catalogue = toMcpTools([...(context.catalogue ?? []), ...(options.tools ?? [])]);
+  // Serve only the active call's tools (compacted to first-sentence
+  // descriptions) rather than the full 88-tool union; if the toolset changes
+  // mid-turn, requestHarnessMessage respawns the session with the new set.
+  const sourceTools = options.tools?.length ? options.tools : (context.catalogue ?? []);
+  const catalogue = toMcpTools(sourceTools.map((tool) => compactTool(tool as ToolDefLike)));
   const session = new BridgeSession(
     hashToken(token),
     cwd,

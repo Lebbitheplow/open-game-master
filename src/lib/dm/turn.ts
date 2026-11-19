@@ -2022,7 +2022,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // The compact profile: the groups the players' words opened when the turn
   // began, and the ones more_tools opened since (kept on the trace, so a
   // resumed turn keeps them). Two openings a run cost no call of the budget.
-  const compact = tuning.toolProfile === "compact";
+  const compact = tuning.toolProfile === "compact" || campaign.settings.textProvider === "harness";
   // The compact set and the short rules follow the players' words, and an
   // agent program is handed one catalogue for the whole turn: only the full
   // and the trimmed sets ride in a first message the rules can follow

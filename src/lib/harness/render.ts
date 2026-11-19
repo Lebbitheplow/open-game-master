@@ -135,11 +135,26 @@ const TRANSCRIPT_CHUNK = 20;
 // which are written as engine lines so the program sees what was resolved.
 export function renderTurn(messages: readonly RenderMessage[], options: RenderTurnOptions = {}): RenderedTurn {
   const systemParts: string[] = [];
-  const lines: string[] = [];
+  const historyLines: string[] = [];
+  const turnLines: string[] = [];
   const toolNamesById = new Map<string, string>();
   let lastUser = "";
 
-  for (const message of messages) {
+  // Split at the last assistant reply with prose so older history stays in
+  // <table_transcript> while the current turn's new player actions, [engine]
+  // results, and [System] Director directives sit after <current_moment>.
+  let lastAssistantTextIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role === "assistant" && contentText(message.content).trim()) {
+      lastAssistantTextIndex = i;
+      break;
+    }
+  }
+
+  for (let i = 0; i < messages.length; i += 1) {
+    const message = messages[i];
+    const target = i <= lastAssistantTextIndex ? historyLines : turnLines;
     const text = contentText(message.content).trim();
     if (message.role === "system") {
       if (text) {
@@ -149,21 +164,21 @@ export function renderTurn(messages: readonly RenderMessage[], options: RenderTu
     }
     if (message.role === "assistant") {
       if (text) {
-        lines.push(`[Game Master] ${text}`);
+        target.push(`[Game Master] ${text}`);
       }
       for (const call of toolCallsOf(message)) {
         toolNamesById.set(call.id, call.name);
-        lines.push(`[engine] You called ${call.name} ${call.args}`);
+        target.push(`[engine] You called ${call.name} ${call.args}`);
       }
       continue;
     }
     if (message.role === "tool") {
       const name = toolNamesById.get(message.tool_call_id ?? "") ?? "a tool";
-      lines.push(`[engine] ${name} answered: ${text}`);
+      target.push(`[engine] ${name} answered: ${text}`);
       continue;
     }
     if (text) {
-      lines.push(text);
+      target.push(text);
       lastUser = text;
     }
   }
@@ -174,24 +189,28 @@ export function renderTurn(messages: readonly RenderMessage[], options: RenderTu
   const { standing, moment } = splitAtMoment([HARNESS_PREAMBLE, ...systemParts].join("\n\n"));
   // The transcript's older part, in whole chunks, joins the system prompt
   // after the standing state: it is written again only when a chunk closes,
-  // not on every turn. The newest line always stays in the opening message.
+  // not on every turn.
   const settled = options.settledTranscript
-    ? Math.floor(Math.max(0, lines.length - 1) / TRANSCRIPT_CHUNK) * TRANSCRIPT_CHUNK
+    ? Math.floor(historyLines.length / TRANSCRIPT_CHUNK) * TRANSCRIPT_CHUNK
     : 0;
   const earlier = settled
-    ? `\n\n<table_transcript_earlier>\n${lines.slice(0, settled).join("\n\n")}\n</table_transcript_earlier>`
+    ? `\n\n<table_transcript_earlier>\n${historyLines.slice(0, settled).join("\n\n")}\n</table_transcript_earlier>`
     : "";
-  const recent = lines.slice(settled);
+  const recent = historyLines.slice(settled);
   const transcript = recent.length
     ? `<table_transcript>\n${recent.join("\n\n")}\n</table_transcript>`
     : "The table has not spoken yet.";
+  const turnInput = turnLines.length ? turnLines.join("\n\n") : "";
   const resumed = messages.some((message) => message.role === "tool");
   const instruction = resumed
     ? "The dice above have landed. Continue your turn as the Game Master from exactly where it paused: call any further tools you need, then write the narration."
     : lastUser
       ? "It is your turn as the Game Master. Resolve what the players just did with your tools, then write the narration."
       : "It is your turn as the Game Master. Open the scene: use your tools for anything mechanical, then write the narration.";
-  return { system: `${standing}${earlier}`, prompt: [transcript, moment, instruction].filter(Boolean).join("\n\n") };
+  return {
+    system: `${standing}${earlier}`,
+    prompt: [transcript, moment, turnInput, instruction].filter(Boolean).join("\n\n"),
+  };
 }
 
 // Messages that arrived after a program started, rendered as the follow-up

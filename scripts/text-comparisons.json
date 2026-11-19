@@ -2270,7 +2270,7 @@
     "lib/harness/images.ts#re-word": [["key",1,"image file suffixes"],["english-source",1,"the image agent's reply to ODM's English instruction (\"done\"); decides only which admin message is shown"]],
     "lib/harness/picture-test.ts#toUpperCase": [["display",1,"file kind shown"]],
     "lib/harness/process.ts#str-list": [["key",2,"process stdio modes"]],
-    "lib/harness/render.ts#str-eq": [["key",12,"chat message roles and content types (protocol)"]],
+    "lib/harness/render.ts#str-eq": [["key",13,"chat message roles and content types (protocol)"]],
     "lib/harness/run-dir-logic.ts#str-list": [["key",1,"run folder name prefixes and the sign-in file names Codex keeps (file names)"]],
     "lib/harness/test-run.ts#toLowerCase": [["key",1,"a fixed test secret in a reply"]],
     "lib/harness/types.ts#str-list": [["key",1,"effort levels (fixed choice)"]],

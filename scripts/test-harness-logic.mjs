@@ -1118,5 +1118,26 @@ test("discovery looks where the installers put programs, not only on PATH", () =
   assert.ok(win.some((entry) => entry.endsWith("Programs\\OpenAI\\Codex\\bin")), "Codex's Windows install dir");
 });
 
+test("renderTurn places new player actions and Director directives after the moment block", () => {
+  const { prompt } = renderTurn([
+    { role: "system", content: `RULES\n\n${THIS_MOMENT_HEADING}\n\nMoment context.` },
+    { role: "user", content: "[Ketta | attempt] Earlier action." },
+    { role: "assistant", content: "Two bandits block the road." },
+    { role: "user", content: "[Ketta | attempt] J'attaque!" },
+    { role: "user", content: "[System] Direct instruction from the party lead: Call start_encounter now." },
+  ]);
+  const transcriptEnd = prompt.indexOf("</table_transcript>");
+  const momentAt = prompt.indexOf(THIS_MOMENT_HEADING);
+  const newActionAt = prompt.indexOf("[Ketta | attempt] J'attaque!");
+  const directorAt = prompt.indexOf("[System] Direct instruction");
+  const turnInstrAt = prompt.indexOf("It is your turn as the Game Master.");
+  assert.ok(transcriptEnd > 0);
+  assert.ok(prompt.slice(0, transcriptEnd).includes("Two bandits block the road."));
+  assert.ok(transcriptEnd < momentAt, "prior history ends before the moment");
+  assert.ok(momentAt < newActionAt, "new player action comes after the moment");
+  assert.ok(newActionAt < directorAt, "Director directive follows the player action");
+  assert.ok(directorAt < turnInstrAt, "Director directive sits directly above the turn instruction");
+});
+
 removeTempDir(dir);
 console.log(`harness logic: ${passed} checks passed`);
