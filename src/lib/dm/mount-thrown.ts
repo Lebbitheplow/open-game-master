@@ -30,16 +30,17 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { DISMOUNT_SAVE_DC, riderKnockedProne, type MountState } from "@/lib/srd/mounts";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { rowName } from "@/lib/srd/item-row";
+import { onMount } from "@/lib/srd/tack";
 
 // "A military saddle braces the rider, helping you keep your seat on an
 // active mount in battle. It gives you advantage on any check you make to
 // remain mounted" (SRD 5.1, Tack, Harness, and Drawn Vehicles). The roll
 // the rules ask to remain mounted is this save, so the saddle's advantage
-// is on it. A saddle the rider carries is the one their mount wears, as the
-// exotic saddle is read (mount-tools.ts).
+// is on it. Only a saddle on the mount braces anyone: one its rider packed
+// (src/lib/srd/tack.ts) is cargo.
 const MILITARY_SADDLE = matchGear("Saddle, Military");
 const ridesMilitarySaddle = (sheet: CharacterSheet) =>
-  Boolean(MILITARY_SADDLE) && sheet.equipment.some((item) => matchGear(rowName(item)) === MILITARY_SADDLE);
+  Boolean(MILITARY_SADDLE) && sheet.equipment.some((item) => onMount(item) && matchGear(rowName(item)) === MILITARY_SADDLE);
 
 export const isProne = (conditions: readonly string[]) => conditions.some((entry) => isConditionNamed(entry, "prone"));
 

@@ -820,6 +820,11 @@ await test("A rider with a military saddle rolls the save to stay mounted with a
       assert.equal(braced.out.ok, true, braced.out.error);
       assert.equal(braced.unused, 0, "the military saddle gave no second die");
       assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "the higher die did not keep the rider mounted");
+      // Packed, the saddle is cargo and braces nobody (src/lib/srd/tack.ts).
+      world.patch(fighter.id, { equipment: world.sheet(fighter.id).equipment.map((item) => (item.name === "Saddle, Military" ? { ...item, equipped: false } : item)) });
+      const packed = await forced([20, 20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+      assert.equal(packed.out.ok, true, packed.out.error);
+      assert.equal(packed.unused, 1, "a packed military saddle gave the rider advantage");
     } finally {
       world.patch(fighter.id, { equipment: world.sheet(fighter.id).equipment.filter((item) => item.name !== "Saddle, Military") });
     }
