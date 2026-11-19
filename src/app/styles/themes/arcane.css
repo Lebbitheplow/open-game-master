@@ -88,3 +88,8 @@
   --color-amber-100: #352808;
   --color-amber-50: #241a05;
 }
+[data-appearance="arcane"] .theme-ornaments[data-surface="lobby"] {
+  /* The corner's arms lie on the rail, so on a phone the piece keeps the
+     desktop's proportion to it: 196px on a 26px rail is 90px on a 12px one. */
+  --theme-lobby-corner-size-small: 90px;
+}

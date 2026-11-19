@@ -160,8 +160,8 @@ in these three themes; low-health styling is semantic and is not overridden by
 `--material-vital-fill`. The moving selection highlight copies the chosen
 button's fill, so inspect that visible highlight when testing the chosen color.
 
-Arcane and Gothic reuse their frame image for the `corner` slot. Their catalog
-entries set `cornerScale: 4`, which displays the top-left 25% of each image axis
+A theme may reuse its frame image for the `corner` slot. Its catalog
+entry then sets `cornerScale: 4`, which displays the top-left 25% of each image axis
 (one sixteenth of its area) at each corner, that corner of the frame as
 painted. The registry writes the matching
 background size and position for both the page and picker; do not override those
@@ -240,8 +240,10 @@ Shared ornament measurements can be overridden in the theme selector:
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane, Gothic, Hearth and High Kingdoms crop their corner from their frame, so
-`themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
+No shipped theme crops its corner from its frame now: Arcane, Gothic, Hearth and
+High Kingdoms each paint a separate corner piece, as Woodland, Tide and Forge do, and
+set their own phone lobby corner size so the piece keeps its proportion to the rail.
+For a theme that does crop its corner, `themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
 and it keeps the frame's rail width. The phone sizes keep the art off the bottom bar's end
 labels and the session title, which sit 8 to 17px from the screen's edge; the
 browser scenario `phone-frame` reads every painted theme at 360 to 430px wide. Inspect
