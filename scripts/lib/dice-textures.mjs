@@ -7,9 +7,16 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// The ids a look may hold, read from the source so this cannot drift.
+// The ids a look may hold, read from the source so this cannot drift. Null
+// when the source is not there: the Docker image installs (and so runs the
+// postinstall copy) before it copies src in, then runs the copy again.
 export function pickableTextureIds(root) {
-  const source = readFileSync(path.join(root, "src", "lib", "dice", "dice-look.ts"), "utf8");
+  let source;
+  try {
+    source = readFileSync(path.join(root, "src", "lib", "dice", "dice-look.ts"), "utf8");
+  } catch {
+    return null;
+  }
   const block = /export const DICE_TEXTURES = \[([\s\S]*?)\] as const;/.exec(source)?.[1] ?? "";
   return [...block.matchAll(/\{ id: "([a-z0-9_]+)"/g)].map((match) => match[1]);
 }
@@ -34,9 +41,10 @@ export function libraryTextureFiles(root) {
 }
 
 // The file names to keep in public/dice-box/textures, or null when the
-// library's table could not be read.
+// library's table or the looks' list could not be read.
 export function diceTextureFiles(root) {
   const table = libraryTextureFiles(root);
-  if (!table) return null;
-  return new Set(pickableTextureIds(root).flatMap((id) => table.get(id) ?? []));
+  const ids = pickableTextureIds(root);
+  if (!table || !ids) return null;
+  return new Set(ids.flatMap((id) => table.get(id) ?? []));
 }
