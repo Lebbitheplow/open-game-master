@@ -54,7 +54,7 @@ export function handleMountAction(campaign: Campaign, sheet: CharacterSheet, act
     return { error: `${sheet.name} is not riding a mount; the action is theirs to take without mount.`, retry: true };
   }
   if (!mount.controlled) {
-    return { error: `${mount.name} is not a controlled mount: it acts on its own initiative, as the GM runs it.`, refused: "rules" };
+    return { error: `${mount.name} is an independent mount: it takes its actions on its own turn in the order, which the GM plays (take_action with its own characterId there), not on ${sheet.name}'s.`, refused: "rules" };
   }
   const chosen = MOUNT_ACTIONS.find((entry) => entry === action);
   if (!chosen) {
@@ -176,7 +176,11 @@ export function strikeMount(input: {
   let hp = vitals.hp;
   // Barding the rider carries for it, where that is the better Armor Class.
   const barding = mountBarding(getSheetById(rider.id) ?? rider, mount, vitals.ac);
-  const dodging = rider.conditions.some((entry) => isConditionNamed(entry, MOUNT_DODGING));
+  // A controlled mount's Dodge is a mark on its rider; an independent one
+  // took the action on its own turn, and the condition is on its own sheet.
+  const dodging =
+    rider.conditions.some((entry) => isConditionNamed(entry, MOUNT_DODGING)) ||
+    Boolean(mount?.sheetId && getSheetById(mount.sheetId)?.conditions.some((entry) => isConditionNamed(entry, DODGING)));
   // The mount stands where its rider does: the same light and the same line.
   const sight = attackSight({
     campaignId: campaign.id,

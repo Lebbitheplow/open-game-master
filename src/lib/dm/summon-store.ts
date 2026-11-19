@@ -29,6 +29,7 @@ import {
   insertToken,
   listTokens,
   removeTokenByRef,
+  type BattleMap,
 } from "@/lib/db/battle-maps";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
@@ -223,6 +224,11 @@ function placeInFight(
   if (!map) {
     return;
   }
+  standOnBoard(campaign, map, caster, created);
+}
+
+// A token for each creature in a free square beside `caster`.
+function standOnBoard(campaign: Campaign, map: BattleMap, caster: Pick<CharacterSheet, "id">, created: CharacterSheet[]) {
   const tokens = listTokens(map.id);
   const anchor = tokens.find((token) => token.refId === caster.id);
   const spots = findSpawnTiles(
@@ -299,13 +305,17 @@ function dropFromOrder(campaignId: string, encounter: Encounter, index: number) 
 // A creature takes a rider (mount-link.ts): it shares its rider's square and
 // initiative, so its own token and its own slot in the order go. Its sheet
 // stays, with its hit points and whatever is on it.
-export function leaveFightAsMount(campaign: Campaign, sheetId: string) {
+//
+// An independent mount (`keepsTurn`) "retains its place in the initiative
+// order" (SRD 5.1, Controlling a Mount): only its token goes, and the pair
+// stands on its rider's (issue 1036, ruling 2).
+export function leaveFightAsMount(campaign: Campaign, sheetId: string, keepsTurn = false) {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return;
   }
   const index = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === sheetId);
-  if (index !== -1) {
+  if (index !== -1 && !keepsTurn) {
     dropFromOrder(campaign.id, encounter, index);
   }
   const map = getBattleMapForEncounter(encounter.id);
@@ -319,7 +329,16 @@ export function leaveFightAsMount(campaign: Campaign, sheetId: string) {
 // square beside them, and acts right after them, as it did when it was made.
 export function standBesideRider(campaign: Campaign, rider: CharacterSheet, steed: CharacterSheet) {
   const encounter = getActiveEncounter(campaign.id);
-  if (!encounter || encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === steed.id)) {
+  if (!encounter) {
+    return;
+  }
+  // An independent mount kept its place in the order while it carried them
+  // (leaveFightAsMount): it needs only its square back, beside its rider.
+  if (encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === steed.id)) {
+    const map = getBattleMapForEncounter(encounter.id);
+    if (map && !listTokens(map.id).some((token) => token.refId === steed.id)) {
+      standOnBoard(campaign, map, rider, [steed]);
+    }
     return;
   }
   placeInFight(campaign, rider, [steed], { name: steed.name, abilities: steed.abilities }, "caster");

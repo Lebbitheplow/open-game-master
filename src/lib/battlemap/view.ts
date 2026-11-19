@@ -22,7 +22,7 @@ import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor, wearsMediumOrHeavyArmor } from "@/lib/srd/authored-effects";
 import { authoredDarkvisionFeet, attackTurnSpeed, standUpTiles } from "@/lib/srd/authored-effects-more";
 import { getMounts } from "@/lib/db/mounts";
-import { mountActionTaken } from "@/lib/srd/mounts";
+import { independentMount, mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
 import { budgetApplies, dashCount } from "@/lib/dm/action-budget";
 import { turnBonusTiles } from "@/lib/dm/mt-mr-turn";
@@ -168,7 +168,14 @@ export function pcMoveBudget(
 ): { speed: number; tiles: number; fullTiles: number } {
   const campaign = getCampaignById(campaignId);
   // A mounted rider moves at the mount's speed (SRD 5.1, Mounted Combat).
-  const mount = getMounts(campaignId)[sheet.id];
+  // On an independent mount they do not: it "moves and acts as it wishes" on
+  // its own turn, and that walk carries them (walkCharacter refuses the
+  // rider's own). What the rider has in hand on their turn is their own
+  // speed's movement, for getting down or standing up in the saddle
+  // (issue 1036, rulings 2 and 5), so the mount here is none.
+  const riding = getMounts(campaignId)[sheet.id];
+  const carried = independentMount(riding) && encounter.kind !== "scene";
+  const mount = carried ? undefined : riding;
   // Aloft, a character moves at their flying speed (the Fly spell's 60 feet).
   const flying = token.movement === "fly" ? flyingSpeedOf({ conditions: sheet.conditions, features: sheet.features, walkingFeet: sheet.speed, worn: itemSpeeds(sheet.equipment, sheet, sheet.speed).fly, armored: wearsBodyArmor(sheet), bulkyArmor: wearsMediumOrHeavyArmor(sheet) }) : null;
   const base = mount
@@ -229,7 +236,8 @@ export function pcMoveBudget(
   const tiles = prone
     ? Math.max(fullTiles - standUpTiles(sheet, speedTiles), Math.floor(fullTiles / 2))
     : fullTiles;
-  return { speed, tiles: Math.max(0, tiles), fullTiles };
+  // Carried on an independent mount, no square is theirs to walk to.
+  return { speed, tiles: carried ? 0 : Math.max(0, tiles), fullTiles };
 }
 
 // The squares an enemy's next walk allows, for the board's guess at what it
