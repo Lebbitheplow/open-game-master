@@ -24730,7 +24730,7 @@
       "key": "gear-abacus",
       "label": "Abacus",
       "src": "/assets/icons/inventory/gear-abacus.webp",
-      "bytes": 28924,
+      "bytes": 17872,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24741,7 +24741,7 @@
       "key": "gear-alchemists-supplies",
       "label": "Alchemist's Supplies",
       "src": "/assets/icons/inventory/gear-alchemists-supplies.webp",
-      "bytes": 20710,
+      "bytes": 12202,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24752,7 +24752,7 @@
       "key": "gear-alms-box",
       "label": "Alms Box",
       "src": "/assets/icons/inventory/gear-alms-box.webp",
-      "bytes": 19298,
+      "bytes": 10644,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24763,7 +24763,7 @@
       "key": "gear-arrows-20",
       "label": "Arrows (20)",
       "src": "/assets/icons/inventory/gear-arrows-20.webp",
-      "bytes": 15642,
+      "bytes": 10510,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24774,7 +24774,7 @@
       "key": "gear-bagpipes",
       "label": "Bagpipes",
       "src": "/assets/icons/inventory/gear-bagpipes.webp",
-      "bytes": 18432,
+      "bytes": 12208,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24785,7 +24785,7 @@
       "key": "gear-barrel",
       "label": "Barrel",
       "src": "/assets/icons/inventory/gear-barrel.webp",
-      "bytes": 20098,
+      "bytes": 11012,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24796,7 +24796,7 @@
       "key": "gear-basket",
       "label": "Basket",
       "src": "/assets/icons/inventory/gear-basket.webp",
-      "bytes": 21618,
+      "bytes": 13304,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24807,7 +24807,7 @@
       "key": "gear-bell",
       "label": "Bell",
       "src": "/assets/icons/inventory/gear-bell.webp",
-      "bytes": 11104,
+      "bytes": 7056,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24818,7 +24818,7 @@
       "key": "gear-bit-and-bridle",
       "label": "Bit and Bridle",
       "src": "/assets/icons/inventory/gear-bit-and-bridle.webp",
-      "bytes": 23858,
+      "bytes": 16328,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24829,7 +24829,7 @@
       "key": "gear-blanket",
       "label": "Blanket",
       "src": "/assets/icons/inventory/gear-blanket.webp",
-      "bytes": 13790,
+      "bytes": 9124,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24840,7 +24840,7 @@
       "key": "gear-block-and-tackle",
       "label": "Block and Tackle",
       "src": "/assets/icons/inventory/gear-block-and-tackle.webp",
-      "bytes": 11226,
+      "bytes": 7468,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24851,7 +24851,7 @@
       "key": "gear-block-of-incense",
       "label": "Block of Incense",
       "src": "/assets/icons/inventory/gear-block-of-incense.webp",
-      "bytes": 16376,
+      "bytes": 8180,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24862,7 +24862,7 @@
       "key": "gear-blowgun-needles-50",
       "label": "Blowgun Needles (50)",
       "src": "/assets/icons/inventory/gear-blowgun-needles-50.webp",
-      "bytes": 18726,
+      "bytes": 12396,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24873,7 +24873,7 @@
       "key": "gear-brewers-supplies",
       "label": "Brewer's Supplies",
       "src": "/assets/icons/inventory/gear-brewers-supplies.webp",
-      "bytes": 24382,
+      "bytes": 13200,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24884,7 +24884,7 @@
       "key": "gear-bucket",
       "label": "Bucket",
       "src": "/assets/icons/inventory/gear-bucket.webp",
-      "bytes": 17528,
+      "bytes": 10504,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24895,7 +24895,7 @@
       "key": "gear-burglars-pack",
       "label": "Burglar's Pack",
       "src": "/assets/icons/inventory/gear-burglars-pack.webp",
-      "bytes": 24134,
+      "bytes": 14026,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24906,7 +24906,7 @@
       "key": "gear-calligraphers-supplies",
       "label": "Calligrapher's Supplies",
       "src": "/assets/icons/inventory/gear-calligraphers-supplies.webp",
-      "bytes": 22676,
+      "bytes": 13228,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24917,7 +24917,7 @@
       "key": "gear-camel",
       "label": "Camel",
       "src": "/assets/icons/inventory/gear-camel.webp",
-      "bytes": 22774,
+      "bytes": 14752,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24928,7 +24928,7 @@
       "key": "gear-carpenters-tools",
       "label": "Carpenter's Tools",
       "src": "/assets/icons/inventory/gear-carpenters-tools.webp",
-      "bytes": 21232,
+      "bytes": 11992,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24939,7 +24939,7 @@
       "key": "gear-cartographers-tools",
       "label": "Cartographer's Tools",
       "src": "/assets/icons/inventory/gear-cartographers-tools.webp",
-      "bytes": 19186,
+      "bytes": 11956,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24950,7 +24950,7 @@
       "key": "gear-case-crossbow-bolt",
       "label": "Case, Crossbow Bolt",
       "src": "/assets/icons/inventory/gear-case-crossbow-bolt.webp",
-      "bytes": 14448,
+      "bytes": 8862,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24961,7 +24961,7 @@
       "key": "gear-case-map-or-scroll",
       "label": "Case, Map or Scroll",
       "src": "/assets/icons/inventory/gear-case-map-or-scroll.webp",
-      "bytes": 13182,
+      "bytes": 8896,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24972,7 +24972,7 @@
       "key": "gear-chain-10-feet",
       "label": "Chain (10 feet)",
       "src": "/assets/icons/inventory/gear-chain-10-feet.webp",
-      "bytes": 20864,
+      "bytes": 12686,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24983,7 +24983,7 @@
       "key": "gear-chalk-1-piece",
       "label": "Chalk (1 piece)",
       "src": "/assets/icons/inventory/gear-chalk-1-piece.webp",
-      "bytes": 8262,
+      "bytes": 4970,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -24994,7 +24994,7 @@
       "key": "gear-chest",
       "label": "Chest",
       "src": "/assets/icons/inventory/gear-chest.webp",
-      "bytes": 20090,
+      "bytes": 11078,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25005,7 +25005,7 @@
       "key": "gear-climbers-kit",
       "label": "Climber's Kit",
       "src": "/assets/icons/inventory/gear-climbers-kit.webp",
-      "bytes": 28156,
+      "bytes": 18182,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25016,7 +25016,7 @@
       "key": "gear-clothes-common",
       "label": "Clothes, Common",
       "src": "/assets/icons/inventory/gear-clothes-common.webp",
-      "bytes": 21128,
+      "bytes": 12740,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25027,7 +25027,7 @@
       "key": "gear-clothes-costume",
       "label": "Clothes, Costume",
       "src": "/assets/icons/inventory/gear-clothes-costume.webp",
-      "bytes": 24494,
+      "bytes": 16208,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25038,7 +25038,7 @@
       "key": "gear-clothes-fine",
       "label": "Clothes, Fine",
       "src": "/assets/icons/inventory/gear-clothes-fine.webp",
-      "bytes": 23680,
+      "bytes": 14780,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25049,7 +25049,7 @@
       "key": "gear-clothes-travelers",
       "label": "Clothes, Traveler's",
       "src": "/assets/icons/inventory/gear-clothes-travelers.webp",
-      "bytes": 18116,
+      "bytes": 10298,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25060,7 +25060,7 @@
       "key": "gear-cobblers-tools",
       "label": "Cobbler's Tools",
       "src": "/assets/icons/inventory/gear-cobblers-tools.webp",
-      "bytes": 24606,
+      "bytes": 14998,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25071,7 +25071,7 @@
       "key": "gear-cooks-utensils",
       "label": "Cook's Utensils",
       "src": "/assets/icons/inventory/gear-cooks-utensils.webp",
-      "bytes": 22886,
+      "bytes": 14414,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25082,7 +25082,7 @@
       "key": "gear-crossbow-bolts-20",
       "label": "Crossbow Bolts (20)",
       "src": "/assets/icons/inventory/gear-crossbow-bolts-20.webp",
-      "bytes": 14330,
+      "bytes": 9024,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25093,7 +25093,7 @@
       "key": "gear-dice-set",
       "label": "Dice Set",
       "src": "/assets/icons/inventory/gear-dice-set.webp",
-      "bytes": 17086,
+      "bytes": 8766,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25104,7 +25104,7 @@
       "key": "gear-diplomats-pack",
       "label": "Diplomat's Pack",
       "src": "/assets/icons/inventory/gear-diplomats-pack.webp",
-      "bytes": 21518,
+      "bytes": 11910,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25115,7 +25115,7 @@
       "key": "gear-disguise-kit",
       "label": "Disguise Kit",
       "src": "/assets/icons/inventory/gear-disguise-kit.webp",
-      "bytes": 19874,
+      "bytes": 10800,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25126,7 +25126,7 @@
       "key": "gear-donkey-or-mule",
       "label": "Donkey or Mule",
       "src": "/assets/icons/inventory/gear-donkey-or-mule.webp",
-      "bytes": 17744,
+      "bytes": 11196,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25137,7 +25137,7 @@
       "key": "gear-druidic-focus",
       "label": "Druidic Focus",
       "src": "/assets/icons/inventory/gear-druidic-focus.webp",
-      "bytes": 21048,
+      "bytes": 14250,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25148,7 +25148,7 @@
       "key": "gear-dulcimer",
       "label": "Dulcimer",
       "src": "/assets/icons/inventory/gear-dulcimer.webp",
-      "bytes": 16822,
+      "bytes": 10860,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25159,7 +25159,7 @@
       "key": "gear-dungeoneers-pack",
       "label": "Dungeoneer's Pack",
       "src": "/assets/icons/inventory/gear-dungeoneers-pack.webp",
-      "bytes": 25010,
+      "bytes": 14450,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25170,7 +25170,7 @@
       "key": "gear-elephant",
       "label": "Elephant",
       "src": "/assets/icons/inventory/gear-elephant.webp",
-      "bytes": 22644,
+      "bytes": 13168,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25181,7 +25181,7 @@
       "key": "gear-emblem-holy-symbol",
       "label": "Emblem (holy symbol)",
       "src": "/assets/icons/inventory/gear-emblem-holy-symbol.webp",
-      "bytes": 17700,
+      "bytes": 8972,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25192,7 +25192,7 @@
       "key": "gear-entertainers-pack",
       "label": "Entertainer's Pack",
       "src": "/assets/icons/inventory/gear-entertainers-pack.webp",
-      "bytes": 23428,
+      "bytes": 13552,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25203,7 +25203,7 @@
       "key": "gear-explorers-pack",
       "label": "Explorer's Pack",
       "src": "/assets/icons/inventory/gear-explorers-pack.webp",
-      "bytes": 23632,
+      "bytes": 15670,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25214,7 +25214,7 @@
       "key": "gear-feed-per-day",
       "label": "Feed (per day)",
       "src": "/assets/icons/inventory/gear-feed-per-day.webp",
-      "bytes": 26102,
+      "bytes": 17392,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25225,7 +25225,7 @@
       "key": "gear-fishing-tackle",
       "label": "Fishing Tackle",
       "src": "/assets/icons/inventory/gear-fishing-tackle.webp",
-      "bytes": 23578,
+      "bytes": 13568,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25236,7 +25236,7 @@
       "key": "gear-flask",
       "label": "Flask",
       "src": "/assets/icons/inventory/gear-flask.webp",
-      "bytes": 15658,
+      "bytes": 8768,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25247,7 +25247,7 @@
       "key": "gear-flute",
       "label": "Flute",
       "src": "/assets/icons/inventory/gear-flute.webp",
-      "bytes": 7956,
+      "bytes": 5274,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25258,7 +25258,7 @@
       "key": "gear-forgery-kit",
       "label": "Forgery Kit",
       "src": "/assets/icons/inventory/gear-forgery-kit.webp",
-      "bytes": 17904,
+      "bytes": 10292,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25269,7 +25269,7 @@
       "key": "gear-glassblowers-tools",
       "label": "Glassblower's Tools",
       "src": "/assets/icons/inventory/gear-glassblowers-tools.webp",
-      "bytes": 17758,
+      "bytes": 11390,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25280,7 +25280,7 @@
       "key": "gear-grappling-hook",
       "label": "Grappling Hook",
       "src": "/assets/icons/inventory/gear-grappling-hook.webp",
-      "bytes": 20184,
+      "bytes": 12672,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25291,7 +25291,7 @@
       "key": "gear-hammer",
       "label": "Hammer",
       "src": "/assets/icons/inventory/gear-hammer.webp",
-      "bytes": 10840,
+      "bytes": 6960,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25302,7 +25302,7 @@
       "key": "gear-hammer-sledge",
       "label": "Hammer, Sledge",
       "src": "/assets/icons/inventory/gear-hammer-sledge.webp",
-      "bytes": 11078,
+      "bytes": 6634,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25313,7 +25313,7 @@
       "key": "gear-herbalism-kit",
       "label": "Herbalism Kit",
       "src": "/assets/icons/inventory/gear-herbalism-kit.webp",
-      "bytes": 22268,
+      "bytes": 12984,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25324,7 +25324,7 @@
       "key": "gear-horse-draft",
       "label": "Horse, Draft",
       "src": "/assets/icons/inventory/gear-horse-draft.webp",
-      "bytes": 21608,
+      "bytes": 13502,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25335,7 +25335,7 @@
       "key": "gear-horse-riding",
       "label": "Horse, Riding",
       "src": "/assets/icons/inventory/gear-horse-riding.webp",
-      "bytes": 19498,
+      "bytes": 12334,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25346,7 +25346,7 @@
       "key": "gear-hourglass",
       "label": "Hourglass",
       "src": "/assets/icons/inventory/gear-hourglass.webp",
-      "bytes": 17382,
+      "bytes": 9998,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25357,7 +25357,7 @@
       "key": "gear-hunting-trap",
       "label": "Hunting Trap",
       "src": "/assets/icons/inventory/gear-hunting-trap.webp",
-      "bytes": 25568,
+      "bytes": 16348,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25368,7 +25368,7 @@
       "key": "gear-ink-pen",
       "label": "Ink Pen",
       "src": "/assets/icons/inventory/gear-ink-pen.webp",
-      "bytes": 13922,
+      "bytes": 8596,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25379,7 +25379,7 @@
       "key": "gear-jewelers-tools",
       "label": "Jeweler's Tools",
       "src": "/assets/icons/inventory/gear-jewelers-tools.webp",
-      "bytes": 21450,
+      "bytes": 11762,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25390,7 +25390,7 @@
       "key": "gear-jug",
       "label": "Jug",
       "src": "/assets/icons/inventory/gear-jug.webp",
-      "bytes": 15644,
+      "bytes": 9042,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25401,7 +25401,7 @@
       "key": "gear-ladder-10-foot",
       "label": "Ladder (10-foot)",
       "src": "/assets/icons/inventory/gear-ladder-10-foot.webp",
-      "bytes": 15872,
+      "bytes": 9866,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25412,7 +25412,7 @@
       "key": "gear-lamp",
       "label": "Lamp",
       "src": "/assets/icons/inventory/gear-lamp.webp",
-      "bytes": 13908,
+      "bytes": 8552,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25423,7 +25423,7 @@
       "key": "gear-leatherworkers-tools",
       "label": "Leatherworker's Tools",
       "src": "/assets/icons/inventory/gear-leatherworkers-tools.webp",
-      "bytes": 22178,
+      "bytes": 12802,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25434,7 +25434,7 @@
       "key": "gear-lock",
       "label": "Lock",
       "src": "/assets/icons/inventory/gear-lock.webp",
-      "bytes": 20158,
+      "bytes": 11794,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25445,7 +25445,7 @@
       "key": "gear-lyre",
       "label": "Lyre",
       "src": "/assets/icons/inventory/gear-lyre.webp",
-      "bytes": 28276,
+      "bytes": 19720,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25456,7 +25456,7 @@
       "key": "gear-magnifying-glass",
       "label": "Magnifying Glass",
       "src": "/assets/icons/inventory/gear-magnifying-glass.webp",
-      "bytes": 15774,
+      "bytes": 10496,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25467,7 +25467,7 @@
       "key": "gear-masons-tools",
       "label": "Mason's Tools",
       "src": "/assets/icons/inventory/gear-masons-tools.webp",
-      "bytes": 21698,
+      "bytes": 11994,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25478,7 +25478,7 @@
       "key": "gear-mastiff",
       "label": "Mastiff",
       "src": "/assets/icons/inventory/gear-mastiff.webp",
-      "bytes": 18138,
+      "bytes": 11846,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25489,7 +25489,7 @@
       "key": "gear-mess-kit",
       "label": "Mess Kit",
       "src": "/assets/icons/inventory/gear-mess-kit.webp",
-      "bytes": 15282,
+      "bytes": 9742,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25500,7 +25500,7 @@
       "key": "gear-navigators-tools",
       "label": "Navigator's Tools",
       "src": "/assets/icons/inventory/gear-navigators-tools.webp",
-      "bytes": 20412,
+      "bytes": 12672,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25511,7 +25511,7 @@
       "key": "gear-painters-supplies",
       "label": "Painter's Supplies",
       "src": "/assets/icons/inventory/gear-painters-supplies.webp",
-      "bytes": 22696,
+      "bytes": 13372,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25522,7 +25522,7 @@
       "key": "gear-pan-flute",
       "label": "Pan Flute",
       "src": "/assets/icons/inventory/gear-pan-flute.webp",
-      "bytes": 18388,
+      "bytes": 10812,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25533,7 +25533,7 @@
       "key": "gear-paper-one-sheet",
       "label": "Paper (one sheet)",
       "src": "/assets/icons/inventory/gear-paper-one-sheet.webp",
-      "bytes": 9686,
+      "bytes": 6362,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25544,7 +25544,7 @@
       "key": "gear-parchment-one-sheet",
       "label": "Parchment (one sheet)",
       "src": "/assets/icons/inventory/gear-parchment-one-sheet.webp",
-      "bytes": 15064,
+      "bytes": 8528,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25555,7 +25555,7 @@
       "key": "gear-perfume-vial",
       "label": "Perfume (vial)",
       "src": "/assets/icons/inventory/gear-perfume-vial.webp",
-      "bytes": 13036,
+      "bytes": 8336,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25566,7 +25566,7 @@
       "key": "gear-pick-miners",
       "label": "Pick, Miner's",
       "src": "/assets/icons/inventory/gear-pick-miners.webp",
-      "bytes": 12338,
+      "bytes": 8152,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25577,7 +25577,7 @@
       "key": "gear-piton",
       "label": "Piton",
       "src": "/assets/icons/inventory/gear-piton.webp",
-      "bytes": 12930,
+      "bytes": 6580,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25588,7 +25588,7 @@
       "key": "gear-poison-basic-vial",
       "label": "Poison, Basic (vial)",
       "src": "/assets/icons/inventory/gear-poison-basic-vial.webp",
-      "bytes": 11546,
+      "bytes": 7148,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25599,7 +25599,7 @@
       "key": "gear-poisoners-kit",
       "label": "Poisoner's Kit",
       "src": "/assets/icons/inventory/gear-poisoners-kit.webp",
-      "bytes": 19810,
+      "bytes": 10970,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25610,7 +25610,7 @@
       "key": "gear-pole-10-foot",
       "label": "Pole (10-foot)",
       "src": "/assets/icons/inventory/gear-pole-10-foot.webp",
-      "bytes": 8588,
+      "bytes": 4956,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25621,7 +25621,7 @@
       "key": "gear-pony",
       "label": "Pony",
       "src": "/assets/icons/inventory/gear-pony.webp",
-      "bytes": 22078,
+      "bytes": 13208,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25632,7 +25632,7 @@
       "key": "gear-pot-iron",
       "label": "Pot, Iron",
       "src": "/assets/icons/inventory/gear-pot-iron.webp",
-      "bytes": 15828,
+      "bytes": 9444,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25643,7 +25643,7 @@
       "key": "gear-potters-tools",
       "label": "Potter's Tools",
       "src": "/assets/icons/inventory/gear-potters-tools.webp",
-      "bytes": 20844,
+      "bytes": 12262,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25654,7 +25654,7 @@
       "key": "gear-priests-pack",
       "label": "Priest's Pack",
       "src": "/assets/icons/inventory/gear-priests-pack.webp",
-      "bytes": 23234,
+      "bytes": 13394,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25665,7 +25665,7 @@
       "key": "gear-ram-portable",
       "label": "Ram, Portable",
       "src": "/assets/icons/inventory/gear-ram-portable.webp",
-      "bytes": 16470,
+      "bytes": 9108,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25676,7 +25676,7 @@
       "key": "gear-reliquary-holy-symbol",
       "label": "Reliquary (holy symbol)",
       "src": "/assets/icons/inventory/gear-reliquary-holy-symbol.webp",
-      "bytes": 20918,
+      "bytes": 10656,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25687,7 +25687,7 @@
       "key": "gear-saddle-exotic",
       "label": "Saddle, Exotic",
       "src": "/assets/icons/inventory/gear-saddle-exotic.webp",
-      "bytes": 25282,
+      "bytes": 15540,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25698,7 +25698,7 @@
       "key": "gear-saddle-military",
       "label": "Saddle, Military",
       "src": "/assets/icons/inventory/gear-saddle-military.webp",
-      "bytes": 22172,
+      "bytes": 13902,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25709,7 +25709,7 @@
       "key": "gear-saddle-pack",
       "label": "Saddle, Pack",
       "src": "/assets/icons/inventory/gear-saddle-pack.webp",
-      "bytes": 21782,
+      "bytes": 13786,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25720,7 +25720,7 @@
       "key": "gear-saddle-riding",
       "label": "Saddle, Riding",
       "src": "/assets/icons/inventory/gear-saddle-riding.webp",
-      "bytes": 17118,
+      "bytes": 10780,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25731,7 +25731,7 @@
       "key": "gear-saddlebags",
       "label": "Saddlebags",
       "src": "/assets/icons/inventory/gear-saddlebags.webp",
-      "bytes": 17668,
+      "bytes": 10688,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25742,7 +25742,7 @@
       "key": "gear-scale-merchants",
       "label": "Scale, Merchant's",
       "src": "/assets/icons/inventory/gear-scale-merchants.webp",
-      "bytes": 21502,
+      "bytes": 14380,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25753,7 +25753,7 @@
       "key": "gear-scholars-pack",
       "label": "Scholar's Pack",
       "src": "/assets/icons/inventory/gear-scholars-pack.webp",
-      "bytes": 23256,
+      "bytes": 14568,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25764,7 +25764,7 @@
       "key": "gear-sealing-wax",
       "label": "Sealing Wax",
       "src": "/assets/icons/inventory/gear-sealing-wax.webp",
-      "bytes": 12476,
+      "bytes": 7736,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25775,7 +25775,7 @@
       "key": "gear-shawm",
       "label": "Shawm",
       "src": "/assets/icons/inventory/gear-shawm.webp",
-      "bytes": 9592,
+      "bytes": 6750,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25786,7 +25786,7 @@
       "key": "gear-shovel",
       "label": "Shovel",
       "src": "/assets/icons/inventory/gear-shovel.webp",
-      "bytes": 11584,
+      "bytes": 7646,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25797,7 +25797,7 @@
       "key": "gear-signal-whistle",
       "label": "Signal Whistle",
       "src": "/assets/icons/inventory/gear-signal-whistle.webp",
-      "bytes": 15760,
+      "bytes": 10554,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25808,7 +25808,7 @@
       "key": "gear-signet-ring",
       "label": "Signet Ring",
       "src": "/assets/icons/inventory/gear-signet-ring.webp",
-      "bytes": 22004,
+      "bytes": 11842,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25819,7 +25819,7 @@
       "key": "gear-sling-bullets-20",
       "label": "Sling Bullets (20)",
       "src": "/assets/icons/inventory/gear-sling-bullets-20.webp",
-      "bytes": 19488,
+      "bytes": 9354,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25830,7 +25830,7 @@
       "key": "gear-small-knife",
       "label": "Small Knife",
       "src": "/assets/icons/inventory/gear-small-knife.webp",
-      "bytes": 8670,
+      "bytes": 5912,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25841,7 +25841,7 @@
       "key": "gear-smiths-tools",
       "label": "Smith's Tools",
       "src": "/assets/icons/inventory/gear-smiths-tools.webp",
-      "bytes": 21506,
+      "bytes": 10826,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25852,7 +25852,7 @@
       "key": "gear-soap",
       "label": "Soap",
       "src": "/assets/icons/inventory/gear-soap.webp",
-      "bytes": 10916,
+      "bytes": 6254,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25863,7 +25863,7 @@
       "key": "armor-spiked-armor",
       "label": "Spiked Armor",
       "src": "/assets/icons/inventory/armor-spiked-armor.webp",
-      "bytes": 27290,
+      "bytes": 16756,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25874,7 +25874,7 @@
       "key": "gear-spikes-iron-10",
       "label": "Spikes, Iron (10)",
       "src": "/assets/icons/inventory/gear-spikes-iron-10.webp",
-      "bytes": 15290,
+      "bytes": 9382,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25885,7 +25885,7 @@
       "key": "gear-spyglass",
       "label": "Spyglass",
       "src": "/assets/icons/inventory/gear-spyglass.webp",
-      "bytes": 11230,
+      "bytes": 7422,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25896,7 +25896,7 @@
       "key": "gear-string-10-feet",
       "label": "String (10 feet)",
       "src": "/assets/icons/inventory/gear-string-10-feet.webp",
-      "bytes": 19828,
+      "bytes": 12862,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25907,7 +25907,7 @@
       "key": "gear-tent-two-person",
       "label": "Tent, Two-Person",
       "src": "/assets/icons/inventory/gear-tent-two-person.webp",
-      "bytes": 16984,
+      "bytes": 11414,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25918,7 +25918,7 @@
       "key": "gear-tinkers-tools",
       "label": "Tinker's Tools",
       "src": "/assets/icons/inventory/gear-tinkers-tools.webp",
-      "bytes": 22956,
+      "bytes": 12626,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25929,7 +25929,7 @@
       "key": "gear-vial",
       "label": "Vial",
       "src": "/assets/icons/inventory/gear-vial.webp",
-      "bytes": 8280,
+      "bytes": 4916,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25940,7 +25940,7 @@
       "key": "gear-viol",
       "label": "Viol",
       "src": "/assets/icons/inventory/gear-viol.webp",
-      "bytes": 18538,
+      "bytes": 12760,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25951,7 +25951,7 @@
       "key": "gear-warhorse",
       "label": "Warhorse",
       "src": "/assets/icons/inventory/gear-warhorse.webp",
-      "bytes": 18842,
+      "bytes": 11792,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25962,7 +25962,7 @@
       "key": "gear-weavers-tools",
       "label": "Weaver's Tools",
       "src": "/assets/icons/inventory/gear-weavers-tools.webp",
-      "bytes": 26206,
+      "bytes": 15634,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25973,7 +25973,7 @@
       "key": "gear-whetstone",
       "label": "Whetstone",
       "src": "/assets/icons/inventory/gear-whetstone.webp",
-      "bytes": 15344,
+      "bytes": 8410,
       "generator": "image_gen",
       "width": 256,
       "height": 256
@@ -25984,7 +25984,7 @@
       "key": "gear-woodcarvers-tools",
       "label": "Woodcarver's Tools",
       "src": "/assets/icons/inventory/gear-woodcarvers-tools.webp",
-      "bytes": 20828,
+      "bytes": 12840,
       "generator": "image_gen",
       "width": 256,
       "height": 256
