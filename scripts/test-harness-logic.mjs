@@ -713,12 +713,12 @@ test("the Effort picker offers what the chosen models list, as the model pickers
   const pick = (model, utilityModel = "") => effortChoices(codex, { model, utilityModel });
   assert.deepEqual(pick("gpt-6.1-sol"), all);
   assert.deepEqual(pick("gpt-5.5"), all.slice(0, 5));
-  // One Effort serves both models: what both list.
-  assert.deepEqual(pick("gpt-6.1-sol", "gpt-5.5"), all.slice(0, 5));
-  // A blank story model is the program's own default; a blank bookkeeping
-  // model is the story model.
+  // Story effort follows the story model alone; bookkeeping has its own picker
+  // (`utilityEffortChoices`) and does not narrow the story model's efforts.
+  assert.deepEqual(pick("gpt-6.1-sol", "gpt-5.5"), all);
+  // A blank story model is the program's own default.
   assert.deepEqual(pick(""), all);
-  assert.deepEqual(pick("", "gpt-5.5"), all.slice(0, 5));
+  assert.deepEqual(pick("", "gpt-5.5"), all);
   assert.deepEqual(effortChoices({ ...codex, defaultEfforts: ["low"] }, { model: "", utilityModel: "" }), ["", "low"]);
   // A model whose efforts are not known narrows nothing; the run checks it.
   assert.deepEqual(pick("gpt-gone"), all);
