@@ -23,7 +23,8 @@ import http from "node:http";
 import path from "node:path";
 import { check, eventually } from "../lib.mjs";
 
-const CLIP = path.resolve(import.meta.dirname, "../../../public/dice-box/sounds/dicehit/dicehit_coin1.mp3");
+// Any short MP3 serves; the dice library ships some it is never asked to play.
+const CLIP = path.resolve(import.meta.dirname, "../../../node_modules/@3d-dice/dice-box-threejs/public/sounds/dicehit/dicehit_coin1.mp3");
 
 function speechServer() {
   const clip = fs.readFileSync(CLIP);
