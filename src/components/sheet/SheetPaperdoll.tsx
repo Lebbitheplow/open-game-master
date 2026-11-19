@@ -92,8 +92,8 @@ export function SheetPaperdoll({
       }}
     />
   );
-  // Other is no part of the body: it is there while it holds something.
-  const drawn = DOLL_PLACES.filter((id) => id !== "other" || view.tiles.other.fits.length > 0);
+  // Other and the mount are no part of the body: each is there while it holds something.
+  const drawn = DOLL_PLACES.filter((id) => (id !== "other" && id !== "mount") || view.tiles[id].fits.length > 0);
   const side = (which: "left" | "right" | "below") => drawn.filter((id) => view.tiles[id].place.side === which);
   const shown = open ? view.tiles[open] : null;
 

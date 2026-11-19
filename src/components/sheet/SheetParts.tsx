@@ -15,6 +15,7 @@ import { ABILITIES } from "@/lib/schemas/sheet";
 import { formatModifier, skillLabel, SRD_SKILLS } from "@/lib/srd";
 import { useLocale, useT } from "@/lib/locale";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { isTack, onMount } from "@/lib/srd/tack";
 import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
 import { magicItemBonus, rowName, srdNameWithBonus } from "@/lib/srd/item-row";
 import { backgroundFeatureName, classFeatureName, contentName, speciesTraitName } from "@/lib/content/names";
@@ -360,6 +361,8 @@ export function EquipmentChips({
   const locale = useLocale();
   const explicit = wearingIsExplicit(equipment);
   const wornNote = (item: (typeof equipment)[number]) => {
+    // A saddle is on the mount unless it was packed (src/lib/srd/tack.ts).
+    if (isTack(item)) return onMount(item) ? t("on the mount") : null;
     const idle = explicit ? wornButIdle(item, equipment) : null;
     if (idle) return t("worn, not in effect: {kind} at a time", { kind: oneOfKind(idle) ?? t("none", { context: "sheet.training.none" }) });
     if (item.equipped && item.layered) return t("worn beside another, on the GM's say");

@@ -17,12 +17,13 @@ import type { ItemTag } from "@/lib/schemas/item-tags";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { isTack } from "@/lib/srd/tack";
 import { wearSlotOf, type WearSlot } from "@/lib/srd/wear-slots";
 import { WORN_PLACE_BLURBS } from "@/lib/srd/worn-places";
 
-export type DollPlaceId = "head" | "cloak" | "wrists" | "hands" | "feet" | "eyes" | "neck" | "body" | "waist" | "ring" | "held" | "shield" | "other";
+export type DollPlaceId = "head" | "cloak" | "wrists" | "hands" | "feet" | "eyes" | "neck" | "body" | "waist" | "ring" | "held" | "shield" | "other" | "mount";
 // In the order the tiles are drawn: the left side, the right, the row below.
-export const DOLL_PLACES: readonly DollPlaceId[] = ["head", "cloak", "wrists", "hands", "feet", "eyes", "neck", "body", "waist", "ring", "held", "shield", "other"];
+export const DOLL_PLACES: readonly DollPlaceId[] = ["head", "cloak", "wrists", "hands", "feet", "eyes", "neck", "body", "waist", "ring", "held", "shield", "other", "mount"];
 
 export type DollPlace = {
   id: DollPlaceId;
@@ -78,6 +79,16 @@ export const DOLL_PLACE: Record<DollPlaceId, DollPlace> = {
     side: "below",
     at: null,
   },
+  // Not on the body at all: what the character's mount wears, kept as rows
+  // in their pack (src/lib/srd/tack.ts).
+  mount: {
+    id: "mount",
+    label: "On your mount",
+    goes: "A saddle, saddlebags, a bit and bridle",
+    rule: "What your mount wears weighs nothing for you. Packed, it does nothing and you carry its weight.",
+    side: "below",
+    at: null,
+  },
 };
 
 // The foci a caster holds in a hand, by the row's tags and never by a word
@@ -123,6 +134,9 @@ export function dollPlaceOf(item: EquipmentItem): DollPlaceId | null {
   }
   if (isHeldFocus(item)) {
     return "held";
+  }
+  if (isTack(item)) {
+    return "mount";
   }
   return isWornGear(item) || isAttunable(item) ? "other" : null;
 }

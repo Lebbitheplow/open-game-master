@@ -16,6 +16,7 @@ import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { isSpellStorer, storedSpellsLine } from "@/lib/srd/spell-storing";
 import { isWorkshopRow, magicItemBonus, rowName } from "@/lib/srd/item-row";
+import { isTack, onMount } from "@/lib/srd/tack";
 
 function effectWords(effect: MagicItemEffect): string {
   switch (effect.kind) {
@@ -129,7 +130,10 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   // A row the sheet offers no wear toggle (noWear: a Crystal Ball, a Cube of
   // Force) is never said to be worn: nothing puts it on.
   const idle = wornButIdle(item, equipment);
-  if (idle) {
+  if (isTack(item)) {
+    // On the animal, or dead weight in the pack (src/lib/srd/tack.ts).
+    state.push(onMount(item) ? "on the mount" : "packed, not on the mount");
+  } else if (idle) {
     state.push(`worn, not in effect (${oneOfKind(idle) ?? "one of its kind"} at a time)`);
   } else if (isWorn(item, equipment) && !(listed?.noWear && !wearSlotOf(item))) {
     state.push("worn");

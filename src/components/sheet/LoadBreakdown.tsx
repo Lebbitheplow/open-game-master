@@ -129,13 +129,14 @@ export function LoadBreakdown({
           <tbody key={`${key}-${order}`} className="stagger-up">
             {lines.map((line) => {
               const note = line.source ? SOURCE_NOTE[line.source] : null;
-              const worn = equipment[line.index]?.equipped;
+              // Tack on the mount is not this character's to carry.
+              const worn = !line.onMount && equipment[line.index]?.equipped;
               return (
                 <tr key={line.index} data-unknown={line.totalLb === null ? "" : undefined}>
                   <th scope="row">
                     <span className="block text-stone-200">{line.name}</span>
-                    {worn || note ? (
-                      <span className="block text-[11px] text-stone-500">{[worn ? t("worn") : null, note ? t(note) : null].filter(Boolean).join(", ")}</span>
+                    {line.onMount || worn || note ? (
+                      <span className="block text-[11px] text-stone-500">{[line.onMount ? t("on the mount, not carried") : null, worn ? t("worn") : null, note ? t(note) : null].filter(Boolean).join(", ")}</span>
                     ) : null}
                   </th>
                   <td className="load-num">{line.qty}</td>

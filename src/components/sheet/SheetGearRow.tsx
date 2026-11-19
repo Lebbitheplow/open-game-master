@@ -11,6 +11,7 @@ import { guessStands, matchArmor } from "@/lib/srd/armor";
 import { swapQuestion, wearConflict, type WearConflict } from "@/lib/srd/wear-slots";
 import { contentName } from "@/lib/content/names";
 import { magicItemBonus, rowName } from "@/lib/srd/item-row";
+import { isTack } from "@/lib/srd/tack";
 import { useLocale } from "@/lib/locale";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { ITEM_CATEGORY_LABEL, itemCategory, itemToneStyle } from "@/lib/srd/item-category-logic";
@@ -92,7 +93,18 @@ export function SheetGearRow({
   // A wand, staff or rod is held too, and sits with the weapons on the
   // paperdoll's In hand place: its button reads as theirs do.
   const inHand = isWeapon || (!isArmor && isHeldFocus(item));
-  const wearLabel = inHand ? t(WIELD_LABEL[worn ? "in-hand" : "stowed"]) : worn ? t("worn") : t("wear");
+  // A saddle goes on the mount, where it weighs nothing for its rider
+  // (src/lib/srd/tack.ts).
+  const tack = isTack(item);
+  const wearLabel = inHand
+    ? t(WIELD_LABEL[worn ? "in-hand" : "stowed"])
+    : tack
+      ? worn
+        ? t("On mount")
+        : t(WIELD_LABEL.stowed)
+      : worn
+        ? t("worn")
+        : t("wear");
   const status = itemStatus(t, sheet, item);
   const category = itemCategory(item);
   const attunable = isAttunable(item);
@@ -146,12 +158,22 @@ export function SheetGearRow({
         type="button"
         disabled={busy || armorLocked || shieldLocked || weaponLocked || wornLocked || dead}
         aria-busy={busy}
-        aria-label={inHand ? `${item.name}: ${wearLabel}. ${worn ? "Pack it away" : "Take it in hand"}.` : undefined}
+        aria-label={
+          inHand
+            ? `${item.name}: ${wearLabel}. ${worn ? "Pack it away" : "Take it in hand"}.`
+            : tack
+              ? `${item.name}: ${wearLabel}. ${worn ? "Take it off your mount" : "Put it on your mount"}.`
+              : undefined
+        }
         title={
           dead
             ? t("{name} is dead and cannot change what they wear or are attuned to.", { name: sheet.name })
             : weaponHint
               ? weaponHint
+              : tack && !inCombat
+              ? worn
+                ? t("On your mount, so it weighs nothing for you. Press to pack it, and carry its weight.")
+                : t("In your pack, where it does nothing and you carry its weight. Press to put it on your mount.")
               : !inCombat
               ? // What the route will charge the clock (don-doff.ts), before the press.
                 armorChangeMinutes(sheet.equipment, { [item.name]: { equipped: !worn } }).lines.join(" ") || undefined

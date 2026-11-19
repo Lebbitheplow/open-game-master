@@ -2,7 +2,8 @@ import { z } from "zod";
 import { landsOnFeet } from "@/lib/dm/fall-landing";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getMounts, setMount } from "@/lib/db/mounts";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { onMount } from "@/lib/srd/tack";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { isProne, saddleSave } from "@/lib/dm/mount-thrown";
@@ -17,6 +18,7 @@ import {
   MOUNTS,
   MOUNT_SIZES,
   mountCost,
+  mountProfile,
   type MountSize,
   type MountState,
 } from "@/lib/srd/mounts";
@@ -46,6 +48,18 @@ import { tilesApart } from "@/lib/dm/board-reach";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
+
+// Puts a packed exotic saddle on the mount when the rider carries none that
+// is already on (src/lib/srd/tack.ts). The saddle's name when one was moved.
+function saddleUp(sheet: CharacterSheet): string | null {
+  const saddles = sheet.equipment.filter((item) => matchGear(rowName(item)) === EXOTIC_SADDLE);
+  if (!saddles.length || saddles.some((item) => onMount(item))) {
+    return null;
+  }
+  const [packed] = saddles;
+  patchSheet(sheet.id, { equipment: sheet.equipment.map((item) => (item === packed ? { ...item, equipped: true } : item)) });
+  return packed.name;
+}
 
 // Getting on and off a horse, with the PHB's rules attached.
 //
@@ -199,6 +213,9 @@ export function handleMountUp(
   const block = SRD_CREATURES.find((creature) => creature.slug === checked.state.ref);
   const state = block ? { ...checked.state, ac: block.ac, hp: block.hp, maxHp: block.hp } : checked.state;
   setMount(campaign.id, sheet.id, state);
+  // The rider who packed their exotic saddle and now mounts a griffon means
+  // to ride in it (issue #1038): it goes on, and weighs nothing for them.
+  const saddled = mountProfile(checked.state.ref)?.exotic && !drake && !steed && !args.customName ? saddleUp(sheet) : null;
   if (steed) {
     leaveFightAsMount(campaign, steed.id);
   }
@@ -208,6 +225,7 @@ export function handleMountUp(
     ok: true,
     mounted: checked.state.name,
     speed: checked.state.speed,
+    ...(saddled ? { saddle: `${saddled} was in ${sheet.name}'s pack and is on the ${checked.state.name} now, where it weighs nothing for them.` } : {}),
     ...(steed
       ? { creature: `${steed.name} is the creature ${sheet.name} called up, at ${steed.currentHp}/${steed.maxHp} hit points: a blow aimed at the mount and healing sent to ${steed.name} reach that one sheet. It has no token or turn of its own while it carries them, and stands beside them again when they get down.` }
       : {}),
