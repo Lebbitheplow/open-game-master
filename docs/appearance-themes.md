@@ -180,7 +180,9 @@ A flat panel's corner brackets are `.ornate::before` (top left) and
 `::after` (bottom right). A theme that thickens them gives each its own two
 sides, as `border-width: 2px 0 0 2px` and `0 2px 2px 0`: one width for both
 draws a closed box, and the contract check refuses it. A `double` style
-needs at least 3px to show two lines.
+needs at least 3px to show two lines. The check works out each bracket's final
+widths and style from the theme's rules, so a box written for one bracket
+alone, or a double line under 3px, is refused too.
 
 The neutral hooks already exist in the components:
 

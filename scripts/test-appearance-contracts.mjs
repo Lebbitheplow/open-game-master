@@ -30,6 +30,13 @@ await test('scoping guard rejects leaks rather than merely finding an owner subs
   assert.throws(()=>assertThemeCss('[data-appearance="probe"] {--theme-corner-flip: 1}','probe'),/catalog/);
   assert.throws(()=>assertThemeCss('html[data-appearance="probe"] .ornate::before,\nhtml[data-appearance="probe"] .ornate::after { width: 18px; border-width: 2px; }','probe'),/own border widths/);
   assertThemeCss('html[data-appearance="probe"] .ornate::before,\nhtml[data-appearance="probe"] .ornate::after { width: 18px; }\nhtml[data-appearance="probe"] .ornate::before { border-width: 2px 0 0 2px; }','probe');
+  // A closed box written for one bracket alone, or through the shorthand.
+  assert.throws(()=>assertThemeCss('html[data-appearance="probe"] .ornate::after { border-width: 2px; }','probe'),/bottom-right bracket.*closed box/);
+  assert.throws(()=>assertThemeCss('html[data-appearance="probe"] .ornate::before { border: 2px solid gold; }','probe'),/own border widths/);
+  assert.throws(()=>assertThemeCss('html[data-appearance="probe"] .ornate::before { border-right-width: 1px; }','probe'),/closed box/);
+  // A double line at the shared 1px draws one stroke; 3px per side draws two.
+  assert.throws(()=>assertThemeCss('html[data-appearance="probe"] .ornate::before,\nhtml[data-appearance="probe"] .ornate::after { border-style: double; }','probe'),/double line/);
+  assertThemeCss('html[data-appearance="probe"] .ornate::before,\nhtml[data-appearance="probe"] .ornate::after { border-style: double; }\nhtml[data-appearance="probe"] .ornate::before { border-width: 3px 0 0 3px; }\nhtml[data-appearance="probe"] .ornate::after { border-width: 0 3px 3px 0; }','probe');
   assert.throws(()=>assertThemeCss('[data-appearance="probe"] {body {color:red}}','probe'));
   assert.throws(()=>assertSharedCss('[data-appearance="probe"] {color:red}','shared.css'));
   assertThemeCss('@media (width < 40rem) {html[data-appearance="probe"] :is(.a,.b), [data-appearance="probe"] > .c {color:red}}','probe');
