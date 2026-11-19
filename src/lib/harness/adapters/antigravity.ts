@@ -22,10 +22,11 @@
 // The init event's tool list is checked on every run, and so is every tool
 // step: anything but ODM's tools stops the turn.
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { parseJsonLine, runProgram, spawnProgram } from "../process.ts";
-import type { HarnessAdapter, HarnessModel, HarnessStartOptions } from "../types.ts";
+import { HARNESS_EFFORTS, isHarnessEffort, type HarnessAdapter, type HarnessEffort, type HarnessModel, type HarnessStartOptions } from "../types.ts";
 
 export const ANTIGRAVITY_AGENT = "odm-dm";
 
@@ -47,20 +48,47 @@ export const ANTIGRAVITY_ENV = {
 // never saved"). Deny wins over allow, so ODM's tools are allowed by server
 // and nothing else is. agentMode "" is the Default mode: Auto would let a
 // reviewer model approve commands without asking.
-export function antigravitySettings(): Record<string, unknown> {
+export const ANTIGRAVITY_IMAGE_TOOL = "generate_image";
+
+const BASE_DENIED_TOOLS = [
+  "command(*)",
+  "read_file(*)",
+  "write_file(*)",
+  "read_url(*)",
+  "execute_url(*)",
+  "manage_task(*)",
+  "schedule(*)",
+  "run_workflow(*)",
+  "invoke_subagent(*)",
+  "define_subagent(*)",
+  "send_message(*)",
+  "browser_*(*)",
+  "search_web(*)",
+  "search_marketplace(*)",
+  "ask_question(*)",
+];
+
+export function antigravitySettings(images = false): Record<string, unknown> {
   return {
     agentMode: "",
     permissions: {
-      allow: ["mcp(odm/*)"],
-      deny: ["command(*)", "read_file(*)", "write_file(*)", "read_url(*)", "execute_url(*)"],
+      allow: images ? [`${ANTIGRAVITY_IMAGE_TOOL}(*)`] : ["mcp(odm/*)"],
+      deny: images ? [...BASE_DENIED_TOOLS] : [...BASE_DENIED_TOOLS, `${ANTIGRAVITY_IMAGE_TOOL}(*)`],
     },
   };
+}
+
+function splitAntigravityModelEffort(id: string): { base: string; effort: HarnessEffort } | null {
+  const dash = id.lastIndexOf("-");
+  if (dash <= 0) return null;
+  const tail = id.slice(dash + 1);
+  return isHarnessEffort(tail) ? { base: id.slice(0, dash), effort: tail } : null;
 }
 
 // Pure, so scripts/test-harness-antigravity.mjs can pin every flag. A bare
 // -p takes the next argument as its prompt, so the prompt is attached empty:
 // the turns arrive on stdin.
-export function antigravityArgs(options: { model: string; effort: string }): string[] {
+export function antigravityArgs(options: { model: string; effort: string; images?: boolean }): string[] {
   const args = [
     "-p=",
     "--input-format",
@@ -71,12 +99,12 @@ export function antigravityArgs(options: { model: string; effort: string }): str
     ANTIGRAVITY_AGENT,
     "--disable-slash-commands",
     "--settings",
-    JSON.stringify(antigravitySettings()),
+    JSON.stringify(antigravitySettings(Boolean(options.images))),
   ];
   if (options.model) {
     args.push("--model", options.model);
   }
-  if (options.effort) {
+  if (options.effort && !splitAntigravityModelEffort(options.model)) {
     args.push("--effort", options.effort);
   }
   return args;
@@ -90,6 +118,7 @@ export function antigravityAgentFile(options: {
   system: string;
   mcp: { url: string; token: string } | null;
   toolNames?: readonly string[];
+  images?: boolean;
 }): string {
   const lines = [
     "---",
@@ -97,7 +126,7 @@ export function antigravityAgentFile(options: {
     `description: ${JSON.stringify("Open Game Master's storyteller")}`,
     "mainAgent: true",
     "subagent: false",
-    "excludeDefaultComponents: true",
+    `excludeDefaultComponents: ${options.images ? "false" : "true"}`,
     "inheritCustomizations: false",
     "inheritMcp: false",
     `commandExecutionPolicy: ${JSON.stringify("off")}`,
@@ -127,23 +156,94 @@ export function antigravityAgentFile(options: {
 // models...") and headings ("Available models:") are not models.
 export function parseAntigravityModels(output: string): HarnessModel[] {
   const models: HarnessModel[] = [];
+  const effortsById = new Map<string, Set<HarnessEffort>>();
   for (const raw of output.split("\n")) {
     const line = raw.trim().replace(/^[-*•]\s*/, "");
     if (!line || line.endsWith("...") || line.endsWith(":")) {
       continue;
     }
     const match = /^([a-z0-9][a-z0-9._:/-]*)(?:\s+(.*))?$/i.exec(line);
-    if (!match || !/[-.\d]/.test(match[1]) || models.some((entry) => entry.id === match[1])) {
+    if (!match || !/[-.\d]/.test(match[1])) {
       continue;
     }
-    const rest = (match[2] ?? "").replace(/^[-–:(\s]+|[)\s]+$/g, "");
-    models.push({ id: match[1], label: rest || match[1] });
+    let rest = (match[2] ?? "").replace(/^[-–:\s]+|\s+$/g, "");
+    if (rest.startsWith("(") && rest.endsWith(")")) {
+      rest = rest.slice(1, -1).trim();
+    }
+    const split = splitAntigravityModelEffort(match[1]);
+    const id = split ? split.base : match[1];
+    let label = rest || match[1];
+    if (split && label.endsWith(")")) {
+      const open = label.lastIndexOf(" (");
+      if (open > 0 && label.length - open - 3 === split.effort.length) {
+        label = label.slice(0, open);
+      }
+    }
+    if (split) {
+      let set = effortsById.get(id);
+      if (!set) {
+        set = new Set<HarnessEffort>();
+        effortsById.set(id, set);
+      }
+      set.add(split.effort);
+    }
+    if (!models.some((entry) => entry.id === id)) {
+      models.push({ id, label });
+    }
   }
-  return models;
+  return models.map((model) => {
+    const set = effortsById.get(model.id);
+    return {
+      ...model,
+      efforts: set ? HARNESS_EFFORTS.filter((effort) => set.has(effort)) : [],
+    };
+  });
 }
 
 function textOf(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+export function parseAntigravityDefaultEfforts(output: string): HarnessEffort[] | undefined {
+  for (const line of output.split("\n")) {
+    const parsed = parseJsonLine(line.trim());
+    const command = parsed?.command as { data?: { adjustable?: unknown; available?: unknown } } | undefined;
+    const data = command?.data;
+    if (!data || typeof data !== "object") continue;
+    if (data.adjustable === false) return [];
+    if (Array.isArray(data.available)) {
+      return data.available.filter(isHarnessEffort);
+    }
+  }
+  return undefined;
+}
+
+export function parseAntigravityQuota(output: string): { utilization: number; resetsAt?: number; window?: string } | null {
+  let best: { utilization: number; resetsAt?: number; window?: string } | null = null;
+  for (const line of output.split("\n")) {
+    const parsed = parseJsonLine(line.trim());
+    const command = parsed?.command as {
+      data?: { groups?: Array<{ buckets?: Array<{ remaining_fraction?: unknown; reset_time?: unknown; window?: unknown }> }> };
+    } | undefined;
+    const groups = command?.data?.groups;
+    if (!Array.isArray(groups)) continue;
+    for (const group of groups) {
+      for (const bucket of group?.buckets ?? []) {
+        if (typeof bucket?.remaining_fraction !== "number") continue;
+        const utilization = Math.max(0, Math.min(1, 1 - bucket.remaining_fraction));
+        if (!best || utilization > best.utilization) {
+          const parsedReset = Date.parse(textOf(bucket.reset_time));
+          const window = textOf(bucket.window);
+          best = {
+            utilization,
+            ...(Number.isFinite(parsedReset) ? { resetsAt: parsedReset } : {}),
+            ...(window ? { window } : {}),
+          };
+        }
+      }
+    }
+  }
+  return best;
 }
 
 function toolName(entry: unknown): string {
@@ -154,8 +254,71 @@ function toolName(entry: unknown): string {
 }
 
 // Whether a tool a run reports is one ODM allows.
-export function antigravityToolAllowed(name: string): boolean {
+export function antigravityToolAllowed(name: string, images = false): boolean {
+  if (images) {
+    return name === ANTIGRAVITY_IMAGE_TOOL;
+  }
   return name.startsWith(ANTIGRAVITY_MCP_PREFIX) || ANTIGRAVITY_DOORS.has(name);
+}
+
+function imageMimeFromPath(filePath: string, bytes: Buffer): string {
+  if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return "image/png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (bytes.length >= 12 && bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP") {
+    return "image/webp";
+  }
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  return "image/jpeg";
+}
+
+function findGeneratedImage(
+  conversationId: string,
+  imageName: string,
+  env: Record<string, string | undefined>,
+): { filePath: string; bytes: Buffer; mime: string } | null {
+  if (!conversationId) return null;
+  const home = env.HOME || env.USERPROFILE || os.homedir();
+  const dirs = [
+    path.join(home, ".gemini", "antigravity-cli", "brain", conversationId),
+    path.join(home, ".gemini", "antigravity", "brain", conversationId),
+  ];
+  for (const dir of dirs) {
+    let names: string[];
+    try {
+      names = readdirSync(dir);
+    } catch {
+      continue;
+    }
+    const candidates = names
+      .filter((entry) => /\.(png|jpe?g|webp)$/i.test(entry))
+      .map((entry) => {
+        const filePath = path.join(dir, entry);
+        let mtimeMs = 0;
+        try {
+          mtimeMs = statSync(filePath).mtimeMs;
+        } catch {}
+        return { entry, filePath, mtimeMs };
+      })
+      .sort((a, b) => b.mtimeMs - a.mtimeMs);
+    const preferred = imageName
+      ? candidates.find((c) => c.entry.startsWith(imageName)) ?? candidates[0]
+      : candidates[0];
+    if (preferred) {
+      try {
+        const bytes = readFileSync(preferred.filePath);
+        if (bytes.length > 0) {
+          return { filePath: preferred.filePath, bytes, mime: imageMimeFromPath(preferred.filePath, bytes) };
+        }
+      } catch {}
+    }
+  }
+  return null;
 }
 
 function errorKind(message: string): "signed-out" | "limit" | "crash" {
@@ -172,21 +335,33 @@ async function start(options: HarnessStartOptions) {
   // A file in the run's own scratch folder, readable only by this user and
   // deleted with the folder, so neither the token nor a campaign's long
   // prompt appears on a command line.
+  const images = Boolean(options.images);
   const agentsDir = path.join(options.cwd, ".agents", "agents");
   mkdirSync(agentsDir, { recursive: true });
   writeFileSync(
     path.join(agentsDir, `${ANTIGRAVITY_AGENT}.md`),
-    antigravityAgentFile({ system: options.system, mcp: options.mcp, toolNames: options.toolNames }),
+    antigravityAgentFile({ system: options.system, mcp: options.mcp, toolNames: options.toolNames, images }),
     { mode: 0o600 },
   );
   let turnText = "";
   let closed = false;
+  let conversationId = "";
+  const emittedImages = new Set<string>();
   const toolSteps = new Set<string>();
   const stop = (message: string) => {
     options.onEvent({ type: "error", kind: "lockdown", message });
+    quota?.kill();
     program.kill();
   };
-  const program = spawnProgram(options.binary, antigravityArgs({ model: options.model, effort: options.effort }), {
+  const emitImageIfPresent = (imageName = "") => {
+    if (!images || !conversationId) return;
+    const hit = findGeneratedImage(conversationId, imageName, options.env);
+    if (hit && !emittedImages.has(hit.filePath)) {
+      emittedImages.add(hit.filePath);
+      options.onEvent({ type: "image", bytes: hit.bytes, mime: hit.mime });
+    }
+  };
+  const program = spawnProgram(options.binary, antigravityArgs({ model: options.model, effort: options.effort, images }), {
     cwd: options.cwd,
     env: { ...options.env, ...ANTIGRAVITY_ENV },
     onLine: (line) => {
@@ -198,22 +373,15 @@ async function start(options: HarnessStartOptions) {
       // "result", "result": {...}}); a flat one is read the same way.
       const kind = textOf(event.event);
       const body = (event[kind] && typeof event[kind] === "object" ? event[kind] : event) as Record<string, unknown>;
+      const cid = textOf(event.conversation_id) || textOf(body.conversation_id);
+      if (cid) {
+        conversationId = cid;
+      }
       if (kind === "init") {
+        // agy reports its built-in tool catalog in init.tools and connects to
+        // mcpServers after init, so mcp_odm_* tools are not listed here yet.
+        // permissions.deny + the step_update check below enforce lockdown.
         const tools = Array.isArray(body.tools) ? body.tools.map(toolName).filter(Boolean) : [];
-        const stray = tools.filter((tool) => !antigravityToolAllowed(tool));
-        if (stray.length) {
-          stop(`Antigravity started with its own tools still on (${stray.slice(0, 4).join(", ")}), so the turn was stopped.`);
-          return;
-        }
-        if (options.mcp && !tools.length) {
-          options.onEvent({
-            type: "error",
-            kind: "crash",
-            message: "Antigravity started without the game engine's tools, so it could not run the table.",
-          });
-          program.kill();
-          return;
-        }
         options.onEvent({ type: "ready", tools });
         return;
       }
@@ -221,9 +389,13 @@ async function start(options: HarnessStartOptions) {
         const stepType = textOf(body.step_type);
         const name = textOf(body.tool_name) || toolName((body.tool_info as Record<string, unknown> | undefined) ?? null);
         if (stepType === "tool" || name) {
-          if (name && !antigravityToolAllowed(name)) {
+          if (name && !antigravityToolAllowed(name, images)) {
             stop(`Antigravity reached for its own tool ${name}, so the turn was stopped.`);
             return;
+          }
+          if (images && name === ANTIGRAVITY_IMAGE_TOOL && textOf(body.state) === "DONE") {
+            const params = (body.tool_info as { parameters?: { ImageName?: unknown } } | undefined)?.parameters;
+            emitImageIfPresent(textOf(params?.ImageName));
           }
           // A new tool round: what it wrote before was not the narration.
           const step = String(body.step_index ?? name);
@@ -242,6 +414,9 @@ async function start(options: HarnessStartOptions) {
         return;
       }
       if (kind === "result") {
+        if (images && emittedImages.size === 0) {
+          emitImageIfPresent();
+        }
         const text = turnText.trim() || textOf(body.response).trim();
         turnText = "";
         toolSteps.clear();
@@ -275,12 +450,25 @@ async function start(options: HarnessStartOptions) {
       }
     },
   });
+  const quota = spawnProgram(options.binary, ["-p", "/quota", "--output-format", "json"], {
+    cwd: agentsDir,
+    env: { ...options.env, ...ANTIGRAVITY_ENV },
+    onLine: (line) => {
+      if (closed) return;
+      const rate = parseAntigravityQuota(line);
+      if (rate) {
+        options.onEvent({ type: "rate_limit", ...rate });
+      }
+    },
+    onExit: () => undefined,
+  });
   return {
     send(text: string) {
       program.write(JSON.stringify({ event: "user", message: { content: text } }));
     },
     close() {
       closed = true;
+      quota.kill();
       program.kill();
     },
   };
@@ -296,7 +484,7 @@ export const antigravityAdapter: HarnessAdapter = {
   // there is no browser, and keeps the sign-in for later runs.
   signInHint: "agy",
   lockdown: "removed",
-  paints: false,
+  paints: true,
   async probe(binary, env) {
     const version = await runProgram(binary, ["--version"], env, 15_000);
     const installed = version.code === 0;
@@ -309,6 +497,10 @@ export const antigravityAdapter: HarnessAdapter = {
     const text = `${listed.stdout}\n${listed.stderr}`;
     const signedOut = /sign in|authentication required|not signed in|log in/i.test(text) && listed.code !== 0;
     const models = listed.code === 0 ? parseAntigravityModels(listed.stdout) : [];
+    const effortOut = models.length
+      ? await runProgram(binary, ["-p", "/effort", "--output-format", "json"], { ...env, ...ANTIGRAVITY_ENV }, 10_000)
+      : null;
+    const defaultEfforts = effortOut?.code === 0 ? parseAntigravityDefaultEfforts(effortOut.stdout) : undefined;
     return {
       installed,
       version: version.stdout.trim().split(/\s+/).pop(),
@@ -318,6 +510,7 @@ export const antigravityAdapter: HarnessAdapter = {
       // No list of our own when `agy models` gives none: a name written
       // here would outlive the model it names.
       models,
+      ...(defaultEfforts ? { defaultEfforts } : {}),
       lockdownProven: false,
       message: signedOut
         ? "The Antigravity CLI is installed but not signed in on this machine."
