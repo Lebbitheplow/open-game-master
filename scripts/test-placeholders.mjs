@@ -63,7 +63,11 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // Raised to 15.5 MiB on 2026-11-18 for 30 dragon age plates (wyrmling,
 // adult and ancient for all ten colours, about 0.27 MiB) so each age gets
 // its own painting instead of sharing the young plate.
-const BUDGET_TOTAL_BYTES = 15.5 * 1024 * 1024;
+// Lowered to 14.5 MiB on 2026-11-18: the 108 enemy NPC race plates above were
+// re-encoded from q90 to q75 (method 6, sharp-yuv), 2.04 MiB to 0.89 MiB, with
+// no difference at the 96px and 40px token sizes or the 96px portrait, which
+// took the set to 14.25 MiB.
+const BUDGET_TOTAL_BYTES = 14.5 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 128 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 48 * 1024;
