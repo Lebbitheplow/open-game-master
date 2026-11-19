@@ -255,6 +255,7 @@ export function harnessCatalogProvider(id: HarnessId, modelId = ""): string {
   if (id === "claude") return "anthropic";
   if (id === "codex") return "openai";
   if (id === "grok") return "xai";
+  if (id === "antigravity") return "google";
   const slash = modelId.indexOf("/");
   return slash > 0 ? modelId.slice(0, slash) : "";
 }

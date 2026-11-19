@@ -1,10 +1,11 @@
 // Public types of the harness context: an agent program the admin already
-// has (Claude Code, Codex, opencode, Grok Build, Pi) standing in for the story
-// model. Pure, no imports, so scripts/test-harness-*.mjs can load it.
+// has (Claude Code, Codex, opencode, Grok Build, Pi, Antigravity CLI) standing
+// in for the story model. Pure, no imports, so scripts/test-harness-*.mjs can
+// load it.
 
-export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi";
+export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi" | "antigravity";
 
-export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode", "grok", "pi"];
+export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode", "grok", "pi", "antigravity"];
 
 export function isHarnessId(value: unknown): value is HarnessId {
   return typeof value === "string" && (HARNESS_IDS as readonly string[]).includes(value);
@@ -149,6 +150,9 @@ export type HarnessStartOptions = {
   speed?: { role: "story" | "utility" };
   // Null for a plain completion: no tools of any kind.
   mcp: { url: string; token: string } | null;
+  // The names of the tools that MCP server serves this run, for a program
+  // that loads each one up front by name (the Antigravity CLI).
+  toolNames?: readonly string[];
   // Native image tool on, for a picture run. Everything else stays off.
   images?: boolean;
   cwd: string;
