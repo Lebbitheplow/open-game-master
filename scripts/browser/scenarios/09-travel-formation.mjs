@@ -1,7 +1,7 @@
 // Issue 230: the travel formation. The lead arranges who walks first in the
 // Party panel, saves it, and the order shows there in force; the order is
 // campaign state the DM reads every turn (src/lib/dm/formation-logic.ts).
-import { check, eventually } from "../lib.mjs";
+import { check, eventually, untilStill } from "../lib.mjs";
 
 // The section's words as written: the buttons are uppercased by CSS, which
 // innerText would report.
@@ -51,7 +51,11 @@ export default {
       return ahead.test(text) && /Rearrange the formation/.test(text);
     }, { timeoutMs: 20_000, label: `the saved order, ${second} in front, without a reload` });
     // The rows stagger in; the picture waits for them, and every row lands.
-    await section.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
+    // A row re-rendered mid-entrance cancels its animation, and a cancelled
+    // animation rejects `finished` (an AbortError): it has stopped all the
+    // same, and the row that replaced it brings its own entrance.
+    await section.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {}))));
+    await untilStill(page);
     const shown = await section.locator("li.formation-row").evaluateAll((rows) => rows.map((row) => Number(getComputedStyle(row).opacity)));
     check(shown.length >= 2 && shown.every((opacity) => opacity > 0.95), `every saved row is shown (${shown.join(", ")})`);
     await t.shot("saved");
