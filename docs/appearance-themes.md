@@ -38,9 +38,6 @@ and `themeProvenance()`); the catalog every page ships does not repeat them. The
 checks hold the stylesheet against `globals.css`; nothing loads CSS dynamically.
 Next must see each CSS import when building the app.
 
-`public/assets/themes/default/theme.config.json` belongs to the 3D dice library.
-It is not the app appearance registry. Leave it alone when adding an appearance.
-
 ## Add a theme
 
 1. Choose a permanent lowercase ID such as `moonlit`. IDs are saved in campaigns

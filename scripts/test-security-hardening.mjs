@@ -239,7 +239,7 @@ await test("a painted portrait copied into uploads gets its smaller copies, as a
   const { copyIntoUploads } = await import("../src/lib/portrait.ts");
   const { imageVariantsSettled } = await import("../src/lib/image-variants.ts");
   // A picture with pixels to shrink (the one-pixel PNG above has none).
-  const render = fs.readFileSync(path.join(import.meta.dirname, "..", "public", "assets", "themes", "default", "diffuse-dark.png"));
+  const render = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "render-sample.png"));
   const renders = path.join(process.cwd(), "public", "generated");
   fs.mkdirSync(renders, { recursive: true });
   fs.writeFileSync(path.join(renders, "render.png"), render);
