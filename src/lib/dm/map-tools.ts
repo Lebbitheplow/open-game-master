@@ -1,4 +1,5 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
+import { mountMoved } from "@/lib/dm/mount-moved";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { boardLight } from "@/lib/dm/light-timers";
@@ -898,6 +899,15 @@ export function handleMoveToken(
   }
   for (const entry of carriedNow) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
+    // Dragged along: a rider's mount went where it did not choose to (mount-moved.ts).
+    if (entry.token.kind === "pc") {
+      mountMoved(campaign.id, entry.token.refId);
+    }
+  }
+  // A push, a drag or a carry that moved a rider moved their mount against
+  // its will: their save to stay on is asked as this call finishes.
+  if (args.forced && resolved.token.kind === "pc" && (landing.x !== origin.x || landing.y !== origin.y)) {
+    mountMoved(campaign.id, resolved.token.refId);
   }
   // The Disengage and this walk were the turn it was owed; its own turn
   // follows on fresh movement, with no Disengage (enemy-actions.ts
@@ -1002,6 +1012,10 @@ export function pushTokenAway(
     return { moved: false, reason: "someone stands behind it" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A rider pushed is a mount moved against its will (mount-moved.ts).
+  if (target.kind === "pc") {
+    mountMoved(campaign.id, target.refId);
+  }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
   // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,
@@ -1042,6 +1056,10 @@ export function pullTokenToward(
     return { moved: false, reason: "someone stands in the way" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A rider pulled is a mount moved against its will (mount-moved.ts).
+  if (target.kind === "pc") {
+    mountMoved(campaign.id, target.refId);
+  }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
   // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,

@@ -153,6 +153,7 @@ import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, typ
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { proneRiders, settleProneRiders } from "@/lib/dm/mount-thrown";
+import { settleMovedRiders } from "@/lib/dm/mount-tools";
 import { onFoot } from "@/lib/dm/mount-link";
 import { rollDeathSave } from "@/lib/dm/death";
 import { risesWithVengeance } from "@/lib/dm/searing-vengeance";
@@ -1653,7 +1654,9 @@ function resumeAfter(before: Pick<TurnHolder, "order" | "turnIndex">, order: Ord
 // A rider the call knocked prone makes the save to stay mounted here as well
 // (mount-thrown.ts): prone reaches a sheet from too many doors to ask at each.
 export function settleTurn(campaign: Campaign, before: TurnHolder | null): string[] {
-  const thrown = before ? settleProneRiders(campaign, before.proneRiders) : [];
+  // A rider the call pushed, pulled or dragged makes the same save, asked
+  // first: one thrown by the move is prone by the fall, which asks no second.
+  const thrown = [...settleMovedRiders(campaign), ...(before ? settleProneRiders(campaign, before.proneRiders) : [])];
   if (before) {
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
@@ -2592,6 +2595,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 // plays enemies outside one (after the narration, or resumed after a held
 // roll), so it asks here, once for the stretch it played.
 function settleBackstopRiders(campaign: Campaign, holder: TurnHolder | null) {
+  settleMovedRiders(campaign);
   if (holder) {
     settleProneRiders(campaign, holder.proneRiders);
   }
