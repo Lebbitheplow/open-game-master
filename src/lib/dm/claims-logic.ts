@@ -172,7 +172,7 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
     '{"kind":"turn_over","quote":Q}: the narration says the acting character\'s own turn is over now, or hands the turn to whoever acts next ("Your turn ends.", "It is now Bram\'s turn.", "The goblins act next."); in a player\'s words, that they end their turn ("...then I end my turn.", "That\'s my turn."). Never for: a question, whether about what they do next or about ending the turn ("Do you use your last step or end your turn here?"); an offer of what they could still do; a turn that ends only later or not yet ("Don\'t end my turn yet.", "Before I end my turn I cast Web."); an action or a bonus action taken on its own, such as an attack, a spell, Second Wind, a Dash or a Dodge, since movement and the rest of the turn can still follow it.',
   deed: `{"kind":"deed","actor":PARTY_REF,"deed":DEED,"quote":Q}: a party character commits one of these deeds now. DEED is one of: murder_helpless (kills someone who cannot fight back: a prisoner, the bound, the surrendered, the sleeping), torture, theft_from_poor, necromancy (raises or commands the dead), desecration (of graves, the dead or a holy place), slaving (takes, sells or keeps slaves), cruelty, betrayal (of an ally), broke_word, mercy (spares a beaten foe who could be killed), laid_to_rest (buries or gives rites to the dead), freed_captives (sets prisoners, slaves or hostages free), upheld_law (hands a wrongdoer to the law instead of killing, freeing or selling them). Never for a threat, a plan, a deed someone else does, or killing an enemy who is still fighting.`,
   speaker:
-    '{"kind":"speaker","ref":SPEAKER_REF,"quote":Q}: the one claim about quoted dialogue, saying only who speaks a line of it; quote is copied from inside that line\'s quotation marks. Only when the words around the line tie it to one listed person: a tag that names them or one of their other names, the person the narration is about just before or after it, or a word like "she" that points back to them. Leave the line out when its tag names nobody listed ("a guard calls", "you say"), when it answers the line before with no tag of its own, or when you would be guessing: a line left out stays the narrator\'s, and a line given to the wrong person is a mistake. One claim per quoted line.',
+    '{"kind":"speaker","ref":SPEAKER_REF,"quote":Q}: the one claim about quoted dialogue, saying only who speaks a line of it; quote is copied from inside that line\'s quotation marks. Only when the words around the line tie it to one listed person: a tag that names them or one of their other names, the person the narration is about just before or after it, or a word like "she" that points back to them. Leave the line out when its tag names nobody ("a guard calls", "you say"), when it answers the line before with no tag of its own, or when you would be guessing: a line left out stays the narrator\'s, and a line given to the wrong person is a mistake. One claim per quoted line. When those words name the speaker outright, with a name written with a capital, and that person has no speaker ref, give their name instead of a ref, copied as the narration writes it: {"kind":"speaker","name":NAME,"quote":Q} ("...," says Tomas; Tomas the smith looks up. "..."). Never a name for someone the narration only describes ("a guard", "the cook", "the hooded figure").',
 };
 
 // The plain English ways a player ends their turn, read only at an English
@@ -295,7 +295,7 @@ ${
 - A roll ask that names nobody: "all" when it addresses everyone; the only character when the party has one; otherwise leave it out.${
     speakers && alongside
       ? `
-- speaker is the one kind that reads quoted dialogue${bonds ? " besides bond (a line that is a move or an answer gets both)" : ""}: give a speaker claim for every quoted line the words around it tie to a listed person, however many lines the passage has. Someone the narration describes who has no speaker ref (a sentry, a passer-by, "the cook") speaks their own lines: leave those out, even when a listed person is close by.`
+- speaker is the one kind that reads quoted dialogue${bonds ? " besides bond (a line that is a move or an answer gets both)" : ""}: give a speaker claim for every quoted line the words around it tie to a listed person, however many lines the passage has. Someone the narration describes who has no speaker ref (a sentry, a passer-by, "the cook") speaks their own lines: leave those out, even when a listed person is close by, unless the narration names them (then name, not ref).`
       : ""
   }`;
 }
@@ -367,7 +367,11 @@ const claimSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("aside"), quote: quoteField }),
   z.object({ kind: z.literal("turn_over"), quote: quoteField }),
-  z.object({ kind: z.literal("speaker"), ref: z.string().min(1).max(120), quote: quoteField }),
+  // A ref for a listed person, or a name for someone the table does not list
+  // yet (issue 1027).
+  z
+    .object({ kind: z.literal("speaker"), ref: z.string().min(1).max(120).optional(), name: z.string().trim().min(1).max(60).optional(), quote: quoteField })
+    .refine((claim) => Boolean(claim.ref || claim.name)),
   z.object({ kind: z.literal("deed"), actor: z.string().min(1).max(120), deed: z.enum(DEED_KINDS), quote: quoteField }),
   z.object({ kind: z.literal("bond"), move: z.enum(BOND_MOVES), by: z.string().min(1).max(120), to: z.string().min(1).max(120), quote: quoteField }),
 ]);
@@ -429,6 +433,11 @@ export function namedSpeakers(text: string, speakers: ReadonlyMap<string, Speake
       return [...prose.matchAll(pattern)].some((found) => !short.has(textKey(found[0])) || /^\p{Lu}/u.test(found[0]));
     }),
   );
+}
+
+// The listed person a speaker claim names by name rather than by ref.
+function listedNamed(speakers: ReadonlyMap<string, Speaker>, name: string): Speaker | undefined {
+  return [...speakers.values()].find((speaker) => [speaker.name, ...(speaker.aliases ?? [])].some((known) => textKey(known) === textKey(name)));
 }
 
 // The quoted line a speaker claim's quote comes from, when exactly one line
@@ -541,10 +550,15 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
         break;
       }
       case "speaker": {
-        const speaker = context.speakers.get(claim.ref);
-        const line = speaker ? speakerLine(context.text, claim.quote) : null;
-        if (speaker && line) {
-          kept.push({ kind: "speaker", line, speaker });
+        // A name the passage gives a listed person stands for their ref; any
+        // other name is only proposed, and the prose must confirm it before
+        // the line is theirs (speech.ts confirmedNewcomer).
+        const named = claim.name ? listedNamed(context.speakers, claim.name) : undefined;
+        const speaker = (claim.ref ? context.speakers.get(claim.ref) : undefined) ?? named;
+        const proposed: Speaker | undefined = !speaker && claim.name && !claim.ref ? { kind: "npc", id: "", name: claim.name, proposed: true } : undefined;
+        const line = speaker || proposed ? speakerLine(context.text, claim.quote) : null;
+        if (line && (speaker || proposed)) {
+          kept.push({ kind: "speaker", line, speaker: (speaker ?? proposed) as Speaker });
         }
         break;
       }

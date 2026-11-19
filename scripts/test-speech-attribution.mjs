@@ -354,4 +354,19 @@ test("a line the prose gives to someone unlisted is a stranger's, with who its p
   assert.deepEqual([...speech.unlistedSpeakerLines('Le chef lève la main. « Donnez-le. »', people, { englishPronouns: false })], [], "only English prose is read for it");
 });
 
+// Issue 1027: the name set off after a few words saying who they are.
+test("a name set off after a description is who the sentence is about", () => {
+  const mira = [{ kind: "npc", id: "m1", name: "Captain Mira" }];
+  const lines = (text) => attributeSpeech(text, mira).filter((segment) => segment.kind === "speech").map((segment) => segment.speaker.name);
+  assert.deepEqual(
+    lines("Across from you, a stout clerk—Captain Mira, the town’s protector—leans back. Her eyes narrow. She slides a parchment over. “Word is out.”"),
+    ["Captain Mira"],
+  );
+  assert.deepEqual(lines("A tall woman—Captain Mira—raises her glass. “To the dead.”"), ["Captain Mira"]);
+  assert.deepEqual(lines("The bartender, Captain Mira, nods. “What’ll it be?”"), ["Captain Mira"]);
+  assert.deepEqual(lines("At the bar, the guard—Captain Mira’s brother—steps up. He scowls. “Move along.”"), [], "somebody's brother is not them");
+  assert.deepEqual(lines("A figure—not Captain Mira—steps out of the dark. “Hello.”"), [], "the name straight after the mark, or nobody");
+  assert.deepEqual(lines("A messenger, damp from the storm, approaches. “Captain Mira has heard of you,” he says."), [], "named inside the line is not speaking it");
+});
+
 console.log(`test-speech-attribution: ${passed} passed`);
