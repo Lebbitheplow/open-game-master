@@ -195,6 +195,25 @@ await test("Getting down from an independent mount costs half the rider's own sp
   assert.deepEqual(orderIds(world), order, "getting down changed the initiative order");
 });
 
+// "Standing up takes more effort; doing so costs an amount of movement equal
+// to half your speed" (SRD 5.1, Being Prone): the rider's own speed, since
+// the mount's movement is the mount's turn's.
+await test("A rider prone in an independent mount's saddle stands for half their own speed, and has the other half to get down with.", async () => {
+  const { world, paladin, ai } = await riding();
+  nextTurn(world);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  world.patch(paladin.id, { conditions: ["prone"] });
+  say(world, "Hero pulls themself upright in the saddle.", paladin);
+  const stood = await ai.invoke("clear_condition", { characterId: paladin.id, condition: "prone" });
+  assert.equal(stood.ok, true, stood.error);
+  assert.deepEqual(world.sheet(paladin.id).conditions, [], "the rider is still prone");
+  assert.equal(tokenOf(world, paladin.id).movedThisRound, 3, "standing up was charged half the mount's speed, not half the rider's");
+  const down = await world.invoke("dismount", { characterId: paladin.id });
+  assert.equal(down.ok, true, `the rider's other 15 feet did not pay for getting down: ${down.error}`);
+  assert.equal(tokenOf(world, paladin.id).movedThisRound, 6);
+});
+
 await test("A rider thrown from an independent mount leaves it standing beside them with its turn where it was.", async () => {
   const { world, paladin, steed } = await riding();
   const order = orderIds(world);
