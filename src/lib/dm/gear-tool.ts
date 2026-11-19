@@ -27,8 +27,9 @@ import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
-import { lineNamed } from "@/lib/srd/item-row";
+import { lineNamed, rowName } from "@/lib/srd/item-row";
 import { isTack, rowIsOn } from "@/lib/srd/tack";
+import { bardingSuit } from "@/lib/srd/barding";
 import { srdNameFor } from "@/lib/dm/item-logic";
 import { ITEM_TAGS, listedItemTags } from "@/lib/schemas/item-tags";
 import { drop, enemyHandles, pickUp, standing } from "@/lib/dm/gear-ground";
@@ -254,7 +255,8 @@ function changeWear(
   let budget: TurnBudget | null = null;
   let cost = "";
   if (encounter) {
-    if (kind === "armor") {
+    // Barding is a suit too, strapped onto the mount (barding.ts).
+    if (kind === "armor" || bardingSuit(rowName(row))) {
       return refuse(`Armor takes minutes to put on or take off, so ${row.name} cannot change during a fight. A shield takes one action, and a weapon the free object interaction.`);
     }
     const able = canAct({ sheet, encounter, kind: kind === "shield" ? "action" : "free" });

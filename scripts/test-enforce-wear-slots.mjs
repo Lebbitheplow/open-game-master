@@ -262,6 +262,20 @@ await test("defaultHeld and wearGained leave tack on the mount", () => {
   assert.equal(packed[2].equipped, false);
 });
 
+// Barding is a suit strapped onto the mount: it takes the suit's minutes
+// (SRD 5.1, Getting Into and Out of Armor), so it never goes on in a fight
+// for the turn's free object interaction, as a saddle does.
+await test("barding takes its suit's minutes to put on or take off, and is armor to the fight's refusal", () => {
+  const pack = [row("Chain Mail", { equipped: true }), row("Chain Mail Barding", { equipped: false }), row("Leather Barding"), row("Saddle, Riding")];
+  const sheet = { name: "Tavi", equipment: pack };
+  assert.deepEqual(gearChanges(sheet, { "Chain Mail Barding": { equipped: true } }), { armor: ["Chain Mail Barding"], shields: [], attunement: [], held: [] });
+  assert.deepEqual(gearChanges(sheet, { "Saddle, Riding": { equipped: false } }).held, ["Saddle, Riding"]);
+  assert.equal(armorChangeMinutes(pack, { "Chain Mail Barding": { equipped: true } }).minutes, 10);
+  // Unmarked barding is on the mount: taking it off is light armor's minute.
+  assert.equal(armorChangeMinutes(pack, { "Leather Barding": { equipped: false } }).minutes, 1);
+  assert.equal(armorChangeMinutes(pack, { "Leather Barding": { equipped: true } }).minutes, 0);
+});
+
 await test("gearPatch: the exception is the DM's and the lead's, and taking the row off ends it", () => {
   const sheet = { name: "Tavi", equipment: [row("Helm of Brilliance", { equipped: true }), row("Circlet of Blasting", { equipped: false })] };
   const armor = { armorName: null, shieldName: null };

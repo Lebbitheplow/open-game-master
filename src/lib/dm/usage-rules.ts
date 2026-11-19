@@ -11,6 +11,8 @@
 import { armorOfRow, wearingIsExplicit } from "@/lib/srd/armor";
 import { gearDefOfRow } from "@/lib/srd/magic-gear";
 import { isTack, rowIsOn } from "@/lib/srd/tack";
+import { bardingSuit } from "@/lib/srd/barding";
+import { rowName } from "@/lib/srd/item-row";
 import { attunementProblem } from "@/lib/srd/magic-items";
 import { countedWorn, firstWearConflict, wearConflictText, wearSlotOf, type WearConflict } from "@/lib/srd/wear-slots";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -80,8 +82,10 @@ export function gearChanges(
     if (entry.equipped === undefined || entry.equipped === worn) {
       continue;
     }
-    // A magic suit is armor too (Armor of Invulnerability is plate).
-    const armor = armorOfRow(item)?.armor ?? null;
+    // A magic suit is armor too (Armor of Invulnerability is plate), and so
+    // is barding, a suit strapped onto the mount (barding.ts): neither goes
+    // on or off in a fight.
+    const armor = armorOfRow(item)?.armor ?? bardingSuit(rowName(item));
     if (!armor) {
       // Weapons and everything else: the free object interaction.
       changes.held.push(item.name);
