@@ -73,6 +73,9 @@ const scenario = {
       check((await give.getAttribute("target")) === (t.app ? null : "_blank"), t.app ? "inside the app it opens in place" : "it opens in a new tab, so the table stays put");
       check((await dialog.getByText("No stats at this table yet.").count()) === 1, "only the item with no stats is marked");
       if (viewport === "phone") {
+        // The dialog opens with a slight scale-up: measured mid-entrance the
+        // link reads about 39.3px of its 40.
+        await untilStill(page);
         const box = await give.boundingBox();
         check(Boolean(box && box.height >= 39.5), `a link a finger can press (${box?.height}px)`);
       }
