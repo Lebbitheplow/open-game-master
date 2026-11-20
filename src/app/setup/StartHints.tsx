@@ -4,7 +4,7 @@ import { CopyLine } from "@/components/CopyLine";
 import type { ScanResult } from "@/app/setup/SetupParts";
 import { useT } from "@/lib/locale";
 import type { MessageKey } from "@/lib/messages-logic";
-import { RECOMMENDED_WINDOW, storyNeeds, windowFlag } from "@/lib/story-window";
+import { FULL_RULES_WINDOW, storyNeeds, windowFlag } from "@/lib/story-window";
 
 const HARDWARE_GUIDE = "https://github.com/Lebbitheplow/open-game-master/blob/main/docs/text-backends.md#hardware-for-a-local-model";
 
@@ -45,9 +45,9 @@ export function StartHints({ inContainer, machine }: { inContainer: boolean; mac
         {machine ? <p className="text-stone-300">{machineLine(t, machine)}</p> : null}
         <p>
           {storyNeeds(t)}
-          {t(" The commands below run the default storyteller at 64K; on a smaller machine, ")}
-          <code>-c {windowFlag(RECOMMENDED_WINDOW)}</code>
-          {t(" still plays everything.")}
+          {t(" The commands below start the default storyteller with ")}
+          <code>-c {windowFlag(FULL_RULES_WINDOW)}</code>
+          {t(", the least that plays the full rules.")}
         </p>
         <div>
           <span className="mb-1 block">{t("llama.cpp with the default storyteller (Qwen3.6-35B-A3B, 64K window):")}</span>

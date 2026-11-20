@@ -93,8 +93,12 @@ export function ModelChoiceField(props: ModelChoiceProps) {
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
   // The models that cannot do the role's work are kept off the list; one
-  // click shows them, named with why.
+  // click shows them, named with why. A storyteller that cannot play the
+  // full rules is never listed: it can only be typed in by hand, since Open
+  // Game Master does not support or test the cut rules it would run on
+  // (src/lib/story-window.ts).
   const [showUnfit, setShowUnfit] = useState(false);
+  const revealUnfit = role !== "story";
   const [showAll, setShowAll] = useState(false);
   const latest = useRef(0);
   // The value and the fill rule as they are when a listing lands, which may
@@ -151,7 +155,7 @@ export function ModelChoiceField(props: ModelChoiceProps) {
   const all = choices?.models ?? [];
   const chosen = all.find((model) => model.id === value);
   const unfit = all.filter((model) => model.verdict.fit === "unfit" && model.id !== value);
-  const fit = showUnfit ? all : all.filter((model) => model.verdict.fit !== "unfit" || model.id === value);
+  const fit = showUnfit && revealUnfit ? all : all.filter((model) => model.verdict.fit !== "unfit" || model.id === value);
   const recommended = choices?.recommended ?? "";
   const narrowed = narrow && !showAll ? fit.filter((model) => narrow.keep(model.id) || model.id === value || model.id === recommended) : fit;
   // A server none of whose models reads as the kind shows them all.
@@ -221,7 +225,15 @@ export function ModelChoiceField(props: ModelChoiceProps) {
       ) : value && choices && !loading ? (
         <p className="mt-1 text-[11px] leading-4 text-stone-500">{t("Not in the catalog; ODM will try it as typed.")}</p>
       ) : null}
-      {unfit.length ? (
+      {unfit.length && !revealUnfit ? (
+        <p className="mt-1 text-[11px] leading-4 text-stone-500">
+          {tp(
+            "1 model the backend lists cannot play the full rules and is left off the list. To use it anyway, choose Type a model id; Open Game Master does not support or test it.",
+            "{count} models the backend lists cannot play the full rules and are left off the list. To use one anyway, choose Type a model id; Open Game Master does not support or test them.",
+            { count: unfit.length },
+          )}
+        </p>
+      ) : unfit.length ? (
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
           {tp("1 model the backend lists cannot run the {role}", "{count} models the backend lists cannot run the {role}", { count: unfit.length, role: t(role === "image" ? "painter" : "storyteller") })}
           {showUnfit ? "" : tp(" and is left off the list. ", " and are left off the list. ", { count: unfit.length })}

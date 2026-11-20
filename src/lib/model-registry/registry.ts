@@ -71,7 +71,7 @@ export type ModelChoicesInput = {
   harnessId?: string;
 };
 
-type Found = { id: string; label?: string; contextTokens?: number; note?: string; tools?: boolean | null; sizeGb?: number };
+type Found = { id: string; label?: string; contextTokens?: number; note?: string; tools?: boolean | null; sizeGb?: number; parameters?: number };
 
 // Ollama resolves tags without regard to case ("Gemma4:31b" serves
 // gemma4:31b), so the local provider matches the same way.
@@ -99,7 +99,7 @@ function row(
     listed,
     selected: sameId(input.provider, found.id, input.selected),
     catalog,
-    verdict: assessModel(t, { role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory, contextTokens: found.contextTokens }),
+    verdict: assessModel(t, { role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory, contextTokens: found.contextTokens, parameters: found.parameters ?? null }),
     tested: input.provider === "harness" ? null : probeRecordFor(input.baseUrl, found.id),
     contextTokens: found.contextTokens || catalog?.contextTokens || 0,
     note: found.note ?? "",
@@ -158,6 +158,7 @@ export async function modelChoices(
             note: [model.parameters, model.quantization, model.sizeGb ? `${model.sizeGb} GB` : ""].filter(Boolean).join(" · "),
             tools: info?.capabilities.length ? info.capabilities.includes("tools") : null,
             sizeGb: model.sizeGb,
+            parameters: info?.parameters || undefined,
           },
           true,
         ),

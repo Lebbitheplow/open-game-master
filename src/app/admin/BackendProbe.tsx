@@ -3,7 +3,7 @@
 import { Check, Loader2, X, Zap } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { RECOMMENDED_WINDOW, aWindow, storyNeeds, storyWindowVerdict, windowFlag, windowLabel } from "@/lib/story-window";
+import { FULL_RULES_WINDOW, aWindow, storyNeeds, storyWindowVerdict, windowFlag, windowLabel } from "@/lib/story-window";
 import { ui } from "@/lib/ui";
 import { useT } from "@/lib/locale";
 import type { MessageKey } from "@/lib/messages-logic";
@@ -186,7 +186,7 @@ export function BackendProbe({
 // change when it is not.
 function WindowLine({ size }: { size: { tokens: number; reported: boolean } }) {
   const t = useT();
-  const raise = t("Give it a larger window (llama-server -c {flag}, Ollama's num_ctx, LM Studio's context length) or choose a model with one.", { flag: windowFlag(RECOMMENDED_WINDOW) });
+  const raise = t("Give it a larger window (llama-server -c {flag}, Ollama's num_ctx, LM Studio's context length) or choose a model with one.", { flag: windowFlag(FULL_RULES_WINDOW) });
   if (!size.reported) {
     return (
       <p className="text-xs leading-5 text-amber-200">

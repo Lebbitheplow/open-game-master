@@ -65,28 +65,21 @@ ollama create qwen3.6-dm -f models/qwen3.6-dm.Modelfile
 
 ### Context window
 
-The storyteller needs a context window of at least 24K tokens to narrate and
-40K to run fights; 48K or more is recommended. The GM's instructions and the
-compact tool set come to about 15K tokens for a lone level 1 hero before any
-story is told, and about 20K for a party of four (a caster's spell rules and
-each hero's sheet add to them); a fight's rules and turn order add about 6K
-more. A four-hero fight measures about 30K, so 40K leaves room for a
-tokenizer that counts more than the app's estimate (characters divided by
-four), for the later calls of a turn and for a longer story. Every request is
-fitted to the window the backend really has
+The storyteller needs a context window of at least 64K tokens to play the full
+rules; smaller windows are not supported. The full tool set alone is about 28K
+tokens for a party of four, and a turn uses it only when it leaves at least 32K
+of the window for the GM's instructions, the story and the reply
+([model-tuning-logic.ts](../src/lib/dm/model-tuning-logic.ts)). Every request
+is fitted to the window the backend really has
 ([request-fit.ts](../src/lib/dm/request-fit.ts)):
 
 | Window | What plays |
 |---|---|
-| under 24K | a lone low-level hero narrates on the compact tool set; a larger party is offered only the essential tools (a roll, a question, a note, a whisper); too small for the instructions, a turn is refused with a note naming the fix |
-| 24K (`-c 24576`) | narration, exploration and checks on the compact tool set, for a party of four; a fight turn can be refused for room |
-| 40K (`-c 40960`) | fights too, on the compact tool set, with only the last few turns in view |
-| 48K (`-c 49152`) | everything, on the trimmed tool set, with recent turns in view |
-| 64K (`-c 65536`) | the default: the full tool set and a long transcript |
+| 64K (`-c 65536`) | the full rules and the full tool set with a long transcript: the only setup Open Game Master supports and tests |
+| under 64K | not supported or tested: a turn falls back to a trimmed or compact tool set and the rules that ride with it, and below about 24K a turn is refused with a note naming the fix |
 
-Measured through the request fitter over a party of one to four heroes,
-exploring and in a fight; a bigger party or a longer story leaves less of
-each window for history. llama-server reports its
+The model pickers leave a storyteller with a smaller window off their lists; it
+can still be typed in by hand. llama-server reports its
 window on `/props`, read at the start of each turn. On Ollama's own API the
 app sets the window itself. Ollama's OpenAI-compatible endpoint and most
 other servers report none, so a table plans for 16K and lets the server
