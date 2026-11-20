@@ -19,7 +19,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { caster, closeTables } from "./lib/enforce-spell-kit.mjs";
 import { layMap } from "./lib/enforce-spells.mjs";
-import { mapOf, OPEN, tokenOf } from "./lib/enforce-zones.mjs";
+import { mapOf, OPEN } from "./lib/enforce-zones.mjs";
 import { diff, revertTurn, snapshot } from "./lib/sweep-lifecycle.mjs";
 
 const { test, finish } = suite("test-enforce-enemy-rider-falls");
