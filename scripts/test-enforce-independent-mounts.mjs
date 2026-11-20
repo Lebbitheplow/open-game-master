@@ -311,5 +311,20 @@ await test("On an independent mount's own turn, a forced move by its name is ref
   assert.deepEqual(at(world, paladin.id), [3, 3]);
 });
 
+// "An area that catches a rider catches the mount under them" once
+// (mount-area.ts): a call that also named the mount, a creature in the
+// order now, struck it a second time.
+await test("An area that names both the rider and their independent mount strikes the mount once.", async () => {
+  const { world, paladin, steed } = await riding();
+  const before = world.sheet(steed.id).currentHp;
+  world.clearDice();
+  world.dice(1, 1, 1, 1);
+  const out = await world.invoke("aoe_damage", { damage: 8, type: "fire", saveAbility: "dex", dc: 30, halfOnSave: true, characterIds: [paladin.id, steed.id], reason: "a fire trap" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(steed.id).currentHp, before - 8, `the mount took the blast twice: ${JSON.stringify(out.result.results)}`);
+  assert.equal(world.sheet(paladin.id).currentHp, world.sheet(paladin.id).maxHp - 8);
+});
+
 closeTables();
 finish();
