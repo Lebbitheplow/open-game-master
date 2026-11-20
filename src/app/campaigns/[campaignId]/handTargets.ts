@@ -71,12 +71,12 @@ export function handTargets(
             ? enemy.regenerating.stopped
               ? t("down, dies at its turn")
               : t("down, regenerates at its turn")
-            : enemy.health,
+            : t(enemy.health),
         edges?.[enemy.id]?.cover
           ? t(edges[enemy.id].cover === 2 ? "half cover" : "3/4 cover")
           : null,
         edges?.[enemy.id]?.flanking ? t("flanked") : null,
-        ...enemy.conditions.slice(0, 2),
+        ...enemy.conditions.slice(0, 2).map((condition) => t(condition)),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -93,7 +93,7 @@ export function handTargets(
       conditions: entry.conditions,
       ...(edges?.[entry.id] ? { edge: edges[entry.id] } : {}),
       ...featured(entry.id),
-      note: `${entry.currentHp}/${effectiveMaxHp(entry)} hp`,
+      note: t("{hp}/{max} hp", { hp: entry.currentHp, max: effectiveMaxHp(entry) }),
     }));
   const party: HandTargetChip[] = living
     .filter((entry) => entry.id === selfId || sideOf(entry.id, "sheet") === mine)

@@ -611,6 +611,9 @@ function standingReason(sheet: CharacterSheet, turn: HandTurn, kind: ActKind, ve
       const acting = actingEncounter(turn, kind)?.order[0]?.name;
       const who = acting ?? "someone else";
       if (verdict.error === `It is ${who}'s turn, not ${name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.`) {
+        if (who === "the enemy") {
+          return t("It is the enemy's turn, not {name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.", { name });
+        }
         return t("It is {who}'s turn, not {name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.", { who: acting ? acting : t("someone else"), name });
       }
       break;

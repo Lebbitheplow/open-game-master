@@ -18,6 +18,10 @@ import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { addFlat, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export type AttackDamageLine = {
   // The expression the hit rolls, before Sneak Attack and a target's own
@@ -29,21 +33,24 @@ export type AttackDamageLine = {
 // The damage a hit rolls with what the sheet adds to it. A once-a-turn rider
 // (Divine Strike, Divine Fury) rides the next hit while the turn has not
 // spent it, so it is in the line until the turn's mark says it landed.
-export function attackDamageLine(input: {
-  sheet: CharacterSheet;
-  turn: HandTurn;
-  profile: AttackProfile;
-  riders: CombatRiders;
-  kind: AttackKind;
-  // The weapon thrown past its reach: a ranged attack, so Rage and the
-  // riders of a melee hit stay off it (attack-damage-riders.ts).
-  atRange?: boolean;
-}): AttackDamageLine {
+export function attackDamageLine(
+  input: {
+    sheet: CharacterSheet;
+    turn: HandTurn;
+    profile: AttackProfile;
+    riders: CombatRiders;
+    kind: AttackKind;
+    // The weapon thrown past its reach: a ranged attack, so Rage and the
+    // riders of a melee hit stay off it (attack-damage-riders.ts).
+    atRange?: boolean;
+  },
+  t: T = enT,
+): AttackDamageLine {
   const { turn, profile } = input;
   const read = attackDamageRiders(input);
   let damage = addFlat(profile.damageExpression, read.rageBonus);
   const notes: string[] = [];
-  if (read.rageBonus) notes.push(`Rage +${read.rageBonus}.`);
+  if (read.rageBonus) notes.push(t("Rage +{bonus}.", { bonus: read.rageBonus }));
   for (const rider of read.abilityRiders) {
     damage = addFlat(damage, rider.amount);
     notes.push(`${rider.feature} +${rider.amount}.`);
@@ -54,7 +61,15 @@ export function attackDamageLine(input: {
   for (const rider of read.featureRiders) {
     if (rider.oncePerTurn && spent.has(`rider:${rider.feature.toLowerCase()}`)) continue;
     damage = `${damage}+${rider.dice}`;
-    notes.push(`${rider.feature} +${rider.dice}${rider.type ? ` ${rider.type}` : ""}${rider.oncePerTurn ? " on the first hit this turn" : ""}.`);
+    notes.push(
+      rider.oncePerTurn
+        ? t("{feature} +{dice}{type} on the first hit this turn.", {
+            feature: rider.feature,
+            dice: rider.dice,
+            type: rider.type ? ` ${t(rider.type)}` : "",
+          })
+        : `${rider.feature} +${rider.dice}${rider.type ? ` ${t(rider.type)}` : ""}.`,
+    );
   }
   return { damage, notes };
 }
