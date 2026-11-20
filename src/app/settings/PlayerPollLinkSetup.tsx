@@ -37,25 +37,20 @@ export function PlayerPollLinkSetup({ grantId, characterName }: { grantId: strin
 
   return (
     <div className="space-y-2 rounded-xl border border-stone-800 p-3">
-      <p className="text-sm text-stone-200">Or: a poll link, for an agent nothing can send requests to</p>
+      <p className="text-sm text-stone-200">{t("Or: a poll link, for an agent nothing can send requests to")}</p>
       <p className="text-xs text-stone-500">
-        If {characterName}&apos;s agent cannot take incoming requests (a hosted assistant whose hooks can only check a
-        URL), give its hook this link to check every minute or so. It answers whether {characterName} has something to do
-        now. Wake the agent when <code>wake</code> is true and <code>fingerprint</code> differs from the one it last woke the
-        agent for. Use this or a receiver, not both.
+        {t("If {characterName}'s agent cannot take incoming requests (a hosted assistant whose hooks can only check a URL), give its hook this link to check every minute or so. It answers whether {characterName} has something to do now. Wake the agent when wake is true and fingerprint differs from the one it last woke the agent for. Use this or a receiver, not both.", { characterName })}
       </p>
       {link ? (
         <div className="space-y-1">
-          <CopyLine text={link} label="the poll link" />
+          <CopyLine text={link} label={t("the poll link")} />
           <p className="text-xs text-amber-200">
-            Shown once. The link is the secret: keep it in the hook&apos;s settings, not in a chat. If your hero falls and you
-            bring in another, it wakes the agent for the new one. Revoking this connection stops it; a new one from Poll link
-            on the connection&apos;s row replaces it, and the row says if it ever stops on its own.
+            {t("Shown once. The link is the secret: keep it in the hook's settings, not in a chat. If your hero falls and you bring in another, it wakes the agent for the new one. Revoking this connection stops it; a new one from Poll link on the connection's row replaces it, and the row says if it ever stops on its own.")}
           </p>
         </div>
       ) : (
         <button type="button" className={ui.btnSmall} onClick={() => void make()} disabled={busy} aria-busy={busy}>
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />} Make a poll link
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />} {t("Make a poll link")}
         </button>
       )}
       {error ? (
