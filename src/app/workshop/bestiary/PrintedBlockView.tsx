@@ -27,7 +27,6 @@ const SECTIONS: Array<{ key: keyof Omit<PrintedBlock, "legendaryDesc" | "source"
 
 function AbilityRow({ ability }: { ability: PrintedAbility }) {
   const t = useT();
-  const tp = useTp();
   return (
     <li className="space-y-0.5">
       <p className="flex flex-wrap items-baseline gap-x-2">

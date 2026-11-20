@@ -10,7 +10,7 @@ import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { firstSentence } from "@/lib/help/rules-text";
 import { CLASS_ROLES, classRoles, type ClassRole } from "@/lib/srd/class-roles";
 import { subclassBlurb } from "@/lib/srd/features";
-import { SRD_SKILLS, skillLabel } from "@/lib/srd";
+import { skillLabel } from "@/lib/srd";
 import { displayName, type Reskinned } from "@/lib/worlds/reskin-logic";
 import type { WorldPack } from "@/lib/worlds/types";
 import { classCard } from "../cardFaces";

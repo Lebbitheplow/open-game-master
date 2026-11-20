@@ -64,6 +64,9 @@ const answerAfter = (world, text) => {
 };
 
 const SUMMARY = reply({ text: JSON.stringify({ title: "The Abbey Road", summary: "Kara walked to the abbey.", highlights: ["The gate stood open."], facts: [] }) });
+// The saga's plan as a model that plans nothing answers it. A plan that
+// cannot be read is asked for once more (src/lib/dm/arc.ts sagaFromPlan),
+// so a chapter close at a table with no arc spends two of these.
 const NO_PLAN = reply({ text: "{}" });
 const ANSWER = "Brother Lucan sets the scroll down and meets your eyes.";
 
@@ -85,7 +88,7 @@ async function table({ second = false, gameSettings = {} } = {}) {
 // once the GM is writing the chapter, and the release that lets it finish.
 async function closingChapter({ world, model, karaUser, bramUser }, after = [reply({ text: ANSWER })]) {
   const summary = held(SUMMARY);
-  model.script([reply({ text: "The abbey gate stands open. What do you do?" }), summary.entry, NO_PLAN, ...after]);
+  model.script([reply({ text: "The abbey gate stands open. What do you do?" }), summary.entry, NO_PLAN, NO_PLAN, ...after]);
   assert.equal((await act(world, karaUser, "I step through the gate.")).status, 202);
   if (bramUser) {
     assert.equal((await act(world, bramUser, "I follow Kara in.")).status, 202);
@@ -93,6 +96,10 @@ async function closingChapter({ world, model, karaUser, bramUser }, after = [rep
   await until("the chapter to start closing", () => model.requests.length === 2 && getDmStatus(world.campaignId) === "writing_chapter");
   return summary.release;
 }
+
+// What closingChapter spends before anything answers a line: the closing
+// narration, the summary, and the plan asked for twice.
+const CLOSE_CALLS = 4;
 
 const LINE = "Brother Lucan, tell me what you found.";
 
@@ -121,7 +128,7 @@ await test("The lead's own chapter close holds a line said meanwhile only until 
     world.say(author, text, author === "player" ? kara : undefined);
   }
   const summary = held(SUMMARY);
-  model.script([summary.entry, NO_PLAN, reply({ text: ANSWER })]);
+  model.script([summary.entry, NO_PLAN, NO_PLAN, reply({ text: ANSWER })]);
   assert.equal((await call(world, world.owner, "campaigns/[campaignId]/chapters", "POST")).status, 202);
   await until("the lead's close to start", () => model.requests.length === 1 && getDmStatus(world.campaignId) === "writing_chapter");
   assert.equal((await act(world, world.owner, LINE, "say")).status, 202);
@@ -161,7 +168,7 @@ await test("At a table of two, a line said while the chapter closes starts the w
   assert.match(pass.json.error, /closing the chapter/);
   release();
   await settleQueue(world.campaignId);
-  assert.equal(model.served(), 3, "one answer of two woke the GM");
+  assert.equal(model.served(), CLOSE_CALLS, "one answer of two woke the GM");
   const wait = globalThis.__odmTableWait.get(world.campaignId);
   assert.ok(wait.timer, "no clock was armed for the line, so nothing would ever answer it if Bram said nothing");
   assert.deepEqual(JSON.parse(wait.published).waitingOn.map((seat) => seat.name), ["Bram"], "every seat is told who the GM waits on");
@@ -219,7 +226,7 @@ await test("Table talk said while the chapter closes wakes no one.", async () =>
   assert.equal((await act(world, karaUser, "brb, getting tea", "ooc")).status, 202);
   release();
   await settleQueue(world.campaignId);
-  assert.equal(model.served(), 3, "table talk woke a turn");
+  assert.equal(model.served(), CLOSE_CALLS, "table talk woke a turn");
   assert.equal(answerAfter(world, "brb, getting tea"), undefined);
   model.close();
 });
@@ -232,7 +239,7 @@ await test("A break taken while the chapter closes holds the line until Resume, 
   assert.equal((await call(world, karaUser, "campaigns/[campaignId]/table-break", "POST")).status, 200);
   release();
   await settleQueue(world.campaignId);
-  assert.equal(model.served(), 3, "the line was answered during the break");
+  assert.equal(model.served(), CLOSE_CALLS, "the line was answered during the break");
   assert.equal((await call(world, karaUser, "campaigns/[campaignId]/table-break", "DELETE")).status, 200);
   await settleQueue(world.campaignId);
   assert.equal(answerAfter(world, LINE)?.content, ANSWER);
@@ -284,7 +291,7 @@ for (const waitForTable of [true, false]) {
     // The move lands while the narration that closes chapter 1 is written,
     // so it is chapter 1's; its answer comes in chapter 2.
     const narration = held(reply({ text: "The abbey gate stands open. What do you do?" }));
-    model.script([narration.entry, SUMMARY, NO_PLAN, reply({ text: ANSWER }), reply({ text: "Lucan rolls the scroll shut. \"Again, then.\"" })]);
+    model.script([narration.entry, SUMMARY, NO_PLAN, NO_PLAN, reply({ text: ANSWER }), reply({ text: "Lucan rolls the scroll shut. \"Again, then.\"" })]);
     assert.equal((await act(world, karaUser, "I step through the gate.")).status, 202);
     await until("the closing turn to reach the model", () => model.requests.length === 1);
     assert.equal((await act(world, karaUser, LINE, "say")).status, 202);

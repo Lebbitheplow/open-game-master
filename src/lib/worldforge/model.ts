@@ -136,14 +136,6 @@ export function veracityLabel(t: T, veracity: Veracity): string {
   return t(VERACITY_KEYS[veracity] ?? "Common knowledge");
 }
 
-// The veracities' English words, pinned, for wherever the stored data quotes
-// them back.
-export const VERACITY_LABELS: Record<Veracity, string> = {
-  known: "Common knowledge",
-  hidden: "Hidden truth: real, but the world does not know",
-  believed: "False belief: the world thinks so, but it is not true",
-};
-
 export type WorldLink = {
   id: string;
   from: string;

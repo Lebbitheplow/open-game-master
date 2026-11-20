@@ -4,9 +4,15 @@ import { forgetPaintJobs } from "@/lib/db/world-paint-jobs";
 import { publishEphemeral } from "@/lib/events";
 import { parseRef } from "@/lib/worldforge/model";
 import { recordsChanged, worldEntryChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// An entry's fields, by name. Each is read through world-forge's own
+// readers (clean, cleanList, readEntry), which drop what this build does
+// not hold; typing them a second time here would let the two drift.
+const entryFieldsSchema = z.record(z.string(), z.unknown());
 
 // One entry by its ref ("npc:<id>", "location:<id>", "faction:<id>",
 // "lore:<id>"). The record must belong to this campaign; world-forge.ts
@@ -26,8 +32,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
   if (!ref) {
     return Response.json({ error: "No such entry." }, { status: 404 });
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const result = updateWorldEntity(campaignId, ref, raw);
+  const parsed = entryFieldsSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Expected the entry's fields to change." }, { status: 400 });
+  }
+  const result = updateWorldEntity(campaignId, ref, parsed.data);
   if ("error" in result) {
     // A conflict carries the fields and the entry as it is now, so the
     // editor can show what changed and keep the author's draft.

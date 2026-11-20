@@ -7,7 +7,6 @@
 import assert from "node:assert/strict";
 import { must, eq } from "./sweep-clauses-genre-a.mjs";
 import { CYBER } from "./sweep-clauses-genre-a-cyberpunk.mjs";
-import { TRAINED } from "./enforce-combat.mjs";
 
 const SRC = new URL("../../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
@@ -812,4 +811,4 @@ Object.assign(CC, {
   },
 });
 
-export { conditionsOf, foeConditions, stripFeature, TRAINED };
+export { conditionsOf, foeConditions, stripFeature };

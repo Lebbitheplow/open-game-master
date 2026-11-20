@@ -61,6 +61,7 @@ export function LinkEditor({
         )}
       </div>
       {!target ? (
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- choosing the other end is the first step of the link the author just started
         <EntityPicker doc={doc} entities={entities} exclude={[from.ref]} label={t("the other end")} autoFocus onPick={(entity) => setTo(entity.ref)} />
       ) : (
         <div className="grid gap-2 @lg:grid-cols-2">
@@ -85,6 +86,7 @@ export function LinkEditor({
               ]}
             />
             {custom ? (
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the box appears because the author just chose to write their own words
               <input className={cn(ui.input, "text-xs motion-pop")} maxLength={60} placeholder={t("sworn to")} aria-label={t("Your own words")} value={label} onChange={(event) => setLabel(event.target.value)} autoFocus />
             ) : null}
           </div>

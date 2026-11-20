@@ -83,6 +83,60 @@ await test("A hidden creature is noticed against its own Stealth check: a passiv
   assert.equal(seen.result.noticedBy.length, 1);
 });
 
+// Issue 1028: the creature's side of a contest was thrown, shown to the table
+// and kept on the turn before the character's roll could still be refused, so
+// a refused call the model sent again threw the creature's die a second time
+// and the character's never landed. Its side is thrown once the character's
+// roll is sure to happen.
+const contestRolls = () => listRecentRolls(world.campaignId, 50).filter((roll) => roll.detail?.endsWith("(contest)"));
+const asAi = async (name, args) => {
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+  const turn = createDmTurn(world.campaignId, []);
+  return invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+};
+
+await test("A contested check the AI must send again throws no die for the creature: a Perception check in a dark cave that names no sense is refused with no bandit Stealth thrown, and the call sent again throws the bandit's die once, beside the character's.", async () => {
+  const sneak = world.addHero({ class: "rogue", level: 3, abilities: { wis: 12 }, proficiencies: profs({ skills: ["perception"] }) });
+  const cave = upsertCurrentLocation({ campaignId: world.campaignId, name: "Bandit Cave", layoutDescription: "a damp cavern under the hill" });
+  setLocationLinks(cave.id, { ambience: { bed: "cave", music: "" } });
+  const seen = new Set(contestRolls().map((roll) => roll.id));
+  const before = seen.size;
+  const asked = await asAi("request_roll", { characterId: sneak.id, kind: "skill_check", skill: "perception", againstMonster: "bandit", reason: "the camp's sentry" });
+  assert.equal(asked.ok, false, "a Perception check in dim light that named no sense was rolled");
+  assert.match(asked.error, /Nothing was rolled/);
+  assert.equal(contestRolls().length, before, "the refused call threw the bandit's Stealth all the same");
+  // The creature named as the one rolling, or no one: refused before any
+  // die, saying the creature's side is the server's.
+  for (const characterId of ["Bandit", undefined]) {
+    const swapped = await asAi("request_roll", { ...(characterId ? { characterId } : {}), kind: "skill_check", skill: "stealth", againstMonster: "bandit", reason: "the camp's sentry" });
+    assert.equal(swapped.ok, false, `a contest rolled for ${characterId ?? "no one"}`);
+    assert.match(swapped.error, /ONE request_roll for the party character/);
+    assert.equal(contestRolls().length, before, `a contest refused for ${characterId ?? "no one"} threw the bandit's die`);
+  }
+  world.clearDice();
+  world.dice(10, 10);
+  const rolled = await asAi("request_roll", { characterId: sneak.id, kind: "skill_check", skill: "perception", by: "hearing", againstMonster: "bandit", reason: "the camp's sentry" });
+  world.clearDice();
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "Kingsroad", layoutDescription: "an open road" });
+  assert.equal(rolled.ok, true, rolled.error);
+  const thrown = contestRolls().filter((roll) => !seen.has(roll.id));
+  assert.equal(thrown.length, 1, "the call sent again did not throw the bandit's die exactly once");
+  assert.match(thrown[0].detail, /Bandit: Stealth \(contest\)/);
+  assert.ok(lastRollOf(sneak.id), "the character's own Perception never landed");
+  assert.equal(lastRollOf(sneak.id).dc, thrown[0].total + 1, "the character's roll was not set against the bandit's Stealth");
+});
+
+await test("A character who fails a contested check outright throws no die for the creature either: a blinded character's Perception by sight against a bandit fails with no bandit roll.", async () => {
+  const blind = world.addHero({ class: "fighter", level: 1, proficiencies: profs({ skills: ["perception"] }) });
+  world.patch(blind.id, { conditions: ["blinded"] });
+  const before = contestRolls().length;
+  const out = await world.invoke("request_roll", { characterId: blind.id, kind: "skill_check", skill: "perception", by: "sight", againstMonster: "bandit", reason: "the camp's sentry" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.autoFailed, true, "a blinded character's look was rolled");
+  assert.equal(contestRolls().length, before, "a check that failed outright threw the bandit's die");
+});
+
 // ---- a skill with a different ability ----
 
 await test("A Constitution (Athletics) check adds the Constitution modifier and the Athletics proficiency: CON 16, STR 8, proficiency +2, a 10 on the die is 15.", async () => {

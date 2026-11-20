@@ -25,6 +25,8 @@ COPY package.json package-lock.json ./
 # The postinstall hook runs this; copy it in before the rest of the source so
 # the install layer stays cached across ordinary code changes.
 COPY scripts/copy-dice-assets.mjs ./scripts/
+# It reads which dice textures a look can pick from here.
+COPY scripts/lib/dice-textures.mjs ./scripts/lib/
 # A full install, not --ignore-scripts: better-sqlite3-multiple-ciphers and
 # onnxruntime-node fetch their native binaries from an install script.
 # onnxruntime-node's script would also download its CUDA and TensorRT

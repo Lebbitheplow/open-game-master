@@ -67,18 +67,6 @@ export const ROLL_KIND_KEYS: Record<string, string> = {
   custom: "Roll",
 };
 
-// The kinds' English words, pinned: stored rolls from before the kinds were
-// keyed keep reading, and the chronicle the model reads stays the protocol's.
-export const ROLL_KIND_LABELS: Record<string, string> = {
-  skill_check: "Skill check",
-  saving_throw: "Saving throw",
-  ability_check: "Ability check",
-  attack: "Attack roll",
-  damage: "Damage",
-  initiative: "Initiative",
-  custom: "Roll",
-};
-
 export function rollKindLabel(t: T, kind: string): string {
   return t(ROLL_KIND_KEYS[kind] ?? "Roll");
 }

@@ -5,9 +5,12 @@ import { getUserById } from "@/lib/db/users";
 import { storyNameOf } from "@/lib/characters/story-name";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { requestT } from "@/lib/request-locale";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const leadSchema = z.object({ userId: z.string().optional() });
 
 // Transfer the party lead. The current lead can hand it off; the owner can
 // always reclaim or reassign it (their safety valve if a lead goes AWOL).
@@ -31,8 +34,11 @@ export async function POST(
     );
   }
 
-  const raw = await request.json().catch(() => ({}));
-  const targetUserId = typeof raw?.userId === "string" ? raw.userId : "";
+  const parsed = leadSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "That user is not in this campaign." }, { status: 400 });
+  }
+  const targetUserId = parsed.data.userId ?? "";
   const target = targetUserId ? getUserById(targetUserId) : null;
   if (!target || !setPartyLead(campaignId, target.id)) {
     return Response.json({ error: "That user is not in this campaign." }, { status: 400 });

@@ -172,7 +172,7 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
     '{"kind":"turn_over","quote":Q}: the narration says the acting character\'s own turn is over now, or hands the turn to whoever acts next ("Your turn ends.", "It is now Bram\'s turn.", "The goblins act next."); in a player\'s words, that they end their turn ("...then I end my turn.", "That\'s my turn."). Never for: a question, whether about what they do next or about ending the turn ("Do you use your last step or end your turn here?"); an offer of what they could still do; a turn that ends only later or not yet ("Don\'t end my turn yet.", "Before I end my turn I cast Web."); an action or a bonus action taken on its own, such as an attack, a spell, Second Wind, a Dash or a Dodge, since movement and the rest of the turn can still follow it.',
   deed: `{"kind":"deed","actor":PARTY_REF,"deed":DEED,"quote":Q}: a party character commits one of these deeds now. DEED is one of: murder_helpless (kills someone who cannot fight back: a prisoner, the bound, the surrendered, the sleeping), torture, theft_from_poor, necromancy (raises or commands the dead), desecration (of graves, the dead or a holy place), slaving (takes, sells or keeps slaves), cruelty, betrayal (of an ally), broke_word, mercy (spares a beaten foe who could be killed), laid_to_rest (buries or gives rites to the dead), freed_captives (sets prisoners, slaves or hostages free), upheld_law (hands a wrongdoer to the law instead of killing, freeing or selling them). Never for a threat, a plan, a deed someone else does, or killing an enemy who is still fighting.`,
   speaker:
-    '{"kind":"speaker","ref":SPEAKER_REF,"quote":Q}: the one claim about quoted dialogue, saying only who speaks a line of it; quote is copied from inside that line\'s quotation marks. Only when the words around the line tie it to one listed person: a tag that names them or one of their other names, the person the narration is about just before or after it, or a word like "she" that points back to them. Leave the line out when its tag names nobody listed ("a guard calls", "you say"), when it answers the line before with no tag of its own, or when you would be guessing: a line left out stays the narrator\'s, and a line given to the wrong person is a mistake. One claim per quoted line.',
+    '{"kind":"speaker","ref":SPEAKER_REF,"quote":Q}: the one claim about quoted dialogue, saying only who speaks a line of it; quote is copied from inside that line\'s quotation marks. Only when the words around the line tie it to one listed person: a tag that names them or one of their other names, the person the narration is about just before or after it, or a word like "she" that points back to them. Leave the line out when its tag names nobody ("a guard calls", "you say"), when it answers the line before with no tag of its own, or when you would be guessing: a line left out stays the narrator\'s, and a line given to the wrong person is a mistake. One claim per quoted line. When those words name the speaker outright, with a name written with a capital, and that person has no speaker ref, give their name instead of a ref, copied as the narration writes it: {"kind":"speaker","name":NAME,"quote":Q} ("...," says Tomas; Tomas the smith looks up. "..."). Never a name for someone the narration only describes ("a guard", "the cook", "the hooded figure").',
 };
 
 // The plain English ways a player ends their turn, read only at an English
@@ -295,7 +295,7 @@ ${
 - A roll ask that names nobody: "all" when it addresses everyone; the only character when the party has one; otherwise leave it out.${
     speakers && alongside
       ? `
-- speaker is the one kind that reads quoted dialogue${bonds ? " besides bond (a line that is a move or an answer gets both)" : ""}: give a speaker claim for every quoted line the words around it tie to a listed person, however many lines the passage has. Someone the narration describes who has no speaker ref (a sentry, a passer-by, "the cook") speaks their own lines: leave those out, even when a listed person is close by.`
+- speaker is the one kind that reads quoted dialogue${bonds ? " besides bond (a line that is a move or an answer gets both)" : ""}: give a speaker claim for every quoted line the words around it tie to a listed person, however many lines the passage has. Someone the narration describes who has no speaker ref (a sentry, a passer-by, "the cook") speaks their own lines: leave those out, even when a listed person is close by, unless the narration names them (then name, not ref).`
       : ""
   }`;
 }
@@ -367,7 +367,11 @@ const claimSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("aside"), quote: quoteField }),
   z.object({ kind: z.literal("turn_over"), quote: quoteField }),
-  z.object({ kind: z.literal("speaker"), ref: z.string().min(1).max(120), quote: quoteField }),
+  // A ref for a listed person, or a name for someone the table does not list
+  // yet (issue 1027).
+  z
+    .object({ kind: z.literal("speaker"), ref: z.string().min(1).max(120).optional(), name: z.string().trim().min(1).max(60).optional(), quote: quoteField })
+    .refine((claim) => Boolean(claim.ref || claim.name)),
   z.object({ kind: z.literal("deed"), actor: z.string().min(1).max(120), deed: z.enum(DEED_KINDS), quote: quoteField }),
   z.object({ kind: z.literal("bond"), move: z.enum(BOND_MOVES), by: z.string().min(1).max(120), to: z.string().min(1).max(120), quote: quoteField }),
 ]);
@@ -429,6 +433,11 @@ export function namedSpeakers(text: string, speakers: ReadonlyMap<string, Speake
       return [...prose.matchAll(pattern)].some((found) => !short.has(textKey(found[0])) || /^\p{Lu}/u.test(found[0]));
     }),
   );
+}
+
+// The listed person a speaker claim names by name rather than by ref.
+function listedNamed(speakers: ReadonlyMap<string, Speaker>, name: string): Speaker | undefined {
+  return [...speakers.values()].find((speaker) => [speaker.name, ...(speaker.aliases ?? [])].some((known) => textKey(known) === textKey(name)));
 }
 
 // The quoted line a speaker claim's quote comes from, when exactly one line
@@ -541,10 +550,15 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
         break;
       }
       case "speaker": {
-        const speaker = context.speakers.get(claim.ref);
-        const line = speaker ? speakerLine(context.text, claim.quote) : null;
-        if (speaker && line) {
-          kept.push({ kind: "speaker", line, speaker });
+        // A name the passage gives a listed person stands for their ref; any
+        // other name is only proposed, and the prose must confirm it before
+        // the line is theirs (speech.ts confirmedNewcomer).
+        const named = claim.name ? listedNamed(context.speakers, claim.name) : undefined;
+        const speaker = (claim.ref ? context.speakers.get(claim.ref) : undefined) ?? named;
+        const proposed: Speaker | undefined = !speaker && claim.name && !claim.ref ? { kind: "npc", id: "", name: claim.name, proposed: true } : undefined;
+        const line = speaker || proposed ? speakerLine(context.text, claim.quote) : null;
+        if (line && (speaker || proposed)) {
+          kept.push({ kind: "speaker", line, speaker: (speaker ?? proposed) as Speaker });
         }
         break;
       }
@@ -559,13 +573,53 @@ const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 
 // a roll asked in words (rolls.ts rollAsksFromClaims) and the narrator's
 // asides leave the narration. A sentence runs to its end mark or the end of
 // its line; a quote that runs over several sentences cuts each of them.
+//
+// A line of speech keeps its marks whole (fork PR 1019, 2026-11-17): the
+// closing mark right after a sentence's end belongs to that sentence, so
+// cutting «Tienila tu.» or “Keep it.” no longer leaves a lone » or ” on the
+// page, and cutting the sentence after a quote no longer takes its closing
+// mark with it. A cut sentence that opens or closes a speech whose other
+// sentences stay leaves its mark behind for them.
+const CUT_SENTENCE = /[^.!?\n]+[.!?]*(?:"|[ \t\u00a0\u202f]?[”»])?/g;
+
+// +1 when the sentence opens a speech it does not close, -1 when it closes
+// one an earlier sentence opened, 0 otherwise. A straight quote cannot say
+// which it is, so an odd one at the sentence's end closes and any other opens.
+function speechBalance(sentence: string): number {
+  const curly = count(sentence, /[«“]/g) - count(sentence, /[»”]/g);
+  if (curly) {
+    return Math.sign(curly);
+  }
+  if (count(sentence, /"/g) % 2) {
+    return /"\s*$/.test(sentence) ? -1 : 1;
+  }
+  return 0;
+}
+
+// What a cut sentence leaves of the speech marks it held: the opening mark
+// (with the sentence's leading space and a French no-break space after it)
+// or the closing one (with the no-break space before it).
+function speechMarkLeft(sentence: string): { open?: string; close?: string } {
+  const balance = speechBalance(sentence);
+  if (balance > 0) {
+    const mark = /([«“"])([\u00a0\u202f]?)/.exec(sentence);
+    return mark ? { open: `${/^\s*/.exec(sentence)?.[0] ?? ""}${mark[1]}${mark[2]}` } : {};
+  }
+  if (balance < 0) {
+    const mark = /([\u00a0\u202f]?)([»”"])[^»”"]*$/.exec(sentence);
+    return mark ? { close: `${mark[1]}${mark[2]}` } : {};
+  }
+  return {};
+}
+
 export function withoutSentences(text: string, quotes: readonly string[]): string {
   if (!text || !quotes.length) {
     return text;
   }
-  // Where each cut sentence starts, and where it ends.
-  const removals = new Map<number, number>();
-  const sentences = [...text.matchAll(/[^.!?\n]+[.!?]*/g)];
+  // Where each cut sentence starts, where it ends, and the speech mark it
+  // leaves for the sentences of its speech that stay.
+  const removals = new Map<number, { end: number; open?: string; close?: string }>();
+  const sentences = [...text.matchAll(CUT_SENTENCE)];
   const cut = (quote: string) => {
     const sentence = sentences.find((match) => squash(match[0]).includes(quote));
     if (sentence?.index === undefined) {
@@ -583,7 +637,7 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
     if (count(sentence[0], /[([]/g) > count(sentence[0], /[)\]]/g)) {
       end += /^[)\]]+[*_]*/.exec(text.slice(end))?.[0].length ?? 0;
     }
-    removals.set(sentence.index, end);
+    removals.set(sentence.index, { end, ...speechMarkLeft(sentence[0]) });
     return true;
   };
   for (const quote of quotes) {
@@ -597,11 +651,35 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
   }
   let cleaned = "";
   let cursor = 0;
-  for (const [start, end] of [...removals].sort((a, b) => a[0] - b[0])) {
-    cleaned += text.slice(cursor, start);
-    cursor = end;
+  // Where a kept opening mark starts in `cleaned`, while nothing but space
+  // has followed it: a closing mark left next to it means the whole speech
+  // went, and both marks go.
+  let openAt = -1;
+  for (const [start, removal] of [...removals].sort((a, b) => a[0] - b[0])) {
+    let kept = text.slice(cursor, start);
+    if (openAt >= 0) {
+      kept = kept.replace(/^[ \t]+/, "");
+    }
+    cleaned += kept;
+    if (kept.trim()) {
+      openAt = -1;
+    }
+    if (removal.close !== undefined) {
+      if (openAt >= 0) {
+        cleaned = cleaned.slice(0, openAt);
+        openAt = -1;
+      } else {
+        cleaned += removal.close;
+      }
+    }
+    if (removal.open !== undefined) {
+      openAt = cleaned.length;
+      cleaned += removal.open;
+    }
+    cursor = removal.end;
   }
-  cleaned += text.slice(cursor);
+  const rest = text.slice(cursor);
+  cleaned += openAt >= 0 ? rest.replace(/^[ \t]+/, "") : rest;
   return cleaned
     .replace(/(^|\s)\*\*(\s|$)/g, "$1$2")
     .replace(/[ \t]{2,}/g, " ")

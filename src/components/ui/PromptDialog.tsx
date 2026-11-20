@@ -53,6 +53,7 @@ function PromptForm({
       <label className="block">
         {label ? <span className="text-xs text-stone-400">{label}</span> : null}
         <input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog just opened to ask for this text
           autoFocus
           value={value}
           maxLength={maxLength}

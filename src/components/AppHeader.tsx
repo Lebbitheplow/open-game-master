@@ -52,7 +52,7 @@ export function AppHeader({
           painting's. */}
       <AppBrand className="app-brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/ui/book-closed.webp" alt="" className="app-brand-book" />
+        <img src="/assets/ui/d20-mark.svg" alt="" className="app-brand-book" />
         <span className="app-wordmark">Open Game Master</span>
       </AppBrand>
       {/* The cluster fades into a slot the row already reserves (min-h-9). */}

@@ -10,7 +10,8 @@ export function assertThemeCss(css, id) {
   const root = postcss.parse(css);
   const owner = new RegExp(`^(?:html)?\\[data-appearance=(?:"${id}"|'${id}')\\](?=[\\s.#:[>]|$)`);
   root.walkAtRules(rule => assert.ok(['media', 'supports', 'container'].includes(rule.name), `${id}: put global @${rule.name} rules in shared styles`));
-  root.walkDecls(decl => assert.ok(!['--theme-frame-slice','--theme-corner-background-size','--theme-corner-background-position'].includes(decl.prop), `${id}: declare artwork geometry in the catalog so rendering and validation agree`));
+  root.walkDecls(decl => assert.ok(!['--theme-frame-slice','--theme-corner-background-size','--theme-corner-background-position','--theme-corner-flip'].includes(decl.prop), `${id}: declare artwork geometry in the catalog so rendering and validation agree`));
+  assertBrackets(root, id);
   root.walkRules(rule => {
     assert.notEqual(rule.parent.type, 'rule', `${id}: use full scoped selectors instead of CSS nesting`);
     for (const selector of postcss.list.comma(rule.selector)) {
@@ -18,6 +19,53 @@ export function assertThemeCss(css, id) {
       assert.ok(!/[+~]/.test(selector), `${id}: sibling selectors can escape the theme: ${selector}`);
     }
   });
+}
+
+// A flat panel's corner brackets (globals.css): ::before draws its top and
+// left sides at 1px, ::after its bottom and right. Each theme's rules are
+// applied over those in order and the result must still be an L per corner.
+// A width that reaches the other two sides draws a closed box, as Forge's
+// shared 2px once did, whether it is written for both brackets or for one;
+// and a double line under 3px draws one stroke, as Gothic's and Hearth's did.
+const BRACKETS = {
+  before: {name: 'top-left', drawn: [0, 3], width: [1, 0, 0, 1], example: '2px 0 0 2px'},
+  after: {name: 'bottom-right', drawn: [1, 2], width: [0, 1, 1, 0], example: '0 2px 2px 0'},
+};
+const SIDES = ['top', 'right', 'bottom', 'left'];
+
+function bracketWidth(value, id) {
+  if (value === '0') return 0;
+  const px = /^(\d+(?:\.\d+)?)px$/.exec(value);
+  assert.ok(px, `${id}: write corner bracket widths in px or 0, not ${value}`);
+  return Number(px[1]);
+}
+
+function assertBrackets(root, id) {
+  const state = Object.fromEntries(Object.entries(BRACKETS).map(([pseudo, b]) => [pseudo, {width: [...b.width], style: 'solid'}]));
+  root.walkRules(rule => {
+    const pseudos = Object.keys(BRACKETS).filter(pseudo => postcss.list.comma(rule.selector).some(s => new RegExp(`\\s\\.ornate::${pseudo}$`).test(s)));
+    if (!pseudos.length) return;
+    rule.walkDecls(decl => {
+      for (const pseudo of pseudos) {
+        const bracket = state[pseudo];
+        if (decl.prop === 'border') assert.fail(`${id}: the border shorthand sets all four sides of .ornate::${pseudo}; give it its own border widths, as ${BRACKETS[pseudo].example}`);
+        else if (decl.prop === 'border-width') {
+          const values = postcss.list.space(decl.value).map(value => bracketWidth(value, id));
+          const [top, right = top, bottom = top, left = right] = values;
+          bracket.width = [top, right, bottom, left];
+        } else if (/^border-(top|right|bottom|left)-width$/.test(decl.prop)) {
+          bracket.width[SIDES.indexOf(decl.prop.split('-')[1])] = bracketWidth(decl.value, id);
+        } else if (decl.prop === 'border-style') bracket.style = decl.value;
+      }
+    });
+  });
+  for (const [pseudo, {width, style}] of Object.entries(state)) {
+    const {name, drawn, example} = BRACKETS[pseudo];
+    const open = SIDES.filter((_, i) => !drawn.includes(i) && width[i] > 0);
+    assert.deepEqual(open, [], `${id}: the ${name} bracket (.ornate::${pseudo}) draws a closed box; give it its own border widths, as ${example}`);
+    assert.ok(drawn.every(i => width[i] > 0), `${id}: the ${name} bracket (.ornate::${pseudo}) lost a side of its L`);
+    if (/\bdouble\b/.test(style)) assert.ok(drawn.every(i => width[i] >= 3), `${id}: the ${name} bracket asks for a double line at under 3px, which draws one stroke`);
+  }
 }
 
 export function assertSharedCss(css, file) {

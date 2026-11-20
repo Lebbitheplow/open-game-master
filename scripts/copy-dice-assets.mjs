@@ -2,7 +2,10 @@
 // public/, so they work offline and the apps can carry them (the client's
 // build copies these public folders beside its screens):
 //
-//   - dice-box-threejs textures and sounds into public/dice-box (3D dice);
+//   - the dice-box-threejs textures a player's dice look can pick into
+//     public/dice-box/textures (scripts/lib/dice-textures.mjs). Not the
+//     textures no look can choose, and not its sounds: both trays run with
+//     sounds off, so the 75 clips would only ride in every app unheard;
 //   - pdf.js's worker, character maps, standard fonts and image decoders
 //     into public/pdfjs (the adventure PDF import reads books in the page,
 //     src/lib/pdf-import/read-pdf.ts). Its script sandbox (quickjs) is left
@@ -11,13 +14,22 @@
 // Wired as postinstall; safe to rerun.
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
+import { diceTextureFiles } from "./lib/dice-textures.mjs";
 
 const root = process.cwd();
 
 const dice = path.join(root, "node_modules", "@3d-dice", "dice-box-threejs", "public");
 if (existsSync(dice)) {
-  cpSync(dice, path.join(root, "public", "dice-box"), { recursive: true });
-  console.log("[assets] Copied dice assets to public/dice-box");
+  const out = path.join(root, "public", "dice-box");
+  // Null when the installed library's texture table cannot be read: copy
+  // every texture then, rather than ship dice that cannot draw a look.
+  const keep = diceTextureFiles(root);
+  rmSync(out, { recursive: true, force: true });
+  mkdirSync(path.join(out, "textures"), { recursive: true });
+  for (const name of readdirSync(path.join(dice, "textures"))) {
+    if (!keep || keep.has(name)) cpSync(path.join(dice, "textures", name), path.join(out, "textures", name), { recursive: true });
+  }
+  console.log(`[assets] Copied ${keep ? keep.size : "every"} dice texture(s) to public/dice-box`);
 } else {
   console.warn("[assets] @3d-dice/dice-box-threejs not installed; skipping the dice.");
 }

@@ -18,6 +18,7 @@ import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { isTack } from "@/lib/srd/tack";
 import { classFeatureDescription, findCustomClass } from "@/lib/classes";
 import { backgroundWords, classWords, raceWords } from "@/lib/sheet-words";
 import { selectedCharacter } from "@/lib/player-characters";
@@ -71,7 +72,7 @@ import { listQuests } from "@/lib/db/quests";
 import { renderQuestsForPrompt } from "@/lib/dm/quest-logic";
 import { describeEffect } from "@/lib/dm/effects-logic";
 import { getMounts } from "@/lib/db/mounts";
-import { describeMount } from "@/lib/srd/mounts";
+import { describeMount, independentMount } from "@/lib/srd/mounts";
 import { formatCopper, formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { coverPromptBlock } from "@/lib/dm/delegation";
 import { ENGINE_BOUNDARY_CHECK, ENGINE_BOUNDARY_RULES } from "@/lib/dm/engine-boundary";
@@ -95,6 +96,7 @@ import {
 import type { ChatMessage } from "@/lib/model-client";
 import { describeIntent } from "@/lib/dm/intent-logic";
 import { withoutServerLines } from "@/lib/dm/tool-text";
+import { withoutWrittenCalls } from "@/lib/dm/written-calls";
 import { describeEquipmentItem } from "@/lib/dm/equipment-line";
 import { summonStateLine } from "@/lib/dm/summon-rules";
 import { dmSystemText, encounterRulesText, tracksAmmunition, type RuleContext } from "@/lib/dm/prompt-rules";
@@ -911,7 +913,8 @@ export function describeSheet(
   // #424): an attack with anything else draws it first, the turn's free
   // object interaction.
   if (wearingIsExplicit(sheet.equipment)) {
-    const worn = sheet.equipment.filter((item) => item.equipped === true).map((item) => item.name);
+    // Tack is on the mount, not the rider, and its line above says which.
+    const worn = sheet.equipment.filter((item) => item.equipped === true && !isTack(item)).map((item) => item.name);
     lines.push(`  Worn and in hand: ${worn.length ? worn.join(", ") : "nothing"} (everything else is packed away)`);
   }
   if (sheet.background || sheet.alignment) {
@@ -1126,7 +1129,9 @@ export function buildGameStateBlock(state: DmGameState): string {
   const mounts = getMounts(campaign.id);
   const mountLines = Object.entries(mounts).map(([characterId, mount]) => {
     const who = sheets.find((sheet) => sheet.id === characterId)?.name ?? "someone";
-    return `- ${who} is riding ${describeMount(mount)}`;
+    // An independent mount's turn is the GM's (issue 1036, ruling 3), and
+    // nothing else tells the model the pair moves on it.
+    return `- ${who} is riding ${describeMount(mount)}${independentMount(mount) ? `. You play ${mount.name}'s own turn as it wishes, not as ${who} wishes: move_token by its name carries ${who} with it, and ${who} does not move the pair on their own turn` : ""}`;
   });
   if (mountLines.length) {
     sections.push(`Mounted:\n${mountLines.join("\n")}`);
@@ -1795,14 +1800,18 @@ export const movePartyTool = {
           items: { type: "string" },
           description: "Only when the party splits up: exact characterIds (GAME STATE) of who goes; the rest stay behind.",
         },
+        aboard: {
+          type: "boolean",
+          description: "On a boat or cart: its deck comes too.",
+        },
       },
       required: ["name", "visionClear"],
     },
   },
 } as const;
 
-// move_party without partOf, direction, distance (issue 548) and
-// characterIds, where there is no room to spare for them: the compact set
+// move_party without partOf, direction, distance (issue 548), characterIds
+// and aboard, where there is no room to spare for them: the compact set
 // before the table has any place (a direction reads from where the party set
 // out, partOf files the next room of where they are, and a party that has
 // not set out has not split; scripts/test-tool-profiles.mjs holds a 16K
@@ -1810,7 +1819,7 @@ export const movePartyTool = {
 // dmTurnTools).
 const firstMoveProperties = Object.fromEntries(
   Object.entries(movePartyTool.function.parameters.properties).filter(
-    ([key]) => !["partOf", "direction", "distance", "characterIds"].includes(key),
+    ([key]) => !["partOf", "direction", "distance", "characterIds", "aboard"].includes(key),
   ),
 );
 export const firstMovePartyTool = {
@@ -2018,8 +2027,9 @@ export function buildDmMessages(
   // place of the attack. The short rules leave them out of the transcript.
   // A passage stored before issue 900's fix may hold the card line the model
   // copied then: read back as the model's own words, it would be copied again.
+  // So would a call it wrote out as argument lines before issue 1025's fix.
   const dmText = (text: string) => {
-    const said = withoutServerLines(text);
+    const said = withoutWrittenCalls(withoutServerLines(text));
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 

@@ -14,7 +14,7 @@ import { READER_PROMPT_START } from "./lib/claims-reader.mjs";
 const { test, finish } = suite("test-claims");
 const world = await openWorld({ gameSettings: { ttsEnabled: false } });
 
-const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides } = await import(
+const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides, withoutSentences } = await import(
   "../src/lib/dm/claims-logic.ts"
 );
 const { askedThisTurn, leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
@@ -488,12 +488,20 @@ await test("Who speaks is read from the public cast, the party and an NPC the re
     ["Benvenuti.", "Bruno", ""],
   ]);
   assert.match(model.readerRequests[0].messages[1].content, new RegExp(`^Speaker refs: "${marla.id}" for Marla Venn, "new:Bruno" for Bruno$`, "m"), "only the people the passage names are listed");
-  model.claims([]);
-  assert.deepEqual(
-    await readClaims(world.campaign(), { label: "turn test", text: "Una voce nel buio: «Chi va là?»", kinds: ["speaker"], outcomes, sheets: world.sheets() }),
-    [],
-  );
-  assert.equal(model.readerRequests.length, 0, "a passage naming nobody is not read for its speakers");
+  // A passage that quotes someone and names nobody listed is still read, for
+  // a newcomer the narrator named and never registered (issue 1027); the
+  // name stays only proposed until the prose confirms it (speech-lines.ts).
+  model.claims([[{ kind: "speaker", name: "Una voce", quote: "Chi va là?" }]]);
+  const unlisted = await readClaims(world.campaign(), { label: "turn test", text: "Una voce nel buio: «Chi va là?»", kinds: ["speaker"], outcomes, sheets: world.sheets() });
+  assert.deepEqual(unlisted.map((claim) => [claim.line, claim.speaker.name, claim.speaker.id, claim.speaker.proposed]), [["Chi va là?", "Una voce", "", true]]);
+  assert.match(model.readerRequests.at(-1).messages[1].content, /^Speaker refs: \(none\)$/m, "nobody listed is offered");
+  const asked = model.readerRequests.length;
+  assert.deepEqual(await readClaims(world.campaign(), { label: "turn test", text: "Nobody speaks.", kinds: ["speaker"], outcomes, sheets: world.sheets() }), []);
+  assert.equal(model.readerRequests.length, asked, "a passage quoting nobody is not read for its speakers");
+  // A name the passage gives a listed person is that person.
+  model.claims([[{ kind: "speaker", name: "Marla Venn", quote: "Sei tornato" }]]);
+  const byName = await readClaims(world.campaign(), { label: "turn test", text: "Marla Venn alza lo sguardo: «Sei tornato.»", kinds: ["speaker"], outcomes, sheets: world.sheets() });
+  assert.deepEqual(byName.map((claim) => [claim.speaker.id, claim.speaker.proposed]), [[marla.id, undefined]]);
   model.close();
 });
 
@@ -569,6 +577,29 @@ await test("A turn asked for its player's answer is one the GM waits on: the cha
   assert.equal(askedThisTurn(campaign(), ask([mira.id]), sheets(), tamsin.id), true, "her commander's character was asked");
   assert.equal(askedThisTurn(campaign(), ask([tamsin.id]), sheets(), tamsin.id), true, "she was asked by her own id");
   setCompanionCommander(tamsin.id, null);
+});
+
+// Fork PR 1019 (2026-11-17): a sentence of speech cut by the guard left its
+// closing mark alone on the page ("Kaku nods.” Mairon is silent.", and
+// "Kaku hoche la tête. »" at a French table, its no-break spaces too).
+await test("A cut sentence of speech takes its closing mark, and one left of a longer speech keeps the rest quoted.", () => {
+  const nb = "\u00a0";
+  assert.equal(withoutSentences("Kaku annuisce. «Tienila tu.» Mairon tace.", ["Tienila tu."]), "Kaku annuisce. Mairon tace.");
+  assert.equal(withoutSentences(`Kaku hoche la tête. «${nb}Garde-la.${nb}» Mairon se tait.`, ["Garde-la."]), "Kaku hoche la tête. Mairon se tait.");
+  assert.equal(withoutSentences("Kaku nods. “Keep it.” Mairon is silent.", ["Keep it."]), "Kaku nods. Mairon is silent.");
+  assert.equal(withoutSentences('Kaku nods. "Keep it." Mairon is silent.', ["Keep it."]), "Kaku nods. Mairon is silent.");
+  assert.equal(withoutSentences("«Ho sete. Dammi da bere.»\n\nGruoch beve.", ["Ho sete.", "Dammi da bere."]), "Gruoch beve.");
+  assert.equal(withoutSentences("Ioshua parla. «Il sacco è tuo.» Brakk tace.", ["Ioshua parla."]), "«Il sacco è tuo.» Brakk tace.", "the whole speech stays");
+  // The sentence after a speech no longer takes the speech's closing mark.
+  assert.equal(withoutSentences("“Keep it.” Mairon is silent. Rain falls.", ["Mairon is silent."]), "“Keep it.” Rain falls.");
+  assert.equal(withoutSentences('"Keep it." Mairon is silent. Rain falls.', ["Mairon is silent."]), '"Keep it." Rain falls.');
+  // Part of a speech cut: what stays of it is still speech.
+  assert.equal(withoutSentences("“I'm thirsty. Give me a drink.” She waits.", ["I'm thirsty."]), "“Give me a drink.” She waits.");
+  assert.equal(withoutSentences("“I'm thirsty. Give me a drink.” She waits.", ["Give me a drink."]), "“I'm thirsty.” She waits.");
+  assert.equal(withoutSentences('"I\'m thirsty. Give me a drink." She waits.', ["I'm thirsty."]), '"Give me a drink." She waits.');
+  assert.equal(withoutSentences(`«${nb}J'ai soif. Donne-moi à boire.${nb}» Elle attend.`, ["J'ai soif."]), `«${nb}Donne-moi à boire.${nb}» Elle attend.`);
+  assert.equal(withoutSentences("“A. B. C.” Done.", ["A.", "B."]), "“C.” Done.");
+  assert.equal(withoutSentences("“A. B. C.” Done.", ["A.", "B.", "C."]), "Done.");
 });
 
 world.close();

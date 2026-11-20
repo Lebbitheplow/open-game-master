@@ -3,6 +3,7 @@ import { deleteFaction, getFaction, updateFaction } from "@/lib/db/factions";
 import { getParty, setParty } from "@/lib/db/party";
 import { clampReputation, normalizeFactionAttitude } from "@/lib/dm/faction-logic";
 import { publishEphemeral } from "@/lib/events";
+import { factionBodySchema } from "@/lib/schemas/faction";
 import { isUploadedImagePath } from "@/lib/uploads";
 
 export const runtime = "nodejs";
@@ -29,7 +30,11 @@ export async function PATCH(
   if (found instanceof Response) {
     return found;
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = factionBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid faction." }, { status: 400 });
+  }
+  const raw = parsed.data;
   if (raw.portraitPath !== undefined && raw.portraitPath !== "" && !isUploadedImagePath(raw.portraitPath)) {
     return Response.json({ error: "Not an uploaded file." }, { status: 400 });
   }

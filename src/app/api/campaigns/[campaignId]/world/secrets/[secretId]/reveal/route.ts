@@ -3,10 +3,14 @@ import { revealSecret, worldAnswerFor } from "@/lib/db/world-forge";
 import { loreBodyOverflow, normalizeLoreInput } from "@/lib/dm/world-lore-logic";
 import { publishHandout } from "@/lib/dm/scene-state";
 import { publishEphemeral } from "@/lib/events";
+import { z } from "zod";
+import { loreEntryBodySchema } from "@/lib/schemas/lore-entry";
 import { recordsChanged } from "@/lib/workshop/record-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const revealSchema = loreEntryBodySchema.pick({ category: true, title: true, body: true }).extend({ show: z.boolean().optional() });
 
 // "Reveal to the party" (audit WF-10): a secret of this campaign's world,
 // told to the table on purpose. The words are the story authority's own,
@@ -27,7 +31,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (context.campaign.kind === "workshop") {
     return Response.json({ error: "A workshop has no party to tell. Reveal it from a campaign's World tab." }, { status: 400 });
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = revealSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Write what the party learns: a title and the words they will read." }, { status: 400 });
+  }
+  const raw = parsed.data;
   // Over the cap is refused with what would be lost, never cut (issue #302).
   const overflow = loreBodyOverflow(raw.body);
   if (overflow) {

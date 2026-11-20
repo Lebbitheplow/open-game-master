@@ -2,6 +2,7 @@ import { isErrorResponse, requireMember, requireStoryAuthority, steersStory } fr
 import { insertQuest, listQuests } from "@/lib/db/quests";
 import { normalizeObjectives, normalizeQuestStatus, questsVisibleTo } from "@/lib/dm/quest-logic";
 import { publishEphemeral } from "@/lib/events";
+import { questBodySchema } from "@/lib/schemas/quest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,11 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = questBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid quest." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
   if (!title) {
     return Response.json({ error: "A quest needs a title." }, { status: 400 });

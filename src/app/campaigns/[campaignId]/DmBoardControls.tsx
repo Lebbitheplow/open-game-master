@@ -4,7 +4,7 @@ import { Box, Hand, MapPin, Pencil, Ruler } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Slider } from "@/components/ui/Slider";
 import { ADHOC_LABEL_KEYS, ADHOC_NAME_MAX } from "@/lib/dm/board-logic";
-import { SHAPE_LABEL_KEYS, SHAPE_MEASURE_KEYS, TEMPLATE_SHAPES, shapeLabel } from "@/lib/battlemap/template";
+import { SHAPE_MEASURE_KEYS, TEMPLATE_SHAPES, shapeLabel } from "@/lib/battlemap/template";
 import type { TemplateShape } from "@/lib/battlemap/template";
 import type { AdhocTokenKind } from "@/lib/battlemap/types";
 import { useT } from "@/lib/locale";

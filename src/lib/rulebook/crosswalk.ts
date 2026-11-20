@@ -300,11 +300,6 @@ export function crosswalkAll(): Crosswalk[] {
   return [...cached.values()];
 }
 
-export function crosswalkById(id: string): Crosswalk | null {
-  if (!cached) crosswalkAll();
-  return cached?.get(id) ?? null;
-}
-
 // The rules pages the matrix covers by hand, for the test that no rules
 // page goes without a row.
 export function ruleRowIds(): string[] {

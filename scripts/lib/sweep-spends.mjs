@@ -26,7 +26,6 @@
 //   THROWS             a door threw instead of answering
 //
 // Import this before anything from src/ (it imports enforce-world.mjs).
-import assert from "node:assert/strict";
 import fs from "node:fs";
 import { openWorld, seedDice } from "./enforce-world.mjs";
 import { combatKit, TRAINED } from "./enforce-combat.mjs";
@@ -449,4 +448,4 @@ export function signature(scene, tried) {
   return normal(`${tried.ok ? "ok" : tried.kind} | counters: ${part(read.counters)} | cost: ${part(read.cost)} | effects: ${part(read.effects)} | rolls ${read.rolls}`);
 }
 
-export { ABILITIES, LOG_TABLES, assert, readJson, SRC };
+export { ABILITIES, LOG_TABLES, readJson, SRC };

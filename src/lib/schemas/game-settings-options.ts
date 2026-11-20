@@ -31,13 +31,6 @@ export const DM_MODE_LABELS: Record<DmModeSetting, string> = {
   assisted: "I run the game, with AI help",
 };
 
-export const DM_MODE_HINTS: Record<DmModeSetting, string> = {
-  ai: "The AI narrates, adjudicates and runs the world. The party lead steers it.",
-  steered: "The AI narrates every turn. You sit behind the screen with the arc, the console and the last word, and play no character.",
-  human: "You narrate. The server still enforces every rule and rolls every die.",
-  assisted: "You own the story; hand the AI the monsters, the prose, or a stretch of turns.",
-};
-
 // How far the secret story saga is planned: how many acts the arc spans and
 // how many bosses/threads it seeds. Read when a saga is generated (activation,
 // lead regenerate, the v2 upgrade pass, and each sequel saga), so changing it
@@ -67,20 +60,6 @@ export const COMPANION_LABELS: Record<CompanionSetting, string> = {
 // default; it lives in the campaign's Bonds settings, never the creator.
 export const CONSCIENCE_SETTINGS = ["off", "talk", "leave", "turn"] as const;
 export type ConscienceSetting = (typeof CONSCIENCE_SETTINGS)[number];
-
-export const CONSCIENCE_LABELS: Record<ConscienceSetting, string> = {
-  off: "Off",
-  talk: "Talk",
-  leave: "Leave",
-  turn: "Turn",
-};
-
-export const CONSCIENCE_HINTS: Record<ConscienceSetting, string> = {
-  off: "Companions judge by standing alone: no values, no warnings, nobody leaves over a deed.",
-  talk: "Companions object, warn and set ultimatums, and stay whatever happens.",
-  leave: "Pushed past their breaking point, a companion walks out, slips away or reports the party.",
-  turn: "As Leave, and a companion past their breaking point may turn on the party in a fight.",
-};
 
 // How hit points are counted after 1st level (1st is always the hit die's
 // highest face plus the Constitution modifier): the die's fixed value, a die

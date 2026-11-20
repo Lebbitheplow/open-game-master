@@ -318,7 +318,11 @@ export default {
         const box = await boxOf(composer);
         return box && box.y + box.height <= 650;
       }, { label: "native input remaining visible in a short window" });
-      check(await page.locator(`${root}.hand`).evaluate(node => getComputedStyle(node).overflowY) === "auto", "native short-window hand still yields space to the input");
+      // The composer can fit a frame before the hand takes its short-window
+      // rule (the desk re-measures after the resize), so wait for both.
+      const handScrolls = () => page.locator(`${root}.hand`).evaluate(node => getComputedStyle(node).overflowY === "auto");
+      await eventually(handScrolls, { label: "the hand taking the short window's scroll" }).catch(() => {});
+      check(await handScrolls(), "native short-window hand still yields space to the input");
       await page.setViewportSize(originalSize);
       await t.tap(addon);
       check((await slot("rail").count()) === 0, "a board-only addon leaves the native session layout alone");

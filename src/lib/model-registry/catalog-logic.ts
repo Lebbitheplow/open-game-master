@@ -10,7 +10,8 @@
 // cache file). It is read field by field into fresh objects: nothing in it
 // is ever executed, and an unknown field is dropped.
 
-import { RECOMMENDED_WINDOW, storyWindowVerdict } from "@/lib/story-window";
+import { storyWindowVerdict } from "@/lib/story-window";
+import { SMALL_MODEL_PARAMS } from "@/lib/dm/model-tuning-logic";
 
 export type CatalogModel = {
   // The models.dev provider id ("openai", "openrouter", "deepinfra").
@@ -384,9 +385,8 @@ export function describeCatalogModel(model: CatalogModel | null, options: { loca
   return parts.join(" · ") || model.name;
 }
 
-// The story prompt packs against the window; below this the table loses
-// its recent history every few turns.
-export const SMALL_CONTEXT_TOKENS = RECOMMENDED_WINDOW;
+// Below this the helper's longer jobs go to the storyteller instead.
+export const SMALL_CONTEXT_TOKENS = 48_000;
 
 // `tools` is the backend's own word on tool calls where it gives one
 // (Ollama's capabilities); it outranks the catalog's.
@@ -409,6 +409,9 @@ export function assessModel(
     // which outranks the catalog's: a catalog row is one host's limit for the
     // weights, and another host may serve them wider or narrower.
     contextTokens?: number;
+    // The parameter count the server gives (Ollama's general.parameter_count);
+    // absent when nothing says.
+    parameters?: number | null;
   },
 ): ModelVerdict {
   const warnings: string[] = [];
@@ -435,6 +438,12 @@ export function assessModel(
   }
   if (input.memory && input.memory.sizeGb && input.memory.budgetGb && input.memory.sizeGb * 1.1 > input.memory.budgetGb) {
     unfit(t("Too big for this machine: {size} GB of weights against {budget} GB of memory.", { size: input.memory.sizeGb, budget: Math.round(input.memory.budgetGb) }));
+  }
+  // A small model is played on the short rules and the compact tools
+  // (src/lib/dm/model-tuning-logic.ts SMALL_MODEL_PARAMS), which Open Game
+  // Master does not support or test.
+  if (role === "story" && typeof input.parameters === "number" && input.parameters > 0 && input.parameters < SMALL_MODEL_PARAMS) {
+    unfit(t("About {count}B parameters: below {min}B the GM plays on short rules and a cut tool set, which Open Game Master does not support or test.", { count: Math.round(input.parameters / 1e8) / 10, min: SMALL_MODEL_PARAMS / 1e9 }));
   }
   if (!catalog) {
     if (role === "image" && !isImageModelId(input.id)) {
@@ -472,8 +481,13 @@ export function assessModel(
       // The storyteller's own minimums (src/lib/story-window.ts). Too small
       // to narrate rules a hosted model out; a local row is a loose match
       // for the weights, so it only warns.
+      // Anything short of the full rules is unfit: the pickers leave it off
+      // their lists, and only a model typed in by hand runs on the cut rules
+      // (src/lib/story-window.ts). A local catalog row is a loose match for
+      // the weights, so its window only warns; the server's own word on the
+      // window it runs is a verdict.
       const verdict = storyWindowVerdict(t, window);
-      if (verdict.level === "short" && !input.local) unfit(verdict.text);
+      if (verdict.level !== "ok" && (!input.local || input.contextTokens)) unfit(verdict.text);
       else if (verdict.text) warn(verdict.text);
     } else if (window && window < SMALL_CONTEXT_TOKENS) {
       // The helper never holds the story: a call too big for its window goes

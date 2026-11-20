@@ -168,10 +168,6 @@ function setupFieldLines(setup: ReportSetup): string[] {
   return lines;
 }
 
-export function setupFieldText(setup: ReportSetup): string {
-  return setupFieldLines(setup).join("\n");
-}
-
 // The form, with Your setup filled in when the report has its setup. Lines
 // are dropped from the end, never cut mid-line, if the address would grow
 // too long.

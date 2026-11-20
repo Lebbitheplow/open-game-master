@@ -103,6 +103,14 @@ function normalizeSupplies(raw: unknown): MarchState["supplies"] {
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
+// The party is still aboard what it rode: the last leg on the road was ridden
+// aboard a wagon or a ship (travel's `aboard`) and the clock has not moved
+// since it ended. move_party then carries what lies on the deck along.
+export function ridingAboard(clock: { instant: number; marched?: MarchState["marched"] }): boolean {
+  const last = clock.marched?.at(-1);
+  return Boolean(last?.carried) && last?.end === clock.instant;
+}
+
 export function normalizeMarch(record: Record<string, unknown>): MarchState {
   const travelPace = ["fast", "normal", "slow"].includes(String(record.travelPace))
     ? (record.travelPace as MarchState["travelPace"])

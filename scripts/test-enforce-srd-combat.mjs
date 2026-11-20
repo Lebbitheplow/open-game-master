@@ -25,6 +25,10 @@ const { getMounts, setMount } = await import("../src/lib/db/mounts.ts");
 const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const { settleTurn, turnHolder } = await import("../src/lib/dm/encounter-tools.ts");
 const { applyDmMutation } = await import("../src/lib/dm/mutations.ts");
+const { pushTokenAway } = await import("../src/lib/dm/map-tools.ts");
+const { getBattleMapForEncounter, getTokenByRef } = await import("../src/lib/db/battle-maps.ts");
+const { saveZones } = await import("../src/lib/dm/zone-store.ts");
+const { zoneTurnStart } = await import("../src/lib/dm/zone-triggers.ts");
 const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
 
 const SLOTS = { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } };
@@ -752,6 +756,147 @@ await test("A rider whose mount is moved against its will keeps the saddle on a 
     assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the save is still mounted");
     assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "a rider who fell off did not land prone");
   });
+});
+
+// The same rule, asked by the server where the board moved the rider: the
+// rider and the mount are the rider's one token.
+await test("A rider the GM moves by force is asked the save to stay mounted as that call finishes", async () => {
+  await riding(async () => {
+    kit.giveTurn(mage.id);
+    const made = await forced([20], "move_token", { token: fighter.id, x: 7, y: 5, forced: true });
+    assert.equal(made.out.ok, true, made.out.error);
+    assert.equal(made.unused, 0, "a rider moved by force rolled no save to stay mounted");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+    assert.ok(!world.sheet(fighter.id).conditions.includes("prone"), "a rider who kept the saddle is prone");
+  });
+});
+
+await test("A rider moved by force who fails the save falls prone off the mount", async () => {
+  await riding(async () => {
+    kit.giveTurn(mage.id);
+    const failed = await forced([1], "move_token", { token: fighter.id, x: 7, y: 5, forced: true });
+    assert.equal(failed.out.ok, true, failed.out.error);
+    assert.equal(failed.unused, 0, "a rider moved by force rolled no save to stay mounted");
+    assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the save is still mounted");
+    assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "a rider thrown by the move did not land prone");
+  });
+});
+
+await test("A rider pushed two squares by one call makes one save", async () => {
+  await riding(async () => {
+    const [enemy] = world.enemies();
+    kit.place(enemy.id, 4, 5);
+    world.clearDice();
+    world.diceLog();
+    world.dice(20, 1);
+    onPersonsTurn(world.campaign(), () => {
+      const first = pushTokenAway(world.campaign(), world.encounter().id, enemy.id, fighter.id);
+      const second = pushTokenAway(world.campaign(), world.encounter().id, enemy.id, fighter.id);
+      assert.ok(first.moved && second.moved, "the push did not move the rider");
+    });
+    const unused = world.clearDice();
+    assert.equal(unused, 1, "each square of the push asked the rider's save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+  });
+});
+
+// Gust of Wind: "Each creature that starts its turn in the line must succeed on a Strength saving throw or be pushed 15 feet away from you."
+await test("A rider Gust of Wind pushes makes the save to stay mounted as the call finishes", async () => {
+  await riding(async () => {
+    const encounter = world.encounter();
+    const map = getBattleMapForEncounter(encounter.id);
+    const cells = [3, 4, 5, 6, 7, 8, 9].map((x) => 5 * map.width + x);
+    saveZones(map.id, [{ id: "gust-rider", spell: "Gust of Wind", casterId: mage.id, casterKind: "pc", casterName: mage.name, origin: { x: 2, y: 5 }, toward: { x: 12, y: 5 }, cells, concentration: false, castRound: encounter.round, untilRound: null, slotLevel: 2, dc: 15 }]);
+    try {
+      world.clearDice();
+      world.diceLog();
+      // The STR save fails, the DEX save to stay mounted is made.
+      world.dice(1, 20);
+      onPersonsTurn(world.campaign(), () => {
+        zoneTurnStart(world.campaign(), world.encounter(), [fighter.id]);
+      });
+      assert.notEqual(getTokenByRef(map.id, fighter.id)?.x, 5, "the gust did not push the rider");
+      assert.equal(world.clearDice(), 0, "the gust's push asked no save to stay mounted");
+      assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+    } finally {
+      saveZones(map.id, []);
+    }
+  });
+});
+
+await test("A rider who rides their own move is asked nothing", async () => {
+  await riding(async () => {
+    world.clearDice();
+    world.dice(1);
+    const moved = await walk(fighter, 6, 5);
+    assert.equal(moved.status, 200, JSON.stringify(moved.body));
+    assert.equal(world.clearDice(), 1, "a rider's own move rolled a save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider's own move took them off the horse");
+  });
+});
+
+// equipment, Tack, Harness, and Drawn Vehicles: 'A military saddle braces the rider, helping you keep your seat on an active mount in battle. It gives you advantage on any check you make to remain mounted.'
+await test("A rider with a military saddle rolls the save to stay mounted with advantage; one without rolls one die", async () => {
+  await riding(async () => {
+    const plain = await forced([20, 20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+    assert.equal(plain.out.ok, true, plain.out.error);
+    assert.equal(plain.unused, 1, "a rider with no military saddle rolled the save twice");
+    world.patch(fighter.id, { equipment: [...world.sheet(fighter.id).equipment, { name: "Saddle, Military", qty: 1 }] });
+    try {
+      const braced = await forced([1, 20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+      assert.equal(braced.out.ok, true, braced.out.error);
+      assert.equal(braced.unused, 0, "the military saddle gave no second die");
+      assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "the higher die did not keep the rider mounted");
+      // Packed, the saddle is cargo and braces nobody (src/lib/srd/tack.ts).
+      world.patch(fighter.id, { equipment: world.sheet(fighter.id).equipment.map((item) => (item.name === "Saddle, Military" ? { ...item, equipped: false } : item)) });
+      const packed = await forced([20, 20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+      assert.equal(packed.out.ok, true, packed.out.error);
+      assert.equal(packed.unused, 1, "a packed military saddle gave the rider advantage");
+    } finally {
+      world.patch(fighter.id, { equipment: world.sheet(fighter.id).equipment.filter((item) => item.name !== "Saddle, Military") });
+    }
+  });
+});
+
+// equipment, Mounts and Vehicles: 'Barding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding.'
+await test("A mount whose rider carries barding for it is struck against the barding's Armor Class, when that is the better one", async () => {
+  const [enemy] = await stage(fighter);
+  kit.place(fighter.id, 5, 5, 0);
+  kit.place(enemy.id, 5, 6);
+  const up = await world.invoke("mount_up", { characterId: fighter.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const plain = world.sheet(fighter.id).equipment;
+  const swing = async (face) => {
+    kit.freshRound();
+    const { out } = await forced([face, 3], "enemy_attack", { enemyId: enemy.id, targetCharacterId: fighter.id, targetMount: true });
+    assert.equal(out.ok, true, out.error);
+    return out.result ?? out;
+  };
+  try {
+    // The dummy swings at +4. A 9 makes 13: a hit on the warhorse's AC 11.
+    const bare = await swing(9);
+    assert.equal(bare.swings[0].hit, true, "a 13 missed an unbarded warhorse (AC 11)");
+    // Chain mail barding is AC 16 on any mount: the same 13 misses.
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1 }] });
+    const barded = await swing(9);
+    assert.equal(barded.swings[0].hit, false, "a 13 hit a warhorse in chain mail barding (AC 16)");
+    assert.equal(barded.swings[0].vsAc, 16);
+    assert.match(JSON.stringify(barded.notes ?? []), /Chain Mail Barding/, "the result does not name the barding");
+    // Packed, it is cargo: the same 13 hits the bare warhorse again.
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1, equipped: false }] });
+    const cargo = await swing(9);
+    assert.equal(cargo.swings[0].hit, true, "barding in the rider's pack protected the mount");
+    world.patch(fighter.id, { equipment: [...plain, { name: "Chain Mail Barding", qty: 1 }] });
+    // A mount whose own Armor Class is higher keeps its own.
+    setMount(world.campaignId, fighter.id, { ...getMounts(world.campaignId)[fighter.id], ac: 18 });
+    const tough = await swing(13);
+    assert.equal(tough.swings[0].hit, false, "barding lowered a mount's own Armor Class of 18 to 16");
+    assert.equal(tough.swings[0].vsAc, 18);
+  } finally {
+    setMount(world.campaignId, fighter.id, null);
+    world.clearDice();
+    world.patch(fighter.id, { equipment: plain, conditions: [], conditionMeta: {} });
+  }
 });
 
 // ---- Initiative ----

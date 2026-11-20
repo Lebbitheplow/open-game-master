@@ -1,8 +1,11 @@
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { BackupError, backupDir, createBackup, currentBackupJob, listBackups } from "@/lib/ops/backup";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const backupSchema = z.object({ includeModels: z.boolean().optional() });
 
 // Lists the verified archives in the backup directory (ODM_BACKUP_DIR, by
 // default ~/odm-backups, the same place scripts/odm-backup.mjs writes).
@@ -24,9 +27,12 @@ export async function POST(request: Request) {
   if (isErrorResponse(admin)) {
     return admin;
   }
-  const body = (await request.json().catch(() => ({}))) as { includeModels?: unknown };
+  const parsed = backupSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Send includeModels as true or false." }, { status: 400 });
+  }
   try {
-    const backup = await createBackup({ includeModels: body?.includeModels === true });
+    const backup = await createBackup({ includeModels: parsed.data.includeModels === true });
     return Response.json({ backup });
   } catch (error) {
     return Response.json(

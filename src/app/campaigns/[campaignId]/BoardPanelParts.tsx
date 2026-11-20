@@ -81,6 +81,7 @@ export function BoardCameraControls({
   return (
     <div className={cn("board-cam absolute bottom-2 right-2 z-10 flex flex-col gap-1", onDirect && "board-cam-long")}>
       {keysOpen ? (
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the note only catches Escape from inside it to close; the button that opened it is the control
         <div
           id="board-keys-card"
           role="note"

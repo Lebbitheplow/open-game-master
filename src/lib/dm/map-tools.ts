@@ -1,4 +1,5 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
+import { mountMoved } from "@/lib/dm/mount-moved";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { boardLight } from "@/lib/dm/light-timers";
@@ -545,12 +546,14 @@ function resolveMoveTarget(
   ref: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
-): { token: BattleToken; kind: "pc" | "enemy"; enemy?: EncounterEnemy } | null {
+): { token: BattleToken; kind: "pc" | "enemy"; enemy?: EncounterEnemy; sheet?: CharacterSheet } | null {
   const trimmed = boardTokenById(map, ref.trim())?.refId ?? ref.trim();
   const sheet = resolveSheetRef(trimmed, sheets, sheetsById);
   if (sheet) {
+    // An independent mount stands on its rider's token (db/battle-maps.ts
+    // getTokenByRef), so the creature asked for is kept beside it.
     const token = getTokenByRef(map.id, sheet.id);
-    return token ? { token, kind: "pc" } : null;
+    return token ? { token, kind: "pc", sheet } : null;
   }
   const enemies = listEnemies(encounterId);
   // By its whole name only, as resolveAnyToken reads it: "A" (gpt-oss-20b
@@ -674,10 +677,14 @@ export function handleMoveToken(
   // goblins' pass before a hero is theirs though the pointer already rests
   // on the hero (held-turn.ts ownTurnOf): a goblin's shove of Brom then was
   // refused as Brom walking himself.
+  // An independent mount's token is its rider's: on the mount's own turn a
+  // forced move by its name carried the pair past its speed, as the token's
+  // owner (the rider) was the one whose turn was asked about.
   if (resolved.kind === "pc" && args.forced && encounter.orderReady) {
-    if (ownTurnOf(encounter, resolved.token.refId)) {
+    const own = [resolved.sheet, { id: resolved.token.refId, name: resolved.token.name }].find((who) => who && ownTurnOf(encounter, who.id));
+    if (own) {
       return {
-        error: `It is ${resolved.token.name}'s own turn; they move their own token from the board (a companion walks with move_token and no forced). Forced movement is for a push, drag or carry on someone else's turn.`,
+        error: `It is ${own.name}'s own turn; they move their own token from the board (a companion walks with move_token and no forced). Forced movement is for a push, drag or carry on someone else's turn.`,
         retry: true,
       };
     }
@@ -761,7 +768,7 @@ export function handleMoveToken(
   const walking = move !== null && !args.forced;
   // Swallowed, as a character is (swallow.ts): no walk inside a living
   // creature, and out of a dead one the walk is the climb out of its corpse.
-  const climb = walking && resolved.enemy ? swallowRowWalk(campaign, encounter, resolved.enemy, resolved.token, move?.tilesLeft ?? 0) : null;
+  const climb = walking && resolved.enemy ? swallowRowWalk(campaign, encounter, resolved.enemy, move?.tilesLeft ?? 0) : null;
   if (climb) {
     return climb;
   }
@@ -898,6 +905,15 @@ export function handleMoveToken(
   }
   for (const entry of carriedNow) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
+    // Dragged along: a rider's mount went where it did not choose to (mount-moved.ts).
+    if (entry.token.kind === "pc") {
+      mountMoved(campaign.id, entry.token.refId);
+    }
+  }
+  // A push, a drag or a carry that moved a rider moved their mount against
+  // its will: their save to stay on is asked as this call finishes.
+  if (args.forced && resolved.token.kind === "pc" && (landing.x !== origin.x || landing.y !== origin.y)) {
+    mountMoved(campaign.id, resolved.token.refId);
   }
   // The Disengage and this walk were the turn it was owed; its own turn
   // follows on fresh movement, with no Disengage (enemy-actions.ts
@@ -1002,6 +1018,10 @@ export function pushTokenAway(
     return { moved: false, reason: "someone stands behind it" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A rider pushed is a mount moved against its will (mount-moved.ts).
+  if (target.kind === "pc") {
+    mountMoved(campaign.id, target.refId);
+  }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
   // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,
@@ -1042,6 +1062,10 @@ export function pullTokenToward(
     return { moved: false, reason: "someone stands in the way" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A rider pulled is a mount moved against its will (mount-moved.ts).
+  if (target.kind === "pc") {
+    mountMoved(campaign.id, target.refId);
+  }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
   // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,

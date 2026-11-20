@@ -119,6 +119,7 @@ export function BuildMathPanel({
         id={bodyId}
         role="region"
         aria-labelledby={headingId}
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the panel scrolls on its own, so keyboard users need a Tab stop to scroll it
         tabIndex={0}
         className={cn(
           "min-h-0 flex-1 overflow-y-auto rounded-b-xl px-3 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70",

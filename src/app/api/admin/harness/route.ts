@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
 const actionSchema = z.object({
   action: z.enum(["test", "picture", "adopt", "refresh"]),
-  id: z.enum(["claude", "codex", "opencode", "grok", "pi"]).optional(),
+  id: z.enum(["claude", "codex", "opencode", "grok", "pi", "antigravity"]).optional(),
 });
 
 export async function POST(request: Request) {

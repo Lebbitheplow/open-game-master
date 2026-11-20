@@ -12,7 +12,6 @@ import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { toolLabel, toolPickOptions } from "@/lib/srd/tool-choices";
 import { contentSlug, describeSkill, glossaryTerm } from "@/lib/help";
-import { SRD_SKILLS } from "@/lib/srd";
 import { ABILITIES, type Ability } from "@/lib/schemas/sheet";
 import { featAbilityIncrease } from "@/lib/srd/feat-effects";
 import type { FeatChoices, FeatGrantSpec, FeatPicks } from "@/lib/srd/feat-grants";

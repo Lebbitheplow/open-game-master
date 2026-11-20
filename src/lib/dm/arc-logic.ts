@@ -7,6 +7,7 @@ import {
 } from "./world-arc-logic.ts";
 import { RENDER_EVENT_CHARS, selectPendingEvents, type ArcTrace, type SceneCues } from "./arc-relevance.ts";
 import { containsPhrase, textKey } from "../language/text-logic.ts";
+import { parseJsonLeniently } from "./lenient-json.ts";
 
 // Pure story-arc logic, kept free of alias imports so node test scripts
 // (scripts/test-arc.mjs) can load it directly. The arc is the DM's secret
@@ -22,6 +23,16 @@ import { containsPhrase, textKey } from "../language/text-logic.ts";
 // in the current act, for when the table killed or permanently altered the
 // thing the beat depends on; future acts adapt through their sketches
 // instead, because their beats do not exist yet.
+//
+// The plan follows the table, never the reverse. Small deltas are for a
+// story that bent the plan; a story that overtook it gets the rest plotted
+// again (applyReplot), and one that ended its central conflict early is
+// concluded on the spot so the sequel can be plotted (concludeSaga). Which
+// of the three a chapter was is worked out from a few plain facts about
+// the play (courseFromCheck). Both
+// leave every played beat as the record it is and settle the unplayed ones
+// as skipped; neither can happen more than once every few chapters
+// (courseMayChange), which is what keeps a confused model from thrashing.
 
 export type BeatStatus = "pending" | "active" | "done" | "skipped";
 
@@ -147,6 +158,10 @@ export type ActSketch = {
   // ("The Drowned Road"). Optional: arcs written before acts were announced
   // have none, and their cards read "Act II" alone.
   title?: string;
+  // Where the act is set. Asked for so that each act is somewhere of its
+  // own: a saga planned without it was one dungeon cut into four stages.
+  // Optional: sketches written before it have none.
+  place?: string;
   // The major set-piece fight the act builds toward.
   boss: { name: string; detail: string } | null;
   // 0-2 planned companion/ally encounters for the act.
@@ -169,6 +184,34 @@ export type Saga = {
   // 1 = the campaign's first saga, 2+ = sequels.
   sagaIndex: number;
   priorSagas: Array<{ title: string; resolution: string }>;
+  // How the table ended this saga's central conflict before its planned
+  // last act (concludeSaga), in one line. The sequel chain reads it and
+  // then replaces the saga; absent while a saga is in play, and on one
+  // played through to its finale.
+  concluded?: string;
+  // The chapter at whose close the plan last changed course (a re-plot or
+  // an early conclusion); courseMayChange spaces the next one from it.
+  turnedAt?: number;
+};
+
+// Whether the plan AHEAD still fits the story: it holds; the table already
+// did, solved or left behind what the acts ahead are about, with the
+// central conflict still open; or the table ended that conflict outright,
+// whatever act it is.
+export type ArcCourse = "holds" | "overtaken" | "concluded";
+
+// What the course check reports at a chapter close (arc.ts checkCourse):
+// plain facts about the play, one question each. The verdict is worked out
+// from them here (courseFromCheck), never asked for as a word: asked for
+// the word at the end of the refresh's long reply, a small model said the
+// plan held over a dead villain and a settled crisis.
+export type CourseCheck = {
+  antagonistDefeated: boolean;
+  stakesSettled: boolean;
+  // The acts still ahead: could each still be played as written?
+  acts: Array<{ act: number; state: "ahead" | "done" | "moot" }>;
+  // One line on what the party did, for the planner that takes it from here.
+  note: string;
 };
 
 export type StoryArc = {
@@ -238,6 +281,42 @@ export type ArcDelta = {
   worldArcUpdates: WorldArcUpdate[];
 };
 
+// The rest of a saga plotted again from what is true now, after the table
+// overtook the plan (arc.ts replotSaga): the acts still to come, as
+// sketches. The act-detail pass then writes the first of them into beats,
+// as it does for every act the party reaches.
+export type ArcReplot = {
+  sketches: Array<Pick<ActSketch, "milestone" | "title" | "place" | "boss" | "allies" | "hooks">>;
+  stakes?: string;
+  antagonist?: string;
+  finale?: string;
+  finaleBoss: { name: string; detail: string } | null;
+  // Ids of still-pending planned events the new plan keeps; the old plan's
+  // other moments go with it.
+  keepEvents: string[];
+  newCast: Array<Omit<ArcNpc, "id" | "status">>;
+};
+
+// A saga as its planner plots it, before act 1 has beats (arc.ts
+// sagaFromPlan). The plan and the opening act are two replies: asked for
+// both at once, the default local model wrote "act 1's beats" as the whole
+// saga in miniature, one beat per act with the villain's fall the last of
+// them, which is a saga a table then finished in an evening.
+export type SagaPlan = {
+  // The reply as parsed, for parseSagaJson once the opening act joins it.
+  record: Record<string, unknown>;
+  title: string;
+  premise: string;
+  stakes: string;
+  antagonist: string;
+  finale: string;
+  sketches: ActSketch[];
+  finaleBoss: { name: string; detail: string } | null;
+};
+
+// Act 1 as its own reply: the beats, and the saga's planned moments.
+export type OpeningAct = { beats: Array<{ text: string; waypoints: Waypoint[] }>; events: unknown[] };
+
 // A whole new act, appended when the party plays past the current finale.
 export type ArcExtension = {
   beats: string[];
@@ -278,7 +357,7 @@ export type ActDetail = {
 export type SagaUpgrade = {
   title: string;
   plannedActs: number;
-  sketches: Array<Pick<ActSketch, "act" | "milestone" | "title" | "boss" | "allies" | "hooks">>;
+  sketches: Array<Pick<ActSketch, "act" | "milestone" | "title" | "place" | "boss" | "allies" | "hooks">>;
   finaleBoss: { name: string; detail: string } | null;
 };
 
@@ -299,6 +378,8 @@ const MAX_SUB_ARCS = 16;
 const MAX_NEW_SUB_ARCS = 2;
 const MAX_EVENTS = 160;
 const MAX_NEW_EVENTS = 2;
+// Chapters that must close between two changes of course.
+const COURSE_CHANGE_SPACING = 2;
 const MAX_CAST = 12;
 const MAX_NEW_CAST = 2;
 const MAX_ANNOTATIONS = 3;
@@ -416,9 +497,25 @@ export function bossFoughtLast(beats: ArcBeat[], act: number, boss: string): voi
   }
 }
 
+// A beat a model wrote as a string holding the beat's own JSON
+// ('{ "text": "...", "waypoints": [...] }'), which otherwise became the
+// beat's text, braces and all.
+function unwrapBeat(entry: unknown): unknown {
+  if (typeof entry !== "string" || !/^\s*\{[\s\S]*\}\s*$/.test(entry)) {
+    return entry;
+  }
+  try {
+    const parsed = JSON.parse(entry) as unknown;
+    return typeof parsed === "object" && parsed !== null && "text" in parsed ? parsed : entry;
+  } catch {
+    return entry;
+  }
+}
+
 function beatPlans(value: unknown, max: number): BeatPlan[] {
   const out: BeatPlan[] = [];
-  for (const entry of Array.isArray(value) ? value : []) {
+  for (const raw of Array.isArray(value) ? value : []) {
+    const entry = unwrapBeat(raw);
     const fields =
       typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>) : null;
     const text = typeof entry === "string" ? str(entry, BEAT_CAP) : str(fields?.text, BEAT_CAP);
@@ -569,10 +666,12 @@ function normalizeSketch(raw: unknown): ActSketch | null {
     return null;
   }
   const title = str(record.title, ACT_TITLE_CAP);
+  const place = str(record.place, 80);
   return {
     act,
     milestone,
     ...(title ? { title } : {}),
+    ...(place ? { place } : {}),
     boss: normalizeBoss(record.boss),
     allies: strList(record.allies, MAX_SKETCH_EXTRAS, DETAIL_CAP),
     hooks: strList(record.hooks, MAX_SKETCH_EXTRAS, DETAIL_CAP),
@@ -616,6 +715,8 @@ function normalizeSaga(raw: unknown): Saga | null {
     }
   }
   const highestAct = sketches[sketches.length - 1].act;
+  const concluded = str(record.concluded, FIELD_CAP);
+  const turnedAt = posInt(record.turnedAt);
   return {
     title,
     plannedActs: Math.min(Math.max(posInt(record.plannedActs) ?? highestAct, highestAct), MAX_ACTS),
@@ -623,6 +724,8 @@ function normalizeSaga(raw: unknown): Saga | null {
     finaleBoss: normalizeBoss(record.finaleBoss),
     sagaIndex: posInt(record.sagaIndex) ?? 1,
     priorSagas,
+    ...(concluded ? { concluded } : {}),
+    ...(turnedAt !== null ? { turnedAt } : {}),
   };
 }
 
@@ -1015,10 +1118,13 @@ function extractJsonObject(raw: string): unknown | null {
   if (start < 0 || end <= start) {
     return null;
   }
+  const body = cleaned.slice(start, end + 1);
   try {
-    return JSON.parse(cleaned.slice(start, end + 1));
+    return JSON.parse(body);
   } catch {
-    return null;
+    // One small slip in a planner's reply (a brace too many, a stray quote)
+    // no longer costs the whole plan (lenient-json.ts).
+    return parseJsonLeniently(body) ?? null;
   }
 }
 
@@ -1300,6 +1406,253 @@ export function parseArcDeltaJson(raw: string): ArcDelta | null {
   };
 }
 
+// The plan as the course check is asked about it: who and what the saga is
+// against, and the acts not yet reached, numbered as the reply names them.
+export function renderPlanForCourseCheck(arc: StoryArc): string {
+  const saga = arc.saga;
+  const ahead = saga ? saga.sketches.filter((sketch) => sketch.status === "sketch" && sketch.act > arc.acts) : [];
+  const finalBoss = saga?.finaleBoss ? ` (final boss: ${saga.finaleBoss.name})` : "";
+  return [
+    `Antagonist: ${arc.antagonist || "(none named)"}`,
+    `Stakes: ${arc.stakes || "(none stated)"}`,
+    arc.finale || finalBoss ? `Planned finale: ${arc.finale}${finalBoss}` : "",
+    ahead.length
+      ? `Acts still ahead:\n${ahead
+          .map(
+            (sketch) =>
+              `Act ${sketch.act}: ${sketch.milestone}${sketch.place ? ` | at: ${sketch.place}` : ""}${sketch.boss ? ` | boss: ${sketch.boss.name}` : ""}`,
+          )
+          .join("\n")}`
+      : "No acts are ahead: the party is in the saga's last act.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+// The saga as the re-plot reads it (arc.ts replotSaga). Not the GM's own
+// render: shown the old acts ahead as a plan, the default local model
+// planned them again, the gate captain the party had just beaten among
+// them. Here what was played, what was planned and never played, and what
+// the course check said of each act ahead are told apart, so the old plan
+// reads as what to move on from.
+export function renderPlanForReplot(arc: StoryArc, states: CourseCheck["acts"] = []): string {
+  const saga = arc.saga;
+  const played = arc.beats.filter((beat) => beat.status === "done");
+  const left = arc.beats.filter((beat) => beat.status === "pending" || beat.status === "active");
+  const ahead = saga ? saga.sketches.filter((sketch) => sketch.status === "sketch" && sketch.act > arc.acts) : [];
+  const fate = (act: number) => {
+    const state = states.find((entry) => entry.act === act)?.state;
+    return state === "done"
+      ? "ALREADY DONE by the party: finished, never to be planned again"
+      : state === "moot"
+        ? "no longer possible as written"
+        : "not reached, and may not happen as written";
+  };
+  const cast = arc.cast.filter((npc) => npc.status === "active");
+  const quests = arc.subArcs.filter((subArc) => subArc.status === "active" || subArc.status === "pending");
+  const waiting = arc.events.filter((event) => event.status === "pending");
+  return [
+    saga ? `Saga: "${saga.title}"` : "",
+    `Premise: ${arc.premise}`,
+    arc.stakes ? `Stakes as first planned: ${arc.stakes}` : "",
+    arc.antagonist ? `Antagonist as first planned: ${arc.antagonist}` : "",
+    played.length
+      ? `Beats the party played:\n${played.map((beat) => `- ${beat.text}${beat.detail ? ` (${beat.detail})` : ""}`).join("\n")}`
+      : "",
+    left.length
+      ? `Beats planned for the act in play that the party never played, having gone another way:\n${left.map((beat) => `- ${beat.text}`).join("\n")}`
+      : "",
+    ahead.length
+      ? `The acts the OLD plan had ahead, which the table has overtaken:\n${ahead
+          .map(
+            (sketch) =>
+              `- Act ${sketch.act}: ${sketch.milestone}${sketch.place ? ` | at: ${sketch.place}` : ""}${sketch.boss ? ` | boss: ${sketch.boss.name}` : ""} [${fate(sketch.act)}]`,
+          )
+          .join("\n")}`
+      : "",
+    cast.length ? `Recurring cast still in play: ${cast.map((npc) => `${npc.name}${npc.role ? ` (${npc.role})` : ""}`).join("; ")}` : "",
+    quests.length ? `Open quests: ${quests.map((subArc) => subArc.name).join("; ")}` : "",
+    waiting.length
+      ? `Planned events still waiting, by id:\n${waiting.map((event) => `- [${event.id}] ${event.name}: ${event.detail}`).join("\n")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+// The course check's reply. Anything but the exact words reads as nothing
+// having changed: turning a saga is never what a garbled answer does.
+export function parseCourseCheckJson(raw: string): CourseCheck | null {
+  const record = extractJsonObject(raw) as Record<string, unknown> | null;
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  const word = (value: unknown) => String(value ?? "").trim().toLowerCase();
+  const acts: CourseCheck["acts"] = [];
+  for (const entry of Array.isArray(record.acts) ? record.acts : []) {
+    const fields = entry as Record<string, unknown> | null;
+    const act = posInt(fields?.act);
+    if (act === null || acts.some((known) => known.act === act)) {
+      continue;
+    }
+    const state = word(fields?.state);
+    acts.push({ act, state: state === "done" || state === "moot" ? state : "ahead" });
+    if (acts.length >= MAX_ACTS) {
+      break;
+    }
+  }
+  return {
+    antagonistDefeated: word(record.antagonist) === "defeated",
+    stakesSettled: word(record.stakes) === "settled",
+    acts,
+    note: str(record.note, FIELD_CAP),
+  };
+}
+
+// The verdict those facts add up to. The saga is concluded only when its
+// antagonist is beaten AND its stakes are settled. One of the two alone
+// leaves a plan that cannot run as written (a finale with no villain, a
+// villain with nothing left to threaten), and so does a plan most of whose
+// remaining acts the table has already done or made pointless: both are
+// overtaken. A single spent act out of several is left to the refresh's
+// own sketch revisions.
+export function courseFromCheck(arc: StoryArc, check: CourseCheck): ArcCourse {
+  const antagonistDefeated = check.antagonistDefeated && Boolean(arc.antagonist);
+  if (antagonistDefeated && check.stakesSettled) {
+    return "concluded";
+  }
+  const ahead = arc.saga ? arc.saga.sketches.filter((sketch) => sketch.status === "sketch" && sketch.act > arc.acts) : [];
+  const spent = ahead.filter((sketch) =>
+    check.acts.some((entry) => entry.act === sketch.act && entry.state !== "ahead"),
+  ).length;
+  return antagonistDefeated || check.stakesSettled || spent * 2 > ahead.length ? "overtaken" : "holds";
+}
+
+// The re-plot reply (arc.ts REPLOT_SYSTEM). `maxActs` is how many acts the
+// saga still has room for. Null when it plans no act at all.
+export function parseReplotJson(raw: string, maxActs: number): ArcReplot | null {
+  const record = extractJsonObject(raw) as Record<string, unknown> | null;
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  const sketches = planSketches(record.actPlan, Math.max(1, Math.min(maxActs, MAX_ACTS))).map((sketch) => ({
+    milestone: sketch.milestone,
+    ...(sketch.title ? { title: sketch.title } : {}),
+    ...(sketch.place ? { place: sketch.place } : {}),
+    boss: sketch.boss,
+    allies: sketch.allies,
+    hooks: sketch.hooks,
+  }));
+  if (!sketches.length) {
+    return null;
+  }
+  const replot: ArcReplot = {
+    sketches,
+    finaleBoss: normalizeBoss(record.finaleBoss),
+    keepEvents: strList(record.keepEvents, MAX_EVENTS, 12),
+    newCast: parsePlannedCast(record.newCast, MAX_NEW_CAST),
+  };
+  const stakes = str(record.stakes, 400);
+  if (stakes) {
+    replot.stakes = stakes;
+  }
+  const antagonist = str(record.antagonist, 400);
+  if (antagonist) {
+    replot.antagonist = antagonist;
+  }
+  const finale = str(record.finale, 400);
+  if (finale) {
+    replot.finale = finale;
+  }
+  return replot;
+}
+
+// A plan's acts, numbered in the order written.
+function planSketches(value: unknown, max: number): ActSketch[] {
+  const sketches: ActSketch[] = [];
+  for (const entry of Array.isArray(value) ? value : []) {
+    const sketch = normalizeSketch({
+      ...(typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>) : {}),
+      act: sketches.length + 1,
+      status: "sketch",
+    });
+    if (sketch) {
+      sketches.push(sketch);
+    }
+    if (sketches.length >= max) {
+      break;
+    }
+  }
+  return sketches;
+}
+
+// The saga plan reply (arc.ts SAGA_SHAPE): null without a premise or with
+// fewer than two acts, since the opening act is written from act 1's
+// sketch and a one-act saga is no saga.
+export function parseSagaPlanJson(raw: string, profile: LengthProfile): SagaPlan | null {
+  const record = extractJsonObject(raw) as Record<string, unknown> | null;
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  const premise = str(record.premise, 600);
+  const sketches = planSketches(record.actPlan, Math.min(profile.maxActs, MAX_ACTS));
+  if (!premise || sketches.length < 2) {
+    return null;
+  }
+  return {
+    record,
+    title: str(record.title, 80),
+    premise,
+    stakes: str(record.stakes, 400),
+    antagonist: str(record.antagonist, 400),
+    finale: str(record.finale, 400),
+    sketches,
+    finaleBoss: normalizeBoss(record.finaleBoss),
+  };
+}
+
+// The plan as the opening-act pass reads it: act 1 in full, the rest as
+// the acts that are NOT its to write.
+export function renderSagaPlan(plan: SagaPlan): string {
+  const line = (sketch: ActSketch) =>
+    `${sketch.title ? `"${sketch.title}": ` : ""}${sketch.milestone}${sketch.place ? ` | place: ${sketch.place}` : ""}${sketch.boss ? ` | boss: ${sketch.boss.name}${sketch.boss.detail ? ` (${sketch.boss.detail})` : ""}` : ""}`;
+  const [first, ...later] = plan.sketches;
+  return [
+    plan.title ? `Saga: "${plan.title}"` : "",
+    `Premise: ${plan.premise}`,
+    plan.stakes ? `Stakes: ${plan.stakes}` : "",
+    plan.antagonist ? `Antagonist: ${plan.antagonist}` : "",
+    `Act 1 (the act to write): ${line(first)}${first.allies.length ? ` | planned allies: ${first.allies.join("; ")}` : ""}${first.hooks.length ? ` | party hooks: ${first.hooks.join("; ")}` : ""}`,
+    "Later acts (already planned; nothing of them belongs in act 1):",
+    ...later.map((sketch) => `Act ${sketch.act}: ${line(sketch)}`),
+    plan.finale || plan.finaleBoss
+      ? `Finale: ${plan.finale}${plan.finaleBoss ? ` | final boss: ${plan.finaleBoss.name}` : ""}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+// The opening-act reply (arc.ts OPENING_ACT_SYSTEM): {"beats", "events"}.
+// Null with fewer than two beats, which is no act.
+export function parseOpeningActJson(raw: string): OpeningAct | null {
+  const record = extractJsonObject(raw) as Record<string, unknown> | null;
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+  const beats = beatPlans(record.beats ?? record.act1Beats, MAX_ACT_BEATS);
+  if (beats.length < 2) {
+    return null;
+  }
+  return { beats, events: Array.isArray(record.events) ? record.events : [] };
+}
+
+// The saga a plan and its opening act make together, through the one
+// parser every saga goes through. Null when the two do not make an arc.
+export function sagaWithOpeningAct(plan: SagaPlan, opening: OpeningAct, profile: LengthProfile): StoryArc | null {
+  return parseSagaJson(JSON.stringify({ ...plan.record, act1Beats: opening.beats, events: opening.events }), profile);
+}
+
 // Planned (not yet allocated) forms: the id and status are the server's to
 // assign, so they are dropped from anything a model proposes.
 function eventPlan(event: ArcEvent): Omit<ArcEvent, "id" | "status"> {
@@ -1456,6 +1809,7 @@ export function parseSagaUpgradeJson(raw: string): SagaUpgrade | null {
         act: sketch.act,
         milestone: sketch.milestone,
         ...(sketch.title ? { title: sketch.title } : {}),
+        ...(sketch.place ? { place: sketch.place } : {}),
         boss: sketch.boss,
         allies: sketch.allies,
         hooks: sketch.hooks,
@@ -1904,6 +2258,7 @@ export function applyArcUpgrade(arc: StoryArc, upgrade: SagaUpgrade): StoryArc {
       act: arc.acts + 1 + index,
       milestone: sketch.milestone,
       ...(sketch.title ? { title: sketch.title } : {}),
+      ...(sketch.place ? { place: sketch.place } : {}),
       boss: sketch.boss,
       allies: sketch.allies,
       hooks: sketch.hooks,
@@ -1952,11 +2307,22 @@ export function applySagaChain(oldArc: StoryArc, newArc: StoryArc, resolution: s
   const next = cloneArc(newArc);
   const priorEntry = {
     title: oldArc.saga?.title || str(oldArc.premise, 80),
-    resolution: str(resolution, FIELD_CAP) || str(oldArc.finale, FIELD_CAP) || "The saga concluded.",
+    // A saga the table ended early never reached its planned finale, so
+    // that line is no account of how it went; how the table ended it is.
+    resolution:
+      str(resolution, FIELD_CAP) ||
+      str(oldArc.saga?.concluded, FIELD_CAP) ||
+      str(oldArc.finale, FIELD_CAP) ||
+      "The saga concluded.",
   };
   if (next.saga) {
     next.saga.sagaIndex = (oldArc.saga?.sagaIndex ?? 1) + 1;
     next.saga.priorSagas = [...(oldArc.saga?.priorSagas ?? []), priorEntry].slice(-MAX_PRIOR_SAGAS);
+    // An early ending is a change of course, and the sequel it starts
+    // inherits the spacing from it (courseMayChange).
+    if (oldArc.saga?.concluded && oldArc.saga.turnedAt !== undefined) {
+      next.saga.turnedAt = oldArc.saga.turnedAt;
+    }
   }
   let carried = 0;
   for (const subArc of oldArc.subArcs) {
@@ -1979,6 +2345,284 @@ export function applySagaChain(oldArc: StoryArc, newArc: StoryArc, resolution: s
   );
   next.updatedAt = new Date().toISOString();
   return next;
+}
+
+// ---- The plan follows the table ----
+//
+// A table reported a four-act saga whose acts were four stages of one
+// errand: it solved the lot in act 1, villain included, and the GM spent
+// act 2 steering it to objectives that no longer made sense, because a
+// refresh could only annotate, skip one beat at a time and rewrite two, and
+// was told to pull play back to the plan. A sequel was only ever plotted
+// once every planned act had been played. The functions below are the
+// other two answers a refresh can now give.
+
+function unplayed(beat: ArcBeat): boolean {
+  return beat.status === "pending" || beat.status === "active";
+}
+
+// Settles the plan the table left: its unplayed beats are skipped (a record
+// that they were planned and never happened; indices never shift), and its
+// pending moments are dropped unless the new plan asked to keep them. A
+// moment a person wrote on a storyboard is theirs and stays.
+function leavePlanBehind(arc: StoryArc, keepEvents: ReadonlySet<string> = new Set()) {
+  for (const beat of arc.beats) {
+    if (unplayed(beat)) {
+      beat.status = "skipped";
+    }
+  }
+  for (const event of arc.events) {
+    if (event.status === "pending" && !event.cardId && !keepEvents.has(event.id)) {
+      event.status = "dropped";
+    }
+  }
+}
+
+// Whether a refresh may turn the plan at this chapter's close. Never while
+// a beat a person wrote on a storyboard is still unplayed: their prep is
+// theirs to skip, from the beat editor. And at most once every
+// COURSE_CHANGE_SPACING chapters, so a model that calls every chapter a
+// turning point cannot re-plot the saga, or end it, each time.
+export function courseMayChange(arc: StoryArc, chapterIndex: number): boolean {
+  if (arc.beats.some((beat) => beat.cardId && unplayed(beat))) {
+    return false;
+  }
+  const turnedAt = arc.saga?.turnedAt;
+  return turnedAt === undefined || chapterIndex - turnedAt >= COURSE_CHANGE_SPACING;
+}
+
+// The table ended the saga's central conflict before its planned last act.
+// What was still planned is settled as never played and the acts ahead are
+// let go, which makes the saga complete (sagaComplete), so the same close
+// plots its sequel from what actually happened. Until that lands the render
+// holds the table in the aftermath. An arc with no saga tier only has its
+// beats settled, and the extension pass writes what comes next.
+export function concludeSaga(arc: StoryArc, how: string, chapterIndex: number | null = null): StoryArc {
+  const next = cloneArc(arc);
+  leavePlanBehind(next);
+  if (next.saga) {
+    const played = next.saga.sketches.filter((sketch) => sketch.status !== "sketch");
+    // A saga with no sketch at all reads back as no saga (normalizeSaga).
+    next.saga.sketches = (played.length ? played : next.saga.sketches.slice(0, 1)).map((sketch) => ({
+      ...sketch,
+      status: "done" as const,
+    }));
+    next.saga.plannedActs = Math.max(next.acts, next.saga.sketches[next.saga.sketches.length - 1].act);
+    next.saga.concluded =
+      str(how, FIELD_CAP) || "The party settled the saga's central conflict before its planned finale.";
+    if (chapterIndex !== null) {
+      next.saga.turnedAt = chapterIndex;
+    }
+  }
+  reseatActiveBeat(next.beats, null);
+  next.updatedAt = new Date().toISOString();
+  return next;
+}
+
+// The table overtook the plan with the central conflict still open: the
+// rest of the saga is plotted again. The act in play ends where the table
+// left it and the acts ahead are replaced by the new sketches; the arc is
+// then exhausted with a sketch waiting, which is exactly the state the
+// act-detail pass turns into beats (arc.ts planNextAct), so a re-plot
+// lands its first act the way every act lands. Returns the arc unchanged
+// when there is no saga to re-plot or no room for another act.
+export function applyReplot(arc: StoryArc, replot: ArcReplot, chapterIndex: number | null = null): StoryArc {
+  if (!arc.saga || arc.acts >= MAX_ACTS || arc.beats.length >= MAX_BEATS || !replot.sketches.length) {
+    return arc;
+  }
+  const next = cloneArc(arc);
+  const saga = next.saga!;
+  leavePlanBehind(next, new Set(replot.keepEvents));
+  const act = next.acts + 1;
+  const fresh: ActSketch[] = replot.sketches.slice(0, MAX_ACTS - next.acts).map((sketch, index) => ({
+    act: act + index,
+    milestone: sketch.milestone,
+    ...(sketch.title ? { title: sketch.title } : {}),
+    ...(sketch.place ? { place: sketch.place } : {}),
+    boss: sketch.boss ? { ...sketch.boss } : null,
+    allies: [...sketch.allies],
+    hooks: [...sketch.hooks],
+    status: "sketch" as const,
+  }));
+  saga.sketches = [
+    ...saga.sketches
+      .filter((sketch) => sketch.status !== "sketch" && sketch.act < act)
+      .map((sketch) => ({ ...sketch, status: "done" as const })),
+    ...fresh,
+  ];
+  saga.plannedActs = fresh[fresh.length - 1].act;
+  // The old final boss belonged to the old plan; the new last act names
+  // its own when the reply named none.
+  saga.finaleBoss = replot.finaleBoss ?? fresh[fresh.length - 1].boss ?? null;
+  delete saga.concluded;
+  if (chapterIndex !== null) {
+    saga.turnedAt = chapterIndex;
+  }
+  if (replot.stakes) {
+    next.stakes = replot.stakes;
+  }
+  if (replot.antagonist) {
+    next.antagonist = replot.antagonist;
+  }
+  // No finale line is better than the old plan's: the render then names
+  // the new final boss alone.
+  next.finale = replot.finale ?? "";
+  appendCast(next, replot.newCast.slice(0, MAX_NEW_CAST));
+  reseatActiveBeat(next.beats, null);
+  next.updatedAt = new Date().toISOString();
+  return next;
+}
+
+function sameName(a: string, b: string): boolean {
+  return Boolean(textKey(a)) && (textKey(a) === textKey(b) || containsPhrase(a, b) || containsPhrase(b, a));
+}
+
+// The bosses the plan is still saving: one per act not yet reached, and the
+// saga's final boss while an act still stands before the last. `act` is
+// null for the final boss.
+export function plannedBossesAhead(arc: StoryArc): Array<{ name: string; act: number | null }> {
+  const saga = arc.saga;
+  if (!saga || saga.concluded) {
+    return [];
+  }
+  const ahead = saga.sketches.filter((sketch) => sketch.status === "sketch" && sketch.act > arc.acts);
+  const out: Array<{ name: string; act: number | null }> = [];
+  for (const sketch of ahead) {
+    if (sketch.boss && !out.some((entry) => sameName(entry.name, sketch.boss!.name))) {
+      out.push({ name: sketch.boss.name, act: sketch.act });
+    }
+  }
+  if (ahead.length && saga.finaleBoss) {
+    const known = out.find((entry) => sameName(entry.name, saga.finaleBoss!.name));
+    if (known) {
+      known.act = null;
+    } else {
+      out.push({ name: saga.finaleBoss.name, act: null });
+    }
+  }
+  return out;
+}
+
+// Which of those bosses a list of slain foes names. A foe counts when it is
+// called what the boss is called, or by a longer name that holds the boss's
+// whole name; a shorter one must be at least two words of it, so a "Guard"
+// cut down at the gate is never read as the "Captain of the Guard" the
+// last act is waiting for.
+export function fallenBosses(arc: StoryArc, slain: string[]): Array<{ name: string; act: number | null }> {
+  return plannedBossesAhead(arc).filter((boss) =>
+    slain.some(
+      (foe) =>
+        textKey(foe) === textKey(boss.name) ||
+        containsPhrase(foe, boss.name) ||
+        (foe.trim().split(/\s+/).length >= 2 && containsPhrase(boss.name, foe)),
+    ),
+  );
+}
+
+// The antagonist line is a sentence ("Vicar Osseth, who wants the god
+// reborn"); who it names is what stands before its first punctuation, in
+// any language. An opening too long to be a name ("A drowned priestess who
+// seeks to silence all worship") names nobody here, and the final boss,
+// usually the same person, is still checked.
+function antagonistName(antagonist: string): string {
+  const opening = antagonist.split(/[,;:(\u2013\u2014]|\s-\s/)[0].trim();
+  return opening.split(/\s+/).length <= 4 ? opening : "";
+}
+
+type PlanShape = Pick<SagaPlan, "antagonist" | "sketches" | "finaleBoss">;
+
+// What is wrong with the shape of a freshly plotted saga's acts, in words
+// its planner can act on (arc.ts asks for one more plot when there is
+// any). These are the marks of the saga that was one errand cut in four:
+// the villain standing as an early act's boss, one boss or one place
+// serving two acts, and a last act that does not end on the final boss.
+export function sagaPlanProblems(plan: PlanShape): string[] {
+  const sketches = plan.sketches;
+  if (sketches.length < 2) {
+    return [];
+  }
+  const problems: string[] = [];
+  const last = sketches[sketches.length - 1];
+  const finalBoss = plan.finaleBoss?.name || last.boss?.name || "";
+  const villain = antagonistName(plan.antagonist);
+  for (const sketch of sketches.slice(0, -1)) {
+    if (!sketch.boss) {
+      continue;
+    }
+    if (finalBoss && sameName(sketch.boss.name, finalBoss)) {
+      problems.push(
+        `Act ${sketch.act}'s boss is the final boss (${finalBoss}). The final boss is fought in the last act only; give act ${sketch.act} a different boss and keep ${finalBoss} for the last act.`,
+      );
+    } else if (villain && sameName(sketch.boss.name, villain)) {
+      problems.push(
+        `Act ${sketch.act}'s boss (${sketch.boss.name}) is the antagonist. The antagonist stays out of reach until the last act; give act ${sketch.act} a different boss.`,
+      );
+    }
+  }
+  if (last.boss && plan.finaleBoss && !sameName(last.boss.name, plan.finaleBoss.name)) {
+    problems.push(
+      `The last act's boss (${last.boss.name}) is not the final boss (${plan.finaleBoss.name}). The last act ends on the final boss: name the same one in both.`,
+    );
+  }
+  sketches.forEach((sketch, index) => {
+    const before = sketches.slice(0, index);
+    const twin = sketch.boss ? before.find((other) => other.boss && sameName(other.boss.name, sketch.boss!.name)) : undefined;
+    if (twin && sketch !== last) {
+      problems.push(
+        `Acts ${twin.act} and ${sketch.act} share a boss (${sketch.boss!.name}). Each act is its own adventure with its own boss.`,
+      );
+    }
+    const neighbour = sketch.place ? before.find((other) => other.place && sameName(other.place, sketch.place!)) : undefined;
+    if (neighbour) {
+      problems.push(
+        `Acts ${neighbour.act} and ${sketch.act} are set in the same place (${sketch.place}). Each act is set somewhere of its own.`,
+      );
+    }
+  });
+  return problems;
+}
+
+// What is wrong with an opening act written for that plan: its beats
+// belong to act 1. Whoever a later act is saving may be named, seen or
+// revealed in them (that is foreshadowing), but is not fought there. Read
+// from the fight steps, whose kind is the engine's word in every table
+// language, never from the beat's own prose.
+export function openingActProblems(plan: PlanShape, beats: Array<{ waypoints?: Waypoint[] }>): string[] {
+  const sketches = plan.sketches;
+  if (sketches.length < 2) {
+    return [];
+  }
+  const last = sketches[sketches.length - 1];
+  const finalBoss = plan.finaleBoss?.name || last.boss?.name || "";
+  const villain = antagonistName(plan.antagonist);
+  const saved = [
+    ...sketches.slice(1).flatMap((sketch) => (sketch.boss ? [{ name: sketch.boss.name, whose: `act ${sketch.act}'s boss` }] : [])),
+    ...(finalBoss ? [{ name: finalBoss, whose: "the final boss" }] : []),
+    ...(villain ? [{ name: villain, whose: "the antagonist" }] : []),
+  ];
+  const reached = new Map<string, string>();
+  for (const beat of beats) {
+    for (const boss of saved) {
+      const fought = (beat.waypoints ?? []).some((waypoint) => waypoint.kind === "fight" && sameName(waypoint.text, boss.name));
+      if (fought && ![...reached.keys()].some((name) => sameName(name, boss.name))) {
+        reached.set(boss.name, boss.whose);
+      }
+    }
+  }
+  return reached.size
+    ? [
+        `Act 1's beats reach past act 1: they already fight ${[...reached].map(([name, whose]) => `${name} (${whose})`).join(", ")}. Every act 1 beat happens inside act 1 and the last one is act 1's own boss; the later acts' bosses, the antagonist and the final boss are not fought in them.`,
+      ]
+    : [];
+}
+
+// Both, for a saga already assembled.
+export function sagaShapeProblems(arc: StoryArc): string[] {
+  if (!arc.saga) {
+    return [];
+  }
+  const plan = { antagonist: arc.antagonist, sketches: arc.saga.sketches, finaleBoss: arc.saga.finaleBoss };
+  return [...sagaPlanProblems(plan), ...openingActProblems(plan, arc.beats.filter((beat) => beat.act === 1))];
 }
 
 // One-time v1 -> v2 upgrade: adds the cast and event layers and tags beats
@@ -2059,17 +2703,25 @@ export function renderArcForPrompt(arc: StoryArc, cues?: SceneCues): string {
 export function renderArcPrompt(arc: StoryArc, cues?: SceneCues): { text: string; trace: ArcTrace } {
   const trace: ArcTrace = { events: [], beats: { shown: 0, total: arc.beats.length }, chars: 0, budgetChars: 0 };
   const lines = [
-    "GM story arc (secret; steer scenes toward the [NOW] beat while improvising freely on the way there; never reveal, quote, or rush it). When your narration actually accomplishes the [NOW] beat, call complete_beat in that same reply. A beat listed with waypoints cannot complete until every one is ticked, but they are a checklist, not a schedule: play reaches each in its own time. The server ticks them from your move_party, update_location, set_npc, npc_reaction, social_check, grant_item, purchase, tick_objective and end_encounter calls when the party reaches a place, meets a person, gains a thing, finishes an objective or wins a fight; pass the step's number as `waypoint` on that call, whatever you call the place, person or thing:",
+    "GM story arc (secret; steer scenes toward the [NOW] beat while improvising freely on the way there; never reveal, quote, or rush it). The plan follows the table, never the reverse: once play has settled, killed or left behind what a beat, event or act ahead is about, never steer back to it or stage it again; play on from what is true now, and the plan is rewritten at the chapter break. The final boss and the bosses of later acts are out of reach until their acts (the party finds their agents, traces and traps); one the party ends early all the same stays ended. When your narration actually accomplishes the [NOW] beat, call complete_beat in that same reply. A beat listed with waypoints cannot complete until every one is ticked, but they are a checklist, not a schedule: play reaches each in its own time. The server ticks them from your move_party, update_location, set_npc, npc_reaction, social_check, grant_item, purchase, tick_objective and end_encounter calls when the party reaches a place, meets a person, gains a thing, finishes an objective or wins a fight; pass the step's number as `waypoint` on that call, whatever you call the place, person or thing:",
     `Premise: ${arc.premise}`,
   ];
-  if (arc.stakes) {
-    lines.push(`Stakes: ${arc.stakes}`);
-  }
-  if (arc.antagonist) {
-    lines.push(`Antagonist: ${arc.antagonist}`);
+  const saga = arc.saga;
+  // A saga the table ended early has no stakes left to raise and no
+  // antagonist left to play: naming them every turn is how a GM kept
+  // steering at a villain the party had already beaten.
+  const endedEarly = saga?.concluded ?? "";
+  if (endedEarly) {
+    lines.push(`The party ended this saga's central conflict ahead of the plan: ${endedEarly}`);
+  } else {
+    if (arc.stakes) {
+      lines.push(`Stakes: ${arc.stakes}`);
+    }
+    if (arc.antagonist) {
+      lines.push(`Antagonist: ${arc.antagonist}`);
+    }
   }
 
-  const saga = arc.saga;
   const activeIndex = arc.beats.findIndex((beat) => beat.status === "active");
   const currentAct = activeIndex >= 0 ? arc.beats[activeIndex].act : arc.acts;
   if (saga) {
@@ -2162,7 +2814,7 @@ export function renderArcPrompt(arc: StoryArc, cues?: SceneCues): { text: string
       (sketch) => sketch.status === "sketch" && sketch.act > arc.acts,
     );
     ahead.slice(0, RENDER_FUTURE_SKETCHES).forEach((sketch, index) => {
-      const boss = sketch.boss ? ` | planned boss: ${sketch.boss.name}` : "";
+      const boss = `${sketch.place ? ` | at: ${sketch.place}` : ""}${sketch.boss ? ` | planned boss: ${sketch.boss.name}` : ""}`;
       const extras =
         index === 0
           ? `${sketch.allies.length ? ` | planned allies: ${sketch.allies.join("; ")}` : ""}${sketch.hooks.length ? ` | party hooks: ${sketch.hooks.join("; ")}` : ""}`
@@ -2175,7 +2827,9 @@ export function renderArcPrompt(arc: StoryArc, cues?: SceneCues): { text: string
     }
   }
 
-  if (arc.finale) {
+  if (endedEarly) {
+    // The planned finale never came and never will.
+  } else if (arc.finale) {
     lines.push(
       `Finale: ${arc.finale}${saga?.finaleBoss ? ` | final boss: ${saga.finaleBoss.name}` : ""}`,
     );
@@ -2191,6 +2845,10 @@ export function renderArcPrompt(arc: StoryArc, cues?: SceneCues): { text: string
     if (nextSketchAct(arc)) {
       lines.push(
         "The current act is complete; the next act will be planned at the chapter break. Play a breather or transition scene that follows from what just happened, and do not open a new major storyline yourself.",
+      );
+    } else if (endedEarly) {
+      lines.push(
+        "This saga is over, sooner than planned; a sequel saga will be planned at the chapter break. Play the aftermath of what the party actually did and let them savor it. The [skipped] beats never happened: never steer toward them, and do not open a new major storyline yourself.",
       );
     } else if (saga) {
       lines.push(

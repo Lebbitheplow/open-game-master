@@ -1,3 +1,5 @@
+import { getClock } from "@/lib/db/clock";
+import { carryDroppedItems } from "@/lib/db/dropped-items";
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
@@ -96,7 +98,7 @@ import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { generateImageTool, parseGenerateImageToolCall } from "@/lib/image-tool";
 import { createStreamingArtifactFilter, extractReplyText, extractStoryText } from "@/lib/story-prompt";
-import { salvageJsonToolCalls } from "@/lib/dm/json-salvage";
+import { salvageJsonToolCalls, salvageWrittenCalls } from "@/lib/dm/json-salvage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { fulfillAutoImage } from "@/lib/dm/images";
 import { imagesAvailable } from "@/lib/capabilities";
@@ -188,6 +190,7 @@ import { conscienceSecretLines, souredLeaving } from "@/lib/dm/conscience";
 import { companionMomentBlock, settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { intentLinesForPrompt } from "@/lib/dm/departure";
 import { partySplit, splitsParty } from "@/lib/dm/party-split";
+import { ridingAboard } from "@/lib/dm/march-state";
 import { agendaLinesForPrompt } from "@/lib/dm/companion-agenda";
 import { pactLinesForPrompt } from "@/lib/dm/pacts";
 import { returnDirectorNotes } from "@/lib/dm/companion-revenge";
@@ -347,7 +350,7 @@ import {
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
 import { fightNames, getActiveEncounter, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { atTheFight } from "@/lib/dm/fight-away-logic";
-import { onFoot } from "@/lib/dm/mount-link";
+import { takesOwnTurn } from "@/lib/dm/mount-link";
 import { enemyMoveBudget, enemyMovementNote } from "@/lib/dm/enemy-speed";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { pcMoveBudget } from "@/lib/battlemap/view";
@@ -517,7 +520,7 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       : [],
     awaitingInitiative: encounter.orderReady
       ? []
-      : onFoot(campaignId, atTheFight(encounter, sheets)).filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
+      : takesOwnTurn(campaignId, atTheFight(encounter, sheets)).filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
     // Named while they stay away, so the GM can still bring them in: nothing
     // else in the state says they exist once the order has closed.
     ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
@@ -1691,7 +1694,9 @@ export function dmTurnTuning(campaign: Campaign): ModelTuning {
 function toolSetTokens(campaign: Campaign, profile: ToolProfile): number {
   const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   const leanTools = profile === "lean";
-  if (campaign.settings.textProvider === "harness") {
+  // A program on the compact profile (HarnessAdapter.reducedTools) is
+  // served each call's compact set, so it is charged like any compact call.
+  if (campaign.settings.textProvider === "harness" && profile !== "compact") {
     return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, imageEnabled, leanTools))));
   }
   if (profile === "compact") {
@@ -2284,8 +2289,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const replyText = extractReplyText(message?.content);
     const onlyStrayJson = (text: string) => {
       const xml = salvageXmlToolCalls(text);
-      const salvaged = salvageJsonToolCalls(xml.text, tools);
-      return !xml.calls.length && !salvaged.calls.length && !withoutServerLines(extractStoryText(salvaged.text)).trim();
+      const written = salvageWrittenCalls(xml.text, tools);
+      const salvaged = salvageJsonToolCalls(written.text, tools);
+      return !xml.calls.length && !written.calls.length && !salvaged.calls.length && !withoutServerLines(extractStoryText(salvaged.text)).trim();
     };
     lastReplyEmpty =
       !extractToolCalls(message?.tool_calls).length && (!replyText.trim() || onlyStrayJson(replyText));
@@ -2309,14 +2315,17 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
 
     // Salvage tool calls the model wrote as literal text so they still run
     // (and never reach players as raw text), then merge them with the
-    // structured calls under synthetic ids for tool-result pairing. Four
+    // structured calls under synthetic ids for tool-result pairing. Five
     // nets, in order: the model's native XML dialect (llama-server's
-    // extraction intermittently misses it), bare JSON arguments (read before
-    // extractStoryText, which takes a reply that is one JSON object for the
-    // structured story format and would swallow it), bracket leaks, prose
-    // roll-asks.
+    // extraction intermittently misses it), a call written as a function or
+    // as argument lines (issue 1025; before the JSON, so a function's JSON
+    // arguments keep the name it gives them), bare JSON arguments (read
+    // before extractStoryText, which takes a reply that is one JSON object
+    // for the structured story format and would swallow it), bracket leaks,
+    // prose roll-asks.
     const xmlSalvage = salvageXmlToolCalls(extractReplyText(message?.content));
-    const jsonSalvage = salvageJsonToolCalls(xmlSalvage.text, tools);
+    const writtenSalvage = salvageWrittenCalls(xmlSalvage.text, tools);
+    const jsonSalvage = salvageJsonToolCalls(writtenSalvage.text, tools);
     const salvage = salvageTextualToolCalls(extractStoryText(jsonSalvage.text));
     // The reply's prose, read once by the claims reader (src/lib/dm/claims.ts)
     // for the rolls it asks in words, a fight it announces, a blow it lands,
@@ -2329,6 +2338,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const structuredCalls = [
       ...extractToolCalls(message?.tool_calls),
       ...xmlSalvage.calls,
+      ...writtenSalvage.calls,
       ...jsonSalvage.calls,
       ...salvage.calls,
     ];
@@ -2343,7 +2353,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       : null;
     const claims = inEncounter ? read?.claims ?? [] : initiativeStartsFight(read?.claims ?? []);
     const proseRolls = rollAsksFromClaims(salvage.text, claims, sheets);
-    const salvagedCalls = [...xmlSalvage.calls, ...jsonSalvage.calls, ...salvage.calls, ...proseRolls.calls];
+    const salvagedCalls = [...xmlSalvage.calls, ...writtenSalvage.calls, ...jsonSalvage.calls, ...salvage.calls, ...proseRolls.calls];
     const visibleText = proseRolls.text;
     const echoedToolCalls = salvagedCalls.length
       ? [
@@ -3103,6 +3113,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     (finalCallLeaked || finalRepeated || (lastReplyEmpty && !turn.playerWhisperIds.length))
   ) {
     failed = await narrateAfterToolLeak(context, turn, finalRepeated);
+  } else if (!failed && !turn.narrationParts.length && !turn.playerWhisperIds.length) {
+    // Named in the log: turns that ran pass_time or take_rest reached the
+    // table as "The GM had no answer" with nothing to say why (fork PR 1019).
+    console.warn(`[dm-turn] turn ${turn.id}: the loop ended after ${turn.callIndex} call(s) with no narration and no rescue (last reply empty: ${lastReplyEmpty}).`);
   }
   // A card no call carried out, the correction included, did not happen: it
   // goes back to its player, and the guard keeps the story from telling it
@@ -3815,6 +3829,10 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn, repeated
   // An earlier passage said again is no narration of this turn (issue 942).
   const again = Boolean(read) && repeatsEarlierNarration(read, recentGmNarrations(campaignId));
   const narration = again ? "" : read;
+  if (!narration) {
+    // Why the rescue left the turn empty, for whoever runs the server.
+    console.warn(`[dm-turn] turn ${turn.id}: tools-closed narration empty (${error ? `error ${failure?.code ?? "?"}` : !prose ? "no prose" : !read ? "all asides" : "a repeat"}).`);
+  }
   if (narration) {
     turn.narrationParts.push(narration);
   }
@@ -3882,11 +3900,13 @@ async function ensureWhisperReplies(context: TurnContext, turn: DmTurn) {
   noteTurnCall(turn, "whisper_backstop", [sendWhisperTool], backstop);
   const { message } = backstop;
   const xmlSalvage = salvageXmlToolCalls(extractReplyText(message?.content));
-  const jsonSalvage = salvageJsonToolCalls(xmlSalvage.text, [sendWhisperTool]);
+  const writtenSalvage = salvageWrittenCalls(xmlSalvage.text, [sendWhisperTool]);
+  const jsonSalvage = salvageJsonToolCalls(writtenSalvage.text, [sendWhisperTool]);
   const salvage = salvageTextualToolCalls(extractStoryText(jsonSalvage.text));
   const whisperCalls = [
     ...extractToolCalls(message?.tool_calls),
     ...xmlSalvage.calls,
+    ...writtenSalvage.calls,
     ...jsonSalvage.calls,
     ...salvage.calls,
   ].filter((toolCall) => toolCall.name === "send_whisper");
@@ -4031,6 +4051,7 @@ export function handleLocationCall(
     direction?: unknown;
     distance?: unknown;
     characterIds?: unknown;
+    aboard?: unknown;
   };
   try {
     args = JSON.parse(rawArguments || "{}");
@@ -4081,6 +4102,8 @@ export function handleLocationCall(
   // them to a place with no kind of its own (#929).
   let leftBed: string | null = null;
   let split = "";
+  // Things lying aboard what the party travels on, carried along.
+  let carried = 0;
   if (toolName === "move_party") {
     const name = typeof args.name === "string" ? args.name.trim() : "";
     if (!name) {
@@ -4101,6 +4124,12 @@ export function handleLocationCall(
     }
     setOutFrom = previous?.id ?? null;
     movedToNewLocation = !previous || previous.id !== location.id;
+    // Aboard a raft, a boat or a cart, what lies on its deck comes along: the
+    // model says so, or the last leg was ridden aboard (travel's aboard) and
+    // no time has passed since. Not on a split: who took the boat is unsaid.
+    if (movedToNewLocation && previous && !splitsParty(campaign, args.characterIds) && (args.aboard === true || ridingAboard(getClock(campaign.id)))) {
+      carried = carryDroppedItems(campaign.id, previous.name, location.name);
+    }
     leftBed = movedToNewLocation ? previous?.ambience?.bed || null : null;
     returnedTo =
       movedToNewLocation &&
@@ -4214,6 +4243,7 @@ export function handleLocationCall(
           ? `Recorded. ${peopled} Continue the scene.`
           : "Recorded. Continue the scene.") +
       filedNote +
+      (carried ? ` ${carried} thing(s) lying aboard came along and lie here now.` : "") +
       (split ? ` ${split}` : "") +
       sceneNote,
     // Consumed by advance() as the chapter-break and inline-map signals,

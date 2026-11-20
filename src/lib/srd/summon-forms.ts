@@ -94,6 +94,3 @@ export function summonFormsOf(types: string[], maxCr: number): SummonForm[] {
   return SUMMON_FORMS.filter((form) => types.includes(form.type) && form.cr <= maxCr);
 }
 
-export function summonFormNames(): string[] {
-  return SUMMON_FORMS.map((form) => form.name);
-}

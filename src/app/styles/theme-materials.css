@@ -179,7 +179,8 @@ html[data-theme-ornaments="true"][data-theme] .cine-lobby .cine-backdrop,
 html[data-theme-ornaments="true"][data-theme] .cine-lobby .cine-scrim-stack { display: none; }
 html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell {
   position: relative;
-  border: 26px solid transparent;
+  /* The theme's painted rail fills this band (theme-ornaments.css). */
+  border: var(--theme-lobby-frame-width, 26px) solid transparent;
   border-radius: 12px;
   background:
     linear-gradient(var(--material-paper), var(--material-paper)) padding-box,
@@ -366,7 +367,7 @@ html[data-theme-ornaments="true"][data-theme] .lobby-seat[data-ready] {
 @media (max-width: 540px) {
   html[data-theme-ornaments="true"][data-theme] .cine-lobby { padding: 12px 8px; }
   html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell {
-    border-width: 12px;
+    border-width: var(--theme-lobby-frame-width-small, 12px);
     padding: 8px;
   }
   html[data-theme-ornaments="true"][data-theme] .lobby-actions { padding: 8px; }

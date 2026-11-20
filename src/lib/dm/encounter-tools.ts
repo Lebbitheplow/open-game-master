@@ -153,7 +153,8 @@ import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, typ
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { proneRiders, settleProneRiders } from "@/lib/dm/mount-thrown";
-import { onFoot } from "@/lib/dm/mount-link";
+import { settleMovedRiders } from "@/lib/dm/mount-tools";
+import { onFoot, riderCarriedBy, takesOwnTurn } from "@/lib/dm/mount-link";
 import { rollDeathSave } from "@/lib/dm/death";
 import { risesWithVengeance } from "@/lib/dm/searing-vengeance";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
@@ -168,7 +169,6 @@ import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects
 import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { beginHeldTurn, startHeldTurn } from "@/lib/dm/held-turn";
 import { heldMoveLine, holdMoveForWatch } from "@/lib/dm/turn-hold";
-import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
@@ -397,8 +397,9 @@ function handleStartEncounter(
   }
   const awayIds = withFollowers(away.ids, sheets);
   const awaySheets = sheets.filter((sheet) => awayIds.includes(sheet.id));
-  // A creature carrying a rider fights under them (mount-link.ts onFoot).
-  sheets = onFoot(campaign.id, sheets.filter((sheet) => !awayIds.includes(sheet.id)));
+  // A creature carrying a rider as a controlled mount fights under them; an
+  // independent one rolls its own initiative (mount-link.ts takesOwnTurn).
+  sheets = takesOwnTurn(campaign.id, sheets.filter((sheet) => !awayIds.includes(sheet.id)));
   // Nobody left would roll, so the order would never close.
   if (awayIds.length && !fightingParty(campaign, sheets).length) {
     return {
@@ -432,8 +433,8 @@ function handleStartEncounter(
   // ("Hunter", "Hunter 1", "Hunter 2" are Hunter 1, 2 and 3: issue 98). A
   // creature back from an earlier fight keeps the name it had there ("Raider
   // 2" is still Raider 2), so it is numbered as one already here.
-  const carriedAt = rows.flatMap((entry, index) => (arrivals.carries[index] ? [index] : []));
-  const freshAt = rows.flatMap((entry, index) => (arrivals.carries[index] ? [] : [index]));
+  const carriedAt = rows.flatMap((_entry, index) => (arrivals.carries[index] ? [index] : []));
+  const freshAt = rows.flatMap((_entry, index) => (arrivals.carries[index] ? [] : [index]));
   const numbered = nameArrivals(carriedAt.map((index) => rows[index].name), freshAt.map((index) => rows[index].name));
   const names = rows.map((entry) => entry.name);
   freshAt.forEach((rowIndex, index) => {
@@ -510,7 +511,8 @@ function handleStartEncounter(
   // with no board has nobody to move and no way to go on (issue 741).
   let placed: ReturnType<typeof createBattleMapForEncounter>;
   try {
-    placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
+    // Whoever carries a rider stands on the rider's token (mount-link.ts onFoot).
+    placed = createBattleMapForEncounter(campaign, encounter, enemies, onFoot(campaign.id, sheets), args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
   } catch (error) {
     endEncounter(encounter.id, "the board could not be set");
     throw error;
@@ -803,8 +805,8 @@ function placeInitiativeRoll(
   if (!sheet || encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === characterId)) {
     return null;
   }
-  // A creature carrying a rider has its rider's initiative, not a roll of its own (mount-link.ts).
-  if (!onFoot(campaignId, [sheet]).length) {
+  // A creature carrying a rider as a controlled mount has its rider's initiative, not a roll of its own (mount-link.ts).
+  if (!takesOwnTurn(campaignId, [sheet]).length) {
     return `${sheet.name} is carrying a rider and acts on their turn: it takes no place of its own in the order.`;
   }
   if (encounter.orderReady) {
@@ -839,7 +841,7 @@ function placeInitiativeRoll(
   const campaignForRoster = getCampaignById(campaignId);
   // The dead roll nothing (request_roll refuses them), so the order is not
   // held open waiting on them.
-  const sheets = onFoot(campaignId, atTheFight(encounter, campaignForRoster ? fieldedSheets(campaignForRoster) : listSheets(campaignId))).filter(
+  const sheets = takesOwnTurn(campaignId, atTheFight(encounter, campaignForRoster ? fieldedSheets(campaignForRoster) : listSheets(campaignId))).filter(
     (entry) => !entry.deathSaves?.dead,
   );
   const staged = encounter.order.filter(
@@ -988,7 +990,7 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
   );
   // Rolling for one who is away would bring them to the fight.
   const held = heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaign.id));
-  const missing = onFoot(campaign.id, atTheFight(encounter, fieldedSheets(campaign))).filter(
+  const missing = takesOwnTurn(campaign.id, atTheFight(encounter, fieldedSheets(campaign))).filter(
     (sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead && !held.has(sheet.userId),
   );
   if (!missing.length) {
@@ -1653,7 +1655,9 @@ function resumeAfter(before: Pick<TurnHolder, "order" | "turnIndex">, order: Ord
 // A rider the call knocked prone makes the save to stay mounted here as well
 // (mount-thrown.ts): prone reaches a sheet from too many doors to ask at each.
 export function settleTurn(campaign: Campaign, before: TurnHolder | null): string[] {
-  const thrown = before ? settleProneRiders(campaign, before.proneRiders) : [];
+  // A rider the call pushed, pulled or dragged makes the same save, asked
+  // first: one thrown by the move is prone by the fall, which asks no second.
+  const thrown = [...settleMovedRiders(campaign), ...(before ? settleProneRiders(campaign, before.proneRiders) : [])];
   if (before) {
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
@@ -1993,7 +1997,9 @@ function advancePointer(
     forgetEnemyTurns(encounter, starting);
     const map = getBattleMapForEncounter(encounter.id);
     if (map) {
-      resetTurnBudgets(map.id, starting);
+      // An independent mount's turn starts the movement of the token it
+      // shares with its rider (issue 1036): the pair stands on the rider's.
+      resetTurnBudgets(map.id, [...starting, ...starting.flatMap((id) => riderCarriedBy(campaign.id, id) ?? [])]);
       publishBattleMapUpdate(campaign.id);
     }
   }
@@ -2592,6 +2598,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 // plays enemies outside one (after the narration, or resumed after a held
 // roll), so it asks here, once for the stretch it played.
 function settleBackstopRiders(campaign: Campaign, holder: TurnHolder | null) {
+  settleMovedRiders(campaign);
   if (holder) {
     settleProneRiders(campaign, holder.proneRiders);
   }

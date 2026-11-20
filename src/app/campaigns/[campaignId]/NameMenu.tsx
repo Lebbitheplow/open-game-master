@@ -206,6 +206,7 @@ export function NameMenu({ menu, anchor }: { menu: NameMenuState; anchor: RefObj
     return null;
   }
   return createPortal(
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- it only stops a press from taking the focus out of the text box; a keyboard never needs it
     <div
       className="name-menu-anchor"
       style={{ left: box.left, top: box.top - 6, width: box.width }}
@@ -262,6 +263,7 @@ function NameRow({
   return (
     <>
       {heading ? <div role="presentation" className="reveal palette-group">{heading}</div> : null}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- the text box owns the keyboard (aria-activedescendant): the arrows light a row and Enter writes it, so a row takes no focus and needs only the click */}
       <div
         id={id}
         role="option"

@@ -144,7 +144,6 @@ export function DmEncounterPrepPanel({
   sheets?: CharacterSheet[];
 }) {
   const t = useT();
-  const tp = useTp();
   const [testing, setTesting] = useState<PreparedEncounter | null>(null);
   const test = useTestFight(testFight?.workshopId ?? null);
   const [templates, setTemplates] = useState<PreparedEncounter[]>([]);

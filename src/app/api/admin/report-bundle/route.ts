@@ -1,5 +1,6 @@
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { buildReportBundle, chosenParts, offeredParts } from "@/lib/report-bundle";
+import { reportBundleBodySchema } from "@/lib/schemas/report-bundle";
 import { ADMIN_REPORT_VIEWER, adminReportSetup, adminReportSources, reportAddresses, reportCheckFirst, reportSecrets } from "@/lib/report-bundle-server";
 
 export const runtime = "nodejs";
@@ -28,8 +29,11 @@ export async function POST(request: Request) {
   if (isErrorResponse(admin)) {
     return admin;
   }
-  const body = (await request.json().catch(() => ({}))) as { parts?: unknown } | null;
-  const parts = chosenParts(body?.parts, ADMIN_REPORT_VIEWER);
+  const parsed = reportBundleBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Say which parts to include, each yes or no." }, { status: 400 });
+  }
+  const parts = chosenParts(parsed.data.parts, ADMIN_REPORT_VIEWER);
   const bundle = buildReportBundle({
     sources: await adminReportSources(parts),
     parts,

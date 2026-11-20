@@ -25,7 +25,6 @@
 // SWEEP_CLAUSES_FINDINGS=<file> rewrites that file's lines for this suite,
 // one JSON object per open gap, with what the run observed.
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,30 +33,11 @@ import { suite } from "./enforce-harness.mjs";
 import { combatKit, d20Faces, TRAINED } from "./enforce-combat.mjs";
 import { kit as conditionsKit } from "./enforce-conditions.mjs";
 
-export const SLICE = ["fighter", "barbarian", "monk", "rogue"];
 export const SOURCE = "src/lib/srd/subclasses.json";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const LEDGER_FILE = path.join(here, "../clauses/martial.json");
-const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(here, "../../src/lib/srd", relative), "utf8"));
 
-export const sha = (text) => createHash("sha256").update(text).digest("hex").slice(0, 12);
 export const readLedger = () => JSON.parse(fs.readFileSync(LEDGER_FILE, "utf8"));
-
-// Every feature of the slice, in the table's order.
-export function sliceFeatures() {
-  const out = [];
-  const table = readJson("subclasses.json").classes;
-  for (const classId of SLICE) {
-    for (const subclass of table[classId]) {
-      for (const [level, features] of Object.entries(subclass.levels)) {
-        for (const feature of features) {
-          out.push({ key: `${classId}::${feature.n}`, classId, subclass: subclass.name, level: Number(level), name: feature.n, text: feature.d, sha: sha(feature.d) });
-        }
-      }
-    }
-  }
-  return out;
-}
 
 // The ledger's clauses that name a probe of `file`, by probe id.
 export function clausesPointingAt(file, ledger = readLedger()) {

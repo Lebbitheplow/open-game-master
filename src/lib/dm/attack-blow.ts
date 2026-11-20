@@ -43,6 +43,7 @@ import { partyChargeAfterHit } from "@/lib/dm/party-charge";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 import { healCasterHalf, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { textKey } from "@/lib/language/text-logic";
@@ -89,10 +90,16 @@ export function landSwingBlow(
     ...(record.mageSlayer ? { concentrationDisadvantage: true } : {}),
     blow: record.blow ?? {},
   };
-  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number, doubled = false) =>
-    landRoll(roll.id, enemy.id, () =>
+  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number, doubled = false) => {
+    // A spell attack that hurt the creature: Power Surge reads it
+    // (spell-damage-mark.ts). Both dice paths land here, so both mark.
+    if (record.spell && dealt > 0) {
+      markSpellDamage(campaign.id, sheet.id, enemy.id, record.spell);
+    }
+    return landRoll(roll.id, enemy.id, () =>
       landBlow({ ...blowFlags, campaign, turn: scene.turn, encounter, enemy, sheets: scene.sheets, sheetsById: scene.sheetsById, profile, typedRiders: typed, damageOutcome, dealt, crit, critExtraDice, doubled }),
     );
+  };
   // Acid Arrow's miss: half of the spell's dice, under its own type alone.
   if (ask.half) {
     const half = Math.floor(Math.max(0, damageOutcome.total) / 2);

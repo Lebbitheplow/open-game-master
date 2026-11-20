@@ -51,7 +51,6 @@ const abilityOptions = (t: (key: string) => string) => SPECIES_SPELL_ABILITIES.m
 // a cantrip shows no uses before the save names it.
 function SpellRow({ row, put, remove }: { row: Data; put: (next: Data) => void; remove: () => void }) {
   const t = useT();
-  const tp = useTp();
   const name = String(row.spell ?? "");
   const circle = typeof row.circle === "number" ? row.circle : null;
   const cantrip = circle === 0;

@@ -167,7 +167,6 @@ export function movedText(moves: Placement[], t: (key: string, vars?: Record<str
 // What the current map is to the Region, and the steps it offers.
 export function RegionBar({ region, atlas, pins }: { region: AtlasRegion; atlas: AtlasMap; pins: Pin[] }) {
   const t = useT();
-  const tp = useTp();
   const over = atlas.role === "region";
   const placeable = pins.filter(namesPlace);
   if (over) {
@@ -211,7 +210,6 @@ export function RegionBar({ region, atlas, pins }: { region: AtlasRegion; atlas:
 
 export function PlacementList({ placements }: { placements: Placement[] }) {
   const t = useT();
-  const tp = useTp();
   return (
     <ul className="flex flex-col gap-0.5" data-testid="atlas-region-placements">
       {placements.map((placement) => (
@@ -228,7 +226,6 @@ export function PlacementList({ placements }: { placements: Placement[] }) {
 // The review a step answers with, and the choice to go ahead.
 export function RegionReview({ region }: { region: AtlasRegion }) {
   const t = useT();
-  const tp = useTp();
   const [clear, setClear] = useState(false);
   const { step } = region;
   if (!step) return null;
@@ -293,7 +290,6 @@ export function RegionReview({ region }: { region: AtlasRegion }) {
 // What a step or a move just did, with an Undo where one is possible.
 export function RegionNoticeLine({ region }: { region: AtlasRegion }) {
   const t = useT();
-  const tp = useTp();
   const [undoing, setUndoing] = useState(false);
   const { notice, setNotice } = region;
   if (!notice) return null;
@@ -331,7 +327,6 @@ export function RegionNoticeLine({ region }: { region: AtlasRegion }) {
 // Bound pins on this map whose place stands somewhere else on the Region.
 export function OutOfStep({ region, atlas }: { region: AtlasRegion; atlas: AtlasMap }) {
   const t = useT();
-  const tp = useTp();
   const drifted = atlas.role === "region" ? (region.bridge?.pins ?? []).filter((pin) => !pin.inStep) : [];
   if (!drifted.length) return null;
   return (
@@ -356,7 +351,6 @@ export function OutOfStep({ region, atlas }: { region: AtlasRegion; atlas: Atlas
 // The pin card's part: place it, or release it.
 export function PinRegionActions({ region, pin, atlas }: { region: AtlasRegion; pin: Pin; atlas: AtlasMap }) {
   const t = useT();
-  const tp = useTp();
   if (!namesPlace(pin)) return null;
   if (isBound(pin, atlas)) {
     return (

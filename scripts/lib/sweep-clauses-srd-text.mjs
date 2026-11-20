@@ -27,7 +27,6 @@ export const RULEBOOK = "src/lib/rulebook/srd-5.1.json";
 export const HELP = "src/lib/help/srd-features.json";
 export const FEATS = "src/lib/srd/authored-feats.json";
 export const RACES = "src/lib/srd/races.json";
-export const CLASS_FEATURES = "src/lib/srd/class-features.json";
 
 export const sha12 = (text) => crypto.createHash("sha256").update(text, "utf8").digest("hex").slice(0, 12);
 
@@ -267,23 +266,6 @@ export function sentencesOf(text) {
   }
   return out;
 }
-
-// Wording that states a mechanic: a sentence with none of it and no clause
-// of its own is flavor. Wide on purpose, so nothing mechanical slips by as
-// flavor unread; what it catches wrongly is given a clause by hand.
-const MECHANIC = new RegExp(
-  [
-    "\\d", "\\bd(?:4|6|8|10|12|20)\\b", "\\bDC\\b", "saving throw", "\\bsaves?\\b", "ability check", "attack roll", "damage", "hit points?", "\\bregain", "\\bheal",
-    "advantage", "resistan", "immun", "proficien", "\\bbonus\\b", "\\breaction\\b", "\\baction\\b", "\\bspeed\\b", "\\bfeet\\b", "\\bfoot\\b", "\\brange\\b",
-    "frightened", "charmed", "stunned", "\\bprone\\b", "restrained", "blinded", "deafened", "invisible", "paralyzed", "poisoned", "incapacitated", "grappled", "unconscious", "exhaustion",
-    "can't", "cannot", "\\bmust\\b", "\\bonce\\b", "\\btwice\\b", "\\buses?\\b", "\\brest\\b", "spell slot", "\\bspells?\\b", "cantrip", "\\blevel\\b", "\\bturn\\b", "\\bround\\b", "\\bminute", "\\bhour",
-    "\\bArmor Class\\b", "\\bAC\\b", "critical", "\\bmodifier\\b", "\\bscore\\b", "\\bchoose\\b", "\\bchoice\\b", "\\blearn", "\\bgain", "\\bextra\\b", "\\badditional\\b", "\\bdouble", "\\bhalf\\b", "\\bhalve",
-    "\\bmove", "\\bclimb", "\\bjump", "\\bswim", "\\bfly", "\\bteleport", "\\bhide\\b", "\\bhidden\\b", "\\battack", "\\bweapon", "\\barmor\\b", "\\bshield", "concentrat", "\\britual", "\\bprepare", "\\blanguage",
-    "\\bki\\b", "sorcery point", "\\brage\\b", "\\braging\\b", "\\binspiration\\b", "\\bimmune\\b", "\\bdisease", "\\bpoison", "\\btarget", "\\bcreature", "\\bdie\\b", "\\bdice\\b", "\\broll",
-  ].join("|"),
-  "i",
-);
-export const statesMechanic = (sentence) => MECHANIC.test(sentence);
 
 // Whether a clause covers a sentence: one holds the other, or they overlap
 // where the clause was cut mid-sentence.

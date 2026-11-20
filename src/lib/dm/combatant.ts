@@ -13,13 +13,7 @@
 // Database reads only; nothing here publishes or writes, so the engine's
 // lowest layers (summon-store, companion-command, the damage paths) may ask.
 
-import {
-  getEnemy,
-  listEnemies,
-  type Encounter,
-  type EncounterEnemy,
-  type OrderEntry,
-} from "@/lib/db/encounters";
+import { getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import {
   dominatorOf,
@@ -68,20 +62,8 @@ export function sideOf(encounter: SidedEncounter, kind: CombatantKind, id: strin
   return storedSide(encounter.sides, kind, id);
 }
 
-// An order entry's side; a DM's hand-added slot (an "npc" entry) has none.
-export function entrySide(encounter: SidedEncounter, entry: OrderEntry): CombatSide | null {
-  if (entry.kind === "pc") {
-    return sideOf(encounter, "sheet", entry.characterId);
-  }
-  return entry.kind === "enemy" ? sideOf(encounter, "enemy", entry.enemyId) : null;
-}
-
 export function sheetSide(encounter: SidedEncounter | null, sheetId: string): CombatSide {
   return encounter ? sideOf(encounter, "sheet", sheetId) : "party";
-}
-
-export function enemySide(encounter: SidedEncounter | null, enemyId: string): CombatSide {
-  return encounter ? sideOf(encounter, "enemy", enemyId) : "foe";
 }
 
 // Whether two combatants fight on opposite sides.

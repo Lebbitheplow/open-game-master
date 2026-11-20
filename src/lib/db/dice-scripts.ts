@@ -188,7 +188,7 @@ export function clearDiceScript(campaignId: string): void {
 // What a die spent of the script is kept under the turn rolling it, so
 // "Revert this turn" gives it back (issue 685). Never in the way of the
 // roll: a record that cannot be written leaves the face as it fell.
-function noteSpent(campaignId: string, record: (turnId: string) => void) {
+function noteSpent(record: (turnId: string) => void) {
   const turnId = currentTurnId();
   if (!turnId) {
     return;
@@ -383,7 +383,7 @@ function scriptedDie(sides: number, frame: RollFrame): number | null {
       if (forcesWholeD20(forced.kind)) {
         frame.forcedD20 = forced.face;
       }
-      noteSpent(campaignId, (turnId) =>
+      noteSpent((turnId) =>
         recordTurnChange(campaignId, turnId, "dice_face", { forced, position: at, used: spent, line: `Forced die: ${describeUsed(spent)}` }),
       );
       return forced.face;
@@ -398,7 +398,7 @@ function scriptedDie(sides: number, frame: RollFrame): number | null {
       campaignId,
     );
     const seed = row.seed;
-    noteSpent(campaignId, (turnId) => noteSeedRun(campaignId, turnId, { seed, from, to: { state: next.state, rolls: from.rolls + 1 } }));
+    noteSpent((turnId) => noteSeedRun(campaignId, turnId, { seed, from, to: { state: next.state, rolls: from.rolls + 1 } }));
     return next.face;
   } catch (error) {
     // A script that cannot be read never stops a roll: the die is rolled

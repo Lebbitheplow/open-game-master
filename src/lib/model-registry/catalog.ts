@@ -17,6 +17,7 @@ import type { HarnessId, HarnessModel } from "@/lib/harness/types";
 import type { ListedModel } from "@/lib/setup/discovery-logic";
 import snapshot from "./snapshot.json";
 import { translate } from "@/lib/messages-logic";
+import { storyWindowVerdict } from "@/lib/story-window";
 
 // English-bound: these verdicts are rules, not words a surface shows.
 const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
@@ -255,6 +256,7 @@ export function harnessCatalogProvider(id: HarnessId, modelId = ""): string {
   if (id === "claude") return "anthropic";
   if (id === "codex") return "openai";
   if (id === "grok") return "xai";
+  if (id === "antigravity") return "google";
   const slash = modelId.indexOf("/");
   return slash > 0 ? modelId.slice(0, slash) : "";
 }
@@ -289,8 +291,8 @@ export function enrichHarnessModels(id: HarnessId, models: HarnessModel[]): Harn
 }
 
 // A server's model list for the guided setup's picker: the models the
-// catalog says cannot narrate (no text, no tool calls, a window too small
-// for the DM's instructions) left out, the window
+// catalog or the server says cannot play the full rules (no text, no tool
+// calls, a window short of FULL_RULES_WINDOW) left out, the window
 // filled in where the server gave none, and a word on each deprecated row.
 // A model the catalog has not heard of stays: unknown is not unfit.
 export function fitListedModels(baseUrl: string, models: ListedModel[]): ListedModel[] {
@@ -298,6 +300,10 @@ export function fitListedModels(baseUrl: string, models: ListedModel[]): ListedM
   const hint = providerForBaseUrl(baseUrl, providers);
   const out: ListedModel[] = [];
   for (const model of models) {
+    // A window the server itself says is short of the full rules leaves the
+    // model off, catalog or not: only a model typed in by hand runs on the
+    // cut rules (src/lib/story-window.ts).
+    if (model.context && storyWindowVerdict(enT, model.context).level !== "ok") continue;
     const row = findCatalogModel(providers, model.id, hint);
     if (!row) {
       out.push(model);

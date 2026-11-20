@@ -3,7 +3,12 @@
 // (each bad field falls back alone) while the write check is strict, and
 // two different looks must never map to the same library theme name.
 import assert from "node:assert/strict";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { register } from "node:module";
+import path from "node:path";
+import { diceTextureFiles, pickableTextureIds } from "./lib/dice-textures.mjs";
+
+const root = path.resolve(import.meta.dirname, "..");
 
 register("./lib/register-alias.mjs", import.meta.url);
 
@@ -93,6 +98,21 @@ test("the theme names the look uniquely and maps colours to the library's words"
   assert.notEqual(diceLookKey(other), diceLookKey(DEFAULT_DICE_LOOK));
   assert.equal(diceLookTheme(other).theme_customColorset.outline, "#000000");
   assert.equal(diceLookKey({ ...DEFAULT_DICE_LOOK }), diceLookKey(DEFAULT_DICE_LOOK), "same look, same name");
+});
+
+// public/dice-box ships in every app, so it holds what a tray can load and
+// nothing else: the image and bump map of each texture a look can pick, and
+// no sounds while both trays keep them off.
+test("the dice folder carries every texture a look can pick and nothing a tray never loads", () => {
+  const keep = diceTextureFiles(root);
+  assert.ok(keep, "the dice library's texture table is readable");
+  assert.deepEqual(pickableTextureIds(root), DICE_TEXTURES.map((texture) => texture.id));
+  const shipped = readdirSync(path.join(root, "public", "dice-box", "textures")).sort();
+  assert.deepEqual(shipped, [...keep].sort());
+  for (const file of ["src/components/DiceLookEditor.tsx", "src/app/campaigns/[campaignId]/DiceOverlay.tsx"]) {
+    assert.match(readFileSync(path.join(root, file), "utf8"), /new DiceBox\([^)]*\{[^}]*sounds: false/s, `${file} runs its tray with sounds off`);
+  }
+  assert.equal(existsSync(path.join(root, "public", "dice-box", "sounds")), false);
 });
 
 console.log(`test-dice-look: ${passed} checks passed`);

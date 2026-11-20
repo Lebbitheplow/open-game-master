@@ -14,6 +14,7 @@ const { importWorldForge } = await import("../src/lib/db/world-forge-io.ts");
 const { worldAnswer, worldAnswerFor, worldView } = await import("../src/lib/db/world-forge.ts");
 const { searchIndex, searchEntries } = await import("../src/lib/worldforge/search.ts");
 const { compressedJson } = await import("../src/lib/compressed-json.ts");
+const { PACKED_JSON_HEADER, unpackJson } = await import("../src/lib/packed-json.ts");
 const { createWorkshop } = await import("../src/lib/db/workshops.ts");
 const { createUser } = await import("../src/lib/db/users.ts");
 
@@ -77,26 +78,30 @@ await test("The lean answer goes only to a caller that asks for it: an older app
   assert.equal(Object.keys(whole.doc.entries ?? {}).length, whole.entities.length);
 });
 
-await test("The answer goes over the wire packed: brotli when the browser takes it, else gzip, plain when it takes neither.", async () => {
+await test("The answer goes over the wire packed to a caller that unpacks it, plain to any other, and never under a Content-Encoding Next would drop.", async () => {
   const body = worldAnswer(workshop.id);
-  const read = async (response) => Buffer.from(await response.arrayBuffer());
-  const brotli = compressedJson(new Request("http://x/", { headers: { "accept-encoding": "gzip, deflate, br" } }), body);
-  assert.equal(brotli.headers.get("content-encoding"), "br");
-  const brBytes = await read(brotli);
-  assert.ok(kb(brBytes.length) <= BUDGET.wireKb, `${kb(brBytes.length)} KB on the wire as brotli, over ${BUDGET.wireKb} KB`);
-  assert.equal(JSON.parse(zlib.brotliDecompressSync(brBytes).toString("utf8")).entities.length, 1_000);
-  const gzip = compressedJson(new Request("http://x/", { headers: { "accept-encoding": "gzip" } }), body);
-  assert.equal(gzip.headers.get("content-encoding"), "gzip");
-  const gzBytes = await read(gzip);
-  assert.ok(kb(gzBytes.length) <= BUDGET.wireKb, `${kb(gzBytes.length)} KB on the wire as gzip, over ${BUDGET.wireKb} KB`);
-  assert.equal(JSON.parse(zlib.gunzipSync(gzBytes).toString("utf8")).entities.length, 1_000);
-  const plain = compressedJson(new Request("http://x/"), body);
-  assert.equal(plain.headers.get("content-encoding"), null);
-  assert.equal((await plain.json()).entities.length, 1_000);
-  const small = compressedJson(new Request("http://x/", { headers: { "accept-encoding": "br, gzip" } }), { counts: 1 });
-  assert.equal(small.headers.get("content-encoding"), null, "a small answer was packed");
+  const asks = { headers: { [PACKED_JSON_HEADER]: "gzip", "accept-encoding": "gzip, deflate, br" } };
+  const packed = compressedJson(new Request("http://x/", asks), body);
+  // Next 16.4.6 strips a handler's Content-Encoding and gzips the body again:
+  // a packed answer must not lean on it, and must not look compressible.
+  assert.equal(packed.headers.get("content-encoding"), null);
+  assert.equal(packed.headers.get("content-type"), "application/octet-stream");
+  assert.match(packed.headers.get("cache-control") ?? "", /no-transform/);
+  assert.equal(packed.headers.get(PACKED_JSON_HEADER), "gzip");
+  const bytes = Buffer.from(await packed.clone().arrayBuffer());
+  assert.ok(kb(bytes.length) <= BUDGET.wireKb, `${kb(bytes.length)} KB on the wire packed, over ${BUDGET.wireKb} KB`);
+  assert.equal(JSON.parse(zlib.gunzipSync(bytes).toString("utf8")).entities.length, 1_000);
+  // The browser's half reads it, and reads a plain answer the same way.
+  assert.equal((await (await unpackJson(packed)).json()).entities.length, 1_000);
+  const browserOnly = compressedJson(new Request("http://x/", { headers: { "accept-encoding": "gzip, br" } }), body);
+  assert.equal(browserOnly.headers.get("content-encoding"), null);
+  assert.equal(browserOnly.headers.get("content-type"), "application/json");
+  assert.equal((await (await unpackJson(browserOnly)).json()).entities.length, 1_000);
+  const small = compressedJson(new Request("http://x/", asks), { counts: 1 });
+  assert.equal(small.headers.get(PACKED_JSON_HEADER), null, "a small answer was packed");
+  assert.deepEqual(await (await unpackJson(small)).json(), { counts: 1 });
   // Packing runs on the request's own time: it must stay a small part of it.
-  const { ms } = best(() => compressedJson(new Request("http://x/", { headers: { "accept-encoding": "br" } }), body));
+  const { ms } = best(() => compressedJson(new Request("http://x/", asks), body));
   assert.ok(ms <= BUDGET.packMs, `packing took ${ms} ms, over ${BUDGET.packMs} ms`);
 });
 

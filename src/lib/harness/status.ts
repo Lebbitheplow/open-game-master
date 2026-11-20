@@ -12,9 +12,10 @@ import { opencodeAdapter } from "./adapters/opencode.ts";
 import { codexAdapter } from "./adapters/codex.ts";
 import { grokAdapter } from "./adapters/grok.ts";
 import { piAdapter } from "./adapters/pi.ts";
+import { antigravityAdapter } from "./adapters/antigravity.ts";
 import { fakeAdapter } from "./adapters/fake.ts";
 import type { HarnessAdapter, HarnessConfig, HarnessId, HarnessStatus } from "./types.ts";
-import { HARNESS_IDS } from "./types.ts";
+import { HARNESS_IDS, isHarnessId } from "./types.ts";
 import { onWindows } from "../host-platform.ts";
 
 const STATUS_TTL_MS = 5 * 60_000;
@@ -25,6 +26,7 @@ export const ADAPTERS: Record<HarnessId, HarnessAdapter> = {
   opencode: opencodeAdapter,
   grok: grokAdapter,
   pi: piAdapter,
+  antigravity: antigravityAdapter,
 };
 
 // The scripted stand-in the tests drive (scripts/lib/fake-harness.mjs).
@@ -38,6 +40,13 @@ export function adapterFor(id: HarnessId): HarnessAdapter {
 
 export function harnessConfig(): HarnessConfig {
   return getGlobalConfig().harness;
+}
+
+// Whether the chosen program can only be played on a cut tool set
+// (HarnessAdapter.reducedTools).
+export function harnessReducedTools(): boolean {
+  const id = harnessConfig().id;
+  return isHarnessId(id) && adapterFor(id).reducedTools === true;
 }
 
 type StatusCache = Map<HarnessId, HarnessStatus>;
@@ -120,6 +129,7 @@ export async function probeHarness(id: HarnessId, options: { refresh?: boolean; 
     installHint: (onWindows() && ADAPTERS[id].installHintWindows) || ADAPTERS[id].installHint,
     signInHint: ADAPTERS[id].signInHint,
     lockdown: ADAPTERS[id].lockdown,
+    ...(ADAPTERS[id].reducedTools ? { reducedTools: true } : {}),
     checkedAt: Date.now(),
   };
   const config = harnessConfig();

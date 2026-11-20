@@ -20,7 +20,6 @@ export const RAPID_ADAPTATION = "rapid adaptation";
 export const APEX_GENOME = "apex genome";
 export const ADAPTED = "adapted";
 export const SHIELD_NODE = "salvaged shield node";
-export const LAST_RIDE = "last ride of the reaver";
 export const DEATH_OR_GLORY = "death or glory";
 // The same reckless turn once Ride Eternal is held: it grants enemies nothing.
 export const DEATH_OR_GLORY_ETERNAL = "death or glory (ride eternal)";

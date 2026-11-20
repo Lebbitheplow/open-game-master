@@ -275,6 +275,3 @@ export function useArchetypeOptions(classId: string): { archetypes: ArchetypeOpt
   return { archetypes, unadmitted, failed, retry };
 }
 
-export function useArchetypes(classId: string) {
-  return useArchetypeOptions(classId).archetypes;
-}

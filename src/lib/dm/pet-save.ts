@@ -43,8 +43,6 @@ import { rollCard } from "@/lib/dm/roll-card";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 
-export { petSaveBlockFor, rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
-
 // The row a pet's save and damage leave on a result.
 function petRow(pet: SheetPet, save: PetSave, hurt: Record<string, unknown> | null, laid: PetLaid | null): Record<string, unknown> {
   const { ok: _ok, pet: _name, ...landed } = hurt ?? {};

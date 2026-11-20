@@ -3,9 +3,12 @@ import { hideFromParty, partyAtlasChanged, partyAtlasFor, showToParty } from "@/
 import { getWorldDoc } from "@/lib/db/world-forge";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const mapStepSchema = z.object({ mapId: z.string().optional(), apply: z.boolean().optional() });
 
 // The party's Atlas (src/lib/worldforge/party-atlas.ts holds the policy).
 
@@ -37,7 +40,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (context.campaign.kind === "workshop") {
     return Response.json({ error: "A workshop has no party to show a map to. Show it from a campaign's World tab." }, { status: 400 });
   }
-  const raw = (await request.json().catch(() => ({}))) as { mapId?: unknown; apply?: unknown };
+  const parsed = mapStepSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the map." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const mapId = typeof raw.mapId === "string" ? raw.mapId.trim().slice(0, 80) : "";
   if (!mapId) {
     return Response.json({ error: "Name the map." }, { status: 400 });
@@ -61,7 +68,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ c
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { mapId?: unknown };
+  const parsed = mapStepSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the map." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const mapId = typeof raw.mapId === "string" ? raw.mapId.trim().slice(0, 80) : "";
   const before = getWorldDoc(campaignId);
   const result = hideFromParty(campaignId, mapId);

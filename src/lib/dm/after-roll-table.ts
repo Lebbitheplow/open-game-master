@@ -706,7 +706,6 @@ export const STOP_POWERS = [
   },
 ] as const satisfies readonly StopPower[];
 export type StopPowerId = (typeof STOP_POWERS)[number]["id"];
-export const PORTENT = STOP_POWERS[0];
 
 export type WatchPower = StopPowerId | WatchRowId;
 const STOP_BY_ID = new Map<string, StopPower>(STOP_POWERS.map((power) => [power.id, power]));

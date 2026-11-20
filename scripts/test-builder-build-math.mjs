@@ -448,7 +448,7 @@ test("the panel is a real table with row and column headers and a polite status"
   // Folded where the builder is narrow, always open where it is wide, and
   // its scrolling body is a named tab stop.
   assert.match(panel, /open \? "block" : "hidden",\s*"@4xl:block"/);
-  assert.match(panel, /role="region"\s*aria-labelledby=\{headingId\}\s*tabIndex=\{0\}/);
+  assert.match(panel, /role="region"\s*aria-labelledby=\{headingId\}\s*(?:\/\/ eslint-disable-next-line [^\n]*\n\s*)?tabIndex=\{0\}/);
   // The page that holds the builder widens for the table on a desktop.
   assert.match(read("../src/app/styles/creator.css"), /main:has\(\[data-build-math\]\)/);
   // A changed row is lit only where the device plays effects.

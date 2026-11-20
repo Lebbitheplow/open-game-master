@@ -23,7 +23,6 @@ import { suite } from "./enforce-harness.mjs";
 const ROOT = new URL("../../", import.meta.url);
 const readJson = (file) => JSON.parse(fs.readFileSync(new URL(file, ROOT), "utf8"));
 
-export const GENRES = ["cyberpunk", "dark-fantasy", "horror"];
 export const sha12 = (text) => crypto.createHash("sha256").update(text).digest("hex").slice(0, 12);
 export const ledgerPath = (genre) => `scripts/clauses/genre-${genre}.json`;
 export const loadLedger = (genre) => readJson(ledgerPath(genre));

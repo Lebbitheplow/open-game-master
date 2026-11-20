@@ -16,27 +16,21 @@ async function test(name, fn) {
   console.log(`ok: ${name}`);
 }
 
-await test("each window is told what it plays", () => {
+await test("each window is told whether it plays the full rules", () => {
   const level = (tokens) => windows.storyWindowVerdict(tokens).level;
   assert.equal(level(8_192), "short");
   assert.equal(level(windows.MIN_NARRATION_WINDOW - 1), "short");
-  // The floors measured over a party of one to four heroes (src/lib/story-
-  // window.ts, gap sweep 2026-11-09): 16K played most parties on the four
-  // essential tools, and 24K most fights.
-  assert.equal(level(16_384), "short");
-  assert.equal(level(windows.MIN_NARRATION_WINDOW), "no-fights", "a model sold as 24K narrates");
-  assert.equal(level(24_576), "no-fights");
-  // Fights need 40K: a four-hero fight's 29,678 estimated tokens left a 32K
-  // window about 2,000 spare, too few for a tokenizer that counts more.
-  assert.equal(level(32_768), "no-fights");
-  assert.equal(level(windows.MIN_COMBAT_WINDOW), "tight");
-  assert.equal(level(40_960), "tight");
-  assert.equal(level(windows.RECOMMENDED_WINDOW), "ok");
+  // Below FULL_RULES_WINDOW a turn plays only on a cut tool set and rules,
+  // which Open Game Master does not support or test.
+  assert.equal(level(windows.MIN_NARRATION_WINDOW), "reduced");
+  assert.equal(level(32_768), "reduced");
+  assert.equal(level(49_152), "reduced");
+  assert.equal(level(windows.FULL_RULES_WINDOW - 1), "reduced");
+  assert.equal(level(windows.FULL_RULES_WINDOW), "ok", "a model sold as 64K plays the full rules");
   assert.equal(level(65_536), "ok");
   assert.equal(windows.storyWindowVerdict(65_536).text, "", "enough says nothing");
   assert.match(windows.storyWindowVerdict(8_192).text, /^An 8K window is too small to narrate/);
-  assert.match(windows.storyWindowVerdict(32_768).text, /^A 32K window narrates and explores, but fights need 40K/);
-  assert.match(windows.storyWindowVerdict(40_960).text, /^A 40K window plays, fights included/);
+  assert.match(windows.storyWindowVerdict(32_768).text, /^A 32K window is too small for the full rules/);
 });
 
 await test("a size is named the way it was set", () => {
@@ -49,24 +43,23 @@ await test("a size is named the way it was set", () => {
   assert.equal(windows.aWindow(65_536), "A 64K");
 });
 
-await test("llama-server's -c clears each minimum", () => {
-  assert.equal(windows.windowFlag(windows.MIN_NARRATION_WINDOW), 24_576);
-  assert.equal(windows.windowFlag(windows.MIN_COMBAT_WINDOW), 40_960);
-  assert.equal(windows.windowFlag(windows.RECOMMENDED_WINDOW), 49_152);
+await test("llama-server's -c clears the minimum", () => {
+  assert.equal(windows.windowFlag(windows.FULL_RULES_WINDOW), 65_536);
+  // The full set is chosen when it leaves MIN_STORY_ROOM_TOKENS of the
+  // window (src/lib/dm/model-tuning-logic.ts): 64K must leave that beside a
+  // four-hero campaign's ~28K of tools.
+  assert.ok(windows.FULL_RULES_WINDOW - 28_000 >= 32_000);
 });
 
-await test("the README, the guides and npm run setup quote the same minimums", () => {
-  const label = windows.windowLabel;
-  const needs = `at least ${label(windows.MIN_NARRATION_WINDOW)} tokens to narrate and ${label(windows.MIN_COMBAT_WINDOW)} to run fights; ${label(windows.RECOMMENDED_WINDOW)} or more is recommended`;
+await test("the README, the guides and npm run setup quote the same minimum", () => {
+  const needs = `The storyteller needs a context window of at least ${windows.windowLabel(windows.FULL_RULES_WINDOW)} tokens to play the full rules; smaller windows are not supported`;
   assert.ok(windows.STORY_WINDOW_NEEDS.includes(needs), "the app's own sentence");
   for (const file of ["README.md", "docs/install.md", "docs/text-backends.md", "scripts/setup.mjs"]) {
     const text = fs.readFileSync(path.join(root, file), "utf8").replace(/\*\*/g, "").replace(/\$\{dim\("[^"]*"\)\}/g, "").replace(/\s+/g, " ");
     assert.ok(text.includes(needs), `${file} says "${needs}"`);
   }
   const table = fs.readFileSync(path.join(root, "docs/text-backends.md"), "utf8");
-  for (const tokens of [windows.MIN_NARRATION_WINDOW, windows.MIN_COMBAT_WINDOW, windows.RECOMMENDED_WINDOW]) {
-    assert.ok(table.includes(`| ${label(tokens)} (\`-c ${windows.windowFlag(tokens)}\`) |`), `the table has a ${label(tokens)} row`);
-  }
+  assert.ok(table.includes(`| ${windows.windowLabel(windows.FULL_RULES_WINDOW)} (\`-c ${windows.windowFlag(windows.FULL_RULES_WINDOW)}\`) |`), "the table has the 64K row");
 });
 
 console.log(`story-window: ${passed} tests passed`);

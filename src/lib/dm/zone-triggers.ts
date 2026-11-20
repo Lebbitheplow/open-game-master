@@ -16,6 +16,7 @@
 // roll row and its damage lands through spell-aura.ts hurtEnemy. Returns
 // the lines for the table.
 
+import { mountMoved } from "@/lib/dm/mount-moved";
 import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -399,6 +400,9 @@ function afterFailOnCharacter(campaign: Campaign, turn: DmTurn, map: BattleMap, 
     const at = token ? pushAlong(map, zone, token, trigger.pushFeet) : null;
     if (at) {
       lines.push(`${sheet.name} is pushed to (${at.x},${at.y}).`);
+      // Gust of Wind's push moves a rider's mount against its will: the save
+      // to stay on is asked as the call finishes (mount-moved.ts).
+      mountMoved(campaign.id, sheet.id);
     }
   }
   return lines;

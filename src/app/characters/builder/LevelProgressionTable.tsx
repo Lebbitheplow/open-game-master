@@ -73,6 +73,7 @@ export function LevelProgressionTable({
         hidden={!open}
         role="region"
         aria-labelledby={captionId}
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the table scrolls sideways on its own, so keyboard users need a Tab stop to scroll it
         tabIndex={0}
         data-level-table-scroll=""
         // Relative, so the screen-reader-only words in the cells (absolute)

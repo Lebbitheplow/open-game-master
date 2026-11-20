@@ -1,19 +1,21 @@
 // Pure helpers for spotting DM tool calls that leaked into narration as
-// literal text. Four leak shapes exist: bracket style
+// literal text. Six leak shapes exist: bracket style
 // ("[request_roll characterId=... kind=custom]"), the model's NATIVE
 // XML dialect ("<tool_call><function=enemy_attack><parameter=enemyId>..."),
 // which reaches us whenever llama-server's extraction misses it, an agent
 // program's call written out in the Anthropic style (invokeToolCallRegex
-// below), and bare JSON arguments (findBareJsonObjects below). A card's line,
-// or another line of the server's, copied back from the conversation
-// (withoutServerLines below) is no call, and goes the same way. Kept
-// dependency-free so client components can import it; the name list mirrors
-// the tools registered in src/lib/dm/prompt.ts, src/lib/dm/mutations.ts
-// (MUTATION_TOOL_NAMES), src/lib/dm/encounter-tools.ts, src/lib/dm/
-// map-tools.ts, and src/lib/image-tool.ts.
+// below), bare JSON arguments (findBareJsonObjects below), and arguments one
+// to a line or a tool written as a function (written-calls.ts, issue 1025).
+// A card's line, or another line of the server's, copied back from the
+// conversation (withoutServerLines below) is no call, and goes the same way.
+// Kept dependency-free so client components can import it; the tool names
+// are tool-names.ts's.
 
-export const DM_TOOL_NAME_PATTERN =
-  "request_roll|group_check|check_notice|apply_hazard|set_npc|npc_reaction|social_check|roll_treasure|damage_object|travel|request_player_input|move_party|update_location|record_event|complete_beat|recall_story|search_lore|read_card|write_campaign_note|send_whisper|generate_image|apply_damage|heal|stabilize|take_rest|award_xp|party_award|modify_gold|grant_item|remove_item|handle_item|set_enemy_condition|clear_enemy_condition|set_condition|clear_condition|use_item|purchase|use_resource|use_spell_slot|learn_spell|update_sheet|start_encounter|add_enemies|add_companion|dismiss_companion|pc_attack|cast_at_enemy|cast_at_player|cast_buff|damage_enemy|enemy_attack|enemy_flees|declare_intent|aoe_damage|move_token|take_action|use_reaction|end_turn|end_encounter|summon_pet|pet_attack|damage_pet|dismiss_pet|lift|set_lifestyle|downtime|afflict";
+import { DM_TOOL_NAME_PATTERN, ID_KEYS } from "./tool-names.ts";
+import { cutSpans, withoutWrittenCalls } from "./written-calls.ts";
+
+export { DM_TOOL_NAME_PATTERN } from "./tool-names.ts";
+export { cutSpans } from "./written-calls.ts";
 
 export function toolTextRegex(): RegExp {
   return new RegExp(`\\[(${DM_TOOL_NAME_PATTERN})\\b([^\\]]*)\\]`, "g");
@@ -165,7 +167,6 @@ export function withoutServerLines(text: string): string {
 // table's language ("[Carta giocata per characterId=..."), keeps its ids, and
 // no story writes one. Cut only once a call written as a bracket has been
 // read (salvageTextualToolCalls), which needs them.
-const ID_KEYS = ["characterId", "characterIds", "enemyId", "enemyIds", "targetEnemyId", "targetEnemyIds", "targetCharacterIds", "toCharacterId", "casterCharacterId", "healerId"];
 const ID_KEY = `(?:${ID_KEYS.join("|")})`;
 const ID_ARGUMENT_SOURCE = `[ \\t]*\\((?:[^()\\n]*?[\\s,])?${ID_KEY}=[^()\\n]*\\)|[ \\t]*\\b(?:for )?${ID_KEY}=[^\\s,;:)\\]]+`;
 
@@ -266,24 +267,13 @@ function balancedObjectEnd(text: string, start: number): number {
   return -1;
 }
 
-// Cuts the given spans out of the text, tidying the gap each leaves.
-export function cutSpans(text: string, spans: Array<{ start: number; end: number }>): string {
-  if (!spans.length) {
-    return text;
-  }
-  let out = "";
-  let cursor = 0;
-  for (const span of [...spans].sort((a, b) => a.start - b.start)) {
-    out += text.slice(cursor, span.start);
-    cursor = Math.max(cursor, span.end);
-  }
-  out += text.slice(cursor);
-  return out.replace(/[ \t]{2,}/g, " ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-}
-
 export function stripToolText(text: string): string {
+  // The written calls go before the ids: "characterIds=[...]" on a line of
+  // its own is an argument line, and cutting its id first leaves the "]".
   const cleaned = withoutIdArguments(
-    withoutServerLines(text).replace(toolTextRegex(), "").replace(xmlToolCallRegex(), "").replace(fakeRollMarkerRegex(), ""),
+    withoutWrittenCalls(
+      withoutServerLines(text).replace(toolTextRegex(), "").replace(xmlToolCallRegex(), "").replace(fakeRollMarkerRegex(), ""),
+    ),
   ).replace(/[ \t]{2,}/g, " ");
   const objects = findBareJsonObjects(cleaned);
   return objects.length ? cutSpans(cleaned, objects) : cleaned;

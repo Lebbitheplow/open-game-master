@@ -99,15 +99,15 @@ function useDevices() {
     }
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const named = (kind: MediaDeviceKind, noun: string, count: number): Device[] =>
+      const named = (kind: MediaDeviceKind, noun: string): Device[] =>
         devices
           .filter((device) => device.kind === kind)
           .map((device, index) => ({
             deviceId: device.deviceId,
             label: device.label || t(noun, { n: index + 1 }),
           }));
-      setInputs(named("audioinput", "Microphone {n}", 0));
-      setOutputs(named("audiooutput", "Output {n}", 0));
+      setInputs(named("audioinput", "Microphone {n}"));
+      setOutputs(named("audiooutput", "Output {n}"));
       setLabelled(devices.some((device) => device.label));
     } catch {
       // No device access at all; the selects stay on the system default.

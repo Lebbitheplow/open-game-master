@@ -4,6 +4,7 @@ import { listNpcs } from "@/lib/db/npcs";
 import { getParty } from "@/lib/db/party";
 import { normalizeFactionAttitude } from "@/lib/dm/faction-logic";
 import { publishEphemeral } from "@/lib/events";
+import { factionBodySchema } from "@/lib/schemas/faction";
 import { isUploadedImagePath } from "@/lib/uploads";
 
 export const runtime = "nodejs";
@@ -51,7 +52,11 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = factionBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid faction." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
   if (!name) {
     return Response.json({ error: "A faction needs a name." }, { status: 400 });

@@ -85,6 +85,7 @@ export function SegmentedControl<T extends string>({
     group.current?.querySelectorAll<HTMLElement>('[role="radio"]')[at]?.focus();
   };
   return (
+    // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take the focus (only the chosen one is in the Tab order) and their arrow keys bubble up here; a radiogroup is never a stop of its own
     <div
       ref={group}
       role="radiogroup"

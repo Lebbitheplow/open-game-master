@@ -24,18 +24,6 @@ export const ADHOC_LABEL_KEYS: Record<AdhocTokenKind, string> = {
   prop: "Object",
 };
 
-// The shape of a translator, as the pure sentence builders take it.
-type T = (key: string, vars?: Record<string, string | number>) => string;
-
-export function adhocLabel(t: T, kind: AdhocTokenKind): string {
-  return t(ADHOC_LABEL_KEYS[kind] ?? "Object");
-}
-
-export const ADHOC_HINTS: Record<AdhocTokenKind, string> = {
-  npc: "A bystander, an ally, anyone the rules engine does not need a stat block for.",
-  prop: "A crate, a brazier, a cart. Something that stands in the way.",
-};
-
 // Somebody pointing at a tile. Lives here rather than beside the publisher
 // so the client can name the shape it receives without importing anything
 // that touches the database.

@@ -50,7 +50,7 @@ function companion(sheet: CharacterSheet, targetId: string | undefined, label: s
   return ally;
 }
 
-export function rally(campaign: Campaign, turnId: string, sheet: CharacterSheet, targetId: string | undefined): Resolution {
+export function rally(campaign: Campaign, sheet: CharacterSheet, targetId: string | undefined): Resolution {
   const ally = companion(sheet, targetId, "Rally");
   if ("error" in ally) {
     return ally;

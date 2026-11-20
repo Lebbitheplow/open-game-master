@@ -63,7 +63,7 @@ const DRAFT_KEYS = [
 
 const clone = <T>(value: T): T => (typeof value === "object" && value !== null ? structuredClone(value) : value);
 
-export function defaultsFromDraft(draft: CampaignDraft, locale: Locale = "en"): CampaignDefaultSettings {
+export function defaultsFromDraft(draft: CampaignDraft): CampaignDefaultSettings {
   const settings: Record<string, unknown> = {};
   for (const key of DRAFT_KEYS) {
     settings[key] = clone(draft[key]);

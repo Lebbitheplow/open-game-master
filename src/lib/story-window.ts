@@ -1,40 +1,36 @@
-// How big a context window the storyteller needs, measured through the
-// request fitter (src/lib/dm/request-fit.ts): the first call of a turn, with
-// the compact tool set whole and the reply's 1,024 tokens, over a party of
-// one to four heroes, exploring and in a fight
-// (scripts/test-enforce-sweep-modelio-schema.mjs budget rows, 2026-11-09):
+// The one window Open Game Master supports for the storyteller: the full
+// rules with the full tool set. The tool set alone is about 28K tokens on a
+// four-hero campaign, and the turn chooses the full set only when it leaves
+// at least 32K of the window for the rules, the story and the reply
+// (src/lib/dm/model-tuning-logic.ts MIN_STORY_ROOM_TOKENS). 64K clears that
+// with room for a bigger campaign's tools, and it is the window the docs'
+// llama-server commands and the apps start with (-c 65536).
 //
-//   exploring  lone level 1 fighter 15,353; lone level 3 fighter 15,806;
-//              lone level 5 wizard 18,707 (the casting rules); fighter and
-//              wizard 18,997; four level 5 heroes 19,720
-//   fighting   lone level 1 fighter 24,369; lone level 3 fighter 25,043;
-//              fighter and wizard 28,480; four level 5 heroes 29,678 (the
-//              fight's rules and turn order are about 6K on their own)
+// Below it the turn still runs, on the trimmed or the compact tool set and
+// the rules that ride with it, but Open Game Master does not support, test
+// or recommend that: the model pickers leave such models off their lists
+// (src/lib/model-registry/catalog-logic.ts assessModel), and they can only
+// be typed in by hand. The two floors below are where the compact profile
+// was last measured (scripts/test-enforce-sweep-modelio-schema.mjs budget
+// rows, 2026-11-09), kept so the request fitter's tests can hold them:
 //
-// So 24K narrates, explores and checks for a party of four, and 40K runs
-// its fights. These were 16K and 24K, measured on a lone level 1 fighter:
-// every other party fell to the four essential tools on a 16K window, and
-// every fight measured on a 24K one (gap sweep 2026-11-09). The fight floor
-// is 40K, not the 32K the four heroes' 29,678 would clear: the figures are
-// the budget's estimate (characters over four, context-budget.ts), not a
-// tokenizer's count, and 32K left about 2,000 tokens spare, which a tokenizer
-// 7% over the estimate, the later calls of a turn, a fifth hero or a
-// campaign's own history use up (the review of #906). 48K plays on
-// the trimmed set, with recent turns in view (src/lib/dm/model-tuning-
-// logic.ts). The README, the guided setup, the model pickers and the
-// window-too-small refusal all quote these, and scripts/test-story-window.mjs
+//   exploring  lone level 1 fighter 15,353; four level 5 heroes 19,720
+//   fighting   lone level 1 fighter 24,369; four level 5 heroes 29,678
+//
+// The README, the guided setup, the model pickers and the window-too-small
+// refusal all quote FULL_RULES_WINDOW, and scripts/test-story-window.mjs
 // keeps the docs saying the same.
 //
 // Round thousands, as the model catalog counts them, so a model sold as
-// "24K" (24,000 tokens) is not told it is short of 24K; the llama-server
-// commands the docs give (-c 24576, 40960, 49152) clear each one.
+// "64K" (64,000 tokens) is not told it is short of 64K; -c 65536 clears it.
 import { translate } from "./messages-logic.ts";
 
 // The shape of a translator, as the pure sentence builders take it.
 type T = (key: string, vars?: Record<string, string | number>) => string;
+export const FULL_RULES_WINDOW = 64_000;
+// The compact profile's measured floors (unsupported; see above).
 export const MIN_NARRATION_WINDOW = 24_000;
 export const MIN_COMBAT_WINDOW = 40_000;
-export const RECOMMENDED_WINDOW = 48_000;
 // The window the docs' llama-server commands start with (-c 65536): the
 // full tool set with a long transcript. The app asks Ollama for no more than
 // this unless LOCAL_TEXT_CONTEXT says otherwise (model-client.ts
@@ -68,12 +64,8 @@ export function windowFlag(tokens: number): number {
   return tokens % 1_024 === 0 ? tokens : Math.ceil(tokens / 1_000) * 1_024;
 }
 
-// The window sizes the requirement sentence quotes, from the constants.
-const needsVars = () => ({
-  min: windowLabel(MIN_NARRATION_WINDOW),
-  combat: windowLabel(MIN_COMBAT_WINDOW),
-  recommended: windowLabel(RECOMMENDED_WINDOW),
-});
+// The window size the requirement sentence quotes, from the constant.
+const needsVars = () => ({ full: windowLabel(FULL_RULES_WINDOW) });
 
 // English-bound, for the const the docs and reports quote.
 const enT: T = (key, vars) => translate("en", key, vars);
@@ -81,45 +73,39 @@ const enT: T = (key, vars) => translate("en", key, vars);
 // The one sentence every surface uses for the requirement itself, English
 // by source: the README and the guides quote it, and the report and the
 // request fitter's refusals carry it to places no table language reaches.
-export const STORY_WINDOW_NEEDS = enT("The storyteller needs a context window of at least {min} tokens to narrate and {combat} to run fights; {recommended} or more is recommended.", needsVars());
+export const STORY_WINDOW_NEEDS = enT("The storyteller needs a context window of at least {full} tokens to play the full rules; smaller windows are not supported.", needsVars());
 
 // The same sentence in the reader's language: the surfaces that show it
 // pass their own translator, as storyWindowVerdict does. (STORY_WINDOW_NEEDS
 // stays the docs' and reports' pinned English.)
 export function storyNeeds(t: T): string {
-  return t("The storyteller needs a context window of at least {min} tokens to narrate and {combat} to run fights; {recommended} or more is recommended.", needsVars());
+  return t("The storyteller needs a context window of at least {full} tokens to play the full rules; smaller windows are not supported.", needsVars());
 }
 
-export type StoryWindowLevel = "short" | "no-fights" | "tight" | "ok";
+// "short": too small even to narrate. "reduced": plays only on a cut tool
+// set and rules, which Open Game Master does not support or test. "ok": the
+// full rules.
+export type StoryWindowLevel = "short" | "reduced" | "ok";
 
 // What a table can do in a window, worded for the admin choosing a model.
-// Empty text when the window is enough for everything.
+// Empty text when the window plays the full rules.
 export function storyWindowVerdict(t: T, tokens: number): { level: StoryWindowLevel; text: string };
 export function storyWindowVerdict(tokens: number): { level: StoryWindowLevel; text: string };
 export function storyWindowVerdict(tOrTokens: T | number, maybeTokens?: number): { level: StoryWindowLevel; text: string } {
   const t = typeof tOrTokens === "function" ? tOrTokens : enT;
   const tokens = typeof tOrTokens === "number" ? tOrTokens : (maybeTokens ?? 0);
   const size = aWindow(t, tokens);
+  const needs = t("The storyteller needs a context window of at least {full} tokens to play the full rules; smaller windows are not supported.", needsVars());
   if (tokens < MIN_NARRATION_WINDOW) {
     return {
       level: "short",
-      text: t("{size} window is too small to narrate: the GM's instructions and tools leave no room for the story. {needs}", { size, needs: t("The storyteller needs a context window of at least {min} tokens to narrate and {combat} to run fights; {recommended} or more is recommended.", needsVars()) }),
+      text: t("{size} window is too small to narrate: the GM's instructions and tools leave no room for the story. {needs}", { size, needs }),
     };
   }
-  if (tokens < MIN_COMBAT_WINDOW) {
+  if (tokens < FULL_RULES_WINDOW) {
     return {
-      level: "no-fights",
-      text: t("{size} window narrates and explores, but fights need {combat}: below that a fight turn can be refused for room. {recommended} or more is recommended.", {
-        size,
-        combat: windowLabel(MIN_COMBAT_WINDOW),
-        recommended: windowLabel(RECOMMENDED_WINDOW),
-      }),
-    };
-  }
-  if (tokens < RECOMMENDED_WINDOW) {
-    return {
-      level: "tight",
-      text: t("{size} window plays, fights included, but keeps only the last few turns in view; {recommended} or more is recommended.", { size, recommended: windowLabel(RECOMMENDED_WINDOW) }),
+      level: "reduced",
+      text: t("{size} window is too small for the full rules: the GM would play on a cut tool set and rules, which Open Game Master does not support or test. {needs}", { size, needs }),
     };
   }
   return { level: "ok", text: "" };

@@ -8,7 +8,6 @@ import { KNOWN_TOOLS, anyPicksMade, pickSlots, type FeatGrantSpec, type FeatPick
 import { damageTypeWord, damageWords } from "@/lib/dm/damage-logic";
 import { featEngineTag } from "@/lib/srd/feat-combat";
 import { featAbilityIncrease } from "@/lib/srd/feat-effects";
-import { ABILITY_LABELS } from "./AbilityEditor";
 import { featSpellsAnything, type CastingAbility } from "@/lib/srd/feat-spells";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";

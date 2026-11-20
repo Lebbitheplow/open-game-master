@@ -1,4 +1,11 @@
 {
   "note": "Advisories npm audit reports that are accepted for now, each with why and until when. scripts/check-audit.mjs fails on any high or critical advisory not listed here, and on any entry past its expiry, so an exception is looked at again rather than forgotten.",
-  "exceptions": []
+  "exceptions": [
+    {
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "reason": "Reached only through development tools (eslint-config-next > fast-glob > micromatch, knip, vitest and vite), which match this repo's own glob patterns, never input from a player or the network; `npm ls picomatch --omit=dev` is empty, so the server and the apps ship none. No patched picomatch exists: the advisory covers every release up to 4.0.7, the newest.",
+      "expires": "2026-12-18"
+    }
+  ]
 }

@@ -160,7 +160,6 @@ export function ModeBar({
   onRegenerate: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const MODES = [
     ["pin", t("Add pin"), MapPin],
     ["party", t("Place the party"), Users],
@@ -209,7 +208,6 @@ export function ModeBar({
 
 export function TileLegend({ skin }: { skin: Record<OverworldTile, TileSkin> }) {
   const t = useT();
-  const tp = useTp();
   return (
     <div className="stagger-pop flex flex-wrap gap-x-3 gap-y-1">
       {(Object.keys(skin) as OverworldTile[]).map((tile) => (
@@ -375,7 +373,6 @@ export function LineTools({
 
 export function LabelTools({ size, onSize }: { size: LabelSize; onSize: (size: LabelSize) => void }) {
   const t = useT();
-  const tp = useTp();
   return (
     <div data-pill-group="" className="panel reveal flex flex-wrap items-center gap-1.5 rounded-lg p-2.5 text-xs text-stone-500">
       <span>{t("Tap where the words go.")}</span>
@@ -412,7 +409,6 @@ export function FileTools({
   mapSize: OverworldSize;
 }) {
   const t = useT();
-  const tp = useTp();
   const imageRef = useRef<HTMLInputElement>(null);
   const geoRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);

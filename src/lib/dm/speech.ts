@@ -47,13 +47,16 @@ import {
 // `pc` is a character at the table (a player's, or an AI companion), and
 // `monster` a creature of the fight. `aliases` are other names the same
 // person answers to, and `gender` the field the English pronouns are
-// matched against; neither is stored with a line.
+// matched against. `proposed` marks a name the claims reader gave a line's
+// speaker who is nobody the table lists, held until the prose confirms it
+// (confirmedNewcomer). None of the three is stored with a line.
 export type Speaker = {
   kind: "narrator" | "npc" | "monster" | "pc";
   id: string;
   name: string;
   aliases?: string[];
   gender?: Gender;
+  proposed?: boolean;
 };
 
 export type SpeechSegment = { kind: "prose"; text: string } | { kind: "speech"; text: string; speaker: Speaker };
@@ -339,6 +342,36 @@ export function unlistedSpeakerLines(
     common: new Set([...(options.common ?? []), ...commonWords([text])]),
     englishPronouns: options.englishPronouns,
   });
+}
+
+// Whether a person the table does not list yet spoke a line, by a name the
+// claims reader read off the prose: the narrator made them up on the spot and
+// never registered them, so their lines had no face and no voice (issue
+// 1027). The reader alone is not trusted with it (it put a stranger's line
+// on whoever spoke last, issue 965), nor the structure alone (a place opening
+// a sentence reads like a person). Both must agree: the name is written in
+// the prose outside the quotes, with its capital, as a name of a few words,
+// and the reading above, told of them, gives them this line.
+export function confirmedNewcomer(
+  text: string,
+  line: string,
+  name: string,
+  speakers: Speaker[],
+  options: { common?: ReadonlySet<string>; englishPronouns: boolean },
+): boolean {
+  const trimmed = name.trim();
+  const parts = words(trimmed);
+  if (!trimmed || trimmed.length > 60 || !parts.length || parts.length > 5 || !/^\p{Lu}/u.test(trimmed) || !/^\p{Lu}/u.test(parts[parts.length - 1])) {
+    return false;
+  }
+  const prose = text.replace(QUOTE, " ");
+  if (!prose.includes(trimmed) || speakers.some((speaker) => [speaker.name, ...(speaker.aliases ?? [])].some((known) => textKey(known) === textKey(trimmed)))) {
+    return false;
+  }
+  const newcomer: Speaker = { kind: "npc", id: "", name: trimmed };
+  return attributeSpeech(text, [...speakers, newcomer], options).some(
+    (segment) => segment.kind === "speech" && segment.text === line && segment.speaker === newcomer,
+  );
 }
 
 // Who is stored as a line's speaker: who they are, never what they were

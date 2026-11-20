@@ -9,7 +9,10 @@
 // of an attunement still pending (it never took hold) costs nothing.
 // Pure: the usage route moves the clock by what this returns.
 
-import { armorOfRow, isWorn } from "@/lib/srd/armor";
+import { armorOfRow } from "@/lib/srd/armor";
+import { bardingSuit } from "@/lib/srd/barding";
+import { rowName } from "@/lib/srd/item-row";
+import { rowIsOn } from "@/lib/srd/tack";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 
 const MINUTES: Record<"light" | "medium" | "heavy", { don: number; doff: number }> = {
@@ -40,11 +43,13 @@ export function armorChangeMinutes(
     if (!entry || entry.equipped === undefined) {
       continue;
     }
-    const worn = isWorn(item, equipment);
+    const worn = rowIsOn(item, equipment);
     if (entry.equipped === worn) {
       continue;
     }
-    const armor = armorOfRow(item)?.armor ?? null;
+    // Barding is its suit made for the mount (barding.ts); the rules give it
+    // no times of its own, so it takes the suit's.
+    const armor = armorOfRow(item)?.armor ?? bardingSuit(rowName(item));
     if (!armor || armor.category === "shield") {
       continue;
     }

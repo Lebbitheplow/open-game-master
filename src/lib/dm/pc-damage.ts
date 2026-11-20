@@ -51,7 +51,9 @@ import { silencedImmunity } from "@/lib/dm/zone-rules";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
 import { summonImmunities, summonResistances, summonVulnerabilities } from "@/lib/dm/summon-rules";
-import { summonAfterDamage } from "@/lib/dm/summon-store";
+import { fadesAway, summonAfterDamage } from "@/lib/dm/summon-store";
+import { ridersOf } from "@/lib/dm/mount-link";
+import { ridersFallWith } from "@/lib/dm/steed-fall";
 import { absorbByWard } from "@/lib/dm/arcane-ward";
 import { afflictionStress } from "@/lib/dm/afflictions";
 import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
@@ -427,9 +429,12 @@ export function applyPcDamage(
     return { ok: true, hp: `1/${sheet.maxHp}`, damageApplied: carried, held: "Pack Endurance", note: packHold };
   }
   // A summoned creature at 0 hit points disappears (summon-store.ts).
+  // Whoever rode it comes off as it goes (steed-fall.ts).
+  const riders = ridersOf(campaign.id, sheet.id);
   const vanished = summonAfterDamage(campaign, sheet, math.dropped, carried);
   if (vanished) {
-    return { ok: true, hp: `${math.currentHp}/${sheet.maxHp}`, damageApplied: carried, ...(math.dropped ? { dropped: true } : {}), vanished };
+    const falls = ridersFallWith(campaign, turnId, sheet, fadesAway(sheet), riders);
+    return { ok: true, hp: `${math.currentHp}/${sheet.maxHp}`, damageApplied: carried, ...(math.dropped ? { dropped: true } : {}), vanished, ...(falls.length ? { riderFall: falls } : {}) };
   }
   const bond = wardingBondShare(campaign, turnId, sheet, input, adjusted.amount);
   const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond, ...answered };

@@ -41,7 +41,6 @@ function ConfirmRewindDialog({
   onCancel: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   return (
     <AlertDialog.Root open onOpenChange={(open) => !open && onCancel()}>
       <AlertDialog.Portal>
@@ -82,7 +81,6 @@ function ConfirmRewindDialog({
 // it ended. Reveals with the list's stagger.
 function ActHeading({ act, title, recap }: { act: number; title: string; recap: string }) {
   const t = useT();
-  const tp = useTp();
   return (
     <li className="reveal pt-2">
       <div className="flex items-center gap-2">
@@ -118,7 +116,6 @@ function ChapterCard({
   const [summary, setSummary] = useState(chapter.summary);
   const [busy, setBusy] = useState(false);
   const t = useT();
-  const tp = useTp();
 
   async function save() {
     setBusy(true);
@@ -247,7 +244,6 @@ function ChapterCard({
 function NpcReviewCard({ campaignId }: { campaignId: string }) {
   const [expanded, setExpanded] = useState(false);
   const t = useT();
-  const tp = useTp();
   return (
     <div className="panel rounded-lg p-2.5">
       <button
@@ -473,6 +469,7 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                             <DictateField single label={t("Beat")} onTranscript={(text) => setDraft((current) => appendDictation(current, text, MAX_BEAT_TEXT))}>
                               <input
                                 value={draft}
+                                // eslint-disable-next-line jsx-a11y/no-autofocus -- the beat's box opens because the GM just asked to edit that beat
                                 autoFocus
                                 maxLength={MAX_BEAT_TEXT}
                                 onChange={(event) => setDraft(event.target.value)}
@@ -650,6 +647,7 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                       <DictateField single label={t("Beat")} onTranscript={(text) => setDraft((current) => appendDictation(current, text, MAX_BEAT_TEXT))}>
                         <input
                           value={draft}
+                          // eslint-disable-next-line jsx-a11y/no-autofocus -- the new beat's box opens because the GM just asked to add a beat
                           autoFocus
                           maxLength={MAX_BEAT_TEXT}
                           placeholder={t("What happens in this beat")}
@@ -824,7 +822,6 @@ export function StoryPanel({
   steersStory: boolean;
 }) {
   const t = useT();
-  const tp = useTp();
   const [closing, setClosing] = useState(false);
   const [rewindable, setRewindable] = useState<number[]>([]);
   // A refused or failed read is shown in the server's words with a way to

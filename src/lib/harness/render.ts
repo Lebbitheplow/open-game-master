@@ -119,7 +119,31 @@ export type RenderTurnOptions = {
   // reads its system prompt from an environment variable or a command line
   // can be started with (Linux caps one at 128 KiB).
   settledTranscript?: boolean;
+  // The program was started again partway through a turn because the tools
+  // it may call changed (a program that holds a cut tool set, such as the
+  // Antigravity CLI: src/lib/harness/bridge.ts). Its own calls so far are in
+  // the transcript as engine lines, and no dice need have been rolled.
+  toolsChanged?: boolean;
 };
+
+// The server's own instructions for this turn ride at the end of the
+// conversation as "[System]" user messages: the party lead's direction
+// (src/lib/dm/director-logic.ts), a retried turn's notice, an out-of-
+// character question. A chat model reads them last, after the newest player
+// line (src/lib/dm/prompt.ts); here they follow the moment and the turn's
+// instruction for the same reason, instead of sitting in the transcript
+// where the state that follows buries them.
+const TURN_DIRECTIVE = /^\[System\]/;
+
+function trailingDirectives(messages: readonly RenderMessage[]): number {
+  let start = messages.length;
+  while (start > 0) {
+    const message = messages[start - 1];
+    if (message.role !== "user" || !TURN_DIRECTIVE.test(contentText(message.content).trim())) break;
+    start -= 1;
+  }
+  return start;
+}
 
 // How many transcript lines join the system prompt at once. Each chunk that
 // closes writes the system prompt's second part again, so a chunk trades one
@@ -138,9 +162,18 @@ export function renderTurn(messages: readonly RenderMessage[], options: RenderTu
   const lines: string[] = [];
   const toolNamesById = new Map<string, string>();
   let lastUser = "";
+  const directivesFrom = trailingDirectives(messages);
+  const directives: string[] = [];
 
-  for (const message of messages) {
+  for (const [index, message] of messages.entries()) {
     const text = contentText(message.content).trim();
+    if (index >= directivesFrom) {
+      if (text) {
+        directives.push(text);
+        lastUser = text;
+      }
+      continue;
+    }
     if (message.role === "system") {
       if (text) {
         systemParts.push(text);
@@ -186,12 +219,14 @@ export function renderTurn(messages: readonly RenderMessage[], options: RenderTu
     ? `<table_transcript>\n${recent.join("\n\n")}\n</table_transcript>`
     : "The table has not spoken yet.";
   const resumed = messages.some((message) => message.role === "tool");
-  const instruction = resumed
+  const instruction = options.toolsChanged
+    ? "Your tools changed partway through this turn. The engine lines above are what you already did and what it answered: continue your turn as the Game Master from there with the tools you have now, then write the narration."
+    : resumed
     ? "The dice above have landed. Continue your turn as the Game Master from exactly where it paused: call any further tools you need, then write the narration."
     : lastUser
       ? "It is your turn as the Game Master. Resolve what the players just did with your tools, then write the narration."
       : "It is your turn as the Game Master. Open the scene: use your tools for anything mechanical, then write the narration.";
-  return { system: `${standing}${earlier}`, prompt: [transcript, moment, instruction].filter(Boolean).join("\n\n") };
+  return { system: `${standing}${earlier}`, prompt: [transcript, moment, instruction, ...directives].filter(Boolean).join("\n\n") };
 }
 
 // Messages that arrived after a program started, rendered as the follow-up

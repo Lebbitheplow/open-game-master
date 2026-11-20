@@ -30,11 +30,11 @@ export interface AppearanceDefinition {
 export const APPEARANCE_THEMES = [
   {
     id: "arcane", name: "Arcane", description: "Indigo stone, celestial brass, and amethyst fittings.", icon: "sparkles",
-    baseStyle: "celestial", cornerScale: 4,
+    baseStyle: "celestial",
     art: {
       texture: "/assets/themes/arcane/indigo-stone-v1.webp",
       frame: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
-      corner: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
+      corner: "/assets/themes/arcane/astral-brass-clasp-v1.webp",
       backdrop: "/assets/themes/arcane/astral-observatory-v1.webp",
     },
   },
@@ -49,6 +49,9 @@ export const APPEARANCE_THEMES = [
   },
   {
     id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church",
+    // Its own pinnacle piece (tracery-garnet-pinnacle-v1) waits for a repaint:
+    // mirrored into the lower corners, its spires and windows hung upside
+    // down, so it keeps the frame's corner until one reads the same both ways.
     genres: ["dark_fantasy", "horror"], cornerScale: 4,
     art: {
       texture: "/assets/themes/gothic/cathedral-slate-v1.webp",
@@ -59,21 +62,19 @@ export const APPEARANCE_THEMES = [
   },
   {
     id: "hearth", name: "Hearth & Haven", description: "Warm parchment, crafted oak, and welcoming amber lamplight.", icon: "flame",
-    cornerScale: 4,
     art: {
       texture: "/assets/themes/hearth/honey-oak-v1.webp",
       frame: "/assets/themes/hearth/carved-oak-frame-v1.webp",
-      corner: "/assets/themes/hearth/carved-oak-frame-v1.webp",
+      corner: "/assets/themes/hearth/oak-brass-strap-hinge-v1.webp",
       backdrop: "/assets/themes/hearth/fireside-haven-v1.webp",
     },
   },
   {
     id: "kingdoms", name: "High Kingdoms", description: "Ivory vellum, royal blue, and illuminated heraldry.", icon: "shield",
-    cornerScale: 4,
     art: {
       texture: "/assets/themes/kingdoms/ivory-vellum-v1.webp",
       frame: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
-      corner: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
+      corner: "/assets/themes/kingdoms/wheat-rosette-gilt-scroll-v1.webp",
       backdrop: "/assets/themes/kingdoms/royal-council-hall-v1.webp",
     },
   },
@@ -119,7 +120,44 @@ export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, 
     ...artSlotStyle(definition.art),
     "--theme-frame-slice": `${definition.frameSlice ?? 22}%`,
     "--theme-corner-background-size": definition.cornerScale ? `${definition.cornerScale * 100}%` : "contain",
-    "--theme-corner-background-position": definition.cornerScale ? "top left" : "center",
+    ...cornerStyle(definition),
+  };
+}
+
+// A corner cropped from the frame (cornerScale) shows the frame's own corner
+// at each of the four, upright as painted: rotating the top-left crop turned
+// High Kingdoms' shields on their sides and upside down. It is sized from
+// the rail so the crop meets the border at the border's own scale. A
+// separate corner piece is one painting mirrored into each corner.
+function cornerStyle(definition: AppearanceDefinition): Record<`--theme-${string}`, string> {
+  if (!definition.cornerScale) {
+    return {
+      "--theme-corner-flip": "-1",
+      "--theme-corner-crop": "0",
+      "--theme-corner-background-position": "center",
+      "--theme-corner-2-position": "center",
+      "--theme-corner-3-position": "center",
+      "--theme-corner-4-position": "center",
+      // Empty clears a cropped theme's sizes left on <html> by the last pick;
+      // the piece's own stylesheet (or the shared default) sizes it.
+      "--theme-table-corner-size": "",
+      "--theme-table-corner-size-small": "",
+      "--theme-lobby-corner-size": "",
+      "--theme-lobby-corner-size-small": "",
+    };
+  }
+  const ratio = (1 / definition.cornerScale / ((definition.frameSlice ?? 22) / 100)).toFixed(4);
+  return {
+    "--theme-corner-flip": "1",
+    "--theme-corner-crop": "1",
+    "--theme-corner-background-position": "top left",
+    "--theme-corner-2-position": "top right",
+    "--theme-corner-3-position": "bottom right",
+    "--theme-corner-4-position": "bottom left",
+    "--theme-table-corner-size": `calc(var(--theme-table-frame-width, 24px) * ${ratio})`,
+    "--theme-table-corner-size-small": `calc(var(--theme-table-frame-width-small, 12px) * ${ratio})`,
+    "--theme-lobby-corner-size": `calc(var(--theme-lobby-frame-width, 26px) * ${ratio})`,
+    "--theme-lobby-corner-size-small": `calc(var(--theme-lobby-frame-width-small, 12px) * ${ratio})`,
   };
 }
 

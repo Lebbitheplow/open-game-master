@@ -198,6 +198,7 @@ export default function WorkshopListPage() {
             <label className="block">
               <span className="mb-1 block font-display text-[11px] tracking-[0.1em] text-amber-300/85">{t("Name")}</span>
               <input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just pressed the button for a new workshop
                 autoFocus
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}

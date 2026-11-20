@@ -163,11 +163,6 @@ export function dashCount(budget: Pick<TurnBudget, "dashed" | "dashes">): number
   return budget.dashes ?? (budget.dashed ? 1 : 0);
 }
 
-// The budget after one more Dash.
-export function withDash(budget: TurnBudget): TurnBudget {
-  return { ...budget, dashed: true, dashes: dashCount(budget) + 1 };
-}
-
 // Slow's refusal of the other half of the turn, or null (SRD 5.1: an action
 // or a bonus action, not both; one attack at most).
 function slowedProblem(budget: TurnBudget, kind: ActionKind | "attack", what: string, who: string): ({ ok: false } & ToolError) | null {

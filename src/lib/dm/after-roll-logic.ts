@@ -75,12 +75,6 @@ export type AfterRollOption = {
 export const DARK_ONES_OWN_LUCK = "dark_ones_own_luck";
 export const CHRONAL_SHIFT = "sub_chronal_shift";
 export const CHANNEL_DIVINITY = "channel_divinity";
-export const MASTER_DUELIST = "sub_master_duelist";
-export const FAVORED_BY_THE_GODS = "sub_favored_by_the_gods";
-export const FLASH_OF_GENIUS = "art_flash_of_genius";
-export const VIOLENT_ATTRACTION = "sub_violent_attraction";
-export const GUIDED_STRIKE_BONUS = mostAdded(afterRollRow("guided_strike"));
-export const WAR_GODS_BLESSING_BONUS = mostAdded(afterRollRow("war_gods_blessing"));
 
 // The Channel Divinity options spent from this card and no other
 // (after-roll-table.ts cardOnly): the Hand deals no card for them.
@@ -393,23 +387,6 @@ export function hitHelperOption(helper: CharacterSheet, id: AfterRollId, roll: {
     return null;
   }
   return optionOf(helper, row, "attack", { by: helper.id, rollerName });
-}
-
-// War God's Blessing (War Domain 6): "when a creature within 30 feet of you makes
-// an attack roll, you can use your reaction to grant that creature a +10 bonus
-// to the roll... after you see the roll, but before the DM says whether the
-// attack hits or misses." Offered where the 10 turns the miss.
-export function warGodsBlessingOption(cleric: CharacterSheet, roll: { outcome: RollResult; ac: number; critRange: number }): AfterRollOption | null {
-  return helperOption(cleric, "war_gods_blessing", { kind: "attack", ...roll }, { rollerName: "" });
-}
-
-// Flash of Genius (Artificer 7): "when you or another creature you can see within
-// 30 feet of you makes an ability check or a saving throw, you can use your
-// reaction to add your Intelligence modifier to the roll." Offered where the
-// modifier could carry it. `ally`: on another character's roll, where a roll
-// with no DC is not offered, as for Chronal Shift (shiftCanHelp).
-export function flashOfGeniusOption(artificer: CharacterSheet, intelligence: number, roll: { kind: string; outcome: RollResult; dc: number | null }, ally: boolean): AfterRollOption | null {
-  return helperOption(artificer, "flash_of_genius", roll, { rollerName: "", modifier: intelligence, own: !ally });
 }
 
 // The line the model reads when another character changed this roll.

@@ -41,17 +41,6 @@ export function artStyleNote(t: T, style: ArtStyle): string {
   return t(ART_STYLE_NOTE_KEYS[style] ?? "The look the campaign's setting or world pack gives its maps and scenes.");
 }
 
-// The styles' English words, pinned, where a summary quotes the style for
-// the model's reading.
-export const ART_STYLE_LABELS: Record<ArtStyle, string> = {
-  setting: "From the setting",
-  painted: "Painted",
-  ink: "Ink and parchment",
-  realistic: "Realistic",
-  comic: "Comic book",
-  custom: "Custom",
-};
-
 type PresetStyle = Exclude<ArtStyle, "setting" | "custom">;
 
 export const ART_STYLE_PRESETS: Record<PresetStyle, { map: string; scene: string }> = {

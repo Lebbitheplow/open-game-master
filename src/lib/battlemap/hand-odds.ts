@@ -88,11 +88,6 @@ export function attackOddsWithDice(input: { attackBonus: number; dice: string; a
   return { hit: sum.hit / totals.length, crit: sum.crit / totals.length, miss: sum.miss / totals.length };
 }
 
-// Rapid Strike trades an attack's advantage for one more attack (pc_attack
-// refuses it on a swing with none), so its chip is shut until the aimed
-// creature gives the roll advantage.
-export const RAPID_STRIKE_NEEDS_ADVANTAGE = "Rapid Strike trades this attack's advantage for one more attack, and it has none here. Aim at a creature you attack with advantage.";
-
 // The card as aimed: the options that hang on the aim judged against it.
 export function aimedCard(card: HandCard, aim: HandAim | null, attackerConditions: string[], t: T = enT): HandCard {
   if (!card.options?.some((option) => option.needsAdvantage)) return card;

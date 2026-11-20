@@ -1,10 +1,11 @@
 // Public types of the harness context: an agent program the admin already
-// has (Claude Code, Codex, opencode, Grok Build, Pi) standing in for the story
-// model. Pure, no imports, so scripts/test-harness-*.mjs can load it.
+// has (Claude Code, Codex, opencode, Grok Build, Pi, Antigravity CLI) standing
+// in for the story model. Pure, no imports, so scripts/test-harness-*.mjs can
+// load it.
 
-export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi";
+export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi" | "antigravity";
 
-export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode", "grok", "pi"];
+export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode", "grok", "pi", "antigravity"];
 
 export function isHarnessId(value: unknown): value is HarnessId {
   return typeof value === "string" && (HARNESS_IDS as readonly string[]).includes(value);
@@ -75,6 +76,8 @@ export type HarnessStatus = {
   // Whether the program can paint pictures with its own tool at all, and
   // whether one has actually been made here.
   nativeImages: "no" | "untested" | "verified";
+  // The program cannot play the full rules (HarnessAdapter.reducedTools).
+  reducedTools?: boolean;
   availability: HarnessAvailability;
   // Shown under the card when something is wrong, with the fix.
   message?: string;
@@ -149,6 +152,9 @@ export type HarnessStartOptions = {
   speed?: { role: "story" | "utility" };
   // Null for a plain completion: no tools of any kind.
   mcp: { url: string; token: string } | null;
+  // The names of the tools that MCP server serves this run, for a program
+  // that loads each one up front by name (the Antigravity CLI).
+  toolNames?: readonly string[];
   // Native image tool on, for a picture run. Everything else stays off.
   images?: boolean;
   cwd: string;
@@ -181,6 +187,15 @@ export type HarnessAdapter = {
   // such a program can take one that long. Off, the whole transcript goes in
   // the opening message, as before.
   settledTranscript?: boolean;
+  // The program cannot hold the full tool set: the Antigravity CLI loads at
+  // most 20,000 tokens of tool definitions and drops the largest first
+  // (pc_attack, request_roll, start_encounter), where the full set is about
+  // 28K. Such a program is played on the compact profile, served only the
+  // tools each call offers, and started again when those change mid-turn
+  // (src/lib/harness/bridge.ts). Open Game Master does not support, test or
+  // recommend it: the program lists leave it off unless the admin adds it on
+  // purpose, and it carries a warning there.
+  reducedTools?: boolean;
   probe(binary: string, env: Record<string, string>): Promise<Omit<HarnessStatus, "id" | "label" | "availability" | "checkedAt" | "path" | "installHint" | "signInHint" | "lockdown" | "lockdownProven" | "nativeImages"> & { lockdownProven?: boolean }>;
   start(options: HarnessStartOptions): Promise<HarnessSession>;
 };

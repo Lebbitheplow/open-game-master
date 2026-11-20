@@ -2,7 +2,7 @@
   "generator": "OpenAI built-in image_gen",
   "date": "2026-11-14",
   "encoding": "Frame: lossless WebP with original alpha. Texture and backdrop: WebP quality 88. Source PNGs retained in workspace appearance-review/art-source.",
-  "corner": "The corner slot reuses the frame asset. CSS shows its top-left quadrant at 400% background size; shared rendering rotates the quadrant for the other corners.",
+  "corner": "The frame's top-left quadrant (cornerScale 4). A separate corner painting, tracery-garnet-pinnacle-v1.webp, was made on 2026-11-19 and is kept for a repaint: mirrored into the two lower corners its spires and lancet windows hang upside down, so it is not in the catalog until its joint reads the same across the diagonal.",
   "assets": [
     {
       "source": "exec-0b9ce238-7720-47e1-a70c-e4d28752ee8c.png",
@@ -21,6 +21,18 @@
       "file": "moonlit-cloister-v1.webp",
       "transparent": false,
       "prompt": "Use case: stylized-concept. Production wide 3:1 environment banner for a Gothic fantasy game interface. Rich hand-painted premium strategy-game environment art: a magnificent ancient cathedral cloister of charcoal carved stone, pointed arches and ornate wrought-iron screens. A tall glowing garnet-red rose stained-glass window dominates the right third, silver moonlight and soft crimson glass light fall across worn flagstones. On the left an open arch leads through mist to distant towers and a dark mountain landscape. Small warm candle groups, architectural grandeur, quiet mystery, atmospheric depth, elaborate stone tracery with restrained antique silver highlights. Composition must read in a shallow wide header crop: bold architectural forms, detail concentrated on right and open depth on left. Entire canvas opaque scenery. No characters, skulls, gore, text, symbols resembling logos, UI controls, or rectangular picture frame."
+    },
+    {
+      "file": "tracery-garnet-pinnacle-v1.webp",
+      "transparent": true,
+      "generator": "OpenAI built-in image_gen, through codex exec (codex-cli 0.158.0), 2026-11-19",
+      "encoding": "Painted on flat green #00FF00, keyed to alpha and despilled with sharp, WebP quality 92 with lossless alpha, 1024 square. Source PNG is not in the repository.",
+      "reference": [
+        "public/assets/themes/gothic/cathedral-iron-frame-v1.webp (material and palette)",
+        "public/assets/themes/woodland/root-silver-joint-v1.webp (layout only)"
+      ],
+      "edits": "Green background keyed to alpha and despilled. Not altered since.",
+      "prompt": "Use case: stylized-concept. One production fantasy game interface corner fitting, square image, front-facing orthographic. The whole background is perfectly flat pure green #00FF00 with no shading, no gradient and no cast shadows (it will be keyed out to transparency). An L-shaped TOP LEFT corner of dark weathered cathedral stone bound in blackened wrought iron, its two rails running along the TOP and LEFT edges only. The joint is a compact piece of Gothic architecture in antique rose-tinted silver: a cluster of three small pointed pinnacles at the outermost corner, two narrow lancet windows of garnet-red stained glass set into the stone beside them, and one short curved tracery rib with a single trefoil piercing spanning the inner angle between the two rails. Sharp chiselled recesses, sculpted iron, austere medieval cathedral craft, dusty silver highlights, no gold. Rich hand-painted realistic strategy-game UI art, sculpted volume and tactile stone, restrained highlights. IMPORTANT composition: the top rail occupies only the top 18 percent of the image; the left rail occupies only the left 18 percent. Ornament at their junction, including the tracery rib and every pinnacle, must stay inside the top-left 35 percent square. The entire lower-right 65 percent square must be completely flat green and EMPTY for interface content. Each rail narrows steadily toward the right edge and the bottom edge and ends in a slim wrought-iron spear finial within the canvas, leaving a small green margin, so this can sit over continuous rails. No right or bottom border. Do not use green, teal or lime anywhere in the fitting itself. No scenery, no text, no letters, no skulls, no crosses, no creatures, no frame around the entire image, no shadow on the background. All spires fully inside the canvas. This is a practical small detailed corner asset, not an illustration of a room."
     }
   ]
 }

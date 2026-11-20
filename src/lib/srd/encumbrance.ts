@@ -18,6 +18,8 @@ import { carryDoubled } from "@/lib/srd/genre-b-post-apocalyptic";
 import { gearWeightLb } from "@/lib/srd/adventuring-gear";
 import { matchArmor } from "@/lib/srd/armor";
 import { rowName } from "@/lib/srd/item-row";
+import { onMount } from "@/lib/srd/tack";
+import { bardingWeightLb } from "@/lib/srd/barding";
 import { matchWeapon, SRD_WEAPON_WEIGHT_LB } from "@/lib/srd/weapons";
 import { ammoCount, ammoKindForItem, AMMO_WEIGHT_LB } from "@/lib/srd/ammunition";
 import { itemAbilityScore, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
@@ -98,6 +100,9 @@ export type LoadLine = {
   eachLb: number | null;
   totalLb: number | null;
   source: WeightSource | null;
+  // Tack that is on the mount (src/lib/srd/tack.ts): the line keeps what one
+  // weighs and totals nothing, since the animal bears it.
+  onMount?: true;
 };
 
 // A stamped weight of 0 means "the source did not say" rather than
@@ -127,6 +132,11 @@ export function loadLine(item: CarriedItem, index = 0): LoadLine {
   if (armor) {
     return weighed(armor.weightLb, "armor");
   }
+  // Barding weighs twice its suit (src/lib/srd/barding.ts).
+  const barding = bardingWeightLb(rowName(item));
+  if (barding !== null) {
+    return weighed(barding, "armor");
+  }
   // Adventuring gear and tools by their SRD weights (adventuring-gear.ts),
   // for a kit the content pack did not stamp.
   const gear = gearWeightLb(rowName(item));
@@ -148,7 +158,10 @@ export function lineWeightLb(item: CarriedItem): number | null {
 }
 
 export function loadLines(equipment: CarriedItem[]): LoadLine[] {
-  return equipment.map((item, index) => loadLine(item, index));
+  return equipment.map((item, index) => {
+    const line = loadLine(item, index);
+    return onMount(item) ? { ...line, totalLb: 0, onMount: true as const } : line;
+  });
 }
 
 export type LoadSort = "total" | "each";

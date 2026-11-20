@@ -257,8 +257,5 @@ CAUSES.unshift(
   },
 );
 
-export function causeOf(row) {
-  return CAUSES.find((cause) => cause.match(row)) ?? null;
-}
 
 export const CAUSE_BY_ID = Object.fromEntries(CAUSES.map((cause) => [cause.id, cause]));

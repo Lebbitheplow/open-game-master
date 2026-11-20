@@ -1,4 +1,5 @@
 import { ARC_MARKER_STREAM_SOURCE, partialServerTextStart, SERVER_TEXT_STREAM_SOURCE, withoutIdArguments, withoutServerLines } from "./dm/tool-text.ts";
+import { partialWrittenCallStart, withoutWrittenCalls, writtenCallStart } from "./dm/written-calls.ts";
 
 export type StoryModelResult = {
   storyText: string;
@@ -136,7 +137,15 @@ const STREAM_STRIP = new RegExp(
 // What the draft is sent of text the filter lets go at once: the markers cut,
 // and a server's line or id that never ended before the stream did.
 function cutStreamed(text: string): string {
-  return withoutIdArguments(withoutServerLines(text.replace(new RegExp(STREAM_STRIP.source, "gi"), "")));
+  return withoutIdArguments(withoutWrittenCalls(withoutServerLines(text.replace(new RegExp(STREAM_STRIP.source, "gi"), ""))));
+}
+
+// A call cut from the draft takes the code fence opened on the line above it
+// ("```json"), which would otherwise stay on screen with nothing under it.
+const FENCE_ABOVE = /(?:^|\n)[ \t]*```[\w-]*[ \t]*\n[ \t]*$/;
+function withFenceAbove(text: string, at: number): number {
+  const fence = FENCE_ABOVE.exec(text.slice(0, at));
+  return fence ? fence.index + (fence[0].startsWith("\n") ? 1 : 0) : at;
 }
 const STREAM_HOLDBACK_CHARS = 48;
 // The longest "[roll:" marker body held back while its closing bracket is
@@ -159,8 +168,8 @@ function partialRollMarkerStart(text: string): number {
   return text.search(PARTIAL_ROLL_MARKER);
 }
 
-function partialMarkerStart(text: string): number {
-  const starts = [partialRollMarkerStart(text), partialTokenStart(text), partialServerTextStart(text)].filter((start) => start >= 0);
+function partialMarkerStart(text: string, lineStart: boolean): number {
+  const starts = [partialRollMarkerStart(text), partialTokenStart(text), partialServerTextStart(text), partialWrittenCallStart(text, lineStart)].filter((start) => start >= 0);
   return starts.length ? Math.min(...starts) : -1;
 }
 
@@ -200,11 +209,14 @@ export function createStreamingArtifactFilter() {
   let suppressing = false;
   let emittedAnything = false;
   let jsonReply = false;
+  // Whether the text shown so far ends a line, so pending opens one.
+  let shownEndsLine = true;
 
   return {
     push(chunk: string): string {
       pending += chunk;
       let output = "";
+      const lineStart = () => (output ? output.endsWith("\n") : shownEndsLine);
 
       for (;;) {
         if (suppressing) {
@@ -250,8 +262,13 @@ export function createStreamingArtifactFilter() {
         // before them streams, the call and anything after it wait. So with
         // a call an agent program wrote out as an invoke tag (issue 794),
         // known by its name attribute as stripToolText knows it: a "name"
-        // with no "=" is prose, and holding it would stall the draft.
-        const bareJsonAt = pending.search(/\{\s*"|\bto=functions\.|<(?:[\w-]+:)?(?:invoke\s+name\s*=|function_calls\b)/i);
+        // with no "=" is prose, and holding it would stall the draft. So with
+        // a call written as a function or as argument lines (issue 1025).
+        const callStarts = [
+          pending.search(/\{\s*"|\bto=functions\.|<(?:[\w-]+:)?(?:invoke\s+name\s*=|function_calls\b)/i),
+          writtenCallStart(pending, lineStart()),
+        ].filter((start) => start >= 0);
+        const bareJsonAt = callStarts.length ? withFenceAbove(pending, Math.min(...callStarts)) : -1;
         if (bareJsonAt >= 0 && !STREAM_SUPPRESS_OPEN.test(pending.slice(0, bareJsonAt))) {
           output += cutStreamed(pending.slice(0, bareJsonAt));
           pending = "";
@@ -265,7 +282,7 @@ export function createStreamingArtifactFilter() {
         // A match inside text still held is not one yet: an id inside a card
         // line whose bracket has not closed would go, and the line's head
         // stream ahead of it.
-        const heldAt = partialMarkerStart(pending);
+        const heldAt = partialMarkerStart(pending, lineStart());
         const stripAt = heldAt >= 0 && (strip?.index ?? -1) >= heldAt ? -1 : strip?.index ?? -1;
 
         if (openAt >= 0 && (stripAt < 0 || openAt <= stripAt)) {
@@ -295,7 +312,7 @@ export function createStreamingArtifactFilter() {
           continue;
         }
 
-        const holdback = partialMarkerStart(pending);
+        const holdback = partialMarkerStart(pending, lineStart());
         if (holdback >= 0) {
           output += pending.slice(0, holdback);
           pending = pending.slice(holdback);
@@ -308,6 +325,7 @@ export function createStreamingArtifactFilter() {
 
       if (output) {
         emittedAnything = true;
+        shownEndsLine = output.endsWith("\n");
       }
       return output;
     },

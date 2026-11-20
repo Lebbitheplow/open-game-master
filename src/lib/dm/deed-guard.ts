@@ -44,8 +44,6 @@ const DEEDS: Record<string, { field: string; when?: (args: Args) => boolean }> =
   downtime: { field: "characterId" },
 };
 
-export const DEED_TOOLS: readonly string[] = Object.keys(DEEDS);
-
 function argsOf(raw: string): Args | null {
   try {
     const parsed: unknown = JSON.parse(raw || "{}");

@@ -206,6 +206,10 @@ export const fakeAdapter: HarnessAdapter = {
   signInHint: "",
   lockdown: "removed",
   paints: false,
+  // A test plays a program that cannot hold the full tool set with this.
+  get reducedTools() {
+    return process.env.HARNESS_FAKE_REDUCED === "1";
+  },
   async probe() {
     return {
       installed: true,

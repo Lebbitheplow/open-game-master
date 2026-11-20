@@ -123,8 +123,9 @@ await test("The saga planner and story setup read it, and nothing when blank", a
   model.script([]);
   await generateStoryArc(blank.campaignId);
   await runStorySetup(blank.campaignId);
-  assert.equal(model.requests.length, 2);
-  for (const index of [0, 1]) {
+  // The planner asks once more for a plan it could not read, then setup.
+  assert.equal(model.requests.length, 3);
+  for (const index of [0, 1, 2]) {
     assert.ok(!/party backstory|shared story/i.test(userContent(index)), userContent(index));
   }
   blank.close();
@@ -138,7 +139,7 @@ await test("The saga planner and story setup read it, and nothing when blank", a
   await runStorySetup(filled.campaignId);
   const arc = userContent(0);
   assert.ok(arc.includes(`- Their shared backstory: ${BACKSTORY}`), arc);
-  const setup = userContent(1);
+  const setup = userContent(2);
   assert.ok(setup.includes(`Table's shared party backstory: ${BACKSTORY}`), setup);
   // The setup pass reads it and never rewrites it.
   assert.equal(getParty(filled.campaignId).backstory, BACKSTORY);

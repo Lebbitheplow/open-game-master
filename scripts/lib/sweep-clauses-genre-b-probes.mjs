@@ -22,7 +22,6 @@ export const ABILITIES = { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 
 const MOD = 3;
 const prof = (level) => 2 + Math.floor((level - 1) / 4);
 const baseName = (name) => name.replace(/\s*\([^)]*\)\s*$/, "").trim();
-const slug = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
 // A staging call that must go through: its refusal is the probe breaking.
 function must(out, what) {
@@ -718,4 +717,4 @@ export async function strayHooks(rig, row, expected = {}) {
   return out;
 }
 
-export { baseName, slug };
+export { baseName };

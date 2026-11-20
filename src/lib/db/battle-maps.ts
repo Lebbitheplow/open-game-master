@@ -1,6 +1,8 @@
 import { resolveOutdoors } from "@/lib/battlemap/daylight";
 import { forgetWalk, rememberWalk } from "@/lib/battlemap/confirmed-walk";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { getMounts } from "@/lib/db/mounts";
+import { independentMount } from "@/lib/srd/mounts";
 import { keepNew, keepRow, keepRowsWhere } from "@/lib/db/turn-rows";
 import type {
   AmbientLight,
@@ -463,13 +465,37 @@ export function listTokens(mapId: string): BattleToken[] {
   return rows.map(mapToken);
 }
 
+// A combatant's token. An independent mount carrying its rider has none of
+// its own: the pair stands on the rider's token (issue 1036, ruling 2: "the
+// rider's token rides on the mount", never two tokens on a square), so the
+// mount's reach, its sight and its walk are all read from, and move, that
+// one token. Asked here, once, so every door that measures from a creature
+// finds the mount where its rider is: a mount with no token left every reach
+// from it unmeasured and its move_token an unknown combatant.
 export function getTokenByRef(mapId: string, refId: string): BattleToken | null {
-  const row = getDatabase()
-    .prepare(
-      `SELECT ${TOKEN_COLUMNS} FROM battle_tokens WHERE map_id = ? AND ref_id = ?`,
-    )
-    .get(mapId, refId) as TokenRow | undefined;
-  return row ? mapToken(row) : null;
+  const select = getDatabase().prepare(`SELECT ${TOKEN_COLUMNS} FROM battle_tokens WHERE map_id = ? AND ref_id = ?`);
+  const row = select.get(mapId, refId) as TokenRow | undefined;
+  if (row) {
+    return mapToken(row);
+  }
+  const riderId = carriedRider(mapId, refId);
+  const shared = riderId ? (select.get(mapId, riderId) as TokenRow | undefined) : undefined;
+  return shared ? mapToken(shared) : null;
+}
+
+// The rider an independent mount carries at this map's table, read only
+// when the creature has no token of its own.
+function carriedRider(mapId: string, refId: string): string | null {
+  const map = getDatabase().prepare(`SELECT campaign_id FROM battle_maps WHERE id = ?`).get(mapId) as { campaign_id?: string } | undefined;
+  if (!map?.campaign_id) {
+    return null;
+  }
+  for (const [riderId, mount] of Object.entries(getMounts(map.campaign_id))) {
+    if (independentMount(mount) && mount.sheetId === refId) {
+      return riderId;
+    }
+  }
+  return null;
 }
 
 // The squares each token stood in since its turn's movement began, oldest

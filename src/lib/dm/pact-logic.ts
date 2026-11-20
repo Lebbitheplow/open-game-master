@@ -492,7 +492,3 @@ export function openArgumentLine(recruiter: string, target: string): string {
 // it as the server's word.
 export const PACT_REVEAL_PREFIX = "[Revealed] ";
 
-// The DM's line when a plan goes, in the moment part of GAME STATE.
-export function firedNote(how: string): string {
-  return `${how} The server did it; narrate it as it happened. Never call dismiss_companion for it.`;
-}

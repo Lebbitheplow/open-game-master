@@ -25,7 +25,6 @@ import { useT, useTp } from "@/lib/locale";
 type Props = { data: Data; set: (patch: Data) => void };
 
 const SKILL_LABELS = Object.fromEntries(SKILL_IDS.map((id) => [id, id.replace(/_/g, " ")])) as Record<(typeof SKILL_IDS)[number], string>;
-const GENERIC_TOOLS = ["gaming set", "artisan's tools", "musical instrument"] as const;
 
 export function grantsOfDraft(data: Data): BackgroundGrants {
   const held = data.grants as BackgroundGrants | undefined;
@@ -87,7 +86,6 @@ function KitList({ items, onChange }: { items: string[]; onChange: (next: string
 
 export function BackgroundFields({ data, set }: Props) {
   const t = useT();
-  const tp = useTp();
   const tools = [
     t("One type of gaming set"),
     t("One type of artisan's tools"),

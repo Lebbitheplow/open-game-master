@@ -24,7 +24,6 @@ import { textKey } from "@/lib/language/text-logic";
 import { echoOwnerOf } from "@/lib/dm/mt-fb-echo";
 
 export type { AreaShape } from "@/lib/battlemap/area-shape";
-export { areaShapeFromText } from "@/lib/battlemap/area-shape";
 
 const FEET_PER_TILE = 5;
 

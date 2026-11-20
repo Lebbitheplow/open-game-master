@@ -27,9 +27,6 @@ import {
   CONSCIENCE_SETTINGS,
   HP_METHODS,
   STARTING_WEALTH,
-  TABLE_LANGUAGE_HELP,
-  TABLE_LANGUAGE_LABELS,
-  TABLE_LANGUAGES,
   type CampaignLengthSetting,
   type ConscienceSetting,
   type DicePolicy,
@@ -73,7 +70,6 @@ export function WorldGroup({
   selectedPack,
 }: Base & { packs: WorldPackSummary[]; selectedPack: WorldPackSummary | null }) {
   const t = useT();
-  const tp = useTp();
   const aiNarrates = settings.dmMode !== "human";
   return (
     <>
@@ -177,7 +173,6 @@ export function WorldGroup({
 
 export function CharacterGroup({ settings, patch, serverRerollLabel }: Base & { serverRerollLabel: string }) {
   const t = useT();
-  const tp = useTp();
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -269,7 +264,6 @@ export function NarrationGroup({
   narrationOff,
 }: Base & { campaignId: string; narrating: boolean; narrationOff: boolean }) {
   const t = useT();
-  const tp = useTp();
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -305,7 +299,6 @@ export function AtmosphereGroup({
 }) {
   const capabilities = useCapabilities();
   const t = useT();
-  const tp = useTp();
   return (
     <>
       {hostOffers(capabilities, "appearanceThemes") ? (
@@ -513,7 +506,6 @@ export function AiGroup({ settings, patch }: Base) {
 // it on, and the line under the switches says so.
 export function MemoryGroup({ settings, patch }: Base) {
   const t = useT();
-  const tp = useTp();
   return (
     <>
       <p className="text-stone-500">{t("How the AI narrator remembers a long campaign. Every table starts with all of these on; switch one off only to save model time on a slow server.")}</p>
@@ -540,7 +532,6 @@ export function MemoryGroup({ settings, patch }: Base) {
 
 export function BondsGroup({ settings, patch, lastingCompanions = false }: Base & { lastingCompanions?: boolean }) {
   const t = useT();
-  const tp = useTp();
   return (
     <>
     <div className="flex flex-wrap items-center gap-2">
@@ -609,7 +600,6 @@ function pacingOptions(t: (key: string, vars?: Record<string, string | number>) 
 // `solo`: a table of one, where nobody else could be waited for.
 export function PlayersGroup({ settings, patch, solo = false }: Base & { solo?: boolean }) {
   const t = useT();
-  const tp = useTp();
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -675,7 +665,6 @@ export function PlayersGroup({ settings, patch, solo = false }: Base & { solo?: 
 // the AI narrates: there, the story is typed by definition.
 export function ConsoleGroup({ settings, patch }: Base) {
   const t = useT();
-  const tp = useTp();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="pk-rowlabel">{t("Remind")}</span>
@@ -707,7 +696,6 @@ export function ConsoleGroup({ settings, patch }: Base) {
 
 export function BoardGroup({ settings, patch }: Base) {
   const t = useT();
-  const tp = useTp();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="pk-rowlabel">{t("Board")}</span>
@@ -731,7 +719,6 @@ export function BoardGroup({ settings, patch }: Base) {
 // They are all inputs to one function (src/lib/voice/audibility.ts).
 export function VoiceChatGroup({ settings, patch, transcribes }: Base & { transcribes: boolean }) {
   const t = useT();
-  const tp = useTp();
   const rules = settings.voice.rules;
   const setRule = (change: Partial<GameSettings["voice"]["rules"]>) => patch({ voice: { ...settings.voice, rules: { ...rules, ...change } } });
   return (

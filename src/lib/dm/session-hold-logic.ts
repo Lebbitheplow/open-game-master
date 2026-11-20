@@ -61,16 +61,8 @@ export function sessionEndedLineT(t: T, number: number): string {
   return t("Session {n} ends.", { n: number });
 }
 
-export function sessionEndedLine(number: number): string {
-  return sessionEndedLineT(enT, number);
-}
-
 export function sessionStartedLineT(t: T, number: number): string {
   return t("Session {n} begins.", { n: number });
-}
-
-export function sessionStartedLine(number: number): string {
-  return sessionStartedLineT(enT, number);
 }
 
 // A "Previously, on..." opens the next session only after a real gap: a

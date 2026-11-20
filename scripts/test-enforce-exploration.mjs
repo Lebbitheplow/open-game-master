@@ -300,5 +300,51 @@ await test("a lantern burns on its flask of oil: with none carried it gives no l
   assert.ok(carriedLight({ equipment: [{ name: "Hooded Lantern", qty: 1 }, { name: "Flask of Oil", qty: 2 }] }).radius > 0);
 });
 
+// Fork PR 1019 (2026-11-17): a storm set at noon held through every short
+// step to the next day, since the sky was rolled again only at dawn.
+await test("A storm blows over in hours: rough weather is rolled again at each two-hour mark, fair weather waits for dawn.", async () => {
+  const { skyIsDue } = await import("../src/lib/dm/sky.ts");
+  const storm = { sky: "storm", temperature: "cold", wind: "gale", precipitation: 3 };
+  const rain = { sky: "rain", temperature: "mild", wind: "calm", precipitation: 1 };
+  const clear = { sky: "clear", temperature: "mild", wind: "calm", precipitation: 0 };
+  const at = (instant, weather) => ({ calendar: "harptos", instant, weather });
+  assert.equal(skyIsDue(at(600, storm), at(610, storm), 10), false, "ten minutes inside the mark");
+  assert.equal(skyIsDue(at(710, storm), at(720, storm), 10), true, "the two-hour mark crossed");
+  assert.equal(skyIsDue(at(710, rain), at(730, rain), 20), true, "rain too");
+  assert.equal(skyIsDue(at(710, clear), at(720, clear), 10), false, "a clear sky waits for dawn");
+  assert.equal(skyIsDue(at(1430, clear), at(1450, clear), 20), true, "a dawn still rolls every sky");
+});
+
+// Fork PR 1019 (2026-11-17): a compass dropped on a raft's deck stayed at the
+// sandbank when the raft beached somewhere else.
+await test("What lies on a boat's deck goes where the boat goes: after a leg ridden aboard, or when move_party says aboard, and not otherwise.", async () => {
+  const { insertDroppedItem, listDroppedItems } = await import("../src/lib/db/dropped-items.ts");
+  const placeOf = (id) => listDroppedItems(world.campaignId).find((item) => item.id === id)?.place;
+  const drop = (place, name, x = null) =>
+    insertDroppedItem({ campaignId: world.campaignId, mapId: null, x, y: x, place, item: { name, qty: 1 }, droppedBy: "test" }).id;
+  const rower = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  await nextDayAt(8);
+  assert.equal((await world.invoke("move_party", { name: "The Rowboat", visionClear: true })).ok, true);
+  const compass = drop("The Rowboat", "Brass Compass");
+  const stuck = drop("The Rowboat", "Grappling Hook", 2);
+  // The leg ridden aboard (travel's aboard), then the landing: the deck comes.
+  const leg = await steadySky(() => world.invoke("travel", { hours: 1, aboard: "rowboat", characterIds: [rower.id] }));
+  assert.equal(leg.ok, true, leg.error);
+  const landed = await world.invoke("move_party", { name: "The Sandbank", visionClear: true });
+  assert.equal(landed.ok, true, landed.error);
+  assert.equal(placeOf(compass), "The Sandbank");
+  assert.match(landed.result.note, /1 thing\(s\) lying aboard came along/);
+  assert.equal(placeOf(stuck), "The Rowboat", "a thing on a board square stays where it fell");
+  // Time passed ashore: walking on leaves what lies here.
+  await world.invoke("pass_time", { amount: 30, unit: "minutes" });
+  assert.equal((await world.invoke("move_party", { name: "The Dunes", visionClear: true })).ok, true);
+  assert.equal(placeOf(compass), "The Sandbank", "walked away from, it stays");
+  // The model says the party went aboard (a raft drifting, no travel call).
+  const oar = drop("The Dunes", "Spare Oar");
+  const drifted = await world.invoke("move_party", { name: "Driftwood Isle", visionClear: true, aboard: true });
+  assert.equal(drifted.ok, true, drifted.error);
+  assert.equal(placeOf(oar), "Driftwood Isle");
+});
+
 world.close();
 finish();

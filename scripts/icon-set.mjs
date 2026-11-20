@@ -447,7 +447,7 @@ export async function buildIconList() {
 
   // Approved circular exports are independent of both item hover art and
   // rectangular action cards; generator runs must preserve them.
-  for (const { id, label } of readJson("docs/art/inventory-2026-11-16.json").records) {
+  for (const { id, label } of ["inventory-2026-11-16", "core-equipment-2026-11-18"].flatMap(name => readJson(`docs/art/${name}.json`).records)) {
     list.push(entry("inventory", id, label, label, { externalArt: true, width: 256, height: 256 }));
   }
 
@@ -478,6 +478,13 @@ export async function buildIconList() {
       e.prompt = `a symbolic icon of ${overrides[e.id]}${tone ? `, ${tone}` : ""}, a wordless pictogram, ${ICON_STYLE}`;
     }
   }
+
+  // The legacy paths that now draw a circular painting (src/lib/icons.ts
+  // sends them to icons/inventory) keep no file of their own: a copy there
+  // shipped the same bytes twice in every app, and a generator rebuild must
+  // not paint the superseded artwork back.
+  const replaced = new Set(readJson("docs/art/legacy-inventory-replacements-2026-11-18.json").records.map(({ group, key }) => `${group}-${key}`));
+  for (let at = list.length - 1; at >= 0; at -= 1) if (replaced.has(list[at].id)) list.splice(at, 1);
 
   const ids = new Set();
   for (const e of list) {

@@ -85,6 +85,7 @@ export function PersonalityFields({
                 value={current}
                 onChange={(event) => set(key, event.target.value)}
                 maxLength={PERSONA_ENTRY_MAX}
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- the focus moves in only when the player just picked writing their own and the box is still empty
                 autoFocus={writing[key] && current === ""}
                 placeholder={list[0] ?? ""}
                 aria-label={`${PERSONA_LABELS[key]}, in your own words`}

@@ -8,7 +8,7 @@ import { chip, chipOn, chipRow } from "@/app/workshop/kit";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { BUNDLE_KIND_LABELS, type BundleDependency } from "@/lib/workshop/bundle";
-import { useT, useTp } from "@/lib/locale";
+import { useT } from "@/lib/locale";
 import type { MessageVars } from "@/lib/messages-logic";
 import { pluralOf } from "@/lib/messages-logic";
 
@@ -98,7 +98,6 @@ export function BundlePreview({
 }) {
   const offered = kindsOf(preview);
   const t = useT();
-  const tp = useTp();
   const dropped = droppedLinks(preview, kinds, t);
   return (
     <div className={`${ui.card} reveal mt-3 p-4`}>

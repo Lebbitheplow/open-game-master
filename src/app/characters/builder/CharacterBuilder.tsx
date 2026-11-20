@@ -55,7 +55,6 @@ import { TableScopeNote } from "./TableScopeNote";
 import { UndoChangeBar } from "./UndoChangeBar";
 import { putBackMessage, undoMessage } from "./buildUndo";
 import { summaryRows, type SummaryRowKey } from "./summary";
-import { ALIGNMENT_LABELS } from "./usePickerGroups";
 import { listWords, unofferedPicks } from "./unoffered";
 import { findRace, useBuilderState, type DroppedNotice } from "./useBuilderState";
 import { useFeatDescs, useFeatTexts } from "./useFeatDescs";

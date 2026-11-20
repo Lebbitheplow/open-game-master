@@ -33,6 +33,8 @@ const { handsRuling } = await import("../src/lib/dm/attack-rules.ts");
 const { liveZones } = await import("../src/lib/dm/zone-store.ts");
 const { afflictionConditionsFor } = await import("../src/lib/dm/afflictions.ts");
 const { packListCp } = await import("../src/lib/dm/trade-value.ts");
+const { describeEquipmentItem } = await import("../src/lib/dm/equipment-line.ts");
+const { describeSheet } = await import("../src/lib/dm/prompt.ts");
 const encounters = await import("../src/lib/db/encounters.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
@@ -858,6 +860,32 @@ await test("EQP-24", async () => {
   world.patch(rider.id, { equipment: [{ name: "Saddle, Exotic", qty: 1 }] });
   const saddled = await world.invoke("mount_up", { characterId: rider.id, mount: "Griffon" });
   assert.equal(saddled.ok && !saddled.result?.error, true, JSON.stringify(saddled.result ?? saddled.error));
+  assert.equal(saddled.result?.saddle, undefined, "a saddle already on the mount was reported as moved");
+  // Issue #1038: one they packed goes on the griffon as they mount, and is
+  // never a reason to refuse them.
+  const packer = world.addHero({ class: "fighter", level: 3, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Saddle, Exotic", qty: 1, equipped: false }] });
+  const packed = await world.invoke("mount_up", { characterId: packer.id, mount: "Griffon" });
+  assert.equal(packed.ok && !packed.result?.error, true, JSON.stringify(packed.result ?? packed.error));
+  assert.match(packed.result.saddle, /Saddle, Exotic was in .* pack and is on the Griffon now/);
+  const rows = Object.fromEntries(world.sheet(packer.id).equipment.map((item) => [item.name, item.equipped]));
+  assert.deepEqual(rows, { "Chain Mail": true, "Saddle, Exotic": true });
+  // An unmarked saddle on a sheet that says what it wears is on the mount
+  // for the GM too: GAME STATE says so, and handle_item can pack it.
+  const tacked = world.addHero({ class: "fighter", level: 3, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Saddle, Riding", qty: 1 }] });
+  const saddleRow = () => world.sheet(tacked.id).equipment.find((item) => item.name === "Saddle, Riding");
+  assert.equal(describeEquipmentItem(saddleRow(), world.sheet(tacked.id).equipment), "Saddle, Riding (on the mount)");
+  const off = await world.invoke("handle_item", { characterId: tacked.id, action: "unequip", item: "Saddle, Riding" });
+  assert.equal(off.ok && !off.result?.error, true, JSON.stringify(off.result ?? off.error));
+  assert.equal(off.result.unchanged, undefined, `packing a saddle on the mount changed nothing: ${off.result.note}`);
+  assert.equal(saddleRow().equipped, false);
+  assert.equal(describeEquipmentItem(saddleRow(), world.sheet(tacked.id).equipment), "Saddle, Riding (packed, not on the mount)");
+  const again = await world.invoke("handle_item", { characterId: tacked.id, action: "unequip", item: "Saddle, Riding" });
+  assert.equal(again.result?.unchanged, true, "packing a packed saddle was a change");
+  // Back on the mount, it is not on the rider's body, so not in what they wear and hold.
+  const on = await world.invoke("handle_item", { characterId: tacked.id, action: "equip", item: "Saddle, Riding" });
+  assert.equal(on.ok && !on.result?.error && !on.result?.unchanged, true, JSON.stringify(on.result ?? on.error));
+  assert.equal(saddleRow().equipped, true);
+  assert.match(describeSheet(world.sheet(tacked.id), "a player", false), /Worn and in hand: Chain Mail \(/);
 });
 
 // adventuring-gear, Block and Tackle: "a block and tackle allows you to hoist

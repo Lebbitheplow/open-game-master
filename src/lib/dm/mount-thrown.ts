@@ -28,6 +28,19 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { standBesideRider } from "@/lib/dm/summon-store";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { DISMOUNT_SAVE_DC, riderKnockedProne, type MountState } from "@/lib/srd/mounts";
+import { matchGear } from "@/lib/srd/adventuring-gear";
+import { rowName } from "@/lib/srd/item-row";
+import { onMount } from "@/lib/srd/tack";
+
+// "A military saddle braces the rider, helping you keep your seat on an
+// active mount in battle. It gives you advantage on any check you make to
+// remain mounted" (SRD 5.1, Tack, Harness, and Drawn Vehicles). The roll
+// the rules ask to remain mounted is this save, so the saddle's advantage
+// is on it. Only a saddle on the mount braces anyone: one its rider packed
+// (src/lib/srd/tack.ts) is cargo.
+const MILITARY_SADDLE = matchGear("Saddle, Military");
+const ridesMilitarySaddle = (sheet: CharacterSheet) =>
+  Boolean(MILITARY_SADDLE) && sheet.equipment.some((item) => onMount(item) && matchGear(rowName(item)) === MILITARY_SADDLE);
 
 export const isProne = (conditions: readonly string[]) => conditions.some((entry) => isConditionNamed(entry, "prone"));
 
@@ -81,7 +94,8 @@ export function saddleSave(
   turn: DmTurn | null,
   why: "knocked prone" | "mount moved",
 ): SaddleSave {
-  const save = rollCharacterSave(campaign, turn, sheet, "dex", DISMOUNT_SAVE_DC, `${sheet.name}: DEX save to stay in the saddle`, { against: "dismount" });
+  const braced = ridesMilitarySaddle(sheet) ? { advantage: "advantage" as const, reason: "Military saddle: advantage to remain mounted" } : null;
+  const save = rollCharacterSave(campaign, turn, sheet, "dex", DISMOUNT_SAVE_DC, `${sheet.name}: DEX save to stay in the saddle`, { against: "dismount" }, null, braced);
   const total = save.total ?? (save.success ? "made" : "failed with no roll");
   const how = why === "knocked prone" ? `was knocked prone while riding ${mount.name}` : `was on ${mount.name} as it was moved against its will`;
   if (save.success) {

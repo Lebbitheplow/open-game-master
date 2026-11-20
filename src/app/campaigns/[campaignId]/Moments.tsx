@@ -113,6 +113,7 @@ export function RestMoment({ auditLog, sheets }: { auditLog: AuditEntry[]; sheet
   const byCharacter = new Map(fresh.map((entry) => [entry.characterId, entry]));
   const resting = sheets.filter((sheet) => byCharacter.has(sheet.id));
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a click anywhere skips the moment for a mouse; Escape skips it from the keyboard (useEscapeToSkip), and it ends on its own
     <div className="moment-stage" role="status" onClick={() => setSeen(stamp)}>
       <p className="moment-kicker">
         <GameIcon icon={{ kind: "glyph", key: long ? "rest-long" : "rest-short" }} size="size-7" />
@@ -201,6 +202,7 @@ export function LootMoment({ sheet }: { sheet: CharacterSheet | null | undefined
   }
   const tier = lootTier(current.item);
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a click anywhere skips the find for a mouse; Escape skips it from the keyboard (useEscapeToSkip), and it ends on its own
     <div className="moment-loot" role="status" data-tier={tier} onClick={() => setQueue((waiting) => waiting.slice(1))}>
       <div key={current.name} className="moment-loot-card">
         {tier !== "common" ? <span className="moment-loot-rays" aria-hidden="true" /> : null}

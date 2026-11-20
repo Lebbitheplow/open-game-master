@@ -23,10 +23,6 @@ import { LengthNote } from "@/components/ui/LengthNote";
 import { QUESTION_MAX_CHARS, questionLength } from "@/lib/dm/ask-logic";
 import { useT } from "@/lib/locale";
 
-// The translator's shape, for the label helpers below: `t` comes in first
-// (src/lib/story-window.ts).
-type T = (key: string, vars?: Record<string, string | number>) => string;
-
 // The DM's assist rail: read-only answers from engines that already exist.
 // Nothing here applies anything to the game. The one exception is the
 // suggestion, which hands the DM a prefilled adjudication form; they still

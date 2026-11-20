@@ -34,7 +34,8 @@ Software:
     KoboldCpp: supported, with llama.cpp the one we recommend), or a remote API
     key like OpenAI or OpenRouter. Or:
   - a CLI agent already installed and signed in on the server's computer: Claude
-    Code, Codex, opencode, Grok Build or Pi, running on the plan you already pay for.
+    Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI, running on the plan
+    you already pay for.
     Pick it in **Admin > Agent program**. Works for a server started with npm or
     systemd, not inside the Docker image
     ([agent-harness.md](agent-harness.md)).
@@ -43,8 +44,8 @@ Software:
   of memory on a Mac): gpt-oss-20b is the minimum, and the recommended
   Qwen3.6-35B-A3B needs about 28 GB at Q4
   ([text-backends.md](text-backends.md#hardware-for-a-local-model)). Below 16 GB
-  is not supported. It needs a context window of at least 24K tokens to narrate and
-  40K to run fights; 48K or more is recommended
+  is not supported. The storyteller needs a context window of at least 64K tokens
+  to play the full rules; smaller windows are not supported
   ([text-backends.md](text-backends.md#context-window)). Hosted models and
   agent programs have far more.
 - **Optional services** (each feature simply stays off, or falls back to a
@@ -88,7 +89,7 @@ takes it from there, one question at a time:
   this machine; an Ollama it finds is connected through Ollama's own API, so
   the app sets the model's window. Or paste an API key (OpenAI, OpenRouter, any OpenAI-compatible
   provider) and pick from the models it can reach. Or pick an agent program you
-  already pay for (Claude Code, Codex, opencode, Grok Build, Pi): it shows whether each
+  already pay for (Claude Code, Codex, opencode, Grok Build, Pi, Antigravity CLI): it shows whether each
   is installed and signed in, and the exact command to fix it when not. Or choose a
   person at the table. Each choice is tested the way a campaign uses it before you
   move on.
@@ -221,7 +222,7 @@ building the older files would be a downgrade, which an upgraded database refuse
 ```bash
 npm test            # every scripts/test-*.mjs, one at a time, failures listed at the end
 npm run coverage    # the same, plus a code coverage report in coverage/index.html
-npm run dead-code   # files, exports, locals and parameters nothing uses (a report, not a CI gate)
+npm run dead-code   # files, exports, locals and parameters nothing uses (CI fails on any)
 ```
 
 Each test script is a plain Node program, so `node scripts/test-<name>.mjs` runs one

@@ -148,6 +148,7 @@ export function CommandPalette({
             <div className="flex items-center gap-2 border-b border-amber-400/15 px-3 py-2.5">
               <Search className="size-4 shrink-0 text-amber-200/70" aria-hidden="true" />
               <input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- the palette is a dialog the player just opened, and typing is how it is used
                 autoFocus
                 value={query}
                 onChange={(event) => {
@@ -223,6 +224,7 @@ function PaletteRow({
   return (
     <>
       {heading ? <div role="presentation" className="reveal palette-group">{heading}</div> : null}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- the search box owns the keyboard (aria-activedescendant): the arrows light a row and Enter runs it, so a row takes no focus and needs only the click */}
       <div
         id={id}
         role="option"

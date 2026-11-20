@@ -25,6 +25,8 @@ export function knownInstallDirs(home: string, platform: string = hostPlatform()
       p.join(localAppData, "Programs", "claude"),
       // Codex's own Windows installer (chatgpt.com/codex/install.ps1).
       p.join(localAppData, "Programs", "OpenAI", "Codex", "bin"),
+      // The Antigravity CLI's installer (antigravity.google/cli/install.ps1).
+      p.join(localAppData, "agy", "bin"),
       p.join(home, ".local", "bin"),
       p.join(home, ".bun", "bin"),
       p.join(home, ".opencode", "bin"),

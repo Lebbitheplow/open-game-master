@@ -13,6 +13,8 @@ const {
   dismountSave,
   riderKnockedProne,
   checkCreatureMount,
+  independentMount,
+  rideByRecord,
   mountSizeOf,
   MOUNTS,
   mountCost,
@@ -113,6 +115,40 @@ test("an independent mount is marked as one", () => {
   assert.equal(checkMount({ ref: "warhorse", riderSize: "medium" }).state.controlled, true);
 });
 
+test("barding is the suit it is named for, with as much of the mount's Dexterity as the suit lets through", async () => {
+  const { bardingSuit, bardingAc, carriedBarding } = await import("../src/lib/srd/barding.ts");
+  // SRD 5.1: "Any type of armor shown on the Armor table can be purchased as barding."
+  assert.equal(bardingSuit("Chain Mail Barding")?.name, "Chain Mail");
+  assert.equal(bardingSuit("Barding (Plate)")?.name, "Plate");
+  assert.equal(bardingSuit("Barding, Leather")?.name, "Leather");
+  assert.equal(bardingSuit("Chain Mail"), null, "a suit for a person is no barding");
+  assert.equal(bardingSuit("Barding"), null, "barding that names no suit has no numbers");
+  assert.equal(bardingSuit("Shield Barding"), null, "a shield is not worn as barding");
+  // A warhorse has Dexterity 12: all of it under leather, none under chain mail, at most +2 under scale.
+  assert.equal(bardingAc(bardingSuit("Leather Barding"), 12), 12);
+  assert.equal(bardingAc(bardingSuit("Chain Mail Barding"), 12), 16);
+  assert.equal(bardingAc(bardingSuit("Scale Mail Barding"), 18), 16);
+  assert.equal(bardingAc(bardingSuit("Chain Mail Barding"), 6), 16, "heavy barding passed a Dexterity penalty on");
+  assert.deepEqual(
+    carriedBarding([{ name: "Leather Barding" }, { name: "Rope" }, { name: "Chain Mail Barding" }], 12),
+    { name: "Chain Mail Barding", ac: 16 },
+    "the better of two bardings is the one worn",
+  );
+  assert.equal(carriedBarding([{ name: "Chain Mail" }], 12), null);
+  // Issue #1038: barding is tack. Packed, it is cargo and protects nothing.
+  assert.equal(carriedBarding([{ name: "Chain Mail Barding", equipped: false }], 12), null);
+  assert.deepEqual(carriedBarding([{ name: "Chain Mail Barding", equipped: false }, { name: "Leather Barding" }], 12), { name: "Leather Barding", ac: 12 });
+  const { isTack, onMount } = await import("../src/lib/srd/tack.ts");
+  assert.equal(isTack({ name: "Barding (Plate)" }), true);
+  assert.equal(isTack({ name: "Plate" }), false);
+  assert.equal(onMount({ name: "Chain Mail Barding" }), true);
+  // "Weighs twice as much": 110 lb of chain mail barding, on the mount and not on its rider.
+  const { loadLines } = await import("../src/lib/srd/encumbrance.ts");
+  const [on, packed] = loadLines([{ name: "Chain Mail Barding", qty: 1 }]).concat(loadLines([{ name: "Chain Mail Barding", qty: 1, equipped: false }]));
+  assert.deepEqual([on.eachLb, on.totalLb, on.onMount], [110, 0, true]);
+  assert.deepEqual([packed.eachLb, packed.totalLb, packed.onMount], [110, 110, undefined]);
+});
+
 test("a rider moves at the mount's speed, not their own", () => {
   const state = checkMount({ ref: "warhorse", riderSize: "medium" }).state;
   assert.equal(mountedSpeed(state, 30), 60);
@@ -144,6 +180,27 @@ test("a creature the table keeps as a sheet is a mount by the size rule, ridden 
   assert.match(checkCreatureMount({ sheetId: "s3", name: "Owl", speed: 60, size: "Tiny", riderSize: "small" }).error, /one size larger/);
   assert.equal(mountSizeOf("Gargantuan"), "huge");
   assert.equal(mountSizeOf("tiny"), null);
+});
+
+// Issue 1036, rulings 1 and 4: controlled by default, independent only by
+// the GM's word and only for a creature with a sheet.
+test("a creature mount is independent only when the GM says so; a mount on record never is", () => {
+  const led = checkCreatureMount({ sheetId: "s1", name: "Warhorse", speed: 60, size: "Large", riderSize: "medium" }).state;
+  const free = checkCreatureMount({ sheetId: "s1", name: "Warhorse", speed: 60, size: "Large", riderSize: "medium", controlled: false }).state;
+  assert.equal(independentMount(led), false);
+  assert.equal(free.controlled, false);
+  assert.equal(independentMount(free), true);
+  assert.deepEqual(rideByRecord(free), { state: free }, "a creature's choice was overruled");
+  assert.equal(independentMount(null), false);
+  // The griffon's profile is not a trained mount, and a record has no block to take a turn with.
+  const griffon = checkMount({ ref: "griffon", riderSize: "medium", exoticSaddle: true }).state;
+  assert.equal(independentMount(griffon), false);
+  const ridden = rideByRecord(griffon);
+  assert.equal(ridden.state.controlled, true);
+  assert.match(ridden.stays, /Griffon is ridden as a controlled mount.*stat block/);
+  const warhorse = checkMount({ ref: "warhorse", riderSize: "medium" }).state;
+  assert.deepEqual(rideByRecord(warhorse), { state: warhorse }, "a trained mount was given a reason for nothing");
+  assert.match(describeMount(free), /independent \(keeps its own turn in the order/);
 });
 
 test("a rider owes the save for being laid prone, not for lying prone", () => {

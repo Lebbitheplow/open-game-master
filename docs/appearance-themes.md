@@ -24,7 +24,7 @@ written story theme. A player can use Woodland in either day or night mode.
 | Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
-| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four rotated corners, table/overlay border, phone sizing and forced-colors behavior |
+| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece is mirrored into the other three), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
 | Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
 | Symbols | `src/components/ThemeIcon.tsx`, `ThemeEmblem.tsx` | One checked icon map serves the picker and lobby fitting |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |
@@ -37,9 +37,6 @@ stylesheet is `src/app/styles/themes/<id>.css` and its artwork record is
 and `themeProvenance()`); the catalog every page ships does not repeat them. The
 checks hold the stylesheet against `globals.css`; nothing loads CSS dynamically.
 Next must see each CSS import when building the app.
-
-`public/assets/themes/default/theme.config.json` belongs to the 3D dice library.
-It is not the app appearance registry. Leave it alone when adding an appearance.
 
 ## Add a theme
 
@@ -131,7 +128,7 @@ explicit reset prevents one theme from inheriting another theme's artwork.
 | --- | --- | --- |
 | `texture` | `--theme-art-texture` | Repeating, evenly lit material with restrained contrast; no baked-in borders |
 | `frame` | `--theme-art-frame` | Square border with a transparent center, suitable for nine-slice rendering; default slice is 22% |
-| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; rotates for the other three corners |
+| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; mirrored for the other three corners, so the two lower corners show it upside down: keep its joint the same across the diagonal |
 | `backdrop` | `--theme-art-backdrop` | Wide opaque scene that remains readable when cropped for a shallow banner |
 
 The shared renderer automatically uses the frame and corner slots. Registering
@@ -163,15 +160,30 @@ in these three themes; low-health styling is semantic and is not overridden by
 `--material-vital-fill`. The moving selection highlight copies the chosen
 button's fill, so inspect that visible highlight when testing the chosen color.
 
-Arcane and Gothic reuse their frame image for the `corner` slot. Their catalog
-entries set `cornerScale: 4`, which displays the top-left 25% of each image axis
-(one sixteenth of its area) before rotation. The registry writes the matching
+A theme may reuse its frame image for the `corner` slot. Its catalog
+entry then sets `cornerScale: 4`, which displays the top-left 25% of each image axis
+(one sixteenth of its area) at each corner, that corner of the frame as
+painted. The registry writes the matching
 background size and position for both the page and picker; do not override those
 geometry variables in CSS. The optional `frameSlice` sets the nine-slice inset as
 a percentage (default 22). The art checker reads the same scale and inset. Keep that
 crop's lower-right interior transparent. For a separate complete corner image,
 omit `cornerScale` to use the defaults `contain` and `center`.
 This avoids generating a second fitting that does not match its frame.
+A separate corner image is the top-left corner; the other three are it
+mirrored, never turned, so a gem or leaf on a rail never lies on its side.
+The lower two are it flipped top to bottom, so anything with an up in it
+(a spire, a window, a shield) hangs upside down there. Keep the joint the
+same across the diagonal, as High Kingdoms' round medallion and Hearth's
+rosette are, and look at the lower corners before shipping.
+
+A flat panel's corner brackets are `.ornate::before` (top left) and
+`::after` (bottom right). A theme that thickens them gives each its own two
+sides, as `border-width: 2px 0 0 2px` and `0 2px 2px 0`: one width for both
+draws a closed box, and the contract check refuses it. A `double` style
+needs at least 3px to show two lines. The check works out each bracket's final
+widths and style from the theme's rules, so a box written for one bracket
+alone, or a double line under 3px, is refused too.
 
 The neutral hooks already exist in the components:
 
@@ -205,9 +217,14 @@ the document root and uses the same frame and corner geometry as the table.
 Keep overlay containers positioned (the battle map uses `fixed`) and place the
 ornaments inside them; do not change their positioning to `relative`.
 
-The shared painted layout uses a 10px table and overlay rail on desktop and 4px
-on phones. The enlarged map also reserves inner padding from the declared frame
-width, so its heading, controls and initiative rows stay inside the painted rail.
+The shared painted layout uses a 10px table and overlay border on desktop and
+4px on phones. On desktop the table also pads its sides to the painted rail's
+inner edge, starts the header's first row below the rail and ends the side
+panel above it; the board's column takes no padding, so a laptop's board and
+Hand keep their height. Phones take no padding: the 12px rail clears the bottom
+bar, header and story as they are. The enlarged map also reserves inner padding
+from the declared frame width, so its heading, controls and initiative rows stay
+inside the painted rail.
 Its lobby rail is 26px on desktop and 12px on phones, with additional inner padding.
 Session headers give the back link and title separate phone grid cells; larger
 headers wrap controls and initiative instead of shrinking the title to a letter.
@@ -219,18 +236,20 @@ Shared ornament measurements can be overridden in the theme selector:
 | Variable | Default |
 | --- | --- |
 | `--theme-table-ornament-inset` / `-small` | `-10px` / `-4px` |
-| `--theme-table-frame-width` / `-small` | `40px` / `20px` |
-| `--theme-table-corner-size` / `-small` | `128px` / `56px` |
+| `--theme-table-frame-width` / `-small` | `24px` / `12px` |
+| `--theme-table-corner-size` / `-small` | `80px` / `36px` |
 | `--theme-lobby-ornament-inset` / `-small` | `-34px` / `-16px` |
 | `--theme-lobby-corner-size` / `-small` | `196px` / `112px` |
 
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane, Gothic, Hearth and High Kingdoms override table corners to 48px on
-desktop and 23px on phones: their corner is a crop of their frame, so it keeps
-the frame's rail width, and their opaque fittings need less space than
-Woodland's open leaves. The phone sizes keep the art off the bottom bar's end
+Arcane, Hearth and High Kingdoms each paint a separate corner piece, as Woodland,
+Tide and Forge do, and set their own phone lobby corner size so the piece keeps its
+proportion to the rail. Gothic still crops its corner from its frame: its pinnacle
+piece hung upside down in the lower corners and waits for a repaint.
+For a theme that does crop its corner, `themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
+and it keeps the frame's rail width. The phone sizes keep the art off the bottom bar's end
 labels and the session title, which sit 8 to 17px from the screen's edge; the
 browser scenario `phone-frame` reads every painted theme at 360 to 430px wide. Inspect
 the actual artwork over headings and close buttons; geometry checks alone cannot

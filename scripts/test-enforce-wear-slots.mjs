@@ -27,6 +27,8 @@ const { wearSlotOf, countedWorn, wearConflict, wornButIdle, firstWearConflict } 
 const { magicItemRiders } = await import("../src/lib/srd/magic-items.ts");
 const { itemCheckRiders } = await import("../src/lib/srd/item-check-riders.ts");
 const { gearPatch, gearChanges } = await import("../src/lib/dm/usage-rules.ts");
+const { defaultHeld, wearGained } = await import("../src/lib/dm/held-default.ts");
+const { onMount } = await import("../src/lib/srd/tack.ts");
 const { wearsHeavyArmor } = await import("../src/lib/dm/damage-logic.ts");
 const { wearsHeavy } = await import("../src/lib/srd/authored-effects.ts");
 const { armorChangeMinutes } = await import("../src/lib/dm/don-doff.ts");
@@ -213,6 +215,65 @@ await test("gearPatch: a second of a kind is refused with what to take off; a sw
   assert.deepEqual(swapped.equipment.map((item) => item.equipped), [false, true]);
   // Attuning on a sheet that says what it wears puts the item on: the same rule.
   assert.equal(gearPatch(sheet, { "Cloak of Elvenkind": { attuned: true } }, { corrects: false, armor }).status, 409);
+});
+
+// Issue #1038: a saddle is on the mount unless its player packed it.
+await test("gearPatch: a saddle stays on the mount through other changes, and is packed or put back by its own press", () => {
+  const armor = { armorName: "Chain Mail", shieldName: null };
+  // The first press on a sheet that never said what it wears: the ring comes
+  // off, the suit stays on, and the saddle is not marked off with the rest.
+  const unsaid = { name: "Tavi", equipment: [row("Chain Mail"), row("Ring of Protection"), row("Saddle, Riding")] };
+  const first = gearPatch(unsaid, { "Ring of Protection": { equipped: false } }, { corrects: false, armor });
+  assert.deepEqual(first.equipment.map((item) => item.equipped), [true, false, undefined]);
+  // A saddle handed to a sheet that already says what it wears.
+  const said = { name: "Tavi", equipment: [row("Chain Mail", { equipped: true }), row("Ring of Protection", { equipped: false }), row("Saddle, Riding")] };
+  const ring = gearPatch(said, { "Ring of Protection": { equipped: true } }, { corrects: false, armor });
+  assert.equal(ring.equipment[2].equipped, undefined, "wearing a ring packed the saddle");
+  // Asking for what is already so changes nothing; packing it is a change.
+  assert.deepEqual(gearChanges(said, { "Saddle, Riding": { equipped: true } }).held, []);
+  assert.deepEqual(gearChanges(said, { "Saddle, Riding": { equipped: false } }).held, ["Saddle, Riding"]);
+  const packed = gearPatch(said, { "Saddle, Riding": { equipped: false } }, { corrects: false, armor });
+  assert.equal(packed.equipment[2].equipped, false);
+  const back = gearPatch({ name: "Tavi", equipment: packed.equipment }, { "Saddle, Riding": { equipped: true } }, { corrects: false, armor });
+  assert.equal(back.equipment[2].equipped, true);
+});
+
+// The marks a new sheet and a fight's start write (held-default.ts), and the
+// ones a gained row arrives with, keep a saddle on the mount: an unmarked
+// pack read as packed weighed the saddle on its rider and took the military
+// saddle's advantage away.
+await test("defaultHeld and wearGained leave tack on the mount", () => {
+  const armor = { armorName: "Chain Mail", shieldName: null };
+  const marked = defaultHeld([row("Chain Mail"), row("Saddle, Military"), row("Chain Mail Barding"), row("Longsword"), row("Rope, Hempen (50 feet)")], armor, ["martial"]);
+  assert.deepEqual(marked.map((item) => [item.name, onMount(item)]), [
+    ["Chain Mail", false],
+    ["Saddle, Military", true],
+    ["Chain Mail Barding", true],
+    ["Longsword", false],
+    ["Rope, Hempen (50 feet)", false],
+  ]);
+  assert.deepEqual(marked.map((item) => item.equipped), [true, true, true, true, false]);
+  // A saddle bought or handed over on a sheet that says what it wears.
+  const before = [row("Chain Mail", { equipped: true }), row("Longsword", { equipped: true })];
+  const gained = wearGained(before, [...before, row("Saddle, Riding"), row("Bit and Bridle"), row("Shortsword")]);
+  assert.deepEqual(gained.map((item) => item.equipped), [true, true, true, true, false]);
+  // One its player packed stays packed.
+  const packed = wearGained(before, [...before, row("Saddle, Riding", { equipped: false })]);
+  assert.equal(packed[2].equipped, false);
+});
+
+// Barding is a suit strapped onto the mount: it takes the suit's minutes
+// (SRD 5.1, Getting Into and Out of Armor), so it never goes on in a fight
+// for the turn's free object interaction, as a saddle does.
+await test("barding takes its suit's minutes to put on or take off, and is armor to the fight's refusal", () => {
+  const pack = [row("Chain Mail", { equipped: true }), row("Chain Mail Barding", { equipped: false }), row("Leather Barding"), row("Saddle, Riding")];
+  const sheet = { name: "Tavi", equipment: pack };
+  assert.deepEqual(gearChanges(sheet, { "Chain Mail Barding": { equipped: true } }), { armor: ["Chain Mail Barding"], shields: [], attunement: [], held: [] });
+  assert.deepEqual(gearChanges(sheet, { "Saddle, Riding": { equipped: false } }).held, ["Saddle, Riding"]);
+  assert.equal(armorChangeMinutes(pack, { "Chain Mail Barding": { equipped: true } }).minutes, 10);
+  // Unmarked barding is on the mount: taking it off is light armor's minute.
+  assert.equal(armorChangeMinutes(pack, { "Leather Barding": { equipped: false } }).minutes, 1);
+  assert.equal(armorChangeMinutes(pack, { "Leather Barding": { equipped: true } }).minutes, 0);
 });
 
 await test("gearPatch: the exception is the DM's and the lead's, and taking the row off ends it", () => {

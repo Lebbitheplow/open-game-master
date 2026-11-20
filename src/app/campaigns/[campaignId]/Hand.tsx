@@ -956,6 +956,7 @@ function HandInner({
   const pips = turnPips(turn);
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape from a card or a field inside the Hand backs out one step (the aim, the read panel, a group); the section is not a control of its own
     <section
       ref={sectionRef}
       className="hand"

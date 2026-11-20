@@ -85,6 +85,7 @@ export function StoryHopes({ sheet, mine }: { sheet: CharacterSheet; mine: boole
             onChange={(event) => setDraft(event.target.value)}
             rows={3}
             maxLength={HOPES_MAX}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- the box opens because the player just pressed the button to write or change their hopes
             autoFocus
             placeholder={t("A romance with the companion who travels with us, and a reckoning with the knight who betrayed me...")}
             aria-label={t("Hopes for this story")}

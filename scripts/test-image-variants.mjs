@@ -27,7 +27,7 @@ const fsPromises = createRequire(import.meta.url)("node:fs/promises");
 const realReadFile = fsPromises.readFile;
 
 const repo = path.resolve(import.meta.dirname, "..");
-const samplePng = path.join(repo, "public", "assets", "themes", "default", "diffuse-dark.png");
+const samplePng = path.join(repo, "scripts", "fixtures", "render-sample.png");
 
 // A PNG of random RGBA noise: incompressible, so it weighs what a piece of
 // scene art weighs and every WebP copy comes out smaller.
