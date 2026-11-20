@@ -361,6 +361,12 @@ export const COMPACT_OMITS: Record<string, string[]> = {
   // The creatures of the user's choice an area feature takes (Order's Demand,
   // Champion Challenge, Conquering Presence, Dreadful Aspect); without it, every foe in reach.
   use_resource: ["targetEnemyIds"],
+  // The monster an enemy rides (issue 1055), a field of each entry of the
+  // list: the 16K core had under ten tokens to spare when it came (a shop
+  // turn's group no longer fitted beside it), and a pair fielded at the
+  // console or by a larger model is told in GAME STATE all the same.
+  start_encounter: ["enemies[].mount"],
+  add_enemies: ["enemies[].mount"],
 };
 
 // Arguments only a table with a pet can use (ProfileSignals.pets): a compact
@@ -387,7 +393,17 @@ function withoutOmitted(name: string, parameters: unknown): unknown {
   if (!omit || !schema?.properties) {
     return parameters;
   }
-  return { ...schema, properties: Object.fromEntries(Object.entries(schema.properties).filter(([key]) => !omit.includes(key))) };
+  const kept = Object.entries(schema.properties).filter(([key]) => !omit.includes(key));
+  // "list[].field" names a field of a list's entries.
+  return { ...schema, properties: Object.fromEntries(kept.map(([key, value]) => [key, withoutEntryFields(value, omit.flatMap((entry) => (entry.startsWith(`${key}[].`) ? [entry.slice(key.length + 3)] : [])))])) };
+}
+
+function withoutEntryFields(list: unknown, fields: string[]): unknown {
+  const schema = list as { items?: { properties?: Record<string, unknown> } } | undefined;
+  if (!fields.length || !schema?.items?.properties) {
+    return list;
+  }
+  return { ...schema, items: { ...schema.items, properties: Object.fromEntries(Object.entries(schema.items.properties).filter(([key]) => !fields.includes(key))) } };
 }
 
 // A tool with its descriptions cut to their first sentence; names, kinds,

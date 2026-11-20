@@ -1,7 +1,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { chebyshev, inBounds, tileIndex, type BattleToken } from "@/lib/battlemap/types";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { walkCharacter } from "@/lib/dm/token-rules";
@@ -57,7 +57,7 @@ export function approachForCompanion(
   if (!me || !them) {
     return null;
   }
-  const size = footprintForSize(target.stats.size);
+  const size = enemyFootprint(target);
   const touching = (x: number, y: number) => {
     for (let dx = 0; dx < size; dx += 1) {
       for (let dy = 0; dy < size; dy += 1) {

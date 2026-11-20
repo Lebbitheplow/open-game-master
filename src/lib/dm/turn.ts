@@ -1,4 +1,5 @@
 import { getClock } from "@/lib/db/clock";
+import { mountOf, riderOf } from "@/lib/dm/enemy-riders";
 import { carryDroppedItems } from "@/lib/db/dropped-items";
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { tokenFootprint } from "@/lib/dm/board-reach";
@@ -586,7 +587,9 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       immune: enemy.stats.immune,
       vulnerable: enemy.stats.vulnerable,
       concentration: enemy.concentration,
-      ...enemyMoving(encounter, enemy, board),
+      // A rider is carried: its movement is its mount's, told on the pair's line.
+      ...(enemy.ridesEnemyId ? {} : enemyMoving(encounter, enemy, board)),
+      ...pairNote(enemies, enemy),
     })),
     ...sidesForState(encounter),
     map: buildMapText(encounter.id, sheets),
@@ -637,6 +640,20 @@ function openHitsForState(campaignId: string, encounter: Encounter, sheets: Char
 
 // An enemy's movement left this turn when it is not its plain speed (a
 // Dash, a walk already made, a Disengage), from the count its walks use.
+// Who an enemy rides or carries (issue 1055, enemy-riders.ts): the pair has
+// one token, and only the mount's move_token moves it.
+function pairNote(enemies: EncounterEnemy[], enemy: EncounterEnemy): { pair?: string } {
+  if (enemy.status !== "alive") {
+    return {};
+  }
+  const mount = mountOf(enemies, enemy);
+  if (mount) {
+    return { pair: `rides ${mount.displayName} [enemyId=${mount.id}]: one token for the pair, no movement of its own (${mount.displayName}'s move_token on its turn moves both); attacks reach it and ${mount.displayName} each by their own enemyId` };
+  }
+  const rider = riderOf(enemies, enemy.id);
+  return rider ? { pair: `carries ${rider.displayName} [enemyId=${rider.id}] on ${rider.displayName}'s token: its own turn, its own attacks, and its move_token moves both` } : {};
+}
+
 function enemyMoving(encounter: Encounter, enemy: EncounterEnemy, board: BattleMap | null): { moving?: string } {
   const token = board && enemy.status === "alive" ? getTokenByRef(board.id, enemy.id) : null;
   const note = token ? enemyMovementNote(enemyMoveBudget(encounter, enemy, token)) : null;

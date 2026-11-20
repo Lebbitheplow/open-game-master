@@ -495,7 +495,18 @@ function carriedRider(mapId: string, refId: string): string | null {
       return riderId;
     }
   }
-  return null;
+  // An enemy's mount stands on its rider's token too (issue 1055, ruling 1).
+  const rider = getDatabase().prepare(`SELECT id FROM encounter_enemies WHERE rides_enemy_id = ?`).get(refId) as { id?: string } | undefined;
+  return rider?.id ?? null;
+}
+
+// The token `fromRefId` stands on becomes `toRefId`'s, where it is: a mount
+// whose rider is gone keeps the space the pair held (issue 1055, ruling 4).
+export function handTokenTo(mapId: string, fromRefId: string, toRefId: string, name: string) {
+  keepRowsWhere("battle_tokens", "map_id = ? AND ref_id = ?", [mapId, fromRefId]);
+  getDatabase()
+    .prepare(`UPDATE battle_tokens SET ref_id = ?, name = ?, updated_at = ? WHERE map_id = ? AND ref_id = ?`)
+    .run(toRefId, name, nowIso(), mapId, fromRefId);
 }
 
 // The squares each token stood in since its turn's movement began, oldest
@@ -618,11 +629,32 @@ export function resetRoundBudgets(mapId: string, round: number) {
   })();
 }
 
+// Whose token's movement starts again as these turns start. An enemy's mount
+// stands on its rider's token (issue 1055, ruling 1) and is the one that
+// moves it, so the mount's turn refills that token and its rider's does not:
+// a rider's turn after its mount's gave the mount its speed back.
+function pairTokenRefs(starting: string[]): string[] {
+  if (!starting.length) {
+    return [];
+  }
+  const marks = starting.map(() => "?").join(", ");
+  const db = getDatabase();
+  const riders = new Set(
+    (db.prepare(`SELECT id FROM encounter_enemies WHERE id IN (${marks}) AND rides_enemy_id != ''`).all(...starting) as Array<{ id: string }>).map((row) => row.id),
+  );
+  const carried = (db.prepare(`SELECT id FROM encounter_enemies WHERE rides_enemy_id IN (${marks})`).all(...starting) as Array<{ id: string }>).map((row) => row.id);
+  return [...starting.filter((id) => !riders.has(id)), ...carried];
+}
+
 // The combatants whose turns are starting walk again: movement belongs to a
 // turn (SRD 5.1, Movement and Position), so a second turn in the same round
 // (a Thief's Reflexes, an ambusher's own turn after the one it was owed)
 // brings its own.
-export function resetTurnBudgets(mapId: string, refIds: string[]) {
+export function resetTurnBudgets(mapId: string, starting: string[]) {
+  const refIds = pairTokenRefs(starting);
+  if (!refIds.length) {
+    return;
+  }
   keepRowsWhere("battle_tokens", `map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`, [mapId, ...refIds]);
   for (const row of getDatabase().prepare(`SELECT id FROM battle_tokens WHERE map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`).all(mapId, ...refIds) as Array<{ id: string }>) {
     stoodIn().delete(row.id);

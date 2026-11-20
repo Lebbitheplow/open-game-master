@@ -22,7 +22,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { insertRoll } from "@/lib/db/rolls";
 import { listSheets } from "@/lib/db/sheets";
-import { footprintForSize, type Footprint } from "@/lib/battlemap/footprint";
+import { enemyFootprint, type Footprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -90,7 +90,7 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     }
     const token = getTokenByRef(map.id, reactor.id);
     const weapon = opportunityWeapon(reactor.stats);
-    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(reactor.stats.size), walkerFootprint) : null;
+    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, enemyFootprint(reactor), walkerFootprint) : null;
     // A wall between them is total cover (attack-spatial.ts reachWalled).
     if (!weapon || !leftFrom || reachWalled(encounter.id, reactor.id, walker.id, leftFrom) || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
       continue;

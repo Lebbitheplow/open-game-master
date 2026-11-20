@@ -20,6 +20,13 @@ export function footprintForSize(size: string | undefined | null): Footprint {
   }
 }
 
+// The squares an enemy's token fills: its own size, or its mount's while it
+// rides one, since the pair stands on the rider's token in the mount's space
+// (issue 1055, ruling 1; EncounterEnemy.pairSize).
+export function enemyFootprint(enemy: { stats: { size?: string }; pairSize?: string } | null | undefined): Footprint {
+  return footprintForSize(enemy?.pairSize ?? enemy?.stats.size);
+}
+
 // The tiles a creature standing at (x, y) with this footprint occupies. The
 // anchor is the top-left square; a footprint of 1 is the tile itself.
 export function footprintTiles(at: XY, footprint: Footprint): XY[] {

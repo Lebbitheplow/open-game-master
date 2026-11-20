@@ -82,10 +82,14 @@ export function parseRoster(value: unknown): TemplateEnemy[] {
 // `readsRace` reads (the caller passes src/lib/npc-race.ts, which this
 // module cannot import): a homebrew "Serpent Race Warrior" keeps its whole
 // name instead of fielding a "Serpent" told to be of the race "Warrior".
-export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string };
+//
+// A mount rides last on the line ("goblin riding wolf x3", issue 1055):
+// never at its start, so a riding horse keeps its name.
+export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string; mount?: string };
 
 const CR_IN_LINE = /(?:^|\s|,|\()cr\s*[:=]?\s*(\d{1,2}\s*\/\s*\d{1,2}|\d{1,2}(?:\.\d+)?)\)?/i;
 const NAMED_AS = /^(.+?)\s+as\s+(.+)$/i;
+const RIDING = /^(.+?)\s+riding\s+(.+)$/i;
 const RACE_IN_LINE = /(?:\s|,)race\s*[:=]?\s*([a-z][\w'-]*)(\s+[a-z][\w'-]*)?/i;
 const GENDER_IN_LINE = /(?:\s|,)gender\s*[:=]?\s*(female|male|nonbinary)\b/i;
 
@@ -122,6 +126,11 @@ function raceIn(text: string, readsRace: RaceReader): { race: string; rest: stri
 
 function fightLine(row: TemplateEnemy, readsRace: RaceReader): FightRequest {
   let monster = row.monster;
+  const ridden = RIDING.exec(monster);
+  const mount = ridden ? ridden[2].trim() : "";
+  if (ridden) {
+    monster = ridden[1].trim();
+  }
   let cr: number | undefined;
   const rated = CR_IN_LINE.exec(monster);
   if (rated) {
@@ -154,6 +163,9 @@ function fightLine(row: TemplateEnemy, readsRace: RaceReader): FightRequest {
   if (gender) {
     out.gender = gender;
   }
+  if (mount) {
+    out.mount = mount;
+  }
   return out;
 }
 
@@ -183,6 +195,9 @@ export function parseFightRoster(value: unknown, readsRace: RaceReader = () => f
         }
         if (typeof row.gender === "string" && row.gender.trim()) {
           out.gender = row.gender.trim();
+        }
+        if (typeof row.mount === "string" && row.mount.trim()) {
+          out.mount = row.mount.trim();
         }
         return [out];
       })

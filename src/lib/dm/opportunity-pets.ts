@@ -21,7 +21,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -91,7 +91,7 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     }
     const token = getTokenByRef(map.id, enemy.id);
     const weapon = opportunityWeapon(enemy.stats);
-    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(enemy.stats.size)) : null;
+    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, enemyFootprint(enemy)) : null;
     // A wall between them is total cover (attack-spatial.ts reachWalled).
     if (!weapon || !leftFrom || reachWalled(encounter.id, enemy.id, ownerId, leftFrom)) {
       continue;
