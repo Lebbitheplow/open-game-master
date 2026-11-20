@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ui } from "@/lib/ui";
 import { CopyLine } from "@/components/CopyLine";
@@ -9,7 +9,7 @@ import type { Draft } from "@/app/setup/draft";
 import { ModelPicker } from "@/app/setup/SetupParts";
 import { blanks } from "@/app/admin/model-blanks";
 import { useRecheckOnReturn } from "@/app/admin/recheck-on-return";
-import { useT } from "@/lib/locale";
+import { useT, useTp } from "@/lib/locale";
 import type { MessageKey } from "@/lib/messages-logic";
 import type { HarnessId, HarnessStatus } from "@/lib/harness/types";
 
@@ -47,9 +47,13 @@ function statusTone(status: HarnessStatus): "ready" | "warn" | "off" {
 // waits on the last step, once the choice is the server's.
 export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) {
   const t = useT();
+  const tp = useTp();
   const BLANK = blanks(t);
   const [statuses, setStatuses] = useState<HarnessStatus[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // A program that cannot play the full rules (HarnessStatus.reducedTools)
+  // is left off the list until the admin asks to add it.
+  const [addReduced, setAddReduced] = useState(false);
   const phone = shellHost()?.platform === "android";
 
   const load = useCallback(
@@ -92,6 +96,10 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
 
   const chosen = statuses.find((status) => status.id === draft.agent.id) ?? null;
   const unavailable = statuses.every((status) => status.availability !== "ok");
+  // Open Game Master does not support, test or recommend a program that
+  // cannot play the full rules, so the guided setup never offers one unasked.
+  const listed = statuses.filter((status) => !status.reducedTools || addReduced || status.id === draft.agent.id);
+  const unlisted = statuses.filter((status) => !listed.includes(status));
 
   return (
     <div className="space-y-3">
@@ -103,7 +111,7 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
         </button>
       </div>
       <div role="radiogroup" aria-label={t("Agent program")} className="hx-cards stagger">
-        {statuses.map((status) => {
+        {listed.map((status) => {
           const pill = statusTone(status);
           const pillText = t(statusKey(status));
           const picked = draft.agent.id === status.id;
@@ -137,8 +145,29 @@ export function AgentPanel({ draft, update }: { draft: Draft; update: Update }) 
         })}
       </div>
 
+      {unlisted.length ? (
+        <p className="text-xs leading-5 text-stone-500">
+          {tp(
+            "{names} cannot play the full rules, so it is left off the list. ",
+            "{names} cannot play the full rules, so they are left off the list. ",
+            { count: unlisted.length, names: unlisted.map((status) => status.label).join(", ") },
+          )}
+          <button type="button" className={ui.btnSmall} onClick={() => setAddReduced(true)}>
+            {t("Add it anyway", { context: "admin.harness.addReduced" })}
+          </button>
+        </p>
+      ) : null}
+
       {chosen ? (
         <div key={chosen.id} className="reveal-height space-y-3">
+          {chosen.reducedTools ? (
+            <p role="alert" className="su-note flex gap-2">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>
+                {t("{name} cannot play the full rules: it holds fewer tools than the table's full set, so it plays on a reduced tool set and rules. Open Game Master does not support or test this, and fights and other rules may not run properly. For real play, choose another program.", { name: chosen.label })}
+              </span>
+            </p>
+          ) : null}
           {chosen.availability === "ok" && !chosen.installed ? (
             <div className="su-row flex-col items-stretch">
               <span className="text-sm text-stone-200">{t("1. Install {name} on this computer", { name: chosen.label })}</span>

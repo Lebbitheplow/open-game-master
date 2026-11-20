@@ -39,6 +39,7 @@ import { childPath } from "./discover.ts";
 import { renderCompletion, renderFollowUp, renderTurn, toMcpTools, toolNames } from "./render.ts";
 import { adapterFor, harnessConfig, noteSignedOut, probeHarness, resolveHarnessBinary } from "./status.ts";
 import { harnessOfferFor } from "./policy.ts";
+import { bookkeepingEffort } from "./effort-choices.ts";
 import { makeRunDir, removeRunDir } from "./run-dir.ts";
 import { getCampaignById } from "@/lib/db/campaigns";
 import type { HarnessErrorKind, HarnessEvent, HarnessSession, McpToolDefinition } from "./types.ts";
@@ -93,6 +94,9 @@ export class BridgeSession {
   readonly campaignId: string | null;
   readonly catalogue: McpToolDefinition[];
   readonly isTurn: boolean;
+  // Served only the tools each call offers (HarnessAdapter.reducedTools), so
+  // a change of tools starts the program again (requestHarnessMessage).
+  readonly reduced: boolean;
   allowed: Set<string>;
   narrateOnly = false;
   seen: readonly unknown[] = [];
@@ -124,7 +128,7 @@ export class BridgeSession {
   constructor(
     tokenHash: string,
     cwd: string,
-    options: { campaignId: string | null; catalogue: McpToolDefinition[]; allowed: Set<string>; isTurn: boolean },
+    options: { campaignId: string | null; catalogue: McpToolDefinition[]; allowed: Set<string>; isTurn: boolean; reduced?: boolean },
     onClose: (session: BridgeSession) => void,
   ) {
     this.cwd = cwd;
@@ -134,6 +138,7 @@ export class BridgeSession {
     this.catalogue = options.catalogue;
     this.allowed = options.allowed;
     this.isTurn = options.isTurn;
+    this.reduced = options.reduced === true;
     this.lifeTimer = setTimeout(() => this.close(), HARNESS_MAX_RUN_MS);
     this.lifeTimer.unref?.();
   }
@@ -604,6 +609,10 @@ export type HarnessRequestContext = {
   turn?: boolean;
 };
 
+function sameToolNames(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  return a.size === b.size && [...a].every((name) => b.has(name));
+}
+
 // The model call, for provider "harness".
 export async function requestHarnessMessage(
   messages: ChatMessage[],
@@ -627,14 +636,23 @@ export async function requestHarnessMessage(
   }
 
   const live = findSession(messages);
-  if (live) {
+  // A program served only each call's tools (HarnessAdapter.reducedTools)
+  // read its list when it started, so new tools mid-turn (a fight begun, a
+  // group opened) mean starting it again on the turn so far. A call that
+  // only narrates keeps it: its calls are refused either way.
+  const restart =
+    live?.reduced && options.tools?.length && options.toolChoice !== "none" && !sameToolNames(new Set(live.catalogue.map((tool) => tool.name)), toolNames(options.tools));
+  if (live && !restart) {
     state().byConversation.set(messages as object, live);
     return live.next(messages, options, timeoutMs);
+  }
+  if (live) {
+    live.close();
   }
   if (!options.tools?.length || options.toolChoice === "none") {
     return completeWithHarness(messages, options, context, timeoutMs);
   }
-  return startSession(messages, options, context, timeoutMs);
+  return startSession(messages, options, context, timeoutMs, { toolsChanged: Boolean(restart) });
 }
 
 async function prepareRun(context: HarnessRequestContext) {
@@ -676,6 +694,7 @@ async function startSession(
   options: ChatRequestOptions,
   context: HarnessRequestContext,
   timeoutMs: number,
+  restart: { toolsChanged: boolean } = { toolsChanged: false },
 ): Promise<UpstreamResult> {
   const prepared = await prepareRun(context);
   if ("error" in prepared) {
@@ -688,7 +707,11 @@ async function startSession(
     return { error: harnessError("Every agent slot is busy with other tables; try again in a moment.", "timeout") };
   }
   const token = randomBytes(32).toString("base64url");
-  const catalogue = toMcpTools([...(context.catalogue ?? []), ...(options.tools ?? [])]);
+  // Every tool the turn could offer, so a fight starting mid-turn finds its
+  // tools there; a program that cannot hold them all is served only this
+  // call's (HarnessAdapter.reducedTools), and started again when they change.
+  const reduced = adapter.reducedTools === true;
+  const catalogue = toMcpTools(reduced ? (options.tools ?? []) : [...(context.catalogue ?? []), ...(options.tools ?? [])]);
   const session = new BridgeSession(
     hashToken(token),
     cwd,
@@ -697,6 +720,7 @@ async function startSession(
       catalogue,
       allowed: toolNames(options.tools),
       isTurn: Boolean(context.turn),
+      reduced,
     },
     (closed) => {
       state().byToken.delete(closed.tokenHash);
@@ -707,7 +731,7 @@ async function startSession(
   state().byConversation.set(messages as object, session);
   session.seen = [...messages];
 
-  const rendered = renderTurn(messages, { settledTranscript: adapter.settledTranscript === true });
+  const rendered = renderTurn(messages, { settledTranscript: adapter.settledTranscript === true, toolsChanged: restart.toolsChanged });
   const result = session.next(messages, options, timeoutMs);
   try {
     const program = await adapter.start({
@@ -753,6 +777,14 @@ async function completeWithHarness(
     return { error: harnessError("Every agent slot is busy; try again in a moment.", "timeout") };
   }
   const rendered = renderCompletion(messages);
+  // The bookkeeping model's own effort when the admin set one, else the
+  // story's where the bookkeeping model lists it (bookkeepingEffort).
+  // The program's model list is read only when the answer depends on it.
+  const inherits = context.role === "utility" && !config.utilityEffort && Boolean(config.effort);
+  const effort =
+    context.role !== "utility"
+      ? config.effort
+      : bookkeepingEffort(inherits && isHarnessId(config.id) ? await probeHarness(config.id).catch(() => null) : null, config);
   let program: HarnessSession | null = null;
   let text = "";
   // A streamed or narration-only answer is read for a loop as a model's is.
@@ -782,8 +814,7 @@ async function completeWithHarness(
         binary,
         system: rendered.system,
         model,
-        // The bookkeeping model's own effort when the admin set one.
-        effort: context.role === "utility" ? config.utilityEffort || config.effort : config.effort,
+        effort,
         ...(speed ? { speed } : {}),
         mcp: null,
         cwd,

@@ -29,7 +29,7 @@
 campaigns with an AI Game Master, on your own machine. The narrator is whichever
 AI you already have: **a local model** (llama.cpp, Ollama, LM Studio, vLLM), **an
 API key** (OpenAI, OpenRouter, or any OpenAI-compatible endpoint), or **a CLI agent
-you already pay for** (Codex, Grok Build, Claude Code, opencode, Pi, Antigravity CLI), which narrates on
+you already pay for** (Codex, Grok Build, Claude Code, opencode, Pi), which narrates on
 its own subscription with no API key handed over; Codex and Grok Build paint the
 pictures too. The model is the creative mind
 and narrator; a stack of server-side engines enforces the 5e rules for both the
@@ -87,7 +87,7 @@ and companions, following a secret story arc it regenerates as the campaign move
 <td width="50%" valign="top" align="center">
 <img src="public/sidebar-icons/text-model.webp" width="56"><br>
 <b>Your AI Game Master, your choice</b><br>
-<sub>A local model (llama.cpp, Ollama, LM Studio, vLLM; gpt-oss-20b on a 16 GB gaming card), an API key (OpenAI, OpenRouter, any OpenAI-compatible endpoint with tool calling), or a CLI agent subscription you already have: Codex or Grok Build, which also paint the pictures, Claude Code, opencode, Pi or the Antigravity CLI. Whichever narrates, it makes the creative calls and never states a roll or edits its own numbers.</sub>
+<sub>A local model (llama.cpp, Ollama, LM Studio, vLLM; gpt-oss-20b on a 16 GB gaming card), an API key (OpenAI, OpenRouter, any OpenAI-compatible endpoint with tool calling), or a CLI agent subscription you already have: Codex or Grok Build, which also paint the pictures, Claude Code, opencode or Pi. Whichever narrates, it makes the creative calls and never states a roll or edits its own numbers.</sub>
 </td>
 </tr>
 <tr>
@@ -160,7 +160,7 @@ enforced and what is guidance: [docs/rules-coverage.md](docs/rules-coverage.md).
 You need **Node 22.18+, 24 or 26+** (or Docker) and **a storyteller**: a local
 model server (llama.cpp recommended; Ollama, LM Studio and vLLM also work), an
 API key (OpenAI, OpenRouter or any OpenAI-compatible provider), or a CLI agent you
-already pay for (Codex, Grok Build, Claude Code, opencode, Pi, Antigravity CLI). Pictures and voice are
+already pay for (Codex, Grok Build, Claude Code, opencode, Pi). Pictures and voice are
 optional.
 
 The two simplest storytellers: a **ChatGPT Plus** or **SuperGrok** plan, whose Codex
@@ -175,10 +175,10 @@ the pick for that card, and about 28 GB runs the recommended Qwen3.6-35B-A3B
 ([what each size of card runs](docs/text-backends.md#hardware-for-a-local-model),
 and the [system requirements](https://opengamemaster.com/guide/start/system-requirements/)).
 Below 16 GB a local model is not supported; use an API key, an agent program or
-a human Game Master. Run it on llama.cpp, with a **context window of at
-least 24K tokens to narrate and 40K to run fights; 48K or more is
-recommended**. The default storyteller runs at 64K, and the guided setup's
-**Test backend** reads the window a server runs
+a human Game Master. Run it on llama.cpp. **The storyteller needs a context
+window of at least 64K tokens to play the full rules; smaller windows are not
+supported** (`llama-server -c 65536`, the window the default storyteller runs
+at). The guided setup's **Test backend** reads the window a server runs
 ([what each size plays](docs/text-backends.md#context-window)). Hosted models
 and agent programs have far more.
 
@@ -238,7 +238,7 @@ The documents below are the server's own reference.
   - [Releases and update channels](docs/releases.md): stable, the nightly betas, and how a beta is promoted
 - **The storyteller**
   - [Text backends](docs/text-backends.md): the recommended GM model and its settings, the hardware each model needs (16 GB and gpt-oss-20b at the least, the BC-250), Ollama, choosing a model (the models.dev catalog, no model named in code), OpenAI and other APIs, long-story memory
-  - [Agent programs as the GM](docs/agent-harness.md): Claude Code, Codex, opencode, Grok Build, Pi and the Antigravity CLI on their own sign-in
+  - [Agent programs as the GM](docs/agent-harness.md): Claude Code, Codex, opencode, Grok Build and Pi on their own sign-in
 - **Pictures, voice and sound**
   - [Setting up pictures, narration and dictation](docs/media-setup.md): ComfyUI, an OpenAI key, Kokoro, Whisper
   - [Image generation](docs/image-generation.md): the image models, measured hardware, AMD GPUs

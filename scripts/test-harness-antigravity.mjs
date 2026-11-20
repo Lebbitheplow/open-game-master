@@ -25,10 +25,12 @@ const {
   antigravityArgs,
   antigravityAgentFile,
   antigravitySettings,
+  ANTIGRAVITY_BUILTIN_TOOLS,
   parseAntigravityDefaultEfforts,
   parseAntigravityModels,
   parseAntigravityQuota,
   antigravityToolAllowed,
+  safeConversationId,
 } = await import("../src/lib/harness/adapters/antigravity.ts");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-agy-test-"));
@@ -219,6 +221,32 @@ if (unix) {
     assert.ok(!seen.some((event) => event.type === "error"));
   });
 
+  await test("a tool agy reports at init that is not one of its known built-ins stops the run before the turn", async () => {
+    const { seen } = await run(session("agy-unknown-init", [init(["ask_question", "teleport_files"])]));
+    const error = seen.find((event) => event.type === "error");
+    assert.ok(error, "the run was stopped");
+    assert.equal(error.kind, "lockdown");
+    assert.match(error.message, /teleport_files/);
+    assert.ok(!seen.some((event) => event.type === "ready"), "never reported ready");
+  });
+
+  await test("signed in, agy's full built-in list starts a run, and its risky tools are denied by name in both modes", async () => {
+    const { seen } = await run(session("agy-full-init", [init([...ANTIGRAVITY_BUILTIN_TOOLS])]));
+    assert.ok(seen.some((event) => event.type === "ready"));
+    assert.ok(!seen.some((event) => event.type === "error"));
+    assert.equal(ANTIGRAVITY_BUILTIN_TOOLS.length, 60, "the 60 names agy 1.5.12 reports (PR #1046)");
+    for (const images of [false, true]) {
+      const deny = antigravitySettings(images).permissions.deny;
+      for (const name of ["notebook_execution", "execute_browser_javascript", "open_browser_url", "read_browser_page", "run_command", "view_file", "write_to_file", "delete_knowledge"]) {
+        assert.ok(deny.includes(`${name}(*)`), `${name} denied (images ${images})`);
+      }
+      for (const name of ["finish", "wait", "call_mcp_tool", "ask_permission"]) {
+        assert.ok(!deny.includes(`${name}(*)`), `${name} is how a run ends or reaches ODM, so it stays`);
+      }
+    }
+    assert.ok(!antigravitySettings(true).permissions.deny.includes("generate_image(*)"), "a picture run keeps its image tool");
+  });
+
   await test("model labels keep balanced inner parentheses like Gemini 4 Neon (High) and collapse effort variants", () => {
     const parsed = parseAntigravityModels(
       [
@@ -234,6 +262,17 @@ if (unix) {
       { id: "gemini-pro-orchestrator-neon", label: "Orchestrator (Neon)", efforts: [] },
       { id: "gemini-test", label: "Wrapped Label", efforts: [] },
     ]);
+  });
+
+  await test("a conversation id names agy's folder only when it is a plain id", () => {
+    assert.equal(safeConversationId("8f3c2a1e-77b0-4c1d-9e2f-0a1b2c3d4e5f"), "8f3c2a1e-77b0-4c1d-9e2f-0a1b2c3d4e5f");
+    assert.equal(safeConversationId("../../.ssh"), "", "a path climbing out is refused");
+    assert.equal(safeConversationId("a/b"), "");
+    assert.equal(safeConversationId(""), "");
+  });
+
+  await test("Antigravity is played on a cut tool set, so it is marked as one", () => {
+    assert.equal(antigravityAdapter.reducedTools, true);
   });
 
   await test("parseAntigravityDefaultEfforts and parseAntigravityQuota read non-interactive /effort and /quota JSON", () => {

@@ -1694,7 +1694,9 @@ export function dmTurnTuning(campaign: Campaign): ModelTuning {
 function toolSetTokens(campaign: Campaign, profile: ToolProfile): number {
   const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   const leanTools = profile === "lean";
-  if (campaign.settings.textProvider === "harness") {
+  // A program on the compact profile (HarnessAdapter.reducedTools) is
+  // served each call's compact set, so it is charged like any compact call.
+  if (campaign.settings.textProvider === "harness" && profile !== "compact") {
     return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, imageEnabled, leanTools))));
   }
   if (profile === "compact") {

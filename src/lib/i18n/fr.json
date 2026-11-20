@@ -10548,7 +10548,15 @@
     ", attuned": ", harmonisé",
     ", not in effect": ", sans effet",
     "{label}: empty. {goes}.{waiting}": "{label} : vide. {goes}.{waiting}",
-    "{label}: {names}.": "{label} : {names}."
+    "{label}: {names}.": "{label} : {names}.",
+    "The storyteller needs a context window of at least {full} tokens to play the full rules; smaller windows are not supported.": "Le narrateur a besoin d’une fenêtre de contexte d’au moins {full} jetons pour jouer les règles complètes ; les fenêtres plus petites ne sont pas prises en charge.",
+    "{size} window is too small for the full rules: the GM would play on a cut tool set and rules, which Open Game Master does not support or test. {needs}": "Une fenêtre de {size} est trop petite pour les règles complètes : le MJ jouerait avec un jeu d’outils et des règles réduits, qu’Open Game Master ne prend pas en charge et ne teste pas. {needs}",
+    "About {count}B parameters: below {min}B the GM plays on short rules and a cut tool set, which Open Game Master does not support or test.": "Environ {count} milliards de paramètres : sous {min} milliards, le MJ joue avec des règles courtes et un jeu d’outils réduit, qu’Open Game Master ne prend pas en charge et ne teste pas.",
+    " The commands below start the default storyteller with ": " Les commandes ci-dessous lancent le narrateur par défaut avec ",
+    ", the least that plays the full rules.": ", le minimum qui joue les règles complètes.",
+    "{name} cannot play the full rules: it holds fewer tools than the table's full set, so it plays on a reduced tool set and rules. Open Game Master does not support or test this, and fights and other rules may not run properly. For real play, choose another program.": "{name} ne peut pas jouer les règles complètes : il retient moins d’outils que le jeu complet de la table, il joue donc avec un jeu d’outils et des règles réduits. Open Game Master ne prend pas cela en charge et ne le teste pas, et les combats et d’autres règles peuvent mal fonctionner. Pour jouer pour de bon, choisis un autre programme.",
+    "Let an agent you already have, Claude Code, Codex, opencode, Grok Build or Pi, narrate the tables on its own sign-in. It is started with none of its own tools: the only thing it can touch is the table's rules engine, turn by turn, under the same rules and caps as the built-in storyteller. ODM never asks for or stores its password or key.": "Permets à un agent externe que tu possèdes déjà (Claude Code, Codex, opencode, Grok Build ou Pi) d’animer les tables avec ses propres identifiants. Il démarre sans aucun de ses outils habituels : la seule chose avec laquelle il peut interagir est le moteur de règles de la table, tour par tour, selon les mêmes contraintes et limites que le narrateur intégré. OGM ne demande ni ne conserve jamais son mot de passe ou sa clé.",
+    "Claude Code, Codex, opencode, Grok Build or Pi, signed in on this computer, narrating on its own plan.": "Claude Code, Codex, opencode, Grok Build ou Pi, connecté sur cet ordinateur, qui raconte sur son propre forfait."
   },
   "contexts": {
     "Remove": {
@@ -11359,7 +11367,10 @@
     "Tiny": {
       "art.prose.tiny": "Minuscule"
     },
-    "builder.gear": {}
+    "builder.gear": {},
+    "Add it anyway": {
+      "admin.harness.addReduced": "L’ajouter quand même"
+    }
   },
   "plurals": {
     "{count} place\u0000{count} places": [
@@ -12317,6 +12328,14 @@
     "researching {topic} ({count} day)\u0000researching {topic} ({count} days)": [
       "recherche : {topic} ({count} jour)",
       "recherche : {topic} ({count} jours)"
+    ],
+    "1 model the backend lists cannot play the full rules and is left off the list. To use it anyway, choose Type a model id; Open Game Master does not support or test it.\u0000{count} models the backend lists cannot play the full rules and are left off the list. To use one anyway, choose Type a model id; Open Game Master does not support or test them.": [
+      "1 modèle listé par le backend ne peut pas jouer les règles complètes et reste hors de la liste. Pour l’utiliser quand même, choisis « Tape un identifiant de modèle… » ; Open Game Master ne le prend pas en charge et ne le teste pas.",
+      "{count} modèles listés par le backend ne peuvent pas jouer les règles complètes et restent hors de la liste. Pour en utiliser un quand même, choisis « Tape un identifiant de modèle… » ; Open Game Master ne les prend pas en charge et ne les teste pas."
+    ],
+    "{names} cannot play the full rules, so it is left off the list. \u0000{names} cannot play the full rules, so they are left off the list. ": [
+      "{names} ne peut pas jouer les règles complètes, il reste donc hors de la liste. ",
+      "{names} ne peuvent pas jouer les règles complètes, ils restent donc hors de la liste. "
     ]
   }
 }

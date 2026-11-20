@@ -4,6 +4,7 @@ import { configuredMaxOutputTokens, storyContextTokens, storyModelParams } from 
 import { findCatalogModel } from "@/lib/model-registry/catalog-logic";
 import { hostedCatalogModel, modelCatalog } from "@/lib/model-registry/catalog";
 import { serverEnv } from "@/lib/server-env";
+import { harnessReducedTools } from "@/lib/harness/status";
 import { tuneForModel, type CatalogFacts, type ModelTuning } from "@/lib/dm/model-tuning-logic";
 
 // The catalog's word on the model a table's story runs on, or null when
@@ -52,6 +53,19 @@ export function storyModelTuning(settings: Campaign["settings"], fullToolTokens:
   };
   // An agent program reads its whole catalogue once and keeps its own
   // context, so it is offered the full set (or the trimmed one when asked).
+  // One that cannot hold the full set (the Antigravity CLI) is played on the
+  // compact profile, which Open Game Master does not support or test
+  // (HarnessAdapter.reducedTools).
+  if (settings.textProvider === "harness" && harnessReducedTools()) {
+    return {
+      toolProfile: "compact",
+      leanTools: false,
+      briefRules: false,
+      thinking: env.thinking !== "0",
+      outputCap: null,
+      notes: ["Compact tool set: the agent program cannot hold the full tool set, so it plays on the compact profile, which Open Game Master does not support or test."],
+    };
+  }
   if (settings.textProvider === "harness") {
     const lean = env.leanTools === "1";
     return { toolProfile: lean ? "lean" : "full", leanTools: lean, briefRules: false, thinking: env.thinking !== "0", outputCap: null, notes: [] };

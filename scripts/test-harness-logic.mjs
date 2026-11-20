@@ -24,7 +24,7 @@ const { buildChildEnv, leaksServerSecret } = await import("../src/lib/harness/ch
 const { claudeAdapter, claudeArgs, CLAUDE_ENV, CLAUDE_MCP_PREFIX, parseClaudeModels, withCacheBoundary } = await import(
   "../src/lib/harness/adapters/claude.ts"
 );
-const { effortChoices, withOfferedEffort } = await import("../src/lib/harness/effort-choices.ts");
+const { effortChoices, withOfferedEffort, bookkeepingEffort } = await import("../src/lib/harness/effort-choices.ts");
 const {
   codexAdapter,
   codexArgs,
@@ -113,6 +113,73 @@ test("a turn resumed after dice shows the calls and results as engine lines", ()
   assert.ok(prompt.includes('[engine] You called pc_attack {"target":"goblin-1"}'));
   assert.ok(prompt.includes('[engine] pc_attack answered: {"hit":true,"damage":7}'));
   assert.ok(prompt.includes("The dice above have landed."));
+});
+
+test("the turn's own [System] instructions follow the moment, as a chat model reads them last", () => {
+  const director = "[System] Direct instruction from the party lead, spoken to you and not to the world. Have the bridge collapse.";
+  const { prompt } = renderTurn([
+    { role: "system", content: `RULES\n\n${THIS_MOMENT_HEADING}\n\nThe ford, at dusk.` },
+    { role: "user", content: "[Avery | attempt] I cross the bridge." },
+    { role: "assistant", content: "The planks creak." },
+    { role: "user", content: "[Avery | attempt] I keep going." },
+    { role: "user", content: director },
+  ]);
+  const transcriptEnd = prompt.indexOf("</table_transcript>");
+  const momentAt = prompt.indexOf(THIS_MOMENT_HEADING);
+  const directorAt = prompt.indexOf(director);
+  assert.ok(prompt.slice(0, transcriptEnd).includes("[Avery | attempt] I keep going."), "the newest player line stays in the transcript");
+  assert.ok(!prompt.slice(0, transcriptEnd).includes("Direct instruction"), "the direction is not buried in the transcript");
+  assert.ok(transcriptEnd < momentAt && momentAt < directorAt, "the direction comes after the moment");
+  assert.ok(prompt.endsWith(director), "and is the last thing read, as on the chat path");
+  // Mid-turn, after a tool call, the direction is history like any line.
+  const resumed = renderTurn([
+    { role: "system", content: "rules" },
+    { role: "user", content: director },
+    { role: "assistant", content: "", tool_calls: [{ id: "c1", function: { name: "request_roll", arguments: "{}" } }] },
+    { role: "tool", tool_call_id: "c1", content: '{"total":14}' },
+  ]).prompt;
+  assert.ok(resumed.indexOf(director) < resumed.indexOf("[engine] You called request_roll"));
+});
+
+test("a settled transcript never empties the opening message, with a direction at the end", () => {
+  const messages = [{ role: "system", content: `RULES\n\n${THIS_MOMENT_HEADING}\n\nNow.` }];
+  for (let index = 0; index < 20; index += 1) {
+    messages.push({ role: "user", content: `[Avery] line ${index}` }, { role: "assistant", content: `reply ${index}` });
+  }
+  messages.push({ role: "user", content: "[System] Direct instruction from the party lead: a storm rolls in." });
+  const { system, prompt } = renderTurn(messages, { settledTranscript: true });
+  assert.ok(system.includes("<table_transcript_earlier>"));
+  assert.ok(!prompt.includes("The table has not spoken yet."), "forty settled lines are not a silent table");
+  assert.ok(prompt.includes("reply 19"), "the newest line stays in the opening message");
+});
+
+test("a program started again on new tools is told so, not that dice landed", () => {
+  const messages = [
+    { role: "system", content: "rules" },
+    { role: "user", content: "I look for a shop." },
+    { role: "assistant", content: "", tool_calls: [{ id: "c1", function: { name: "more_tools", arguments: '{"group":"shop"}' } }] },
+    { role: "tool", tool_call_id: "c1", content: '{"ok":true,"opened":"shop"}' },
+  ];
+  assert.match(renderTurn(messages, { toolsChanged: true }).prompt, /Your tools changed partway through this turn/);
+  assert.doesNotMatch(renderTurn(messages, { toolsChanged: true }).prompt, /dice above have landed/);
+  assert.match(renderTurn(messages).prompt, /dice above have landed/);
+});
+
+test("a blank bookkeeping effort takes the story's only where the bookkeeping model lists it", () => {
+  const program = {
+    models: [
+      { id: "big", label: "Big", efforts: ["low", "medium", "high"] },
+      { id: "small", label: "Small", efforts: ["medium", "high"] },
+      { id: "quiet", label: "Quiet" },
+    ],
+  };
+  const run = (config) => bookkeepingEffort(program, { model: "big", utilityModel: "small", effort: "", utilityEffort: "", ...config });
+  assert.equal(run({ effort: "low" }), "", "small has no low: it runs at its own default rather than being refused");
+  assert.equal(run({ effort: "high" }), "high");
+  assert.equal(run({ effort: "low", utilityEffort: "medium" }), "medium", "its own effort wins");
+  assert.equal(run({ effort: "low", utilityModel: "" }), "low", "no bookkeeping model: the story model's list");
+  assert.equal(run({ effort: "low", utilityModel: "quiet" }), "low", "a model whose efforts are not known narrows nothing");
+  assert.equal(bookkeepingEffort(null, { model: "big", utilityModel: "small", effort: "low", utilityEffort: "" }), "low", "no list to read: as before");
 });
 
 test("follow-ups carry only new user and system text, never tool results", () => {
@@ -713,12 +780,12 @@ test("the Effort picker offers what the chosen models list, as the model pickers
   const pick = (model, utilityModel = "") => effortChoices(codex, { model, utilityModel });
   assert.deepEqual(pick("gpt-6.1-sol"), all);
   assert.deepEqual(pick("gpt-5.5"), all.slice(0, 5));
-  // One Effort serves both models: what both list.
-  assert.deepEqual(pick("gpt-6.1-sol", "gpt-5.5"), all.slice(0, 5));
-  // A blank story model is the program's own default; a blank bookkeeping
-  // model is the story model.
+  // Story effort follows the story model alone; bookkeeping has its own picker
+  // (`utilityEffortChoices`) and does not narrow the story model's efforts.
+  assert.deepEqual(pick("gpt-6.1-sol", "gpt-5.5"), all);
+  // A blank story model is the program's own default.
   assert.deepEqual(pick(""), all);
-  assert.deepEqual(pick("", "gpt-5.5"), all.slice(0, 5));
+  assert.deepEqual(pick("", "gpt-5.5"), all);
   assert.deepEqual(effortChoices({ ...codex, defaultEfforts: ["low"] }, { model: "", utilityModel: "" }), ["", "low"]);
   // A model whose efforts are not known narrows nothing; the run checks it.
   assert.deepEqual(pick("gpt-gone"), all);
