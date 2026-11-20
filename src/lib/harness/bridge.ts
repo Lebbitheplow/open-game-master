@@ -39,6 +39,7 @@ import { childPath } from "./discover.ts";
 import { renderCompletion, renderFollowUp, renderTurn, toMcpTools, toolNames } from "./render.ts";
 import { adapterFor, harnessConfig, noteSignedOut, probeHarness, resolveHarnessBinary } from "./status.ts";
 import { harnessOfferFor } from "./policy.ts";
+import { bookkeepingEffort } from "./effort-choices.ts";
 import { makeRunDir, removeRunDir } from "./run-dir.ts";
 import { getCampaignById } from "@/lib/db/campaigns";
 import type { HarnessErrorKind, HarnessEvent, HarnessSession, McpToolDefinition } from "./types.ts";
@@ -776,14 +777,21 @@ async function completeWithHarness(
     const timer = setTimeout(
       () => settle({ error: harnessError("The agent program took too long to answer.", "timeout") }),
       Math.min(timeoutMs, HARNESS_MAX_RUN_MS),
+  // The bookkeeping model's own effort when the admin set one, else the
+  // story's where the bookkeeping model lists it (bookkeepingEffort).
+  // The program's model list is read only when the answer depends on it.
+  const inherits = context.role === "utility" && !config.utilityEffort && Boolean(config.effort);
+  const effort =
+    context.role !== "utility"
+      ? config.effort
+      : bookkeepingEffort(inherits && isHarnessId(config.id) ? await probeHarness(config.id).catch(() => null) : null, config);
     );
     adapter
       .start({
         binary,
         system: rendered.system,
         model,
-        // The bookkeeping model's own effort when the admin set one.
-        effort: context.role === "utility" ? config.utilityEffort || config.effort : config.effort,
+        effort,
         ...(speed ? { speed } : {}),
         mcp: null,
         cwd,
