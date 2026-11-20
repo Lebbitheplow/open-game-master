@@ -818,6 +818,7 @@
     "components/rulebook/RulebookReader.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/rulebook/RulebookReader.tsx#toLowerCase": [["key",1,"compared with a string-literal union (the type checker's verdict)"]],
     "components/sheet/SheetChoices.tsx#toUpperCase": [["display",1,"an id shown title-cased"]],
+    "components/sheet/SheetDollDrag.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/sheet/SheetParts.tsx#[a-z]": [["display",1,"an id shown title-cased"]],
     "components/sheet/SheetParts.tsx#str-eq": [
       [

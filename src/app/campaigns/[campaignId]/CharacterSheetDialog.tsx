@@ -49,8 +49,14 @@ import { SheetBetween } from "@/components/sheet/SheetBetween";
 import { acView, conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
 import { FeatureChoicePicker, OtherSpeeds } from "@/components/sheet/SheetChoices";
 import { OwedPicks } from "@/components/sheet/OwedPicks";
-import type { PendingWear } from "@/components/sheet/SheetGearRow";
+import { wearQuestion, type PendingWear } from "@/components/sheet/SheetGearRow";
 import { SheetPaperdoll } from "@/components/sheet/SheetPaperdoll";
+import { DollDragGhost, useDollDrag } from "@/components/sheet/SheetDollDrag";
+import { dollDropPlace } from "@/components/sheet/paperdoll-logic";
+import { findNamed } from "@/lib/language/text-logic";
+import { inventoryItemIcon } from "@/lib/inventory-art-logic";
+import { rowName } from "@/lib/srd/item-row";
+import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { LoadBreakdown } from "@/components/sheet/LoadBreakdown";
 import { ResourceRow, SlotRow, STEP_BUTTON } from "@/components/sheet/SheetCounters";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
@@ -239,6 +245,24 @@ export function CharacterSheetDialog({
       setBusy(false);
     }
   }
+
+  // A carried item's chip can be dragged onto its place on the paperdoll
+  // (src/components/sheet/SheetDollDrag.tsx): the drop is the press on the
+  // place's own row, with the same question before a second cloak.
+  const dropPlace = (item: EquipmentItem | null | undefined) =>
+    item && spends && !busy && !dead ? dollDropPlace(item, sheet.equipment, { inCombat, myTurn }) : null;
+  const carriedRow = (name: string) => findNamed(sheet.equipment, name, (item) => [item.name]);
+  const dollDrag = useDollDrag({
+    placeOf: (name) => dropPlace(carriedRow(name)),
+    onDrop: (name) => {
+      const item = carriedRow(name);
+      if (!item || !dropPlace(item)) return;
+      const question = wearQuestion(item, sheet.equipment, { equipped: true });
+      setPendingWear(question);
+      if (!question) void adjustUsage({ gear: { [item.name]: { equipped: true } } }, "gear");
+    },
+  });
+  const carried = dollDrag.drag ? carriedRow(dollDrag.drag.name) : null;
 
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
@@ -579,13 +603,26 @@ export function CharacterSheetDialog({
 
           {sheet.equipment.length ? (
             <SheetBlock className="mt-4" title={t("Equipment")} aside={t("Attuned {count}/{max}", { count: attunedCount, max: attunementSlotsFor(sheet) })}>
-              <EquipmentChips
-                equipment={sheet.equipment}
-                extra={(index) => {
-                  const item = sheet.equipment[index];
-                  return item ? itemStatus(t, sheet, item).charges : null;
-                }}
-              />
+              {/* A chip is picked up here and carried to its place on the paperdoll below. */}
+              <div {...dollDrag.source}>
+                <EquipmentChips
+                  equipment={sheet.equipment}
+                  extra={(index) => {
+                    const item = sheet.equipment[index];
+                    return item ? itemStatus(t, sheet, item).charges : null;
+                  }}
+                  grab={(index) => dropPlace(sheet.equipment[index]) !== null}
+                />
+              </div>
+              {dollDrag.drag && carried ? (
+                <DollDragGhost
+                  x={dollDrag.drag.x}
+                  y={dollDrag.drag.y}
+                  over={dollDrag.drag.over}
+                  icon={inventoryItemIcon(carried)}
+                  label={contentName("items", { slug: carried.slug, name: rowName(carried) }, locale)}
+                />
+              ) : null}
               {(mine || corrects) && wearable.length ? (
                 <div className="reveal mt-2 space-y-1">
                   <p className="text-[11px] text-stone-500">
@@ -622,6 +659,8 @@ export function CharacterSheetDialog({
                     pending={pendingWear}
                     onPending={setPendingWear}
                     onGear={(gear) => void adjustUsage({ gear }, "gear")}
+                    drag={dollDrag.drag}
+                    canDrag={sheet.equipment.some((item) => dropPlace(item) !== null)}
                   />
                   {refusal?.at === "gear" ? (
                     <p role="alert" className="reveal text-[11px] text-amber-300">

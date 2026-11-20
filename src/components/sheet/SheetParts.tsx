@@ -350,10 +350,13 @@ export function SkillRows({
 export function EquipmentChips({
   equipment,
   extra,
+  grab,
 }: {
   equipment: Array<{ name: string; qty: number; equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean } & CategoryItem>;
   // More for a row's note, by its index: its charges ("4/7 charges").
   extra?: (index: number) => string | null | undefined;
+  // Whether a row's chip can be dragged onto the sheet's paperdoll, by its index.
+  grab?: (index: number) => boolean;
 }) {
   // A worn second cloak (or pair of boots...) is marked as not in effect
   // (src/lib/srd/wear-slots.ts); one the DM let stand beside another says so.
@@ -373,6 +376,8 @@ export function EquipmentChips({
       items={equipment.map((item, index) => {
         const category = itemCategory(item);
         return {
+          id: item.name,
+          grab: grab?.(index) ?? false,
           name: (() => {
             const shown = contentName("items", rowName(item), locale);
             const bonus = magicItemBonus(item.name);

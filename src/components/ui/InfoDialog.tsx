@@ -461,6 +461,12 @@ export function InfoChipList({
     // Its tone names the kind on the chip (data-tone) and its style tints it
     // (src/lib/srd/item-category-logic.ts itemToneStyle).
     lead?: { icon: IconRef; label: string; tone?: string; style?: CSSProperties };
+    // The thing's own name on the chip (data-chip), for a list whose chips
+    // are picked up: the shown name is translated and carries a count.
+    id?: string;
+    // The chip can be dragged somewhere (the sheet's paperdoll), so a mouse
+    // shows the open hand over it.
+    grab?: boolean;
   }>;
   emptyText?: string;
 }) {
@@ -472,7 +478,14 @@ export function InfoChipList({
       {items.map((item) => {
         const line = firstLine(item.text);
         return (
-          <span key={item.name} className="info-chip" data-tone={item.lead?.tone} style={item.lead?.style}>
+          <span
+            key={item.name}
+            className={cn("info-chip", item.grab && "cursor-grab select-none")}
+            data-chip={item.id}
+            data-grab={item.grab ? "" : undefined}
+            data-tone={item.lead?.tone}
+            style={item.lead?.style}
+          >
             <Tooltip
               content={
                 <span className="flex items-start gap-2.5">

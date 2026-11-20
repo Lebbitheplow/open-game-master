@@ -9,6 +9,9 @@
 // once the item is armour. The sheet shows her gear on a paperdoll: a tile
 // for every place on the body, filled or empty, which opens the rows that go
 // there, by finger and by keyboard, clean under axe by day and by night.
+// With a mouse a carried item's chip is dragged onto its place, which puts
+// it on as the place's own row does, the question before a second cloak
+// included.
 // Runs on the website and inside the app's own screens.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
@@ -133,6 +136,81 @@ export default {
     check(((await wand.textContent()) ?? "").trim() === "Packed", "the wand's button reads Packed");
     check((await wand.getAttribute("aria-label")) === "Wand of Magic Missiles: Packed. Take it in hand.", "a screen reader hears where the wand is and what the press does");
     check(/does not stop a weapon being drawn/.test((await sheet.locator('[data-doll-panel="held"]').textContent()) ?? ""), "the place says a wand is no part of the two-hands rule");
+    // With a mouse, a carried item's chip is dragged onto its place.
+    if (viewport === "desktop") {
+      const chip = (name) => sheet.locator(`[data-chip="${name}"]`).first();
+      const ghost = page.locator("[data-doll-ghost]");
+      const middle = async (locator) => {
+        const box = await locator.boundingBox();
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      };
+      // Picks the chip up and carries it over a place, the sheet scrolled by
+      // the wheel when the place is below the fold, as a player's hand does.
+      const carry = async (name, id) => {
+        await chip(name).evaluate((element) => element.scrollIntoView({ block: "center" }));
+        const from = await middle(chip(name).locator("span.truncate").first());
+        await page.mouse.move(from.x, from.y);
+        await page.mouse.down();
+        await page.mouse.move(from.x + 12, from.y + 12, { steps: 3 });
+        await eventually(() => ghost.count(), { label: `${name} picked up` });
+        let to = await middle(place(id));
+        const height = page.viewportSize().height;
+        if (to.y > height - 30) {
+          await page.mouse.wheel(0, to.y - height + 120);
+          await eventually(async () => ((await middle(place(id))).y < height - 30 ? true : null), { label: `the ${id} place scrolled into reach` });
+          to = await middle(place(id));
+        }
+        await page.mouse.move(to.x, to.y, { steps: 8 });
+      };
+      check((await sheet.locator("[data-doll-drag-hint]").locator("visible=true").count()) === 1, "the doll tells a mouse that items can be dragged on");
+      check((await chip("Wand of Magic Missiles").getAttribute("data-grab")) === "", "a packed wand's chip can be picked up");
+      check((await chip(PROTECTION).getAttribute("data-grab")) === null, "a cloak already worn cannot");
+      check((await chip("Crystal Ball").getAttribute("data-grab")) === null, "nor an orb, which is never put on");
+
+      // Over another place nothing is offered, and letting go there changes nothing.
+      await carry("Wand of Magic Missiles", "head");
+      check((await place("held").getAttribute("data-drop")) === "fits", "the wand's own place is lit while it is carried");
+      check((await place("head").getAttribute("data-drop")) === null, "another place is not");
+      await page.mouse.up();
+      await eventually(async () => (await ghost.count()) === 0, { label: "the wand let go" });
+      await page.waitForTimeout(400);
+      check((await gear())["Wand of Magic Missiles"]?.equipped !== true, "a drop on the wrong place puts nothing on");
+
+      // Escape puts it back and leaves the sheet open.
+      await carry("Wand of Magic Missiles", "held");
+      await page.keyboard.press("Escape");
+      await eventually(async () => (await ghost.count()) === 0, { label: "Escape ending the drag" });
+      await page.mouse.up();
+      check((await sheet.count()) === 1 && (await place("held").count()) === 1, "the sheet stays open");
+      await page.waitForTimeout(400);
+      check((await gear())["Wand of Magic Missiles"]?.equipped !== true, "a cancelled drag puts nothing on");
+
+      // On its own place: lit under the pointer, and on once let go.
+      await carry("Wand of Magic Missiles", "held");
+      await eventually(async () => (await place("held").getAttribute("data-drop")) === "over", { label: "the In hand place lit under the wand" });
+      await untilStill(page);
+      await t.shot("drag-over");
+      const dragTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+      await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+      await page.waitForTimeout(800);
+      await t.shot("drag-over-day");
+      await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), dragTheme);
+      await page.mouse.up();
+      await eventually(async () => (await gear())["Wand of Magic Missiles"]?.equipped === true, { label: "the dropped wand in hand" });
+      await eventually(async () => (await place("held").getAttribute("data-filled")) === "true", { label: "the In hand tile filled" });
+      check((await place("held").getAttribute("data-drop")) === null, "the light goes out with the drop");
+
+      // A second cloak dropped on the shoulders asks first, as its row does.
+      await carry(ELVENKIND, "cloak");
+      await page.mouse.up();
+      const asked = sheet.getByRole("group", { name: `Wear ${ELVENKIND}?` });
+      await eventually(() => asked.count(), { label: "the question after a second cloak is dropped" });
+      check((await gear())[ELVENKIND]?.equipped === false, "the drop posted nothing before the answer");
+      await t.shot("drag-asked");
+      await t.tap(asked.getByRole("button", { name: "Keep as is" }));
+      await eventually(async () => (await asked.count()) === 0, { label: "the question put away" });
+    }
+
     // Her orb is attuned to and never put on: one button, under Other items.
     await openPlace("other");
     const orb = await rowOf("Crystal Ball").getByRole("button").allTextContents();

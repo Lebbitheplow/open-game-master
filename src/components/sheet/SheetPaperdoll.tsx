@@ -7,6 +7,7 @@ import { contentName } from "@/lib/content/names";
 import { useLocale, useT } from "@/lib/locale";
 import { SheetGearRows, type PendingWear } from "@/components/sheet/SheetGearRow";
 import { DOLL_PLACES, dollPlaceOf, dollTileLabel, dollTileLine, dollTileNames, dollView, type DollPlaceId, type DollTile } from "@/components/sheet/paperdoll-logic";
+import type { DollDrag } from "@/components/sheet/SheetDollDrag";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { findNamed } from "@/lib/language/text-logic";
 import { itemCategory, itemToneStyle } from "@/lib/srd/item-category-logic";
@@ -32,6 +33,8 @@ export function SheetPaperdoll({
   pending,
   onPending,
   onGear,
+  drag = null,
+  canDrag = false,
 }: {
   sheet: CharacterSheet;
   armor: { armorName: string | null; shieldName: string | null };
@@ -44,6 +47,11 @@ export function SheetPaperdoll({
   pending: PendingWear | null;
   onPending: (pending: PendingWear | null) => void;
   onGear: (gear: GearAsk) => void;
+  // A chip from the list above is being carried here (SheetDollDrag.tsx):
+  // its place is lit and the rest stand back.
+  drag?: DollDrag | null;
+  // Something carried can be dragged on, so the doll says so to a mouse.
+  canDrag?: boolean;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -84,6 +92,7 @@ export function SheetPaperdoll({
       tile={view.tiles[id]}
       open={open === id}
       controls={panelId}
+      drop={drag ? (drag.place !== id ? "other" : drag.over ? "over" : "fits") : null}
       t={t}
       itemLabel={itemLabel}
       onPress={() => {
@@ -106,13 +115,19 @@ export function SheetPaperdoll({
             : t("Nobody has said what {name} wears yet, so everything carried counts as worn.", { name: sheet.name })}
         </p>
       ) : null}
+      {/* A mouse only: a finger and a keyboard press a place, which every tile says. */}
+      {canDrag ? (
+        <p data-doll-drag-hint className="hidden text-[11px] text-stone-500 [@media(hover:hover)_and_(pointer:fine)]:block">
+          {t("Drag an item from the list above onto its place to put it on, or press a place to see what goes there.")}
+        </p>
+      ) : null}
       {/* No group role here: each tile names its own place, and a sheet-wide
           count of groups that hold an expandable button is how the
           personality pickers are found (scenario 138-creator-sheets). */}
       <div className="space-y-1.5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-1.5">
           <div className="flex min-w-0 flex-col justify-between gap-1.5">{side("left").map(tile)}</div>
-          <DollFigure view={view.tiles} open={open} />
+          <DollFigure view={view.tiles} open={drag?.place ?? open} />
           <div className="flex min-w-0 flex-col justify-between gap-1.5">{side("right").map(tile)}</div>
         </div>
         <div className={cn("grid gap-1.5", side("below").length > 2 ? "grid-cols-3" : "grid-cols-2")}>{side("below").map(tile)}</div>
@@ -148,6 +163,7 @@ function DollTileButton({
   tile,
   open,
   controls,
+  drop,
   t,
   itemLabel,
   onPress,
@@ -155,6 +171,9 @@ function DollTileButton({
   tile: DollTile;
   open: boolean;
   controls: string;
+  // While an item is carried over the doll: this is its place, the pointer
+  // is on it, or it is some other place.
+  drop: "fits" | "over" | "other" | null;
   t: (key: string, vars?: Record<string, string | number>) => string;
   itemLabel: (name: string) => string;
   onPress: () => void;
@@ -167,6 +186,7 @@ function DollTileButton({
       type="button"
       data-doll-place={tile.place.id}
       data-filled={first ? "true" : undefined}
+      data-drop={drop && drop !== "other" ? drop : undefined}
       aria-expanded={open}
       aria-controls={open ? controls : undefined}
       aria-label={dollTileLabel(tile, t, itemLabel)}
@@ -179,6 +199,9 @@ function DollTileButton({
         "motion-press flex min-h-[44px] w-full min-w-0 items-center gap-1.5 rounded border px-1.5 py-1 text-left text-xs",
         first ? "border-stone-600 bg-stone-900/40 text-stone-200" : "border-dashed border-stone-700 text-stone-500",
         open && "border-solid border-amber-600 bg-amber-950/40",
+        drop === "other" && "opacity-50",
+        drop === "fits" && "border-solid border-amber-500 text-stone-200 ring-2 ring-amber-500/50",
+        drop === "over" && "border-solid border-amber-300 bg-amber-900/50 text-stone-100 ring-2 ring-amber-300",
       )}
     >
       {first ? <GameIcon icon={inventoryItemIcon(first)} size="size-6" className="tone-rim" /> : null}
