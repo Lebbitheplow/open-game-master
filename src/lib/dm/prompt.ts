@@ -72,7 +72,7 @@ import { listQuests } from "@/lib/db/quests";
 import { renderQuestsForPrompt } from "@/lib/dm/quest-logic";
 import { describeEffect } from "@/lib/dm/effects-logic";
 import { getMounts } from "@/lib/db/mounts";
-import { describeMount } from "@/lib/srd/mounts";
+import { describeMount, independentMount } from "@/lib/srd/mounts";
 import { formatCopper, formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { coverPromptBlock } from "@/lib/dm/delegation";
 import { ENGINE_BOUNDARY_CHECK, ENGINE_BOUNDARY_RULES } from "@/lib/dm/engine-boundary";
@@ -1129,7 +1129,9 @@ export function buildGameStateBlock(state: DmGameState): string {
   const mounts = getMounts(campaign.id);
   const mountLines = Object.entries(mounts).map(([characterId, mount]) => {
     const who = sheets.find((sheet) => sheet.id === characterId)?.name ?? "someone";
-    return `- ${who} is riding ${describeMount(mount)}`;
+    // An independent mount's turn is the GM's (issue 1036, ruling 3), and
+    // nothing else tells the model the pair moves on it.
+    return `- ${who} is riding ${describeMount(mount)}${independentMount(mount) ? `. You play ${mount.name}'s own turn as it wishes, not as ${who} wishes: move_token by its name carries ${who} with it, and ${who} does not move the pair on their own turn` : ""}`;
   });
   if (mountLines.length) {
     sections.push(`Mounted:\n${mountLines.join("\n")}`);

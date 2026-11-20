@@ -17,7 +17,7 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { MountState } from "@/lib/srd/mounts";
+import { independentMount, type MountState } from "@/lib/srd/mounts";
 import { carriedBarding } from "@/lib/srd/barding";
 import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 
@@ -60,14 +60,41 @@ export function mountVitals(mount: MountState): { ac: number; hp: number; maxHp:
   return mount.ac === undefined || mount.hp === undefined ? null : { ac: mount.ac, hp: mount.hp, maxHp: mount.maxHp ?? mount.hp };
 }
 
-// The party's creatures that are not carrying a rider. One that is shares
-// its rider's square and initiative ("The initiative of a controlled mount
-// changes to match yours when you mount it", SRD 5.1, Controlling a Mount):
-// it rolls no initiative, takes no slot in the order and stands on no token
-// of its own until its rider gets down.
+// The party's creatures that are not carrying a rider: the ones that stand
+// on a token of their own. One that carries a rider shares its rider's
+// square, so it stands on no token until its rider gets down.
 export function onFoot<T extends { id: string }>(campaignId: string, sheets: T[]): T[] {
   const ridden = new Set(Object.values(getMounts(campaignId)).flatMap((mount) => (mount.sheetId ? [mount.sheetId] : [])));
   return ridden.size ? sheets.filter((sheet) => !ridden.has(sheet.id)) : sheets;
+}
+
+// The party's creatures that take a turn of their own. A controlled mount
+// does not ("The initiative of a controlled mount changes to match yours
+// when you mount it", SRD 5.1, Controlling a Mount): it rolls no initiative
+// and takes no slot in the order. An independent one "retains its place in
+// the initiative order" and is asked its roll like anyone (issue 1036).
+export function takesOwnTurn<T extends { id: string }>(campaignId: string, sheets: T[]): T[] {
+  const led = new Set(Object.values(getMounts(campaignId)).flatMap((mount) => (mount.sheetId && mount.controlled ? [mount.sheetId] : [])));
+  return led.size ? sheets.filter((sheet) => !led.has(sheet.id)) : sheets;
+}
+
+// The independent mount this rider sits on, or null: a rider on foot, and
+// one on a controlled mount, moves on their own turn.
+export function independentMountOf(campaignId: string, riderId: string): (MountState & { sheetId: string }) | null {
+  const mount = getMounts(campaignId)[riderId];
+  return independentMount(mount) ? mount : null;
+}
+
+// Who this creature carries as an independent mount, or null. The pair
+// stands on that rider's token (db/battle-maps.ts getTokenByRef), and the
+// creature's turn starts that token's movement again.
+export function riderCarriedBy(campaignId: string, sheetId: string): string | null {
+  for (const [riderId, mount] of Object.entries(getMounts(campaignId))) {
+    if (independentMount(mount) && mount.sheetId === sheetId) {
+      return riderId;
+    }
+  }
+  return null;
 }
 
 // Who rides this creature now.

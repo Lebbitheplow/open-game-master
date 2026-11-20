@@ -13,6 +13,8 @@ const {
   dismountSave,
   riderKnockedProne,
   checkCreatureMount,
+  independentMount,
+  rideByRecord,
   mountSizeOf,
   MOUNTS,
   mountCost,
@@ -178,6 +180,27 @@ test("a creature the table keeps as a sheet is a mount by the size rule, ridden 
   assert.match(checkCreatureMount({ sheetId: "s3", name: "Owl", speed: 60, size: "Tiny", riderSize: "small" }).error, /one size larger/);
   assert.equal(mountSizeOf("Gargantuan"), "huge");
   assert.equal(mountSizeOf("tiny"), null);
+});
+
+// Issue 1036, rulings 1 and 4: controlled by default, independent only by
+// the GM's word and only for a creature with a sheet.
+test("a creature mount is independent only when the GM says so; a mount on record never is", () => {
+  const led = checkCreatureMount({ sheetId: "s1", name: "Warhorse", speed: 60, size: "Large", riderSize: "medium" }).state;
+  const free = checkCreatureMount({ sheetId: "s1", name: "Warhorse", speed: 60, size: "Large", riderSize: "medium", controlled: false }).state;
+  assert.equal(independentMount(led), false);
+  assert.equal(free.controlled, false);
+  assert.equal(independentMount(free), true);
+  assert.deepEqual(rideByRecord(free), { state: free }, "a creature's choice was overruled");
+  assert.equal(independentMount(null), false);
+  // The griffon's profile is not a trained mount, and a record has no block to take a turn with.
+  const griffon = checkMount({ ref: "griffon", riderSize: "medium", exoticSaddle: true }).state;
+  assert.equal(independentMount(griffon), false);
+  const ridden = rideByRecord(griffon);
+  assert.equal(ridden.state.controlled, true);
+  assert.match(ridden.stays, /Griffon is ridden as a controlled mount.*stat block/);
+  const warhorse = checkMount({ ref: "warhorse", riderSize: "medium" }).state;
+  assert.deepEqual(rideByRecord(warhorse), { state: warhorse }, "a trained mount was given a reason for nothing");
+  assert.match(describeMount(free), /independent \(keeps its own turn in the order/);
 });
 
 test("a rider owes the save for being laid prone, not for lying prone", () => {

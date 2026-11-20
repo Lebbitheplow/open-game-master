@@ -21,6 +21,7 @@ import { findPath, reachableTiles, speedToTiles } from "@/lib/battlemap/movement
 import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { crawlingTraits, tileIndex } from "@/lib/battlemap/types";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { carriedRefusal } from "@/lib/dm/token-rules";
 import { publishFx } from "@/lib/dm/fx";
 import { planDoorFx } from "@/lib/battlemap/fx-plan";
 import { getCampaignById } from "@/lib/db/campaigns";
@@ -144,6 +145,13 @@ export async function POST(
     if (!allowed.ok) {
       return Response.json({ error: allowed.error }, { status: 409 });
     }
+  }
+
+  // On an independent mount the pair moves on the mount's turn, which the
+  // GM plays (token-rules.ts carriedRefusal).
+  const carriedOn = carriedRefusal(campaignId, encounter, sheet);
+  if (carriedOn) {
+    return Response.json({ error: carriedOn }, { status: 409 });
   }
 
   const floor = getFloor(campaignId);
