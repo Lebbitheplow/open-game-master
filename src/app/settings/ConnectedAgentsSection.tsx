@@ -6,7 +6,7 @@ import { Link2, Loader2, Plug, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ui } from "@/lib/ui";
 import { localeTag } from "@/lib/messages-logic";
-import { useLocale, useT, useTp } from "@/lib/locale";
+import { useLocale, useT } from "@/lib/locale";
 import { EmptyState } from "@/components/EmptyState";
 import { PageSection } from "@/components/PageShell";
 import { Select } from "@/components/ui/Select";
@@ -73,7 +73,6 @@ function makeWhen(t: (key: string) => string, locale: string): (iso: string | nu
 // account can do in the browser and nothing more. The token is shown once.
 export function ConnectedAgentsSection() {
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   const when = makeWhen(t, locale);
   const [grants, setGrants] = useState<Grant[] | null>(null);

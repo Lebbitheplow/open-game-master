@@ -18,7 +18,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { Ribbon } from "@/components/ui/Ribbon";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { useLocale, useT, useTp } from "@/lib/locale";
+import { useLocale, useT } from "@/lib/locale";
 import { contentName, subclassName } from "@/lib/content/names";
 import { navigateTo } from "@/lib/navigation";
 import { prefersReducedMotion, useLowEffects } from "@/lib/effects-mode";
@@ -76,7 +76,6 @@ function titleCase(value: string) {
 
 export default function CharactersPage() {
   const t = useT();
-  const tp = useTp();
   const [characters, setCharacters] = useState<LibraryCharacter[]>([]);
   const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(true);
@@ -481,7 +480,6 @@ function CharacterCard({
 }) {
   const router = useRouter();
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   // The subclass reads in the reader's language where the maps carry it; a
   // miss keeps the stored string, cased the way the card has shown it.

@@ -169,7 +169,6 @@ import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects
 import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { beginHeldTurn, startHeldTurn } from "@/lib/dm/held-turn";
 import { heldMoveLine, holdMoveForWatch } from "@/lib/dm/turn-hold";
-import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
@@ -433,8 +432,8 @@ function handleStartEncounter(
   // ("Hunter", "Hunter 1", "Hunter 2" are Hunter 1, 2 and 3: issue 98). A
   // creature back from an earlier fight keeps the name it had there ("Raider
   // 2" is still Raider 2), so it is numbered as one already here.
-  const carriedAt = rows.flatMap((entry, index) => (arrivals.carries[index] ? [index] : []));
-  const freshAt = rows.flatMap((entry, index) => (arrivals.carries[index] ? [] : [index]));
+  const carriedAt = rows.flatMap((_entry, index) => (arrivals.carries[index] ? [index] : []));
+  const freshAt = rows.flatMap((_entry, index) => (arrivals.carries[index] ? [] : [index]));
   const numbered = nameArrivals(carriedAt.map((index) => rows[index].name), freshAt.map((index) => rows[index].name));
   const names = rows.map((entry) => entry.name);
   freshAt.forEach((rowIndex, index) => {

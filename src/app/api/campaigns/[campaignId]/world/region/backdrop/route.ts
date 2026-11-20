@@ -2,9 +2,12 @@ import { isErrorResponse, requireStoryAuthority } from "@/lib/campaign-api";
 import { backdropFromAtlas, unlinkRegionMap } from "@/lib/db/atlas-region";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const backdropSchema = z.object({ mapId: z.string().optional(), apply: z.boolean().optional() });
 
 function changed(campaignId: string) {
   publishEphemeral(campaignId, "world_updated", { at: Date.now() });
@@ -23,7 +26,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { mapId?: unknown; apply?: unknown };
+  const parsed = backdropSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the map." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const mapId = typeof raw.mapId === "string" ? raw.mapId.trim().slice(0, 80) : "";
   if (!mapId) {
     return Response.json({ error: "Name the map." }, { status: 400 });

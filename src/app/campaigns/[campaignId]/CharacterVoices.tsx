@@ -34,7 +34,6 @@ const KIND_NOTE_KEY: Record<Kind, string> = { pc: "", companion: "AI companion",
 
 function VoiceRow({ entry, language, onVoice }: { entry: Entry; language: TableLanguage; onVoice: (voice: Voice | null, settle: boolean) => void }) {
   const t = useT();
-  const tp = useTp();
   const group = GROUPS.find((candidate) => candidate.kinds.includes(entry.kind))!;
   const kindNote = KIND_NOTE_KEY[entry.kind];
   return (

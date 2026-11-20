@@ -33,7 +33,7 @@ import {
 } from "@/app/workshop/homebrew/types";
 import { textKey } from "@/lib/language/text-logic";
 import { workshopClassId } from "@/lib/homebrew/class-data";
-import { useT, useTp } from "@/lib/locale";
+import { useT } from "@/lib/locale";
 import { HOMEBREW_NAME_MAX } from "@/lib/schemas/homebrew";
 import { currentPathname, currentQuery, replaceAddress } from "@/lib/navigation";
 import { pluralOf } from "@/lib/messages-logic";
@@ -69,7 +69,6 @@ export function HomebrewPanel({
   onWorldEntry?: (ref: string) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const [entries, setEntries] = useState<HomebrewEntryView[]>([]);
   const [kind, setKind] = useState<EditorKind>("item");
   const [query, setQuery] = useState("");

@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/Select";
 import { FieldLabel, GlyphPlate, RowMenu } from "@/app/workshop/kit";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { useT, useTp } from "@/lib/locale";
+import { useT } from "@/lib/locale";
 import { pluralOf, type MessageVars } from "@/lib/messages-logic";
 import {
   activeVariantRulesT,
@@ -78,7 +78,6 @@ export function RulesetLibrary({
   onApplied?: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const [rulesets, setRulesets] = useState<Ruleset[]>([]);
   const [loading, setLoading] = useState(true);
   // A refused or failed read is shown in the server's words with a way to

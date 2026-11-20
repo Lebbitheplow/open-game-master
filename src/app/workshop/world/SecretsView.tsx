@@ -178,6 +178,7 @@ function SecretForm({ secret, world, onSave, onCancel }: { secret: Secret; world
   );
   return (
     <form className="panel motion-pop flex flex-col gap-2 rounded-lg p-3" onSubmit={(event) => { event.preventDefault(); if (draft.title.trim()) onSave(draft); }}>
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just asked to add or edit a secret */}
       <input className={ui.input} placeholder={t("The warden sold the codes")} aria-label={t("The secret")} maxLength={120} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} autoFocus />
       <textarea className={cn(ui.input, "min-h-16")} placeholder={t("What it means, and how it might come out")} aria-label={t("More about it")} maxLength={4_000} value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} />
       <div className="flex flex-wrap items-center gap-1">
@@ -236,6 +237,7 @@ function RevealForm({
       }}
     >
       <p className="text-xs text-amber-100/90">{t("Every player will read this in their lore. Write it as they learn it; the notes above stay yours.")}</p>
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just asked to reveal this secret */}
       <input className={ui.input} aria-label={t("What the party learns, as a title")} maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
       <textarea className={cn(ui.input, "min-h-20")} aria-label={t("What the party reads")} maxLength={4_000} value={body} onChange={(event) => setBody(event.target.value)} />
       {canShowHandouts ? (

@@ -49,7 +49,7 @@ export type SubclassExtras = Record<string, ExtraSubclass[]>;
 
 // The subclasses the browser fetched or was sent for this person: the
 // builder's and the level-up dialog's archetype rows (src/app/characters/
-// builder/useBuilderOptions.ts useArchetypes) and the campaign snapshot's
+// builder/useBuilderOptions.ts useArchetypeOptions) and the campaign snapshot's
 // (useCampaignStream). src/lib/srd/features.ts reads them when a caller
 // passes no extras of its own. Set only in the browser, where everything
 // fetched is this one person's to see. Kept here, apart from features.ts,

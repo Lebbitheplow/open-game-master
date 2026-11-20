@@ -257,7 +257,7 @@ export function CreateCampaignDialog({
     setDefaultsMessage(null);
     setDefaultsBusy(true);
     setTimeout(() => {
-      void defaults.save(defaultsFromDraft({ ...latest.current, ...wanted.current }, localeRef.current)).then((outcome) => {
+      void defaults.save(defaultsFromDraft({ ...latest.current, ...wanted.current })).then((outcome) => {
         setDefaultsBusy(false);
         if (outcome.ok) {
           setStartFrom("mine");

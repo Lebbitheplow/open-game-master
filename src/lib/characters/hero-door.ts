@@ -2,8 +2,6 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { listSheetsForUser } from "@/lib/db/sheets";
 import { fallenHero, heroDoorOpen, heroJoinLevel } from "@/lib/characters/fallen-logic";
 
-export const HERO_DOOR_SHUT = "You already have a character in this campaign.";
-
 export type HeroDoor = {
   // Whether this player may seat another hero (fallen-logic.ts heroDoorOpen).
   open: boolean;

@@ -172,6 +172,7 @@ export function AtlasView({
   const newMapForm = (parentPin?: Pin) =>
     making ? (
       <form className="panel motion-pop flex flex-col gap-2 rounded-lg p-3" onSubmit={(event) => { event.preventDefault(); void makeMap(parentPin); }}>
+        {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just asked for a new map */}
         <input className={ui.input} placeholder={parentPin ? `Inside ${parentPin.name || "this pin"}` : "The Saltmarch"} aria-label="Map name" maxLength={80} value={making.name} onChange={(event) => setMaking({ ...making, name: event.target.value })} autoFocus />
         <LoreImageField imagePath={making.image} onChange={(image) => setMaking({ ...making, image })} />
         {makeFailed ? <NotSaved onRetry={() => void makeMap(parentPin)} what="The name and picture" /> : null}
@@ -278,6 +279,7 @@ export function AtlasView({
         <OutOfStep region={region} atlas={atlas} />
         {insidePlace && onOpenPrep ? <InsidePlace place={insidePlace} onOpen={onOpen} onOpenPrep={onOpenPrep} /> : null}
 
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a click places a pin or a region's corner at that point of the picture; the keyboard does the same through AtlasEdit (the note at the top of this file) */}
         <div
           key={atlas.id}
           ref={surface}

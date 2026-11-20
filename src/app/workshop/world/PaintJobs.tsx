@@ -38,7 +38,6 @@ export type PaintState = {
 
 export function usePaintJobs(campaignId: string, ref: string, portrait: string, onPictureChanged: () => void): PaintState {
   const t = useT();
-  const tp = useTp();
   const base = `/api/campaigns/${campaignId}/world/entities/${encodeURIComponent(ref)}/paint`;
   const [status, setStatus] = useState<PaintView | null>(null);
   const [error, setError] = useState("");
@@ -157,7 +156,6 @@ function queueWords({ painting, waiting }: PaintView["queue"], t: (key: string, 
 
 function Picture({ src, alt, wide }: { src: string; alt: string; wide: boolean }) {
   const t = useT();
-  const tp = useTp();
   return src ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} className={cn("w-full rounded-lg border border-stone-700/70 object-cover", wide ? "aspect-video" : "aspect-square")} />

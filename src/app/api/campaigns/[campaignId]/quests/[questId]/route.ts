@@ -3,6 +3,7 @@ import { deleteQuest, getQuest, updateQuest } from "@/lib/db/quests";
 import { editQuest } from "@/lib/db/quest-arc";
 import { normalizeObjectives, normalizeQuestStatus, QUEST_STATUSES, type QuestStatus } from "@/lib/dm/quest-logic";
 import { publishEphemeral } from "@/lib/events";
+import { questBodySchema } from "@/lib/schemas/quest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,11 @@ export async function PATCH(
   if (quest instanceof Response) {
     return quest;
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = questBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid quest." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const patch: Parameters<typeof updateQuest>[1] = {};
   if (typeof raw.title === "string" && raw.title.trim()) {
     patch.title = raw.title;

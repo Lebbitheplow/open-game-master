@@ -1,9 +1,12 @@
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { getCharacterForUser, keepsLibraryLevel, syncProgressToLibrary } from "@/lib/db/characters";
 import { ownSheetFor } from "@/lib/character-seat";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const syncSchema = z.object({ characterId: z.string().optional() });
 
 // "Save progress to library": copy durable progression from the campaign
 // sheet back to the linked library character on demand. `keptLevel` is the
@@ -20,11 +23,11 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw: unknown = await request.json().catch(() => ({}));
-  const named =
-    raw && typeof raw === "object" && typeof (raw as { characterId?: unknown }).characterId === "string"
-      ? (raw as { characterId: string }).characterId.slice(0, 80)
-      : undefined;
+  const parsed = syncSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the character by its id." }, { status: 400 });
+  }
+  const named = parsed.data.characterId?.slice(0, 80);
   const sheet = ownSheetFor(campaignId, context.user.id, named);
   if (!sheet) {
     return Response.json(

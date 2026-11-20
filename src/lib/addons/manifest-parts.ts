@@ -30,8 +30,6 @@ export const partSchema = z.object({
   default: z.boolean().default(false),
 });
 
-export type AddonPart = z.infer<typeof partSchema>;
-
 // A folder of a GitHub repository at one commit, fetched file by file and
 // each file checked against git's hash, as the addon's own folder is
 // (src/lib/addons/repo-fetch.ts). With no repo and no commit it is a folder

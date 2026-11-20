@@ -92,6 +92,7 @@ export function CorrectionReasonChips({ campaignId }: { campaignId: string }) {
     <>
       {status}
       <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex justify-center px-4" data-correction-chips="">
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the group only holds the chips open while one has focus and lets Escape from a chip dismiss them; the chips are the controls */}
         <div
           role="group"
           aria-label="Why the fix"

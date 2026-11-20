@@ -14,7 +14,7 @@ type T = (key: string, vars?: Record<string, string | number>) => string;
 const enT: T = (key, vars) => translate("en", key, vars);
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bonus";
-import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
+import { spellAttackLines } from "@/lib/battlemap/hand-attack-lines";
 import { freeCastResourceId, freeCastRestOf, heldFreeCastId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { breathChoices } from "@/lib/battlemap/mt-mr-hand";

@@ -44,6 +44,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Unused locals, parameters, exports and files (tsc's strict unused
+      # checks, then knip.jsonc). Code nothing reaches is cut, not left to rot.
+      - name: Dead code
+        run: npm run dead-code
+
       - name: Build
         run: npm run build
 

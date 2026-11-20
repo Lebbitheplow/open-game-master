@@ -272,6 +272,7 @@ export function OptionCardGrid({
           card and would otherwise be clipped by the step's scroll pane. The
           box is the cards' container: where two cards side by side could
           not hold their text, they become a list (creator.css, backlog F17). */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the arrow keys from the cards inside walk between them (useRovingGroup); the box itself takes no focus */}
       <div className="creator-cards space-y-4 px-2 pt-2.5 pb-1" onKeyDown={roving.onKeyDown} onFocus={roving.onFocus}>
         {shown.map((group, groupIndex) => (
           <section key={group.label ?? `group-${groupIndex}`}>

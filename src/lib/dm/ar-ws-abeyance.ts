@@ -39,7 +39,6 @@ type Request = { spell: string; level?: number; storedBy?: string };
 // `cast` is the cast guard with this caster's hooks already on it.
 export function storeInBead(
   campaign: Campaign,
-  turnId: string,
   caster: CharacterSheet,
   holder: CharacterSheet,
   request: Request,

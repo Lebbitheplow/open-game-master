@@ -250,7 +250,6 @@ function Group({
   onToggle: (key: string) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const [shown, setShown] = useState(PAGE_ROWS);
   const checks = records.filter((record) => record.check.length).length;
   return (
@@ -286,7 +285,6 @@ function Group({
 
 function Row({ record, importId, on, usable, onToggle }: { record: RecordView; importId: string; on: boolean; usable: boolean; onToggle: () => void }) {
   const t = useT();
-  const tp = useTp();
   const [expanded, setExpanded] = useState(false);
   const pages = record.pages.length ? `${t("p. {pages}", { pages: record.pages.slice(0, 3).join(", ") })}${record.pages.length > 3 ? "…" : ""}` : "";
   return (

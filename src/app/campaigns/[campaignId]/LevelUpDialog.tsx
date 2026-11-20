@@ -1926,7 +1926,6 @@ function NewClassButton({
   onPick: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const picked = chosen.toLowerCase() === option.id.toLowerCase();
   return (
     <button

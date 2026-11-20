@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ui } from "@/lib/ui";
 import { NumberStepper } from "@/components/ui/NumberStepper";
-import { Select, optionsFrom } from "@/components/ui/Select";
+import { Select } from "@/components/ui/Select";
 import { DeskCard, FieldLabel } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import { asPercent, forecastAttack, roundsToDrop } from "@/lib/srd/odds";
 import { useT } from "@/lib/locale";

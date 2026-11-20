@@ -23,7 +23,6 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, placeToken } from "@/lib/db/battle-maps";
 import { getEnemy, listEnemies, type Encounter } from "@/lib/db/encounters";
-import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { checkPlacement } from "@/lib/dm/board-logic";
@@ -45,12 +44,6 @@ type Holder = Pick<CharacterSheet, "id" | "name" | "class" | "features"> & Parti
 // Disengaged before it left their reach.
 export function picketHolds(sheet: Holder): boolean {
   return holdsGenreFeature(sheet, ENFORCER, "Picket Stance");
-}
-
-// Whether anyone at the table holds the picket, so a Disengaged walk is still
-// read for the reaches it leaves.
-export function picketStands(campaignId: string): boolean {
-  return listSheets(campaignId).some((stale) => picketHolds(getSheetById(stale.id) ?? stale));
 }
 
 // The square beside the ally nearest the enforcer, within the two squares the

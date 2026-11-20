@@ -51,12 +51,6 @@ export const ABILITY_LABELS: Record<Ability, string> = {
 
 const ABILITY_KEYS = Object.keys(ABILITY_LABELS) as Ability[];
 
-// What each way of getting six numbers actually costs you, for the player who
-// has never been asked this question before. The 4d6 entry carries the
-// server's default rule until the builder learns the rule where it is
-// rolling (rerollWords), which replaces it below.
-const BUNDLED_RULE = rerollWords(REROLL_BELOW, false).rule;
-
 // The three ways, keyed: the label and the explanation read in the reader's
 // language (builder.dice.methods.*), the roll's rule in the table's own
 // words (rerollWords) seated in through {rule}.
@@ -354,6 +348,7 @@ export default function AbilityEditor({
         <h2 className="eyebrow w-full text-xs text-amber-200/90 sm:w-auto">
           <GameTerm id="ability_score">{t("Ability scores", { context: "builder.dice.abilityScores" })}</GameTerm>
         </h2>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the arrow keys from the method buttons inside walk between them (useRovingGroup); the row itself takes no focus */}
         <div className="method-switch" onKeyDown={methodKeys.onKeyDown} onFocus={methodKeys.onFocus}>
           {methodRows.map((entry) => (
             <button
@@ -747,9 +742,9 @@ export function StandardArrayRow({
   onAssign: (value: number) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const roving = useRovingGroup({ keys: STANDARD_ARRAY.map(String), chosen: assigned == null ? null : String(assigned) });
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the arrow keys from the score buttons inside walk between them (useRovingGroup); the group itself takes no focus
     <span
       className="flex min-w-[192px] flex-[1_1_192px] items-center gap-[5px]"
       role="group"

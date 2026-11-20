@@ -40,6 +40,8 @@ const patchSchema = z.object({
   parts: z.array(z.string().min(1).max(40)).max(30).optional(),
 });
 
+const postSchema = z.object({ do: z.enum(["test", "stop", "setup", "cancel-setup", "update"]) });
+
 export async function GET(_request: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (isErrorResponse(admin)) return admin;
@@ -116,7 +118,9 @@ export async function POST(request: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (isErrorResponse(admin)) return admin;
   const { addonId } = await params;
-  const body = (await request.json().catch(() => ({}))) as { do?: string };
+  const parsed = postSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) return Response.json({ error: "Send do: test, stop, setup, cancel-setup or update." }, { status: 400 });
+  const body = parsed.data;
   if (body.do === "stop") {
     await stopAddon(addonId);
     return Response.json({ ok: true });
@@ -134,15 +138,12 @@ export async function POST(request: Request, { params }: Params) {
     cancelSetup(addonId);
     return Response.json({ ok: true });
   }
-  if (body.do === "update") {
-    // New code nobody reviewed, so it waits for the same switch as the
-    // first install did.
-    if (!readAddonConfig().allowFiles) {
-      return Response.json({ error: "Updating from GitHub needs \"Install addons from files and links\" switched on." }, { status: 403 });
-    }
-    return installedResponse(await updateFromGitHub(addonId), admin);
+  // do: update. New code nobody reviewed, so it waits for the same switch as
+  // the first install did.
+  if (!readAddonConfig().allowFiles) {
+    return Response.json({ error: "Updating from GitHub needs \"Install addons from files and links\" switched on." }, { status: 403 });
   }
-  return Response.json({ error: "Send do: test, stop, setup, cancel-setup or update." }, { status: 400 });
+  return installedResponse(await updateFromGitHub(addonId), admin);
 }
 
 export async function DELETE(_request: Request, { params }: Params) {

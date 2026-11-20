@@ -44,7 +44,6 @@ function EffortField({
   onChange: (effort: HarnessConfig["effort"]) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const offered = effortChoices(status, draft);
   const stale = !offered.includes(draft.effort);
   return (
@@ -72,7 +71,6 @@ function UtilityEffortField({
   onChange: (effort: HarnessConfig["utilityEffort"]) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const offered = utilityEffortChoices(status, draft);
   const stale = !offered.includes(draft.utilityEffort);
   return (

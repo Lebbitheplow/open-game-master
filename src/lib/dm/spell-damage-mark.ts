@@ -9,7 +9,7 @@
 // Every path that deals a character's spell damage to a creature marks here:
 // cast_at_enemy (cast-at-enemy-damage.ts landSpellDamage), aoe_damage with a
 // caster (aoe-damage.ts) and a spell attack through pc_attack
-// (pc-attack-damage.ts applyHitDamage). A new spell damage path calls it too.
+// (attack-blow.ts landSwingBlow). A new spell damage path calls it too.
 //
 // Off the caster's own turn (a readied spell) there is no turn to keep the
 // mark on, so the surge waits for the wizard's turn, as a weapon hit's riders do.
@@ -21,8 +21,6 @@ import { budgetApplies } from "@/lib/dm/action-budget";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import { spellFactsFor } from "@/lib/content";
 import { WIZARD_SPELL_DAMAGE } from "@/lib/dm/spell-damage-logic";
-
-export { WIZARD_SPELL_DAMAGE, spellHurt } from "@/lib/dm/spell-damage-logic";
 
 // A spell no list names (homebrew, an unlisted pack spell) is taken as the
 // wizard's, as Empowered Evocation reads it (spell-damage-riders.ts).

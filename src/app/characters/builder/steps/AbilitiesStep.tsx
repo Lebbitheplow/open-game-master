@@ -54,7 +54,6 @@ export function hpExplainerInput(
 // people who want the shape themselves.
 function PlaceForClass({ state, klass }: { state: BuilderState; klass: ClassOption }) {
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   const pool = state.rollPool;
   if (state.method === "pointbuy" || (state.method === "roll" && !pool)) {

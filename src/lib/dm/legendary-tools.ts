@@ -47,7 +47,6 @@ import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 export { legendaryLairLines } from "@/lib/dm/legendary-logic";
-export { legendaryMoveFor } from "@/lib/dm/legendary-move";
 
 // Legendary actions, lair actions and legendary resistance as tools
 // (docs/vtt-parity-implementation-plan.md 4.1). Imports point downward

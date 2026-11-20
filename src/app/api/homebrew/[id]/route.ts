@@ -5,6 +5,7 @@ import { serverPublishedNameProblem } from "@/lib/homebrew/published-names-serve
 import { normalizeHomebrewForSave } from "@/lib/homebrew/species-choice-server";
 import { raceGrantsFor, spellFactsFor } from "@/lib/characters/catalog";
 import { homebrewLimitProblems } from "@/lib/homebrew/limits";
+import { z } from "zod";
 import { patchHomebrewSchema } from "@/lib/schemas/homebrew";
 import { forgetSpeciesRules } from "@/lib/characters/species-rules";
 import { resyncSpeciesSpeed, resyncSpeciesSpellCounters } from "@/lib/db/species-spell-resync";
@@ -130,8 +131,8 @@ export async function POST(
     return unauthorized();
   }
   const { id } = await params;
-  const raw = (await request.json().catch(() => ({}))) as { restore?: unknown };
-  if (raw.restore !== true) {
+  const parsed = z.object({ restore: z.literal(true) }).safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
     return Response.json({ error: "Expected {restore: true}." }, { status: 400 });
   }
   if (!restoreHomebrew(user.id, id)) {

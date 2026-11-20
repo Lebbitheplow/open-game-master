@@ -201,6 +201,7 @@ export function NpcReviewPanel({ campaignId }: { campaignId: string }) {
                   <div>
                     <input
                       value={draft}
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- the name box opens because the GM just asked to rename this NPC
                       autoFocus
                       maxLength={MAX_NPC_NAME}
                       onChange={(event) => setDraft(event.target.value)}

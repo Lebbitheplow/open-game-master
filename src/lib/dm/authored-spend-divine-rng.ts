@@ -118,7 +118,7 @@ export function swarmCarry(ctx: SpendContext): Resolution {
   const hit = resolveTargetFoe(encounter.campaignId, encounter, first.slice(WEAPON_HIT.length));
   const refund = hit ? swarmDieBack(ctx, hit) : 0;
   if (hit && refund) {
-    lines.push(...giveBack(ctx, hit.id, refund));
+    lines.push(...giveBack(hit.id, refund));
   }
   if (!holdsFeature(ctx.sheet, "Mighty Swarm")) {
     return { result: { applied: lines } };

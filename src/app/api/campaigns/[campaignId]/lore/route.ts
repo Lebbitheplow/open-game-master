@@ -14,6 +14,7 @@ import {
   loreBodyOverflow,
   stripSecretBlocks,
 } from "@/lib/dm/world-lore-logic";
+import { loreEntryBodySchema } from "@/lib/schemas/lore-entry";
 import { isUploadedImagePath, isUploadedPdfPath } from "@/lib/uploads";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
@@ -51,7 +52,11 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = loreEntryBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid lore entry." }, { status: 400 });
+  }
+  const raw = parsed.data;
   // Over the cap is refused with what would be lost, never cut (issue #302).
   const overflow = loreBodyOverflow(raw.body);
   if (overflow) {

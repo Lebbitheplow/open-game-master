@@ -22,7 +22,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { SPIRIT_TALE, SPIRIT_TALES, dieAt } from "@/lib/srd/spirit-tales-table";
 
 // The table lives with the Hand's reading of it (src/lib/srd/spirit-tales-table.ts).
-export { SPIRIT_TALE, SPIRIT_TALES, heldTale } from "@/lib/srd/spirit-tales-table";
+export { SPIRIT_TALES, heldTale } from "@/lib/srd/spirit-tales-table";
 
 // The Bardic Inspiration die rolled on the table.
 export function drawTale(ctx: SpendContext): number {

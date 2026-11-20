@@ -79,11 +79,6 @@ function namedRefs(aim: CounterSaveAim): string[] {
   return [...new Set(refs)];
 }
 
-// Whether a fight (or a scene with creatures on the board) is on to roll in.
-export function counterSaveTable(campaign: Campaign) {
-  return getActiveEncounter(campaign.id);
-}
-
 export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, spec: CounterSave, aim: CounterSaveAim): CounterSaveResult {
   const encounter = getActiveEncounter(campaign.id);
   // The feature's numbers, said whatever happens next, so the story and the

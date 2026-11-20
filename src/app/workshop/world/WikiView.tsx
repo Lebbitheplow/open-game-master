@@ -150,6 +150,7 @@ export function WikiView({
               ))}
             </div>
             <p className="text-[11px] text-stone-500">{t("Lands in {shelf}{category}.", { shelf: SHELF_LABELS[chosenType.shelf], category: chosenType.shelf === "lore" ? ` (${chosenType.loreCategory})` : "" })}</p>
+            {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just pressed New entry */}
             <input className={cn(ui.input, "text-sm")} placeholder={t("A {type}'s name", { type: chosenType.name.toLowerCase() })} aria-label={t("Name")} maxLength={80} value={newName} onChange={(event) => setNewName(event.target.value)} autoFocus />
             {api.error ? <PanelError>{api.error}</PanelError> : null}
             <div className="flex justify-end gap-1.5">
@@ -202,6 +203,7 @@ export function WikiView({
           </div>
           {folderName !== null ? (
             <form className="motion-pop flex gap-1" onSubmit={(event) => { event.preventDefault(); void addFolder(); }}>
+              {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the box opens because the author just pressed New folder */}
               <input className={cn(ui.input, "py-1 text-xs")} placeholder={t("Townsfolk")} aria-label={t("Folder name")} maxLength={60} value={folderName} onChange={(event) => setFolderName(event.target.value)} autoFocus />
               <KitButton tone="small" type="submit" disabled={!folderName.trim()}>{t("Add")}</KitButton>
             </form>

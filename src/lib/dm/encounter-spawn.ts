@@ -359,7 +359,7 @@ export function handleAddEnemies(
 
   // A creature that fled this same fight takes the field again on its own
   // row; the rest arrive on rows of their own.
-  const rejoining = rows.flatMap((entry, index) => {
+  const rejoining = rows.flatMap((_entry, index) => {
     const carry = arrivals.carries[index];
     return carry?.rejoin ? [{ id: carry.rejoin, carry }] : [];
   });

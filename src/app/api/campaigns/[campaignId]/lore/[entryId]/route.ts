@@ -14,6 +14,7 @@ import {
   type LoreVisibility,
   type WorldLoreCategory,
 } from "@/lib/dm/world-lore-logic";
+import { loreEntryBodySchema } from "@/lib/schemas/lore-entry";
 import { isUploadedImagePath, isUploadedPdfPath } from "@/lib/uploads";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
@@ -42,7 +43,11 @@ export async function PATCH(
   if (entry instanceof Response) {
     return entry;
   }
-  const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = loreEntryBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid lore entry." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const patch: Parameters<typeof updateLoreEntry>[1] = {};
   if (WORLD_LORE_CATEGORIES.includes(raw.category as WorldLoreCategory)) {
     patch.category = raw.category as WorldLoreCategory;

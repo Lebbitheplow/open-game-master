@@ -14,7 +14,7 @@ import { AFTER_CAST, EMPOWERED, HEIGHTENED, PREFIX, TWINNED, charismaCount, isMa
 import { textKey } from "@/lib/language/text-logic";
 import { optionsOfKind } from "@/lib/srd/options";
 
-export { cardMetamagic, carefulIds, empoweredLine, extendedMeta, extendedRounds, factsAsCast, metamagicPaid, secondOptionProblem, secondTargetProblem, subtleSpellPaid, twinExtra, type TwinAsk } from "@/lib/dm/mt-srd-metamagic-logic";
+export { carefulIds, empoweredLine, extendedMeta, extendedRounds, factsAsCast, secondOptionProblem, secondTargetProblem, twinExtra, type TwinAsk } from "@/lib/dm/mt-srd-metamagic-logic";
 
 // What was paid rides the mark: the points in `slotLevel` (Twinned Spell's
 // are the level of the spell they pay for) and the pool in `source`.

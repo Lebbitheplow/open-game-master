@@ -72,7 +72,7 @@ export function storeSpell(
 ): ToolResult {
   // An Arcane Abeyance bead is made by the cast that fills it (ar-ws-abeyance.ts).
   if (isBeadSlot(request.storeIn)) {
-    return storeInBead(campaign, turnId, caster, holder, request, cast);
+    return storeInBead(campaign, caster, holder, request, cast);
   }
   const ring = storerNamed(holder, request.storeIn);
   if (!ring) {

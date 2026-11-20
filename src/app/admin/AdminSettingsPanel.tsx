@@ -34,7 +34,6 @@ import { AmbienceLibraryCard } from "@/app/admin/AmbienceLibraryCard";
 import { AdminHarnessSection } from "@/app/admin/AdminHarnessSection";
 import { mergeAdminConfigDraft } from "@/app/admin/merge-config-draft";
 import { useT, useTp } from "@/lib/locale";
-import type { MessageKey } from "@/lib/messages-logic";
 import { Lamp, type Tone } from "@/app/setup/SetupParts";
 import { useCapabilities } from "@/lib/use-capabilities";
 import {

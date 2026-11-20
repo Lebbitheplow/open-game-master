@@ -411,7 +411,6 @@ function CatalogEntry({
   onInstall: (parts?: string[]) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const adds = Object.entries(entry.contributes)
     .filter(([, titles]) => titles.length)
     .map(([kind, titles]) => `${KIND_KEYS[kind] ? t(KIND_KEYS[kind]) : kind}: ${titles.join(", ")}`);

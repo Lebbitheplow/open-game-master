@@ -6,7 +6,7 @@
 import { getContentDb } from "@/lib/content/db";
 import { storedNeeds, packReadingsCurrent } from "@/lib/content/pack-readings";
 import { mechanicsNeeded, type Need } from "@/lib/content/needs-logic";
-import { isLevelUpTwin, LEVEL_UP_DOCUMENTS, offeredInPlay, SRD_DOCUMENTS } from "@/lib/content/levelup-logic";
+import { isLevelUpTwin, offeredInPlay, SRD_DOCUMENTS } from "@/lib/content/levelup-logic";
 import { PLAYED_DOCUMENTS_SQL } from "@/lib/content/edition";
 import { textKey } from "@/lib/language/text-logic";
 import type { SqliteDatabase } from "@/lib/db/driver";
@@ -106,8 +106,3 @@ export function needsOfSlug(table: string, slug: string): Need[] {
   return setsFor(table)?.needs.get(slug) ?? [];
 }
 
-// Whether a document is Level Up's (its rows are labeled with whose rules
-// they are).
-export function isLevelUpDocument(documentSlug: string): boolean {
-  return LEVEL_UP_DOCUMENTS.has(documentSlug);
-}

@@ -9,9 +9,16 @@ import {
   worldTransferDir,
 } from "@/lib/ops/world-archive";
 import { isDeviceWorld } from "@/lib/server-env";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const worldSchema = z.object({
+  action: z.enum(["export", "check", "commit", "discard"]),
+  name: z.string().optional(),
+  ownerPassword: z.string().optional(),
+});
 
 // A device world in one file and back (src/lib/ops/world-archive.ts),
 // asked for by the apps' Settings. Only the apps' own worlds have it: a
@@ -42,19 +49,23 @@ export async function POST(request: Request) {
   if (refused) {
     return refused;
   }
-  const body = (await request.json().catch(() => ({}))) as { action?: unknown; name?: unknown; ownerPassword?: unknown };
+  const parsed = worldSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Unknown action." }, { status: 400 });
+  }
+  const body = parsed.data;
   try {
-    if (body?.action === "export") {
+    if (body.action === "export") {
       return Response.json({ job: startWorldExport() }, { status: 202 });
     }
-    if (body?.action === "check" && typeof body.name === "string") {
+    if (body.action === "check" && typeof body.name === "string") {
       return Response.json({ job: startWorldCheck(body.name) }, { status: 202 });
     }
-    if (body?.action === "commit" && typeof body.name === "string") {
+    if (body.action === "commit" && typeof body.name === "string") {
       const committed = await commitWorldImport(body.name, typeof body.ownerPassword === "string" ? body.ownerPassword : "");
       return Response.json({ ...committed, restart: true });
     }
-    if (body?.action === "discard") {
+    if (body.action === "discard") {
       await discardWorldTransfer();
       return Response.json({ ok: true });
     }

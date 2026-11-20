@@ -80,7 +80,6 @@ function engineTag(name: string): string | null {
 
 function BorrowFeature({ onPick, taken, full }: { onPick: (feature: CatalogFeature) => void; taken: Set<string>; full: Set<number> }) {
   const t = useT();
-  const tp = useTp();
   const [query, setQuery] = useState("");
   const all = classFeatureCatalog();
   const results = useMemo(() => {
@@ -132,7 +131,6 @@ function BorrowFeature({ onPick, taken, full }: { onPick: (feature: CatalogFeatu
 
 function Features({ data, set }: { data: Data; set: (patch: Data) => void }) {
   const t = useT();
-  const tp = useTp();
   const levels = (data.levels ?? {}) as Record<string, ClassFeatureRow[]>;
   const flat: Flat[] = Object.entries(levels)
     .flatMap(([level, features]) => features.map((feature) => ({ level: Number(level), feature })))
@@ -220,7 +218,6 @@ function Features({ data, set }: { data: Data; set: (patch: Data) => void }) {
 // shields with the rule beneath, and gives it up when shields are turned off.
 function ArmorTraining({ armor, onChange }: { armor: string[]; onChange: (armor: string[]) => void }) {
   const t = useT();
-  const tp = useTp();
   const nonmetal = armor.includes(NONMETAL_SHIELDS);
   const shown = armor.map((entry) => (entry === NONMETAL_SHIELDS ? "shields" : entry));
   return (
@@ -238,7 +235,6 @@ function ArmorTraining({ armor, onChange }: { armor: string[]; onChange: (armor:
 // wizard trains with daggers and the bard with rapiers.
 function WeaponTraining({ weapons, onChange }: { weapons: string[]; onChange: (weapons: string[]) => void }) {
   const t = useT();
-  const tp = useTp();
   const categories = weapons.filter((entry) => (WEAPON_TRAINING as readonly string[]).includes(entry));
   const named = weapons.filter((entry) => !categories.includes(entry));
   const held = new Set(named.map((entry) => weaponNamed(entry)?.name).filter(Boolean));

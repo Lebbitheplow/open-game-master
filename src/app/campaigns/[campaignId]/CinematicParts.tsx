@@ -128,7 +128,6 @@ export function InitiativeRibbon({
 }) {
   const orderRef = useRef<HTMLOListElement>(null);
   const t = useT();
-  const tp = useTp();
   const ready = encounter.orderReady && encounter.order.length > 0;
   const shown = ready ? encounter.order.filter((entry) => !entry.hidden) : [];
   // The seats whose turn it is (initiative-rows.ts litOrderRows): while the
@@ -215,7 +214,6 @@ export function PartyRail({
   // Each hero's class reads in the reader's language where the maps carry it.
   const locale = useLocale();
   const t = useT();
-  const tp = useTp();
   const party = sheets.filter((sheet) => !sheet.isCompanion);
   const next: Record<string, { hp: number; dir?: "up" | "down" }> = { ...memory };
   let changed = false;
@@ -311,7 +309,6 @@ export function RollToast({
 }) {
   const [shown, setShown] = useState<{ roll: StoredRoll; seq: number } | null>(null);
   const t = useT();
-  const tp = useTp();
   // Each staged roll takes the toast once, during the render it arrives in
   // (state from props).
   const [seenSeq, setSeenSeq] = useState<number | null>(null);
@@ -410,7 +407,6 @@ export function QuestGlance({
   onOpen: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const glance = useQuestGlance(campaignId, refreshKey, initial);
   // The quest that just ended, with nothing after it, lifts away rather
   // than blinking out.
@@ -461,7 +457,6 @@ export function TabletopOrder({
   children?: ReactNode;
 }) {
   const t = useT();
-  const tp = useTp();
   if (!encounter?.orderReady || encounter.order.length === 0) {
     return null;
   }
@@ -780,7 +775,6 @@ export function TabletopChronicle({
 
 function ChronicleRoll({ roll, sheets }: { roll: StoredRoll; sheets: ReadonlyArray<CharacterSheet> }) {
   const t = useT();
-  const tp = useTp();
   const sheetName = roll.characterId ? sheets.find((sheet) => sheet.id === roll.characterId)?.name : undefined;
   const crit = roll.breakdown?.crit;
   const label = rollKindLabel(t, roll.kind);

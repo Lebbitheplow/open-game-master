@@ -279,6 +279,7 @@ export function LineageCarousel({
       }
       width="w-[min(96vw,40rem)]"
     >
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the arrow keys from the buttons inside the dialog step between lineages; the wrapper itself takes no focus */}
       <div
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") step(-1);

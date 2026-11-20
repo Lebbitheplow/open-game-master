@@ -248,7 +248,7 @@ export function featureVariantSpend(
     return { error: `${sheet.name} does not know the ${maneuver === "rally" ? "Rally" : "Commander's Strike"} maneuver. Nothing was spent.`, refused: "rules" };
   }
   if (def?.id === "sub_superiority_dice" && maneuver === "rally") {
-    return spend(campaign, turnId, sheet, def.id, "bonus", reason, () => rally(campaign, turnId, sheet, targetId));
+    return spend(campaign, turnId, sheet, def.id, "bonus", reason, () => rally(campaign, sheet, targetId));
   }
   if (def?.id === "sub_superiority_dice" && maneuver === "commander's strike") {
     return spend(campaign, turnId, sheet, def.id, (fresh) => commandersStrikeCharge(campaign, fresh, targetId), reason, () =>

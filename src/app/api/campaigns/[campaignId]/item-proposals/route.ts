@@ -7,9 +7,21 @@ import { publicItemProposal } from "@/lib/dm/proposal-intercept";
 import { offerVisibleTo } from "@/lib/dm/proposal-view";
 import { computeTrade, normalizeTradeOffer, tradeSummary } from "@/lib/dm/trade-logic";
 import { publishPersisted } from "@/lib/events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// What TradeDialog.tsx sends. normalizeTradeOffer still trims names and
+// clamps quantities and coins, so only the kinds of things are checked here.
+const tradeLineSchema = z.object({ name: z.string(), qty: z.number().optional() });
+const tradeOfferSchema = z.object({
+  toCharacterId: z.string().optional(),
+  give: z.array(tradeLineSchema).optional(),
+  giveCp: z.number().optional(),
+  want: z.array(tradeLineSchema).optional(),
+  wantCp: z.number().optional(),
+});
 
 // Open DM item/gold offers (inventoryApprovals). Inventory is party
 // knowledge, so every member sees the pending offers, except one that is
@@ -41,8 +53,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = await request.json().catch(() => ({}));
-  const offer = normalizeTradeOffer(raw);
+  const parsed = tradeOfferSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "That offer could not be read." }, { status: 400 });
+  }
+  const offer = normalizeTradeOffer(parsed.data);
   if (!offer) {
     return Response.json({ error: "Offer something, or ask for something." }, { status: 400 });
   }

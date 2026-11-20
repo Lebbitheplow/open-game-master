@@ -634,7 +634,7 @@ function wayOut(swallower: EncounterEnemy): string {
 // A swallowed creature's walk: none while the swallower lives, and once it
 // is dead the walk is the climb out (its feet of movement, exiting prone).
 // Null for one nothing holds inside.
-function walkOut(campaign: Campaign, encounter: Encounter, party: Party, token: BattleToken, tilesLeft: () => number): ToolResult | null {
+function walkOut(campaign: Campaign, encounter: Encounter, party: Party, tilesLeft: () => number): ToolResult | null {
   const live = read(party);
   const id = live ? swallowerOf(live) : null;
   const swallower = id ? getEnemy(id) : null;
@@ -660,11 +660,11 @@ function walkOut(campaign: Campaign, encounter: Encounter, party: Party, token: 
 }
 
 export function swallowWalk(campaign: Campaign, encounter: Encounter, map: BattleMap, sheet: CharacterSheet, token: BattleToken): ToolResult | null {
-  return walkOut(campaign, encounter, { kind: "sheet", id: sheet.id }, token, () => pcMoveBudget(campaign.id, encounter, map, sheet, token).fullTiles);
+  return walkOut(campaign, encounter, { kind: "sheet", id: sheet.id }, () => pcMoveBudget(campaign.id, encounter, map, sheet, token).fullTiles);
 }
 
 // A creature's row (one fighting on the party's side), with the squares its
 // own move has left.
-export function swallowRowWalk(campaign: Campaign, encounter: Encounter, row: EncounterEnemy, token: BattleToken, tilesLeft: number): ToolResult | null {
-  return walkOut(campaign, encounter, { kind: "enemy", id: row.id }, token, () => tilesLeft);
+export function swallowRowWalk(campaign: Campaign, encounter: Encounter, row: EncounterEnemy, tilesLeft: number): ToolResult | null {
+  return walkOut(campaign, encounter, { kind: "enemy", id: row.id }, () => tilesLeft);
 }

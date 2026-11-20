@@ -8,9 +8,8 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getClock, setClock } from "@/lib/db/clock";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { insertRoll } from "@/lib/db/rolls";
-import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishWithSeq } from "@/lib/events";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -24,13 +23,6 @@ export function tableNote(campaign: Campaign, content: string, glyph: SystemGlyp
   const seq = allocateSeq(campaign.id);
   const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph, content });
   publishWithSeq(campaign.id, seq, "message_added", { message });
-}
-
-export function publishSheetOf(campaignId: string, sheetId: string) {
-  const sheet = getSheetById(sheetId);
-  if (sheet) {
-    publishPersisted(campaignId, "sheet_updated", { sheet });
-  }
 }
 
 // ---- state on the clock ----

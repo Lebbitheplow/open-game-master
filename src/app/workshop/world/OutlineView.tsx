@@ -39,8 +39,6 @@ const SHELVES: ReadonlyArray<{ shelf: Shelf; labelKey: string }> = [
 // passes its click on, without growing the row.
 const TICK = "-m-3 flex size-10 shrink-0 cursor-pointer items-center justify-center [&>input]:cursor-pointer";
 
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-
 export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void; onOpenSystem?: OpenSystem }) {
   const t = useT();
   const tp = useTp();
@@ -172,7 +170,7 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
   // A ticked link not written yet: waiting on an end that failed (a retry
   // that makes it writes the link), or left out with an end that was not
   // ticked.
-  const unwritten = phase === "done" ? (outline?.links ?? []).filter((link, index) => linkPicked[index] && !linksDone.has(index)) : [];
+  const unwritten = phase === "done" ? (outline?.links ?? []).filter((_link, index) => linkPicked[index] && !linksDone.has(index)) : [];
   const unticked = (end: string) => rowKeys.has(end) && !tasks[end];
   const linksUnticked = unwritten.filter((link) => unticked(link.from) || unticked(link.to));
   const waitingLinks = unwritten.filter((link) => !linksUnticked.includes(link));

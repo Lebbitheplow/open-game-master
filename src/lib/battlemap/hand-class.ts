@@ -43,7 +43,6 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { attackDamageLine, attackReach, attackRollLine } from "@/lib/battlemap/hand-attack-lines";
-import { RAPID_STRIKE_NEEDS_ADVANTAGE } from "@/lib/battlemap/hand-odds";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 
 const holds = (sheet: CharacterSheet, name: string) =>

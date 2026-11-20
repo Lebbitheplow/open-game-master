@@ -157,7 +157,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
         : "The attack misses; narrate the miss.",
     };
   }
-  const prepared = hitSwing(scene, record, judged, hitOutcome, hitRoll.visibility, notes);
+  const prepared = hitSwing(scene, record, judged, hitRoll.visibility, notes);
   if ("done" in prepared) {
     return { ...base(), hit: true, ...prepared.done };
   }

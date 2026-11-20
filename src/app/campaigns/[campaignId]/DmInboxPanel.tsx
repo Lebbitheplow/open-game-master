@@ -120,6 +120,7 @@ export function DmInboxPanel({
                     <div className="reveal mt-1.5 flex items-end gap-1.5">
                       <textarea
                         value={draft}
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- the reply box opens because the GM just pressed Reply
                         autoFocus
                         onChange={(event) => setDraft(event.target.value)}
                         onKeyDown={(event) => {

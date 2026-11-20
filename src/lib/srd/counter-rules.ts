@@ -19,8 +19,6 @@ import type { ResourceDef, SaveTerms } from "@/lib/srd/class-resources";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
-import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
-import { resourceDef } from "@/lib/srd/class-resources";
 import { ARTISANS_TOOLS } from "@/lib/srd/tool-choices";
 import { INFUSE_COUNTER, infusionPicks } from "@/lib/srd/infusion-picks";
 
@@ -97,17 +95,6 @@ export function counterCost(def: ResourceDef, sheet: { features?: ReadonlyArray<
   return def.action;
 }
 
-// Whether the character holds something that rides a weapon hit of this turn
-// on the creature it landed on (Arcane Jolt, Blade Flourish, Psionic Strike,
-// Gathered Swarm's push, Fury of the Small): the hit is then marked on the
-// turn (src/lib/dm/attack-swing.ts), and each of those reads the mark.
-export function ridesWeaponHit(sheet: AuthoredSheet & { resources?: Record<string, unknown> }): boolean {
-  const spends = heldAuthored(sheet).flatMap((held) => held.entry.spends ?? []);
-  if (spends.some((spend) => spend.afterWeaponHit || (spend.does.kind === "variants" && Object.values(spend.does.options).some((option) => option.afterWeaponHit)))) {
-    return true;
-  }
-  return Object.keys(sheet.resources ?? {}).some((id) => resourceDef(id)?.effect.kind === "hit_damage");
-}
 
 // What pays for a use when the counter has none left: the pool its row
 // names (Breath of the Dragon's 2 ki, five sorcery points)

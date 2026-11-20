@@ -20,12 +20,6 @@ export const PLAY_WORDS: Record<PlayField, readonly string[]> = {
 
 const TARGET: Record<PlayField, Shelf> = { faction: "faction", home: "location" };
 
-// What the column does in play, said beside it.
-export const PLAY_EFFECT: Record<PlayField, string> = {
-  faction: "The party's standing with this faction makes social checks with them easier or harder.",
-  home: "The narrator places them here, and lists them among the people at this place.",
-};
-
 // A link set beside the column:
 // - "same": the column already says it.
 // - "fills": the column is empty, and this would fill it.
