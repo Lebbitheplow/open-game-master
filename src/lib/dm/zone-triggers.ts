@@ -17,6 +17,7 @@
 // the lines for the table.
 
 import { mountMoved } from "@/lib/dm/mount-moved";
+import { forcedEnemyMove } from "@/lib/dm/enemy-rider-falls";
 import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -133,6 +134,12 @@ function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: nu
   }
   if (at.x === token.x && at.y === token.y) {
     return null;
+  }
+  // An enemy is moved as the pair it may be half of (enemy-rider-falls.ts): a
+  // rider the area caught goes alone, out of the saddle.
+  const enemy = token.kind === "enemy" ? getEnemy(token.refId) : null;
+  if (enemy) {
+    return forcedEnemyMove({ id: map.campaignId }, map.id, enemy, at)?.at ?? null;
   }
   moveToken(token.id, at.x, at.y, token.movedThisRound);
   return at;
