@@ -20,10 +20,6 @@ type Images = MaskedConfig["images"];
 
 const hardwareLabel = (id: string) => HARDWARE_PROFILES.find((profile) => profile.id === id)?.label ?? id;
 
-// The translator's shape, for the row words below: `t` comes in first
-// (src/lib/story-window.ts).
-type T = (key: string, vars?: Record<string, string | number>) => string;
-
 function measured(row: VerifiedRow): string {
   return [
     `${seconds(row.seconds.square)} a portrait or creature, ${seconds(row.seconds.landscape)} a scene`,
@@ -45,7 +41,6 @@ function ModelRow({
   onPick: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const model = comfyModel(report.id);
   if (!model) return null;
   const row = report.verified;

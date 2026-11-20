@@ -22,9 +22,9 @@ import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 
-import { FLAME_FEET, FLAME_MARK, FLAME_ROUNDS, heldFlames, metaOf, type SpectralFlame } from "@/lib/dm/cauterizing-flames-logic";
+import { FLAME_FEET, FLAME_MARK, FLAME_ROUNDS, heldFlames, type SpectralFlame } from "@/lib/dm/cauterizing-flames-logic";
 
-export { FLAME_MARK, heldFlames, type SpectralFlame } from "@/lib/dm/cauterizing-flames-logic";
+export { type SpectralFlame } from "@/lib/dm/cauterizing-flames-logic";
 
 
 function writeFlames(campaignId: string, sheet: CharacterSheet, flames: SpectralFlame[]) {

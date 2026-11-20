@@ -17,8 +17,6 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-// The mark is named where the Hand deals the stride (hand-feature-doors.ts).
-export { MANTLE_STRIDE } from "@/lib/battlemap/hand-feature-doors";
 const FEATURE = "Mantle of Inspiration";
 
 // The creatures the mantle chose may move: called by the spend that gave the

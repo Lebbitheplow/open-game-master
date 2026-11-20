@@ -150,8 +150,6 @@ export function forgeOutcome(settings: Pick<ForgeSettings, "theme" | "ambient" |
   return { theme, ambient: settings.ambient || defaultAmbient(theme) };
 }
 
-export const AMBIENT_LABELS: Record<AmbientLight, string> = { bright: "Daylight", dim: "Dim", dark: "Dark" };
-
 // The drawer's words in the reader's language (monster-folds.ts's idiom): the
 // default translator keeps the English lines scripts/test-map-forge.mjs pins
 // byte-identical, and the wired forge passes its own t. The word functions

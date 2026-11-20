@@ -105,7 +105,6 @@ function NewCharacterInner() {
 
 // useSearchParams needs a Suspense boundary during prerender in Next 16.
 export default function NewCharacterPage() {
-  const t = useT();
   return (
     <Suspense
       fallback={

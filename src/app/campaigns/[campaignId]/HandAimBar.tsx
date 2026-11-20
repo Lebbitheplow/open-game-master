@@ -10,7 +10,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import type { HandAttackOption, HandAttackOptionId, HandCard } from "@/lib/battlemap/hand";
 import { handReady, shareList, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
-import { describePick, hasPick, pickHint, pickWords, type AreaPick } from "@/lib/battlemap/hand-area";
+import { hasPick, pickHint, pickWords, type AreaPick } from "@/lib/battlemap/hand-area";
 import { cardFullText } from "@/lib/battlemap/hand-full-text-logic";
 import { HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";

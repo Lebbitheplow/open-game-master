@@ -165,11 +165,6 @@ export function reading(input: {
   };
 }
 
-// What the table reads beside such a reading.
-export const BEST_EFFORT_LABEL = "Best effort";
-// The same, as a chip beside the other lowercase chips (the reference's
-// "ritual", the forge's "CR 2").
-export const BEST_EFFORT_CHIP = "best effort";
 // Short enough for a card's face; the details carry the note.
 export const BEST_EFFORT_SHORT = "Best effort: read from its text, not yet checked.";
 export const BEST_EFFORT_NOTE =

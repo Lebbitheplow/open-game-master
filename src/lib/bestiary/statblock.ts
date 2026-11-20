@@ -162,7 +162,6 @@ export type EnemyStats = {
 };
 
 export type { PrintedAbility, PrintedBlock } from "@/lib/bestiary/printed-block";
-export { normalizePrintedBlock, unrunPrintedAbilities } from "@/lib/bestiary/printed-block";
 
 // A polymorphed creature's own form, exactly as the spell found it.
 export type EnemyOwnForm = {
@@ -184,7 +183,7 @@ export type EnemySenses = {
   passivePerception?: number;
 };
 
-export { CREATURE_TYPES, creatureTypeOf, normalizeCreatureType, type CreatureType } from "@/lib/bestiary/creature-type";
+export { CREATURE_TYPES, normalizeCreatureType, type CreatureType } from "@/lib/bestiary/creature-type";
 
 // Every attack a pack block prints fits (the most is five: Black Flag's pit
 // fiend, whose Multiattack names its Hurl Flame), and the workshop's cap
@@ -412,4 +411,4 @@ export function parseMonster(raw: Record<string, unknown>, crFromRow: number): E
   };
 }
 
-export { keenSensesOf, passivePerceptionFor, saveModFor, sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
+export { keenSensesOf, passivePerceptionFor, saveModFor, sizeRank } from "@/lib/bestiary/enemy-numbers";

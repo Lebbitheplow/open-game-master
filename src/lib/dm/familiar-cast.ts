@@ -21,7 +21,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { familiarKindOf } from "@/lib/srd/familiar-forms";
 
-export { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
+export { isFindFamiliar } from "@/lib/srd/familiar-forms";
 
 export function castFindFamiliar(
   campaign: Campaign,

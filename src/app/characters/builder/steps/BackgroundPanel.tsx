@@ -137,7 +137,6 @@ function BackgroundSkillChoice({
   choice: NonNullable<BackgroundOption["skillChoice"]>;
 }) {
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   const picks = state.backgroundSkills;
   const taken = new Set([...background.skills, ...state.chosenSkills, ...state.racialSkills]);

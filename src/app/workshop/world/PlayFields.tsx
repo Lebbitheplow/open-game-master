@@ -3,7 +3,7 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { KitButton, PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
-import { PLAY_EFFECT, type PlayCandidate, type PlayField } from "@/lib/worldforge/play-fields";
+import { type PlayCandidate, type PlayField } from "@/lib/worldforge/play-fields";
 import type { WorldEntity } from "@/lib/db/world-forge";
 import { useT } from "@/lib/locale";
 

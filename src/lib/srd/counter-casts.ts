@@ -64,11 +64,6 @@ export const COUNTER_CASTS: CounterCast[] = [
   { counter: "sub_waxing_and_waning", features: ["Waxing and Waning"], spells: Object.values(LUNAR), rest: "long" },
 ];
 
-// The counter a spell's cast spends, by its counter id.
-export function counterCastOf(counter: string): CounterCast | null {
-  return COUNTER_CASTS.find((row) => row.counter === counter) ?? null;
-}
-
 // The spells a sheet's features cast through these counters.
 // Every row is a subclass counter, so a species trait or a background feature
 // of the same name never holds one: a changeling's "Shapechanger (alter your

@@ -762,7 +762,7 @@ export function handleMoveToken(
   const walking = move !== null && !args.forced;
   // Swallowed, as a character is (swallow.ts): no walk inside a living
   // creature, and out of a dead one the walk is the climb out of its corpse.
-  const climb = walking && resolved.enemy ? swallowRowWalk(campaign, encounter, resolved.enemy, resolved.token, move?.tilesLeft ?? 0) : null;
+  const climb = walking && resolved.enemy ? swallowRowWalk(campaign, encounter, resolved.enemy, move?.tilesLeft ?? 0) : null;
   if (climb) {
     return climb;
   }

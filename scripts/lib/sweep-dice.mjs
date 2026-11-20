@@ -103,8 +103,6 @@ export function taggedFor(die, heroName) {
   return die.purpose?.roller === "hero" && names(die.purpose.who).includes(heroName);
 }
 
-export const siteKey = (die) => `${die.file}:${die.line}`;
-
 // ---- the source's roll sites ----
 //
 // Every call in src/ that throws dice with the engine's own generator. The
@@ -278,14 +276,3 @@ export function diffState(left, right, at = "", out = []) {
   return out;
 }
 
-// One finding, appended to the study's file as a JSON line, once per id.
-export function recordFinding(file, finding) {
-  if (!process.env.ODM_SWEEP_FINDINGS) {
-    return;
-  }
-  const have = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-  if (have.split("\n").some((line) => line.includes(`"id":"${finding.id}"`))) {
-    return;
-  }
-  fs.appendFileSync(file, `${JSON.stringify(finding)}\n`);
-}

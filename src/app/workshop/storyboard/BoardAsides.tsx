@@ -65,7 +65,6 @@ export function SuggestionsCard({
   onAdd: (kind: BeatKind, title: string) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   if (!suggestions.length) {
     return null;
   }
@@ -176,7 +175,6 @@ export function SharedWorkshopCard({
 
 export function CompileCard({ summary }: { summary: CompileSummary }) {
   const t = useT();
-  const tp = useTp();
   return (
     <AsideCard title={t("What this becomes")} icon={<GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-7" />} tour="storyboard-compile">
       <p className="text-xs text-stone-400">

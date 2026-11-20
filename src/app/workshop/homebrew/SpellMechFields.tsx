@@ -75,7 +75,6 @@ function ReachGroup({ mech, setMech }: MechProps) {
 
 function DamageGroup({ mech, setMech }: MechProps) {
   const t = useT();
-  const tp = useTp();
   const dice = sub(mech.dice);
   const darts = sub(mech.darts);
   const attacks = sub(mech.attacks);
@@ -142,7 +141,6 @@ function ConditionGroup({ mech, setMech }: MechProps) {
 
 export function SpellMechFields({ data, onChange }: { data: Mech; onChange: (next: Mech) => void }) {
   const t = useT();
-  const tp = useTp();
   const mech = sub(data.mech);
   const setMech = (patch: Mech) => {
     const next = { ...mech, ...patch };

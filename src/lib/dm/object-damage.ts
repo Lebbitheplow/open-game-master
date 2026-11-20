@@ -95,11 +95,6 @@ function objectRecord(campaignId: string, name: string): ObjectRecord | null {
   return getClock(campaignId).objects?.[keyOf(campaignId, name)] ?? null;
 }
 
-// Damage a named object has already taken.
-export function objectDamageTaken(campaignId: string, name: string): number {
-  return objectRecord(campaignId, name)?.taken ?? 0;
-}
-
 function recordObject(campaignId: string, name: string, record: ObjectRecord) {
   const current = getClock(campaignId);
   const objects = { ...(current.objects ?? {}) };

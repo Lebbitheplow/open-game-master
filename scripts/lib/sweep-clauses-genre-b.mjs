@@ -28,13 +28,11 @@ import "./enforce-world.mjs";
 import { suite } from "./enforce-harness.mjs";
 import { clausesRig, PROBES, strayHooks } from "./sweep-clauses-genre-b-probes.mjs";
 
-export const GENRES = ["mystery", "post-apocalyptic", "steampunk"];
 const ROOT = new URL("../../", import.meta.url);
 const read = (file) => JSON.parse(fs.readFileSync(new URL(file, ROOT), "utf8"));
 
 export const sourceOf = (genre) => `src/lib/classes/${genre}-features.json`;
 export const ledgerFile = (genre) => `scripts/clauses/genre-${genre}.json`;
-export const suiteFile = (genre) => `scripts/test-enforce-sweep-clauses-genre-b-${genre}.mjs`;
 export const sha12 = (text) => crypto.createHash("sha256").update(text).digest("hex").slice(0, 12);
 
 // Every feature of one catalog, class features first, in the catalog's order.

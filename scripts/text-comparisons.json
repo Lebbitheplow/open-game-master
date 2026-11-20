@@ -695,7 +695,6 @@
     "app/workshop/homebrew/ArchetypeFields.tsx#str-eq": [["key",2,"casting profiles (fixed choice)"]],
     "app/workshop/homebrew/ArchetypeFields.tsx#str-key": [["key",2,"ability ids; the subclass's spell field (spells, expanded)"]],
     "app/workshop/homebrew/ArchetypeFields.tsx#toUpperCase": [["display",1,"capitalised text"]],
-    "app/workshop/homebrew/BackgroundFields.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/homebrew/ClassFields.tsx#str-eq": [["key",9,"casting kinds, list ids and spell styles (engine vocabulary)"]],
     "app/workshop/homebrew/ClassFields.tsx#str-key": [["key",1,"ability ids"]],
     "app/workshop/homebrew/ClassFields.tsx#str-list": [["key",2,"spell list ids and abilities (engine vocabulary)"]],

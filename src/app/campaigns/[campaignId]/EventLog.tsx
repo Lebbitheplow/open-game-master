@@ -33,7 +33,6 @@ function ConfirmUndoDialog({
   onCancel: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   return (
     <AlertDialog.Root open onOpenChange={(open) => !open && onCancel()}>
       <AlertDialog.Portal>

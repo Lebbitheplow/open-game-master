@@ -20,6 +20,12 @@
     "examples/addons/*/ui/*.js",
     // The trailer's recording scripts, run by hand (trailer/README.md).
     "trailer/*.mjs",
+    // Run by hand: the Hearth theme's readability check (docs/appearance-hearth-handoff.md), and the sweep tools
+    // whose usage lines and triage output tell a person to run them (`node scripts/lib/sweep-hand-probe.mjs ...`).
+    "scripts/appearance/hearth-readability-check.mjs",
+    "scripts/lib/sweep-builder-finding.mjs",
+    "scripts/lib/sweep-hand-probe.mjs",
+    "scripts/lib/sweep-hand-triage.mjs",
     // The desktop and Android apps (Lebbitheplow/open-game-master-client) build this repo's src into their renderer:
     // besides the pages, src/renderer/game/index.tsx imports DeviceSettings for the apps' own Settings screen, and
     // scripts/build-renderer.mjs folds this sheet into theirs.
@@ -29,6 +35,8 @@
   // Resolved by name at run time (createRequire().resolve), which no import graph sees: src/lib/image-variants.ts and
   // scripts/browser/lib.mjs.
   "ignoreDependencies": ["@jsquash/.+", "axe-core"],
+  // pdf.js's worker and data, copied from pdfjs-dist at install (scripts/copy-dice-assets.mjs): vendored, not ours.
+  "ignore": ["public/pdfjs/**"],
   // An export its own file uses is live code with a needless `export`, not dead code.
   "ignoreExportsUsedInFile": true,
   // Two names for one function on purpose: scripts/import-open5e.mjs normalizes conditions with the feats' shape.

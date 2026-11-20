@@ -7,7 +7,6 @@
 import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isThirdCaster, type ThirdCasterSetting } from "@/lib/srd/third-caster";
-import { translate } from "@/lib/messages-logic";
 import type { Ability, AbilityScores, ClassEntry } from "@/lib/schemas/sheet";
 
 // UI sanity cap: RAW is unbounded, but nobody at this table needs four.
@@ -214,8 +213,6 @@ export function describePrereq(classId: string): string {
 
 // The shape of a translator, as the pure sentence builders take it.
 type T = (key: string, vars?: Record<string, string | number>) => string;
-
-const enT: T = (key) => translate("en", key);
 
 // The prerequisite in the reader's words: the ability names are the
 // dictionaries' (sheet.ability.*). describePrereq is its English form, kept

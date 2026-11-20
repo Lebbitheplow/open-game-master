@@ -3,7 +3,7 @@
 import { needsLabel, offeredInPlay } from "@/lib/content/levelup-logic";
 import type { Need } from "@/lib/content/needs-logic";
 import { GameIcon } from "@/components/ui/GameIcon";
-import { translate, type Locale } from "@/lib/messages-logic";
+import { translate } from "@/lib/messages-logic";
 import { useT } from "@/lib/locale";
 import { priceText } from "@/lib/srd/currency";
 

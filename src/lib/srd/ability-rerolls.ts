@@ -83,17 +83,6 @@ export function describeTableReroll(tableSetting: number | null | undefined, ser
     : `The server's rule (${describeReroll(serverSetting).toLowerCase()})`;
 }
 
-// The same in the reader's words (table.settings.reroll.* covers the
-// follow-server half; the rule itself comes from creator.reroll.*).
-export function describeTableRerollT(t: T, tableSetting: number | null | undefined, serverSetting: number | null): string {
-  if (typeof tableSetting === "number") {
-    return describeRerollT(t, tableSetting);
-  }
-  return serverSetting === null
-    ? t("the server's reroll rule")
-    : t("the server's rule ({rule})", { rule: describeRerollT(t, serverSetting) });
-}
-
 // The builder's words for the rule a player is rolling under, from the
 // choice the number stands for, and whose rule it is: the table's when the
 // character is made at one, the server's otherwise. `rule` is the sentence

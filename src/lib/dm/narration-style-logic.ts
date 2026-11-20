@@ -9,18 +9,6 @@
 
 export type NarrationLength = "short" | "standard" | "rich";
 
-export const NARRATION_LENGTH_LABELS: Record<NarrationLength, string> = {
-  short: "Short",
-  standard: "Standard",
-  rich: "Rich",
-};
-
-export const NARRATION_LENGTH_HINTS: Record<NarrationLength, string> = {
-  short: "One or two tight paragraphs, then back to the players.",
-  standard: "As long as the moment needs.",
-  rich: "Fuller scenes with room for detail when the moment earns it.",
-};
-
 const LENGTH_TEXT: Record<NarrationLength, string> = {
   short:
     "Keep each narration short: about 60 to 120 words, one or two tight paragraphs. Say what changed, then hand the moment back to the players.",
@@ -58,18 +46,6 @@ export const STYLE_NOTES_MAX = 500;
 // it (src/lib/dm/world-tick-logic.ts pacedTickConfig); this is the line the
 // DM reads. Balanced renders nothing.
 export type CombatPace = "rare" | "balanced" | "frequent";
-
-export const COMBAT_PACE_LABELS: Record<CombatPace, string> = {
-  rare: "Fewer fights",
-  balanced: "Balanced",
-  frequent: "More fights",
-};
-
-export const COMBAT_PACE_HINTS: Record<CombatPace, string> = {
-  rare: "Talk, stealth and exploring come first; a fight when the players start one or the story leaves no way round.",
-  balanced: "Fights come as the story and the world bring them.",
-  frequent: "Trouble finds the party more often, and more of it wants a fight.",
-};
 
 const PACE_TEXT: Record<CombatPace, string> = {
   rare: "This table wants fewer fights. Favor talk, stealth, puzzles and exploration; let most trouble be talked, sneaked or bargained past, and start combat when the players choose it or the story leaves no other way.",

@@ -51,7 +51,7 @@ import { footprintDistance } from "@/lib/battlemap/footprint";
 import { useAreaAim } from "@/app/campaigns/[campaignId]/BoardAreaAim";
 import { BoardMoveNotes, useMoveNotes } from "@/app/campaigns/[campaignId]/BoardMoveNotes";
 import type { FxEvent } from "@/lib/battlemap/fx-plan";
-import { TEMPLATE_SHAPES, SHAPE_LABEL_KEYS, shapeLabel, type TemplateShape } from "@/lib/battlemap/template";
+import { TEMPLATE_SHAPES, shapeLabel, type TemplateShape } from "@/lib/battlemap/template";
 import type { AdhocTokenKind } from "@/lib/battlemap/types";
 import { ADHOC_LABEL_KEYS, ADHOC_NAME_MAX, type MapPing } from "@/lib/dm/board-logic";
 import { ENTRY_NAME_MAX, MIN_INITIATIVE, MAX_INITIATIVE } from "@/lib/dm/initiative-edit";

@@ -48,14 +48,6 @@ export function ceilingHoldsCompanion(setting: ConscienceSetting): boolean {
 export const CONSCIENCE_RUNGS = ["content", "uneasy", "warning", "ultimatum", "breaking"] as const;
 export type ConscienceRung = (typeof CONSCIENCE_RUNGS)[number];
 
-export const RUNG_LABEL: Record<ConscienceRung, string> = {
-  content: "Content",
-  uneasy: "Uneasy",
-  warning: "Warning",
-  ultimatum: "Ultimatum",
-  breaking: "Breaking point",
-};
-
 // The same, as the DM's note says it in a sentence.
 export const RUNG_WORD: Record<ConscienceRung, string> = {
   content: "content",

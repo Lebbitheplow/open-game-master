@@ -2,7 +2,7 @@ import { z } from "zod";
 import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { Campaign } from "@/lib/db/campaigns";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
-import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, turnCounterFor } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, turnCounterFor } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { autoEndOnVictory, finishEncounter, publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";

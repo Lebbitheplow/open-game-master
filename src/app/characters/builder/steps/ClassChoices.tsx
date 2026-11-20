@@ -13,7 +13,7 @@ import { PickPill, StepPanel } from "./shared";
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants, toolLabel } from "@/lib/srd/tool-choices";
 import { contentName } from "@/lib/content/names";
-import { optionFeatureName, optionKindRule, optionPicksSpells, remainingWords } from "@/lib/srd/options";
+import { optionFeatureName, optionKindRule, optionPicksSpells } from "@/lib/srd/options";
 import { contentSlug } from "@/lib/help";
 import { useLocale, useT, useTp } from "@/lib/locale";
 import { subclassChoiceSummary } from "@/lib/content/subclass-choices";
@@ -50,7 +50,6 @@ export function ClassChoices({
   klass: ClassOption | undefined;
 }) {
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   const { effectiveLevel, proficientSkills, styleSlots, styleChoices, optionSlots } = derived;
   // Each class's own at its own level: a rogue taken second brings two.

@@ -11,7 +11,6 @@ import {
   inheritedHint,
 } from "@/app/admin/AdminSettingsFields";
 import { useT } from "@/lib/locale";
-import type { MessageKey } from "@/lib/messages-logic";
 
 // The two sections about how the server is reached from outside: live voice
 // and Discord sign-in. A world an app hosts owns both itself, so the panel

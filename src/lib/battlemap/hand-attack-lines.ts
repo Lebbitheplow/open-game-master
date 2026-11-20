@@ -86,12 +86,6 @@ export function spellAttackLines(sheet: CharacterSheet, toHit: number, melee: bo
   return { ...rolled, notes: [...rolled.notes, ...onHit.notes.map((note) => `${note}.`)], onHit: onHit.suffix };
 }
 
-// "+9 to hit", "+9+1d4 to hit".
-export function toHitWords(line: Pick<HandCard, "toHit" | "toHitDice">): string {
-  const bonus = line.toHit ?? 0;
-  return `${bonus >= 0 ? "+" : ""}${bonus}${line.toHitDice ?? ""} to hit`;
-}
-
 // How far a weapon reaches, in the card's range line, and the feet the
 // preview reads: a thrown weapon reaches in melee and is thrown out to its
 // long range ("5 ft / 20/60 ft"), a ranged one shoots to its long range

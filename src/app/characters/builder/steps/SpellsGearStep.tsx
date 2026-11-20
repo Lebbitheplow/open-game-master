@@ -58,7 +58,6 @@ export function SpellsGearStep({
   pack: WorldPack | null;
 }) {
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   const purse = purseViewFor(t, {
     purse: derived.purse,
@@ -157,7 +156,6 @@ function CasterSpells({
   pack: WorldPack | null;
 }) {
   const t = useT();
-  const tp = useTp();
   const desks = (derived.casterDesks ?? []).filter((desk) => desk.casts);
   const keys = desks.map((desk) => desk.classId);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -167,9 +165,9 @@ function CasterSpells({
   if (desks.length <= 1) {
     return derived.casts ? <SpellsSection state={state} derived={derived} klass={derived.casterKlass ?? klass} pack={pack} /> : null;
   }
-      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the tabs inside take the focus (roving tabindex) and their arrow keys bubble up here; a tablist is never a Tab stop of its own */}
   return (
     <div data-caster-tabs="">
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the tabs inside take the focus (roving tabindex) and their arrow keys bubble up here; a tablist is never a Tab stop of its own */}
       <div
         role="tablist"
         aria-label={t("Spells by class")}
@@ -907,7 +905,6 @@ function SpellDeskHeader({
   lists: Array<{ id: string; title: string; count: string; names: string[] }>;
 }) {
   const t = useT();
-  const tp = useTp();
   return (
     <div data-spell-desk="" className="mb-3 space-y-2 text-xs">
       {numbers.dc || numbers.attack || numbers.slots.length ? (
@@ -991,11 +988,10 @@ function SwapPrompt({
   label: (name: string) => string;
   onSwap: (out: string) => void;
   onCancel: () => void;
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the prompt is focused when it opens, so Escape there or on a swap button inside cancels it
 }) {
   const t = useT();
-  const tp = useTp();
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the prompt is focused when it opens, so Escape there or on a swap button inside cancels it
     <div
       role="group"
       aria-label={question}

@@ -11,8 +11,6 @@ import { GENRE_PRESETS } from "@/lib/genres";
 import { narratorVoiceFor } from "@/lib/tts-voices";
 import {
   TABLE_LANGUAGE_HELP,
-  TABLE_LANGUAGE_LABELS,
-  TABLE_LANGUAGES,
   type Genre,
 } from "@/lib/schemas/game-settings-options";
 import type { WorldPackSummary } from "@/lib/worlds/types";

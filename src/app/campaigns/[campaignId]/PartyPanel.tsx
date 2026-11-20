@@ -75,7 +75,6 @@ function RealDiceToggle({
   member: CampaignMember;
 }) {
   const t = useT();
-  const tp = useTp();
   const [busy, setBusy] = useState(false);
   async function toggle() {
     setBusy(true);
@@ -113,7 +112,6 @@ function RealDiceToggle({
 // arrives and how); shown while the table is below its companion cap.
 function RequestCompanionButton({ campaignId }: { campaignId: string }) {
   const t = useT();
-  const tp = useTp();
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   async function request() {
     setState("sending");
@@ -163,7 +161,6 @@ function HandToDmButton({
   onOpenSettings?: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const [state, setState] = useState<"idle" | "sending">("idle");
   const [error, setError] = useState("");
   const whyId = useId();
@@ -242,7 +239,6 @@ function HandToDmButton({
 // for a moment instead of a bare "Saved".
 function SaveToLibraryButton({ campaignId, sheetId }: { campaignId: string; sheetId: string }) {
   const t = useT();
-  const tp = useTp();
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [keptLevel, setKeptLevel] = useState<number | null>(null);
   async function save() {
@@ -1084,7 +1080,6 @@ export function PartyPanel({
 // DM seat (src/lib/dm/sheet-view.ts), so nothing here shows it to anyone else.
 function RomanceNote({ sheet }: { sheet: CharacterSheet }) {
   const t = useT();
-  const tp = useTp();
   const drawn = attractionWords(sheet.attraction);
   // A hero who fell is courted by nobody (issue 657), so the chip goes.
   const open = livingHero(sheet) && Boolean(sheet.openToAdvances);
@@ -1105,7 +1100,6 @@ function RomanceNote({ sheet }: { sheet: CharacterSheet }) {
 }
 
 function LightBar({ light }: { light: { remaining: number; total: number } }) {
-  const t = useT();
   const tp = useTp();
   const fraction = light.total > 0 ? Math.max(0, Math.min(1, light.remaining / light.total)) : 0;
   const low = light.remaining <= 15;

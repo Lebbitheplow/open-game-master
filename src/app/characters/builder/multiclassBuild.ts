@@ -131,19 +131,6 @@ export function storedExtraClasses(
   return fitExtraClasses(shedExtraLevels(extras, storedTotal - total), { primaryId: stored[0].id, total });
 }
 
-// The sheet's class list: the first class first, at the levels the others
-// leave it. A single class is a list of one, as classListFor reads a sheet.
-export function builderClassList(
-  primary: { id: string; subclass: string },
-  total: number,
-  extras: ReadonlyArray<ExtraClass> = [],
-): ClassEntry[] {
-  return [
-    { id: primary.id, subclass: primary.subclass, level: primaryLevelOf(total, extras) },
-    ...extras.map((entry) => ({ id: entry.classId, subclass: entry.subclass, level: entry.level })),
-  ];
-}
-
 // Whether a class casts, as the server counts casting classes
 // (src/lib/srd/legality/spells.ts castingClassesOf): one with a casting
 // ability, warlock pact magic included, or an Eldritch Knight or Arcane

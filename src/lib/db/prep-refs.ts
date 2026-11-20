@@ -17,15 +17,6 @@ import { textKey } from "@/lib/language/text-logic";
 // Old name (any spelling textKey folds together) to the new one.
 export type PrepRenames = { monster?: Map<string, string>; item?: Map<string, string> };
 
-export function prepRenames(pairs: Array<{ kind: "monster" | "item"; from: string; to: string }>): PrepRenames {
-  const out: PrepRenames = {};
-  for (const pair of pairs) {
-    if (textKey(pair.from) === textKey(pair.to) && pair.from === pair.to) continue;
-    (out[pair.kind] ??= new Map()).set(textKey(pair.from), pair.to);
-  }
-  return out;
-}
-
 const renamed = (map: Map<string, string> | undefined, name: unknown): string | null =>
   typeof name === "string" && map ? (map.get(textKey(name)) ?? null) : null;
 

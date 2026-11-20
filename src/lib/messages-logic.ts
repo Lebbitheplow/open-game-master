@@ -5,7 +5,6 @@ import { translate, translatePlural, type Locale, type TranslateVars } from "./i
 export { translate, translatePlural, type Locale, type TranslateVars };
 export type MessageKey = string;
 export type MessageVars = TranslateVars;
-export type MessageDictionary = Record<string, string>;
 
 export function pluralCategory(locale: Locale, count: number): "one" | "other" {
   if (!Number.isFinite(count)) {
@@ -28,7 +27,6 @@ export function localeTag(locale: Locale): string {
   return locale === "fr" ? "fr-FR" : "en-US";
 }
 
-export type Translator = ((english: string, vars?: TranslateVars) => string) & { locale?: Locale };
 export type PluralTranslator = (
   englishOne: string,
   englishOther: string,

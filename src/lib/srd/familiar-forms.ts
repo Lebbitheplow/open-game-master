@@ -168,7 +168,3 @@ export function familiarCatalogue(): SummonCatalogue {
   };
 }
 
-// Every form's name, the Pact of the Chain forms included.
-export function familiarFormNames(): string[] {
-  return FAMILIAR_FORMS.map((entry) => entry.form);
-}

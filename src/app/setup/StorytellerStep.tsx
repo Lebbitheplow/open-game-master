@@ -326,7 +326,6 @@ function LocalPanel({
 
 function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update; savedKeyFor: KeyProviderId | null }) {
   const t = useT();
-  const tp = useTp();
   const key = draft.key;
   const provider = keyProvider(key.provider);
   const [checking, setChecking] = useState(false);

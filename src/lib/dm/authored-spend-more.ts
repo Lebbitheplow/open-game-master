@@ -78,7 +78,7 @@ export function swarmPush(ctx: SpendContext, does: Extract<SpendDoes, { kind: "s
     magical: true,
     record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: STR save against ${ctx.spend.name}` },
   });
-  const back = refund ? giveBack(ctx, enemy.id, refund) : [];
+  const back = refund ? giveBack(enemy.id, refund) : [];
   if (save.success) {
     return { result: { target: enemy.displayName, save: save.total, dc, applied: [`${enemy.displayName} holds its ground against the swarm.`, ...back] } };
   }
@@ -126,7 +126,7 @@ export function swarmDieBack(ctx: SpendContext, enemy: { id: string }): number {
 }
 
 // The swarm's damage taken back, as the push replaces it.
-export function giveBack(ctx: SpendContext, enemyId: string, amount: number): string[] {
+export function giveBack(enemyId: string, amount: number): string[] {
   const fresh = getEnemy(enemyId);
   if (!fresh || fresh.status !== "alive" || amount <= 0) {
     return [];

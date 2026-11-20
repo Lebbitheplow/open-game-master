@@ -222,7 +222,7 @@ building the older files would be a downgrade, which an upgraded database refuse
 ```bash
 npm test            # every scripts/test-*.mjs, one at a time, failures listed at the end
 npm run coverage    # the same, plus a code coverage report in coverage/index.html
-npm run dead-code   # files, exports, locals and parameters nothing uses (a report, not a CI gate)
+npm run dead-code   # files, exports, locals and parameters nothing uses (CI fails on any)
 ```
 
 Each test script is a plain Node program, so `node scripts/test-<name>.mjs` runs one

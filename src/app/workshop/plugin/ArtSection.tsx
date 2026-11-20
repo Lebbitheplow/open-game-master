@@ -76,7 +76,6 @@ function ArtSlot({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const t = useT();
-  const tp = useTp();
   const landscape = PACK_ART_ASPECT[slot.kind] === "landscape";
 
   async function choose(file: File) {
