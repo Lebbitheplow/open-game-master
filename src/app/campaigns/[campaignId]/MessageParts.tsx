@@ -91,7 +91,45 @@ export function reportAction(t: T, message: CampaignMessage, onReport: (message:
 // translated here, at display, only when the content is exactly the note.
 const ADVENTURE_BEGINS_DM_LINE = `${ADVENTURE_BEGINS_NOTE} The Game Master opens the scene.`;
 
-function translateSystemNote(t: (key: string, vars?: Record<string, string | number>) => string, raw: string): string {
+function translateDuration(t: T, raw: string): string {
+  return raw.replace(/\b(\d+)\s+(week|weeks|day|days|hour|hours|minute|minutes)\b/g, (_, n, unit) => {
+    const base = unit.replace(/s$/, "");
+    return t(Number(n) === 1 ? `{n} ${base}` : `{n} ${base}s`, { n });
+  });
+}
+
+function translateCalendarClause(t: T, raw: string): string {
+  const DAYS = ["Firstday", "Seconday", "Midweek", "Fourthday", "Fifthday", "Restday", "Midday"];
+  const MONTHS = [
+    "Deepwinter", "Frostmoon", "Thaw", "Greening", "Bloom", "Seedfall",
+    "Highsun", "Longlight", "Firstharvest", "Goldfall", "Leafturn", "Yearsend",
+    "First Month", "Second Month", "Third Month", "Fourth Month", "Fifth Month", "Sixth Month",
+    "Seventh Month", "Eighth Month", "Ninth Month", "Tenth Month", "Eleventh Month", "Twelfth Month",
+  ];
+  const PARTS = ["deep night", "before dawn", "morning", "midday", "afternoon", "evening", "night"];
+  const SEASONS = ["winter", "spring", "summer", "autumn"];
+  let out = raw;
+  out = out.replace(/It is now ([^.]+)\./g, (_, rest) => {
+    let dateStr = rest;
+    for (const d of DAYS) dateStr = dateStr.replace(new RegExp(`\\b${d}\\b`, "g"), t(d));
+    for (const m of MONTHS) dateStr = dateStr.replace(new RegExp(`\\b${m}\\b`, "g"), t(m));
+    dateStr = dateStr.replace(/\byear (\d+)\b/g, (_, y) => t("year {n}", { n: y }));
+    dateStr = dateStr.replace(/\bDay (\d+)\b/g, (_, d) => t("Day {n}", { n: d }));
+    for (const p of PARTS) dateStr = dateStr.replace(new RegExp(`, ${p}(?=,|$)`, "g"), `, ${t(p)}`);
+    for (const s of SEASONS) dateStr = dateStr.replace(new RegExp(`, ${s}(?=,|$)`, "g"), `, ${t(s)}`);
+    return t("It is now {date}.", { date: dateStr });
+  });
+  return out;
+}
+
+function translateMountDesc(t: T, desc: string): string {
+  return desc
+    .replace(/\bspeed (\d+) ft\./g, (_, feet) => t("speed {feet} ft.", { feet }))
+    .replace(/\bcontrolled \(shares your initiative\)/g, () => t("controlled (shares your initiative)"))
+    .replace(/\bindependent \(acts on its own turn\)/g, () => t("independent (acts on its own turn)"));
+}
+
+function translateSystemNote(t: T, raw: string): string {
   if (raw === "The fight is over.") return t("The fight is over.");
   let m = /^Chapter (\d+)(?:, "([^"]+)",)? comes to a close\.(.*)$/.exec(raw);
   if (m) {
@@ -114,15 +152,40 @@ function translateSystemNote(t: (key: string, vars?: Record<string, string | num
       : t("Act {n} begins.", { n: m[1] });
     return `${head}${m[3]}`;
   }
+  m = /^([^.\n]+?) mounts up: (.+)\.$/.exec(raw);
+  if (m) {
+    return t("{name} mounts up: {mount}.", { name: m[1], mount: translateMountDesc(t, m[2]) });
+  }
   let out = raw;
+  out = out.replace(/^(\d+ (?:week|weeks|day|days|hour|hours|minute|minutes)) pass(?:es)?: /, (_, dur) =>
+    `${t("{duration} pass:", { duration: translateDuration(t, dur) })} `,
+  );
+  out = translateCalendarClause(t, out);
   out = out.replace(/It is now ([^']+)'s turn \(round (\d+)\)\./g, (_, ch, r) =>
     t("It is now {character}'s turn (round {n}).", { character: ch, n: r }),
+  );
+  out = out.replace(/It is now ([^']+)'s turn again\./g, (_, ch) =>
+    t("It is {character}'s turn again.", { character: ch }),
+  );
+  out = out.replace(/It is ([^']+)'s turn again\./g, (_, ch) =>
+    t("It is {character}'s turn again.", { character: ch }),
   );
   out = out.replace(/It is now ([^']+)'s turn\./g, (_, ch) =>
     t("It is now {character}'s turn.", { character: ch }),
   );
-  out = out.replace(/([A-Z][^.\n]+?) acts before ([^.]+)\./g, (_, enemy, ch) =>
-    t("{enemy} acts before {character}.", { enemy, character: ch }),
+  out = out.replace(/([^.\n]+?) ends their turn\./g, (_, ch) =>
+    t("{character} ends their turn.", { character: ch.trim() }),
+  );
+  out = out.replace(/([\p{Lu}][^.\n]+?) (acts|act) before ([^.\n]+)\./gu, (_, enemy, verb, ch) =>
+    verb === "acts"
+      ? t("{enemy} acts before {character}.", { enemy, character: ch })
+      : t("{enemies} act before {character}.", { enemies: enemy, character: ch }),
+  );
+  out = out.replace(/Every character has fallen: the fight is lost\./g, () =>
+    t("Every character has fallen: the fight is lost."),
+  );
+  out = out.replace(/The party lead skipped ([^']+)'s turn\./g, (_, ch) =>
+    t("The party lead skipped {character}'s turn.", { character: ch }),
   );
   out = out.replace(/Skipped enemy turns resolve automatically:/g, () =>
     t("Skipped enemy turns resolve automatically:"),

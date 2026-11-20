@@ -452,12 +452,25 @@ export function cardsOf(segments: readonly SpeechSegment[]): SpeechCard[] {
     }
     if (last?.kind === "prose" && before?.kind === "speech" && sameSpeaker(before.speaker, segment.speaker) && splitsOneLine(last.text)) {
       out.pop();
-      before.parts.push({ kind: "tag", text: last.text.trim() }, { kind: "words", text: segment.text });
+      before.parts.push({ kind: "tag", text: last.text.trim().replace(/^,\s*/, "") }, { kind: "words", text: segment.text });
       continue;
     }
     out.push({ kind: "speech", speaker: segment.speaker, parts: [{ kind: "words", text: segment.text }] });
   }
-  return out;
+  // French guillemets place commas outside the closing quote (« ... », murmure
+  // Isolda); when the following prose is not folded as a tag, strip the
+  // orphaned leading comma from the standalone prose card.
+  const cleaned: SpeechCard[] = [];
+  for (let i = 0; i < out.length; i += 1) {
+    const card = out[i];
+    if (card.kind === "prose" && cleaned.at(-1)?.kind === "speech") {
+      const stripped = card.text.replace(/^\s*,\s*/, "");
+      if (stripped) cleaned.push({ kind: "prose", text: stripped });
+    } else {
+      cleaned.push(card);
+    }
+  }
+  return cleaned;
 }
 
 // The lines a message keeps after a rewrite: every earlier line, so an
