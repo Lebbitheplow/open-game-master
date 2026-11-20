@@ -221,6 +221,17 @@ await test("A mount that flees carries its rider out of the fight with it.", asy
   assert.equal(after.getEnemy(rider.id).status, "fled", "the rider was left behind with no mount and no token");
 });
 
+await test("A mount that flees takes only a rider still on its back: one already parted from it stays in the fight.", async () => {
+  const { world, rider, mount } = await pair();
+  partPair(world.campaign(), live(world, rider.id), false);
+  turnOf(world, mount.id);
+  const flees = await world.invoke("enemy_flees", { enemyId: mount.id });
+  assert.equal(flees.ok, true, flees.error);
+  assert.equal(live(world, rider.id).status, "alive", "a rider no longer mounted was carried out of the fight");
+  assert.ok(ownToken(world, rider.id), "the rider left on foot lost their token");
+  assert.equal(flees.result.fled, mount.displayName);
+});
+
 await test("Reinforcements arrive mounted: add_enemies takes the same mount, and the pair comes in on one token.", async () => {
   const world = await openWorld({ gameSettings: { ttsEnabled: false } });
   world.addHero(HERO());
