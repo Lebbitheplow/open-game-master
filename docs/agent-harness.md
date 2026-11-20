@@ -60,8 +60,11 @@ Its lockdown: each run brings its own custom agent with Antigravity's default
 prompt and built-in tools excluded (`excludeDefaultComponents`), none of your
 skills, rules, plugins, subagents or MCP servers (`inheritCustomizations:
 false`), and ODM's server as its only one; settings for that run alone deny
-commands, files, web reads and its other built-in tools and allow only ODM's
-tools; a tool step for anything else stops the run. Built against 1.5.12 and
+commands, files and web reads, and deny by name every built-in tool that could
+reach past the table, and allow only ODM's tools. Signed in, agy lists its 60
+built-in tools at startup even with its defaults excluded, so a run that
+reports any tool beyond those 60 is stopped before its turn, and a tool step
+for anything but ODM's tools stops the run. Built against 1.5.12 and
 run signed in by a contributor, not by the maintainers.
 
 It signs in with a Google account: run `agy` once as the user the server runs

@@ -2241,7 +2241,7 @@
     "lib/harness/adapters/antigravity.ts#[a-z]": [["key",2,"the Antigravity CLI's model slugs (protocol)"]],
     "lib/harness/adapters/antigravity.ts#re-word": [["english-source",3,"the Antigravity CLI's own English error and status output, read to name the failure kind"],["key",1,"generated image filename extension filter (protocol)"]],
     "lib/harness/adapters/antigravity.ts#str-eq": [["key",7,"CLI flags, stream-json event and step types, statuses, model slugs, and image file/header tags (protocol)"]],
-    "lib/harness/adapters/antigravity.ts#str-list": [["key",3,"CLI flags, stream-json event and step types, statuses and model slugs (protocol)"]],
+    "lib/harness/adapters/antigravity.ts#str-list": [["key",3,"CLI flags, stream-json event and step types, statuses and model slugs (protocol)"],["key",2,"the built-in tool names agy reports at init, and the few a run keeps (protocol)"]],
     "lib/harness/adapters/antigravity.ts#toLowerCase": [["key",1,"generated image file extension (protocol)"]],
     "lib/harness/adapters/antigravity.ts#\\w": [["key",1,"a conversation id the CLI prints, taken as a folder name only when it is a plain id (protocol)"]],
     "lib/harness/adapters/claude.ts#re-word": [["english-source",3,"the Claude Code CLI's own English error output, read to name the failure kind"]],

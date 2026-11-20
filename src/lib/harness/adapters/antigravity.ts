@@ -20,9 +20,14 @@
 // only one. --settings, for this run alone and never saved, denies commands,
 // file access and web reads, allows only ODM's MCP tools, and starts in the
 // Default mode, where no reviewer approves a command on the admin's behalf.
-// Signed in, agy lists its built-in tools in the init event before it
-// connects to ODM's server, so that list is reported, not checked; every
-// tool step is checked, and anything but ODM's tools stops the turn.
+// Signed in, agy 1.5.12 lists the same 60 built-in tools in the init event
+// whether its defaults are excluded or not, before it connects to ODM's
+// server (PR #1046, run by its author). So excluding them is not trusted on
+// its own: every built-in that could reach past the table is denied by name
+// as well, the init event is checked against those 60 names, and any tool
+// agy reports beyond them (a later release's) stops the run before the turn
+// is sent. Every tool step is checked too, but a step is reported once agy
+// has already dispatched it, so that check is a backstop, not the fence.
 
 import { writeFileSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import os from "node:os";
@@ -52,6 +57,92 @@ export const ANTIGRAVITY_ENV = {
 // reviewer model approve commands without asking.
 export const ANTIGRAVITY_IMAGE_TOOL = "generate_image";
 
+// The built-in tools agy 1.5.12 reports in its init event, signed in, for a
+// turn and for a picture run alike (PR #1046). A name outside this list is a
+// tool nobody has looked at, and stops the run.
+export const ANTIGRAVITY_BUILTIN_TOOLS: readonly string[] = [
+  "ask_custom_permission",
+  "ask_permission",
+  "ask_question",
+  "browser_click_element",
+  "browser_drag_pixel_to_pixel",
+  "browser_get_dom",
+  "browser_get_network_request",
+  "browser_input",
+  "browser_list_network_requests",
+  "browser_mouse_down",
+  "browser_mouse_up",
+  "browser_move_mouse",
+  "browser_press_key",
+  "browser_refresh_page",
+  "browser_resize_window",
+  "browser_scroll",
+  "browser_scroll_dom",
+  "browser_select_option",
+  "browser_subagent",
+  "call_mcp_tool",
+  "capture_browser_console_logs",
+  "capture_browser_screenshot",
+  "click_browser_pixel",
+  "command_status",
+  "define_subagent",
+  "delete_knowledge",
+  "execute_browser_javascript",
+  "find_by_name",
+  "finish",
+  "generate_image",
+  "grep_search",
+  "invoke_subagent",
+  "list_browser_pages",
+  "list_dir",
+  "list_permissions",
+  "list_plugin_accounts",
+  "list_resources",
+  "manage_inbox",
+  "manage_subagents",
+  "manage_task",
+  "multi_replace_file_content",
+  "notebook_edit",
+  "notebook_execution",
+  "open_browser_url",
+  "read_browser_page",
+  "read_resource",
+  "read_url_content",
+  "replace_file_content",
+  "run_command",
+  "run_workflow",
+  "schedule",
+  "search_marketplace",
+  "search_web",
+  "sed_file",
+  "send_command_input",
+  "send_message",
+  "view_file",
+  "wait",
+  "wait_5_seconds",
+  "write_to_file",
+];
+
+// The built-ins a run may keep: how agy ends a turn, waits, asks its own
+// permission questions (refused headless), and reaches ODM's server. Every
+// other one is denied by name; generate_image only outside a picture run.
+const ANTIGRAVITY_KEPT_TOOLS = new Set([
+  "ask_custom_permission",
+  "ask_permission",
+  "call_mcp_tool",
+  "finish",
+  "list_permissions",
+  "wait",
+  "wait_5_seconds",
+  ANTIGRAVITY_IMAGE_TOOL,
+]);
+
+// Whether a tool agy reports at init is one of the built-ins above or ODM's
+// own; anything else stops the run.
+export function antigravityKnownTool(name: string): boolean {
+  return ANTIGRAVITY_BUILTIN_TOOLS.includes(name) || name.startsWith(ANTIGRAVITY_MCP_PREFIX);
+}
+
 const BASE_DENIED_TOOLS = [
   "command(*)",
   "read_file(*)",
@@ -68,6 +159,9 @@ const BASE_DENIED_TOOLS = [
   "search_web(*)",
   "search_marketplace(*)",
   "ask_question(*)",
+  // By name as well: the categories above may not reach these, and some run
+  // code or read pages and files outside the table.
+  ...ANTIGRAVITY_BUILTIN_TOOLS.filter((name) => !ANTIGRAVITY_KEPT_TOOLS.has(name)).map((name) => `${name}(*)`),
 ];
 
 export function antigravitySettings(images = false): Record<string, unknown> {
@@ -397,8 +491,14 @@ async function start(options: HarnessStartOptions) {
       if (kind === "init") {
         // agy reports its built-in tool catalog in init.tools and connects to
         // mcpServers after init, so mcp_odm_* tools are not listed here yet.
-        // permissions.deny + the step_update check below enforce lockdown.
+        // The built-ins are denied in --settings; one this adapter has never
+        // seen is a tool nothing denies, so the run stops before its turn.
         const tools = Array.isArray(body.tools) ? body.tools.map(toolName).filter(Boolean) : [];
+        const unknown = tools.filter((tool) => !antigravityKnownTool(tool));
+        if (unknown.length) {
+          stop(`Antigravity started with tools Open Game Master does not know (${unknown.slice(0, 4).join(", ")}), so the turn was stopped.`);
+          return;
+        }
         options.onEvent({ type: "ready", tools });
         return;
       }
