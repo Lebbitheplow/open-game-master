@@ -9,6 +9,7 @@ import { PortraitMedallion } from "@/components/sheet/SheetParts";
 import { useFaceChain } from "@/app/campaigns/[campaignId]/useFaceChain";
 import { useFaceSize } from "@/app/campaigns/[campaignId]/useFaceSize";
 import { cn } from "@/lib/cn";
+import { contentName } from "@/lib/content/names";
 import { playerFaces } from "@/lib/speaker-faces";
 import {
   ADVENTURE_BEGINS_NOTE,
@@ -18,7 +19,7 @@ import {
   systemNoteWords,
   type CampaignMember,
 } from "@/lib/campaign-types";
-import { useT } from "@/lib/locale";
+import { useLocale, useT } from "@/lib/locale";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { TranscriptSheet } from "@/app/campaigns/[campaignId]/departing";
@@ -219,6 +220,96 @@ function translateSystemNote(t: T, raw: string): string {
   return out;
 }
 
+// Translates engine-bound English sentences emitted by `composeSentence` at
+// display time so the campaign chat log renders in the user's locale without
+// changing the stored English action prose that the DM engine parses.
+function translatePlayerAction(t: T, locale: "en" | "fr", raw: string): string {
+  if (locale === "en") return raw;
+  const trimmed = raw.trim();
+  if (trimmed === "I end my turn.") return t("I end my turn.");
+  if (trimmed === "I stand up.") return t("I stand up.");
+  if (trimmed === "I dismount.") return t("I dismount.");
+  if (trimmed === "I take the Search action.") return t("I take the Search action.");
+  if (trimmed === "I try to escape the grapple.") return t("I try to escape the grapple.");
+  let m = /^I attack (.+?) with (an unarmed strike|my .+?)( as a bonus action \(([^)]+)\))?\.(.*)$/.exec(trimmed);
+  if (m) {
+    const who = m[1] === "the nearest enemy" ? t("the nearest enemy") : m[1] === "myself" ? t("myself") : m[1];
+    const weapon = m[2] === "an unarmed strike" ? t("an unarmed strike") : contentName("items", m[2].slice(3), locale);
+    const lead = m[4]
+      ? t("I attack {who} with {weapon} as a bonus action ({feature}).", { who, weapon, feature: t(m[4]) })
+      : t("I attack {who} with {weapon}.", { who, weapon });
+    const tail = m[5] ? translateActionTail(t, locale, m[5]) : "";
+    return `${lead}${tail}`;
+  }
+  m = /^I make my off-hand attack(?: against (.+?))? with (an unarmed strike|my .+?) as a bonus action\.(.*)$/.exec(trimmed);
+  if (m) {
+    const weapon = m[2] === "an unarmed strike" ? t("an unarmed strike") : contentName("items", m[2].slice(3), locale);
+    const lead = m[1]
+      ? t("I make my off-hand attack against {who} with {weapon} as a bonus action.", { who: m[1], weapon })
+      : t("I make my off-hand attack with {weapon} as a bonus action.", { weapon });
+    const tail = m[3] ? translateActionTail(t, locale, m[3]) : "";
+    return `${lead}${tail}`;
+  }
+  m = /^I (draw|stow|drop|strap on|take off) my (.+)\.$/.exec(trimmed);
+  if (m) {
+    const item = contentName("items", m[2], locale);
+    if (m[1] === "draw") return t("I draw my {item}.", { item });
+    if (m[1] === "stow") return t("I stow my {item}.", { item });
+    if (m[1] === "drop") return t("I drop my {item}.", { item });
+    if (m[1] === "strap on") return t("I strap on my {item}.", { item });
+    return t("I take off my {item}.", { item });
+  }
+  m = /^I pick up the (.+)\.$/.exec(trimmed);
+  if (m) return t("I pick up the {item}.", { item: contentName("items", m[1], locale) });
+  m = /^I (Dash|Disengage|Hide|take the Dodge action)( as a bonus action \(([^)]+)\))?( and step away)?\.$/.exec(trimmed);
+  if (m) {
+    const bonus = m[3] ? ` ${t("as a bonus action ({route})", { route: t(m[3]) })}` : "";
+    if (m[1] === "Dash") return t("I Dash{bonus}.", { bonus });
+    if (m[1] === "Disengage") return t("I Disengage{bonus} and step away.", { bonus });
+    if (m[1] === "Hide") return t("I Hide{bonus}.", { bonus });
+    return t("I take the Dodge action{bonus}.", { bonus });
+  }
+  m = /^I try to (grapple|shove|stabilize) (.+)\.$/.exec(trimmed);
+  if (m) {
+    const who = m[2] === "the nearest enemy" ? t("the nearest enemy") : m[2] === "my dying ally" ? t("my dying ally") : m[2];
+    if (m[1] === "grapple") return t("I try to grapple {who}.", { who });
+    if (m[1] === "shove") return t("I shove {who}.", { who });
+    return t("I try to stabilize {who}.", { who });
+  }
+  m = /^I take the Help action for (.+)\.$/.exec(trimmed);
+  if (m) return t("I take the Help action for {who}.", { who: m[1] === "my ally" ? t("my ally") : m[1] });
+  m = /^I shake (.+) awake\.$/.exec(trimmed);
+  if (m) return t("I shake {who} awake.", { who: m[1] === "my ally" ? t("my ally") : m[1] });
+  return raw;
+}
+
+function translateActionTail(t: T, locale: "en" | "fr", tail: string): string {
+  const CLAUSES = [
+    "I attack recklessly.",
+    "If it hits, I use Stunning Strike.",
+    "I strike to knock them out, not to kill.",
+    "I spend my Inspiration on it.",
+    "If it misses, I use Stroke of Luck.",
+    "If it hits, I use Hurl Through Hell.",
+    "I trade its advantage for Rapid Strike.",
+    "If it hits, Open Hand Technique knocks them prone.",
+    "If it hits, Open Hand Technique pushes them away.",
+    "If it hits, Open Hand Technique takes their reactions.",
+    "If it hits, I use Divine Smite.",
+  ];
+  let out = tail;
+  for (const clause of CLAUSES) {
+    out = out.replace(clause, t(clause));
+  }
+  out = out.replace(/If it hits, I use Divine Smite with a level (\d+) slot\./g, (_, lvl) =>
+    t("If it hits, I use Divine Smite with a level {level} slot.", { level: lvl }),
+  );
+  out = out.replace(/I use (.+?) on this attack\./g, (_, rider) =>
+    t("I use {rider} on this attack.", { rider: contentName("features", rider, locale) }),
+  );
+  return out;
+}
+
 export function SystemMessage({ content, glyph }: { content: string; glyph?: SystemGlyph }) {
   const t = useT();
   if (content.startsWith(LEAD_NOTE_PREFIX)) {
@@ -326,6 +417,7 @@ export function PlayerMessage({
   // A message without a character to its name still has its actions and its
   // speaker line: "Player" is the stand-in, read in the interface's language.
   const t = useT();
+  const locale = useLocale();
   const fallbackName = t("Player");
   const sheet: TranscriptSheet | undefined = message.characterId
     ? sheetsById.get(message.characterId)
@@ -359,6 +451,7 @@ export function PlayerMessage({
   // eslint-disable-next-line @next/next/no-img-element
   const face = portraitUrl ? <img src={variantUrl(portraitUrl, 256)} alt="" onError={onFaceError} /> : null;
   const ooc = message.content.startsWith("(ooc)");
+  const body = ooc ? message.content : translatePlayerAction(t, locale, message.content);
   // The portrait as tall as the name and bubble beside it (useFaceSize).
   const [faceStyle, textColumn] = useFaceSize<HTMLDivElement>();
   return (
@@ -384,7 +477,7 @@ export function PlayerMessage({
           <span className="session-speaker truncate">{sheet?.name ?? fallbackName}</span>
         </p>
         <div className={cn("session-bubble", ooc && "session-bubble-ooc")}>
-          <p className="whitespace-pre-wrap text-pretty">{message.content}</p>
+          <p className="whitespace-pre-wrap text-pretty">{body}</p>
         </div>
         {message.cardReturned ? <CardReturnedNote message={message} mine={mine} name={sheet?.name ?? t("the player")} /> : null}
       </div>
