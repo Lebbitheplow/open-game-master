@@ -49,11 +49,14 @@ export const APPEARANCE_THEMES = [
   },
   {
     id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church",
-    genres: ["dark_fantasy", "horror"],
+    // Its own pinnacle piece (tracery-garnet-pinnacle-v1) waits for a repaint:
+    // mirrored into the lower corners, its spires and windows hung upside
+    // down, so it keeps the frame's corner until one reads the same both ways.
+    genres: ["dark_fantasy", "horror"], cornerScale: 4,
     art: {
       texture: "/assets/themes/gothic/cathedral-slate-v1.webp",
       frame: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
-      corner: "/assets/themes/gothic/tracery-garnet-pinnacle-v1.webp",
+      corner: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
       backdrop: "/assets/themes/gothic/moonlit-cloister-v1.webp",
     },
   },
