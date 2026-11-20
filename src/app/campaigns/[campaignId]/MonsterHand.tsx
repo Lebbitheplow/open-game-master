@@ -74,7 +74,7 @@ function MonsterHandInner({
     const living = encounter.enemies.filter((enemy) => enemy.status === "alive" && enemy.actions);
     const byId = new Map(living.map((enemy) => [enemy.id, enemy]));
     const first = due.flatMap((entry) => (byId.has(entry.id) ? [byId.get(entry.id)!] : []));
-    return [...first, ...living.filter((enemy) => !dueIds.has(enemy.id))];
+    return [...first, ...living.filter((enemy) => !dueIds.has(entry.id))];
   }, [encounter.enemies, due, dueIds]);
 
   const [enemyId, setEnemyId] = useState<string | null>(null);
@@ -105,7 +105,7 @@ function MonsterHandInner({
         .map((sheet) => ({ id: sheet.id, name: sheet.name, kind: "enemy" as const, ac: effectiveAcFor(sheet), conditions: sheet.conditions, note: `${t("{hp}/{max} hp", { hp: sheet.currentHp, max: effectiveMaxHp(sheet) })}${t(" · AC {ac}", { ac: effectiveAcFor(sheet) })}` })),
       ...encounter.enemies
         .filter((enemy) => enemy.status === "alive" && (offSide(encounter, enemy.id, "enemy") ?? "foe") !== mySide)
-        .map((enemy) => ({ id: enemy.id, name: enemy.name, kind: "enemy" as const, ac: enemy.ac, conditions: enemy.conditions, row: true, note: `${enemy.currentHp !== undefined ? t("{hp}/{max} hp", { hp: enemy.currentHp, max: enemy.maxHp ?? 0 }) : enemy.health}${enemy.ac !== undefined ? t(" · AC {ac}", { ac: enemy.ac }) : ""}` })),
+        .map((enemy) => ({ id: enemy.id, name: enemy.name, kind: "enemy" as const, ac: enemy.ac, conditions: enemy.conditions, row: true, note: `${enemy.currentHp !== undefined ? t("{hp}/{max} hp", { hp: enemy.currentHp, max: enemy.maxHp ?? 0 }) : t(enemy.health)}${enemy.ac !== undefined ? t(" · AC {ac}", { ac: enemy.ac }) : ""}` })),
     ],
     [t, sheets, encounter, mySide],
   );
@@ -115,12 +115,12 @@ function MonsterHandInner({
     () => [
       ...encounter.enemies
         .filter((enemy) => enemy.status === "alive" && (offSide(encounter, enemy.id, "enemy") ?? "foe") === mySide)
-        .map((enemy) => ({ id: enemy.id, name: enemy.name, kind: "enemy" as const, ac: enemy.ac, conditions: enemy.conditions, row: true, note: `${enemy.currentHp !== undefined ? `${enemy.currentHp}/${enemy.maxHp} hp` : enemy.health}${enemy.ac !== undefined ? ` · AC ${enemy.ac}` : ""}` })),
+        .map((enemy) => ({ id: enemy.id, name: enemy.name, kind: "enemy" as const, ac: enemy.ac, conditions: enemy.conditions, row: true, note: `${enemy.currentHp !== undefined ? `${enemy.currentHp}/${enemy.maxHp} hp` : t(enemy.health)}${enemy.ac !== undefined ? ` · AC ${enemy.ac}` : ""}` })),
       ...sheets
         .filter((sheet) => !sheet.deathSaves?.dead && (offSide(encounter, sheet.id, "pc") ?? "party") === mySide)
         .map((sheet) => ({ id: sheet.id, name: sheet.name, kind: "enemy" as const, ac: effectiveAcFor(sheet), conditions: sheet.conditions, note: `${sheet.currentHp}/${effectiveMaxHp(sheet)} hp · AC ${effectiveAcFor(sheet)}` })),
     ],
-    [sheets, encounter, mySide],
+    [t, sheets, encounter, mySide],
   );
 
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -371,7 +371,7 @@ function MonsterHandInner({
                     {shown(enemy.name)}
                   </span>
                   <span className="font-mono text-[10px] leading-tight text-stone-500">
-                    {enemy.currentHp !== undefined ? t("{hp}/{max} hp", { hp: enemy.currentHp, max: enemy.maxHp ?? 0 }) : enemy.health}
+                    {enemy.currentHp !== undefined ? t("{hp}/{max} hp", { hp: enemy.currentHp, max: enemy.maxHp ?? 0 }) : t(enemy.health)}
                     {enemy.ac !== undefined ? t(" · AC {ac}", { ac: enemy.ac }) : ""}
                     {acted ? ` · ${t("acted")}` : ""}
                     {movement ? ` · ${t("{left} ft left", { left: movement.leftFeet })}${movement.dashes ? ` · ${t("Dashed")}` : ""}` : ""}

@@ -344,10 +344,11 @@ function HealthWordChip({ word }: { word: HealthWord }) {
 export function ConditionChip({ label, rounds, note }: { label: string; rounds?: number; note?: string }) {
   const t = useT();
   const tp = useTp();
+  const locale = useLocale();
   return (
     <span className="fx-pop inline-flex max-w-full items-center gap-1 rounded-full border border-amber-900/60 bg-amber-950/30 py-px pl-px pr-1.5 text-[10px] text-amber-300">
       <GameIcon icon={{ kind: "condition", key: conditionIconKey(label) }} size="size-4" />
-      <span className="capitalize">{label}</span>
+      <span className="capitalize">{contentName("conditions", label, locale)}</span>
       {rounds ? ` ${tp("({count} rd)", "({count} rd)", { count: rounds })}` : ""}
       {/* What the engine's metadata says: until whose turn, the save that
           ends it, who laid it (src/lib/battlemap/condition-notes.ts). */}
@@ -385,6 +386,7 @@ function EdgeChips({ edge }: { edge: TargetEdge }) {
 function ConditionRow({ id, label, rounds, note }: { id: string; label: string; rounds?: number; note?: string }) {
   const t = useT();
   const tp = useTp();
+  const locale = useLocale();
   const rule = conditionRule(id, t);
   return (
     <li className="fx-pop flex items-start gap-2 text-left">
@@ -397,7 +399,7 @@ function ConditionRow({ id, label, rounds, note }: { id: string; label: string; 
           (globals.css). */}
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] font-semibold text-[#ecd287]">
-          <span className="capitalize">{label}</span>
+          <span className="capitalize">{contentName("conditions", label, locale)}</span>
           {rounds ? <span className="font-normal text-[rgba(244,224,166,0.8)]">{` ${tp("({count} rd)", "({count} rd)", { count: rounds })}`}</span> : null}
         </span>
         {rule ? <span className="block text-[10px] leading-snug text-[#d8d3ea]">{rule}</span> : null}
@@ -620,7 +622,7 @@ export function TokenPlate({
           {rest.length ? (
             <p className="text-[10px] leading-snug text-[#aeaac6]" data-plate-more>
               <span className="font-semibold text-[#ecd287]">{t("+{count} more: ", { count: rest.length })}</span>
-              <span className="capitalize">{rest.map((condition) => condition.label).join(", ")}</span>
+              <span className="capitalize">{rest.map((condition) => contentName("conditions", condition.label, locale)).join(", ")}</span>
             </p>
           ) : null}
         </div>

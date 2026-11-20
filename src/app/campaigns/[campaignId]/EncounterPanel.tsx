@@ -271,7 +271,7 @@ export function EncounterPanel({
                   )}
                   title={
                     enemy.knockedOut
-                      ? "Alive at 0 hit points after a blow meant to knock it out: out of the fight, not dying."
+                      ? t("Alive at 0 hit points after a blow meant to knock it out: out of the fight, not dying.")
                       : enemy.regenerating
                         ? regeneratingNote(t, enemy.regenerating.stopped)
                         : undefined
@@ -280,14 +280,14 @@ export function EncounterPanel({
                   {/* A nonlethal blow leaves it alive at 0 (src/lib/dm/knockout.ts);
                       a troll lies at 0 until its turn (src/lib/dm/regeneration.ts). */}
                   {enemy.status === "fled"
-                    ? "fled"
+                    ? t("fled")
                     : enemy.knockedOut
-                      ? "knocked out"
+                      ? t("knocked out", { context: "table.hand.target.knockedOut" })
                       : enemy.regenerating
                         ? enemy.regenerating.stopped
-                          ? "down, burning"
-                          : "down, regenerating"
-                        : enemy.health}
+                          ? t("down, burning")
+                          : t("down, regenerating")
+                        : t(enemy.health)}
                 </span>
                 {enemy.regenerating ? (
                   <span
@@ -300,7 +300,7 @@ export function EncounterPanel({
                         : "border-emerald-700/50 bg-emerald-950/30 text-emerald-200",
                     )}
                   >
-                    {enemy.regenerating.stopped ? "dies at its turn" : "regenerates at its turn"}
+                    {enemy.regenerating.stopped ? t("dies at its turn") : t("regenerates at its turn")}
                   </span>
                 ) : null}
                 {/* DM only: publicEncounter attaches these for the seat that
