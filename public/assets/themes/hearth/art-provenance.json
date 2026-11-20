@@ -3,7 +3,7 @@
   "date": "2026-11-14",
   "rights": "Original generated artwork for this project; no third-party reference images or named settings used.",
   "encoding": "Frame: lossless WebP preserving original alpha. Texture/backdrop: WebP quality 88. Original PNGs retained in the generating Codex chat.",
-  "corner": "Frame reused at cornerScale 4: top-left 25% along each axis, rotated by shared renderer. Default frameSlice 22%.",
+  "corner": "Separate corner painting, drawn at the shared corner size and mirrored to the other three corners by the shared renderer. It replaced the frame's top-left quadrant (cornerScale 4) on 2026-11-19.",
   "assets": [
     {
       "source": "exec-5afa7677-c76e-414c-a673-ced1b69a3ab3.png",
@@ -22,6 +22,18 @@
       "file": "fireside-haven-v1.webp",
       "transparent": false,
       "prompt": "Use case: stylized-concept. Asset type: wide opaque scenery banner for original Hearth & Haven fantasy game UI, landscape 1536x1024. A welcoming unoccupied artisan tavern common room: crafted honey oak beams, handsome carved wooden wall panels, an inviting low broad brick hearth glowing amber at right of center, warm brass wall lamps, long well-made oak tables and simple chairs, quiet parchment-colored plaster and a tiny leaded window admitting soft daylight on the left. Fireplace and joinery remain recognizable within a shallow horizontal crop through the middle. Eye-level wide composition with a clear calm center, no people, no words, no logos, no UI, no foliage, no forest canopy, no green baize, no gothic cathedral architecture. Rich hand-painted storybook realism, tactile timber and gentle lamplight, warm brown and amber palette, balanced light and shadow so usable under both day and night interface washes. Entire image opaque."
+    },
+    {
+      "file": "oak-brass-strap-hinge-v1.webp",
+      "transparent": true,
+      "generator": "OpenAI built-in image_gen, through codex exec (codex-cli 0.158.0), 2026-11-19",
+      "encoding": "Painted on flat magenta #FF00FF, keyed to alpha and despilled with sharp, WebP quality 92 with lossless alpha, 1024 square. Source PNG is not in the repository.",
+      "reference": [
+        "public/assets/themes/hearth/carved-oak-frame-v1.webp (material and palette)",
+        "public/assets/themes/woodland/root-silver-joint-v1.webp (layout only)"
+      ],
+      "edits": "Magenta background keyed to alpha and despilled. Then three edits with sharp to sit with the frame's oak: saturation scaled to 0.78 and brightness to 0.97; the square end of the oak strip under each strap rounded into the strap over the strip's last 9 percent, with a shaded rim; and hues below 30 degrees shifted up to 4 degrees toward the rail's oak, leaving the brass unchanged.",
+      "prompt": "Use case: stylized-concept. One production fantasy game interface corner fitting, square image, front-facing orthographic. The whole background is perfectly flat pure magenta #FF00FF with no shading, no gradient and no cast shadows (it will be keyed out to transparency). A TOP LEFT corner bracket in the style of the brass hardware on a well-loved tavern chest. At the corner, a generous square block of warm polished honey oak with a carved eight-petal rosette, capped by a thick hand-hammered amber-brass corner plate with softly scalloped edges and four large domed brass pins. From the plate, two hammered brass strap-hinge arms run along the TOP edge and the LEFT edge only, each laid over a narrow strip of the same honey oak with a carved bead-and-reel edge. Each brass strap narrows gently along its length, is fastened by three smaller domed pins, and ends in a decorative spade-shaped (fleur) finial, like a blacksmith-made strap hinge. Welcoming artisan craftsmanship, visible hammer dimples, warm lamplight highlights on the brass, fine oak grain. Rich hand-painted realistic strategy-game UI art, sculpted volume, restrained highlights. IMPORTANT composition: the corner block and plate occupy the top-left 38 percent square. The top arm stays within the top 13 percent of the image and the left arm within the left 13 percent. Both arms end with their finial before the right edge and the bottom edge, leaving a small magenta margin. The entire lower-right 60 percent square must be completely flat magenta and EMPTY for interface content. Inner corner squared, nothing protruding toward the centre. No right or bottom border. Do not use magenta, pink or purple anywhere in the fitting itself. No leaves, no ivy, no stone, no scenery, no text, no letters, no frame around the entire image, no shadow on the background. This is a practical small detailed corner asset, not an illustration of a room."
     }
   ]
 }
