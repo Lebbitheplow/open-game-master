@@ -298,5 +298,18 @@ await test("A fight that begins with a rider already on an independent mount giv
   assert.equal(ownToken(world, steed.id), null, "the fight's board gave the ridden mount a token of its own");
 });
 
+// The guard on a forced move (issue 17) read the token's owner, and the
+// pair's token is the rider's: on the mount's own turn a "push" by its name
+// carried the pair past its speed, with nothing to say it was not a push.
+await test("On an independent mount's own turn, a forced move by its name is refused as walking it: its move is the walk at its speed.", async () => {
+  const { world, paladin, steed, ai } = await riding();
+  nextTurn(world);
+  assert.equal(world.encounter().order[world.encounter().turnIndex].characterId, steed.id, "setup: the pointer is not on the steed");
+  const pushed = await ai.invoke("move_token", { token: steed.name, x: 23, y: 3, forced: true });
+  assert.equal(pushed.ok, false, "a forced move on the mount's own turn carried the pair 100 feet of its 60");
+  assert.match(pushed.error, new RegExp(`${steed.name}'s own turn`));
+  assert.deepEqual(at(world, paladin.id), [3, 3]);
+});
+
 closeTables();
 finish();

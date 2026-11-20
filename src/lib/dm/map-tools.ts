@@ -546,12 +546,14 @@ function resolveMoveTarget(
   ref: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
-): { token: BattleToken; kind: "pc" | "enemy"; enemy?: EncounterEnemy } | null {
+): { token: BattleToken; kind: "pc" | "enemy"; enemy?: EncounterEnemy; sheet?: CharacterSheet } | null {
   const trimmed = boardTokenById(map, ref.trim())?.refId ?? ref.trim();
   const sheet = resolveSheetRef(trimmed, sheets, sheetsById);
   if (sheet) {
+    // An independent mount stands on its rider's token (db/battle-maps.ts
+    // getTokenByRef), so the creature asked for is kept beside it.
     const token = getTokenByRef(map.id, sheet.id);
-    return token ? { token, kind: "pc" } : null;
+    return token ? { token, kind: "pc", sheet } : null;
   }
   const enemies = listEnemies(encounterId);
   // By its whole name only, as resolveAnyToken reads it: "A" (gpt-oss-20b
@@ -675,10 +677,14 @@ export function handleMoveToken(
   // goblins' pass before a hero is theirs though the pointer already rests
   // on the hero (held-turn.ts ownTurnOf): a goblin's shove of Brom then was
   // refused as Brom walking himself.
+  // An independent mount's token is its rider's: on the mount's own turn a
+  // forced move by its name carried the pair past its speed, as the token's
+  // owner (the rider) was the one whose turn was asked about.
   if (resolved.kind === "pc" && args.forced && encounter.orderReady) {
-    if (ownTurnOf(encounter, resolved.token.refId)) {
+    const own = [resolved.sheet, { id: resolved.token.refId, name: resolved.token.name }].find((who) => who && ownTurnOf(encounter, who.id));
+    if (own) {
       return {
-        error: `It is ${resolved.token.name}'s own turn; they move their own token from the board (a companion walks with move_token and no forced). Forced movement is for a push, drag or carry on someone else's turn.`,
+        error: `It is ${own.name}'s own turn; they move their own token from the board (a companion walks with move_token and no forced). Forced movement is for a push, drag or carry on someone else's turn.`,
         retry: true,
       };
     }
