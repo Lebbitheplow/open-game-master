@@ -111,20 +111,29 @@ try {
   }
   await run('Registered themes replace or clear shared artwork', async () => {
     await dimensions(1360,900,'dark',1);
-    for (const id of APPEARANCE_THEME_IDS) {
-      await evaluate(`localStorage.setItem('odm.appearance',${JSON.stringify(id)});window.dispatchEvent(new StorageEvent('storage',{key:'odm.appearance'}))`);
-      await waitFor(`document.documentElement.dataset.appearance===${JSON.stringify(id)}`);
-      for (const [key,value] of Object.entries(themeArtStyle(id))) {
-        assert.equal(await evaluate(`getComputedStyle(document.documentElement).getPropertyValue(${JSON.stringify(key)}).trim()`),value);
+    // The checks after this one run in the theme under test, so a failure
+    // here must not leave the page in another theme.
+    try {
+      for (const id of APPEARANCE_THEME_IDS) {
+        await evaluate(`localStorage.setItem('odm.appearance',${JSON.stringify(id)});window.dispatchEvent(new StorageEvent('storage',{key:'odm.appearance'}))`);
+        await waitFor(`document.documentElement.dataset.appearance===${JSON.stringify(id)}`);
+        for (const [key,value] of Object.entries(themeArtStyle(id))) {
+          // An empty value clears the inline one a cropped corner wrote, so
+          // the theme's own stylesheet (Forge's phone corner) or the shared
+          // default applies: the inline style is what must be empty.
+          const read = value === '' ? `document.documentElement.style.getPropertyValue(${JSON.stringify(key)})` : `getComputedStyle(document.documentElement).getPropertyValue(${JSON.stringify(key)}).trim()`;
+          assert.equal(await evaluate(read),value,`${id}: ${key}`);
+        }
+        const corner=await evaluate(`getComputedStyle(document.querySelector('.theme-ornaments[data-surface="table"]>span')).backgroundImage`);
+        assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'),`${id}: artwork does not widen the page`);
+        const expected=themeArtStyle(id)['--theme-art-corner'];
+        if(expected==='none') assert.equal(corner,'none');
+        else assert.ok(corner.includes(expected.slice(5,-2)), 'Corner art reaches the shared renderer');
       }
-      const corner=await evaluate(`getComputedStyle(document.querySelector('.theme-ornaments[data-surface="table"]>span')).backgroundImage`);
-      assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'),`${id}: artwork does not widen the page`);
-      const expected=themeArtStyle(id)['--theme-art-corner'];
-      if(expected==='none') assert.equal(corner,'none');
-      else assert.ok(corner.includes(expected.slice(5,-2)), 'Corner art reaches the shared renderer');
+    } finally {
+      await evaluate(`localStorage.removeItem('odm.appearance');window.dispatchEvent(new StorageEvent('storage',{key:'odm.appearance'}))`);
+      await waitFor(`document.documentElement.dataset.appearance===${JSON.stringify(theme)}`);
     }
-    await evaluate(`localStorage.removeItem('odm.appearance');window.dispatchEvent(new StorageEvent('storage',{key:'odm.appearance'}))`);
-    await waitFor(`document.documentElement.dataset.appearance===${JSON.stringify(theme)}`);
     await send('Emulation.setEmulatedMedia',{features:[{name:'forced-colors',value:'active'}]});
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('.theme-ornaments')).display`),'none');
     await send('Emulation.setEmulatedMedia',{features:[]});
