@@ -10,12 +10,17 @@ import { isPrivateBackendHost } from "@/lib/backend-host";
 import { paidAiAllowedNow, paidAiRefusalResponse } from "@/lib/shared-host";
 import { recordUsage } from "@/lib/usage/ledger";
 import { enterUsageScope } from "@/lib/usage/scope";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const TIMEOUT_MS = 120_000;
+
+// The clip's form fields (use-dictation.ts). A field the browser left out
+// reads as null from FormData, and as missing here.
+const clipSchema = z.object({ audio: z.instanceof(File), campaignId: z.string().optional() });
 
 // Speech to text for push-to-talk and dictation. Whichever engine this
 // server has answers (src/lib/stt-logic.ts): the local faster-whisper
@@ -29,17 +34,17 @@ export async function POST(request: Request) {
   }
 
   const form = await request.formData().catch(() => null);
-  const audio = form?.get("audio");
-  if (!(audio instanceof File)) {
+  const parsed = clipSchema.safeParse({ audio: form?.get("audio"), campaignId: form?.get("campaignId") ?? undefined });
+  if (!parsed.success) {
     return Response.json({ error: "Send audio as multipart field 'audio'." }, { status: 400 });
   }
+  const { audio, campaignId } = parsed.data;
   if (audio.size > MAX_AUDIO_BYTES) {
     return Response.json({ error: "Recording too long." }, { status: 413 });
   }
 
   // The campaign the clip was recorded at, honoured only for a member: its
   // table's language is what Whisper listens for, and OpenAI bills to it.
-  const campaignId = form?.get("campaignId");
   const campaign = typeof campaignId === "string" && campaignId && isCampaignMember(campaignId, user.id) ? getCampaignById(campaignId) : null;
   const language = campaign ? whisperLanguageCode(campaign.gameSettings.tableLanguage) : null;
 

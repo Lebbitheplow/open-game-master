@@ -4,9 +4,12 @@ import { createEntryForRecord, getWorldDoc } from "@/lib/db/world-forge";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
 import { BINDING_KINDS, isPlaceBinding, type BindingKind } from "@/lib/worldforge/model";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const bindingSchema = z.object({ kind: z.string().optional(), ref: z.string().optional() });
 
 // The World entries that link to one playable record (audit finding WF-17),
 // for the record's own tool: the way back to each entry, and the names to
@@ -36,7 +39,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { kind?: unknown; ref?: unknown };
+  const parsed = bindingSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name a kind and a record." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const kind = raw.kind as BindingKind;
   const ref = typeof raw.ref === "string" ? raw.ref.trim().slice(0, 120) : "";
   // A battle map or an encounter is a place's, given from the place.

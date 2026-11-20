@@ -5,9 +5,18 @@ import { partyAtlasChanged } from "@/lib/db/party-atlas";
 import { patchWorldDoc, worldAnswerFor, worldCounts } from "@/lib/db/world-forge";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// The slices pass through as sent: patchWorldDoc reads each through its
+// floor (readSlice), and a second copy of those readers here would drift.
+// The row operations and a folder move are what it reads by hand.
+const worldPatchSchema = z.looseObject({
+  ops: z.record(z.string(), z.unknown()).optional(),
+  moveFolder: z.object({ from: z.string().optional(), to: z.string().optional() }).nullable().optional(),
+});
 
 // The workshop's WorldForge (src/lib/worldforge/model.ts): its document and
 // the records it describes (each entry's WorldForge data once, on its
@@ -40,11 +49,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = await request.json().catch(() => null);
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+  const parsed = worldPatchSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return Response.json({ error: "Expected the slices to change." }, { status: 400 });
   }
-  const { conflicts, before, doc } = patchWorldDoc(campaignId, raw as Record<string, unknown>);
+  const { conflicts, before, doc } = patchWorldDoc(campaignId, parsed.data);
   const region = followPins(campaignId, before, doc);
   partyAtlasChanged(campaignId, before);
   publishEphemeral(campaignId, "world_updated", { at: Date.now() });

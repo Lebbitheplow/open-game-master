@@ -5,9 +5,17 @@ import { publishEphemeral } from "@/lib/events";
 import { partyAtlasChanged } from "@/lib/db/party-atlas";
 import { getWorldDoc } from "@/lib/db/world-forge";
 import { recordsChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const deleteSchema = z.object({
+  target: z
+    .object({ kind: z.string().optional(), mapId: z.string().optional(), pinId: z.string().optional(), regionId: z.string().optional() })
+    .optional(),
+  apply: z.boolean().optional(),
+});
 
 // Deleting a map, a pin or a region from the Atlas (audit finding WF-20,
 // src/lib/db/atlas-edit.ts). { target, apply?: boolean }, where target is
@@ -22,7 +30,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { target?: unknown; apply?: unknown };
+  const parsed = deleteSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the map, pin or region." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const target = readTarget(raw.target);
   if (!target) {
     return Response.json({ error: "Name the map, pin or region." }, { status: 400 });

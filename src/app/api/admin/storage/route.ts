@@ -7,9 +7,12 @@ import {
   scanOrphanFiles,
   storageStats,
 } from "@/lib/ops/retention";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const storageSchema = z.object({ action: z.enum(["tidy", "compact", "remove-orphans"]) });
 
 // What the database and the media folders weigh, what the daily tidy last
 // did, and the stored files no row names (src/lib/ops/retention.ts).
@@ -40,17 +43,21 @@ export async function POST(request: Request) {
   if (isErrorResponse(admin)) {
     return admin;
   }
-  const body = (await request.json().catch(() => ({}))) as { action?: unknown };
+  const parsed = storageSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Unknown action." }, { status: 400 });
+  }
+  const { action } = parsed.data;
   try {
-    if (body?.action === "tidy") {
+    if (action === "tidy") {
       const report = await runRetention();
       return Response.json({ report, stats: await storageStats() });
     }
-    if (body?.action === "compact") {
+    if (action === "compact") {
       const compacted = await compactDatabase();
       return Response.json({ compacted, stats: await storageStats() });
     }
-    if (body?.action === "remove-orphans") {
+    if (action === "remove-orphans") {
       const removed = await removeOrphanFiles();
       return Response.json({ removed, orphans: summary(await scanOrphanFiles()) });
     }

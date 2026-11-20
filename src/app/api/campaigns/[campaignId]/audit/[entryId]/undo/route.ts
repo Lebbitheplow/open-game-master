@@ -4,9 +4,12 @@ import { campaignSeats } from "@/lib/db/campaigns";
 import { getAuditEntry } from "@/lib/db/sheet-audit";
 import { sheetForViewer } from "@/lib/dm/sheet-view";
 import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const undoSchema = z.object({ confirm: z.boolean().optional() });
 
 // Party lead undoes one audited sheet change. If newer changes touched the
 // same fields, respond 409 with warnings first; the client retries with
@@ -32,8 +35,11 @@ export async function POST(
     return Response.json({ error: "That change predates undo support." }, { status: 400 });
   }
 
-  const raw = await request.json().catch(() => ({}));
-  const confirm = raw?.confirm === true;
+  const parsed = undoSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Send confirm as true or false." }, { status: 400 });
+  }
+  const confirm = parsed.data.confirm === true;
   const warnings = undoConflictWarnings(entry);
   if (warnings.length && !confirm) {
     return Response.json({ warnings }, { status: 409 });

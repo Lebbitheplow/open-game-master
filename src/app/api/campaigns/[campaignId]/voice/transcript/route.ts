@@ -8,6 +8,7 @@ import { publishEphemeral } from "@/lib/events";
 import { sttAvailable, transcribeAudio } from "@/lib/stt";
 import { whisperLanguageCode } from "@/lib/stt-logic";
 import { labelLines, MIN_RING_SECONDS } from "@/lib/voice/transcript";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,14 @@ export const dynamic = "force-dynamic";
 // The server knows who is speaking because it is their session; the label
 // is their character's name when they have one.
 const MAX_RING_BYTES = 6 * 1024 * 1024;
+
+// The ring's form fields (transcript-capture.ts). A field the browser left
+// out reads as null from FormData, and as missing here.
+const ringSchema = z.object({
+  audio: z.instanceof(Blob),
+  seconds: z.string().optional(),
+  startedAt: z.string().optional(),
+});
 
 export async function POST(request: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
@@ -36,18 +45,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
     return Response.json({ error: "This server has no transcription service configured." }, { status: 503 });
   }
   const form = await request.formData().catch(() => null);
-  const audio = form?.get("audio");
-  if (!(audio instanceof Blob) || audio.size === 0) {
+  const parsed = ringSchema.safeParse({
+    audio: form?.get("audio"),
+    seconds: form?.get("seconds") ?? undefined,
+    startedAt: form?.get("startedAt") ?? undefined,
+  });
+  if (!parsed.success || parsed.data.audio.size === 0) {
     return Response.json({ error: "No audio in the ring." }, { status: 400 });
   }
+  const { audio } = parsed.data;
   if (audio.size > MAX_RING_BYTES) {
     return Response.json({ error: "That ring is too large." }, { status: 413 });
   }
-  const seconds = Number(form?.get("seconds") ?? 0);
+  const seconds = Number(parsed.data.seconds ?? 0);
   if (seconds < MIN_RING_SECONDS) {
     return Response.json({ lines: 0 });
   }
-  const startedAt = String(form?.get("startedAt") ?? new Date().toISOString());
+  const startedAt = parsed.data.startedAt ?? new Date().toISOString();
   const transcribed = await transcribeAudio(
     audio,
     audio.type.includes("ogg") ? "ring.ogg" : "ring.webm",
