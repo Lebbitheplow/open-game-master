@@ -10,6 +10,7 @@
 // creatures' spaces), then the next from there, until the speed runs out.
 // Pure: the board in, the order and the square the walk ends on out.
 
+import { footprintDistance, type Footprint } from "@/lib/battlemap/footprint";
 import { reachableTiles } from "@/lib/battlemap/movement";
 import type { MoveTraits, XY } from "@/lib/battlemap/types";
 
@@ -20,6 +21,9 @@ export type WalkBoard = {
   occupied: Set<number>;
   flying: boolean;
   traits: MoveTraits;
+  // The walker's space when it is more than a square: a rider's is the
+  // mount's (issue 1055). Absent, one square.
+  footprint?: Footprint;
 };
 
 export type WalkTarget = { id: string; tiles: XY[] };
@@ -30,12 +34,12 @@ export function healWalk(board: WalkBoard, from: XY, budget: number, targets: Wa
   let at = from;
   let left = Math.max(0, budget);
   while (remaining.length) {
-    const costs = reachableTiles(board.terrain, board.width, board.height, board.occupied, at, left, 1, board.flying, board.traits);
+    const costs = reachableTiles(board.terrain, board.width, board.height, board.occupied, at, left, board.footprint ?? 1, board.flying, board.traits);
     let pick: { target: WalkTarget; cost: number; at: XY } | null = null;
     for (const [index, cost] of costs) {
       const spot = { x: index % board.width, y: Math.floor(index / board.width) };
       for (const target of remaining) {
-        const beside = target.tiles.some((tile) => Math.max(Math.abs(tile.x - spot.x), Math.abs(tile.y - spot.y)) <= 1);
+        const beside = target.tiles.some((tile) => footprintDistance(spot, board.footprint ?? 1, tile, 1) <= 1);
         if (beside && (!pick || cost < pick.cost)) {
           pick = { target, cost, at: spot };
         }

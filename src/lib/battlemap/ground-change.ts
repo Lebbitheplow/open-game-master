@@ -30,7 +30,7 @@ export type GroundPlan =
 // The nearest anchor where a creature of this footprint stands on open
 // ground that nobody else holds: nearestOpenTile's ring search
 // (paint.ts), for the creature's whole footprint. Null when there is none.
-function nearestStand(ground: string, width: number, height: number, from: XY, footprint: Footprint, taken: Set<number>): XY | null {
+export function nearestStand(ground: string, width: number, height: number, from: XY, footprint: Footprint, taken: Set<number>): XY | null {
   const fits = (x: number, y: number) =>
     inBounds(width, height, x, y) &&
     footprintFits(width, height, { x, y }, footprint) &&

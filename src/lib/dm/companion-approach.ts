@@ -1,8 +1,8 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { footprintForSize } from "@/lib/battlemap/footprint";
-import { chebyshev, inBounds, tileIndex, type BattleToken } from "@/lib/battlemap/types";
+import { footprintDistance, footprintFits, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
+import { chebyshev, type BattleToken } from "@/lib/battlemap/types";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { walkCharacter } from "@/lib/dm/token-rules";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -20,12 +20,17 @@ export function openSquaresBeside(
   size: number,
 ): Array<{ x: number; y: number }> {
   const enemiesById = new Map(listEnemies(encounterId).map((enemy) => [enemy.id, enemy]));
-  const occupied = occupiedTiles(map, listTokens(map.id), mover, footprintLookup(enemiesById));
+  const footprints = footprintLookup(enemiesById);
+  const occupied = occupiedTiles(map, listTokens(map.id), mover, footprints);
+  // The mover's own space: a rider's is the mount's (issue 1055), and every
+  // square of it has to be free and outside the target's, with one of them
+  // touching it. For a mover of one square these are the squares around.
+  const mine = footprints(mover);
   const squares: Array<{ x: number; y: number }> = [];
-  for (let x = target.x - 1; x <= target.x + size; x += 1) {
-    for (let y = target.y - 1; y <= target.y + size; y += 1) {
-      const inside = x >= target.x && x < target.x + size && y >= target.y && y < target.y + size;
-      if (!inside && inBounds(map.width, map.height, x, y) && !occupied.has(tileIndex(map.width, x, y))) {
+  for (let x = target.x - mine; x <= target.x + size; x += 1) {
+    for (let y = target.y - mine; y <= target.y + size; y += 1) {
+      const inside = footprintDistance({ x, y }, mine, target, size as Footprint) === 0;
+      if (!inside && footprintFits(map.width, map.height, { x, y }, mine) && footprintIndexes(map.width, { x, y }, mine).every((index) => !occupied.has(index))) {
         squares.push({ x, y });
       }
     }

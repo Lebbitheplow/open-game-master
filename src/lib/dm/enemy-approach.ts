@@ -393,7 +393,7 @@ export function enemyMoveTraits(width: number, tokens: BattleToken[], mover: Bat
     return undefined;
   };
   const footprintOf = (token: BattleToken) =>
-    token.kind === "enemy" ? footprintForSize(enemies.get(token.refId)?.stats.size) : 1;
+    token.kind === "enemy" ? footprintForSize(enemies.get(token.refId)?.stats.size) : tokenFootprint(token);
   const speed = enemies.get(mover.refId)?.stats.speed;
   // And what the spell areas on the board make of each step (zone-rules.ts).
   return zoneStepsFor({

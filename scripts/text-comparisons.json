@@ -2222,7 +2222,7 @@
     "lib/dm/genre-b-mystery-spends.ts#toUpperCase": [["key",1,"an ability id shown as its three letters (WIS, CHA)"]],
     "lib/dm/genre-b-mystery-wall.ts#str-eq": [["key",1,"token and combatant kinds (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#RegExp i": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/zone-triggers.ts#str-eq": [["key",9,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/zone-triggers.ts#str-eq": [["key",10,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/zone-triggers.ts#toLowerCase": [["key",4,"condition labels (engine vocabulary); a zone's spell name against the engine's held-spell names"]],
     "lib/dm/zone-triggers.ts#toUpperCase": [["display",4,"ability abbreviation shown"]],
     "lib/dm/zone-walls.ts#toUpperCase": [["display",1,"an SRD spell name title-cased"]],

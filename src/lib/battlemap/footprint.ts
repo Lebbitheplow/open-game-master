@@ -20,6 +20,28 @@ export function footprintForSize(size: string | undefined | null): Footprint {
   }
 }
 
+// The squares a character's token fills: one, or their mount's space while
+// they ride, since the pair stands on the rider's token (issue 1055: "A Large
+// horse that fills one square is wrong the same way"). A pony under a
+// halfling is Medium and still one square.
+export function riderFootprint(mount: { size?: string } | null | undefined): Footprint {
+  return footprintForSize(mount?.size);
+}
+
+// The top-left squares a space of this size can have and still cover the
+// square `at`, nearest first: `at` itself, then the ones up and to the left.
+// Where a token that grows (a rider mounting) may come to stand without the
+// creature on it leaving its square.
+export function anchorsCovering(at: XY, footprint: Footprint): XY[] {
+  const anchors: XY[] = [];
+  for (let dy = 0; dy < footprint; dy += 1) {
+    for (let dx = 0; dx < footprint; dx += 1) {
+      anchors.push({ x: at.x - dx, y: at.y - dy });
+    }
+  }
+  return anchors.sort((a, b) => at.x - a.x + (at.y - a.y) - (at.x - b.x + (at.y - b.y)));
+}
+
 // The tiles a creature standing at (x, y) with this footprint occupies. The
 // anchor is the top-left square; a footprint of 1 is the tile itself.
 export function footprintTiles(at: XY, footprint: Footprint): XY[] {
