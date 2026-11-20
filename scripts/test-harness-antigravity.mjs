@@ -29,6 +29,7 @@ const {
   parseAntigravityModels,
   parseAntigravityQuota,
   antigravityToolAllowed,
+  safeConversationId,
 } = await import("../src/lib/harness/adapters/antigravity.ts");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-agy-test-"));
@@ -234,6 +235,17 @@ if (unix) {
       { id: "gemini-pro-orchestrator-neon", label: "Orchestrator (Neon)", efforts: [] },
       { id: "gemini-test", label: "Wrapped Label", efforts: [] },
     ]);
+  });
+
+  await test("a conversation id names agy's folder only when it is a plain id", () => {
+    assert.equal(safeConversationId("8f3c2a1e-77b0-4c1d-9e2f-0a1b2c3d4e5f"), "8f3c2a1e-77b0-4c1d-9e2f-0a1b2c3d4e5f");
+    assert.equal(safeConversationId("../../.ssh"), "", "a path climbing out is refused");
+    assert.equal(safeConversationId("a/b"), "");
+    assert.equal(safeConversationId(""), "");
+  });
+
+  await test("Antigravity is played on a cut tool set, so it is marked as one", () => {
+    assert.equal(antigravityAdapter.reducedTools, true);
   });
 
   await test("parseAntigravityDefaultEfforts and parseAntigravityQuota read non-interactive /effort and /quota JSON", () => {

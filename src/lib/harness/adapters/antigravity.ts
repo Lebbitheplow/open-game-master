@@ -2,14 +2,15 @@
 // with stream-json in and out: one conversation per run, one line per turn
 // on stdin (https://antigravity.google/docs/cli/headless).
 //
-// NOT YET RUN signed in. Built from Antigravity's documentation and from
-// agy 1.5.12 itself, unsigned (its --help, its release notes and the errors
-// it gives before a sign-in), so the admin page marks its lockdown unproven
-// until a Test the table run passes. Unsigned, agy 1.5.12 takes these flags
-// and settings (a malformed --settings fails before the sign-in), and loads
-// the run's agent file: it lists it among its agents, and refuses one whose
-// mcpServers is not a list or whose excludeDefaultComponents is not a
-// boolean. Unknown keys pass silently, so the rest waits on a real turn.
+// Built from Antigravity's documentation and agy 1.5.12 itself, then run
+// signed in by a contributor (PR #1046: Test the table and a test picture);
+// the maintainers have not run it signed in, so the admin page marks its
+// lockdown unproven until a Test the table run passes on that machine.
+//
+// NOT SUPPORTED OR TESTED by Open Game Master: agy loads at most 20,000
+// tokens of tool definitions and drops the largest first, so it cannot hold
+// the full tool set (about 28K) and is played on the compact profile
+// (reducedTools below; src/lib/harness/types.ts says what that changes).
 //
 // Lockdown, "removed": each run brings its own custom agent, a file in the
 // run's empty folder selected with --agent. `excludeDefaultComponents` drops
@@ -19,8 +20,9 @@
 // only one. --settings, for this run alone and never saved, denies commands,
 // file access and web reads, allows only ODM's MCP tools, and starts in the
 // Default mode, where no reviewer approves a command on the admin's behalf.
-// The init event's tool list is checked on every run, and so is every tool
-// step: anything but ODM's tools stops the turn.
+// Signed in, agy lists its built-in tools in the init event before it
+// connects to ODM's server, so that list is reported, not checked; every
+// tool step is checked, and anything but ODM's tools stops the turn.
 
 import { writeFileSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import os from "node:os";
@@ -277,12 +279,18 @@ function imageMimeFromPath(filePath: string, bytes: Buffer): string {
   return "image/jpeg";
 }
 
+// The conversation id names a folder under agy's own, so only a plain id is
+// used: nothing a run prints can point the lookup anywhere else.
+export function safeConversationId(id: string): string {
+  return /^[\w-]{1,128}$/.test(id) ? id : "";
+}
+
 function findGeneratedImage(
   conversationId: string,
   imageName: string,
   env: Record<string, string | undefined>,
 ): { filePath: string; bytes: Buffer; mime: string } | null {
-  if (!conversationId) return null;
+  if (!safeConversationId(conversationId)) return null;
   const home = env.HOME || env.USERPROFILE || os.homedir();
   const dirs = [
     path.join(home, ".gemini", "antigravity-cli", "brain", conversationId),
@@ -331,6 +339,15 @@ function errorKind(message: string): "signed-out" | "limit" | "crash" {
   return "crash";
 }
 
+const QUOTA_EVERY_MS = 5 * 60_000;
+let lastQuotaAt = 0;
+
+function quotaDue(now = Date.now()): boolean {
+  if (now - lastQuotaAt < QUOTA_EVERY_MS) return false;
+  lastQuotaAt = now;
+  return true;
+}
+
 async function start(options: HarnessStartOptions) {
   // A file in the run's own scratch folder, readable only by this user and
   // deleted with the folder, so neither the token nor a campaign's long
@@ -373,7 +390,7 @@ async function start(options: HarnessStartOptions) {
       // "result", "result": {...}}); a flat one is read the same way.
       const kind = textOf(event.event);
       const body = (event[kind] && typeof event[kind] === "object" ? event[kind] : event) as Record<string, unknown>;
-      const cid = textOf(event.conversation_id) || textOf(body.conversation_id);
+      const cid = safeConversationId(textOf(event.conversation_id) || textOf(body.conversation_id));
       if (cid) {
         conversationId = cid;
       }
@@ -450,25 +467,29 @@ async function start(options: HarnessStartOptions) {
       }
     },
   });
-  const quota = spawnProgram(options.binary, ["-p", "/quota", "--output-format", "json"], {
-    cwd: agentsDir,
-    env: { ...options.env, ...ANTIGRAVITY_ENV },
-    onLine: (line) => {
-      if (closed) return;
-      const rate = parseAntigravityQuota(line);
-      if (rate) {
-        options.onEvent({ type: "rate_limit", ...rate });
-      }
-    },
-    onExit: () => undefined,
-  });
+  // The plan's usage, read at most once every QUOTA_EVERY_MS across runs:
+  // a summary or a reader call needs no fresh count of its own.
+  const quota = quotaDue()
+    ? spawnProgram(options.binary, ["-p", "/quota", "--output-format", "json"], {
+        cwd: agentsDir,
+        env: { ...options.env, ...ANTIGRAVITY_ENV },
+        onLine: (line) => {
+          if (closed) return;
+          const rate = parseAntigravityQuota(line);
+          if (rate) {
+            options.onEvent({ type: "rate_limit", ...rate });
+          }
+        },
+        onExit: () => undefined,
+      })
+    : null;
   return {
     send(text: string) {
       program.write(JSON.stringify({ event: "user", message: { content: text } }));
     },
     close() {
       closed = true;
-      quota.kill();
+      quota?.kill();
       program.kill();
     },
   };
@@ -485,6 +506,7 @@ export const antigravityAdapter: HarnessAdapter = {
   signInHint: "agy",
   lockdown: "removed",
   paints: true,
+  reducedTools: true,
   async probe(binary, env) {
     const version = await runProgram(binary, ["--version"], env, 15_000);
     const installed = version.code === 0;

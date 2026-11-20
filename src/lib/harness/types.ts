@@ -76,6 +76,8 @@ export type HarnessStatus = {
   // Whether the program can paint pictures with its own tool at all, and
   // whether one has actually been made here.
   nativeImages: "no" | "untested" | "verified";
+  // The program cannot play the full rules (HarnessAdapter.reducedTools).
+  reducedTools?: boolean;
   availability: HarnessAvailability;
   // Shown under the card when something is wrong, with the fix.
   message?: string;
@@ -185,6 +187,15 @@ export type HarnessAdapter = {
   // such a program can take one that long. Off, the whole transcript goes in
   // the opening message, as before.
   settledTranscript?: boolean;
+  // The program cannot hold the full tool set: the Antigravity CLI loads at
+  // most 20,000 tokens of tool definitions and drops the largest first
+  // (pc_attack, request_roll, start_encounter), where the full set is about
+  // 28K. Such a program is played on the compact profile, served only the
+  // tools each call offers, and started again when those change mid-turn
+  // (src/lib/harness/bridge.ts). Open Game Master does not support, test or
+  // recommend it: the program lists leave it off unless the admin adds it on
+  // purpose, and it carries a warning there.
+  reducedTools?: boolean;
   probe(binary: string, env: Record<string, string>): Promise<Omit<HarnessStatus, "id" | "label" | "availability" | "checkedAt" | "path" | "installHint" | "signInHint" | "lockdown" | "lockdownProven" | "nativeImages"> & { lockdownProven?: boolean }>;
   start(options: HarnessStartOptions): Promise<HarnessSession>;
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2, RefreshCw, ShieldCheck, ShieldHalf } from "lucide-react";
+import { Check, Loader2, RefreshCw, ShieldCheck, ShieldHalf, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { shellHost } from "@/lib/shell-host";
 import { ui } from "@/lib/ui";
@@ -141,6 +141,9 @@ export function AdminHarnessSection({
   const [defaultOverride, setDefaultOverride] = useState<boolean | null>(null);
   const useAsDefault = defaultOverride ?? textProvider === "harness";
   const [refreshing, setRefreshing] = useState(false);
+  // A program that cannot play the full rules (HarnessStatus.reducedTools)
+  // is left off the list until the admin asks to add it.
+  const [addReduced, setAddReduced] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -268,11 +271,16 @@ export function AdminHarnessSection({
 
   const models = chosen?.models ?? [];
   const usage = data.usage;
+  // Programs that cannot play the full rules stay off the list unless one
+  // is already chosen or the admin adds them on purpose: Open Game Master
+  // does not support, test or recommend them.
+  const listed = data.statuses.filter((status) => !status.reducedTools || addReduced || status.id === draft.id || status.id === data.config.id);
+  const unlisted = data.statuses.filter((status) => !listed.includes(status));
 
   return (
     <PageSection id="admin-harness" heading={t("Agent program")} glyph="ui-agent">
       <p className="mb-3 text-xs text-stone-500">
-        {t("Let an agent you already have, Claude Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI, narrate the tables on its own sign-in. It is started with none of its own tools: the only thing it can touch is the table's rules engine, turn by turn, under the same rules and caps as the built-in storyteller. ODM never asks for or stores its password or key.")}
+        {t("Let an agent you already have, Claude Code, Codex, opencode, Grok Build or Pi, narrate the tables on its own sign-in. It is started with none of its own tools: the only thing it can touch is the table's rules engine, turn by turn, under the same rules and caps as the built-in storyteller. ODM never asks for or stores its password or key.")}
       </p>
       {everywhereUnavailable ? (
         <p className="reveal mb-3 rounded-lg border border-amber-700/40 bg-amber-950/30 p-3 text-xs text-amber-200">
@@ -287,7 +295,7 @@ export function AdminHarnessSection({
         </button>
       </div>
       <div role="radiogroup" aria-label={t("Agent program")} className="hx-cards stagger">
-        {data.statuses.map((status) => {
+        {listed.map((status) => {
           const pill = statusTone(status);
           const pillText = t(statusKey(status));
           const picked = draft.id === status.id;
@@ -331,9 +339,30 @@ export function AdminHarnessSection({
         })}
       </div>
 
+      {unlisted.length ? (
+        <p className="mt-2 text-xs leading-5 text-stone-500">
+          {tp(
+            "{names} cannot play the full rules, so it is left off the list. ",
+            "{names} cannot play the full rules, so they are left off the list. ",
+            { count: unlisted.length, names: unlisted.map((status) => status.label).join(", ") },
+          )}
+          <button type="button" className={ui.btnSmall} onClick={() => setAddReduced(true)}>
+            {t("Add it anyway", { context: "admin.harness.addReduced" })}
+          </button>
+        </p>
+      ) : null}
+
       {chosen ? (
         <div key={chosen.id} className="reveal-height mt-4">
           <div className="space-y-3">
+            {chosen.reducedTools ? (
+              <p role="alert" className="flex gap-2 rounded-lg border border-amber-700/40 bg-amber-950/30 p-3 text-xs leading-5 text-amber-200">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                <span>
+                  {t("{name} cannot play the full rules: it holds fewer tools than the table's full set, so it plays on a reduced tool set and rules. Open Game Master does not support or test this, and fights and other rules may not run properly. For real play, choose another program.", { name: chosen.label })}
+                </span>
+              </p>
+            ) : null}
             {chosen.message ? <p className="text-xs text-amber-300/90">{chosen.message}</p> : null}
             {chosen.availability === "ok" && !chosen.installed ? (
               <Field label={t("Install it on this machine, then check again")}>
