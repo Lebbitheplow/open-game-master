@@ -245,6 +245,27 @@ await test("Arcane Jolt is played from its cards: the force card burns the creat
   }
 });
 
+await test("Power Surge follows a spell attack made with pc_attack: a Fire Bolt that hurts the creature opens the spend, as a cast_at_enemy does.", async () => {
+  const build = builds.find((entry) => entry.spends.some((spend) => spend.afterSpellDamage));
+  assert.ok(build, "a wizard with Power Surge");
+  const spend = build.spends.find((entry) => entry.afterSpellDamage);
+  const enemy = await stage(build.hero);
+  world.patch(build.hero.id, {
+    equipment: [{ name: "Component pouch", qty: 1 }],
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: [], known: [], cantrips: ["Fire Bolt"] },
+  });
+  world.dice(18, 6);
+  const bolt = await world.invoke("pc_attack", { characterId: build.hero.id, targetEnemyId: enemy.id, spell: "Fire Bolt" });
+  world.clearDice();
+  assert.equal(bolt.ok, true, bolt.error);
+  assert.ok(world.enemies()[0].currentHp < 300, "the Fire Bolt hurt the creature");
+  const card = deriveHand(world.sheet(build.hero.id), FRESH_TURN, {}).find((entry) => entry.name === spend.name);
+  const call = directCardCall({ ...card.intent, ...(card.target === "enemy" ? { targetId: enemy.id, targetKind: "enemy" } : {}) }, build.hero.id, { inFight: true });
+  const out = await play(build.hero, call.name, call.args);
+  assert.equal(out.ok, true, `${label(build, spend)} after a Fire Bolt: ${out.error}`);
+  assert.ok(world.sheet(build.hero.id).resources[spend.pool.id].used > 0, `${label(build, spend)}: nothing spent`);
+});
+
 await test("Cauterizing Flames is played from its cards: the fire card burns the creature, the healing card heals the ally, and each takes the reaction.", async () => {
   const druid = world.addHero({ user: world.owner, class: "druid", subclass: "Circle of Wildfire", level: 10, abilities, maxHp: 60, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" } });
   const ally = world.addHero({ user: world.owner, class: "fighter", subclass: "Champion", level: 5, abilities, maxHp: 60, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" } });
