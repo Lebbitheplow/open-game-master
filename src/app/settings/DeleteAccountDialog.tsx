@@ -55,6 +55,7 @@ export function DeleteAccountDialog({
           {hasPassword ? t("Enter your password to confirm") : t("Type DELETE to confirm")}
           <input
             type={hasPassword ? "password" : "text"}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog just opened and this confirmation is the one thing it asks for
             autoFocus
             value={value}
             onChange={(event) => onValue(event.target.value)}

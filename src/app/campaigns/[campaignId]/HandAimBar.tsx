@@ -518,6 +518,7 @@ export function HandAimBar({
             type="text"
             value={trigger}
             maxLength={200}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- the trigger box appears because the player just chose to ready an action, and it is what they fill in next
             autoFocus
             onChange={(event) => onTrigger?.(event.target.value)}
             onKeyDown={(event) => {

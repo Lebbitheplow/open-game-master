@@ -124,6 +124,7 @@ export function HandoutStage({
 
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center p-4 sm:p-8" role="dialog" aria-label={handout.title}>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a click on the backdrop folds the handout away; Escape does the same from the keyboard (the keydown listener above) */}
       <div className="handout-scrim-in absolute inset-0 bg-stone-950/80" onClick={() => setFolded(handout.id)} />
       <div className={cn("handout-in relative max-h-[90vh] w-full overflow-y-auto", style === "image" ? "max-w-4xl" : "max-w-2xl")}>
         {style === "image" ? (

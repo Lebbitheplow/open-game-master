@@ -348,6 +348,7 @@ export default function AbilityEditor({
   }
 
   return (
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the arrow keys from the method buttons inside walk between them (useRovingGroup); the row itself takes no focus */}
     <section className="panel rounded-xl p-3 sm:p-4">
       <DiceDefs />
       <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
@@ -743,6 +744,7 @@ export function StandardArrayRow({
 }: {
   label: string;
   assigned: number | null | undefined;
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the arrow keys from the score buttons inside walk between them (useRovingGroup); the group itself takes no focus
   isTaken: (value: number) => boolean;
   onAssign: (value: number) => void;
 }) {

@@ -1288,8 +1288,10 @@ export function BattleMapPanel({
   // boards drawing it let the tabletop take it and close with it, leaving
   // the panel's board bare.
   const gridWith = (picture: HTMLCanvasElement | null, expanded = false) => (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the board is a pan and zoom surface whose keys (arrows, plus, minus, 0, Ctrl+Z) act on the board itself, so it is one Tab stop named for those keys
     <div
       ref={attachFrame}
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the board takes Tab so its pan and zoom keys can reach it
       tabIndex={0}
       aria-label={t("Board view. Scroll or pinch to zoom, drag or use the arrow keys to pan, plus and minus to zoom, 0 to fit.")}
       // A container, so the stage chrome sizes to the board it sits on (the

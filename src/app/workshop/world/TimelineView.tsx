@@ -152,6 +152,7 @@ function CalendarForm({ calendar, onSave, onCancel }: { calendar: Calendar; onSa
   const [draft, setDraft] = useState(calendar);
   return (
     <form className="panel motion-pop grid gap-2 rounded-lg p-3 @lg:grid-cols-[1fr_6rem_8rem]" onSubmit={(event) => { event.preventDefault(); if (draft.name.trim()) onSave(draft); }}>
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just asked to add or edit a calendar */}
       <input className={ui.input} placeholder="Reckoning of Tides" aria-label="Calendar name" maxLength={80} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} autoFocus />
       <input className={ui.input} placeholder="RT" aria-label="Abbreviation" maxLength={12} value={draft.abbrev} onChange={(event) => setDraft({ ...draft, abbrev: event.target.value })} />
       <input className={ui.input} type="number" aria-label="Where its year 0 falls" value={draft.epochOffset} onChange={(event) => setDraft({ ...draft, epochOffset: Math.round(Number(event.target.value) || 0) })} />
@@ -172,6 +173,7 @@ function EventForm({ event, world, eras, onSave, onCancel }: { event: WorldEvent
   return (
     <form className="panel motion-pop flex flex-col gap-2 rounded-lg p-3" onSubmit={(submit) => { submit.preventDefault(); if (draft.title.trim()) onSave(draft); }}>
       <div className="grid gap-2 @lg:grid-cols-[1fr_7rem_9rem]">
+        {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just asked to add or edit an event */}
         <input className={ui.input} placeholder="The Wall Breaks" aria-label="What happened" maxLength={120} value={draft.title} onChange={(change) => setDraft({ ...draft, title: change.target.value })} autoFocus />
         <input className={ui.input} type="number" aria-label="Year" placeholder="Year" value={draft.when.yearNum ?? ""} onChange={(change) => setDraft({ ...draft, when: { ...draft.when, yearNum: change.target.value === "" ? null : Math.round(Number(change.target.value)) } })} />
         {doc.calendars.length ? (

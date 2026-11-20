@@ -118,6 +118,7 @@ function PickOrType({
         <input
           type="text"
           value={value}
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- the box appears because the GM just chose Other, so the typing goes straight into it
           autoFocus
           placeholder={other.placeholder}
           aria-label={other.label}

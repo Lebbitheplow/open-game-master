@@ -469,6 +469,7 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                       const settled = beat.status === "done" || beat.status === "skipped";
                       if (editingBeat === number) {
                         return (
+                                // eslint-disable-next-line jsx-a11y/no-autofocus -- the beat's box opens because the GM just asked to edit that beat
                           <li key={index} className="list-none">
                             <DictateField single label={t("Beat")} onTranscript={(text) => setDraft((current) => appendDictation(current, text, MAX_BEAT_TEXT))}>
                               <input
@@ -646,6 +647,7 @@ function ArcCard({ campaignId }: { campaignId: string }) {
                     })}
                   </ol>
                   {addingToAct === act ? (
+                          // eslint-disable-next-line jsx-a11y/no-autofocus -- the new beat's box opens because the GM just asked to add a beat
                     <div className="reveal mt-1">
                       <DictateField single label={t("Beat")} onTranscript={(text) => setDraft((current) => appendDictation(current, text, MAX_BEAT_TEXT))}>
                         <input

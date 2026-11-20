@@ -50,6 +50,7 @@ export function StateTags({ sheet, className }: { sheet: CharacterSheet; classNa
             key={tag.label}
             className={cn("motion-pop inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs", TONE[tag.tone], tag.id === "dying" && "death-beat")}
             style={{ animationDelay: `${index * 45}ms` } as CSSProperties}
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Tab reaches the tag so its Tooltip note opens from the keyboard, as it does on hover
             tabIndex={0}
           >
             <GameIcon icon={{ kind: "glyph", key: GLYPH[tag.id] }} size="size-4" />

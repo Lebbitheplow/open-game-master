@@ -100,6 +100,7 @@ export function WorkshopHeader({
           <input
             value={titleDraft}
             maxLength={80}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- the title box opens because the author just asked to rename the workshop
             autoFocus
             onChange={(event) => setTitleDraft(event.target.value)}
             onBlur={() => void saveTitle()}

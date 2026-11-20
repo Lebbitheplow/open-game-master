@@ -120,6 +120,7 @@ export function InitiativeRail({
       <div className="board-initiative-names" data-tour="battle-initiative">
         <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={t("Round {round}, open initiative order", { round })}>
           {t("Round {round} · initiative", { round })}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the order scrolls inside its own box on a short board, so keyboard users need a Tab stop to scroll it */}
         </button>
         <ol tabIndex={0} aria-label={t("Initiative order")}>
           {encounter.order.map((entry, at) => (

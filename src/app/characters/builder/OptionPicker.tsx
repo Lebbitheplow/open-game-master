@@ -150,6 +150,7 @@ export function OptionList({
                 return (
                   // The listbox owns the keyboard (aria-activedescendant), so
                   // a row needs only the click.
+                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- the listbox's keys light and pick the rows
                   <li
                     key={option.id || "__empty"}
                     id={`${id}-${index}`}

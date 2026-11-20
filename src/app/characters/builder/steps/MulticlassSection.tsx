@@ -136,6 +136,7 @@ export function MulticlassSection({
             <p className="mb-2 text-xs text-stone-500">
               {t("It takes one level from your {class}; set the split once it is added.", { class: klass.name.toLowerCase() })}
               {derived.shownAbilities ? "" : t(" Your scores are not set yet, so each class says what it needs.")}
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the arrow keys from the class buttons inside walk between them (useRovingGroup); the list itself takes no focus */}
             </p>
             <ul
               aria-label={t("Classes you could add as your {ordinal}", { ordinal: ({ "second": t("second"), "third": t("third") } as Record<string, string>)[next] ?? String(next) })}

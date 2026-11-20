@@ -96,6 +96,7 @@ export function EntityPicker({
           placeholder={`Find ${label}`}
           aria-label={`Find ${label}`}
           value={query}
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- callers pass autoFocus only when the picker opens because the author just asked for it (LinkEditor)
           autoFocus={autoFocus}
           onChange={(event) => setQuery(event.target.value)}
         />

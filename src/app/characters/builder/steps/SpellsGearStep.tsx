@@ -167,6 +167,7 @@ function CasterSpells({
   if (desks.length <= 1) {
     return derived.casts ? <SpellsSection state={state} derived={derived} klass={derived.casterKlass ?? klass} pack={pack} /> : null;
   }
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the tabs inside take the focus (roving tabindex) and their arrow keys bubble up here; a tablist is never a Tab stop of its own */}
   return (
     <div data-caster-tabs="">
       <div
@@ -990,6 +991,7 @@ function SwapPrompt({
   label: (name: string) => string;
   onSwap: (out: string) => void;
   onCancel: () => void;
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the prompt is focused when it opens, so Escape there or on a swap button inside cancels it
 }) {
   const t = useT();
   const tp = useTp();

@@ -107,6 +107,7 @@ export function Splitter({
     onCommit(fit(next));
   };
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- a focusable separator is ARIA's window splitter, a widget the arrow keys and a drag move; the rule counts every separator as static
     <div
       role="separator"
       aria-orientation={orientation}
@@ -114,6 +115,7 @@ export function Splitter({
       aria-valuenow={Math.round(value)}
       aria-valuemin={Math.round(min)}
       aria-valuemax={Math.round(max)}
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the splitter takes Tab so its arrow keys can move it
       tabIndex={focusable ? 0 : -1}
       className={cn("tlay-split", className)}
       data-held={held ? "" : undefined}
