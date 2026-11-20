@@ -128,7 +128,7 @@ explicit reset prevents one theme from inheriting another theme's artwork.
 | --- | --- | --- |
 | `texture` | `--theme-art-texture` | Repeating, evenly lit material with restrained contrast; no baked-in borders |
 | `frame` | `--theme-art-frame` | Square border with a transparent center, suitable for nine-slice rendering; default slice is 22% |
-| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; mirrored for the other three corners, so anything with an up in it stays upright |
+| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; mirrored for the other three corners, so the two lower corners show it upside down: keep its joint the same across the diagonal |
 | `backdrop` | `--theme-art-backdrop` | Wide opaque scene that remains readable when cropped for a shallow banner |
 
 The shared renderer automatically uses the frame and corner slots. Registering
@@ -171,7 +171,11 @@ crop's lower-right interior transparent. For a separate complete corner image,
 omit `cornerScale` to use the defaults `contain` and `center`.
 This avoids generating a second fitting that does not match its frame.
 A separate corner image is the top-left corner; the other three are it
-mirrored, never turned, so a gem, crest or leaf keeps its up.
+mirrored, never turned, so a gem or leaf on a rail never lies on its side.
+The lower two are it flipped top to bottom, so anything with an up in it
+(a spire, a window, a shield) hangs upside down there. Keep the joint the
+same across the diagonal, as High Kingdoms' round medallion and Hearth's
+rosette are, and look at the lower corners before shipping.
 
 A flat panel's corner brackets are `.ornate::before` (top left) and
 `::after` (bottom right). A theme that thickens them gives each its own two
