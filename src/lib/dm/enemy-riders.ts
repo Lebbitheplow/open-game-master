@@ -87,8 +87,10 @@ export function linkPairs(inserted: readonly EncounterEnemy[], carries: Readonly
 // 4), and keeps its turn. A rider who stays on the board (knocked out) lies
 // in the nearest open square beside it. Returns what became of the one left,
 // for the result of the call that parted them, or null when `enemy` was half
-// of no pair.
-export function partPair(campaign: Pick<Campaign, "id">, enemy: EncounterEnemy, leaves: boolean): string | null {
+// of no pair. `near` is where a rider who stays on the board was sent (a push
+// out of the saddle, enemy-rider-falls.ts): they land there, or in the open
+// square nearest it when the mount or anyone else holds it.
+export function partPair(campaign: Pick<Campaign, "id">, enemy: EncounterEnemy, leaves: boolean, near?: { x: number; y: number }): string | null {
   const enemies = listEnemies(enemy.encounterId);
   const rider = enemy.ridesEnemyId ? enemy : riderOf(enemies, enemy.id);
   const mount = rider ? mountOf(enemies, rider) : null;
@@ -117,7 +119,7 @@ export function partPair(campaign: Pick<Campaign, "id">, enemy: EncounterEnemy, 
   const unlinked = listEnemies(enemy.encounterId);
   const tokens = listTokens(map.id);
   const footprints = footprintLookup(new Map(unlinked.map((entry) => [entry.id, entry])));
-  const [spot] = findSpawnTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, null, footprints), 1, [{ x: shared.x, y: shared.y }], []);
+  const [spot] = findSpawnTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, null, footprints), 1, [near ?? { x: shared.x, y: shared.y }], []);
   if (spot) {
     insertToken({ mapId: map.id, campaignId: campaign.id, kind: "enemy", refId: rider.id, name: rider.displayName, x: spot.x, y: spot.y });
   }
