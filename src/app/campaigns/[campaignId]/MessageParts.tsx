@@ -251,6 +251,9 @@ function translateSystemNote(t: T, raw: string): string {
   out = out.replace(/([^.\s\n][^.\n]*?) fails their final death save and dies\./g, (_, name) =>
     t("{name} fails their final death save and dies.", { name: name.trim() }),
   );
+  out = out.replace(/([^.\s\n][^.\n]*?)'s rage ends: their turn passed with no attack made and no damage taken\./g, (_, name) =>
+    t("{name}'s rage ends: their turn passed with no attack made and no damage taken.", { name: name.trim() }),
+  );
   out = out.replace(/([^.\s\n][^.\n]*?) comes round with (\d+) hit points?\./g, (_, name, hp) =>
     Number(hp) === 1
       ? t("{name} comes round with {hp} hit point.", { name: name.trim(), hp })
