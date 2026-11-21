@@ -2,7 +2,7 @@ import { allocateSeq, campaignSeats, type Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, listEnemies, type EnemyStatus } from "@/lib/db/encounters";
-import { insertCampaignMessage } from "@/lib/db/messages";
+import { insertCampaignMessage, lineCarriesRoll } from "@/lib/db/messages";
 import { hasHumanDm } from "@/lib/dm/viewer";
 import { firstStoredAfter, getRoll } from "@/lib/db/rolls";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
@@ -63,7 +63,9 @@ function foeChanges(start: RecordStart): FoeChange[] {
 
 // `rollIds` are the call's rolls the turn does not list (a player's dice
 // entered for a parked roll); `changes` false leaves the sentence to a path
-// that posts its own (the server playing the enemies says each blow).
+// that posts its own (the server playing the enemies says each blow). One of
+// them that a line of its own already carries (a death save, an opportunity
+// swing: roll-record.ts `home: "line"`) stays on that line alone.
 export function postPersonsRecord(
   campaign: Campaign,
   turn: DmTurn,
@@ -86,7 +88,7 @@ export function postPersonsRecord(
   const onTurn = turn.rollIds.slice(start.rolls);
   const listed = [...onTurn];
   for (const id of options.rollIds ?? []) {
-    if (!listed.includes(id)) {
+    if (!listed.includes(id) && !lineCarriesRoll(campaign.id, id)) {
       const next = firstStoredAfter(id, onTurn);
       listed.splice(next ? listed.indexOf(next) : listed.length, 0, id);
     }

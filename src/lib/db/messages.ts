@@ -236,6 +236,19 @@ export function listRecentMessages(campaignId: string, limit = 100): CampaignMes
   return rows.map(mapMessage);
 }
 
+// Whether a line already carries this roll's card: a roll its site posted a
+// line for has that line as its home (src/lib/dm/roll-record.ts), and is
+// listed on no other.
+export function lineCarriesRoll(campaignId: string, rollId: string): boolean {
+  const found = getDatabase()
+    .prepare(
+      `SELECT 1 FROM campaign_messages AS m, json_each(m.roll_ids_json) AS listed
+       WHERE m.campaign_id = ? AND m.roll_ids_json IS NOT NULL AND listed.value = ? LIMIT 1`,
+    )
+    .get(campaignId, rollId);
+  return Boolean(found);
+}
+
 // The GM's own messages from `sinceSeq` on, the newest `limit` of them, in
 // ascending seq order (src/lib/dm/improvise.ts reads the place's narration).
 export function listDmMessagesSince(campaignId: string, sinceSeq: number, limit: number): CampaignMessage[] {
