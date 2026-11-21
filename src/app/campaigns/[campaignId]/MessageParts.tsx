@@ -175,6 +175,18 @@ function translateSystemNote(t: T, raw: string): string {
     return t("{name} mounts up: {mount}.", { name: m[1], mount: translateMountDesc(t, m[2]) });
   }
   let out = raw;
+  out = out.replace(/^The party takes a short rest \(([^)]+)\)/, (_, dur) =>
+    t("The party takes a short rest ({duration})", { duration: translateDuration(t, dur) }),
+  );
+  out = out.replace(/^Inside the genie's vessel, the party takes a short rest \(([^)]+)\)/, (_, dur) =>
+    t("Inside the genie's vessel, the party takes a short rest ({duration})", { duration: translateDuration(t, dur) }),
+  );
+  out = out.replace(/^The party takes a long rest \(([^)]+)\)/, (_, dur) =>
+    t("The party takes a long rest ({duration})", { duration: translateDuration(t, dur) }),
+  );
+  out = out.replace(/ No benefit from it for ([^.\n]+)\./g, (_, who) =>
+    ` ${t("No benefit from it for {who}.", { who })}`,
+  );
   out = out.replace(/^(\d+ (?:week|weeks|day|days|hour|hours|minute|minutes)) pass(?:es)?: /, (_, dur) =>
     `${t("{duration} pass:", { duration: translateDuration(t, dur) })} `,
   );
