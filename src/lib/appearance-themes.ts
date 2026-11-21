@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -110,6 +110,15 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/depths/case-file-frame-v1.webp",
       corner: "/assets/themes/depths/wax-seal-string-v1.webp",
       backdrop: "/assets/themes/depths/evidence-desk-v1.webp",
+    },
+  },
+  {
+    id: "frost", name: "Frostbound", description: "Blue-white ice, pale steel, and aurora light.", icon: "snowflake",
+    art: {
+      texture: "/assets/themes/frost/rimed-steel-v1.webp",
+      frame: "/assets/themes/frost/rimed-steel-frame-v1.webp",
+      corner: "/assets/themes/frost/frost-crystal-boss-v1.webp",
+      backdrop: "/assets/themes/frost/aurora-pass-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
