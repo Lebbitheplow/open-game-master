@@ -12,6 +12,7 @@ import {
   renameTokenByRef,
   setTokenHidden,
 } from "@/lib/db/battle-maps";
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import { insertNote } from "@/lib/db/notes";
 import { nearestOpenTile } from "@/lib/battlemap/paint";
 import { occupiedTiles } from "@/lib/battlemap/view";
@@ -106,6 +107,9 @@ export function applyTemplateExtras(campaign: Campaign, userId: string, template
         for (const token of tokens.filter((entry) => entry.kind === "pc")) {
           moveTo(token.id, extras.entry, token);
         }
+        // The party was set down a square each by the entry; a rider needs
+        // the mount's space there (issue 1055).
+        seatMountedParty(campaign.id, map.id);
       }
       for (const slot of extras.hidden) {
         const enemy = matched.get(slot);

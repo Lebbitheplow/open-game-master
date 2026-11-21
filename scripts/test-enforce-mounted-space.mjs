@@ -33,6 +33,8 @@ const { getMounts } = await import("../src/lib/db/mounts.ts");
 const { tilesApart, tokenFootprint } = await import("../src/lib/dm/board-reach.ts");
 const { buildPlayerMapView, footprintLookup, occupiedTiles } = await import("../src/lib/battlemap/view.ts");
 const { creaturesInBlast, spellAreaShape } = await import("../src/lib/dm/aoe-shape.ts");
+const { approachForCompanion } = await import("../src/lib/dm/companion-approach.ts");
+const { getEnemy } = await import("../src/lib/db/encounters.ts");
 const footprints = await import("../src/lib/battlemap/footprint.ts");
 
 const RIDER = { ...FIGHTER, speed: 30 };
@@ -118,6 +120,14 @@ await test("Reach is measured from the pair's space: an enemy against the horse'
   const swing = await world.invoke("pc_attack", { characterId: hero.id, attacks: [{ targetEnemyId: foe.id }] });
   assert.equal(swing.ok, true, swing.error);
   assert.deepEqual(at(world, hero.id), [5, 3], "the rider walked to reach an enemy already beside the horse");
+});
+
+await test("A companion whose horse's far side is against its target is in reach already: the server's turn for it does not walk the pair.", async () => {
+  const { world, hero, foe } = await mounted({ enemy: { x: 7, y: 4 } });
+  assert.equal(tilesApart(tokenOf(world, hero.id), tokenOf(world, foe.id)), 1, "setup: the enemy is not against the horse's flank");
+  const walked = approachForCompanion(world.campaign(), world.encounter(), world.sheet(hero.id), getEnemy(foe.id));
+  assert.equal(walked, null, `a companion already in reach was walked: ${walked}`);
+  assert.deepEqual(at(world, hero.id), [5, 3], "the pair stepped off a square it could already strike from");
 });
 
 await test("Riding out of an enemy's reach provokes its opportunity attack when the pair's last square leaves it.", async () => {
@@ -267,6 +277,54 @@ await test("A fight that begins with a rider already up seats the pair in a spac
   for (const tile of footprints.footprintTiles(token, 2)) {
     assert.ok(!others.has(square(world, tile.x, tile.y)), `(${tile.x},${tile.y}) of the pair's space is somebody else's square`);
     assert.ok(![..."#|"].includes(map.terrain[square(world, tile.x, tile.y)]), `(${tile.x},${tile.y}) of the pair's space is a wall`);
+  }
+});
+
+await test("A prepared map laid under a running fight seats the pair on its new ground: no square of the space on rock.", async () => {
+  const { world, hero } = await mounted();
+  const { createPreparedMap } = await import("../src/lib/db/prepared-maps.ts");
+  const { deployPreparedMap } = await import("../src/lib/dm/map-library.ts");
+  // Column 6 is rock on the new map: the rider's own square stays open, the horse's half does not.
+  const rows = OPEN().map((row) => `${row.slice(0, 6)}#${row.slice(7)}`);
+  const prepared = createPreparedMap({ campaignId: world.campaignId, name: "The wall", width: 24, height: rows.length, terrain: rows.join(""), ambient: "bright", theme: "field", seed: 1 });
+  const laid = deployPreparedMap(world.campaign(), prepared.id);
+  assert.equal(laid.ok, true, laid.error);
+  const map = mapOf(world);
+  const token = tokenOf(world, hero.id);
+  assert.equal(tokenFootprint(token), 2);
+  for (const tile of footprints.footprintTiles(token, 2)) {
+    assert.notEqual(map.terrain[square(world, tile.x, tile.y)], "#", `(${tile.x},${tile.y}) of the pair's space is rock on the new map`);
+  }
+});
+
+await test("A generated map laid under a running fight seats the pair too: the party's spawn squares sit side by side, and the horse is not set over a friend or a wall.", async () => {
+  const { world, hero } = await mounted({ heroes: [RIDER, { ...FIGHTER, name: "Squire" }, { ...FIGHTER, name: "Page" }] });
+  const { applyStudioMap } = await import("../src/lib/dm/map-studio.ts");
+  for (const seed of [11, 12, 13]) {
+    const laid = applyStudioMap(world.campaign(), { seed, theme: "dungeon" });
+    assert.equal(laid.ok, true, laid.error);
+    const map = mapOf(world);
+    const token = tokenOf(world, hero.id);
+    assert.ok(footprints.footprintFits(map.width, map.height, token, 2), `seed ${seed}: the pair's space runs off the board`);
+    const others = heldBy(world, hero.id);
+    for (const tile of footprints.footprintTiles(token, 2)) {
+      assert.ok(!others.has(square(world, tile.x, tile.y)), `seed ${seed}: (${tile.x},${tile.y}) of the pair's space is somebody else's square`);
+      assert.ok(![..."#|"].includes(map.terrain[square(world, tile.x, tile.y)]), `seed ${seed}: (${tile.x},${tile.y}) of the pair's space is a wall`);
+    }
+  }
+});
+
+await test("A prepared fight's entry square seats the pair: the party set down by the entry leaves the horse room, clear of friends.", async () => {
+  const { world, hero } = await mounted({ heroes: [RIDER, { ...FIGHTER, name: "Squire" }, { ...FIGHTER, name: "Page" }] });
+  const { applyTemplateExtras } = await import("../src/lib/dm/template-apply.ts");
+  const { EMPTY_TEMPLATE_EXTRAS } = await import("../src/lib/dm/encounter-template-logic.ts");
+  applyTemplateExtras(world.campaign(), world.owner.id, { name: "The gate", enemies: [], extras: { ...EMPTY_TEMPLATE_EXTRAS, entry: { x: 10, y: 4 } } });
+  const map = mapOf(world);
+  const token = tokenOf(world, hero.id);
+  assert.ok(footprints.footprintFits(map.width, map.height, token, 2), "the pair's space runs off the board");
+  const others = heldBy(world, hero.id);
+  for (const tile of footprints.footprintTiles(token, 2)) {
+    assert.ok(!others.has(square(world, tile.x, tile.y)), `(${tile.x},${tile.y}) of the pair's space is somebody else's square`);
   }
 });
 

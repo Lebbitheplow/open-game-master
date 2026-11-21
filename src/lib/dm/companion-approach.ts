@@ -5,6 +5,7 @@ import { footprintDistance, footprintFits, enemyFootprint, footprintIndexes, typ
 import { chebyshev, type BattleToken } from "@/lib/battlemap/types";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { walkCharacter } from "@/lib/dm/token-rules";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The open squares beside a target of the given footprint, nearest the mover
@@ -63,17 +64,11 @@ export function approachForCompanion(
     return null;
   }
   const size = enemyFootprint(target);
-  const touching = (x: number, y: number) => {
-    for (let dx = 0; dx < size; dx += 1) {
-      for (let dy = 0; dy < size; dy += 1) {
-        if (chebyshev(x, y, them.x + dx, them.y + dy) <= 1) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-  if (touching(me.x, me.y)) {
+  // Already beside it from any square of its own space: a companion on a
+  // Large horse whose far square touches the target is in reach, and a walk
+  // from there would only spend movement and draw opportunity attacks
+  // (issue 1055).
+  if (footprintDistance(me, tokenFootprint(me), them, size) <= 1) {
     return null;
   }
   for (const square of openSquaresBeside(encounter.id, map, me, them, size)) {
