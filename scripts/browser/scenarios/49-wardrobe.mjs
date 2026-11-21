@@ -30,6 +30,19 @@ export default {
       return Object.fromEntries((vex?.equipment ?? []).map((item) => [item.name, item]));
     };
 
+    // The day theme as the app's own switch sets it (src/lib/theme-mode.ts):
+    // the token set and the colour scheme together. An item chip's colour
+    // follows the scheme, so a picture taken with the tokens alone showed
+    // night chips on a day sheet. Answers what was set, to put it back.
+    const DAY = { theme: "light", scheme: "light" };
+    const setTheme = (to) => page.evaluate((next) => {
+      const root = document.documentElement;
+      const was = { theme: root.dataset.theme ?? "", scheme: root.style.colorScheme };
+      root.dataset.theme = next.theme;
+      root.style.colorScheme = next.scheme;
+      return was;
+    }, to);
+
     await t.open(`/campaigns/${campaignId}`);
     const card = page.locator(`${root}button[title="View full character sheet"]`).filter({ hasText: "Vex Halloran" }).locator("visible=true").first();
     for (const selector of [`${root}[data-tour="tab-party"]`, `${root}.cine-party button`]) {
@@ -82,11 +95,10 @@ export default {
     }
     await untilStill(page);
     await t.shot("inventory-everyday-night");
-    const additionsTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    const additionsTheme = await setTheme(DAY);
     await untilStill(page);
     await t.shot("inventory-everyday-day");
-    await page.evaluate(theme => (document.documentElement.dataset.theme = theme), additionsTheme);
+    await setTheme(additionsTheme);
     // Twelve places on the body and in the hands, and Other items for her
     // orb, which has no place on the body (the tile is drawn only for a pack
     // that holds something for it).
@@ -106,13 +118,12 @@ export default {
     await t.shot("doll");
     const dollNight = await axeViolations(page, "[data-paperdoll]");
     check(dollNight.length === 0, `the doll passes axe: ${JSON.stringify(dollNight).slice(0, 400)}`);
-    const dollTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    const dollTheme = await setTheme(DAY);
     await page.waitForTimeout(800);
     const dollDay = await axeViolations(page, "[data-paperdoll]");
     check(dollDay.length === 0, `the doll passes axe in the day theme: ${JSON.stringify(dollDay).slice(0, 400)}`);
     await t.shot("doll-day");
-    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), dollTheme);
+    await setTheme(dollTheme);
     await openPlace("wrists");
     const bracerRow = rowOf("Bracers of Defense");
     check(await bracerRow.locator(artImage(bracers)).count() === 1, "the opened bracer row uses the same art");
@@ -190,17 +201,10 @@ export default {
       await eventually(async () => (await place("held").getAttribute("data-drop")) === "over", { label: "the In hand place lit under the wand" });
       await untilStill(page);
       await t.shot("drag-over");
-      const dragTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-      // The scheme too, as the app's own switch sets it (src/lib/theme-mode.ts):
-      // an item chip's colour follows it, and stays the night's without it.
-      const setTheme = (mode) => page.evaluate((to) => {
-        document.documentElement.dataset.theme = to;
-        document.documentElement.style.colorScheme = to;
-      }, mode);
-      await setTheme("light");
+      const dragTheme = await setTheme(DAY);
       await page.waitForTimeout(800);
       await t.shot("drag-over-day");
-      await setTheme(dragTheme || "dark");
+      await setTheme(dragTheme);
       await page.mouse.up();
       await eventually(async () => (await gear())["Wand of Magic Missiles"]?.equipped === true, { label: "the dropped wand in hand" });
       await eventually(async () => (await place("held").getAttribute("data-filled")) === "true", { label: "the In hand tile filled" });
@@ -232,12 +236,11 @@ export default {
     // What the ring holds is read under its row (src/lib/srd/spell-storing.ts).
     await eventually(() => sheet.getByText("Holds Fireball (level 3)").count(), { label: "what the Ring of Spell Storing holds" });
     await t.shot("stored");
-    const storedTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    const storedTheme = await setTheme(DAY);
     // Past the theme's fade, so the shot shows the day colors.
     await page.waitForTimeout(800);
     await t.shot("stored-day");
-    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), storedTheme);
+    await setTheme(storedTheme);
     await ring.scrollIntoViewIfNeeded().catch(() => undefined);
     await t.tap(ring.getByRole("button", { name: "attune", exact: true }));
     await eventually(async () => (await gear())["Ring of Spell Storing"]?.attuning === true, { label: "the Ring of Spell Storing attuning" });
@@ -366,14 +369,13 @@ export default {
       await untilStill(page);
       await t.shot("worn-on");
       // Legible in the day theme too: the field alone under axe, contrast included.
-      const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-      await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+      const theme = await setTheme(DAY);
       await field.evaluate((element) => element.setAttribute("data-check", "worn-on"));
       await untilStill(page);
       const day = await axeViolations(page, '[data-check="worn-on"]');
       check(day.length === 0, `the picker passes axe in the day theme: ${JSON.stringify(day).slice(0, 400)}`);
       await t.shot("worn-on-day");
-      await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+      await setTheme(theme);
 
       // Armour places itself, so the picker goes while it is armour.
       const alsoArmour = page.getByRole("switch", { name: "It is also armour" }).locator("visible=true").first();
