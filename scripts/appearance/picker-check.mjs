@@ -52,6 +52,9 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
             await waitFor(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-pressed')==='true'`);
             assert.deepEqual(await previews(),baseline,'Changing the page theme must not recolor neighboring previews');
           }
+          // Past nine themes the last card scrolls the dialog, and the nearest
+          // scroll back leaves this button under the dialog's sticky title.
+          await evaluate(`document.querySelector('.appearance-follow').scrollIntoView({block:'center'})`);
           await click('.appearance-follow');
           await waitFor(`document.querySelector('.appearance-follow').getAttribute('aria-pressed')==='true'`);
           assert.equal(await evaluate(`localStorage.getItem('odm.appearance')`),null);
