@@ -432,6 +432,13 @@ function splitsOneLine(between: string): boolean {
   return !between.includes("\n") && !QUOTE_OPEN.test(between) && wordCount(between) <= SPEECH_WINDOW_WORDS;
 }
 
+function attachTrailingComma(parts: SpeechCardPart[]): void {
+  const last = parts.at(-1);
+  if (last?.kind === "words" && !/[,.!?…:;—–-]$/.test(last.text)) {
+    last.text = `${last.text},`;
+  }
+}
+
 // The cards the transcript draws for a message's segments. Two lines of one
 // speaker around a short tag are one card with the tag kept inside it:
 // drawn apart, the reader met the same face twice with the tag stranded
@@ -452,18 +459,22 @@ export function cardsOf(segments: readonly SpeechSegment[]): SpeechCard[] {
     }
     if (last?.kind === "prose" && before?.kind === "speech" && sameSpeaker(before.speaker, segment.speaker) && splitsOneLine(last.text)) {
       out.pop();
-      before.parts.push({ kind: "tag", text: last.text.trim().replace(/^,\s*/, "") }, { kind: "words", text: segment.text });
+      const trimmed = last.text.trim();
+      if (trimmed.startsWith(",")) attachTrailingComma(before.parts);
+      before.parts.push({ kind: "tag", text: trimmed.replace(/^,\s*/, "") }, { kind: "words", text: segment.text });
       continue;
     }
     out.push({ kind: "speech", speaker: segment.speaker, parts: [{ kind: "words", text: segment.text }] });
   }
   // French guillemets place commas outside the closing quote (« ... », murmure
-  // Isolda); when the following prose is not folded as a tag, strip the
-  // orphaned leading comma from the standalone prose card.
+  // Isolda); move the leading comma onto the end of the preceding speech card
+  // so neither the speech bubble ends unpunctuated nor the prose starts with ', '.
   const cleaned: SpeechCard[] = [];
   for (let i = 0; i < out.length; i += 1) {
     const card = out[i];
-    if (card.kind === "prose" && cleaned.at(-1)?.kind === "speech") {
+    const prev = cleaned.at(-1);
+    if (card.kind === "prose" && prev?.kind === "speech") {
+      if (/^\s*,/.test(card.text)) attachTrailingComma(prev.parts);
       const stripped = card.text.replace(/^\s*,\s*/, "");
       if (stripped) cleaned.push({ kind: "prose", text: stripped });
     } else {

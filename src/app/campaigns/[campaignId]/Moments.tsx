@@ -171,6 +171,7 @@ function packOf(sheet: CharacterSheet): Map<string, number> {
 // with its painted icon. Read off the sheet itself, so every way an item can
 // arrive is covered and nothing about how it arrives changes.
 export function LootMoment({ sheet }: { sheet: CharacterSheet | null | undefined }) {
+  const t = useT();
   const signature = sheet ? `${sheet.id}|${sheet.equipment.map((item) => `${item.name}x${item.qty}`).join("|")}` : "";
   const [known, setKnown] = useState({ signature, id: sheet?.id ?? "", pack: sheet ? packOf(sheet) : new Map<string, number>() });
   const [queue, setQueue] = useState<Gain[]>([]);
@@ -210,7 +211,7 @@ export function LootMoment({ sheet }: { sheet: CharacterSheet | null | undefined
         <span className="moment-loot-plate">
           <GameIcon icon={{ kind: "item", key: current.name, family: "item-gear" }} size="size-20" />
         </span>
-        <span className="moment-loot-kicker">{tier === "epic" ? "A treasure" : tier === "rare" ? "A rare find" : "Added to your pack"}</span>
+        <span className="moment-loot-kicker">{tier === "epic" ? t("A treasure") : tier === "rare" ? t("A rare find") : t("Added to your pack")}</span>
         <span className="moment-loot-name">
           {current.name}
           {current.qty > 1 ? ` x${current.qty}` : ""}

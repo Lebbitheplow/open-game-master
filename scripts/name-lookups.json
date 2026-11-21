@@ -2320,7 +2320,7 @@
     "lib/dm/speech.ts#partial": [
       [
         "pattern",
-        15,
+        18,
         "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
       ],
       [
