@@ -26,7 +26,7 @@ const { test, finish } = suite("test-enforce-enemy-rider-falls");
 const { listTokens } = await import("../src/lib/db/battle-maps.ts");
 const { saveEncounter } = await import("../src/lib/db/encounters.ts");
 const { settleEnemyRiders } = await import("../src/lib/dm/enemy-rider-falls.ts");
-const { pushTokenAway } = await import("../src/lib/dm/map-tools.ts");
+const { pullTokenToward, pushTokenAway } = await import("../src/lib/dm/map-tools.ts");
 
 const HERO = () => caster("paladin", "cha", [], [], 5, { speed: 30 });
 const ownToken = (world, refId) => listTokens(mapOf(world).id).find((token) => token.refId === refId) ?? null;
@@ -169,6 +169,31 @@ await test("Ruling 6: a forced move_token that names the rider carries the rider
   assert.deepEqual(at(world, mount.id), [12, 4]);
   assert.equal(mounted(world, rider), false);
   assert.equal(prone(world, rider.id), true);
+});
+
+await test("Ruling 6: a pull that names the rider draws the rider alone out of the saddle, and a pull that names the mount draws the pair, whose rider then saves.", async () => {
+  const { world, hero, rider, mount } = await pair();
+  await layMap(world, OPEN(), { [hero.id]: { x: 8, y: 4 }, [rider.id]: { x: 12, y: 4 } });
+  const campaign = world.campaign();
+  const encounterId = world.encounter().id;
+  // The mount first: the pair comes a square nearer, and the rider is asked.
+  assert.equal(pullTokenToward(campaign, encounterId, hero.id, mount.id).moved, true);
+  assert.deepEqual(at(world, rider.id), [11, 4], "the pull at the mount did not draw the pair's token");
+  assert.equal(ownToken(world, mount.id), null);
+  world.diceLog();
+  world.dice(15);
+  assert.match(settleEnemyRiders(campaign, [])[0] ?? "", /kept its seat/);
+  assert.equal(world.clearDice(), 0, "the rider of a pulled mount made no save");
+  // Then the rider, in a call of its own: out of the saddle, with no save.
+  const drawn = pullTokenToward(campaign, encounterId, hero.id, rider.id);
+  assert.equal(drawn.moved, true, drawn.reason);
+  assert.deepEqual(at(world, rider.id), [10, 4], "the rider did not end where the pull ends");
+  assert.deepEqual(at(world, mount.id), [11, 4], "the pull at the rider moved its mount");
+  assert.equal(mounted(world, rider), false);
+  assert.equal(prone(world, rider.id), true);
+  world.dice(20);
+  settleEnemyRiders(campaign, []);
+  assert.equal(world.clearDice(), 1, "a rider pulled from the saddle made a save");
 });
 
 await test("Ruling 6: both pushed together move as the pair, and the rider saves once.", async () => {
