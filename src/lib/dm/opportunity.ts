@@ -17,7 +17,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -231,7 +231,7 @@ export function resolveOpportunityAttacks(
     // (enemy-hit.ts sizedAttack), as on its own turn.
     const sized = sizedAttack(weapon.attack, enemy.conditions);
     const attack = sized.attack;
-    const leftFrom = leavesReachAt(steps, token, reach, footprintForSize(enemy.stats.size));
+    const leftFrom = leavesReachAt(steps, token, reach, enemyFootprint(enemy));
 
     // A wall between them is total cover (attack-spatial.ts reachWalled).
     if (!leftFrom || reachWalled(encounter.id, enemy.id, characterId, leftFrom)) {
@@ -580,7 +580,7 @@ export function resolvePcOpportunityWalk(
   const steps = [from, ...(path?.length ? path : [to])];
   const notes: string[] = [];
   // The walker's size: an ogre leaves a reach when its last square does.
-  const moverFootprint = footprintForSize(getFoe(enemyId)?.stats.size);
+  const moverFootprint = enemyFootprint(getFoe(enemyId));
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
   // Whether the walk can go no further: dropped, or its speed at 0.

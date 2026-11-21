@@ -243,6 +243,8 @@ export type DmEncounterState = {
     // Its movement left this turn when that is not its plain speed: Dashed,
     // already walked, Disengaged (src/lib/dm/enemy-speed.ts enemyMovementNote).
     moving?: string;
+    // Who it rides or carries (issue 1055).
+    pair?: string;
   }>;
   // Combatants fighting on the side their kind does not (issue 503): a
   // character turned against the party, a creature the party dominates.
@@ -1279,6 +1281,9 @@ export function buildGameStateBlock(state: DmGameState): string {
       }
       if (enemy.moving) {
         parts.push(`movement: ${enemy.moving}`);
+      }
+      if (enemy.pair) {
+        parts.push(enemy.pair);
       }
       lines.push(parts.join(" | "));
     }

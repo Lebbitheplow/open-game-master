@@ -38,7 +38,7 @@ import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/l
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
@@ -161,7 +161,7 @@ export function createBattleMapForEncounter(
         plan: building,
         seed: fnv1a(encounter.id),
         pcCount: sheets.length + allies.length,
-        enemyFootprints: enemies.map((enemy) => footprintForSize(enemy.stats.size)),
+        enemyFootprints: enemies.map((enemy) => enemyFootprint(enemy)),
         enemyDistanceTiles: askedTiles,
       })
     : null;
@@ -689,6 +689,19 @@ export function handleMoveToken(
       };
     }
   }
+  // Who is moving, which is not always whose token moves: an enemy's mount
+  // stands on its rider's token (issue 1055, ruling 1), and the walk, its
+  // opportunity attacks and its turn are the mount's.
+  const moverId = resolved.kind === "enemy" && resolved.enemy ? resolved.enemy.id : resolved.token.refId;
+  const moverName = resolved.kind === "enemy" && resolved.enemy ? resolved.enemy.displayName : resolved.token.name;
+  // A rider is carried (ruling 2): the pair moves on its mount's turn.
+  const ridden = resolved.enemy?.ridesEnemyId && !args.forced ? getEnemy(resolved.enemy.ridesEnemyId) : null;
+  if (ridden) {
+    return {
+      error: `${moverName} rides ${ridden.displayName} and has no movement of its own: the pair moves on ${ridden.displayName}'s turn, with move_token for ${ridden.displayName}. Nothing was moved.`,
+      refused: "rules",
+    };
+  }
   // An enemy walking is an enemy acting: a surprised one stands where it is
   // through round 1, on its own (lost) turn too, which the reaction's
   // question let pass once the pointer had gone by its place. A legendary
@@ -810,7 +823,7 @@ export function handleMoveToken(
     const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
     const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, crawls ? crawlingTraits(traits) : traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
     if (!walk.at && allowance) {
-      return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
+      return { error: `${moverName} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
     }
     if (!walk.at) {
       const words = move && resolved.enemy ? speedWords(move.speedTiles, enemyTurnEntry(encounter, resolved.enemy.id)) : "speed 0 ft";
@@ -822,7 +835,7 @@ export function handleMoveToken(
             ? ", and it will not move closer to what it fears"
             : "";
       return {
-        error: `${resolved.token.name} has no movement left this turn (${words})${why}.${stillAt(tokens, resolved.token)}`,
+        error: `${moverName} has no movement left this turn (${words})${why}.${stillAt(tokens, resolved.token)}`,
         refused: "rules",
       };
     }
@@ -839,7 +852,7 @@ export function handleMoveToken(
   const origin = { x: resolved.token.x, y: resolved.token.y };
   const carried = drag ? dragLandings({ map, tokens, mover: resolved.token, landing, walked: [origin, ...walkedPart(path, landing)], held: drag.held, footprintOf: footprints }) : [];
   if (!carried) {
-    return { error: `There is no room beside (${landing.x},${landing.y}) to set down the character ${resolved.token.name} drags. Choose another square.`, retry: true };
+    return { error: `There is no room beside (${landing.x},${landing.y}) to set down the character ${moverName} drags. Choose another square.`, retry: true };
   }
   // Disengage first, paid for (enemy-actions.ts): then leaving reach draws
   // nothing, on this walk and every later one this turn. Every refusal is
@@ -868,7 +881,7 @@ export function handleMoveToken(
     resolved.kind === "enemy" && !args.forced && (!allowance || allowance.provokes)
       ? resolvePcOpportunityWalk(
           campaign,
-          resolved.token.refId,
+          moverId,
           origin,
           landing,
           walkedPart(path, landing),
@@ -895,8 +908,8 @@ export function handleMoveToken(
     landing.x,
     landing.y,
     resolved.kind === "enemy" && !allowance
-      ? (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound) + spent
-      : (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound),
+      ? (getTokenByRef(map.id, moverId)?.movedThisRound ?? resolved.token.movedThisRound) + spent
+      : (getTokenByRef(map.id, moverId)?.movedThisRound ?? resolved.token.movedThisRound),
     !args.forced && !allowance?.fly && resolved.token.movement === "walk" ? [origin, ...walked] : undefined,
   );
   // A flight takes it up: it stays aloft where it lands (set_movement).
@@ -913,16 +926,16 @@ export function handleMoveToken(
   // A push, a drag or a carry that moved a rider moved their mount against
   // its will: their save to stay on is asked as this call finishes.
   if (args.forced && resolved.token.kind === "pc" && (landing.x !== origin.x || landing.y !== origin.y)) {
-    mountMoved(campaign.id, resolved.token.refId);
+    mountMoved(campaign.id, moverId);
   }
   // The Disengage and this walk were the turn it was owed; its own turn
   // follows on fresh movement, with no Disengage (enemy-actions.ts
   // spendEnemyDisengage).
   if (closesOwedTurn) {
-    resetTurnBudgets(map.id, [resolved.token.refId]);
+    resetTurnBudgets(map.id, [moverId]);
     const live = getActiveEncounter(campaign.id);
     if (live) {
-      forgetEnemyTurns(live, [resolved.token.refId]);
+      forgetEnemyTurns(live, [moverId]);
       saveEncounter(live);
     }
   }
@@ -937,7 +950,8 @@ export function handleMoveToken(
     markSqueezing(campaign.id, resolved.enemy.id, squeezedAt(map.terrain, map.width, map.height, occupied, landing, moverFootprint));
   }
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
-  const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walked, { careful });
+  // The creature walking is the one that walked in: a mount under its rider, not the rider whose token it moves.
+  const zoneEffects = zonesAfterMove(campaign, encounter.id, { kind: resolved.token.kind, refId: moverId }, origin, walked, { careful });
   // Who it came near, on record for what answers a creature moving up (move-near.ts).
   recordMovesNear(campaign.id, tokens, resolved.token, origin, walked);
   // An enemy entering an aura that asks once (Avenging Angel's aura of
@@ -947,7 +961,7 @@ export function handleMoveToken(
   }
   return {
     ok: true,
-    name: resolved.token.name,
+    name: moverName,
     at: `(${landing.x},${landing.y})`,
     ...distancesFrom(tokens, resolved.token, landing),
     ...(zoneEffects.length ? { zoneEffects } : {}),
@@ -961,19 +975,19 @@ export function handleMoveToken(
       : {}),
     ...(stoppedAt
       ? {
-          note: getEnemy(resolved.token.refId)?.status === "alive"
-            ? `${resolved.token.name} was stopped at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}): its speed is 0 for the rest of the turn.`
-            : `${resolved.token.name} fell at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}).`,
+          note: getEnemy(moverId)?.status === "alive"
+            ? `${moverName} was stopped at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}): its speed is 0 for the rest of the turn.`
+            : `${moverName} fell at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}).`,
         }
       : clamped
       ? {
           note: approachCut
-            ? `Command draws ${resolved.token.name} only toward its caster: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+            ? `Command draws ${moverName} only toward its caster: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
             : aggressiveCut
-              ? `Aggressive carries ${resolved.token.name} only toward a hostile creature it can see: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+              ? `Aggressive carries ${moverName} only toward a hostile creature it can see: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
               : allowance
-                ? `Its legendary move goes ${allowance.tiles * 5} ft: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
-                : `Speed limited the move: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
+                ? `Its legendary move goes ${allowance.tiles * 5} ft: ${moverName} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+                : `Speed limited the move: ${moverName} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
         }
       : {}),
     ...(disengaged ? { disengaged: `Disengaged with ${disengaged}: no opportunity attacks${opportunity.length ? " but a Sentinel's" : ""}.` } : {}),
@@ -1250,7 +1264,7 @@ export function checkPcAttackRange(
   // sentence: a person refused at the Hand or the console reads the
   // sentence alone, and a model reads both (src/lib/dm/invoke.ts).
   const enemy = listEnemies(encounterId).find((entry) => entry.id === target.refId);
-  const square = openSquaresBeside(encounterId, map, attacker, target, footprintForSize(enemy?.stats.size))[0];
+  const square = openSquaresBeside(encounterId, map, attacker, target, enemyFootprint(enemy))[0];
   const refusal = { error: `${attacker.name} is ${distance * 5} ft from ${target.name}, out of melee reach (${options.reachTiles * 5} ft).${within(options.reachTiles)} They must move their token adjacent first or attack with a ranged weapon.`, retry: true as const };
   return square
     ? { ...refusal, closeIn: `When their player said they close in, send the attack again with approach true: the server walks them to (${square.x},${square.y}), the nearest open square beside ${target.name}, and attacks. The nearest open square beside ${target.name} is (${square.x},${square.y}): move_token ${attacker.name} there, then attack.` }

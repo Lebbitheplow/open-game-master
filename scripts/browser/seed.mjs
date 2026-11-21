@@ -4360,6 +4360,17 @@ const bench2Titles = {};
     turnOf(table, pip.id);
     bench2.orders = { id: table.id, pip: { id: pip.id, name: pip.name } };
   }
+  // enemy-riders (145): a goblin on a Large warhorse and a goblin on a wolf
+  // (issue 1055). Each pair is one token, the rider's, in its mount's space.
+  {
+    const table = tableFor("Riders Table", world.owner, player);
+    const mara = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Mara Voss", class: "fighter", level: 5, maxHp: 44 }));
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", mount: "warhorse" }, { monster: "goblin", mount: "wolf" }]);
+    const on = (slug) => rows.find((enemy) => rows.find((mount) => mount.id === enemy.ridesEnemyId)?.slug === slug) ?? (() => { throw new Error(`no rider on a ${slug}`); })();
+    [[mara.id, -3, 0], [on("warhorse").id, 1, -2], [on("wolf").id, 1, 2]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, mara.id);
+    bench2.riders = { id: table.id, tokens: 3 };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a

@@ -72,7 +72,7 @@ export function templateDifficulty(
       tooDeadly: false,
       scaledWithout: "",
       held: false,
-      unknownMonster: "unknownMonster" in outcome ? outcome.unknownMonster : outcome.unknownReturning,
+      unknownMonster: "unknownMonster" in outcome ? outcome.unknownMonster : "unknownReturning" in outcome ? outcome.unknownReturning : outcome.badMount,
       count: 0,
       names,
     };

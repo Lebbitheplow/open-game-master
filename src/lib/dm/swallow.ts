@@ -34,7 +34,7 @@ import { getActiveEncounter, getEnemy, listEnemies, orderEntryId, patchEnemyCond
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import { footprintLookup, occupiedTiles, pcMoveBudget } from "@/lib/battlemap/view";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { chebyshev, inBounds, tileIndex, type BattleToken } from "@/lib/battlemap/types";
 import { addConditionInstance, instancesOf, removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { swallowRuleOf, type SwallowRule } from "@/lib/dm/swallow-logic";
@@ -448,7 +448,7 @@ function outProne(campaign: Campaign, encounterId: string, party: Party, swallow
   const map = getBattleMapForEncounter(encounterId);
   const token = map ? getTokenByRef(map.id, party.id) : null;
   const body = map ? getTokenByRef(map.id, swallower.id) : null;
-  const square = map && token && body ? besideSquare(encounterId, map, token, body, footprintForSize(swallower.stats.size)) : null;
+  const square = map && token && body ? besideSquare(encounterId, map, token, body, enemyFootprint(swallower)) : null;
   if (map && token) {
     moveToken(token.id, square?.x ?? token.x, square?.y ?? token.y, token.movedThisRound + spentTiles);
     publishEphemeral(campaign.id, "battle_map_updated", {});

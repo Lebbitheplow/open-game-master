@@ -36,7 +36,7 @@ export function preparedFit(campaign: Campaign, rows: TemplateEnemy[], levels: n
   for (const row of rows) {
     const outcome = resolveEnemyRequests(campaign.gameSettings, [{ monster: row.monster, count: 1 }], authors, campaign.id);
     if (!("resolved" in outcome)) {
-      return { kind: "unknown", monster: "unknownMonster" in outcome ? outcome.unknownMonster : outcome.unknownReturning };
+      return { kind: "unknown", monster: "unknownMonster" in outcome ? outcome.unknownMonster : "unknownReturning" in outcome ? outcome.unknownReturning : outcome.badMount };
     }
     resolved.push(outcome.resolved[0]);
   }

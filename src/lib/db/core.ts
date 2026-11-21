@@ -2221,6 +2221,10 @@ function ensureSchema(db: SqliteDatabase) {
     // plate (src/lib/placeholders.ts). A Cast NPC's own record wins.
     ["race", `TEXT NOT NULL DEFAULT ''`],
     ["gender", `TEXT NOT NULL DEFAULT ''`],
+    // The enemy row this one rides ('' on foot): a goblin on a wolf is two
+    // rows, and the rider's names its mount (issue 1055,
+    // src/lib/dm/enemy-riders.ts).
+    ["rides_enemy_id", `TEXT NOT NULL DEFAULT ''`],
   ]);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_encounter_enemies_npc ON encounter_enemies(campaign_id, npc_id);

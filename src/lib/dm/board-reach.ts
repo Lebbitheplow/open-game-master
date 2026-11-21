@@ -11,7 +11,7 @@ import { getEnemy } from "@/lib/db/encounters";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
 import {
   footprintDistance,
-  footprintForSize,
+  enemyFootprint,
   footprintTiles,
   type Footprint,
 } from "@/lib/battlemap/footprint";
@@ -20,7 +20,7 @@ import {
 export type Spot = XY & { footprint?: Footprint };
 
 export function tokenFootprint(token: Pick<BattleToken, "kind" | "refId">): Footprint {
-  return token.kind === "enemy" ? footprintForSize(getEnemy(token.refId)?.stats.size) : 1;
+  return token.kind === "enemy" ? enemyFootprint(getEnemy(token.refId)) : 1;
 }
 
 export function spotOf(token: BattleToken): Spot {

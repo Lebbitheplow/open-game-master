@@ -57,7 +57,8 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budget";
 import { suggestEnemies } from "@/lib/bestiary";
-import { enemyRequestSchema, groupInitiatives, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { carriedIndexes, enemyRequestSchema, groupInitiatives, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { linkPairs, onOwnToken } from "@/lib/dm/enemy-riders";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
 import { fieldPartyNpcs } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
@@ -364,6 +365,9 @@ function handleStartEncounter(
   if ("unknownReturning" in outcome) {
     return unknownReturning(campaign.id, outcome.unknownReturning);
   }
+  if ("badMount" in outcome) {
+    return { error: `${outcome.badMount} No fight was started.`, refused: "rules" };
+  }
   const resolved = outcome.resolved;
   // A character named as a foe fights as its own sheet (issue 503,
   // src/lib/dm/sheet-foes.ts): no enemy row, and not one of the party.
@@ -451,7 +455,7 @@ function handleStartEncounter(
     rows.map((entry, index) => (arrivals.carries[index] ? { ...entry, group: undefined } : entry)),
     names,
   );
-  const enemies = rows.map((entry, index) => {
+  const made = rows.map((entry, index) => {
     const carry = arrivals.carries[index];
     return insertEnemy({
       encounterId: encounter.id,
@@ -466,6 +470,8 @@ function handleStartEncounter(
       ...(carry ? { arrives: carry.arrives } : {}),
     });
   });
+  // Each rider on its mount (issue 1055, enemy-riders.ts).
+  const enemies = linkPairs(made, carriedIndexes(rows));
   // Surprise: the ambushed side loses its first turn. Stored as ids the
   // initiative pointer skips through round 1 and then forgets. An ambush is
   // decided per creature, Stealth against passive Perception; a side named
@@ -512,7 +518,7 @@ function handleStartEncounter(
   let placed: ReturnType<typeof createBattleMapForEncounter>;
   try {
     // Whoever carries a rider stands on the rider's token (mount-link.ts onFoot).
-    placed = createBattleMapForEncounter(campaign, encounter, enemies, onFoot(campaign.id, sheets), args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
+    placed = createBattleMapForEncounter(campaign, encounter, onOwnToken(enemies), onFoot(campaign.id, sheets), args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
   } catch (error) {
     endEncounter(encounter.id, "the board could not be set");
     throw error;
@@ -581,6 +587,7 @@ function handleStartEncounter(
         ac: enemy.ac,
         hp: `${enemy.currentHp}/${enemy.maxHp}`,
         ...(carry ? { returning: carry.line } : {}),
+        ...pairLine(enemies, enemy),
       };
     }),
     ...(against.length

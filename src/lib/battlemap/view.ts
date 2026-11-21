@@ -29,7 +29,7 @@ import { turnBonusTiles } from "@/lib/dm/mt-mr-turn";
 import { crossesAnyGround } from "@/lib/dm/ar-wbf-feat-turn";
 import { funeralMarchCovers } from "@/lib/dm/genre-cc-a-march";
 import { listSheets } from "@/lib/db/sheets";
-import { footprintDistance, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
+import { footprintDistance, enemyFootprint, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
 import {
   getBattleMapForEncounter,
@@ -554,7 +554,7 @@ export function buildPlayerMapView(
       tokenHealth[shown.id] = healthWord(enemy.currentHp, enemy.maxHp, {
         dead: enemy.status === "dead",
       });
-      const footprint = footprintForSize(enemy.stats.size);
+      const footprint = enemyFootprint(enemy);
       if (footprint > 1) {
         tokenFootprint[shown.id] = footprint;
       }
@@ -770,8 +770,8 @@ export function occupiedTiles(
 // The footprint of each token on a board, from the enemies' stat blocks.
 // Player characters are Small or Medium and take one square.
 export function footprintLookup(
-  enemiesById: Map<string, { stats: { size?: string } }>,
+  enemiesById: Map<string, { stats: { size?: string }; pairSize?: string }>,
 ): (token: BattleToken) => Footprint {
   return (token) =>
-    token.kind === "enemy" ? footprintForSize(enemiesById.get(token.refId)?.stats.size) : 1;
+    token.kind === "enemy" ? enemyFootprint(enemiesById.get(token.refId)) : 1;
 }
