@@ -8,7 +8,7 @@
 
 import { getDatabase, nowIso } from "@/lib/db/core";
 import { keepRow } from "@/lib/db/turn-rows";
-import { getBattleMapForEncounter, listTokens, type BattleMap } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, listStandings, type BattleMap } from "@/lib/db/battle-maps";
 import { getActiveBoard, getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral } from "@/lib/events";
@@ -84,7 +84,7 @@ export function liveZones(map: BattleMap, encounter: Pick<Encounter, "round"> | 
   if (holding.length !== map.spellZones.length) {
     saveZones(map.id, holding);
   }
-  return holdGasesBack(withAnchors(holding, listTokens(map.id), map), map.width);
+  return holdGasesBack(withAnchors(holding, listStandings(map.id), map), map.width);
 }
 
 // A spell's areas end: every one of that spell by that caster (any caster

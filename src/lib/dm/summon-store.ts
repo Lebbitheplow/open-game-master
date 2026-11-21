@@ -27,7 +27,7 @@ import { getActiveEncounter, saveEncounter, setEncounterAway, type Encounter, ty
 import {
   getBattleMapForEncounter,
   insertToken,
-  listTokens,
+  listStandings, listTokens,
   removeTokenByRef,
   type BattleMap,
 } from "@/lib/db/battle-maps";
@@ -229,7 +229,7 @@ function placeInFight(
 
 // A token for each creature in a free square beside `caster`.
 function standOnBoard(campaign: Campaign, map: BattleMap, caster: Pick<CharacterSheet, "id">, created: CharacterSheet[]) {
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const anchor = tokens.find((token) => token.refId === caster.id);
   const spots = findSpawnTiles(
     map.terrain,

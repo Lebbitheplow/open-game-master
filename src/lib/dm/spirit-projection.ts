@@ -27,7 +27,7 @@
 // The passage itself is the board's (ar-ws-umbral-logic.ts
 // movesThroughEverything, read by passage.ts pcMoveTraits).
 import { regainHitPoints } from "@/lib/dm/regain";
-import { getBattleMapForEncounter, insertToken, listTokens, removeTokenByRef } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, insertToken, listStandings, listTokens, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -143,7 +143,7 @@ export function enemyStrikesBody(
   }
   // "Any attack that hits the creature is a critical hit if the attacker is
   // within 5 feet of the creature" (Unconscious).
-  const striker = listTokens(map.id).find((token) => token.kind === "enemy" && token.refId === enemy.id);
+  const striker = listStandings(map.id).find((token) => token.kind === "enemy" && token.refId === enemy.id);
   const critical = natural === 20 || Boolean(striker && apart(striker, body) <= 1);
   const damage = rollCard(campaign, turn, null, "damage", `${enemy.displayName}: ${attack.name} at ${body.name}${critical ? " (critical)" : ""}`, critical ? critDamageExpression(attack.damage) : attack.damage, enemyAttacker(enemy));
   const amount = Math.max(0, damage.total);

@@ -7,7 +7,7 @@
 //
 // Off a board the use is paid and the GM places the area in the story.
 
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import { getActiveBoard, getEnemy } from "@/lib/db/encounters";
 import { chebyshev } from "@/lib/battlemap/types";
 import { placeSpellZone } from "@/lib/dm/zone-cast";
@@ -33,7 +33,7 @@ function landing(input: Lay, spec: GenreZoneSpec): ToolError | { x: number; y: n
     return null;
   }
   const alive = (refId: string) => getEnemy(refId)?.status === "alive";
-  const foes = listTokens(map.id).filter((token) => token.kind === "enemy" && alive(token.refId));
+  const foes = listStandings(map.id).filter((token) => token.kind === "enemy" && alive(token.refId));
   const apart = (token: { x: number; y: number }) => chebyshev(own.x, own.y, token.x, token.y);
   const named = input.targetEnemyId ? foes.find((token) => token.refId === input.targetEnemyId) : null;
   if (input.targetEnemyId && !named) {
