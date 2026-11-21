@@ -1,0 +1,137 @@
+/* inferno: both brightness palettes, then its materials. See docs/appearance-themes.md. */
+[data-appearance="inferno"][data-theme="dark"] {
+  --background: #0d0b0c;
+  --foreground: #ece6e4;
+  --color-stone-950: #100d0e;
+  --color-stone-900: #1a1617;
+  --color-stone-800: #262021;
+  --color-stone-700: #3a3132;
+  --color-stone-600: #6a5d5e;
+  --color-stone-500: #ada0a0;
+  --color-stone-400: #beb2b1;
+  --color-stone-300: #d3c9c8;
+  --color-stone-200: #e4dcdb;
+  --color-stone-100: #f0eae9;
+  --color-stone-50: #f8f5f4;
+  --color-amber-950: #2a070c;
+  --color-amber-900: #470b14;
+  --color-amber-800: #6e101e;
+  --color-amber-700: #981829;
+  --color-amber-600: #c02437;
+  --color-amber-500: #dc4254;
+  --color-amber-400: #ec5f6e;
+  --color-amber-300: #f38994;
+  --color-amber-200: #f8b5bc;
+  --color-amber-100: #fbdde0;
+  --color-amber-50: #fef1f2;
+  --material-inset: #120f10;
+  --material-paper: #181415;
+  --material-metal: #ddd3d2;
+  --material-edge: #5e5455;
+  --material-panel-wash: linear-gradient(#141112c2, #0e0c0ddb);
+  --material-control-wash: linear-gradient(#332b2cc4, #1c1819e0);
+  --material-body-wash: linear-gradient(#0c0a0bf0, #100d0ef0);
+  --material-scrim: linear-gradient(#0e0a0ba6, #0e0a0b59 45%, #0e0a0bcc);
+}
+[data-appearance="inferno"][data-theme="light"] {
+  --background: #e9e7e3;
+  --foreground: #231f1f;
+  --color-stone-950: #f7f4ee;
+  --color-stone-900: #edeae4;
+  --color-stone-800: #dedad4;
+  --color-stone-700: #c0bbb5;
+  --color-stone-600: #86807b;
+  --color-stone-500: #55504d;
+  --color-stone-400: #4b4644;
+  --color-stone-300: #3a3635;
+  --color-stone-200: #2b2828;
+  --color-stone-100: #1e1b1b;
+  --color-stone-50: #131111;
+  --color-amber-950: #fbeaec;
+  --color-amber-900: #f5d3d7;
+  --color-amber-800: #e8a6ae;
+  --color-amber-700: #cf6673;
+  --color-amber-600: #ab2337;
+  --color-amber-500: #8f1528;
+  --color-amber-400: #760f20;
+  --color-amber-300: #5e0c1a;
+  --color-amber-200: #4a0914;
+  --color-amber-100: #38070f;
+  --color-amber-50: #27040a;
+  --material-inset: #f6f3ed;
+  --material-paper: #eeebe5;
+  --material-metal: #3a3334;
+  --material-edge: #8d8782;
+  --material-panel-wash: linear-gradient(#f7f4eeeb, #eae7e1eb);
+  --material-control-wash: linear-gradient(#f2efe9de, #d8d4cede);
+  --material-body-wash: linear-gradient(#e9e7e3eb, #dbd8d3eb);
+  --material-scrim: linear-gradient(#ebe8e399, #ebe8e340 45%, #ebe8e3bb);
+}
+
+/* Materials that hold in both brightness modes: black iron fittings, oxblood
+   keys, and shard cuts (two square corners, two long slanted ones) where
+   Deep Forge is square and Gothic arched. */
+[data-appearance="inferno"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #0d0b0c;
+  --theme-night-foreground: #ece6e4;
+  --theme-night-stone-950: #100d0e;
+  --theme-night-stone-900: #1a1617;
+  --theme-night-stone-800: #262021;
+  --theme-night-stone-700: #3a3132;
+  --theme-night-stone-600: #6a5d5e;
+  --theme-night-stone-500: #ada0a0;
+  --theme-night-stone-400: #beb2b1;
+  --theme-night-stone-300: #d3c9c8;
+  --theme-night-stone-200: #e4dcdb;
+  --theme-night-stone-100: #f0eae9;
+  --theme-night-stone-50: #f8f5f4;
+  --theme-night-amber-950: #2a070c;
+  --theme-night-amber-900: #470b14;
+  --theme-night-amber-800: #6e101e;
+  --theme-night-amber-700: #981829;
+  --theme-night-amber-600: #c02437;
+  --theme-night-amber-500: #dc4254;
+  --theme-night-amber-400: #ec5f6e;
+  --theme-night-amber-300: #f38994;
+  --theme-night-amber-200: #f8b5bc;
+  --theme-night-amber-100: #fbdde0;
+  --theme-night-amber-50: #fef1f2;
+  --material-rail-wash: linear-gradient(#0f0c0d99, #0f0c0d99);
+  --material-metal-finish: linear-gradient(135deg, #5a5354, #262122 48%, #4a4344 52%, #121011);
+  --material-metal-ink: #f8b5bc;
+  --material-fitting-radius: 50%;
+  --material-control-radius: 0 10px 0 10px / 0 50% 0 50%;
+  --material-panel-radius: 0 14px 0 14px / 0 26px 0 26px;
+  --material-bubble-radius: 0 10px 0 10px / 0 16px 0 16px;
+  --material-tab-radius: 0 12px 0 0 / 0 20px 0 0;
+  --material-chip-radius: 0 6px 0 6px / 0 10px 0 10px;
+  --material-sigil-radius: 0 6px 0 6px / 0 12px 0 12px;
+  /* Oxblood keys, darker and bluer than the app's danger red, which stays a
+     flat bright red on controls that destroy something. The health bar keeps
+     the shared green: a red bar would read as hurt. */
+  --material-primary-wash: linear-gradient(#8f1727eb, #4e0a14f2);
+  --material-send-wash: linear-gradient(#981829, #560c17);
+  --material-send-edge: #f38994;
+  --material-chosen-wash: linear-gradient(#7a1422, #450912);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23803540' stroke-width='1'%3E%3Cpath d='M0 60L15 45L30 60L45 45L60 60L75 45L90 60L105 45L120 60M60 0L52 14L60 28L68 14ZM60 92L52 106L60 120L68 106Z'/%3E%3Cellipse cx='30' cy='14' rx='12' ry='6'/%3E%3Cellipse cx='90' cy='106' rx='12' ry='6'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 120px 120px;
+  --appearance-corner: 0;
+}
+/* Spike-thin corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+/* By day the app's danger button is itself a dark red slab under light
+   text, so the keys turn to black iron with a crimson edge: an ordinary
+   primary key must never pass for the one that deletes. */
+[data-appearance="inferno"][data-theme="light"] {
+  --material-primary-wash: linear-gradient(#4a4243f0, #231e1ff5);
+  --material-send-wash: linear-gradient(#463e3f, #211c1d);
+  --material-send-edge: #ab2337;
+  --material-chosen-wash: linear-gradient(#3d3637, #1c1819);
+}
+html[data-appearance="inferno"] .ornate::before,
+html[data-appearance="inferno"] .ornate::after { width: 22px; height: 22px; }
+html[data-appearance="inferno"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="inferno"] .ornate::after { border-width: 0 2px 2px 0; }

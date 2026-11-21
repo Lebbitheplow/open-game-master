@@ -34,6 +34,7 @@
 @import "./styles/theme-session.css";
 @import "./styles/theme-ornaments.css";
 @import "./styles/themes/kingdoms.css";
+@import "./styles/themes/inferno.css";
 
 /*
   Arcane night theme. The neutral ramp (stone-*) is redefined as deep
