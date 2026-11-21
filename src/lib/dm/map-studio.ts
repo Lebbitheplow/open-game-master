@@ -176,6 +176,9 @@ export function applyStudioMap(campaign: Campaign, settings: StudioSettings): St
     seed,
   });
   restandTokens({ ...map, width: generated.width, height: generated.height }, generated);
+  // Everyone was restood on one square; a rider needs the mount's space on
+  // the new ground (issue 1055).
+  seatMountedParty(campaign.id, map.id);
   clearExplored(map.id);
   publishBattleMapUpdate(campaign.id);
   return { ok: true, seed };
