@@ -22,7 +22,7 @@ import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { getBattleMap, getBattleMapForEncounter, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
+import { getBattleMap, getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollCard } from "@/lib/dm/roll-card";
 import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
@@ -114,7 +114,9 @@ const holds = (conditions: string[], name: string) => conditions.some((entry) =>
 
 // Pushes a creature `feet` along the line away from the zone's caster,
 // square by square, stopping at a wall, the edge or another creature.
-function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: number): XY | null {
+// `enemy` is the enemy pushed, which is not always whose token moves: a
+// ridden mount stands on its rider's token.
+function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: number, enemy: EncounterEnemy | null = null): XY | null {
   const toward = zone.toward ?? token;
   const distance = Math.max(1, chebyshev(zone.origin.x, zone.origin.y, toward.x, toward.y));
   const ux = Math.round((toward.x - zone.origin.x) / distance);
@@ -136,8 +138,8 @@ function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: nu
     return null;
   }
   // An enemy is moved as the pair it may be half of (enemy-rider-falls.ts): a
-  // rider the area caught goes alone, out of the saddle.
-  const enemy = token.kind === "enemy" ? getEnemy(token.refId) : null;
+  // rider the area caught goes alone, out of the saddle, and a mount goes with
+  // its rider on it.
   if (enemy) {
     return forcedEnemyMove({ id: map.campaignId }, map.id, enemy, at)?.at ?? null;
   }
@@ -371,8 +373,10 @@ function afterFailOnEnemy(map: BattleMap, zone: SpellZone, trigger: ZoneTrigger,
     lines.push(`${enemy.displayName} spends its action this turn retching.`);
   }
   if (trigger.pushFeet) {
-    const token = listTokens(map.id).find((entry) => entry.refId === enemy.id);
-    const at = token ? pushAlong(map, zone, token, trigger.pushFeet) : null;
+    // A ridden mount has no token of its own: the pair's is found for it.
+    // Looked up by its own id, the mount an area pushed stood where it was.
+    const token = getTokenByRef(map.id, enemy.id);
+    const at = token ? pushAlong(map, zone, token, trigger.pushFeet, getEnemy(enemy.id) ?? enemy) : null;
     if (at) {
       lines.push(`${enemy.displayName} is pushed to (${at.x},${at.y}).`);
     }
@@ -550,7 +554,9 @@ function areasAfterMove(
     }
   }
   if (stopAt) {
-    const token = listTokens(map.id).find((entry) => entry.refId === victim.id);
+    // The pair's token for a ridden mount, which has none of its own: a mount
+    // the webs caught walked on to the square it was making for.
+    const token = getTokenByRef(map.id, victim.id);
     if (token && (token.x !== stopAt.x || token.y !== stopAt.y)) {
       moveToken(token.id, stopAt.x, stopAt.y, token.movedThisRound);
       lines.push(`It is held fast at (${stopAt.x},${stopAt.y}).`);
@@ -673,8 +679,12 @@ function momentFor(
 ): string[] {
   const lines: string[] = [];
   for (const id of combatantIds) {
-    const token = tokens.find((entry) => entry.refId === id);
-    const victim = token ? victimOf(token) : null;
+    // A ridden mount stands on its rider's token and suffers the area in its
+    // own name, on its own turn. Looked up by its own id alone it had no
+    // token, and its turn began and ended inside an area untouched.
+    const own = tokens.find((entry) => entry.refId === id);
+    const token = own ?? (getEnemy(id) ? getTokenByRef(map.id, id) : null);
+    const victim: Victim | null = own ? victimOf(own) : token ? { kind: "enemy", id } : null;
     if (!token || !victim) {
       continue;
     }

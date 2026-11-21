@@ -17,9 +17,10 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
+import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { caster, closeTables } from "./lib/enforce-spell-kit.mjs";
 import { layMap } from "./lib/enforce-spells.mjs";
-import { mapOf, OPEN } from "./lib/enforce-zones.mjs";
+import { mapOf, OPEN, zonesOf } from "./lib/enforce-zones.mjs";
 import { diff, revertTurn, snapshot } from "./lib/sweep-lifecycle.mjs";
 
 const { test, finish } = suite("test-enforce-enemy-rider-falls");
@@ -27,8 +28,17 @@ const { listTokens } = await import("../src/lib/db/battle-maps.ts");
 const { saveEncounter } = await import("../src/lib/db/encounters.ts");
 const { settleEnemyRiders } = await import("../src/lib/dm/enemy-rider-falls.ts");
 const { pullTokenToward, pushTokenAway } = await import("../src/lib/dm/map-tools.ts");
+const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
+const { saveZones } = await import("../src/lib/dm/zone-store.ts");
+const { zoneTurnStart } = await import("../src/lib/dm/zone-triggers.ts");
 
 const HERO = () => caster("paladin", "cha", [], [], 5, { speed: 30 });
+// A hero of a martial subclass, every ability 16.
+const MARTIAL = (cls, subclass, level, weapon) => ({
+  class: cls, subclass, level, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED,
+  abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 },
+  equipment: [{ name: weapon, qty: 1, equipped: true }],
+});
 const ownToken = (world, refId) => listTokens(mapOf(world).id).find((token) => token.refId === refId) ?? null;
 const at = (world, refId) => [ownToken(world, refId)?.x, ownToken(world, refId)?.y];
 const live = (world, id) => world.enemies().find((enemy) => enemy.id === id);
@@ -39,9 +49,9 @@ const d20s = (world) => world.diceLog().filter((die) => die.sides === 20).length
 
 // A hero at (11,4) beside a rider on its mount at (12,4), on an open board.
 // The order is the hero, the rider, the mount, with the pointer on the hero.
-async function pair({ mount = "wolf" } = {}) {
+async function pair({ mount = "wolf", hero: who = HERO() } = {}) {
   const world = await openWorld({ gameSettings: { ttsEnabled: false } });
-  const hero = world.addHero(HERO());
+  const hero = world.addHero(who);
   await world.beginFight([{ monster: "goblin", mount }]);
   const up = world.enemies().find((enemy) => enemy.ridesEnemyId);
   const under = world.enemies().find((enemy) => enemy.id === up?.ridesEnemyId);
@@ -319,6 +329,177 @@ await test("Undoing the GM turn that pushed a rider out of the saddle puts the p
   assert.deepEqual(at(world, rider.id), [12, 4]);
   assert.equal(ownToken(world, mount.id), null, "the mount kept the token the undone turn gave it");
   assert.equal(prone(world, rider.id), false, "the undo left the rider prone");
+});
+
+// ---- the other doors that push: a spell's area, a thrown foe, a psionic push ----
+
+const gust = (world, druid, ...enemyIds) =>
+  world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Gust of Wind", enemyIds, saveAbility: "str", dc: 15, level: 2 });
+const DRUID = () => caster("druid", "wis", ["Gust of Wind"]);
+
+await test("A spell that pushes as it is cast (Gust of Wind) carries the pair when it names the mount, and its rider saves once as the call finishes.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: DRUID() });
+  // The wolf's Strength save against the wind, then the goblin's to stay on.
+  world.dice(1, 2);
+  const out = await gust(world, hero, mount.id);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0, "the rider of a mount the wind pushed made no save");
+  assertParted(world, rider, mount, [15, 4]);
+  assert.equal(prone(world, rider.id), true);
+});
+
+await test("Ruling 6 for a spell that pushes as it is cast: the wind that names the rider takes it alone out of the saddle, with no save to stay on.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: DRUID() });
+  world.dice(1, 20);
+  const out = await gust(world, hero, rider.id);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 1, "the rider the wind took made a save to stay on");
+  assert.equal(mounted(world, rider), false, "the rider the wind took is still mounted");
+  assert.deepEqual(at(world, rider.id), [15, 4]);
+  assert.deepEqual(at(world, mount.id), [12, 4], "the wind at the rider moved the mount");
+  assert.equal(prone(world, rider.id), true);
+});
+
+await test("Ruling 6 for a spell that pushes as it is cast: the wind that names the mount and then its rider moves the pair as one, and the rider saves once.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: DRUID() });
+  // Each one's Strength save, then the one save to stay on.
+  world.dice(1, 1, 15);
+  const out = await gust(world, hero, mount.id, rider.id);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(live(world, rider.id).ridesEnemyId, mount.id, "a made save took the rider off");
+  assert.deepEqual(at(world, rider.id), [15, 4], "the pair was not pushed once, as one");
+  assert.equal(ownToken(world, mount.id), null);
+});
+
+// Gust of Wind left standing: "Each creature that starts its turn in the
+// line must succeed on a Strength saving throw or be pushed 15 feet away
+// from you." The line runs east from the druid at (11,4), over the pair.
+function windOver(world, druid) {
+  const map = mapOf(world);
+  const cells = [12, 13, 14, 15, 16, 17, 18].map((x) => 4 * map.width + x);
+  saveZones(map.id, [{ id: "gust-pair", spell: "Gust of Wind", casterId: druid.id, casterKind: "pc", casterName: druid.name, origin: { x: 11, y: 4 }, toward: { x: 20, y: 4 }, cells, concentration: false, castRound: world.encounter().round, untilRound: null, slotLevel: 2, dc: 15 }]);
+}
+const turnStartsFor = (world, enemyId) => onPersonsTurn(world.campaign(), () => zoneTurnStart(world.campaign(), world.encounter(), [enemyId]));
+
+await test("A mount whose turn starts in a standing area that pushes is pushed with its rider on it, who saves once to stay on.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: DRUID() });
+  windOver(world, hero);
+  world.dice(1, 2);
+  const lines = turnStartsFor(world, mount.id);
+  assert.equal(world.clearDice(), 0, `the wind asked the mount no save, or its rider none to stay on: ${JSON.stringify(lines)}`);
+  assertParted(world, rider, mount, [15, 4]);
+  assert.equal(prone(world, rider.id), true);
+});
+
+await test("Ruling 6 in a standing area: a rider whose turn starts in the wind is pushed alone out of the saddle, with no save to stay on.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: DRUID() });
+  windOver(world, hero);
+  world.dice(1, 20);
+  turnStartsFor(world, rider.id);
+  assert.equal(world.clearDice(), 1, "the rider the wind took made a save to stay on");
+  assert.equal(mounted(world, rider), false, "the rider the wind took is still mounted");
+  assert.deepEqual(at(world, rider.id), [15, 4]);
+  assert.deepEqual(at(world, mount.id), [12, 4], "the wind at the rider moved the mount");
+  assert.equal(prone(world, rider.id), true);
+});
+
+const rage = (world, hero) => {
+  const sheet = world.sheet(hero.id);
+  world.patch(hero.id, { conditions: [...sheet.conditions, "raging"], conditionMeta: { ...sheet.conditionMeta, raging: { rounds: 10 } } });
+};
+const impel = (world, hero, targetId) => world.invoke("use_resource", { characterId: hero.id, resource: "Mighty Impel", targetEnemyId: targetId });
+const GIANT = () => MARTIAL("barbarian", "Path of the Giant", 10, "Greataxe");
+
+await test("A thrown mount (Mighty Impel) lands with its rider on it, who saves once to stay on.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: GIANT() });
+  rage(world, hero);
+  world.dice(2, 2);
+  const out = await impel(world, hero, mount.id);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.saved, false, JSON.stringify(out.result));
+  assert.equal(world.clearDice(), 0, "the rider of a thrown mount made no save");
+  // Thirty feet from the barbarian at (11,4), along the line through the pair.
+  assertParted(world, rider, mount, [17, 4]);
+  assert.equal(prone(world, rider.id), true);
+});
+
+await test("Ruling 6 for a thrown foe: Mighty Impel at the rider throws it alone from the saddle, prone where it lands, and the mount stays.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: GIANT() });
+  rage(world, hero);
+  world.dice(2, 20);
+  const out = await impel(world, hero, rider.id);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.saved, false, JSON.stringify(out.result));
+  assert.equal(world.clearDice(), 1, "the thrown rider made a save to stay on");
+  assert.equal(mounted(world, rider), false);
+  assert.deepEqual(at(world, rider.id), [17, 4]);
+  assert.deepEqual(at(world, mount.id), [12, 4], "the throw at the rider moved the mount");
+  assert.equal(prone(world, rider.id), true);
+});
+
+const PSI = () => MARTIAL("fighter", "Psi Warrior", 15, "Longsword");
+// Telekinetic Thrust follows a Psionic Strike, which follows a weapon hit:
+// both are landed on the creature first, sturdy enough to stand them.
+async function thrust(world, hero, rider, mount, target, ...then) {
+  const kit = await combatKit(world);
+  for (const enemy of [rider, mount]) kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
+  world.dice(15, 4, 4, 4, 4);
+  const hit = await world.invoke("pc_attack", { characterId: hero.id, enemyId: target.id, targetEnemyId: target.id });
+  world.clearDice();
+  assert.equal(hit.ok, true, hit.error);
+  world.dice(4, 4, 4);
+  const strike = await world.invoke("use_resource", { characterId: hero.id, resource: "Psionic Strike", targetEnemyId: target.id });
+  world.clearDice();
+  assert.equal(strike.ok, true, strike.error);
+  world.diceLog();
+  world.dice(2, ...then);
+  const out = await world.invoke("use_resource", { characterId: hero.id, resource: "Telekinetic Adept", variant: "push", targetEnemyId: target.id });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.saved, false, JSON.stringify(out.result));
+  return out;
+}
+
+await test("A psionic push at the mount (Telekinetic Thrust) carries the pair 10 feet, and its rider saves once to stay on.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: PSI() });
+  await thrust(world, hero, rider, mount, mount, 2);
+  assert.equal(world.clearDice(), 0, "the rider of a mount pushed by Telekinetic Thrust made no save");
+  assertParted(world, rider, mount, [14, 4]);
+  assert.equal(prone(world, rider.id), true);
+});
+
+await test("Ruling 6 for a psionic push: Telekinetic Thrust at the rider pushes it alone from the saddle, prone, and the mount stays.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: PSI() });
+  await thrust(world, hero, rider, mount, rider, 20);
+  assert.equal(world.clearDice(), 1, "the rider pushed from the saddle made a save to stay on");
+  assert.equal(mounted(world, rider), false);
+  assert.deepEqual(at(world, rider.id), [14, 4]);
+  assert.deepEqual(at(world, mount.id), [12, 4], "the push at the rider moved the mount");
+  assert.equal(prone(world, rider.id), true);
+});
+
+// ---- a mount an area holds ----
+
+await test("A mount the webs catch as it walks is held on the square it was caught on, its rider still on its back.", async () => {
+  const { world, hero, rider, mount } = await pair({ hero: caster("wizard", "int", ["Web"]) });
+  const cast = await world.invoke("use_spell_slot", { characterId: hero.id, spell: "Web", level: 2, atX: 16, atY: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  const web = zonesOf(world).find((zone) => zone.spell === "Web");
+  const width = mapOf(world).width;
+  const columns = web.cells.filter((cell) => Math.floor(cell / width) === 4).map((cell) => cell % width).sort((a, b) => a - b);
+  const [entry, further] = columns;
+  assert.ok(entry > 12 && further === entry + 1, `setup: the webs lie on columns ${columns.join(",")} of the pair's row`);
+  turnOf(world, mount.id);
+  // The wolf's Dexterity save against the webs. The Disengage keeps the
+  // hero's opportunity attack out of the dice.
+  world.dice(1);
+  const out = await world.invoke("move_token", { token: mount.id, x: further, y: 4, disengage: true });
+  assert.equal(world.clearDice(), 0, "the mount walked into the webs with no save");
+  assert.equal(out.ok, true, out.error);
+  assert.ok(live(world, mount.id).conditions.includes("restrained"), "the webs did not hold the mount");
+  assert.deepEqual(at(world, rider.id), [entry, 4], "the restrained mount walked on past the square the webs caught it on");
+  assert.equal(live(world, rider.id).ridesEnemyId, mount.id, "a mount held by the webs lost its rider");
+  assert.equal(ownToken(world, mount.id), null);
 });
 
 closeTables();
