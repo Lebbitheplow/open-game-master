@@ -58,18 +58,22 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
         return await layout();
       });
     }
-    await run('Picker layout accommodates four and six themes',async()=>{
+    // Sizes ahead of the catalog: a fixed list ran nothing once the catalog
+    // passed its largest entry (six, with seven themes shipped).
+    const ahead=[1,3,5].map(extra=>APPEARANCE_THEMES.length+extra);
+    await run(`Picker layout accommodates ${ahead.join(', ')} themes`,async()=>{
       // Layout-only fixture cards exercise future catalog sizes without adding
       // fake saved theme IDs or mutating the application's registry.
-      for(const count of [4,6].filter(count=>count>=APPEARANCE_THEMES.length)) {
+      for(const count of ahead) {
         for(const [width,height,scale] of [[1360,1000,1],[390,844,1],[320,640,1.25]]) {
           await evaluate(`(()=>{const g=document.querySelector('.appearance-grid');g.querySelectorAll('[data-layout-fixture]').forEach(e=>e.remove());while(g.children.length<${count}){const c=g.firstElementChild.cloneNode(true);c.dataset.layoutFixture='true';c.disabled=true;g.append(c)}})()`);
           await dimensions(width,height,'light',scale);
           const g=await layout();fits(g,width,height);
           // Hover lifts a button without moving its grid row.
           const rows=Object.values(Object.groupBy(g.cards,card=>card.row));
+          // Every row is full but the last, which holds what is left over.
           const expectedColumns=width===1360?(count===4?2:3):1;
-          assert.ok(rows.every(row=>row.length===expectedColumns),`${count} choices at ${width}px: balanced rows with ${expectedColumns} columns: ${JSON.stringify(g)}`);
+          assert.ok(rows.every((row,index)=>index===rows.length-1?row.length<=expectedColumns:row.length===expectedColumns),`${count} choices at ${width}px: full rows of ${expectedColumns}: ${JSON.stringify(g)}`);
           if(width===1360) await shot(`picker-layout-${count}`);
         }
       }

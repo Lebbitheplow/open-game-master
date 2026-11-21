@@ -333,7 +333,7 @@ The current browser matrix covers:
 - Artwork replacement across all registered themes and hiding in forced-colors mode.
 - The actual account Appearance dialog at desktop/phone widths, day/night and
   enlarged text: keyboard theme selection, Follow campaign, isolated preview
-  colors/artwork, and layout-only fixtures with four and six choices.
+  colors/artwork, and layout-only fixtures one, three and five choices ahead of the catalog.
 - Visible title characters, back-link collisions and header control bounds at
   enlarged text sizes, including 320/390px phones and 1024/1360/1920px desktops.
 - Enlarged-map content clearance from the painted frame, including initiative
