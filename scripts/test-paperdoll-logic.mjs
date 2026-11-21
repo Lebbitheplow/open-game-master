@@ -216,4 +216,14 @@ test("a packed row can be dragged to its own place, and nothing else can be drag
   assert.equal(dollDropPlace(unsaid[1], unsaid, calm), null);
 });
 
+test("only a row the doll lists can be dragged onto it, so what a drop puts on has a row to take it off", () => {
+  const calm = { inCombat: false, myTurn: false };
+  // Tagged a wand by the GM, but no weapon and no magic item: the doll lists
+  // no row for it under In hand, so neither does a drag put it there.
+  const stick = item("Odd stick", { tags: ["wand"], equipped: false });
+  const pack = [item("Leather", { equipped: true }), stick];
+  assert.equal(dollView(pack, none).tiles.held.fits.includes(stick), false);
+  assert.equal(dollDropPlace(stick, pack, calm), null);
+});
+
 console.log(`test-paperdoll-logic: ${passed} passed`);

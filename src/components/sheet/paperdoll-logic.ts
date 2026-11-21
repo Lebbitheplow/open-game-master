@@ -146,13 +146,15 @@ export function dollPlaceOf(item: EquipmentItem): DollPlaceId | null {
 // to, never worn), and one the fight will not let change now, which the
 // row's own button refuses too (sheet-state.ts wearLock). A row goes only to
 // its own place, so a drag lights one tile and a drop anywhere else does
-// nothing.
+// nothing. Only a row the doll lists (dollView reads wearableGear) can be
+// dragged: a stick the GM tagged a wand is worn gear with no row on the
+// doll, so a drop put it in hand with no button anywhere to stow it again.
 export function dollDropPlace(
   item: EquipmentItem,
   equipment: EquipmentItem[],
   when: { inCombat: boolean; myTurn: boolean },
 ): DollPlaceId | null {
-  if (!isWornGear(item) || rowIsOn(item, equipment) || wearLock(item, when)) {
+  if (!isWornGear(item) || !wearableGear([item]).length || rowIsOn(item, equipment) || wearLock(item, when)) {
     return null;
   }
   return dollPlaceOf(item);
