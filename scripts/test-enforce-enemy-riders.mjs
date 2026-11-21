@@ -271,6 +271,27 @@ await test("Reinforcements arrive mounted: add_enemies takes the same mount, and
   assert.match(added.result.added.find((row) => row.enemyId === rider.id).rides, /Wolf/);
 });
 
+await test("A foe still lying knocked out from the last fight is not put on a mount: the mount comes in on a token of its own.", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  world.addHero(HERO());
+  await world.beginFight([{ monster: "goblin" }]);
+  const [goblin] = world.enemies();
+  const { knockedOutConditions } = await import("../src/lib/dm/knockout.ts");
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyHp(goblin.id, 0, "alive");
+  const out = knockedOutConditions({ ...goblin, currentHp: 0 });
+  encounters.patchEnemyConditions(goblin.id, out.conditions, out.meta);
+  const ended = await world.invoke("end_encounter", { outcome: "victory" });
+  assert.equal(ended.ok, true, ended.error);
+  const started = await world.invoke("start_encounter", { enemies: [{ monster: "goblin", returning: goblin.id, mount: "wolf" }] });
+  assert.equal(started.ok, true, started.error);
+  const back = world.enemies().find((enemy) => enemy.slug === "goblin");
+  const wolf = world.enemies().find((enemy) => enemy.slug === "wolf");
+  assert.equal(back.currentHp, 0, "setup: the goblin did not come back knocked out");
+  assert.equal(back.ridesEnemyId, undefined, "an unconscious goblin was put in the saddle");
+  assert.ok(ownToken(world, wolf.id), "the wolf has no token of its own under a rider lying senseless");
+});
+
 await test("GAME STATE tells the GM who rides whom, and that only the mount's move moves the pair.", async () => {
   const { world, rider, mount } = await pair();
   const state = buildEncounterState(world.campaignId, world.sheets());

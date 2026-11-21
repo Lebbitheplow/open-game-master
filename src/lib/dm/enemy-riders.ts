@@ -25,6 +25,7 @@ import type { EnemyStats } from "@/lib/bestiary/statblock";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
+import { isDefeated } from "@/lib/dm/knockout";
 
 type Linked = Pick<EncounterEnemy, "id" | "ridesEnemyId">;
 
@@ -62,13 +63,15 @@ export function mountSizeProblem(
 
 // Puts each rider on its mount as the rows are made. `carries[i]` is the
 // index of the row that row i carries, or undefined. Returns the rows as they
-// now stand.
+// now stand. A foe back from an earlier fight still lying knocked out
+// (foe-return.ts) is not put in the saddle: its mount comes in riderless, on
+// a token of its own, as ruling 4 leaves one whose rider is knocked out.
 export function linkPairs(inserted: readonly EncounterEnemy[], carries: ReadonlyArray<number | undefined>): EncounterEnemy[] {
   let linked = false;
   carries.forEach((riderAt, mountAt) => {
     const rider = riderAt === undefined ? null : inserted[riderAt];
     const mount = inserted[mountAt];
-    if (rider && mount) {
+    if (rider && mount && !isDefeated(rider)) {
       setEnemyMount(rider.id, mount.id);
       linked = true;
     }
