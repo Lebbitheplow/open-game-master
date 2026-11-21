@@ -14,6 +14,30 @@ import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
 // the story telling it as done. Nothing was spent, so the Hand deals the
 // card again; its player can also play it again from here in one press,
 // with the same sentence and the same choices.
+type T = ReturnType<typeof useT>;
+
+function translateCardReturnedReason(t: T, raw: string): string {
+  let m = /^(.+?) is (\d+) ft from (.+?), out of melee reach \((\d+) ft\)\.(.*)$/.exec(raw);
+  if (m) {
+    return t("{attacker} is {distance} ft from {target}, out of melee reach ({reach} ft).", {
+      attacker: m[1],
+      distance: m[2],
+      target: m[3],
+      reach: m[4],
+    });
+  }
+  m = /^(.+?) is (\d+) ft from (.+?), beyond this attack's (\d+) ft maximum range\.(.*)$/.exec(raw);
+  if (m) {
+    return t("{attacker} is {distance} ft from {target}, beyond this attack's {range} ft maximum range.", {
+      attacker: m[1],
+      distance: m[2],
+      target: m[3],
+      range: m[4],
+    });
+  }
+  return raw;
+}
+
 export function CardReturnedNote({ message, mine, name }: { message: CampaignMessage; mine: boolean; name: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
@@ -67,7 +91,7 @@ export function CardReturnedNote({ message, mine, name }: { message: CampaignMes
         <Undo2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         <span>
           {mine ? t("This did not happen. It is back in your hand.") : t("This did not happen. It went back to {name}'s hand.", { name })}
-          {message.cardReturned ? <span className="block text-stone-400">{message.cardReturned}</span> : null}
+          {message.cardReturned ? <span className="block text-stone-400">{translateCardReturnedReason(t, message.cardReturned)}</span> : null}
         </span>
       </p>
       {mine && message.intent ? (

@@ -10868,7 +10868,9 @@
     "autumn": "automne",
     "{name} comes round with {hp} hit point.": "{name} reprend connaissance avec {hp} point de vie.",
     "{name} comes round with {hp} hit points.": "{name} reprend connaissance avec {hp} points de vie.",
-    "{name}'s rage ends: their turn passed with no attack made and no damage taken.": "La rage de {name} prend fin : son tour s’est écoulé sans attaque ni dégâts subis."
+    "{name}'s rage ends: their turn passed with no attack made and no damage taken.": "La rage de {name} prend fin : son tour s’est écoulé sans attaque ni dégâts subis.",
+    "{attacker} is {distance} ft from {target}, out of melee reach ({reach} ft).": "{attacker} est à {distance} pieds de {target}, hors d’allonge de mêlée ({reach} pieds).",
+    "{attacker} is {distance} ft from {target}, beyond this attack's {range} ft maximum range.": "{attacker} est à {distance} pieds de {target}, au-delà de la portée maximale de cette attaque ({range} pieds)."
   },
   "contexts": {
     "Remove": {

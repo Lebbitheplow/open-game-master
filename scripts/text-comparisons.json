@@ -3969,6 +3969,13 @@
         "display-only tool grant category splitting in ClassChoices.tsx"
       ]
     ],
+    "app/campaigns/[campaignId]/CardReturnedNote.tsx#re-word": [
+      [
+        "display",
+        2,
+        "display-only translation of DB-stored English reach/range refusal lines in CardReturnedNote.tsx"
+      ]
+    ],
     "app/campaigns/[campaignId]/MessageParts.tsx#\\b": [
       [
         "display",
