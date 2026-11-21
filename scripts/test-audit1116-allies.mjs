@@ -655,9 +655,10 @@ await test("U14: a blow at a plain mount meets its defenses by type, and a bite 
   const [enemy] = world.enemies();
   const flame = { name: "Flame Bite", toHit: 4, damage: "2d6", type: "fire" };
   const bite = { name: "Bite", toHit: 4, damage: "1d6", type: "piercing", onHit: { save: "str", dc: 11, condition: "prone" } };
-  kit.openField([[5, 5, "~"], [5, 6, "~"]]);
+  // The enemy stands against the side of the space the horse fills (issue 1055).
+  kit.openField([[5, 5, "~"], [4, 5, "~"]]);
   kit.place(rider.id, 5, 5);
-  kit.place(enemy.id, 5, 6);
+  kit.place(enemy.id, 4, 5);
   const up = await world.invoke("mount_up", { characterId: rider.id, mount: "Warhorse" });
   assert.equal(up.ok, true, up.error);
   const horse = () => getMounts(world.campaignId)[rider.id];
@@ -674,7 +675,7 @@ await test("U14: a blow at a plain mount meets its defenses by type, and a bite 
   // goes down, and its rider comes off.
   kit.openField();
   kit.place(rider.id, 5, 5);
-  kit.place(enemy.id, 5, 6);
+  kit.place(enemy.id, 4, 5);
   kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, attacks: [bite] } });
   kit.freshRound();
   enemyHoldsTheFloor();

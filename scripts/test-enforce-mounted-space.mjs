@@ -238,6 +238,8 @@ await test("A creature mount gives its rider's token its space too, controlled o
     assert.equal(up.ok, true, up.error);
     assert.equal(getMounts(world.campaignId)[paladin.id].sheetId, steed.id, "setup: the steed is not the mount");
     assert.equal(sizeOf(world, paladin.id), 2, `the rider on a ${controlled ? "controlled" : "independent"} creature mount is one square`);
+    // Asked by the mount's own id, as its walk asks, the pair's space is the same.
+    assert.equal(tokenFootprint({ kind: "pc", refId: steed.id }), 2, "the mount under its rider is read as one square");
     // The steed's own square was free for the pair: it is the pair.
     assert.deepEqual(at(world, paladin.id), [3, 3]);
     const down = await getDown(world, paladin);

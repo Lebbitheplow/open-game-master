@@ -27,10 +27,17 @@ export type Spot = XY & { footprint?: Footprint };
 // while they ride one, read from the campaign's mount records, so it is the
 // record that sizes the token and nothing has to be kept in step when the
 // rider gets down, is thrown or loses the mount. One square for anyone on
-// foot and for an id that is no sheet's.
+// foot and for an id that is no sheet's. A creature that carries a rider
+// stands on its rider's token (db/battle-maps.ts getTokenByRef), so asked by
+// its own id it answers with the same space: an independent mount's walk is
+// the pair's.
 export function characterFootprint(sheetId: string): Footprint {
   const campaignId = getSheetById(sheetId)?.campaignId;
-  return campaignId ? riderFootprint(getMounts(campaignId)[sheetId]) : 1;
+  if (!campaignId) {
+    return 1;
+  }
+  const mounts = getMounts(campaignId);
+  return riderFootprint(mounts[sheetId] ?? Object.values(mounts).find((mount) => mount.sheetId === sheetId));
 }
 
 export function tokenFootprint(token: Pick<BattleToken, "kind" | "refId">): Footprint {
