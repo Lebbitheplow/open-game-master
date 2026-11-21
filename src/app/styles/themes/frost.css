@@ -1,0 +1,133 @@
+/* frost: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   Surfaces sit at a blue-grey steel hue (about 205) with little colour in
+   them, so night does not read as Arcane's indigo or Tide's teal; the accent
+   ramp is aurora green (about 153), bluer than Woodland's leaf. */
+[data-appearance="frost"][data-theme="dark"] {
+  --background: #0b1014;
+  --foreground: #e4ecf0;
+  --color-stone-950: #0e1418;
+  --color-stone-900: #161e24;
+  --color-stone-800: #212b33;
+  --color-stone-700: #35424c;
+  --color-stone-600: #62717c;
+  --color-stone-500: #a3b1bb;
+  --color-stone-400: #b2bfc8;
+  --color-stone-300: #cad4da;
+  --color-stone-200: #dde5ea;
+  --color-stone-100: #ebf0f3;
+  --color-stone-50: #f5f8fa;
+  --color-amber-950: #06231a;
+  --color-amber-900: #0b3a2a;
+  --color-amber-800: #12573e;
+  --color-amber-700: #1b7854;
+  --color-amber-600: #2c9c6f;
+  --color-amber-500: #4fc08d;
+  --color-amber-400: #7cd9aa;
+  --color-amber-300: #a3e7c4;
+  --color-amber-200: #c6f1da;
+  --color-amber-100: #e0f8ea;
+  --color-amber-50: #f1fcf6;
+  /* The frosted steel plate is pale, so the night washes are nearly opaque:
+     enough grain shows to read as metal without lifting the surface. */
+  --material-inset: #121a20;
+  --material-paper: #172027;
+  --material-metal: #d3e2ea;
+  --material-edge: #6f8696;
+  --material-panel-wash: linear-gradient(#141c22e6, #0f161bf0);
+  --material-control-wash: linear-gradient(#2a3742e0, #1b252df0);
+  --material-body-wash: linear-gradient(#0b1014f2, #0d1318f2);
+  --material-rail-wash: linear-gradient(#1c272f9e, #1c272f9e);
+  --material-send-edge: var(--color-amber-400);
+  --material-scrim: linear-gradient(#0b1216a6, #0b121666 45%, #0b1216cc);
+}
+[data-appearance="frost"][data-theme="light"] {
+  --background: #eaf1f6;
+  --foreground: #17252f;
+  --color-stone-950: #f8fbfd;
+  --color-stone-900: #ecf2f6;
+  --color-stone-800: #dce6ed;
+  --color-stone-700: #b7c7d2;
+  --color-stone-600: #74889a;
+  --color-stone-500: #445a69;
+  --color-stone-400: #3b505e;
+  --color-stone-300: #2c3f4c;
+  --color-stone-200: #1f303b;
+  --color-stone-100: #15232c;
+  --color-stone-50: #0c171e;
+  --color-amber-950: #e9f8f0;
+  --color-amber-900: #d0efdf;
+  --color-amber-800: #a5dfc2;
+  --color-amber-700: #62bd92;
+  --color-amber-600: #258a5f;
+  --color-amber-500: #176e4a;
+  --color-amber-400: #115a3c;
+  --color-amber-300: #0d4830;
+  --color-amber-200: #0a3a27;
+  --color-amber-100: #072c1d;
+  --color-amber-50: #041f14;
+  --material-inset: #f6fafd;
+  --material-paper: #eaf1f6;
+  --material-metal: #2d4a5c;
+  --material-edge: #7f98a8;
+  --material-panel-wash: linear-gradient(#f9fcfeeb, #ecf3f8eb);
+  --material-control-wash: linear-gradient(#f6fafde0, #d9e5eee0);
+  --material-body-wash: linear-gradient(#e8f0f6eb, #dae6eeeb);
+  --material-rail-wash: linear-gradient(#6c849440, #6c849440);
+  --material-send-edge: var(--material-edge);
+  --material-scrim: linear-gradient(#e6f0f699, #e6f0f640 45%, #e6f0f6bb);
+}
+
+/* Materials that hold in both brightness modes: polished pale steel
+   fittings, aurora keys, and crisp cuts with one facet taken off opposite
+   corners, as a cut crystal has. */
+[data-appearance="frost"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #0b1014;
+  --theme-night-foreground: #e4ecf0;
+  --theme-night-stone-950: #0e1418;
+  --theme-night-stone-900: #161e24;
+  --theme-night-stone-800: #212b33;
+  --theme-night-stone-700: #35424c;
+  --theme-night-stone-600: #62717c;
+  --theme-night-stone-500: #a3b1bb;
+  --theme-night-stone-400: #b2bfc8;
+  --theme-night-stone-300: #cad4da;
+  --theme-night-stone-200: #dde5ea;
+  --theme-night-stone-100: #ebf0f3;
+  --theme-night-stone-50: #f5f8fa;
+  --theme-night-amber-950: #06231a;
+  --theme-night-amber-900: #0b3a2a;
+  --theme-night-amber-800: #12573e;
+  --theme-night-amber-700: #1b7854;
+  --theme-night-amber-600: #2c9c6f;
+  --theme-night-amber-500: #4fc08d;
+  --theme-night-amber-400: #7cd9aa;
+  --theme-night-amber-300: #a3e7c4;
+  --theme-night-amber-200: #c6f1da;
+  --theme-night-amber-100: #e0f8ea;
+  --theme-night-amber-50: #f1fcf6;
+  --material-metal-finish: linear-gradient(135deg, #f4f9fc, #9db3c1 46%, #e3eef4 52%, #6d8494);
+  --material-metal-ink: #14222b;
+  /* Deep aurora under light labels, the same in day and night. */
+  --material-primary-wash: linear-gradient(#1b7551f0, #0f5238f5);
+  --material-send-wash: linear-gradient(#1b7551, #0f5238);
+  --material-chosen-wash: linear-gradient(#176647, #0c452f);
+  --material-fitting-radius: 2px 9px;
+  --material-control-radius: 2px 7px;
+  --material-panel-radius: 3px 10px;
+  --material-bubble-radius: 2px 8px;
+  --material-tab-radius: 2px 6px;
+  --material-chip-radius: 2px 6px;
+  --material-sigil-radius: 2px 7px;
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%237f98a8' stroke-width='1'%3E%3Cpath d='M70 46V94M49 58L91 82M49 82L91 58M70 54L64 48M70 54L76 48M70 86L64 92M70 86L76 92M0 0L10 6M140 0L130 6M0 140L10 134M140 140L130 134'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 140px 140px;
+  --appearance-corner: 0.15rem;
+}
+/* Fine steel corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+html[data-appearance="frost"] .ornate::before,
+html[data-appearance="frost"] .ornate::after { width: 16px; height: 16px; }
+html[data-appearance="frost"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="frost"] .ornate::after { border-width: 0 2px 2px 0; }
