@@ -9,13 +9,12 @@
 // summoned creature, src/lib/dm/attack-blow.ts on either dice path) and
 // pet_attack (src/lib/dm/pet-tools.ts).
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { listSheets } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { sizeRank } from "@/lib/bestiary/statblock";
 import { isIncapacitated, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -81,7 +80,7 @@ export function resolveNaturalOnHit(campaign: Campaign, hit: NaturalHit): { line
   }
   if (onHit.damage && (!saved || onHit.halfOnSave)) {
     const outcome = rollExpression(onHit.damage);
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: hit.attacker.sheetId,
       requestedBy: "dm",
@@ -89,9 +88,10 @@ export function resolveNaturalOnHit(campaign: Campaign, hit: NaturalHit): { line
       detail: rollAgainst(`${label} (${onHit.damageType ?? "rider"})`, enemy.displayName),
       result: outcome,
       attacker: { kind: hit.attacker.kind, id: hit.attacker.sheetId, name: hit.attacker.name },
+      turn: hit.turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-    hit.turn.rollIds.push(roll.id);
     const dealt = saved ? Math.floor(outcome.total / 2) : outcome.total;
     const encounter = getActiveEncounter(campaign.id);
     if (encounter && dealt > 0) {

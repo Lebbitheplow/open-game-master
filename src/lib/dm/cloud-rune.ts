@@ -26,10 +26,9 @@
 // rolled, and nothing afterwards gives its damage back.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import { watchChoiceOf, type DmTurn, type WatchChoice, type WatchStop } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
@@ -43,7 +42,6 @@ import { canStopAfterThrow, stopAfterThrow } from "@/lib/dm/held-call";
 import { applyPcDamage, type BlowFlags } from "@/lib/dm/pc-damage";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
-import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -195,7 +193,7 @@ export function landTurnedBlow(input: {
 }): Record<string, unknown> {
   const { campaign, turn, encounter, attacker, attack, taker, crit } = input;
   const outcome = rollExpression(input.expression, undefined, { purpose: { roller: "enemy", kind: "damage", who: attacker.displayName } });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: taker.kind === "sheet" ? taker.id : null,
     requestedBy: "dm",
@@ -203,9 +201,10 @@ export function landTurnedBlow(input: {
     detail: rollAgainst(attack.name, taker.name),
     result: outcome,
     attacker: { kind: "enemy", id: attacker.id, name: attacker.displayName },
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn.rollIds.push(roll.id);
   const blow = blowByType(attack, outcome, crit);
   const dealt = Math.min(input.shrink(blow.amount), 200);
   const by = `${input.knight.name}'s ${NAME}`;

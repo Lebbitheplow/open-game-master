@@ -20,15 +20,14 @@
 // Must not import encounter-tools.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, recordEncounterTarget, saveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll, landRoll } from "@/lib/db/rolls";
+import { landRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
 import { planAttackFx } from "@/lib/battlemap/fx-plan";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
@@ -216,7 +215,7 @@ export function enemyStrikesEnemy(
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
     riders = spendEnemyRiders(enemy, riders);
-    const hitRoll = insertRoll({
+    const hitRoll = recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -225,9 +224,10 @@ export function enemyStrikesEnemy(
       advantage,
       result: toHit,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
-    turn.rollIds.push(hitRoll.id);
     const natCrit = toHit.crit === "nat20";
     const struck = toHit.crit !== "nat1" && (natCrit || toHit.total >= vsAc);
     // The target's Parry or Shield, as a character's swing meets it
@@ -258,7 +258,7 @@ export function enemyStrikesEnemy(
         })
       : base;
     const damage = rollExpression(expression, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
-    const damageRoll = insertRoll({
+    const damageRoll = recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -266,9 +266,10 @@ export function enemyStrikesEnemy(
       detail: rollAgainst(attack.name, now.displayName),
       result: damage,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
-    turn.rollIds.push(damageRoll.id);
     const blow = blowByType(attack, damage, crit);
     // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
     const dealt = enfeebledBlow(enemy, attack, mode.ranged, Math.max(sized.floor, blow.amount));

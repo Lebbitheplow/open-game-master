@@ -15,12 +15,12 @@
 // broken, so a blow at its splinters breaks nothing a second time.
 
 import { z } from "zod";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getClock, setClock } from "@/lib/db/clock";
 import { getCurrentLocation } from "@/lib/db/locations";
 import type { ObjectRecord } from "@/lib/dm/march-state";
-import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
+import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst, rollOn } from "@/lib/roll-labels";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { d20Expression, isValidExpression, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
@@ -32,7 +32,7 @@ import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { hasHalflingLuck } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
-import { publishWithSeq } from "@/lib/events";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { buildAttackProfile } from "@/lib/dm/pc-attack-profile";
 import { objectProfile, type ObjectMaterial, type ObjectSize } from "@/lib/srd/objects";
@@ -84,10 +84,12 @@ function keyOf(campaignId: string, name: string): string {
   return `${place ? `${place}:` : ""}${textKey(name)}`.slice(0, 60);
 }
 
-function publishRoll(campaign: Campaign, turn: DmTurn | null, characterId: string | null, kind: "attack" | "damage", detail: string, result: RollResult, attacker: RollAttacker | null) {
-  const roll = insertRoll({ campaignId: campaign.id, characterId, requestedBy: "dm", kind, detail, result, attacker });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn?.rollIds.push(roll.id);
+// A roll at an object, on record. A character's own attack and damage come
+// through rollCharacterD20, so the door reads whose dice they were: entered
+// at the table, they are stored and sent as the player's. `thrownHere` is for
+// harm no character dealt, which the server throws where it stands.
+function cardRoll(campaign: Campaign, turn: DmTurn | null, characterId: string | null, kind: "attack" | "damage", detail: string, result: RollResult, attacker: RollAttacker | null, thrownHere = false) {
+  recordRoll({ campaignId: campaign.id, characterId, requestedBy: "dm", kind, detail, result, attacker, turn, ...(thrownHere ? { landing: null } : {}) });
 }
 
 // What the clock keeps of a named object, or null for one never named.
@@ -208,7 +210,7 @@ export function damageObject(
       attack: { ac },
     });
     const striker: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
-    publishRoll(campaign, turn, sheet.id, "attack", rollAgainst(built.profile.weapon, args.name ?? "an object"), attack, striker);
+    cardRoll(campaign, turn, sheet.id, "attack", rollAgainst(built.profile.weapon, args.name ?? "an object"), attack, striker);
     const natural = attack.natural ?? 0;
     const hit = natural !== 1 && (natural === 20 || attack.total >= ac);
     if (!hit) {
@@ -234,7 +236,7 @@ export function damageObject(
     }
     const expression = natural === 20 ? critDamageExpression(base) : base;
     const damage = rollCharacterD20(campaign, sheet, { kind: "damage", expression, detail: rollAgainst(built.profile.weapon, args.name ?? "an object") });
-    publishRoll(campaign, turn, sheet.id, "damage", rollAgainst(built.profile.weapon, args.name ?? "an object"), damage, striker);
+    cardRoll(campaign, turn, sheet.id, "damage", rollAgainst(built.profile.weapon, args.name ?? "an object"), damage, striker);
     dealt = Math.max(0, damage.total);
     type = type || built.profile.damageType;
   } else if (args.damage) {
@@ -244,7 +246,7 @@ export function damageObject(
       const rolled = rollExpression(args.damage);
       // Harm no character dealt (a hazard, a falling block): nobody's roll.
       if (campaign) {
-        publishRoll(campaign, turn, null, "damage", rollOn(type || "damage", [args.name ?? "an object"]), rolled, null);
+        cardRoll(campaign, turn, null, "damage", rollOn(type || "damage", [args.name ?? "an object"]), rolled, null, true);
       }
       dealt = rolled.total;
     } else {
