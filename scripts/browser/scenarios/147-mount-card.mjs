@@ -63,6 +63,9 @@ export default {
         check(seen.text.includes(`Onto ${bench.steed.name}: half your speed.`), `Mount says which creature and what it costs (${where}: "${seen.text.trim().slice(0, 120)}")`);
         check(where === "more" || seen.label.startsWith("Mount,"), `the card is named for a screen reader ("${seen.label}")`);
         check(seen.height >= 40 && seen.width >= 40, `and is a finger's height (${Math.round(seen.width)} by ${Math.round(seen.height)}px)`);
+        // A phone's fan scrolls sideways: the card is brought into view for the picture.
+        await card.scrollIntoViewIfNeeded();
+        await untilStill(page).catch(() => undefined);
         await t.shot(`card-${mode}`);
         if (where === "more") {
           await page.keyboard.press("Escape");
@@ -88,6 +91,10 @@ export default {
       } else {
         check((await inFan("Mount").count()) === 0, "and Mount is no longer dealt");
       }
+      // The focus the play left behind opens a card's details over the fan.
+      await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+      const down = inFan("Dismount");
+      if (await down.count()) await down.first().scrollIntoViewIfNeeded();
       await untilStill(page).catch(() => undefined);
       await t.shot("mounted");
     } finally {
