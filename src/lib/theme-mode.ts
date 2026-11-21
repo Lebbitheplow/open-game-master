@@ -130,7 +130,7 @@ export function applyTheme() {
   root.dataset.theme = mode;
   root.dataset.appearance = readAppearance();
   root.dataset.themeBase = appearanceDefinition(readAppearance()).baseStyle ?? "plain";
-  const art = themeArtStyle(readAppearance());
+  const art = themeArtStyle(readAppearance(), mode);
   for (const [property, value] of Object.entries(art)) root.style.setProperty(property, value);
   root.dataset.themeOrnaments = String(art["--theme-art-frame"] !== "none" || art["--theme-art-corner"] !== "none");
   root.style.colorScheme = mode;

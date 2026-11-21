@@ -23,7 +23,11 @@ export interface AppearanceDefinition {
   cornerScale?: number;
   frameSlice?: number;
   art?: ThemeArt;
+  // Day artwork: a slot given here replaces the same slot of `art` while the
+  // brightness is light. The corner crop and frame slice serve both sets.
+  artDay?: ThemeArt;
 }
+export type ThemeBrightness = "dark" | "light";
 
 // Add a theme here once. Schema IDs, both pickers and validation use this list.
 // See docs/appearance-themes.md for palette, artwork and preview requirements.
@@ -109,12 +113,21 @@ export function appearanceDefinition(id: AppearanceTheme): AppearanceDefinition 
   return APPEARANCE_THEMES.find((theme) => theme.id === id)!;
 }
 
+// The artwork a theme shows at one brightness. Every slot is written on each
+// change of theme or brightness, so neither set outlives its mode.
+export function themeArt(id: AppearanceTheme, mode: ThemeBrightness = "dark"): ThemeArt | undefined {
+  return modeArt(appearanceDefinition(id), mode);
+}
+export function modeArt({ art, artDay }: Pick<AppearanceDefinition, "art" | "artDay">, mode: ThemeBrightness): ThemeArt | undefined {
+  return mode === "light" && artDay ? { ...art, ...artDay } : art;
+}
+
 // Explicit none values prevent artwork leaking when switching themes or when
 // a picker thumbnail is nested inside a different theme. Safe during SSR too.
-export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, string> {
+export function themeArtStyle(id: AppearanceTheme, mode: ThemeBrightness = "dark"): Record<`--theme-${string}`, string> {
   const definition = appearanceDefinition(id);
   return {
-    ...artSlotStyle(definition.art),
+    ...artSlotStyle(themeArt(id, mode)),
     "--theme-frame-slice": `${definition.frameSlice ?? 22}%`,
     "--theme-corner-background-size": definition.cornerScale ? `${definition.cornerScale * 100}%` : "contain",
     ...cornerStyle(definition),

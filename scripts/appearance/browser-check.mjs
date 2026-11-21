@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { theme, definition, origin, output, browserPath } from './options.mjs';
-import { themeArtStyle, APPEARANCE_THEME_IDS } from '../../src/lib/appearance-themes.ts';
+import { themeArt, themeArtStyle, APPEARANCE_THEME_IDS } from '../../src/lib/appearance-themes.ts';
+// A theme may paint a second set for day mode; preload and expect by mode.
+const MODES = ['dark','light'];
+const allArt = [...new Set(MODES.flatMap(mode => Object.values(themeArt(theme, mode) ?? {})))];
+const painted = MODES.some(mode => themeArt(theme, mode)?.frame || themeArt(theme, mode)?.corner);
 import { openBrowser, pause } from './browser.mjs';
 import { writeReview } from './review.mjs';
 import { checkPicker } from './picker-check.mjs';
@@ -77,9 +81,12 @@ try {
     await send('Page.navigate', { url: origin + '/campaigns/' + id });
     await waitFor(`!!document.querySelector('.theme-table') && document.documentElement.dataset.appearance === ${JSON.stringify(theme)}`);
     await evaluate('document.fonts.ready.then(() => true)');
+    // Both sets, so a capture taken just after a brightness change does not
+    // catch a frame that is still being fetched.
+    await evaluate(`Promise.all(${JSON.stringify(allArt)}.map(src=>new Promise(resolve=>{const img=new Image();img.onload=()=>img.decode().then(resolve,resolve);img.onerror=resolve;img.src=src})))`);
     await pause(900);
   };
-  if ((definition.art?.frame || definition.art?.corner) && !interactionsOnly && !process.argv.includes('--dice-only')) await checkSharedLayout({evaluate,dimensions,go,storyId,combatId,run,shot,click,waitFor,settleOverlay});
+  if (painted && !interactionsOnly && !process.argv.includes('--dice-only')) await checkSharedLayout({evaluate,dimensions,go,storyId,combatId,run,shot,click,waitFor,settleOverlay});
   if (!layoutOnly) {
   await send('Page.navigate', {url:origin+'/campaigns/'+lobbyId});
   await waitFor(`!!document.querySelector('.theme-lobby-shell') && document.documentElement.dataset.appearance === ${JSON.stringify(theme)}`);
@@ -87,14 +94,15 @@ try {
   if (!interactionsOnly) for (const width of [1360,390]) for (const mode of ['dark','light']) {
     await run(`Lobby ${width}px ${mode}`, async () => {
       await dimensions(width, width===1360?1000:844, mode, 1);
-      await evaluate(`Promise.all(${JSON.stringify(Object.values(definition.art ?? {}))}.map(src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=src})))`);
+      await evaluate(`Promise.all(${JSON.stringify(allArt)}.map(src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=src})))`);
       assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Lobby fits horizontally');
+      for (const slot of ['frame','corner','backdrop','texture']) assert.equal(await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--theme-art-${slot}').trim()`),themeArtStyle(theme,mode)['--theme-art-'+slot],`Lobby ${slot} artwork in ${mode} mode`);
       await shot(`lobby-${width}-${mode}`);
     });
   }
   await go(storyId);
-  await waitFor(`getComputedStyle(document.documentElement).getPropertyValue('--theme-art-frame').trim() === ${JSON.stringify(themeArtStyle(theme)['--theme-art-frame'])}`);
-  await evaluate(`Promise.all(${JSON.stringify(Object.values(definition.art ?? {}))}.map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=name})))`);
+  await waitFor(`getComputedStyle(document.documentElement).getPropertyValue('--theme-art-frame').trim() === ${JSON.stringify(Object.fromEntries(MODES.map(mode=>[mode,themeArtStyle(theme,mode)['--theme-art-frame']])))}[document.documentElement.dataset.theme]`);
+  await evaluate(`Promise.all(${JSON.stringify(allArt)}.map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=name})))`);
   await waitFor(`document.querySelector('.session-transcript')?.textContent.includes('Archive entry 125')`);
   if (!interactionsOnly && !process.argv.includes('--dice-only')) for (const [width,height] of [[1360,900],[390,844],[320,640]]) for (const mode of ['dark','light']) for (const scale of [1,1.25]) {
     await run(`Long story ${width}px ${mode} scale ${scale}`, async () => {
@@ -117,12 +125,18 @@ try {
       for (const id of APPEARANCE_THEME_IDS) {
         await evaluate(`localStorage.setItem('odm.appearance',${JSON.stringify(id)});window.dispatchEvent(new StorageEvent('storage',{key:'odm.appearance'}))`);
         await waitFor(`document.documentElement.dataset.appearance===${JSON.stringify(id)}`);
-        for (const [key,value] of Object.entries(themeArtStyle(id))) {
+        // Day and back to night: each brightness writes its own set, and
+        // nothing of the other's is left on the root.
+        for (const mode of ['light','dark']) {
+        await evaluate(`localStorage.setItem('odm.theme',${JSON.stringify(mode)});window.dispatchEvent(new StorageEvent('storage',{key:'odm.theme'}))`);
+        await waitFor(`document.documentElement.dataset.theme===${JSON.stringify(mode)}`);
+        for (const [key,value] of Object.entries(themeArtStyle(id,mode))) {
           // An empty value clears the inline one a cropped corner wrote, so
           // the theme's own stylesheet (Forge's phone corner) or the shared
           // default applies: the inline style is what must be empty.
           const read = value === '' ? `document.documentElement.style.getPropertyValue(${JSON.stringify(key)})` : `getComputedStyle(document.documentElement).getPropertyValue(${JSON.stringify(key)}).trim()`;
-          assert.equal(await evaluate(read),value,`${id}: ${key}`);
+          assert.equal(await evaluate(read),value,`${id} ${mode}: ${key}`);
+        }
         }
         const corner=await evaluate(`getComputedStyle(document.querySelector('.theme-ornaments[data-surface="table"]>span')).backgroundImage`);
         assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'),`${id}: artwork does not widen the page`);
@@ -212,7 +226,7 @@ try {
         assert.equal(ornaments.frameVisibility,'visible','Frame remains painted independently of its empty container');
         assert.equal(ornaments.cornerVisibility,'visible','Corners remain painted independently of their empty container');
         for (const slot of ['frame','corner']) {
-          const expected=themeArtStyle(theme)['--theme-art-'+slot];
+          const expected=themeArtStyle(theme,'dark')['--theme-art-'+slot];
           if (expected==='none') assert.equal(ornaments[slot],'none');
           else assert.ok(ornaments[slot].includes(expected.slice(5,-2)),`Overlay receives registered ${slot} artwork`);
         }
@@ -228,6 +242,10 @@ try {
           await click('button[aria-label="Enlarge battle map"]');
           await waitFor(`!!document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]')`);
           await settleOverlay();
+          const overlayFrame=await evaluate(`getComputedStyle(document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]'),'::before').borderImageSource`);
+          const expectedFrame=themeArtStyle(theme,mode)['--theme-art-frame'];
+          if (expectedFrame==='none') assert.equal(overlayFrame,'none');
+          else assert.ok(overlayFrame.includes(expectedFrame.slice(5,-2)),`Overlay shows the ${mode} frame`);
           const resized=await geometry();
           assert.ok(resized.dialog && resized.dialog.x>=-1 && resized.dialog.y>=-1 && resized.dialog.right<=width+1 && resized.dialog.bottom<=height+1,'Resized enlarged map fits: '+JSON.stringify(resized.dialog));
           await shot(`map-enlarged-${width}-${mode}`);
