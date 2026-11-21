@@ -123,6 +123,10 @@ export function useDollDrag({
       onPointerMove,
       onPointerUp: (event: PointerEvent<HTMLElement>) => end(event, true),
       onPointerCancel: (event: PointerEvent<HTMLElement>) => end(event, false),
+      // Capture can be lost with no pointerup (the window loses focus mid
+      // drag): the item would stay stuck to the pointer until Escape. After a
+      // real pointerup `end` has already cleared the drag, so this does nothing.
+      onLostPointerCapture: (event: PointerEvent<HTMLElement>) => end(event, false),
     },
   };
 }
