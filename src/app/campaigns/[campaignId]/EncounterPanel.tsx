@@ -308,7 +308,7 @@ export function EncounterPanel({
                     is allowed them, so their presence is the permission. */}
                 {enemy.currentHp !== undefined && enemy.status === "alive" ? (
                   <span className="ml-1.5 shrink-0 rounded-full border border-amber-900/60 bg-amber-950/30 px-2 py-0.5 font-mono text-[10px] text-amber-200/90">
-                    {enemy.currentHp}/{enemy.maxHp} {t("AC {ac}", { ac: enemy.ac })}
+                    {enemy.currentHp}/{enemy.maxHp}{enemy.ac !== undefined ? ` ${t("AC {ac}", { ac: enemy.ac })}` : ""}
                   </span>
                 ) : null}
               </div>

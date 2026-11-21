@@ -74,7 +74,7 @@ function MonsterHandInner({
     const living = encounter.enemies.filter((enemy) => enemy.status === "alive" && enemy.actions);
     const byId = new Map(living.map((enemy) => [enemy.id, enemy]));
     const first = due.flatMap((entry) => (byId.has(entry.id) ? [byId.get(entry.id)!] : []));
-    return [...first, ...living.filter((enemy) => !dueIds.has(entry.id))];
+    return [...first, ...living.filter((enemy) => !dueIds.has(enemy.id))];
   }, [encounter.enemies, due, dueIds]);
 
   const [enemyId, setEnemyId] = useState<string | null>(null);

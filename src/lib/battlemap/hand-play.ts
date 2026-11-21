@@ -517,7 +517,7 @@ export function composeDisplaySentence(
   if (intent.card === "spell") {
     const spell = contentName("spells", intent.spell, locale);
     const shared = shareList(card, aim, choices);
-    const named = shared.length > 1 || (shared.length === 1 && shared[0].count > 1) ? sharePhrase(card, shared) : who;
+    const named = shared.length > 1 || (shared.length === 1 && shared.every((share) => share.count > 1)) ? sharePhrase(card, shared) : who;
     const where = !named ? "" : aim?.kind === "enemy" ? ` ${t("at {who}", { who: named })}` : ` ${t("on {who}", { who: named })}`;
     const slot = intent.item ? "" : intent.slotLevel ? ` ${t("using a level {level} slot", { level: intent.slotLevel })}` : "";
     const ring = intent.item ? ` ${t("from my {item}", { item: contentName("items", intent.item, locale) })}` : "";

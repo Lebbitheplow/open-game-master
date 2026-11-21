@@ -93,7 +93,7 @@ export function reportAction(t: T, message: CampaignMessage, onReport: (message:
 const ADVENTURE_BEGINS_DM_LINE = `${ADVENTURE_BEGINS_NOTE} The Game Master opens the scene.`;
 
 function translateDuration(t: T, raw: string): string {
-  return raw.replace(/\b(\d+)\s+(week|weeks|day|days|hour|hours|minute|minutes)\b/g, (_, n, unit) => {
+  return raw.replace(/(?<!\p{L})(\d+)\s+(week|weeks|day|days|hour|hours|minute|minutes)(?!\p{L})/gu, (_, n, unit) => {
     const base = unit.replace(/s$/, "");
     return t(Number(n) === 1 ? `{n} ${base}` : `{n} ${base}s`, { n });
   });
@@ -110,12 +110,12 @@ function translateCalendarClause(t: T, raw: string): string {
   const PARTS = ["deep night", "before dawn", "morning", "midday", "afternoon", "evening", "night"];
   const SEASONS = ["winter", "spring", "summer", "autumn"];
   let out = raw;
-  out = out.replace(/It is now ([^.]+)\./g, (_, rest) => {
+  out = out.replace(/It is now ([^.]+)\./g, (_: string, rest: string) => {
     let dateStr = rest;
-    for (const d of DAYS) dateStr = dateStr.replace(new RegExp(`\\b${d}\\b`, "g"), t(d));
-    for (const m of MONTHS) dateStr = dateStr.replace(new RegExp(`\\b${m}\\b`, "g"), t(m));
-    dateStr = dateStr.replace(/\byear (\d+)\b/g, (_, y) => t("year {n}", { n: y }));
-    dateStr = dateStr.replace(/\bDay (\d+)\b/g, (_, d) => t("Day {n}", { n: d }));
+    for (const d of DAYS) dateStr = dateStr.replace(new RegExp(`(?<!\\p{L})${d}(?!\\p{L})`, "gu"), t(d));
+    for (const m of MONTHS) dateStr = dateStr.replace(new RegExp(`(?<!\\p{L})${m}(?!\\p{L})`, "gu"), t(m));
+    dateStr = dateStr.replace(/(?<!\p{L})year (\d+)(?!\p{L})/gu, (_: string, y: string) => t("year {n}", { n: y }));
+    dateStr = dateStr.replace(/(?<!\p{L})Day (\d+)(?!\p{L})/gu, (_: string, d: string) => t("Day {n}", { n: d }));
     for (const p of PARTS) dateStr = dateStr.replace(new RegExp(`, ${p}(?=,|$)`, "g"), `, ${t(p)}`);
     for (const s of SEASONS) dateStr = dateStr.replace(new RegExp(`, ${s}(?=,|$)`, "g"), `, ${t(s)}`);
     return t("It is now {date}.", { date: dateStr });
@@ -125,9 +125,9 @@ function translateCalendarClause(t: T, raw: string): string {
 
 function translateMountDesc(t: T, desc: string): string {
   return desc
-    .replace(/\bspeed (\d+) ft\./g, (_, feet) => t("speed {feet} ft.", { feet }))
-    .replace(/\bcontrolled \(shares your initiative\)/g, () => t("controlled (shares your initiative)"))
-    .replace(/\bindependent \(acts on its own turn\)/g, () => t("independent (acts on its own turn)"));
+    .replace(/(?<!\p{L})speed (\d+) ft\./gu, (_, feet) => t("speed {feet} ft.", { feet }))
+    .replace(/(?<!\p{L})controlled \(shares your initiative\)/gu, () => t("controlled (shares your initiative)"))
+    .replace(/(?<!\p{L})independent \(acts on its own turn\)/gu, () => t("independent (acts on its own turn)"));
 }
 
 function translateSystemNote(t: T, raw: string): string {
@@ -305,7 +305,7 @@ function translateActionTail(t: T, locale: "en" | "fr", tail: string): string {
     t("If it hits, I use Divine Smite with a level {level} slot.", { level: lvl }),
   );
   out = out.replace(/I use (.+?) on this attack\./g, (_, rider) =>
-    t("I use {rider} on this attack.", { rider: contentName("features", rider, locale) }),
+    t("I use {rider} on this attack.", { rider: contentName("classFeatures", rider, locale) }),
   );
   return out;
 }
