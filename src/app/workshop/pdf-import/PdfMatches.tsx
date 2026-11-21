@@ -176,6 +176,7 @@ function MatchRow({ match, srd, onChoose }: { match: MatchView; srd: MatchOption
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" aria-hidden="true" />
             <input
               type="search"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the search opens because the author just pressed the search button
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}

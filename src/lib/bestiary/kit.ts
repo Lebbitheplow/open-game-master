@@ -18,7 +18,7 @@ import {
 } from "@/lib/bestiary/monster-draft";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
 import { textKey } from "@/lib/language/text-logic";
-import { translate, type Locale } from "@/lib/messages-logic";
+import { translate } from "@/lib/messages-logic";
 
 // Building a monster out of the parts the app already has.
 //
@@ -453,7 +453,7 @@ export function applyClassChassis(draft: MonsterDraft, pick: ChassisPick): Monst
 type T = (key: string, vars?: Record<string, string | number>) => string;
 const enT: T = (key, vars) => translate("en", key, vars);
 
-export function describeChassis(pick: ChassisPick, t: T = enT, locale: Locale = "en"): string {
+export function describeChassis(pick: ChassisPick, t: T = enT): string {
   const klass = findClassKit(pick.classId);
   if (!klass) {
     return "";

@@ -56,7 +56,6 @@ type ListProps = {
 
 export function CastChips({ npcs, selectedId, onOpen }: ListProps) {
   const t = useT();
-  const tp = useTp();
   return (
     <section className="panel space-y-2 rounded-xl p-3">
       <SectionHead title={t("The cast", { context: "workshop.cast.title" })} glyph="system-cast" className="mb-0" />

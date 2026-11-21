@@ -31,6 +31,7 @@ import { withinFeet } from "@/lib/dm/authored-saves";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollCharacterCheck, rollFeatureSave } from "@/lib/dm/contest-roll";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { partPair } from "@/lib/dm/enemy-riders";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { publishPersisted } from "@/lib/events";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -154,8 +155,10 @@ function stitchTheTear(ctx: SpendContext): Resolution {
     return refused(`${enemy.displayName} is CR ${enemy.cr}, and Stitch the Tear closes a summoning of CR 5 or lower.`);
   }
   patchEnemyHp(enemy.id, 0, "dead");
+  // A summoned rider or mount leaves the other half behind (enemy-riders.ts).
+  const parted = partPair(ctx.campaign, enemy, true);
   publishEncounter(ctx.campaign.id);
-  return { result: { applied: `${enemy.displayName} is pulled back through the stitched tear and is gone.` } };
+  return { result: { applied: `${enemy.displayName} is pulled back through the stitched tear and is gone.`, ...(parted ? { pair: parted } : {}) } };
 }
 
 // Built on first use, not when this file loads: genre-gh-wards.ts imports

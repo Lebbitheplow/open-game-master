@@ -49,7 +49,7 @@ function hitOf(campaignId: string, event: TriggerEvent): LastHit | null {
   return openHits(campaignId, event.characterId).find((record) => hitIdOf(record) === event.id) ?? null;
 }
 
-function latest(input: Input, ask: TriggerAsk): TriggerEvent | null {
+function latest(ask: TriggerAsk): TriggerEvent | null {
   const spec = triggerSpecFor(ask.name, { counterId: ask.counterId });
   return spec ? (openTriggersFor(ask, spec).slice(-1)[0] ?? null) : null;
 }
@@ -61,7 +61,7 @@ function settle(input: Input, record: LastHit, corrected: SwingRecord[], label: 
 function violentAttraction(input: Input, ask: TriggerAsk): Plan | ToolError {
   const { campaign, sheet } = input;
   const encounter = getActiveEncounter(campaign.id);
-  const event = latest(input, ask);
+  const event = latest(ask);
   if (!encounter || !event) {
     return { error: "Violent Attraction answers a weapon attack that hit, and none is open. Nothing was spent.", refused: "rules" };
   }
@@ -119,7 +119,7 @@ const DIE_FAMILY = "bardic inspiration";
 function infectiousInspiration(input: Input, ask: TriggerAsk): Plan | ToolError {
   const { campaign, sheet } = input;
   const encounter = getActiveEncounter(campaign.id);
-  const event = latest(input, ask);
+  const event = latest(ask);
   const target = input.targetCharacterId ? (getSheetById(input.targetCharacterId) ?? null) : null;
   if (!encounter || !event) {
     return { error: `${INFECTIOUS} answers a roll a creature has just made succeed with ${sheet.name}'s Bardic Inspiration die, and none is open. Nothing was spent.`, refused: "rules" };

@@ -9,10 +9,9 @@
 // settle it, as with stabilize's Medicine check (stabilize.ts). It is rolled
 // before anything is written: a held call that parks on it runs again when
 // the die lands.
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { recordRoll } from "@/lib/dm/roll-record";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll } from "@/lib/db/rolls";
-import { publishWithSeq } from "@/lib/events";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { scrollCopyDc } from "@/lib/dm/learn-rules";
@@ -44,8 +43,6 @@ export function rollScrollCopy(
   }
   spendRollCarriers(campaign.id, copier.id, resolved.spendInspiration);
   const outcome = rollCharacterD20(campaign, copier, { kind: "skill_check", expression: resolved.expression, detail, dc, settleHeldDie: heldDieWaits(copier, dc) });
-  const roll = insertRoll({ campaignId: campaign.id, characterId: copier.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: outcome });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn?.rollIds.push(roll.id);
+  recordRoll({ campaignId: campaign.id, characterId: copier.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: outcome, turn });
   return { passed: outcome.total >= dc, rolled: outcome.total, dc };
 }

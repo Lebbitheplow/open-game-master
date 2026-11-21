@@ -134,19 +134,6 @@ export function clausesFor(file, ledger = loadLedger()) {
   return out;
 }
 
-export const tally = (ledger = loadLedger()) => {
-  const counts = { features: 0, clauses: 0, held: 0, gap: 0, left: 0, flavor: 0, read_only: 0 };
-  for (const entry of Object.values(ledger)) {
-    counts.features += 1;
-    for (const clause of entry.clauses ?? []) {
-      counts.clauses += 1;
-      counts[clause.is] += 1;
-      if (clause.read_only) counts.read_only += 1;
-    }
-  }
-  return counts;
-};
-
 // ---- the rig: one table, put back before every scene ----
 
 const CASTING = { cleric: "wis", druid: "wis", paladin: "cha", ranger: "wis", artificer: "int" };

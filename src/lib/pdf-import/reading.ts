@@ -133,7 +133,6 @@ export const pageBatchSchema = z.object({
   fonts: z.array(fontSchema).max(MAX_FONTS),
   pages: z.array(pageSchema).min(1).max(PAGES_PER_BATCH),
 });
-export type PageBatch = z.infer<typeof pageBatchSchema>;
 
 export type Reading = ReadingHead & { fonts: ReadFont[]; pages: ReadPage[] };
 

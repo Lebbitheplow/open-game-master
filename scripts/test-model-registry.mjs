@@ -158,8 +158,21 @@ try {
     const old = story("gpt-4", "openai");
     assert.equal(old.fit, "unfit", "an 8K window cannot hold the DM's instructions");
     assert.match(old.warnings[0], /Deprecated/);
-    // The floors src/lib/story-window.ts measures over a party of one to four (gap sweep 2026-11-09).
-    assert.match(old.warnings[1], /8K window is too small to narrate.*24K tokens to narrate and 40K to run fights/);
+    // The one supported window (src/lib/story-window.ts FULL_RULES_WINDOW).
+    assert.match(old.warnings[1], /8K window is too small to narrate.*at least 64K tokens to play the full rules/);
+    // Short of the full rules is unfit: the picker leaves it off, and only a
+    // model typed in by hand runs on the cut rules.
+    const midWindow = { ...providers.openai.models["gpt-5.6"], contextTokens: 32_000 };
+    const mid = logic.assessModel(enT, { role: "story", id: "x", catalog: midWindow, listed: true });
+    assert.equal(mid.fit, "unfit", "a 32K storyteller cannot play the full rules");
+    assert.match(mid.warnings.join(" "), /too small for the full rules/);
+    assert.equal(logic.assessModel(enT, { role: "story", id: "x", catalog: { ...midWindow, contextTokens: 64_000 }, listed: true }).fit, "ok", "64K plays the full rules");
+    const servedShort = logic.assessModel(enT, { role: "story", id: "x", catalog: providers.openai.models["gpt-5.6"], listed: true, local: true, contextTokens: 32_768 });
+    assert.equal(servedShort.fit, "unfit", "a local server's own word on a short window is a verdict");
+    const small = logic.assessModel(enT, { role: "story", id: "x", catalog: null, listed: true, local: true, parameters: 9e9 });
+    assert.equal(small.fit, "unfit", "a 9B model plays only the short rules");
+    assert.match(small.warnings.join(" "), /About 9B parameters: below 16B/);
+    assert.equal(logic.assessModel(enT, { role: "utility", id: "x", catalog: null, listed: true, local: true, parameters: 4e9 }).fit, "unknown", "a small helper is fine");
     const picture = story("gpt-image-1", "openai");
     assert.equal(picture.fit, "unfit");
     assert.match(picture.warnings.join(" "), /Does not write text/);
@@ -581,8 +594,10 @@ try {
     const fit = store.fitListedModels("https://api.openai.com/v1", listed(["gpt-image-1", "gpt-5.6", "gpt-4", "my-finetune"]));
     assert.deepEqual(fit.map((model) => model.id), ["gpt-5.6", "my-finetune"], "the picture model and the 8K one are out; the unknown one stays");
     assert.equal(fit[0].context, 1_050_000);
-    const served = store.fitListedModels("https://api.openai.com/v1", [{ id: "gpt-4", label: "gpt-4", context: 32_768 }]);
+    const served = store.fitListedModels("https://api.openai.com/v1", [{ id: "gpt-4", label: "gpt-4", context: 65_536 }]);
     assert.deepEqual(served.map((model) => model.id), ["gpt-4"], "a window the server reports outranks the catalog's");
+    const short = store.fitListedModels("http://127.0.0.1:8001/v1", [{ id: "my-finetune", label: "my-finetune", context: 32_768 }]);
+    assert.deepEqual(short, [], "a server's own short window leaves even an unknown model off: it cannot play the full rules");
     assert.equal(served[0].label, "gpt-4 (deprecated)");
     assert.equal(store.recommendListed("https://api.openai.com/v1", fit), "gpt-5.6", "current, tools, reasoning, newest");
     assert.equal(store.recommendListed("https://openrouter.ai/api/v1", listed(["sao10k/l3-lunaris-8b", "google/gemini-3.5-flash"])), "google/gemini-3.5-flash");

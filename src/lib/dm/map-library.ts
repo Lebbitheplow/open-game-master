@@ -1,3 +1,4 @@
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import { isOnePageDungeon, parseOnePageDungeon } from "@/lib/battlemap/watabou";
 import { getParty } from "@/lib/db/party";
 import { placeByFormation } from "@/lib/dm/formation-logic";
@@ -455,6 +456,9 @@ export function deployPreparedMap(campaign: Campaign, mapId: string): LibraryOut
   setBattleMapBackdrop(live.id, prepared.backdrop?.path ?? "", prepared.backdrop?.transform ?? null);
   restandOnPrepared(live.id, prepared);
   placeProps(live.id, campaign.id, prepared);
+  // Everyone was restood on one square; a rider needs the mount's space on
+  // the new ground, as on a scene opened on a prepared map (issue 1055).
+  seatMountedParty(campaign.id, live.id);
   // Fog memory is a memory of a map that no longer exists.
   clearExplored(live.id);
   publishBattleMapUpdate(campaign.id);
@@ -549,6 +553,7 @@ export function openSceneOnPreparedMap(
     })),
   );
   placeProps(map.id, campaign.id, prepared);
+  seatMountedParty(campaign.id, map.id);
   publishBattleMapUpdate(campaign.id);
   playPreparedAmbience(campaign, prepared.ambience);
   return { ok: true, map: prepared };

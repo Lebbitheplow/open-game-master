@@ -21,7 +21,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { suite } from "./enforce-harness.mjs";
 import {
-  classFeatureTexts, featTexts, speciesTexts, sentencesOf, statesMechanic, covers, sha12,
+  classFeatureTexts, featTexts, speciesTexts, sentencesOf, covers, sha12,
 } from "./sweep-clauses-srd-text.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
@@ -136,19 +136,6 @@ export function ledgerProblems(which) {
   return problems;
 }
 
-export function ledgerCounts(which) {
-  const counts = { entries: 0, clauses: 0, held: 0, gap: 0, read_only: 0, left: 0, flavor: 0 };
-  for (const entry of Object.values(readLedger(which))) {
-    counts.entries += 1;
-    for (const clause of entry.clauses ?? []) {
-      counts.clauses += 1;
-      counts[clause.is] += 1;
-      if (clause.is === "gap" && clause.read_only) counts.read_only += 1;
-    }
-  }
-  return counts;
-}
-
 // The probes the ledgers send to one suite file: id -> the clauses it runs.
 export function probesNamedIn(suiteFile) {
   const out = new Map();
@@ -219,4 +206,4 @@ export async function runProbes(suiteFile, probes, { skip = {} } = {}) {
   finish();
 }
 
-export { sha12, sentencesOf, statesMechanic, covers };
+export { sha12, sentencesOf, covers };

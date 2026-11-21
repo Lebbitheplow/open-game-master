@@ -395,10 +395,7 @@ function finishCounterspell(
   if (!countered) {
     const dc = 10 + counter.level;
     const ability = counterspellAbility(ctx.sheet);
-    const rolled = rollCharacterCheck(ctx.campaign, ctx.sheet, { ability: ability as "int", spell: "Counterspell" }, `${ctx.sheet.name}: Counterspell against ${counter.spell}`);
-    if (rolled.rollId) {
-      ctx.turn.rollIds.push(rolled.rollId);
-    }
+    const rolled = rollCharacterCheck(ctx.campaign, ctx.sheet, { ability: ability as "int", spell: "Counterspell" }, `${ctx.sheet.name}: Counterspell against ${counter.spell}`, ctx.turn);
     countered = !rolled.autoFailed && rolled.total >= dc;
     check = `${ability.toUpperCase()} check ${rolled.total} against DC ${dc}`;
   }

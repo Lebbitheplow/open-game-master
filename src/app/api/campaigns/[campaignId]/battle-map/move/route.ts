@@ -16,11 +16,13 @@ import {
   moveToken,
 } from "@/lib/db/battle-maps";
 import { buildPlayerMapView, footprintLookup, occupiedTiles, pcMoveBudget, type PlayerMapView } from "@/lib/battlemap/view";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { boardState, forgetMoves, keepMove, revealedSince, sightOf, stepFeet, type MoveStep } from "@/lib/battlemap/move-undo";
 import { findPath, reachableTiles, speedToTiles } from "@/lib/battlemap/movement";
 import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { crawlingTraits, tileIndex } from "@/lib/battlemap/types";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { carriedRefusal } from "@/lib/dm/token-rules";
 import { publishFx } from "@/lib/dm/fx";
 import { planDoorFx } from "@/lib/battlemap/fx-plan";
 import { getCampaignById } from "@/lib/db/campaigns";
@@ -144,6 +146,13 @@ export async function POST(
     if (!allowed.ok) {
       return Response.json({ error: allowed.error }, { status: 409 });
     }
+  }
+
+  // On an independent mount the pair moves on the mount's turn, which the
+  // GM plays (token-rules.ts carriedRefusal).
+  const carriedOn = carriedRefusal(campaignId, encounter, sheet);
+  if (carriedOn) {
+    return Response.json({ error: carriedOn }, { status: 409 });
   }
 
   const floor = getFloor(campaignId);
@@ -288,6 +297,9 @@ export async function POST(
     sideOf: tokenSides(encounter),
     anyGround: crossesAnyGround(encounter, sheet),
   }), map, "pc", sheet.id);
+  // A rider walks as the mount's space walks: every square of it fits where
+  // they stop, as the board's lit squares were worked out (issue 1055).
+  const riding = tokenFootprint(token);
   const reach = reachableTiles(
     map.terrain,
     map.width,
@@ -295,7 +307,7 @@ export async function POST(
     occupied,
     token,
     budget,
-    1,
+    riding,
     token.movement === "fly",
     traits,
   );
@@ -313,7 +325,7 @@ export async function POST(
   const standCost = standUpTiles(sheet, speedToTiles(speed));
   const crawlTraits = crawlingTraits(traits);
   const crawlCost = prone
-    ? reachableTiles(map.terrain, map.width, map.height, occupied, token, fullTiles, 1, token.movement === "fly", crawlTraits).get(tileIndex(map.width, x, y))
+    ? reachableTiles(map.terrain, map.width, map.height, occupied, token, fullTiles, riding, token.movement === "fly", crawlTraits).get(tileIndex(map.width, x, y))
     : undefined;
   // The board's lit squares price a prone walk with the same function; a
   // careful one pays double for the walk after standing and for the crawl.
@@ -359,7 +371,7 @@ export async function POST(
         occupied,
         token,
         { x, y },
-        1,
+        riding,
         token.movement === "fly",
         // A crawl takes the way that is cheapest to crawl, which it was charged for.
         charged && !charged.stands ? crawlTraits : traits,

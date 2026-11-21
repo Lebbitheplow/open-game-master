@@ -137,3 +137,8 @@ html[data-appearance="kingdoms"] body > canvas[aria-hidden] { display: none; }
     color: ButtonText;
   }
 }
+[data-appearance="kingdoms"] .theme-ornaments[data-surface="lobby"] {
+  /* The corner's arms lie on the rail, so on a phone the piece keeps the
+     desktop's proportion to it: 196px on a 26px rail is 90px on a 12px one. */
+  --theme-lobby-corner-size-small: 90px;
+}

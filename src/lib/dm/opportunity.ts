@@ -17,7 +17,8 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { characterFootprint } from "@/lib/dm/board-reach";
 
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -231,7 +232,7 @@ export function resolveOpportunityAttacks(
     // (enemy-hit.ts sizedAttack), as on its own turn.
     const sized = sizedAttack(weapon.attack, enemy.conditions);
     const attack = sized.attack;
-    const leftFrom = leavesReachAt(steps, token, reach, footprintForSize(enemy.stats.size));
+    const leftFrom = leavesReachAt(steps, token, reach, enemyFootprint(enemy), characterFootprint(characterId));
 
     // A wall between them is total cover (attack-spatial.ts reachWalled).
     if (!leftFrom || reachWalled(encounter.id, enemy.id, characterId, leftFrom)) {
@@ -580,7 +581,7 @@ export function resolvePcOpportunityWalk(
   const steps = [from, ...(path?.length ? path : [to])];
   const notes: string[] = [];
   // The walker's size: an ogre leaves a reach when its last square does.
-  const moverFootprint = footprintForSize(getFoe(enemyId)?.stats.size);
+  const moverFootprint = enemyFootprint(getFoe(enemyId));
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
   // Whether the walk can go no further: dropped, or its speed at 0.
@@ -629,11 +630,13 @@ export function resolvePcOpportunityWalk(
     }
     // A wall between is total cover: no swing through it (attack-spatial.ts).
     const clear = (at: XY | null) => (at && reachWalled(encounter.id, sheet.id, enemyId, at) ? null : at);
+    // A rider's reach is measured from the mount's space (issue 1055).
+    const mine = characterFootprint(sheet.id);
     // Polearm Master: a creature entering the polearm's reach provokes too.
-    const entering = polearmReachOpportunity(sheet, resolved?.srd?.name) ? clear(entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
+    const entering = polearmReachOpportunity(sheet, resolved?.srd?.name) ? clear(entersReachAt(steps, token, profile.reachTiles, mine, moverFootprint)) : null;
     // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
     // within the reach provokes too.
-    const within = holdsFeature(sheet, "Hold the Line") ? clear(movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
+    const within = holdsFeature(sheet, "Hold the Line") ? clear(movesWithinReachAt(steps, token, profile.reachTiles, mine, moverFootprint)) : null;
     // Manifest Echo: a creature that moves 5 feet or more away from the echo
     // while within 5 feet of it provokes "as if you were in the echo's space"
     // (mt-fb-echo.ts).
@@ -641,7 +644,7 @@ export function resolvePcOpportunityWalk(
     // Where the walker is as the swing is made: the tile it left the reach
     // from, the one it entered the polearm's reach at, the one it stepped to
     // inside the reach, or the one it left the echo's side from.
-    const leaving = clear(leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint));
+    const leaving = clear(leavesReachAt(steps, token, profile.reachTiles, mine, moverFootprint));
     const moverAt = leaving ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;
@@ -697,7 +700,7 @@ export function resolvePcOpportunityWalk(
     };
     // War Caster: the spell they named is cast in the swing's place, null
     // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
-    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, 1, moverFootprint), reactionKey });
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, characterFootprint(sheet.id), moverFootprint), reactionKey });
     if (cast) {
       notes.push(cast.note);
       stops();

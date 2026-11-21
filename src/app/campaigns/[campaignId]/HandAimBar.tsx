@@ -11,7 +11,7 @@ import type { HandAttackOption, HandAttackOptionId, HandCard } from "@/lib/battl
 import { cardDisplayName } from "@/lib/battlemap/hand-display";
 import { handReady, shareList, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
-import { describePick, hasPick, pickHint, pickWords, type AreaPick } from "@/lib/battlemap/hand-area";
+import { hasPick, pickHint, pickWords, type AreaPick } from "@/lib/battlemap/hand-area";
 import { cardFullText } from "@/lib/battlemap/hand-full-text-logic";
 import { HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";
@@ -524,6 +524,7 @@ export function HandAimBar({
             type="text"
             value={trigger}
             maxLength={200}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- the trigger box appears because the player just chose to ready an action, and it is what they fill in next
             autoFocus
             onChange={(event) => onTrigger?.(event.target.value)}
             onKeyDown={(event) => {

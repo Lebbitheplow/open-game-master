@@ -8,7 +8,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { DOLL_PLACE, DOLL_PLACES, dollPlaceOf, dollTileLabel, dollTileLine, dollTileNames, dollView } = await import("../src/components/sheet/paperdoll-logic.ts");
+const { DOLL_PLACE, DOLL_PLACES, dollDropPlace, dollPlaceOf, dollTileLabel, dollTileLine, dollTileNames, dollView } = await import("../src/components/sheet/paperdoll-logic.ts");
 const { WEAR_SLOT_LIMITS } = await import("../src/lib/srd/wear-slots.ts");
 const { WORN_PLACES } = await import("../src/lib/srd/worn-places.ts");
 
@@ -177,6 +177,53 @@ test("ten rings worn take one tile: the first by name and a count, all ten in th
   // Two are still named whole.
   const two = dollView(rings.slice(0, 2), none).tiles.ring;
   assert.equal(dollTileLine(two), "Ring of Swimming (1), Ring of Swimming (2)");
+});
+
+test("a packed row can be dragged to its own place, and nothing else can be dragged", () => {
+  const calm = { inCombat: false, myTurn: false };
+  const pack = [
+    item("Leather", { equipped: true }),
+    item("Cloak of Protection", { equipped: true }),
+    item("Cloak of Elvenkind", { equipped: false }),
+    item("Longsword", { equipped: false }),
+    item("Shield", { equipped: false }),
+    item("Chain Mail", { equipped: false }),
+    item("Wand of Magic Missiles", { equipped: false }),
+    item("Crystal Ball"),
+    item("Rope"),
+  ];
+  const drop = (name, when = calm) => dollDropPlace(pack.find((row) => row.name === name), pack, when);
+  assert.equal(drop("Cloak of Elvenkind"), "cloak", "a second cloak still goes to the shoulders: the drop asks the swap question");
+  assert.equal(drop("Longsword"), "held");
+  assert.equal(drop("Shield"), "shield");
+  assert.equal(drop("Chain Mail"), "body");
+  assert.equal(drop("Wand of Magic Missiles"), "held");
+  assert.equal(drop("Cloak of Protection"), null, "what is on already has nowhere to go");
+  assert.equal(drop("Crystal Ball"), null, "an orb is attuned to, never put on");
+  assert.equal(drop("Rope"), null);
+  // A fight bars what the row's own button bars.
+  const offTurn = { inCombat: true, myTurn: false };
+  const onTurn = { inCombat: true, myTurn: true };
+  assert.equal(drop("Chain Mail", onTurn), null, "armor takes minutes");
+  assert.equal(drop("Shield", offTurn), null);
+  assert.equal(drop("Shield", onTurn), "shield");
+  assert.equal(drop("Longsword", offTurn), null);
+  assert.equal(drop("Longsword", onTurn), "held");
+  assert.equal(drop("Cloak of Elvenkind", offTurn), null);
+  assert.equal(drop("Cloak of Elvenkind", onTurn), "cloak");
+  // Nobody has said what is worn, so everything counts as on and nothing is left to drag.
+  const unsaid = [item("Chain Mail"), item("Longsword")];
+  assert.equal(dollDropPlace(unsaid[1], unsaid, calm), null);
+});
+
+test("only a row the doll lists can be dragged onto it, so what a drop puts on has a row to take it off", () => {
+  const calm = { inCombat: false, myTurn: false };
+  // Tagged a wand by the GM, but no weapon and no magic item: the doll lists
+  // no row for it under In hand, so neither does a drag put it there.
+  const stick = item("Odd stick", { tags: ["wand"], equipped: false });
+  const pack = [item("Leather", { equipped: true }), stick];
+  assert.equal(dollView(pack, none).tiles.held.fits.includes(stick), false);
+  assert.equal(dollDropPlace(stick, pack, calm), null);
 });
 
 console.log(`test-paperdoll-logic: ${passed} passed`);

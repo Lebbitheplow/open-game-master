@@ -137,11 +137,6 @@ import { spreadGear } from "@/lib/dm/gear-zones";
 import { actorOfCall, calledOnItsOwn, withActor } from "@/lib/dm/acting-party";
 import { openEffect } from "@/lib/dm/last-hit";
 
-import { translate } from "@/lib/messages-logic";
-
-// The tool refusals read the model's protocol: pinned English.
-const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
-
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -1672,7 +1667,7 @@ function dmMutation(
       Object.assign(outcome.result, wbfAfterSpend(campaign, sheet, counter?.id, args));
       // The Fathomless Plunge takes the warlock and the party near them off
       // the board (fathomless-plunge.ts).
-      Object.assign(outcome.result, plungeAfterSpend(campaign, getDmTurn(turnId), sheet, counter?.id, sheets, sheetsById));
+      Object.assign(outcome.result, plungeAfterSpend(campaign, sheet, counter?.id));
       // A Spirit Projection leaves the body on the board (spirit-projection.ts).
       Object.assign(outcome.result, projectionAfterSpend(campaign, sheet, counter?.id));
       // A feature that lands on someone else (Bardic Inspiration) patches

@@ -2,11 +2,14 @@ import { isErrorResponse, requireStoryAuthority } from "@/lib/campaign-api";
 import { placeInRegion, releaseFromRegion } from "@/lib/db/atlas-region";
 import { publishEphemeral } from "@/lib/events";
 import { recordsChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PINS_MAX = 3_000;
+
+const placesSchema = z.object({ pinIds: z.array(z.string()).optional(), apply: z.boolean().optional() });
 
 function pinIdsOf(raw: unknown): string[] | null {
   if (!Array.isArray(raw)) return null;
@@ -25,7 +28,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { pinIds?: unknown; apply?: unknown };
+  const parsed = placesSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the pins by their ids." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const result = placeInRegion(campaignId, pinIdsOf(raw.pinIds), raw.apply === true);
   if ("error" in result) {
     return Response.json({ error: result.error }, { status: result.status });
@@ -45,7 +52,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ c
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { pinIds?: unknown };
+  const parsed = placesSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the pins by their ids." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const released = releaseFromRegion(campaignId, pinIdsOf(raw.pinIds));
   if (released.length) {
     publishEphemeral(campaignId, "world_updated", { at: Date.now() });

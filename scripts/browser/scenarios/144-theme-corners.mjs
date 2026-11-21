@@ -1,16 +1,20 @@
 // The corners of every painted theme, by day and by night, on a desk and a
-// phone. Two faults, both seen in the desktop app:
+// phone. Three faults, all seen in the desktop app:
 //
-// - Woodland, Tide and Forge paint one separate corner piece, and the other
-//   three corners were it turned by 90, 180 and 270 degrees, so Forge's
-//   ember gem lay on its side at the top right. They are mirrored now, as
-//   the rulebook's corners are. A corner cropped from the frame (Arcane,
-//   Gothic, Hearth, High Kingdoms) shows that corner of the frame as painted
-//   and is neither turned nor mirrored.
+// - A theme that paints one separate corner piece had the other three
+//   corners turned by 90, 180 and 270 degrees, so Forge's ember gem lay on
+//   its side at the top right. They are mirrored now, as the rulebook's
+//   corners are. A corner cropped from the frame (cornerScale; no shipped
+//   theme since Arcane, Gothic, Hearth and High Kingdoms got their own
+//   pieces) shows that corner of the frame as painted and is neither turned
+//   nor mirrored.
 // - The flat corner brackets (.ornate) of a panel: Forge drew closed boxes
 //   (its 2px reached all four sides), Gothic and Hearth asked for a double
 //   line at 1px (one stroke), and on a card that is also .texture-noise the
 //   grain's 5% opacity fell on the top-left bracket, which all but vanished.
+// - Arcane, Gothic, Hearth and High Kingdoms drew their lobby corner at the
+//   rail's scale, about 30px, where the other painted themes show a 196px
+//   piece, and it was missed altogether.
 import { readFileSync } from "node:fs";
 import { check, eventually, untilStill } from "../lib.mjs";
 
@@ -55,13 +59,19 @@ export default {
               // The shadow's offset as drawn on the page: its own y offset,
               // turned over by the corner's flip.
               const y = parseFloat(style.filter.match(/drop-shadow\((?:rgba?\([^)]*\)\s*)?(-?[\d.]+)px\s+(-?[\d.]+)px/)?.[2] ?? "0");
-              return { matrix: [m.a, m.b, m.c, m.d].map((n) => Math.round(n)), shadow: Math.sign(y * m.d) };
+              return { matrix: [m.a, m.b, m.c, m.d].map((n) => Math.round(n)), shadow: Math.sign(y * m.d), width: span.getBoundingClientRect().width };
             }));
+            const rail = await shell.evaluate((node) => parseFloat(getComputedStyle(node.querySelector(":scope > .theme-ornaments"), "::before").borderImageWidth));
             const want = theme.cropped ? UPRIGHT : MIRRORS;
             const got = corners.map((c) => c.matrix);
             if (got.length !== 4 || got.some((m, i) => m.join() !== want[i].join())) {
               faults.push(`${label}: the corners should be ${theme.cropped ? "upright crops of the frame" : "mirrored, not turned"} (${JSON.stringify(got)})`);
             }
+            // A corner drawn at the rail's own scale (30px on a 26px rail) read as
+            // no corner at all, so every lobby corner is a piece several rails wide.
+            // A crop of the frame is sized from the rail by design.
+            const small = theme.cropped ? [] : corners.filter((c) => !(c.width >= rail * 4));
+            if (!(rail > 0) || small.length) faults.push(`${label}: a lobby corner is too small to read beside its ${rail}px rail (${JSON.stringify(corners.map((c) => Math.round(c.width)))})`);
             if (corners.some((c) => c.shadow < 0)) faults.push(`${label}: a corner's shadow falls up the page (${JSON.stringify(corners.map((c) => c.shadow))})`);
             await t.shot(`${theme.id}-${mode}-lobby`);
           }

@@ -113,3 +113,10 @@ html[data-appearance="hearth"] .ornate::after { border-width: 0 3px 3px 0; }
 html[data-appearance="hearth"] .cine-fight-hand [data-tour="battle-hand"] .hand-label {
   color: #f7dfae;
 }
+[data-appearance="hearth"] .theme-ornaments[data-surface="lobby"] {
+  /* The corner's arms are a strap on a strip of the rail's own oak, so they
+     must be the rail's width to read as the rail. The piece's arm is 15% of
+     its side: 180px on the desktop's 26px rail and 86px on a phone's 12px. */
+  --theme-lobby-corner-size: 180px;
+  --theme-lobby-corner-size-small: 86px;
+}

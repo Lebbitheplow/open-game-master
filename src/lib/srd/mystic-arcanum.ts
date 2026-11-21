@@ -59,10 +59,6 @@ function arcanumFeaturesOf(classId: string): typeof ARCANUM_FEATURES {
   );
 }
 
-export function holdsMysticArcanum(classId: string): boolean {
-  return arcanumFeaturesOf(classId).length > 0;
-}
-
 // The arcanum spell levels a class has at its level: [6] at warlock 11,
 // [6, 7, 8, 9] from 17, [6, 7] for an occultist from 17. Empty for a class
 // without one.

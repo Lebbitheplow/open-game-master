@@ -89,15 +89,6 @@ function LONG_RUN_COUNT(text: string): number {
   return [...text.matchAll(LONG_RUN)].length;
 }
 
-// One line for a list of items, in the reader's words.
-export function proseWarningLineT(t: T, warnings: ProseWarning[]): string {
-  if (!warnings.length) {
-    return "";
-  }
-  const sample = warnings[0].samples[0] ? ` (${warnings[0].samples[0]})` : "";
-  return `${warnings.map((warning) => warning.message).join(" ")}${sample} ${t("It may have been written this way; the text is kept as it is.")}`;
-}
-
 // The cap's account, in the reader's words: the label (already translated by
 // the caller), the lengths, and the tail that would be lost.
 export function overflowLineT(t: T, label: string, text: string, max: number): string {

@@ -14,10 +14,9 @@ import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { runPush } from "@/lib/dm/genre-run-hits";
 import { horrorOnHit } from "@/lib/dm/genre-a-horror-hits";
 import { genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
-import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
-import { publishWithSeq } from "@/lib/events";
-import { insertRoll, landRoll, type StoredRoll } from "@/lib/db/rolls";
+import { landRoll, type StoredRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { RollResult } from "@/lib/dice";
 import type { RollVisibility } from "@/lib/battlemap/fx-plan";
 import { hurlThroughHell, HURL_THROUGH_HELL, openHandOnHit, poisonOnHit, spendFeatureUse } from "@/lib/dm/attack-onhit";
@@ -43,6 +42,7 @@ import { partyChargeAfterHit } from "@/lib/dm/party-charge";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 import { healCasterHalf, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { textKey } from "@/lib/language/text-logic";
@@ -89,10 +89,16 @@ export function landSwingBlow(
     ...(record.mageSlayer ? { concentrationDisadvantage: true } : {}),
     blow: record.blow ?? {},
   };
-  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number, doubled = false) =>
-    landRoll(roll.id, enemy.id, () =>
+  const land = (dealt: number, typed: DamageAsk["riders"], crit: boolean, critExtraDice: number, doubled = false) => {
+    // A spell attack that hurt the creature: Power Surge reads it
+    // (spell-damage-mark.ts). Both dice paths land here, so both mark.
+    if (record.spell && dealt > 0) {
+      markSpellDamage(campaign.id, sheet.id, enemy.id, record.spell);
+    }
+    return landRoll(roll.id, enemy.id, () =>
       landBlow({ ...blowFlags, campaign, turn: scene.turn, encounter, enemy, sheets: scene.sheets, sheetsById: scene.sheetsById, profile, typedRiders: typed, damageOutcome, dealt, crit, critExtraDice, doubled }),
     );
+  };
   // Acid Arrow's miss: half of the spell's dice, under its own type alone.
   if (ask.half) {
     const half = Math.floor(Math.max(0, damageOutcome.total) / 2);
@@ -282,7 +288,7 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
     out.tempHp = gainTempHp(campaign, sheet.id, extras.tempHp.amount, extras.tempHp.feature);
   }
   if (extras.poison && !over) {
-    const line = poisonOnHit(campaign, sheet.id, enemy.id);
+    const line = poisonOnHit(campaign, sheet.id, enemy.id, scene.turn);
     if (line) {
       out.poison = line;
     }
@@ -342,7 +348,7 @@ function maneuverRiderSave(scene: SwingScene, rider: NonNullable<AttackRecord["m
   }
   const save = rollEnemySave(campaign.id, fresh, rider.save, rider.dc, { against: rider.condition, origin: { ref: sheet.id } });
   if (save.result) {
-    const saveRoll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -350,9 +356,10 @@ function maneuverRiderSave(scene: SwingScene, rider: NonNullable<AttackRecord["m
       detail: `${fresh.displayName}: ${rider.save.toUpperCase()} save vs ${rider.name}`,
       dc: rider.dc,
       result: save.result,
+      turn,
+      // Thrown by rollEnemySave, on the server's dice.
+      landing: null,
     });
-    turn.rollIds.push(saveRoll.id);
-    publishRoll(campaign.id, saveRoll);
   }
   const shown = save.total ?? "an automatic failure";
   if (save.success) {
@@ -448,9 +455,4 @@ function featHitMarks(scene: SwingScene, record: AttackRecord, crit: boolean, st
 
 function hasTurnMark(campaignId: string, record: AttackRecord, key: string): boolean {
   return attackTurn(campaignId, record)?.budget.oncePerTurn.includes(key) ?? true;
-}
-
-// A roll the server throws for an attack goes to every seat as a card.
-export function publishRoll(campaignId: string, roll: StoredRoll) {
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
 }

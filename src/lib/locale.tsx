@@ -25,9 +25,7 @@ const ServerLocaleContext = createContext<Locale>("en");
 // French and throwing the page away. On the server the catalog is already
 // installed (fr-catalog.ts), so nothing waits there.
 function CatalogGate({ locale, children }: { locale: Locale; children: ReactNode }) {
-  if (!catalogInstalled(locale)) {
-    use(loadCatalog(locale));
-  }
+  use(loadCatalog(locale));
   return <>{children}</>;
 }
 

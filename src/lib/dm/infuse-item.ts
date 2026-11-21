@@ -29,7 +29,7 @@ import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { matchArmor } from "@/lib/srd/armor";
 import { matchResource } from "@/lib/srd/class-resources";
-import { infusedItemsMax, infusionNamed, infusionOf, replicableAt, RESISTANT_TYPES, type InfusionDef, type InfusionMark } from "@/lib/srd/infusions";
+import { infusedItemsMax, infusionNamed, infusionOf, replicableAt, RESISTANT_TYPES, type InfusionMark } from "@/lib/srd/infusions";
 import { armorOf, INFUSE_COUNTER, infusionPicks, knownInfusions, magicProblem, takesProblem, weaponOf } from "@/lib/srd/infusion-picks";
 import { classLevelOf } from "@/lib/srd/trait-rules";
 import { matchWeapon } from "@/lib/srd/weapons";

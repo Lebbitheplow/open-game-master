@@ -94,12 +94,12 @@ export function TypesView({ api, world }: { api: WorldApi; world: WorldState }) 
 
 function TypeForm({ type, isNew, onSave, onCancel }: { type: WorldType; isNew: boolean; onSave: (type: WorldType) => void; onCancel: () => void }) {
   const t = useT();
-  const tp = useTp();
   const [draft, setDraft] = useState(type);
   const setField = (id: string, patch: Partial<FieldDef>) => setDraft((current) => ({ ...current, fields: current.fields.map((field) => (field.id === id ? { ...field, ...patch } : field)) }));
   return (
     <form className="panel motion-pop flex flex-col gap-2.5 rounded-lg p-3" onSubmit={(event) => { event.preventDefault(); if (draft.name.trim()) onSave({ ...draft, name: draft.name.trim(), fields: draft.fields.filter((field) => field.name.trim()) }); }}>
       <div className="grid gap-2 @lg:grid-cols-[1fr_auto]">
+        {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the form opens because the author just asked to add or edit a type */}
         <input className={ui.input} placeholder={t("Deity, Ship, Noble House")} aria-label={t("Type name")} maxLength={40} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} autoFocus />
         <div className="flex items-center gap-1" role="radiogroup" aria-label={t("Colour")}>
           {TYPE_COLORS.map((color) => (

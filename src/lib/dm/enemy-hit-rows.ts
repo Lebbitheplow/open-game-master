@@ -7,15 +7,13 @@
 // and what the block leaves to the DM are named for the DM to resolve.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, shiftEnemyMaxHp, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { isValidExpression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -72,7 +70,7 @@ export function resolveRowOnHit(
   }
   if (rider.damage && isValidExpression(rider.damage)) {
     const outcome = rollExpression(rider.damage);
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -80,9 +78,10 @@ export function resolveRowOnHit(
       detail: rollAgainst(`${attack.name} (${rider.damageType ?? "rider"})`, target.displayName),
       result: outcome,
       attacker: { kind: "enemy", id: attacker.id, name: attacker.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-    turn.rollIds.push(roll.id);
     const amount = saved ? (rider.halfOnSave ? Math.floor(outcome.total / 2) : 0) : outcome.total;
     out.riderDamage = amount;
     if (amount > 0) {

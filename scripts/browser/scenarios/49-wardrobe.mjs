@@ -9,6 +9,9 @@
 // once the item is armour. The sheet shows her gear on a paperdoll: a tile
 // for every place on the body, filled or empty, which opens the rows that go
 // there, by finger and by keyboard, clean under axe by day and by night.
+// With a mouse a carried item's chip is dragged onto its place, which puts
+// it on as the place's own row does, the question before a second cloak
+// included.
 // Runs on the website and inside the app's own screens.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
@@ -26,6 +29,19 @@ export default {
       const vex = (table.sheets ?? []).find((sheet) => sheet.name === "Vex Halloran");
       return Object.fromEntries((vex?.equipment ?? []).map((item) => [item.name, item]));
     };
+
+    // The day theme as the app's own switch sets it (src/lib/theme-mode.ts):
+    // the token set and the colour scheme together. An item chip's colour
+    // follows the scheme, so a picture taken with the tokens alone showed
+    // night chips on a day sheet. Answers what was set, to put it back.
+    const DAY = { theme: "light", scheme: "light" };
+    const setTheme = (to) => page.evaluate((next) => {
+      const root = document.documentElement;
+      const was = { theme: root.dataset.theme ?? "", scheme: root.style.colorScheme };
+      root.dataset.theme = next.theme;
+      root.style.colorScheme = next.scheme;
+      return was;
+    }, to);
 
     await t.open(`/campaigns/${campaignId}`);
     const card = page.locator(`${root}button[title="View full character sheet"]`).filter({ hasText: "Vex Halloran" }).locator("visible=true").first();
@@ -79,11 +95,10 @@ export default {
     }
     await untilStill(page);
     await t.shot("inventory-everyday-night");
-    const additionsTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    const additionsTheme = await setTheme(DAY);
     await untilStill(page);
     await t.shot("inventory-everyday-day");
-    await page.evaluate(theme => (document.documentElement.dataset.theme = theme), additionsTheme);
+    await setTheme(additionsTheme);
     // Twelve places on the body and in the hands, and Other items for her
     // orb, which has no place on the body (the tile is drawn only for a pack
     // that holds something for it).
@@ -103,13 +118,12 @@ export default {
     await t.shot("doll");
     const dollNight = await axeViolations(page, "[data-paperdoll]");
     check(dollNight.length === 0, `the doll passes axe: ${JSON.stringify(dollNight).slice(0, 400)}`);
-    const dollTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    const dollTheme = await setTheme(DAY);
     await page.waitForTimeout(800);
     const dollDay = await axeViolations(page, "[data-paperdoll]");
     check(dollDay.length === 0, `the doll passes axe in the day theme: ${JSON.stringify(dollDay).slice(0, 400)}`);
     await t.shot("doll-day");
-    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), dollTheme);
+    await setTheme(dollTheme);
     await openPlace("wrists");
     const bracerRow = rowOf("Bracers of Defense");
     check(await bracerRow.locator(artImage(bracers)).count() === 1, "the opened bracer row uses the same art");
@@ -133,6 +147,80 @@ export default {
     check(((await wand.textContent()) ?? "").trim() === "Packed", "the wand's button reads Packed");
     check((await wand.getAttribute("aria-label")) === "Wand of Magic Missiles: Packed. Take it in hand.", "a screen reader hears where the wand is and what the press does");
     check(/does not stop a weapon being drawn/.test((await sheet.locator('[data-doll-panel="held"]').textContent()) ?? ""), "the place says a wand is no part of the two-hands rule");
+    // With a mouse, a carried item's chip is dragged onto its place.
+    if (viewport === "desktop") {
+      const chip = (name) => sheet.locator(`[data-chip="${name}"]`).first();
+      const ghost = page.locator("[data-doll-ghost]");
+      const middle = async (locator) => {
+        const box = await locator.boundingBox();
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      };
+      // Picks the chip up and carries it over a place, the sheet scrolled by
+      // the wheel when the place is below the fold, as a player's hand does.
+      const carry = async (name, id) => {
+        await chip(name).evaluate((element) => element.scrollIntoView({ block: "center" }));
+        const from = await middle(chip(name).locator("span.truncate").first());
+        await page.mouse.move(from.x, from.y);
+        await page.mouse.down();
+        await page.mouse.move(from.x + 12, from.y + 12, { steps: 3 });
+        await eventually(() => ghost.count(), { label: `${name} picked up` });
+        let to = await middle(place(id));
+        const height = page.viewportSize().height;
+        if (to.y > height - 30) {
+          await page.mouse.wheel(0, to.y - height + 120);
+          await eventually(async () => ((await middle(place(id))).y < height - 30 ? true : null), { label: `the ${id} place scrolled into reach` });
+          to = await middle(place(id));
+        }
+        await page.mouse.move(to.x, to.y, { steps: 8 });
+      };
+      check((await sheet.locator("[data-doll-drag-hint]").locator("visible=true").count()) === 1, "the doll tells a mouse that items can be dragged on");
+      check((await chip("Wand of Magic Missiles").getAttribute("data-grab")) === "", "a packed wand's chip can be picked up");
+      check((await chip(PROTECTION).getAttribute("data-grab")) === null, "a cloak already worn cannot");
+      check((await chip("Crystal Ball").getAttribute("data-grab")) === null, "nor an orb, which is never put on");
+
+      // Over another place nothing is offered, and letting go there changes nothing.
+      await carry("Wand of Magic Missiles", "head");
+      check((await place("held").getAttribute("data-drop")) === "fits", "the wand's own place is lit while it is carried");
+      check((await place("head").getAttribute("data-drop")) === null, "another place is not");
+      await page.mouse.up();
+      await eventually(async () => (await ghost.count()) === 0, { label: "the wand let go" });
+      await page.waitForTimeout(400);
+      check((await gear())["Wand of Magic Missiles"]?.equipped !== true, "a drop on the wrong place puts nothing on");
+
+      // Escape puts it back and leaves the sheet open.
+      await carry("Wand of Magic Missiles", "held");
+      await page.keyboard.press("Escape");
+      await eventually(async () => (await ghost.count()) === 0, { label: "Escape ending the drag" });
+      await page.mouse.up();
+      check((await sheet.count()) === 1 && (await place("held").count()) === 1, "the sheet stays open");
+      await page.waitForTimeout(400);
+      check((await gear())["Wand of Magic Missiles"]?.equipped !== true, "a cancelled drag puts nothing on");
+
+      // On its own place: lit under the pointer, and on once let go.
+      await carry("Wand of Magic Missiles", "held");
+      await eventually(async () => (await place("held").getAttribute("data-drop")) === "over", { label: "the In hand place lit under the wand" });
+      await untilStill(page);
+      await t.shot("drag-over");
+      const dragTheme = await setTheme(DAY);
+      await page.waitForTimeout(800);
+      await t.shot("drag-over-day");
+      await setTheme(dragTheme);
+      await page.mouse.up();
+      await eventually(async () => (await gear())["Wand of Magic Missiles"]?.equipped === true, { label: "the dropped wand in hand" });
+      await eventually(async () => (await place("held").getAttribute("data-filled")) === "true", { label: "the In hand tile filled" });
+      check((await place("held").getAttribute("data-drop")) === null, "the light goes out with the drop");
+
+      // A second cloak dropped on the shoulders asks first, as its row does.
+      await carry(ELVENKIND, "cloak");
+      await page.mouse.up();
+      const asked = sheet.getByRole("group", { name: `Wear ${ELVENKIND}?` });
+      await eventually(() => asked.count(), { label: "the question after a second cloak is dropped" });
+      check((await gear())[ELVENKIND]?.equipped === false, "the drop posted nothing before the answer");
+      await t.shot("drag-asked");
+      await t.tap(asked.getByRole("button", { name: "Keep as is" }));
+      await eventually(async () => (await asked.count()) === 0, { label: "the question put away" });
+    }
+
     // Her orb is attuned to and never put on: one button, under Other items.
     await openPlace("other");
     const orb = await rowOf("Crystal Ball").getByRole("button").allTextContents();
@@ -148,12 +236,11 @@ export default {
     // What the ring holds is read under its row (src/lib/srd/spell-storing.ts).
     await eventually(() => sheet.getByText("Holds Fireball (level 3)").count(), { label: "what the Ring of Spell Storing holds" });
     await t.shot("stored");
-    const storedTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    const storedTheme = await setTheme(DAY);
     // Past the theme's fade, so the shot shows the day colors.
     await page.waitForTimeout(800);
     await t.shot("stored-day");
-    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), storedTheme);
+    await setTheme(storedTheme);
     await ring.scrollIntoViewIfNeeded().catch(() => undefined);
     await t.tap(ring.getByRole("button", { name: "attune", exact: true }));
     await eventually(async () => (await gear())["Ring of Spell Storing"]?.attuning === true, { label: "the Ring of Spell Storing attuning" });
@@ -282,14 +369,13 @@ export default {
       await untilStill(page);
       await t.shot("worn-on");
       // Legible in the day theme too: the field alone under axe, contrast included.
-      const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-      await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+      const theme = await setTheme(DAY);
       await field.evaluate((element) => element.setAttribute("data-check", "worn-on"));
       await untilStill(page);
       const day = await axeViolations(page, '[data-check="worn-on"]');
       check(day.length === 0, `the picker passes axe in the day theme: ${JSON.stringify(day).slice(0, 400)}`);
       await t.shot("worn-on-day");
-      await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+      await setTheme(theme);
 
       // Armour places itself, so the picker goes while it is armour.
       const alsoArmour = page.getByRole("switch", { name: "It is also armour" }).locator("visible=true").first();

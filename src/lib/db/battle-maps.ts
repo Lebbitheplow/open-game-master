@@ -1,6 +1,8 @@
 import { resolveOutdoors } from "@/lib/battlemap/daylight";
 import { forgetWalk, rememberWalk } from "@/lib/battlemap/confirmed-walk";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { getMounts } from "@/lib/db/mounts";
+import { independentMount } from "@/lib/srd/mounts";
 import { keepNew, keepRow, keepRowsWhere } from "@/lib/db/turn-rows";
 import type {
   AmbientLight,
@@ -463,13 +465,48 @@ export function listTokens(mapId: string): BattleToken[] {
   return rows.map(mapToken);
 }
 
+// A combatant's token. An independent mount carrying its rider has none of
+// its own: the pair stands on the rider's token (issue 1036, ruling 2: "the
+// rider's token rides on the mount", never two tokens on a square), so the
+// mount's reach, its sight and its walk are all read from, and move, that
+// one token. Asked here, once, so every door that measures from a creature
+// finds the mount where its rider is: a mount with no token left every reach
+// from it unmeasured and its move_token an unknown combatant.
 export function getTokenByRef(mapId: string, refId: string): BattleToken | null {
-  const row = getDatabase()
-    .prepare(
-      `SELECT ${TOKEN_COLUMNS} FROM battle_tokens WHERE map_id = ? AND ref_id = ?`,
-    )
-    .get(mapId, refId) as TokenRow | undefined;
-  return row ? mapToken(row) : null;
+  const select = getDatabase().prepare(`SELECT ${TOKEN_COLUMNS} FROM battle_tokens WHERE map_id = ? AND ref_id = ?`);
+  const row = select.get(mapId, refId) as TokenRow | undefined;
+  if (row) {
+    return mapToken(row);
+  }
+  const riderId = carriedRider(mapId, refId);
+  const shared = riderId ? (select.get(mapId, riderId) as TokenRow | undefined) : undefined;
+  return shared ? mapToken(shared) : null;
+}
+
+// The rider an independent mount carries at this map's table, read only
+// when the creature has no token of its own.
+function carriedRider(mapId: string, refId: string): string | null {
+  const map = getDatabase().prepare(`SELECT campaign_id FROM battle_maps WHERE id = ?`).get(mapId) as { campaign_id?: string } | undefined;
+  if (!map?.campaign_id) {
+    return null;
+  }
+  for (const [riderId, mount] of Object.entries(getMounts(map.campaign_id))) {
+    if (independentMount(mount) && mount.sheetId === refId) {
+      return riderId;
+    }
+  }
+  // An enemy's mount stands on its rider's token too (issue 1055, ruling 1).
+  const rider = getDatabase().prepare(`SELECT id FROM encounter_enemies WHERE rides_enemy_id = ?`).get(refId) as { id?: string } | undefined;
+  return rider?.id ?? null;
+}
+
+// The token `fromRefId` stands on becomes `toRefId`'s, where it is: a mount
+// whose rider is gone keeps the space the pair held (issue 1055, ruling 4).
+export function handTokenTo(mapId: string, fromRefId: string, toRefId: string, name: string) {
+  keepRowsWhere("battle_tokens", "map_id = ? AND ref_id = ?", [mapId, fromRefId]);
+  getDatabase()
+    .prepare(`UPDATE battle_tokens SET ref_id = ?, name = ?, updated_at = ? WHERE map_id = ? AND ref_id = ?`)
+    .run(toRefId, name, nowIso(), mapId, fromRefId);
 }
 
 // The squares each token stood in since its turn's movement began, oldest
@@ -592,11 +629,32 @@ export function resetRoundBudgets(mapId: string, round: number) {
   })();
 }
 
+// Whose token's movement starts again as these turns start. An enemy's mount
+// stands on its rider's token (issue 1055, ruling 1) and is the one that
+// moves it, so the mount's turn refills that token and its rider's does not:
+// a rider's turn after its mount's gave the mount its speed back.
+function pairTokenRefs(starting: string[]): string[] {
+  if (!starting.length) {
+    return [];
+  }
+  const marks = starting.map(() => "?").join(", ");
+  const db = getDatabase();
+  const riders = new Set(
+    (db.prepare(`SELECT id FROM encounter_enemies WHERE id IN (${marks}) AND rides_enemy_id != ''`).all(...starting) as Array<{ id: string }>).map((row) => row.id),
+  );
+  const carried = (db.prepare(`SELECT id FROM encounter_enemies WHERE rides_enemy_id IN (${marks})`).all(...starting) as Array<{ id: string }>).map((row) => row.id);
+  return [...starting.filter((id) => !riders.has(id)), ...carried];
+}
+
 // The combatants whose turns are starting walk again: movement belongs to a
 // turn (SRD 5.1, Movement and Position), so a second turn in the same round
 // (a Thief's Reflexes, an ambusher's own turn after the one it was owed)
 // brings its own.
-export function resetTurnBudgets(mapId: string, refIds: string[]) {
+export function resetTurnBudgets(mapId: string, starting: string[]) {
+  const refIds = pairTokenRefs(starting);
+  if (!refIds.length) {
+    return;
+  }
   keepRowsWhere("battle_tokens", `map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`, [mapId, ...refIds]);
   for (const row of getDatabase().prepare(`SELECT id FROM battle_tokens WHERE map_id = ? AND ref_id IN (${refIds.map(() => "?").join(", ")})`).all(mapId, ...refIds) as Array<{ id: string }>) {
     stoodIn().delete(row.id);

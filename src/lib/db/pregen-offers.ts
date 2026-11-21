@@ -4,7 +4,6 @@ import { drawsFrom } from "@/lib/db/campaign-workshops";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { byName } from "@/lib/language/text-logic";
-import type { Locale } from "@/lib/messages-logic";
 import { translate } from "@/lib/messages-logic";
 
 // The shape of a translator, as the pure builders take it

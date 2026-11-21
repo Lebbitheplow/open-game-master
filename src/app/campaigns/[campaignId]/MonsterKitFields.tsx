@@ -326,7 +326,7 @@ export function MonsterKitPanel({
         </button>
       </div>
       {classId ? (
-        <p className="reveal text-[10px] text-stone-600">{describeChassis(chassis, t, locale)}</p>
+        <p className="reveal text-[10px] text-stone-600">{describeChassis(chassis, t)}</p>
       ) : null}
 
       {features.length ? (

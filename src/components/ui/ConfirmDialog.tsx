@@ -129,6 +129,7 @@ export function ConfirmHost() {
             </button>
             <button
               type="button"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog just opened, so the focus starts on its answer, as the browser's own confirm does
               autoFocus
               onClick={() => close(true)}
               className={
@@ -141,6 +142,7 @@ export function ConfirmHost() {
             </button>
           </>
         ) : (
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- the notice just opened, so the focus starts on its one button, as the browser's own alert does
           <button type="button" autoFocus onClick={() => close(true)} className={ui.btnPrimary}>
             {t("OK")}
           </button>

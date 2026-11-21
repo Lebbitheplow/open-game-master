@@ -1,4 +1,5 @@
 import { getClock } from "@/lib/db/clock";
+import { mountOf, riderOf } from "@/lib/dm/enemy-riders";
 import { carryDroppedItems } from "@/lib/db/dropped-items";
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { tokenFootprint } from "@/lib/dm/board-reach";
@@ -84,7 +85,7 @@ import { doorArgs, strictBooleanArgs, type DoorField } from "@/lib/dm/arg-coerce
 import { sideAllyInList } from "@/lib/dm/cast-buff-allies";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
-import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
+import { firstStoredAfter, getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { forcerOfCall, holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
 import { beforeChoiceOf } from "@/lib/dm/foresight-before";
@@ -350,7 +351,7 @@ import {
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
 import { fightNames, getActiveEncounter, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { atTheFight } from "@/lib/dm/fight-away-logic";
-import { onFoot } from "@/lib/dm/mount-link";
+import { takesOwnTurn } from "@/lib/dm/mount-link";
 import { enemyMoveBudget, enemyMovementNote } from "@/lib/dm/enemy-speed";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { pcMoveBudget } from "@/lib/battlemap/view";
@@ -520,7 +521,7 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       : [],
     awaitingInitiative: encounter.orderReady
       ? []
-      : onFoot(campaignId, atTheFight(encounter, sheets)).filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
+      : takesOwnTurn(campaignId, atTheFight(encounter, sheets)).filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
     // Named while they stay away, so the GM can still bring them in: nothing
     // else in the state says they exist once the order has closed.
     ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
@@ -586,7 +587,9 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       immune: enemy.stats.immune,
       vulnerable: enemy.stats.vulnerable,
       concentration: enemy.concentration,
-      ...enemyMoving(encounter, enemy, board),
+      // A rider is carried: its movement is its mount's, told on the pair's line.
+      ...(enemy.ridesEnemyId ? {} : enemyMoving(encounter, enemy, board)),
+      ...pairNote(enemies, enemy),
     })),
     ...sidesForState(encounter),
     map: buildMapText(encounter.id, sheets),
@@ -633,6 +636,20 @@ function openHitsForState(campaignId: string, encounter: Encounter, sheets: Char
       : [];
   });
   return open.length ? { openHits: open } : {};
+}
+
+// Who an enemy rides or carries (issue 1055, enemy-riders.ts): the pair has
+// one token, and only the mount's move_token moves it.
+function pairNote(enemies: EncounterEnemy[], enemy: EncounterEnemy): { pair?: string } {
+  if (enemy.status !== "alive") {
+    return {};
+  }
+  const mount = mountOf(enemies, enemy);
+  if (mount) {
+    return { pair: `rides ${mount.displayName} [enemyId=${mount.id}]: one token for the pair, no movement of its own (${mount.displayName}'s move_token on its turn moves both); attacks reach it and ${mount.displayName} each by their own enemyId` };
+  }
+  const rider = riderOf(enemies, enemy.id);
+  return rider ? { pair: `carries ${rider.displayName} [enemyId=${rider.id}] on ${rider.displayName}'s token: its own turn, its own attacks, and its move_token moves both` } : {};
 }
 
 // An enemy's movement left this turn when it is not its plain speed (a
@@ -1301,6 +1318,12 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // parked a roll per part under one call: its answer, written when it
   // parked with the parts that needed no roll, takes each roll in the
   // part's place, so the call has one answer, as the API requires.
+  // The dice a landing threw (a hit's damage, the swings queued behind it)
+  // joined the turn as they were made. A card's roll with such dice after it
+  // goes where it was stored, ahead of them and in its place among the other
+  // cards' rolls. One with none after it goes at the end, so cards that only
+  // waited on dice keep the order they were dealt in.
+  const joinedBefore = [...turn.rollIds];
   for (const pending of pendings) {
     // A roll that held its whole call (src/lib/dm/held-call.ts): the call ran
     // again when it landed, and this is what it answered. One that parked
@@ -1319,7 +1342,8 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     if (!roll || turn.rollIds.includes(roll.id)) {
       continue;
     }
-    turn.rollIds.push(roll.id);
+    const next = firstStoredAfter(roll.id, joinedBefore) ? firstStoredAfter(roll.id, turn.rollIds) : null;
+    turn.rollIds.splice(next ? turn.rollIds.indexOf(next) : turn.rollIds.length, 0, roll.id);
     const answer = pendingRollAnswer(pending, roll);
     // A card the AI's fight sent when it opened: the call that opened it was
     // answered then, and the total joins that answer (initiative-cards-logic.ts).
@@ -1694,7 +1718,9 @@ export function dmTurnTuning(campaign: Campaign): ModelTuning {
 function toolSetTokens(campaign: Campaign, profile: ToolProfile): number {
   const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
   const leanTools = profile === "lean";
-  if (campaign.settings.textProvider === "harness") {
+  // A program on the compact profile (HarnessAdapter.reducedTools) is
+  // served each call's compact set, so it is charged like any compact call.
+  if (campaign.settings.textProvider === "harness" && profile !== "compact") {
     return estimateTokens(JSON.stringify(toMcpTools(dmTurnToolCatalogue(campaign, imageEnabled, leanTools))));
   }
   if (profile === "compact") {

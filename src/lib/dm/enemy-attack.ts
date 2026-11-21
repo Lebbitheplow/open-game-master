@@ -23,7 +23,7 @@ import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { joinRetorts, riderMarkOf, type WaitingAnswer } from "@/lib/dm/retort-logic";
 import { z } from "zod";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import {
   getActiveEncounter,
   getEnemy,
@@ -32,11 +32,10 @@ import {
 } from "@/lib/db/encounters";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { planAttackFx } from "@/lib/battlemap/fx-plan";
@@ -803,7 +802,7 @@ export function handleEnemyAttack(
     });
     // A one-shot rider (Vicious Mockery) is spent by the roll it rode (spell-retort.ts).
     riders = spendEnemyRiders(standing, riders);
-    const hitRoll = insertRoll({
+    const hitRoll = recordRoll({
       campaignId: campaign.id,
       characterId: target.id,
       requestedBy: "dm",
@@ -812,12 +811,10 @@ export function handleEnemyAttack(
       advantage,
       result: hitOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll: hitRoll,
-      source: "digital",
-    });
-    turn.rollIds.push(hitRoll.id);
 
     // Mirror Image: a duplicate may take the attack instead.
     const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total, enemy);
@@ -922,7 +919,7 @@ export function handleEnemyAttack(
         })
       : baseDamage;
     const damageOutcome = rollExpression(damageExpression, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
-    const damageRoll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: target.id,
       requestedBy: "dm",
@@ -930,12 +927,10 @@ export function handleEnemyAttack(
       detail: rollAgainst(attack.name, target.name),
       result: damageOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll: damageRoll,
-      source: "digital",
-    });
-    turn.rollIds.push(damageRoll.id);
 
     // Each damage type in the blow meets the target's defenses on its own
     // (a red dragon's fire halves for a tiefling, its teeth do not; a monk

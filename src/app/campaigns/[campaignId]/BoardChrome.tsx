@@ -106,7 +106,6 @@ export function InitiativeRail({
   above?: boolean;
 }) {
   const t = useT();
-  const tp = useTp();
   if (!encounter.orderReady || !encounter.order.length) {
     return null;
   }
@@ -121,6 +120,7 @@ export function InitiativeRail({
         <button type="button" onClick={onOpen} disabled={!onOpen} aria-label={t("Round {round}, open initiative order", { round })}>
           {t("Round {round} · initiative", { round })}
         </button>
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the order scrolls inside its own box on a short board, so keyboard users need a Tab stop to scroll it */}
         <ol tabIndex={0} aria-label={t("Initiative order")}>
           {encounter.order.map((entry, at) => (
             <li key={`${entry.id}-${at}`} aria-current={lit.includes(at) ? "step" : undefined} title={entry.name}>
@@ -253,7 +253,6 @@ export function TurnHud({
   hp?: { current: number; max: number } | null;
 }) {
   const t = useT();
-  const tp = useTp();
   if (!actorName) {
     return null;
   }
@@ -330,7 +329,6 @@ export function TurnBanner({ text, mine }: { text: string; mine: boolean }) {
 
 function HealthWordChip({ word }: { word: HealthWord }) {
   const t = useT();
-  const tp = useTp();
   return (
     <span
       className="rounded-full border px-1.5 py-px text-[10px] font-medium"
@@ -342,7 +340,6 @@ function HealthWordChip({ word }: { word: HealthWord }) {
 }
 
 export function ConditionChip({ label, rounds, note }: { label: string; rounds?: number; note?: string }) {
-  const t = useT();
   const tp = useTp();
   const locale = useLocale();
   return (
@@ -362,7 +359,6 @@ export function ConditionChip({ label, rounds, note }: { label: string; rounds?:
 // and pc_attack read.
 function EdgeChips({ edge }: { edge: TargetEdge }) {
   const t = useT();
-  const tp = useTp();
   const chips = [
     edge.blocked ? t("No line of sight") : edge.cover === 5 ? t("Three-quarters cover (+{ac} AC)", { ac: 5 }) : edge.cover === 2 ? t("Half cover (+{ac} AC)", { ac: 2 }) : null,
     edge.flanking ? t("Flanked: advantage in melee") : null,
@@ -455,7 +451,6 @@ export function TokenPlate({
   onClose?: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const pin = useRef<HTMLSpanElement>(null);
   const plateRef = useRef<HTMLDivElement>(null);
   const [spot, setSpot] = useState<{ left: number; top: number; below: boolean } | null>(null);
@@ -660,7 +655,6 @@ export function TargetChips({
   onHover?: (tokenId: string | null) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   if (!targets.length) {
     return <p className="text-[11px] text-stone-500">{t("Nobody here to aim at.")}</p>;
   }

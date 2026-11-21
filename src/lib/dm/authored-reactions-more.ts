@@ -133,7 +133,7 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
     enemySize: (refId) => enemiesById.get(refId)?.stats.size,
     sideOf: tokenSides(getActiveEncounter(ctx.campaign.id)),
   });
-  const reach = reachableTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, token, footprintOf), token, half, 1, token.movement === "fly", traits);
+  const reach = reachableTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, token, footprintOf), token, half, footprintOf(token), token.movement === "fly", traits);
   if (!reach.has(tileIndex(map.width, x, y))) {
     return { error: `${ctx.sheet.name} cannot reach (${x},${y}) with ${allowed} (${half * 5} feet). Nothing was spent.`, retry: true };
   }

@@ -216,7 +216,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   if (scene.enemy.status !== "alive") {
     return `${rolled}: HIT, but the target is already gone; narrate around it.`;
   }
-  const prepared = hitSwing(scene, record, judged, roll.breakdown, roll.visibility, notes);
+  const prepared = hitSwing(scene, record, judged, roll.visibility, notes);
   const said = notes.length ? ` ${notes.join("; ")}.` : "";
   if ("done" in prepared) {
     return `${rolled}: HIT.${said} ${String(prepared.done.note ?? "")}`.trim();

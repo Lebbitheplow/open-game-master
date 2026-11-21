@@ -2,14 +2,14 @@ import { z } from "zod";
 import { petFeetTo, petReachProblem } from "@/lib/dm/pet-place";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { textKey } from "@/lib/language/text-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -417,7 +417,7 @@ export function handlePetAttack(
   // Tagged as an ally's attack, so a foretold number a watch stop armed for
   // the pet lands on its d20 (foresight-saves.ts).
   const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
-  const hitRoll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -425,12 +425,10 @@ export function handlePetAttack(
     detail: rollAgainst(attack.name, enemy.displayName),
     result: hitOutcome,
     attacker: { kind: "pet", id: sheet.id, name: pet.name },
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll: hitRoll,
-    source: "digital",
-  });
-  turn.rollIds.push(hitRoll.id);
 
   const economy = charge.commit();
   // Commanded, the creature is not dodging this turn (pet-command.ts).
@@ -468,7 +466,7 @@ export function handlePetAttack(
   const damageOutcome = rollExpression(
     crit ? critDamageExpression(expression, 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods }) : expression,
   );
-  const damageRoll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -476,12 +474,10 @@ export function handlePetAttack(
     detail: rollAgainst(`${attack.name}${crit ? " (CRIT)" : ""}`, enemy.displayName),
     result: damageOutcome,
     attacker: { kind: "pet", id: sheet.id, name: pet.name },
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll: damageRoll,
-    source: "digital",
-  });
-  turn.rollIds.push(damageRoll.id);
   // Exceptional Training (Beast Master 7): the companion's attacks count as
   // magical against resistance.
   const magical = activeAuthored(sheet, "pet_magical").some(({ effect }) => effect.pets.includes(pet.kind));

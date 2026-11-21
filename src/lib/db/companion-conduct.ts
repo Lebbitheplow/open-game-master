@@ -1,5 +1,5 @@
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { NO_CONDUCT, parseConduct, type Conduct } from "@/lib/dm/party-conduct-logic";
+import { parseConduct, type Conduct } from "@/lib/dm/party-conduct-logic";
 
 // The column issue 503 Phase 4 added to the row behind a lasting companion
 // (src/lib/db/companion-npcs.ts): the share it wants before a fight, the
@@ -18,6 +18,3 @@ export function saveConduct(npcId: string, conduct: Conduct) {
     .run(empty ? "" : JSON.stringify(conduct), nowIso(), npcId);
 }
 
-export function clearConduct(npcId: string) {
-  saveConduct(npcId, NO_CONDUCT);
-}

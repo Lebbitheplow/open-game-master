@@ -7,8 +7,6 @@ const brief = (value, length = 220) => JSON.stringify(value)?.slice(0, length);
 const cha = (level) => modOf(castingScore(level));
 const fire = { attacks: [{ name: "Fire Lash", toHit: 4, damage: "1d6+2", type: "fire" }] };
 
-// A d20 roll the table kept for a creature's save, by what its detail names.
-export const saveRoll = (rig, text) => rig.lastRolls(8).find((roll) => roll.kind === "saving_throw" && roll.detail.includes(text)) ?? null;
 // The save a call made the table roll: the newest one that was not there before.
 export async function saveMadeBy(rig, run) {
   const before = new Set(rig.lastRolls(40).map((roll) => roll.id));

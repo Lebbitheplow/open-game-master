@@ -108,7 +108,7 @@ function rewriteField(value: unknown, field: string, from: string, to: string): 
 }
 
 // One table's sheets, renamed in place; the ids of the ones that changed.
-function carrySheets(campaignId: string, kind: SheetRefKind, rename: SheetRenamer, entry: HomebrewEntry, from: string, to: string): string[] {
+function carrySheets(campaignId: string, rename: SheetRenamer, entry: HomebrewEntry, from: string, to: string): string[] {
   const db = getDatabase();
   const rows = db.prepare(`SELECT * FROM character_sheets WHERE campaign_id = ?`).all(campaignId) as Array<Record<string, unknown>>;
   const changedIds: string[] = [];
@@ -220,7 +220,7 @@ function carry(userId: string, before: HomebrewEntry, to: string): { carried: Re
     const settings = getCampaignById(table.id)?.gameSettings ?? null;
     if (!answeredFor(tableAuthors(table.id), userId, before, from) || published(before, from, settings)) continue;
     if (kind) {
-      for (const sheetId of carrySheets(table.id, kind, rename, before, from, to)) {
+      for (const sheetId of carrySheets(table.id, rename, before, from, to)) {
         announce.push({ campaignId: table.id, sheetId });
         carried.characters += 1;
       }

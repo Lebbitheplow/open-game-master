@@ -131,13 +131,6 @@ export function originLineT(t: T, origin: BeatOrigin): string {
   return origin.title ? t("Copied from the workshop “{title}”.", { title: origin.title }) : t("Copied from another workshop.");
 }
 
-// English-pinned, for wherever the stored data quotes it back.
-export function originLine(origin: BeatOrigin): string {
-  if (origin.kind === "worldforge") return "Came in from a WorldForge file. Opening that file again updates this card rather than adding another; what you change here stands.";
-  if (origin.kind === "bundle") return "Came in with a shared workshop bundle.";
-  return origin.title ? `Copied from the workshop “${origin.title}”.` : "Copied from another workshop.";
-}
-
 export function normalizeBeatKind(raw: unknown): BeatKind {
   return (BEAT_KINDS as readonly string[]).includes(raw as string)
     ? (raw as BeatKind)

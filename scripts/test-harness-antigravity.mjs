@@ -20,8 +20,18 @@ import { register } from "node:module";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
-const { antigravityAdapter, antigravityArgs, antigravityAgentFile, antigravitySettings, parseAntigravityModels, antigravityToolAllowed } =
-  await import("../src/lib/harness/adapters/antigravity.ts");
+const {
+  antigravityAdapter,
+  antigravityArgs,
+  antigravityAgentFile,
+  antigravitySettings,
+  ANTIGRAVITY_BUILTIN_TOOLS,
+  parseAntigravityDefaultEfforts,
+  parseAntigravityModels,
+  parseAntigravityQuota,
+  antigravityToolAllowed,
+  safeConversationId,
+} = await import("../src/lib/harness/adapters/antigravity.ts");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-agy-test-"));
 const env = { PATH: process.env.PATH ?? "", HOME: dir };
@@ -68,12 +78,22 @@ await test("a run is headless stream-json on its own agent, with this run's sett
   assert.equal(args[args.indexOf("--effort") + 1], "high");
   const plain = antigravityArgs({ model: "", effort: "" });
   assert.ok(!plain.includes("--model") && !plain.includes("--effort"));
+  const suffixed = antigravityArgs({ model: "gemini-3.8-flash-low", effort: "high" });
+  assert.equal(suffixed[suffixed.indexOf("--model") + 1], "gemini-3.8-flash-low");
+  assert.ok(!suffixed.includes("--effort"));
   const settings = antigravitySettings();
   assert.equal(settings.agentMode, "");
   assert.deepEqual(settings.permissions.allow, ["mcp(odm/*)"]);
   for (const rule of ["command(*)", "read_file(*)", "write_file(*)", "read_url(*)", "execute_url(*)"]) {
     assert.ok(settings.permissions.deny.includes(rule), rule);
   }
+  assert.ok(settings.permissions.deny.includes("generate_image(*)"));
+  const imageSettings = antigravitySettings(true);
+  assert.deepEqual(imageSettings.permissions.allow, ["generate_image(*)"]);
+  assert.ok(imageSettings.permissions.deny.includes("command(*)"));
+  assert.ok(!imageSettings.permissions.deny.includes("generate_image(*)"));
+  const imageArgs = antigravityArgs({ model: "", effort: "", images: true });
+  assert.deepEqual(JSON.parse(imageArgs[imageArgs.indexOf("--settings") + 1]), imageSettings);
 });
 
 await test("the agent drops the defaults and the admin's customizations, and serves only ODM", async () => {
@@ -102,6 +122,8 @@ await test("the agent drops the defaults and the admin's customizations, and ser
   const plain = frontMatter(antigravityAgentFile({ system: "Summarise.", mcp: null }));
   assert.equal(plain.fields.mcpServers, undefined);
   assert.equal(plain.fields.excludeDefaultComponents, true);
+  const painter = frontMatter(antigravityAgentFile({ system: "Draw.", mcp: null, images: true }));
+  assert.equal(painter.fields.excludeDefaultComponents, false);
 });
 
 await test("only ODM's tools pass", async () => {
@@ -110,6 +132,8 @@ await test("only ODM's tools pass", async () => {
   for (const tool of ["run_command", "view_file", "write_to_file", "search_web", "read_url_content", "generate_image", "invoke_subagent", "mcp_github_search"]) {
     assert.ok(!antigravityToolAllowed(tool), tool);
   }
+  assert.equal(antigravityToolAllowed("generate_image", true), true);
+  assert.equal(antigravityToolAllowed("mcp_odm_roll", true), false);
 });
 
 await test("the models come from `agy models`, without its progress line or headings", async () => {
@@ -152,7 +176,7 @@ if (unix) {
   // A stub headless session: reads the first turn, then replays the events.
   const session = (name, events, tail = "") =>
     stub(name, `read line\necho "$line" > "$PWD/turn.json"\necho "$@" > "$PWD/argv.txt"\n${events.map((event) => `echo '${JSON.stringify(event)}'`).join("\n")}\n${tail}\nsleep 1`);
-  const run = (binary) =>
+  const run = (binary, overrides = {}) =>
     new Promise((resolve) => {
       const seen = [];
       const cwd = fs.mkdtempSync(path.join(dir, "run-"));
@@ -171,6 +195,7 @@ if (unix) {
           toolNames: ["odm_roll"],
           cwd,
           env,
+          ...overrides,
           onEvent: (event) => {
             seen.push(event);
             if (["turn_end", "error", "exit"].includes(event.type)) {
@@ -190,19 +215,98 @@ if (unix) {
     result: { conversation_id: "c1", status: "SUCCESS", response: "", num_turns: 1, usage: { input_tokens: 70, output_tokens: 6, total_tokens: 76 }, ...fields },
   });
 
-  await test("a run that starts with any tool but ODM's is stopped", async () => {
-    const { seen } = await run(session("agy-stray", [init(["mcp_odm_roll", "run_command"])]));
-    const error = seen.find((event) => event.type === "error");
-    assert.equal(error?.kind, "lockdown");
-    assert.match(error.message, /run_command/);
-    assert.ok(!seen.some((event) => event.type === "ready"));
+  await test("init emits ready even when agy lists built-in tools before MCP connects", async () => {
+    const { seen } = await run(session("agy-builtin-init", [init(["ask_question", "run_command"])]));
+    assert.ok(seen.some((event) => event.type === "ready"));
+    assert.ok(!seen.some((event) => event.type === "error"));
   });
 
-  await test("a run that starts without ODM's tools says so", async () => {
-    const { seen } = await run(session("agy-bare", [init([])]));
+  await test("a tool agy reports at init that is not one of its known built-ins stops the run before the turn", async () => {
+    const { seen } = await run(session("agy-unknown-init", [init(["ask_question", "teleport_files"])]));
     const error = seen.find((event) => event.type === "error");
-    assert.equal(error?.kind, "crash");
-    assert.match(error.message, /game engine's tools/);
+    assert.ok(error, "the run was stopped");
+    assert.equal(error.kind, "lockdown");
+    assert.match(error.message, /teleport_files/);
+    assert.ok(!seen.some((event) => event.type === "ready"), "never reported ready");
+  });
+
+  await test("signed in, agy's full built-in list starts a run, and its risky tools are denied by name in both modes", async () => {
+    const { seen } = await run(session("agy-full-init", [init([...ANTIGRAVITY_BUILTIN_TOOLS])]));
+    assert.ok(seen.some((event) => event.type === "ready"));
+    assert.ok(!seen.some((event) => event.type === "error"));
+    assert.equal(ANTIGRAVITY_BUILTIN_TOOLS.length, 60, "the 60 names agy 1.5.12 reports (PR #1046)");
+    for (const images of [false, true]) {
+      const deny = antigravitySettings(images).permissions.deny;
+      for (const name of ["notebook_execution", "execute_browser_javascript", "open_browser_url", "read_browser_page", "run_command", "view_file", "write_to_file", "delete_knowledge"]) {
+        assert.ok(deny.includes(`${name}(*)`), `${name} denied (images ${images})`);
+      }
+      for (const name of ["finish", "wait", "call_mcp_tool", "ask_permission"]) {
+        assert.ok(!deny.includes(`${name}(*)`), `${name} is how a run ends or reaches ODM, so it stays`);
+      }
+    }
+    assert.ok(!antigravitySettings(true).permissions.deny.includes("generate_image(*)"), "a picture run keeps its image tool");
+  });
+
+  await test("model labels keep balanced inner parentheses like Gemini 4 Neon (High) and collapse effort variants", () => {
+    const parsed = parseAntigravityModels(
+      [
+        "gemini-4-neon-high\tGemini 4 Neon (High)",
+        "gemini-4-neon-xhigh\tGemini 4 Neon (XHigh)",
+        "gemini-4-neon-low\tGemini 4 Neon (Low)",
+        "gemini-pro-orchestrator-neon\tOrchestrator (Neon)",
+        "gemini-test\t(Wrapped Label)",
+      ].join("\n"),
+    );
+    assert.deepEqual(parsed, [
+      { id: "gemini-4-neon", label: "Gemini 4 Neon", efforts: ["low", "high", "xhigh"] },
+      { id: "gemini-pro-orchestrator-neon", label: "Orchestrator (Neon)", efforts: [] },
+      { id: "gemini-test", label: "Wrapped Label", efforts: [] },
+    ]);
+  });
+
+  await test("a conversation id names agy's folder only when it is a plain id", () => {
+    assert.equal(safeConversationId("8f3c2a1e-77b0-4c1d-9e2f-0a1b2c3d4e5f"), "8f3c2a1e-77b0-4c1d-9e2f-0a1b2c3d4e5f");
+    assert.equal(safeConversationId("../../.ssh"), "", "a path climbing out is refused");
+    assert.equal(safeConversationId("a/b"), "");
+    assert.equal(safeConversationId(""), "");
+  });
+
+  await test("Antigravity is played on a cut tool set, so it is marked as one", () => {
+    assert.equal(antigravityAdapter.reducedTools, true);
+  });
+
+  await test("parseAntigravityDefaultEfforts and parseAntigravityQuota read non-interactive /effort and /quota JSON", () => {
+    assert.deepEqual(
+      parseAntigravityDefaultEfforts(
+        JSON.stringify({ command: { name: "effort", data: { adjustable: true, current: "medium", available: ["low", "medium", "high", "xhigh", "custom"] } } }),
+      ),
+      ["low", "medium", "high", "xhigh"],
+    );
+    assert.deepEqual(parseAntigravityDefaultEfforts(JSON.stringify({ command: { name: "effort", data: { adjustable: false } } })), []);
+    assert.equal(parseAntigravityDefaultEfforts("not json"), undefined);
+    const rate = parseAntigravityQuota(
+      JSON.stringify({
+        command: {
+          name: "usage",
+          data: {
+            groups: [
+              {
+                name: "Gemini Models",
+                buckets: [
+                  { window: "weekly", remaining_fraction: 0.66, reset_time: "2026-11-25T03:26:59Z" },
+                  { window: "5h", remaining_fraction: 0.25, reset_time: "2026-11-19T20:34:07Z" },
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    );
+    assert.deepEqual(rate, {
+      utilization: 0.75,
+      resetsAt: Date.parse("2026-11-19T20:34:07Z"),
+      window: "5h",
+    });
   });
 
   await test("a tool of its own mid-turn stops the run", async () => {
@@ -249,6 +353,34 @@ if (unix) {
     const error = seen.find((event) => event.type === "error");
     assert.equal(error?.kind, "signed-out");
     assert.ok(!seen.some((event) => event.type === "turn_end"));
+  });
+
+  await test("an images run emits the image written by generate_image into agy's brain directory", async () => {
+    const imgHome = fs.mkdtempSync(path.join(dir, "img-home-"));
+    const brainDir = path.join(imgHome, ".gemini", "antigravity-cli", "brain", "cid-img");
+    fs.mkdirSync(brainDir, { recursive: true });
+    const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
+    fs.writeFileSync(path.join(brainDir, "tavern_123.jpg"), jpegBytes);
+    const { seen } = await run(
+      session("agy-image", [
+        init([]),
+        step({
+          conversation_id: "cid-img",
+          step_index: 1,
+          step_type: "tool",
+          tool_name: "generate_image",
+          state: "DONE",
+          tool_info: { parameters: { ImageName: "tavern" } },
+        }),
+        result({ conversation_id: "cid-img", response: "Painted." }),
+      ]),
+      { images: true, mcp: null, toolNames: [], env: { PATH: process.env.PATH ?? "", HOME: imgHome } },
+    );
+    const image = seen.find((event) => event.type === "image");
+    assert.ok(image);
+    assert.equal(image.mime, "image/jpeg");
+    assert.equal(Buffer.compare(image.bytes, jpegBytes), 0);
+    assert.ok(seen.some((event) => event.type === "turn_end"));
   });
 } else {
   console.log("skip: the stub programs (Windows)");

@@ -128,7 +128,7 @@ explicit reset prevents one theme from inheriting another theme's artwork.
 | --- | --- | --- |
 | `texture` | `--theme-art-texture` | Repeating, evenly lit material with restrained contrast; no baked-in borders |
 | `frame` | `--theme-art-frame` | Square border with a transparent center, suitable for nine-slice rendering; default slice is 22% |
-| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; mirrored for the other three corners, so anything with an up in it stays upright |
+| `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; mirrored for the other three corners, so the two lower corners show it upside down: keep its joint the same across the diagonal |
 | `backdrop` | `--theme-art-backdrop` | Wide opaque scene that remains readable when cropped for a shallow banner |
 
 The shared renderer automatically uses the frame and corner slots. Registering
@@ -160,8 +160,8 @@ in these three themes; low-health styling is semantic and is not overridden by
 `--material-vital-fill`. The moving selection highlight copies the chosen
 button's fill, so inspect that visible highlight when testing the chosen color.
 
-Arcane and Gothic reuse their frame image for the `corner` slot. Their catalog
-entries set `cornerScale: 4`, which displays the top-left 25% of each image axis
+A theme may reuse its frame image for the `corner` slot. Its catalog
+entry then sets `cornerScale: 4`, which displays the top-left 25% of each image axis
 (one sixteenth of its area) at each corner, that corner of the frame as
 painted. The registry writes the matching
 background size and position for both the page and picker; do not override those
@@ -171,7 +171,11 @@ crop's lower-right interior transparent. For a separate complete corner image,
 omit `cornerScale` to use the defaults `contain` and `center`.
 This avoids generating a second fitting that does not match its frame.
 A separate corner image is the top-left corner; the other three are it
-mirrored, never turned, so a gem, crest or leaf keeps its up.
+mirrored, never turned, so a gem or leaf on a rail never lies on its side.
+The lower two are it flipped top to bottom, so anything with an up in it
+(a spire, a window, a shield) hangs upside down there. Keep the joint the
+same across the diagonal, as High Kingdoms' round medallion and Hearth's
+rosette are, and look at the lower corners before shipping.
 
 A flat panel's corner brackets are `.ornate::before` (top left) and
 `::after` (bottom right). A theme that thickens them gives each its own two
@@ -240,8 +244,13 @@ Shared ornament measurements can be overridden in the theme selector:
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane, Gothic, Hearth and High Kingdoms crop their corner from their frame, so
-`themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
+No shipped theme crops its corner from its frame now: Arcane, Gothic, Hearth and
+High Kingdoms each paint a separate corner piece, as Woodland, Tide and Forge do, and
+set their own phone lobby corner size so the piece keeps its proportion to the rail.
+A corner piece is mirrored into the other three corners, so it must read the same
+upside down: Gothic's first piece had pinnacles and lancet windows that hung from
+the lower corners, and its rose window and bare briars replaced it.
+For a theme that does crop its corner, `themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
 and it keeps the frame's rail width. The phone sizes keep the art off the bottom bar's end
 labels and the session title, which sit 8 to 17px from the screen's edge; the
 browser scenario `phone-frame` reads every painted theme at 360 to 430px wide. Inspect

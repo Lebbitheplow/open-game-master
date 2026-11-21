@@ -112,20 +112,6 @@ function maxHpBonuses(campaignId: string): Map<string, number> {
   return out;
 }
 
-// Runs a change to the effects and moves each target's stored maximum by
-// what its maxHp modifiers moved, as Aid moves it (sheets.ts maxHpRiders): by
-// exact deltas, so lifting an effect gives back what it gave and no more,
-// and a raise lifts the current hit points with it. One call is one move: a
-// change made in two calls (a removal, then a grant) clamps the current hit
-// points to the lower maximum in between and raises them again after, so
-// whatever is one change at the table goes through here once.
-// "Revert this turn" writes effect rows back through the same rule
-// (src/lib/dm/turn-revert.ts), so a hero's maximum follows the effects it
-// gets back or loses.
-export function effectsFollowingMaxHp<T>(campaignId: string, change: () => T): T {
-  return followingMaxHp(campaignId, change);
-}
-
 function followingMaxHp<T>(campaignId: string, change: () => T): T {
   const before = maxHpBonuses(campaignId);
   const out = change();

@@ -76,13 +76,6 @@ export function bodySize(pages: ReadPage[]): number {
 
 const furnitureKey = (text: string) => text.replace(/\d+/g, "#").replace(/\s+/g, " ").trim().toLowerCase();
 
-// Running heads and feet: short lines in the top or bottom margin that
-// repeat on several pages once their numbers are set aside, and page
-// numbers on their own.
-export function furnitureLines(pages: ReadPage[]): Set<string> {
-  return finish(furnitureWork(pages));
-}
-
 function* furnitureWork(pages: ReadPage[]): Generator<void, Set<string>> {
   const seen = new Map<string, Set<number>>();
   for (const page of pages) {

@@ -53,7 +53,6 @@ function FloorControl({
   mode: "open" | "hold" | "spotlight" | "initiative";
 }) {
   const t = useT();
-  const tp = useTp();
   const [busy, setBusy] = useState(false);
 
   async function set(next: "open" | "hold") {

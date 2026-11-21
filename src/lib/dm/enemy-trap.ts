@@ -200,10 +200,7 @@ export function springOnEnemy(
 export function rollEnemyAbilityCheck(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, ability: "str" | "dex", dc: number, detail: string): number {
   const asSheet = isSheetFoe(enemy) ? getSheetById(enemy.id) : null;
   if (asSheet) {
-    const check = rollCharacterCheck(campaign, asSheet, { ability, dc }, detail);
-    if (check.rollId) {
-      turn.rollIds.push(check.rollId);
-    }
+    const check = rollCharacterCheck(campaign, asSheet, { ability, dc }, detail, turn);
     return check.autoFailed ? 0 : check.total;
   }
   const worn = enemyExhaustion(enemy.conditions) >= 1;

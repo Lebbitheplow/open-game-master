@@ -5,7 +5,6 @@ import { featAbilityIncrease } from "@/lib/srd/feat-effects";
 import type { FeatChoices, FeatGrantSpec, FeatPicks } from "@/lib/srd/feat-grants";
 import FeatChoicesFields, { type KnownTraining } from "./FeatChoicesFields";
 import { X } from "lucide-react";
-import { GameTerm } from "@/components/ui/GameTerm";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
@@ -344,7 +343,6 @@ export default function AsiFeatEditor({
 // left on the sheet: the player decides what to change.
 export function SelectedPrerequisite({ id, check }: { id: string; check: PrerequisiteCheck | null }) {
   const t = useT();
-  const tp = useTp();
   if (!check || check.state === "none") {
     return null;
   }

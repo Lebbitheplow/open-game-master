@@ -52,7 +52,6 @@ export function MethodInfoDialog({
   current: string;
 }) {
   const t = useT();
-  const tp = useTp();
   const chosen = methods.find((entry) => entry.id === current) ?? methods[0];
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={chosen.label} width="w-[min(94vw,26rem)]">
@@ -268,13 +267,11 @@ export function HpExplainerDialog({
 
 function HpExplainerDoor({ onClick }: { onClick: () => void }) {
   const t = useT();
-  const tp = useTp();
   return <HelpDot label={t("How your health is worked out")} onClick={onClick} className="-my-2" />;
 }
 
 function HpExplainerAsk() {
   const t = useT();
-  const tp = useTp();
   return <>{t("How is my health worked out?")}</>;
 }
 

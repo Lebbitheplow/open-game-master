@@ -12,7 +12,7 @@
 // the buff's condition.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { computeSheetDerived } from "@/lib/srd";
 import { heldAuthored, hasCondition } from "@/lib/srd/authored-effects";
@@ -69,7 +69,7 @@ export function noteAuraAsked(campaign: Campaign, holderId: string, enemyIds: st
   return [];
 }
 
-function ask(campaign: Campaign, encounter: Encounter, holder: CharacterSheet, aura: { name: string; burst: Burst }, enemy: EncounterEnemy): string | null {
+function ask(campaign: Campaign, holder: CharacterSheet, aura: { name: string; burst: Burst }, enemy: EncounterEnemy): string | null {
   const spec = aura.burst;
   markAsked(campaign, enemy.id, holder.id);
   const derived = computeSheetDerived(holder);
@@ -118,7 +118,7 @@ export function auraMenaceAsk(campaign: Campaign, enemyId: string): string[] {
     if (!withinFeet(encounter.id, holder.id, enemy.id, aura.burst.rangeFt)) {
       continue;
     }
-    const line = ask(campaign, encounter, holder, aura, enemy);
+    const line = ask(campaign, holder, aura, enemy);
     if (line) {
       lines.push(line);
     }

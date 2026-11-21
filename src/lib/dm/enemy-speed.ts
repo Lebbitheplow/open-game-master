@@ -8,7 +8,7 @@ import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { dashesOf, enemyTilesLeft, enemyTurnEntry, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
 import { auraHoldsSpeed } from "@/lib/dm/aura-hold";
 
-type SpeedEnemy = { stats: Pick<EnemyStats, "speed">; conditions: string[]; id?: string; campaignId?: string };
+type SpeedEnemy = { stats: Pick<EnemyStats, "speed">; conditions: string[]; id?: string; campaignId?: string; ridesEnemyId?: string };
 
 // The squares an enemy may walk on a turn: its stat-block speed in feet
 // through the condition effects a character's goes through (pcMoveBudget,
@@ -50,7 +50,9 @@ export function enemyMoveBudget(
 ): EnemyMoveBudget {
   // A frightened creature in Aura of Conquest has speed 0 (aura-hold.ts).
   const held = "encounterId" in enemy && typeof enemy.encounterId === "string" ? auraHoldsSpeed(enemy as typeof enemy & { encounterId: string }) : null;
-  const speedTiles = held ? 0 : enemySpeedTiles(enemy, { flying: token.movement === "fly" });
+  // A rider is carried: the pair moves on its mount's turn, at the mount's
+  // speed, and the rider has no movement of its own (issue 1055, ruling 2).
+  const speedTiles = held || enemy.ridesEnemyId ? 0 : enemySpeedTiles(enemy, { flying: token.movement === "fly" });
   const entry = enemyTurnEntry(encounter, enemy.id);
   return {
     speedTiles,

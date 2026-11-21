@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readLoad, useLoadStatus } from "@/lib/load-state";
+import { PACKED_JSON_HEADER, unpackJson } from "@/lib/packed-json";
 import type { Slice, WorldDoc } from "@/lib/worldforge/model";
 import type { WorldEntity } from "@/lib/db/world-forge";
 import { applyRowOps, docOps, type DocOps } from "@/lib/worldforge/ops";
@@ -65,7 +66,8 @@ export function useWorld(campaignId: string) {
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<Answer>(t, fetch(lean), t("The world")).then((outcome) => {
+    // A big world comes packed and is unpacked here (src/lib/packed-json.ts).
+    readLoad<Answer>(t, fetch(lean, { headers: { [PACKED_JSON_HEADER]: "gzip" } }).then(unpackJson), t("The world")).then((outcome) => {
       if (cancelled) return;
       settle(outcome);
       // A reload while saves are still waiting keeps them laid over it.

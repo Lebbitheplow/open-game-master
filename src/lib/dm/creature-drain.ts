@@ -20,6 +20,7 @@ import type { ScoreDrain } from "@/lib/bestiary/score-drain-text";
 import { isValidExpression } from "@/lib/dice";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { partPair } from "@/lib/dm/enemy-riders";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { drainConditionName, drainOf } from "@/lib/srd/ability-drain-logic";
 
@@ -51,8 +52,11 @@ export function drainCreature(campaign: Campaign, turn: DmTurn, attacker: Encoun
   // Fortitude, Relentless) holds it up.
   if (drain.diesAtZero && typeof score === "number" && score <= 0) {
     patchEnemyHp(target.id, 0, "dead");
+    // A rider or a mount that dies this way parts from the other half, as a
+    // death by damage does (enemy-riders.ts): the survivor gets the token.
+    const parted = partPair(campaign, target, true);
     publishEncounter(campaign.id);
-    return `${target.displayName}'s ${label} is drained by ${rolled} to 0: it dies.`;
+    return `${target.displayName}'s ${label} is drained by ${rolled} to 0: it dies.${parted ? ` ${parted}` : ""}`;
   }
   publishEncounter(campaign.id);
   return typeof score === "number"

@@ -204,6 +204,31 @@ await test("the agent narrates a real turn: its roll is the server's, its prose 
   assert.ok(recentAgentActivity({ limit: 20 }).some((row) => row.tool === "request_roll" && row.grantKind === "turn"));
 });
 
+await test("a program that cannot hold the full set gets each call's compact tools, and is started again when they change", async () => {
+  // HarnessAdapter.reducedTools (the Antigravity CLI): unsupported, but it
+  // must not crowd its own tool budget or reach a tool the call does not offer.
+  process.env.HARNESS_FAKE_REDUCED = "1";
+  try {
+    script([[{ call: "more_tools", args: { group: "binder" } }, { text: "Avery pins the notice to the board." }]]);
+    say("I wait by the door.");
+    await startDmTurn(campaign.id);
+    const log = fakeLog();
+    const lists = log.filter((entry) => entry.kind === "tools").map((entry) => entry.detail);
+    assert.ok(lists.length >= 2, "opening a group started the program again");
+    assert.ok(lists[0].includes("more_tools"), "the compact set, with its door to the rest");
+    assert.ok(!lists[0].includes("pc_attack"), "no fight's tools before a fight");
+    assert.ok(!lists[0].includes("show_handout"), "the binder starts closed");
+    assert.ok(lists[1].includes("show_handout"), "the restarted program has the group it opened");
+    const prompts = log.filter((entry) => entry.kind === "prompt").map((entry) => entry.detail);
+    assert.match(prompts[1], /Your tools changed partway through this turn/);
+    assert.match(prompts[1], /\[engine\] You called more_tools/);
+    assert.ok(getLatestDmMessage(campaign.id).content.includes("Avery pins the notice"));
+    assert.equal(activeBridgeSessions(), 0);
+  } finally {
+    delete process.env.HARNESS_FAKE_REDUCED;
+  }
+});
+
 await test("the agent works under the same call budget: the last call is narration only", async () => {
   script([[roll, roll, roll, roll, { text: "The door holds, then holds no more." }]]);
   say("I try again. And again.");

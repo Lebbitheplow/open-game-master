@@ -59,10 +59,8 @@ export function characterTrapEscape(
     sheet,
     { ability: hold.ability, dc: hold.dc },
     `${sheet.name}: ${hold.ability.toUpperCase()} check to break free of the ${hold.trap}`,
+    turn,
   );
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
   const escaped = !check.autoFailed && check.total >= hold.dc;
   // A hunting trap's jaws bite on each failed check (TrapSpec escapeHurts).
   const bitten = !escaped && hold.hurts

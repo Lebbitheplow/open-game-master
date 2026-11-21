@@ -2,7 +2,7 @@ import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { checkPcAttackRange } from "@/lib/dm/map-tools";
@@ -88,7 +88,7 @@ export function approachForAttack(
   if (!blocked || blocked.error !== refusal.error) {
     return null;
   }
-  const squares = openSquaresBeside(encounter.id, map, me, them, footprintForSize(enemy.stats.size));
+  const squares = openSquaresBeside(encounter.id, map, me, them, enemyFootprint(enemy));
   for (const square of squares) {
     const walked = walkCharacter(campaign, encounter, map, sheet, me, square, { whole: true });
     if (!walked.error) {
@@ -148,7 +148,7 @@ export function companionShot(campaign: Campaign, encounter: Encounter, sheet: C
   // In reach now, or beside the target after a walk its movement finishes.
   const walksIn = () =>
     inRange(usual) ||
-    openSquaresBeside(encounter.id, map, me, them, footprintForSize(target.stats.size)).some(
+    openSquaresBeside(encounter.id, map, me, them, enemyFootprint(target)).some(
       (square) => !walkCharacter(campaign, encounter, map, sheet, me, square, { whole: true, dryRun: true }).error,
     );
   // The weapons carried, read as resolveAttackWeapon reads a line: a

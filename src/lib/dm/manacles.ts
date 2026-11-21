@@ -369,10 +369,7 @@ function pickLock(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet, bound
     return { error: `${sheet.name} is not proficient with thieves' tools, and only a creature that is can pick the manacles' lock. Nothing was spent.`, refused: "rules" };
   }
   spend();
-  const check = rollCharacterCheck(campaign, sheet, { ability: "dex", dc: PICK_DC, tool: THIEVES_TOOLS_ROW, about: "locks" }, `${sheet.name}: DEX check with thieves' tools to pick the manacles on ${name}`);
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
+  const check = rollCharacterCheck(campaign, sheet, { ability: "dex", dc: PICK_DC, tool: THIEVES_TOOLS_ROW, about: "locks" }, `${sheet.name}: DEX check with thieves' tools to pick the manacles on ${name}`, turn);
   const picked = !check.autoFailed && check.total >= PICK_DC;
   if (picked) {
     release(campaign, bound);
@@ -411,10 +408,7 @@ function escapeOutcome(campaign: Campaign, bound: Bound, ability: "str" | "dex",
 export function characterManaclesEscape(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet, chosen: string | undefined, spend: () => void): ToolResult {
   const ability = chosen === "str" || chosen === "dex" ? chosen : computeAbilityScore(sheet, "str") > computeAbilityScore(sheet, "dex") ? "str" : "dex";
   spend();
-  const check = rollCharacterCheck(campaign, sheet, { ability, dc: ability === "dex" ? SLIP_DC : BREAK_DC }, `${sheet.name}: ${ability.toUpperCase()} check to ${ability === "dex" ? "slip" : "break"} the manacles`);
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
+  const check = rollCharacterCheck(campaign, sheet, { ability, dc: ability === "dex" ? SLIP_DC : BREAK_DC }, `${sheet.name}: ${ability.toUpperCase()} check to ${ability === "dex" ? "slip" : "break"} the manacles`, turn);
   return { ok: true, action: "escape", ...escapeOutcome(campaign, { kind: "pc", sheet }, ability, check.autoFailed ? 0 : check.total) };
 }
 

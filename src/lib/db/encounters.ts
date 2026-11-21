@@ -177,6 +177,13 @@ export type EncounterEnemy = {
   // src/lib/actor-sex-logic.ts foeLook; a Cast NPC's are the Cast's.
   race?: string;
   gender?: Gender;
+  // The enemy row this one rides, as its mount (issue 1055): the pair stands
+  // on this rider's token and the mount's own turn moves it
+  // (src/lib/dm/enemy-riders.ts). Empty on foot.
+  ridesEnemyId?: string;
+  // That mount's size, which is the space the pair's one token fills (ruling
+  // 1): read with the row, so every measure from the token finds it.
+  pairSize?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -230,6 +237,7 @@ type EnemyRow = {
   carried_from?: string | null;
   race?: string | null;
   gender?: string | null;
+  rides_enemy_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -349,6 +357,7 @@ function mapEnemy(row: EnemyRow): EncounterEnemy {
     ...(row.carried_from ? { carriedFrom: row.carried_from } : {}),
     ...(row.race ? { race: row.race } : {}),
     ...(storedGender(row.gender) ? { gender: storedGender(row.gender) } : {}),
+    ...(row.rides_enemy_id ? { ridesEnemyId: row.rides_enemy_id, ...pairSizeOf(row.rides_enemy_id) } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -516,6 +525,13 @@ export function endEncounter(id: string, outcome: string, endedInstant?: number)
   getDatabase()
     .prepare(`UPDATE encounters SET status = 'ended', outcome = ?, ended_instant = COALESCE(?, ended_instant), updated_at = ? WHERE id = ?`)
     .run(outcome.slice(0, 60), endedInstant ?? null, nowIso(), id);
+}
+
+// The size on a mount's block, for its rider's row.
+function pairSizeOf(mountId: string): { pairSize?: string } {
+  const row = getDatabase().prepare(`SELECT stat_json FROM encounter_enemies WHERE id = ?`).get(mountId) as { stat_json?: string } | undefined;
+  const size = row ? parseJson<{ size?: string }>(row.stat_json ?? "{}", {}).size : undefined;
+  return size ? { pairSize: size } : {};
 }
 
 export function insertEnemy(input: {
@@ -808,6 +824,15 @@ export function setEnemyLook(enemyId: string, look: { gender?: Gender; race?: st
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET gender = COALESCE(?, gender), race = COALESCE(?, race), updated_at = ? WHERE id = ?`)
     .run(look.gender ?? null, look.race ?? null, nowIso(), enemyId);
+}
+
+// Puts this enemy on a mount, another row of its fight, or takes it off
+// (null): issue 1055, src/lib/dm/enemy-riders.ts.
+export function setEnemyMount(riderId: string, mountId: string | null) {
+  keepRow("encounter_enemies", riderId);
+  getDatabase()
+    .prepare(`UPDATE encounter_enemies SET rides_enemy_id = ?, updated_at = ? WHERE id = ?`)
+    .run(mountId ?? "", nowIso(), riderId);
 }
 
 export function setEnemyInitiative(enemyId: string, initiative: number) {

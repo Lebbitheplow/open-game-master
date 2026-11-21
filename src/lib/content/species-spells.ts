@@ -1,12 +1,10 @@
 import { textKey } from "@/lib/language/text-logic";
-import { translate } from "@/lib/messages-logic";
 
 // The translator shape the pure modules take, t-first with an English
 // default (COMMON.md): the editor passes the reader's translator, while the
 // engine's own summary lines keep the English default, since those words are
 // read by the AI as well as shown.
 type T = (key: string, vars?: Record<string, string | number>) => string;
-const enT: T = (key, vars) => translate("en", key, vars);
 
 // The spells a workshop species gives, and the spells each option of its
 // player's choice gives (issue #833): a Half-Dragon's Topaz ancestry knows
@@ -54,7 +52,6 @@ export const DEFAULT_SPECIES_SPELL_ABILITY: SpeciesSpellAbility = "cha";
 export const SPECIES_SPELL_LIMITS = { spells: 8, uses: 5, name: 80 } as const;
 
 const ABILITY_WORDS: Record<SpeciesSpellAbility, string> = { int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
-export const speciesSpellAbilityWord = (ability: SpeciesSpellAbility) => ABILITY_WORDS[ability];
 
 type Raw = Record<string, unknown>;
 const L = SPECIES_SPELL_LIMITS;

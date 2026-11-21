@@ -5,9 +5,12 @@ import { publishEphemeral } from "@/lib/events";
 import { partyAtlasChanged } from "@/lib/db/party-atlas";
 import { getWorldDoc } from "@/lib/db/world-forge";
 import { recordsChanged } from "@/lib/workshop/record-events";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const restoreSchema = z.object({ undo: z.string().optional() });
 
 // Undo for an Atlas delete (audit finding WF-20). { undo }: the token the
 // delete answered with. The rows come back as they were, frame, Region
@@ -19,7 +22,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
-  const raw = (await request.json().catch(() => ({}))) as { undo?: unknown };
+  const parsed = restoreSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Name the delete to undo." }, { status: 400 });
+  }
+  const raw = parsed.data;
   const token = typeof raw.undo === "string" ? raw.undo.trim().slice(0, 80) : "";
   if (!token) {
     return Response.json({ error: "Name the delete to undo." }, { status: 400 });

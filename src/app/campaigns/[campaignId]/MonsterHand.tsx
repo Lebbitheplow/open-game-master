@@ -284,6 +284,7 @@ function MonsterHandInner({
   const step = cards.length > 1 ? Math.min(4.4, 13 / (cards.length - 1)) : 0;
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape from a card inside the hand drops the aim; the section is not a control of its own
     <section
       className="hand"
       data-tour="monster-hand"

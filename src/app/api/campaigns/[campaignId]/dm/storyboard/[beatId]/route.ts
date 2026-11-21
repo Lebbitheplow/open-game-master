@@ -1,4 +1,5 @@
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
+import { storyboardBeatBodySchema } from "@/lib/schemas/storyboard-beat";
 import { deleteBeat, updateBeat } from "@/lib/db/workshop-beats";
 import { checkBeat, linksWithin } from "@/lib/workshop/board";
 import { storyboardInventory } from "@/lib/db/workshop-common";
@@ -19,7 +20,11 @@ export async function PATCH(
   if (isErrorResponse(context)) {
     return context;
   }
-  const checked = checkBeat(await request.json().catch(() => ({})));
+  const parsed = storyboardBeatBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "That card could not be read." }, { status: 400 });
+  }
+  const checked = checkBeat(parsed.data);
   if ("error" in checked) {
     return Response.json({ error: checked.error }, { status: 400 });
   }

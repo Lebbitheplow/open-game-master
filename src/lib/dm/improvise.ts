@@ -185,12 +185,9 @@ export function improviseAction(
   }
   // A Sword of Wounding's wounds tended with a Medicine check (DC 15, within
   // 5 feet): the item's own action, with no scene to quote and no contest.
-  const tended = args.targetEnemyId && args.skill === "medicine" ? tendSwordWounds(campaign, encounter, sheet, args.targetEnemyId, spendAction) : null;
+  const tended = args.targetEnemyId && args.skill === "medicine" ? tendSwordWounds(campaign, encounter, turn, sheet, args.targetEnemyId, spendAction) : null;
   if (tended) {
-    if (tended.rollId) {
-      turn.rollIds.push(tended.rollId);
-    }
-    return tended.result;
+    return tended;
   }
   // Swallowed (swallow.ts): from inside, the scene the narration shows is
   // outside the swallower, so an action on it reaches nothing; one at the
@@ -283,10 +280,7 @@ export function improviseAction(
       };
     }
     spend();
-    const mine = rollCharacterCheck(campaign, sheet, { ...check, dc }, `${sheet.name}: ${checkName} to improvise`);
-    if (mine.rollId) {
-      turn.rollIds.push(mine.rollId);
-    }
+    const mine = rollCharacterCheck(campaign, sheet, { ...check, dc }, `${sheet.name}: ${checkName} to improvise`, turn);
     const success = mine.total >= dc;
     return {
       ok: true,
@@ -343,10 +337,7 @@ export function improviseAction(
     if (!theirs && dc === null) {
       return { text: against[0], won: true };
     }
-    const mine = rollCharacterCheck(campaign, sheet, { ...check, ...(dc === null ? {} : { dc }) }, `${sheet.name}: ${checkName} to improvise against ${enemy.displayName}`);
-    if (mine.rollId) {
-      turn.rollIds.push(mine.rollId);
-    }
+    const mine = rollCharacterCheck(campaign, sheet, { ...check, ...(dc === null ? {} : { dc }) }, `${sheet.name}: ${checkName} to improvise against ${enemy.displayName}`, turn);
     const won = (dc === null || mine.total >= dc) && (!theirs || mine.total > theirs.total);
     return { text: `${checkName} ${mine.total} vs ${against.join(" and ")}`, won };
   })();

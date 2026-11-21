@@ -207,7 +207,6 @@ function MoreRow({
   onPick: (card: HandCard) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const locale = useLocale();
   const name = cardDisplayName(card, locale);
   const artwork = handCardArtwork(card, genre);

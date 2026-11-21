@@ -4,7 +4,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, listEnemies, type EnemyStatus } from "@/lib/db/encounters";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { hasHumanDm } from "@/lib/dm/viewer";
-import { getRoll } from "@/lib/db/rolls";
+import { firstStoredAfter, getRoll } from "@/lib/db/rolls";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
 import { listSheets } from "@/lib/db/sheets";
 import { publishEphemeral, publishWithSeq } from "@/lib/events";
@@ -81,7 +81,17 @@ export function postPersonsRecord(
   // with the seats that may read it (src/lib/table-delivery.ts): its id or
   // its label would tell the rest it exists.
   const rolls: RollWords[] = [];
-  for (const id of new Set([...turn.rollIds.slice(start.rolls), ...(options.rollIds ?? [])])) {
+  // Dice entered for a parked roll are listed where they were stored: ahead
+  // of what their landing threw (a hit's damage), which the turn lists.
+  const onTurn = turn.rollIds.slice(start.rolls);
+  const listed = [...onTurn];
+  for (const id of options.rollIds ?? []) {
+    if (!listed.includes(id)) {
+      const next = firstStoredAfter(id, onTurn);
+      listed.splice(next ? listed.indexOf(next) : listed.length, 0, id);
+    }
+  }
+  for (const id of new Set(listed)) {
     const roll = getRoll(id);
     if (roll && (roll.visibility === "public" || roll.visibility === "blind")) {
       const sheetName = roll.characterId ? sheets.get(roll.characterId)?.name : undefined;

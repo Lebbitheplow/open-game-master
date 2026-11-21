@@ -8,6 +8,7 @@ import {
   tableReportSources,
   tableReportViewer,
 } from "@/lib/report-bundle-server";
+import { reportBundleBodySchema } from "@/lib/schemas/report-bundle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,9 +63,12 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const body = (await request.json().catch(() => ({}))) as { parts?: unknown } | null;
+  const parsed = reportBundleBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return Response.json({ error: "Say which parts to include, each yes or no." }, { status: 400 });
+  }
   const viewer = tableReportViewer(context);
-  const parts = chosenParts(body?.parts, viewer);
+  const parts = chosenParts(parsed.data.parts, viewer);
   // The server log can print any table's keys and backends, so with it every
   // table's are cut, not only this one's.
   const scope = { headers: request.headers, everyTable: parts.has("serverLog") };

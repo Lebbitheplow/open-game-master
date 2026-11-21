@@ -20,7 +20,7 @@ import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/ba
 import { getEnemy, patchEnemyConditions, type Encounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { footprintDistance, footprintForSize } from "@/lib/battlemap/footprint";
+import { footprintDistance } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { enemyAttackProfile, opportunityWeapon } from "@/lib/dm/enemy-profile";
@@ -59,7 +59,7 @@ export function lashOut(campaign: Campaign, encounter: Encounter, kind: "sheet" 
     return `${name} lashes out at a creature within its reach, if one is (no board to pick one on: the GM picks at random).`;
   }
   const reach = reachOf(kind, id);
-  const mine = kind === "enemy" ? footprintForSize(getEnemy(id)?.stats.size) : 1;
+  const mine = tokenFootprint(me);
   const inReach = listTokens(map.id).filter((token) => {
     if (token.refId === id || (token.kind !== "pc" && token.kind !== "enemy")) {
       return false;

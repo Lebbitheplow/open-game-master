@@ -34,8 +34,6 @@ export const TOLD_OPEN = "open relationships";
 // What the DM's tools take for drawnTo: the same words the DM reads.
 export const TOLD_ATTRACTION: [string, ...string[]] = [ATTRACTION_CHOICES[0].word, ...ATTRACTION_CHOICES.slice(1).map((choice) => choice.word), TOLD_OPEN];
 
-export const BLANK_ATTRACTION: Attraction = { genders: [], note: "" };
-
 // Any stored or sent value as an attraction: unknown genders are dropped,
 // repeats folded, the note trimmed to its length. A string is a stored JSON
 // column; anything unreadable reads as blank.

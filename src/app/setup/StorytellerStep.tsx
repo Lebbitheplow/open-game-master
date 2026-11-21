@@ -97,7 +97,7 @@ export function StorytellerStep({
           onPick={() => pick("agent")}
           glyph="system-share"
           title={t("An agent you already pay for")}
-          sub={t("Claude Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI, signed in on this computer, narrating on its own plan.")}
+          sub={t("Claude Code, Codex, opencode, Grok Build or Pi, signed in on this computer, narrating on its own plan.")}
         />
         <ChoiceCard
           picked={draft.story === "none"}
@@ -326,7 +326,6 @@ function LocalPanel({
 
 function KeyPanel({ draft, update, savedKeyFor }: { draft: Draft; update: Update; savedKeyFor: KeyProviderId | null }) {
   const t = useT();
-  const tp = useTp();
   const key = draft.key;
   const provider = keyProvider(key.provider);
   const [checking, setChecking] = useState(false);

@@ -80,7 +80,6 @@ export function AdminAddonCard({
   const savedParts = (addon.parts ?? []).filter((part) => part.chosen).map((part) => part.id);
   const [parts, setParts] = useState<string[]>(savedParts);
   const partsDirty = parts.length !== savedParts.length || parts.some((id) => !savedParts.includes(id));
-  const status = STATUS_KEYS[addon.status];
   const name = manifest?.name ?? addon.id;
 
   async function call(method: string, body?: unknown, path = ""): Promise<Record<string, unknown> | null> {

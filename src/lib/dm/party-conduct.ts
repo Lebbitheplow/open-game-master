@@ -8,7 +8,8 @@ import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { listRelationships } from "@/lib/db/relationships";
 import { listSheets } from "@/lib/db/sheets";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { characterFootprint } from "@/lib/dm/board-reach";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
 import { conscienceSetting, consciousCompanions, worstApproval } from "@/lib/dm/conscience";
@@ -244,7 +245,7 @@ export function provokers(campaignId: string, walkerId: string, steps: readonly 
     }
     const token = getTokenByRef(map.id, enemy.id);
     const weapon = opportunityWeapon(enemy.stats);
-    return token && weapon && leavesReachAt([...steps], token, weapon.reachTiles, footprintForSize(enemy.stats.size)) ? [enemy.displayName] : [];
+    return token && weapon && leavesReachAt([...steps], token, weapon.reachTiles, enemyFootprint(enemy), characterFootprint(walkerId)) ? [enemy.displayName] : [];
   });
 }
 

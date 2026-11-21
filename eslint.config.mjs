@@ -3,22 +3,22 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 
-// jsx-a11y's recommended set. eslint-config-next registers the plugin but
-// turns on only six of its rules. The eight below still fail across the app
-// (79 places in 48 files, the character builder among them, when this was
-// added), so they wait for a pass of their own; every other recommended
-// rule passes today and holds from here on.
-const a11yRecommended = jsxA11y.flatConfigs.recommended.rules;
-const a11yNotYetAppWide = [
-  "jsx-a11y/no-autofocus",
-  "jsx-a11y/label-has-associated-control",
-  "jsx-a11y/aria-role",
-  "jsx-a11y/no-noninteractive-element-interactions",
-  "jsx-a11y/click-events-have-key-events",
-  "jsx-a11y/no-noninteractive-tabindex",
-  "jsx-a11y/no-static-element-interactions",
-  "jsx-a11y/interactive-supports-focus",
-];
+// jsx-a11y's recommended set, all of it. eslint-config-next registers the
+// plugin but turns on only six of its rules. A place that must break a rule
+// (a backdrop Escape already closes, a scroll box that takes Tab so the keys
+// can scroll it, focus moved into a field the player just opened) says so
+// beside it in an eslint-disable comment with the reason.
+const a11yRecommended = {
+  ...jsxA11y.flatConfigs.recommended.rules,
+  // Our own components take a `role` prop that is not an ARIA role (the job a
+  // model does: "story", "image", "dictation"). The rule checks only DOM
+  // elements, where role is the ARIA one.
+  "jsx-a11y/aria-role": ["error", { ignoreNonDOM: true }],
+  // A choice card nests its words two spans deep (a title over a hint, beside
+  // the radio), past the rule's default depth of two. Select
+  // (src/components/ui/Select.tsx) draws a button, a control a label can name.
+  "jsx-a11y/label-has-associated-control": ["error", { depth: 3, controlComponents: ["Select"] }],
+};
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -42,7 +42,7 @@ const eslintConfig = defineConfig([
   ]),
   {
     files: ["src/**/*.tsx"],
-    rules: Object.fromEntries(Object.entries(a11yRecommended).filter(([rule]) => !a11yNotYetAppWide.includes(rule))),
+    rules: a11yRecommended,
   },
   // The browser's own dialogs are drawn by the browser, not the table, and
   // the desktop shell does not implement every one of them. Ask through

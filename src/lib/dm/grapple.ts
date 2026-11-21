@@ -150,10 +150,8 @@ export function characterEscape(
     held.escapeDc && enemyHolder
       ? `${sheet.name}: ${skill} to escape ${holderName}'s grapple (DC ${held.escapeDc})`
       : `${sheet.name}: ${skill} to escape the grapple`,
+    turn,
   );
-  if (mine.rollId) {
-    turn.rollIds.push(mine.rollId);
-  }
   // A monster's printed escape DC is the number to reach; a creature with
   // none (a character, a block written without one) holds with a contest.
   const theirs =
@@ -162,10 +160,7 @@ export function characterEscape(
       : enemyHolder
         ? rollEnemyContest(campaign, turn, enemyHolder, "athletics", `${holderName}: Athletics to hold the grapple`)
         : (() => {
-            const check = rollCharacterCheck(campaign, sheetHolder!, { skill: "athletics" }, `${holderName}: Athletics to hold the grapple`);
-            if (check.rollId) {
-              turn.rollIds.push(check.rollId);
-            }
+            const check = rollCharacterCheck(campaign, sheetHolder!, { skill: "athletics" }, `${holderName}: Athletics to hold the grapple`, turn);
             return check.total;
           })();
   // Against a DC, meeting it escapes; in a contest a tie leaves things as
@@ -175,7 +170,7 @@ export function characterEscape(
   const settled = theirs !== null && enemyHolder && !mine.autoFailed
     ? contestShift(
         campaign.id,
-        { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill }, `${sheet.name}: ${skill} to escape the grapple, rolled again`).total },
+        { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill }, `${sheet.name}: ${skill} to escape the grapple, rolled again`, turn).total },
         { tag: enemyContestTag(enemyHolder), total: theirs, again: () => rollEnemyContest(campaign, turn, enemyHolder, "athletics", `${holderName}: Athletics to hold the grapple, rolled again`) },
         (a, b) => a > b,
       )
@@ -263,10 +258,7 @@ export function enemyEscape(
   // A natural grapple prints its escape DC (a beast-shaped druid's
   // crocodile bite, a summoned constrictor's coils): the escape is a check
   // against it, not a contest.
-  const hold = held.escapeDc ? null : rollCharacterCheck(campaign, holder, { skill: "athletics" }, `${holder.name}: Athletics to hold the grapple`);
-  if (hold?.rollId) {
-    turn.rollIds.push(hold.rollId);
-  }
+  const hold = held.escapeDc ? null : rollCharacterCheck(campaign, holder, { skill: "athletics" }, `${holder.name}: Athletics to hold the grapple`, turn);
   const escaped = hold ? theirs > hold.total : theirs >= (held.escapeDc ?? 0);
   if (escaped) {
     // The restraint the same hold brought ends with it.

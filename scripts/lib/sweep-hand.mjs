@@ -52,10 +52,6 @@ crypto.randomInt = function heldRandomInt(min, max, callback) {
 syncBuiltinESMExports();
 seedDice(1109);
 
-export function holdD20(face) {
-  heldD20 = face;
-}
-
 // ---- the tables walked ----
 
 export const CLASS_FEATURES = read("class-features.json").classes;
@@ -66,8 +62,6 @@ export function everyBuild(classId, levels = [20]) {
   const subclasses = [...(CLASS_FEATURES[classId]?.subclasses ?? []), ...(AUTHORED_SUBCLASSES[classId] ?? [])];
   return subclasses.flatMap((subclass) => levels.map((level) => ({ classId, subclass: subclass.name, level, key: `${subclass.name}@${level}` })));
 }
-
-export const CLASS_IDS = Object.keys(CLASS_FEATURES);
 
 export async function handRig() {
   const src = (file) => import(new URL(`../../src/${file}`, import.meta.url).href);

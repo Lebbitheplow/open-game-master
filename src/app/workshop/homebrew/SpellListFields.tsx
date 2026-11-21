@@ -76,7 +76,6 @@ export function SpellSearch({
   noCantrips?: boolean;
 }) {
   const t = useT();
-  const tp = useTp();
   const { query, setQuery, results: served, loading } = useContentSearch("spells", { lite: "1", limit: "30" });
   const wanted = textKey(query);
   const results: Found[] = useMemo(() => {

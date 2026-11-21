@@ -68,7 +68,6 @@ function shortVerdict(verdict: string): string {
 
 export function DifficultyPill({ readout }: { readout: TemplateReadout }) {
   const t = useT();
-  const tp = useTp();
   if (readout.unknownMonster) {
     return (
       <span className="rounded-sm border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 font-display text-[10px] tracking-wider text-red-300">
@@ -174,7 +173,6 @@ export function EncounterRows({
   onRemoveSetup?: (encounter: PreparedEncounter) => void;
 }) {
   const t = useT();
-  const tp = useTp();
   const deploy = deployLabel ?? t("Deploy");
   // A linked map that has since been forgotten still says so, rather than
   // silently reading as the generator's choice, because deploy will fall

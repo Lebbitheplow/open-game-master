@@ -123,7 +123,12 @@ for (const fight of [false, true]) {
     rows += 1;
     await row(`omits:${name}`, () => {
       const properties = universe.byName.get(name)?.function.parameters.properties ?? {};
-      assert.deepEqual(fields.filter((field) => !(field in properties)), [], `COMPACT_OMITS.${name} names arguments the tool does not take`);
+      // "list[].field" names a field of a list's entries.
+      const taken = (field) => {
+        const [list, inner] = field.split("[].");
+        return inner === undefined ? field in properties : inner in (properties[list]?.items?.properties ?? {});
+      };
+      assert.deepEqual(fields.filter((field) => !taken(field)), [], `COMPACT_OMITS.${name} names arguments the tool does not take`);
       const cut = profiles.compactTool(universe.byName.get(name)).function.parameters;
       assert.deepEqual((cut.required ?? []).filter((field) => !(field in cut.properties)), [], "an omitted argument is still required");
     });

@@ -160,6 +160,8 @@ export type MountState = {
   name: string;
   speed: number;
   // Controlled mounts share the rider's initiative; independent ones do not.
+  // Only a creature with a sheet is ever independent (independentMount): a
+  // mount that is a name on its rider has no block to take a turn with.
   controlled: boolean;
   size: MountSize;
   // The mount's own Armor Class and hit points, from its SRD stat block, so
@@ -185,6 +187,30 @@ export type MountState = {
 // rider's turn beside the rider's own action.
 export const MOUNT_ACTIONS = ["dash", "disengage", "dodge"] as const;
 export type MountAction = (typeof MOUNT_ACTIONS)[number];
+
+// An independent mount: a creature with its own sheet that "retains its
+// place in the initiative order", where "bearing a rider puts no
+// restrictions on the actions the mount can take, and it moves and acts as
+// it wishes" (SRD 5.1, Controlling a Mount). It keeps its slot in the order
+// and the GM plays its turn; the pair stands on the rider's token, which the
+// mount's move carries (issue 1036, rulings 2 and 3).
+export function independentMount(mount: MountState | null | undefined): mount is MountState & { sheetId: string } {
+  return Boolean(mount && !mount.controlled && mount.sheetId);
+}
+
+// A mount that is only a name on its rider's record has no stat block to act
+// with, so it is ridden as a controlled mount whatever was asked (issue 1036,
+// ruling 1: "A named mount with no block stays controlled"). Returns the
+// record as it is ridden and, when that changed it, the reason to say so.
+export function rideByRecord(state: MountState): { state: MountState; stays?: string } {
+  if (state.controlled || state.sheetId) {
+    return { state };
+  }
+  return {
+    state: { ...state, controlled: true },
+    stays: `${state.name} is ridden as a controlled mount: it is a name on its rider's record with no creature of its own on the table, and only a creature with a stat block (one its rider called up, mounted by its own name with controlled false) keeps a turn of its own.`,
+  };
+}
 
 // The rider's once-a-turn mark for the mount's action (action-budget.ts).
 export function mountActionKey(action: MountAction): string {
@@ -285,8 +311,10 @@ export function mountSizeOf(size: string): MountSize | null {
 // willing creature that is at least one size larger than you and that has an
 // appropriate anatomy can serve as a mount" (SRD 5.1, Mounted Combat). The
 // size rule is checked; the anatomy is the GM's to judge. It does as its
-// maker directs, so it is ridden as a controlled mount.
-export function checkCreatureMount(input: { sheetId: string; name: string; speed: number; size: string; riderSize?: MountSize }): MountCheck {
+// maker directs, so it is ridden as a controlled mount unless the GM says it
+// acts as it wishes (`controlled: false`; issue 1036 ruling 4: controlled by
+// default, the GM's call each time, no Intelligence threshold).
+export function checkCreatureMount(input: { sheetId: string; name: string; speed: number; size: string; riderSize?: MountSize; controlled?: boolean }): MountCheck {
   const riderSize = input.riderSize ?? "medium";
   const size = mountSizeOf(input.size);
   if (!size || !canCarry(size, riderSize)) {
@@ -297,7 +325,7 @@ export function checkCreatureMount(input: { sheetId: string; name: string; speed
   }
   return {
     ok: true,
-    state: { ref: `sheet:${input.sheetId}`, name: input.name.slice(0, 60), speed: Math.min(200, Math.max(0, Math.round(input.speed))), controlled: true, size, sheetId: input.sheetId },
+    state: { ref: `sheet:${input.sheetId}`, name: input.name.slice(0, 60), speed: Math.min(200, Math.max(0, Math.round(input.speed))), controlled: input.controlled !== false, size, sheetId: input.sheetId },
   };
 }
 
@@ -397,5 +425,5 @@ export function vehicleTravel(
 }
 
 export function describeMount(state: MountState): string {
-  return `${state.name}, speed ${state.speed} ft.${state.controlled ? ", controlled (shares your initiative)" : ", independent (acts on its own initiative)"}`;
+  return `${state.name}, speed ${state.speed} ft.${state.controlled ? ", controlled (shares your initiative)" : ", independent (keeps its own turn in the order and acts as it wishes)"}`;
 }

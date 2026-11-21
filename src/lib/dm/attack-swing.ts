@@ -277,7 +277,7 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
 // A hit pays for what it carries (the smite, the maneuver's die, the ki) and
 // decides the damage roll. A net or a flask that burns later deals nothing
 // now: those end here with their outcome.
-export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged, toHit: RollResult, visibility: RollVisibility, notes: string[]): { ask: DamageAsk } | { done: Record<string, unknown> } {
+export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged, visibility: RollVisibility, notes: string[]): { ask: DamageAsk } | { done: Record<string, unknown> } {
   const { campaign, turn, sheet, enemy } = scene;
   const crit = judged.crit;
   // Great Weapon Master's critical opens the bonus attack the moment it is

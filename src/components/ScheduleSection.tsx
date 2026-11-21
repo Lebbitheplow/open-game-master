@@ -74,7 +74,6 @@ function withHour(current: string, hour: number): string {
 
 function QuickTimes({ value, onPick }: { value: string; onPick: (next: string) => void }) {
   const t = useT();
-  const tp = useTp();
   const hour = value ? new Date(value).getHours() : -1;
   const onTheHour = value ? new Date(value).getMinutes() === 0 : false;
   return (

@@ -48,6 +48,7 @@ export const startEncounterTool: ToolDef = {
               returning: { type: "string", description: "An earlier fight's enemyId." },
               race: { type: "string", description: "A humanoid's people (elf, dwarf...), for their face." },
               gender: { type: "string", enum: [...GENDERS] },
+              mount: { type: "string", description: "The monster each rides." },
             },
             required: ["monster"],
           },

@@ -57,7 +57,6 @@ export function MulticlassSection({
   const [adding, setAdding] = useState(false);
   const [othersOpen, setOthersOpen] = useState(false);
   const t = useT();
-  const tp = useTp();
   const listId = useId();
   const { extras, classList, primaryLevel, effectiveLevel } = derived;
   const nameOf = (id: string) => classes.find((entry) => entry.id === id)?.name ?? id;
@@ -137,6 +136,7 @@ export function MulticlassSection({
               {t("It takes one level from your {class}; set the split once it is added.", { class: klass.name.toLowerCase() })}
               {derived.shownAbilities ? "" : t(" Your scores are not set yet, so each class says what it needs.")}
             </p>
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the arrow keys from the class buttons inside walk between them (useRovingGroup); the list itself takes no focus */}
             <ul
               aria-label={t("Classes you could add as your {ordinal}", { ordinal: ({ "second": t("second"), "third": t("third") } as Record<string, string>)[next] ?? String(next) })}
               className="grid gap-1.5 sm:grid-cols-2"
@@ -326,7 +326,6 @@ function ExtraClassCard({
 // offers them (usePickerGroups.ts).
 function ExtraSubclassField({ state, entry, index }: { state: BuilderState; entry: ExtraClassRow; index: number }) {
   const t = useT();
-  const tp = useTp();
   const { archetypes } = useArchetypeOptions(entry.klass.id);
   const groups = useMemo<PickerGroup[]>(() => {
     const builtIn = subclassNamesFor(entry.klass.id);

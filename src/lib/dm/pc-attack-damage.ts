@@ -15,7 +15,6 @@ import { authoredNaturalWeapon, authoredSneakBonus } from "@/lib/srd/authored-ef
 import { horrorSampled } from "@/lib/dm/genre-a-horror-hits";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { getFoe } from "@/lib/dm/sheet-foe";
-import { poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
 import type { Advantage, RollResult } from "@/lib/dice";
 import { claimOncePerTurn, type TurnBudget } from "@/lib/dm/action-budget";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
@@ -46,7 +45,6 @@ import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isNamed } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
-import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 
 export type { FeatureRider } from "@/lib/dm/attack-damage-riders";
 
@@ -384,42 +382,6 @@ export function liveTypedRiders(typedRiders: TypedRider[], droppedRiders: string
     }
     unspent.splice(at, 1);
     return false;
-  });
-}
-
-// A landed blow meets the target's resistances and lands. One damage type
-// goes straight through applyEnemyDamage; two or more are resolved per type.
-export function applyHitDamage(input: {
-  plan: AttackPlan;
-  typedRiders: TypedRider[];
-  damageOutcome: RollResult;
-  dealt: number;
-  crit: boolean;
-  critExtraDice: number;
-}): Record<string, unknown> {
-  const { plan } = input;
-  // A spell attack that hurt the creature: Power Surge reads it
-  // (spell-damage-mark.ts).
-  if (plan.kind === "spell" && input.dealt > 0) {
-    markSpellDamage(plan.campaign.id, plan.sheet.id, plan.enemy.id, plan.args.spell);
-  }
-  return landBlow({
-    ...input,
-    campaign: plan.campaign,
-    turn: plan.turn,
-    encounter: plan.encounter,
-    enemy: plan.enemy,
-    sheets: plan.sheets,
-    sheetsById: plan.sheetsById,
-    profile: plan.profile,
-    typedRiders: liveTypedRiders(input.typedRiders, plan.droppedRiders),
-    magical: strikesAsMagic(plan),
-    nonlethal: plan.options.nonlethal,
-    ignoreResistance: plan.elementalAdept || poisonerIgnoresResistance(plan.sheet, plan.profile.damageType),
-    ignoreResistanceBy: plan.elementalAdept ? "Elemental Adept" : "Poisoner",
-    adeptOthers: plan.adeptOthers,
-    concentrationDisadvantage: plan.mageSlayer,
-    blow: blowSource(plan),
   });
 }
 

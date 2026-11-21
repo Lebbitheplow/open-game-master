@@ -65,7 +65,6 @@ function markupLabel(t: T, step: number): string {
 // last good one and says so.
 function CoinField({ value, onChange, label }: { value: number; onChange: (cp: number) => void; label: string }) {
   const t = useT();
-  const tp = useTp();
   const [draft, setDraft] = useState<string | null>(null);
   const [bad, setBad] = useState<string | null>(null);
   const commit = () => {

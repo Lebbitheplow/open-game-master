@@ -66,7 +66,6 @@ async function steer(t: T, campaignId: string, body: Record<string, unknown>): P
 // take, and the level slider under it.
 function LayerRow({ layer, ambience }: { layer: AmbienceLayerName; ambience: AmbienceAudio }) {
   const t = useT();
-  const tp = useTp();
   const cueId = ambience.state[layer];
   const cue = cueId ? cueById(cueId) : null;
   const snapshot = ambience.playing[layer];
@@ -152,7 +151,6 @@ function CueTile({
   onPick: () => void;
 }) {
   const t = useT();
-  const tp = useTp();
   return (
     <Tooltip content={available ? label : t("{label}: no audio on this server yet", { label })}>
       <button
@@ -178,7 +176,6 @@ function CueTile({
 
 function Pickers({ ambience, steering }: { ambience: AmbienceAudio; steering: SoundSteering }) {
   const t = useT();
-  const tp = useTp();
   const [tab, setTab] = useState<AmbienceLayer>("bed");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -264,7 +261,6 @@ function Pickers({ ambience, steering }: { ambience: AmbienceAudio; steering: So
 
 function LibraryNote({ ambience, steering }: { ambience: AmbienceAudio; steering: SoundSteering }) {
   const t = useT();
-  const tp = useTp();
   const counts = ambience.counts;
   if (!ambience.installed) {
     return steering.isAdmin ? (
@@ -338,7 +334,6 @@ export function SoundDialog({
   // Ask again when the panel opens; the page gesture listener also retries
   // during the click itself, while the browser's audio gesture is active.
   const t = useT();
-  const tp = useTp();
   const { unlock } = ambience;
   useEffect(() => {
     if (open) {
@@ -403,7 +398,6 @@ export function soundSummary(t: T, ambience: AmbienceAudio): { quiet: boolean; p
 
 export function SoundControl({ ambience, steering }: { ambience: AmbienceAudio; steering: SoundSteering }) {
   const t = useT();
-  const tp = useTp();
   const [open, setOpen] = useState(false);
   const { quiet, playing, tip } = soundSummary(t, ambience);
   return (

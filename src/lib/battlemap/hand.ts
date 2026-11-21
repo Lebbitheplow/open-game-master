@@ -26,7 +26,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
 import { ammoChoice } from "@/lib/battlemap/hand-ammo";
 import { ammoKindForWeapon, findAmmo, type AmmoKind } from "@/lib/srd/ammunition";
-import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
+import { attackDamageLine, attackReach, attackRollLine } from "@/lib/battlemap/hand-attack-lines";
 import { grappleHandsProblem } from "@/lib/dm/cast-rules";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { longRangeTilesOf } from "@/lib/dm/attack-rules";

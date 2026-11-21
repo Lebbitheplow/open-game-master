@@ -128,6 +128,6 @@ computer, make the admin account, and the guided setup takes it from there:
 the storyteller (a local model, an API key or an agent program), pictures,
 voice, who may join, and your own agent.
 
-A local model needs a context window of at least 24K tokens to narrate and
-40K to run fights; 48K or more is recommended ${dim("(llama-server -c 49152)")}.
+The storyteller needs a context window of at least 64K tokens to play the full
+rules; smaller windows are not supported ${dim("(llama-server -c 65536)")}.
 `);

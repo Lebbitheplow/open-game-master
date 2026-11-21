@@ -24,6 +24,7 @@ import { budgetApplies } from "@/lib/dm/action-budget";
 import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
+import { independentMountOf } from "@/lib/dm/mount-link";
 import { removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourcesAt } from "@/lib/dm/enemy-approach";
 import { abilityNames } from "@/lib/dm/monster-abilities";
@@ -171,6 +172,18 @@ export function stillAt(tokens: BattleToken[], mover: BattleToken): string {
 // creature they grapple when asked, letting go of it otherwise, and the
 // opportunity attacks of every enemy they walk away from. Returns the
 // move_token result.
+// A rider on an independent mount walks nowhere of their own: the mount
+// "moves and acts as it wishes" on its own turn, which the GM plays, and
+// that walk carries them (SRD 5.1, Controlling a Mount; issue 1036, rulings
+// 2 and 3). Their own turn keeps their action, and getting down. Null for
+// anyone else, and in a scene, which has no turns to move on.
+export function carriedRefusal(campaignId: string, encounter: Pick<Encounter, "kind">, sheet: Pick<CharacterSheet, "id" | "name">): string | null {
+  const mount = encounter.kind === "scene" ? null : independentMountOf(campaignId, sheet.id);
+  return mount
+    ? `${sheet.name} rides ${mount.name}, an independent mount: it moves on its own turn, as the GM plays it, and carries ${sheet.name} with it. On their own turn ${sheet.name} acts, or gets down (dismount), and does not move the pair.`
+    : null;
+}
+
 export function walkCharacter(
   campaign: Campaign,
   encounter: Encounter,
@@ -200,6 +213,10 @@ export function walkCharacter(
     if (heldOff) {
       return heldOff;
     }
+  }
+  const carriedOn = carriedRefusal(campaign.id, encounter, sheet);
+  if (carriedOn) {
+    return { error: carriedOn, refused: "rules" };
   }
   if (destination.x < 0 || destination.y < 0 || destination.x >= map.width || destination.y >= map.height) {
     return { error: `(${destination.x},${destination.y}) is outside the ${map.width}x${map.height} map.`, retry: true };
@@ -261,7 +278,9 @@ export function walkCharacter(
     "pc",
     sheet.id,
   );
-  const path = here ? [] : findPath(map.terrain, map.width, map.height, occupied, token, destination, 1, token.movement === "fly", traits);
+  // A rider walks as the mount's space walks (issue 1055).
+  const riding = tokenFootprint(token);
+  const path = here ? [] : findPath(map.terrain, map.width, map.height, occupied, token, destination, riding, token.movement === "fly", traits);
   if (!path) {
     return { error: `No path to (${destination.x},${destination.y}); walls block the way.`, retry: true };
   }
@@ -269,7 +288,7 @@ export function walkCharacter(
   const steps = awayFromFear(token, path, fear);
   const walk = here
     ? { at: { x: token.x, y: token.y }, spent: 0, reachedEnd: true }
-    : walkPathWithBudget(map.terrain, map.width, steps, Math.floor((fullTiles - standCost) / factor), traits, token);
+    : walkPathWithBudget(map.terrain, map.width, steps, Math.floor((fullTiles - standCost) / factor), traits, token, riding > 1 ? { height: map.height, occupied, footprint: riding } : undefined);
   if (!walk.at) {
     const why = fear.length ? `${sheet.name} is frightened and cannot move closer to what it fears.` : `${sheet.name} has no movement left for that.`;
     return { error: `${why}${stillAt(listTokens(map.id), token)}`, refused: "rules" };

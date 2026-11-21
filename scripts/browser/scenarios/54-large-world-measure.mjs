@@ -70,7 +70,7 @@ export default {
           await searchBox.waitFor({ timeout: 30_000 });
           const done = Date.now();
           const sizes = await answer.request().sizes();
-          openings.push({ firstUsableMs: done - opened, afterAnswerMs: done - answered, answerMs: answered - opened, wireKb: Math.round(sizes.responseBodySize / 1024), encoding: answer.headers()["content-encoding"] ?? "none" });
+          openings.push({ firstUsableMs: done - opened, afterAnswerMs: done - answered, answerMs: answered - opened, wireKb: Math.round(sizes.responseBodySize / 1024), encoding: answer.headers()["x-odm-packed"] ?? answer.headers()["content-encoding"] ?? "none" });
         }
         result.firstUsableMs = median(openings.map((entry) => entry.firstUsableMs));
         result.afterAnswerMs = median(openings.map((entry) => entry.afterAnswerMs));

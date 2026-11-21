@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/locale";
-import { WIELD_LABEL, changeWears, gearWornState, isAttunable, isWeaponRow, isWornGear, itemStatus } from "@/components/sheet/sheet-state";
+import { WIELD_LABEL, changeWears, gearWornState, isAttunable, isWeaponRow, isWornGear, itemStatus, wearLock } from "@/components/sheet/sheet-state";
 import { isHeldFocus } from "@/components/sheet/paperdoll-logic";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { guessStands, matchArmor } from "@/lib/srd/armor";
@@ -71,16 +71,15 @@ export function SheetGearRow({
   })();
   const isArmor = matchArmor(item) !== null;
   const isShield = matchArmor(item)?.category === "shield";
-  const armorLocked = inCombat && isArmor && !isShield;
-  // A shield takes the action, on the character's own turn.
-  const shieldLocked = inCombat && isShield && !myTurn;
+  // What the fight bars now (sheet-state.ts wearLock): the route refused an
+  // off-turn change while the button stayed open, so the refusal was the
+  // first a player heard of it.
+  const lock = wearLock(item, { inCombat, myTurn });
+  const armorLocked = lock === "armor";
+  const shieldLocked = lock === "shield";
   const isWeapon = !isArmor && isWeaponRow(item);
-  const weaponLocked = inCombat && isWeapon && !myTurn;
-  // A cloak, a ring or boots go on and come off with the same free object
-  // interaction, on the character's own turn (issue #424). The route refused
-  // it off turn while the button stayed open, so the refusal was the first a
-  // player heard of it.
-  const wornLocked = inCombat && !isArmor && !isWeapon && !myTurn;
+  const weaponLocked = lock === "weapon";
+  const wornLocked = lock === "worn";
   const weaponHint = !isWeapon
     ? undefined
     : weaponLocked
@@ -255,6 +254,13 @@ type GearAsk = Record<string, GearChange & { layered?: boolean }>;
 // The swap question open on one row: what was asked, and what fills its place.
 export type PendingWear = { name: string; conflict: WearConflict; change: GearChange };
 
+// The question a change must ask before it is posted, or null when it can go
+// straight through: a press on a row and a drop on the paperdoll both ask it.
+export function wearQuestion(item: EquipmentItem, equipment: EquipmentItem[], change: GearChange): PendingWear | null {
+  const conflict = changeWears(item, equipment, change) ? wearConflict(item, equipment) : null;
+  return conflict ? { name: item.name, conflict, change } : null;
+}
+
 // Every wearable row of a sheet. A press that would put a row on where its
 // kind is already worn opens the question instead of posting; the server
 // refuses the same change with the same conflict (src/lib/dm/usage-rules.ts
@@ -300,9 +306,9 @@ export function SheetGearRows({
         dead={dead}
         busy={busy}
         onGear={(change) => {
-          const conflict = changeWears(item, sheet.equipment, change) ? wearConflict(item, sheet.equipment) : null;
-          onPending(conflict ? { name: item.name, conflict, change } : null);
-          if (!conflict) {
+          const question = wearQuestion(item, sheet.equipment, change);
+          onPending(question);
+          if (!question) {
             onGear({ [item.name]: change });
           }
         }}

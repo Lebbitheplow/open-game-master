@@ -2,11 +2,10 @@
 // Vengeance, Conquest and Redemption (scripts/clauses/divine.json): clauses
 // nobody had run a check for. Each scene stages the feature and answers with
 // one check per clause. See scripts/lib/sweep-clauses-divine.mjs for the rig.
-import { assert, modOf, castingScore, profOf } from "./sweep-clauses-divine.mjs";
+import { assert } from "./sweep-clauses-divine.mjs";
 import { call as callRoute } from "./enforce-campaign.mjs";
 
 const brief = (value, length = 220) => JSON.stringify(value)?.slice(0, length);
-const cha = (level) => modOf(castingScore(level));
 // Every save of a dummy at +0 but the ones named: a save rolled with the
 // wrong ability shows as the other outcome.
 export const saveMods = (mods = {}) => ({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, ...mods });
@@ -360,5 +359,3 @@ export const RO_PALADIN_A = {
     return { "1d6-half-level": () => assert.equal(now, 40 + 4 + Math.floor(15 / 2), `at 40 of 100 hit points the paladin ended a turn, the d6 a 4, and stands at ${now}`) };
   },
 };
-
-export { profOf, cha };

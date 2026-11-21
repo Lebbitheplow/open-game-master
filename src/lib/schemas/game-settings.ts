@@ -20,7 +20,6 @@ import { APPEARANCE_THEME_IDS } from "@/lib/appearance-themes";
 export {
   GENRES,
   type CampaignLengthSetting,
-  type ConscienceSetting,
   type DicePolicy,
   type DmModeSetting,
   type Genre,

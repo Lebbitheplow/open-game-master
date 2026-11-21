@@ -30,11 +30,11 @@ export interface AppearanceDefinition {
 export const APPEARANCE_THEMES = [
   {
     id: "arcane", name: "Arcane", description: "Indigo stone, celestial brass, and amethyst fittings.", icon: "sparkles",
-    baseStyle: "celestial", cornerScale: 4,
+    baseStyle: "celestial",
     art: {
       texture: "/assets/themes/arcane/indigo-stone-v1.webp",
       frame: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
-      corner: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
+      corner: "/assets/themes/arcane/astral-brass-clasp-v1.webp",
       backdrop: "/assets/themes/arcane/astral-observatory-v1.webp",
     },
   },
@@ -49,31 +49,29 @@ export const APPEARANCE_THEMES = [
   },
   {
     id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church",
-    genres: ["dark_fantasy", "horror"], cornerScale: 4,
+    genres: ["dark_fantasy", "horror"],
     art: {
       texture: "/assets/themes/gothic/cathedral-slate-v1.webp",
       frame: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
-      corner: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
+      corner: "/assets/themes/gothic/rose-window-briar-v1.webp",
       backdrop: "/assets/themes/gothic/moonlit-cloister-v1.webp",
     },
   },
   {
     id: "hearth", name: "Hearth & Haven", description: "Warm parchment, crafted oak, and welcoming amber lamplight.", icon: "flame",
-    cornerScale: 4,
     art: {
       texture: "/assets/themes/hearth/honey-oak-v1.webp",
       frame: "/assets/themes/hearth/carved-oak-frame-v1.webp",
-      corner: "/assets/themes/hearth/carved-oak-frame-v1.webp",
+      corner: "/assets/themes/hearth/oak-brass-strap-hinge-v1.webp",
       backdrop: "/assets/themes/hearth/fireside-haven-v1.webp",
     },
   },
   {
     id: "kingdoms", name: "High Kingdoms", description: "Ivory vellum, royal blue, and illuminated heraldry.", icon: "shield",
-    cornerScale: 4,
     art: {
       texture: "/assets/themes/kingdoms/ivory-vellum-v1.webp",
       frame: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
-      corner: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
+      corner: "/assets/themes/kingdoms/wheat-rosette-gilt-scroll-v1.webp",
       backdrop: "/assets/themes/kingdoms/royal-council-hall-v1.webp",
     },
   },

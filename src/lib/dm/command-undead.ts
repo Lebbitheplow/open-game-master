@@ -16,7 +16,7 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { listSheets, patchSheet } from "@/lib/db/sheets";
 import { addConditionInstance, removeConditionInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { publishPersisted } from "@/lib/events";
@@ -186,7 +186,3 @@ export function commandedNote(holder: string, creature: string): string {
   return `${creature} now fights on ${holder}'s side and obeys ${holder}'s commands: give it a standing order with declare_intent (its enemyId and the creature to attack), and the server runs its turns against ${holder}'s foes. It still will not attack ${holder}.`;
 }
 
-// The sheet holder's name, read fresh.
-export function holderName(holderId: string, fallback: string): string {
-  return getSheetById(holderId)?.name ?? fallback;
-}

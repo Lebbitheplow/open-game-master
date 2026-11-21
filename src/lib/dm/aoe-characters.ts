@@ -11,6 +11,7 @@ import { droneEvades } from "@/lib/dm/genre-cc-a-drones";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
+import { getMounts } from "@/lib/db/mounts";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import type { AoeSpellPlan } from "@/lib/dm/aoe-spell";
 import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
@@ -248,8 +249,12 @@ export function aoeOnCharacters(input: {
         row.effects = effects;
       }
     }
-    // The mount under them stands in the same square (mount-area.ts).
-    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), parts: blast, spell: Boolean(input.spell), magical: Boolean(enemyUse?.magical), reason, sheets, sheetsById });
+    // The mount under them stands in the same square (mount-area.ts), and is
+    // caught once: a creature mount the call also names (an independent one
+    // is in the order, so the model names it) has its own row here, and was
+    // struck a second time under its rider.
+    const underneath = getMounts(campaign.id)[sheet.id]?.sheetId;
+    const ridden = underneath && pcTargets.some((target) => target.id === underneath) ? null : areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), parts: blast, spell: Boolean(input.spell), magical: Boolean(enemyUse?.magical), reason, sheets, sheetsById });
     if (ridden) {
       row.mount = ridden;
     }

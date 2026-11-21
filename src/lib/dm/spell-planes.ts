@@ -29,6 +29,7 @@ import {
 } from "@/lib/srd/condition-effect-queries";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { finishEncounter } from "@/lib/dm/enemy-damage";
+import { partPair } from "@/lib/dm/enemy-riders";
 import { leftBehind } from "@/lib/dm/swallow";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -134,11 +135,13 @@ export function sendHome(
   // asked while its token is still there.
   const behind = encounter ? leftBehind(campaign, encounter.id, enemy, "goes") : null;
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  // Sent away from under its rider, or off its mount (enemy-riders.ts).
+  const parted = partPair(campaign, enemy, true);
   if (map) {
     removeTokenByRef(map.id, enemy.id);
   }
   if (encounter && !listEnemies(encounter.id).some((entry) => entry.status === "alive")) {
     finishEncounter(campaign, turn, encounter, "enemies_fled", sheets, sheetsById);
   }
-  return `${enemy.displayName} is forced back to its home plane by ${spell}${stays}.${behind ? ` ${behind}` : ""}`;
+  return `${enemy.displayName} is forced back to its home plane by ${spell}${stays}.${behind ? ` ${behind}` : ""}${parted ? ` ${parted}` : ""}`;
 }

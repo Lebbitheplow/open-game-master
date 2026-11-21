@@ -234,10 +234,8 @@ export function searchAction(
     sheet,
     { skill },
     `${sheet.name}: Search (${skill === "perception" ? "Perception" : "Investigation"})`,
+    turn,
   );
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
   // A hidden trap set on the board that the check meets (set-traps.ts).
   const traps = revealSetTraps(campaign, sheet, skill, check.total);
   return {

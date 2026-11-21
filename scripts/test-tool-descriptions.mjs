@@ -42,7 +42,8 @@ function descriptions(tool) {
   const walk = (full, cut, path) => {
     if (!full || typeof full !== "object") return;
     // An argument the compact set leaves off (tool-profiles.ts COMPACT_OMITS) has no cut to read.
-    if (!cut && COMPACT_OMITS[tool.function.name]?.includes(path.split(".").at(-1))) return;
+    // A field of a list's entries is named "list[].field" there.
+    if (!cut && COMPACT_OMITS[tool.function.name]?.some((name) => name.split("[].").at(-1) === path.split(".").at(-1))) return;
     for (const key of Object.keys(full)) {
       if (key === "description" && typeof full[key] === "string") found.push([path, full[key], cut[key]]);
       else walk(full[key], cut[key], key === "properties" ? path : key === "items" ? path : `${path}.${key}`);

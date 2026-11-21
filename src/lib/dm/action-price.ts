@@ -34,8 +34,6 @@ export const ACTIONS = [
   "wake",
 ] as const;
 
-export type TakeActionName = (typeof ACTIONS)[number];
-
 // The words each action is priced under. Haste's extra action reads them
 // (src/lib/dm/action-budget.ts): one weapon attack, Dash, Disengage, Hide
 // or Use an Object.

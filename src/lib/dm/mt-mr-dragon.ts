@@ -89,7 +89,7 @@ function furyTargets(ctx: SpendContext, encounter: Encounter): EncounterEnemy[] 
 
 // Explosive Fury on the creatures chosen: one roll of 3d10, a Dexterity save
 // each, nothing on a success.
-function explosiveFury(ctx: SpendContext, encounter: Encounter, targets: EncounterEnemy[], type: string): string[] {
+function explosiveFury(ctx: SpendContext, targets: EncounterEnemy[], type: string): string[] {
   if (!targets.length) {
     return [];
   }
@@ -134,7 +134,7 @@ export function aspectOfTheWyrm(ctx: SpendContext, ward: boolean): Resolution {
   const condition = ward ? `${WYRM_WARD} (${wardType})` : WYRM_FRIGHTEN;
   const old = sheet.conditions.filter((entry) => isConditionNamed(entry, WYRM_FRIGHTEN, WYRM_WARD));
   const cleared = removeConditions(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, old);
-  const lines = fury && encounter ? explosiveFury(ctx, encounter, caught, fury) : [];
+  const lines = fury && encounter ? explosiveFury(ctx, caught, fury) : [];
   return {
     patch: {
       conditions: [...cleared.conditions, condition],

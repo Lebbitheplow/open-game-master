@@ -3,14 +3,13 @@
 // and the table note and sheet push every engine sends
 // (src/lib/dm/afflictions.ts, src/lib/dm/lifestyle.ts).
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getClock, setClock } from "@/lib/db/clock";
 import { insertCampaignMessage } from "@/lib/db/messages";
-import { insertRoll } from "@/lib/db/rolls";
-import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishWithSeq } from "@/lib/events";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -24,13 +23,6 @@ export function tableNote(campaign: Campaign, content: string, glyph: SystemGlyp
   const seq = allocateSeq(campaign.id);
   const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph, content });
   publishWithSeq(campaign.id, seq, "message_added", { message });
-}
-
-export function publishSheetOf(campaignId: string, sheetId: string) {
-  const sheet = getSheetById(sheetId);
-  if (sheet) {
-    publishPersisted(campaignId, "sheet_updated", { sheet });
-  }
 }
 
 // ---- state on the clock ----
@@ -118,7 +110,7 @@ export function characterSave(
   // The player's own save (src/lib/dm/character-roll.ts; WAVE1 R5): on
   // physical dice they roll it.
   const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail, dc: input.dc, settleHeldDie: waits });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -127,21 +119,21 @@ export function characterSave(
     dc: input.dc,
     result: outcome,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return { success: outcome.total >= input.dc, total: outcome.total, failBy: Math.max(0, input.dc - outcome.total), autoFailed: false };
 }
 
 // A die the table sees, for a duration or a DC drop.
 export function publicDie(campaign: Campaign, sheet: CharacterSheet | null, expression: string, detail: string): number {
   const outcome = rollExpression(expression);
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet?.id ?? null,
     requestedBy: "dm",
     kind: "custom",
     detail: detail.slice(0, 200),
     result: outcome,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return outcome.total;
 }

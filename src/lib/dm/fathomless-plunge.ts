@@ -13,7 +13,6 @@
 // party's order; the result names anyone left behind, so the table can ask
 // the GM to change it.
 import type { Campaign } from "@/lib/db/campaigns";
-import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -27,11 +26,8 @@ const COMPANIONS = 5;
 
 export function plungeAfterSpend(
   campaign: Campaign,
-  turn: DmTurn | null,
   warlock: CharacterSheet,
   counterId: string | undefined,
-  sheets: CharacterSheet[],
-  sheetsById: Map<string, CharacterSheet>,
 ): Record<string, unknown> {
   if (counterId !== PLUNGE) {
     return {};
