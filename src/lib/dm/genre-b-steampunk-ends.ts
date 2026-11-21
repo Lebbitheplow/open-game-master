@@ -26,7 +26,7 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { BOILER_STRAIN, FULL_THROTTLE } from "@/lib/srd/genre-b-steampunk-conditions";
@@ -55,7 +55,7 @@ export function settleFullThrottle(campaign: Campaign): string[] {
     }
     const turn = openStandInTurn(campaign.id);
     try {
-      const amount = Number(rollCard(campaign, turn, sheet.id, "damage", `${sheet.name}: Full Throttle ends`, "3d10", null).total);
+      const amount = Number(rollCard(campaign, turn, sheet.id, "damage", "Full Throttle ends", "3d10", sheetAttacker(sheet)).total);
       const hurt = applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount, type: "fire", reason: "Full Throttle ends" });
       const after = getSheetById(sheet.id) ?? sheet;
       lines.push(`${sheet.name}'s Full Throttle ends and the boiler scalds them: ${hurt.error ? `${amount} fire` : `${sheet.currentHp - after.currentHp} fire damage of the ${amount} rolled`} (HP ${after.currentHp}/${after.maxHp}).`);

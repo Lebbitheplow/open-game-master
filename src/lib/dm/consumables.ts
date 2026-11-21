@@ -40,7 +40,8 @@ import { markItemSpellOnTurn } from "@/lib/dm/item-casts";
 import { casterStateProblem } from "@/lib/dm/cast-rules";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sourceDamage } from "@/lib/dm/roll-card";
+import { itemSource } from "@/lib/roll-sources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag, itemRow, type TaggedItem } from "@/lib/srd/item-tags";
@@ -277,7 +278,8 @@ export function applyConsumable(
       return "error" in applied ? { effect: `No effect: ${String(applied.error)}` } : { effect: `${sheet.name} can fly at ${feet} feet, and hover, for an hour; if the hour ends aloft they fall.` };
     }
     case "poison": {
-      const damage = rollCard(campaign, null, sheet.id, "damage", `${itemName}: it was poison`, "3d6", null);
+      // Nobody rolled it: the roll is the draught's, and the drinker its target.
+      const damage = sourceDamage(campaign, null, itemSource(itemName), { characterId: sheet.id, names: [sheet.name] }, { dice: "3d6", type: "poison" });
       const hurt = applyPcDamage(campaign, turnId, sheet, { amount: damage.total, type: "poison", reason });
       const save = rollSave(campaign, getSheetById(sheet.id) ?? sheet, 13, `${sheet.name}: CON save vs ${itemName}`);
       if (save.success) {
@@ -313,7 +315,7 @@ function poisonCourse(campaign: Campaign, turnId: string, sheetId: string, itemN
       break;
     }
     rounds += 1;
-    const hit = rollCard(campaign, null, before.id, "damage", `${itemName}: the poison, turn ${rounds}`, `${dice}d6`, null);
+    const hit = sourceDamage(campaign, null, itemSource(itemName), { characterId: before.id, names: [before.name] }, { note: `turn ${rounds}`, dice: `${dice}d6`, type: "poison" });
     dealt += hit.total;
     applyPcDamage(campaign, turnId, before, { amount: hit.total, type: "poison", reason: itemName });
     const after = getSheetById(sheetId);

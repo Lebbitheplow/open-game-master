@@ -71,7 +71,7 @@ import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import { weaponNamed } from "@/lib/srd/weapons";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { castersDamage, rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { noteCurseHeal } from "@/lib/dm/master-of-hexes";
 
@@ -466,7 +466,7 @@ export function authoredOnHit(
       delete meta[cursed];
       patchEnemyConditions(enemy.id, cleared, meta);
       const cleric = getSheetById(curse.source);
-      const amount = rollCard(campaign, null, cleric?.id ?? null, "damage", rollAgainst("Order's Wrath", enemy.displayName), curse.dice ?? "2d8", cleric ? sheetAttacker(cleric) : null).total;
+      const amount = castersDamage(campaign, null, cleric, rollAgainst("Order's Wrath", enemy.displayName), "Order's Wrath", enemy.displayName, { dice: curse.dice ?? "2d8", type: curse.type ?? "psychic" }).total;
       const fresh = getEnemy(enemy.id);
       if (fresh) {
         lines.push(hurtEnemy(campaign, encounter, fresh, amount, curse.type ?? "psychic", "Order's Wrath"));

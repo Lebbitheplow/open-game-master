@@ -344,13 +344,13 @@ await test("An enemy's opportunity attack is the enemy's, against the character 
   expectRoll(damage, { kind: "damage", ...expected });
 });
 
-await test("A falling enemy's damage has no attacker and names the creature it lands on.", async () => {
+await test("A falling enemy's damage is the fall's roll and names the creature it lands on.", async () => {
   const [enemy] = await stage(aria);
   const before = snapshot();
   const out = await mk.forced([3, 3, 3], () => world.invoke("damage_enemy", { enemyId: enemy.id, source: "hazard", fallFeet: 30 }));
   assert.equal(out.ok, true, out.error);
   const [fall] = combatSince(before);
-  expectRoll(fall, { kind: "damage", attacker: null, detail: `30 ft fall (3d6 bludgeoning) on ${enemy.displayName}`, characterId: null });
+  expectRoll(fall, { kind: "damage", attacker: { kind: "hazard", id: null, name: "the fall", hazard: "fall" }, detail: `30 ft, 3d6 bludgeoning on ${enemy.displayName}`, characterId: null });
 });
 
 await test("The post-fight summary does not give a character the enemy's natural 20 against them.", async () => {
@@ -381,7 +381,7 @@ await test("cast_at_enemy stores a public damage card of its dice: the caster's,
   assert.ok(onTurn(spells.campaignId, card.id), "the card is not on the turn's rolls");
 });
 
-await test("cast_at_player stores a public damage card: the casting enemy's, or nobody's for a trap, against the character.", async () => {
+await test("cast_at_player stores a public damage card: the casting enemy's, or its named source's, against the character.", async () => {
   const { world: spells, sheets: [fighter], enemies: [shaman] } = await table([{ ...FIGHTER, name: "Aria" }], 1, { spells: ["Sacred Flame"] });
   const before = new Set(listRecentRolls(spells.campaignId, 200).map((roll) => roll.id));
   spells.dice(1, 6);
@@ -394,8 +394,261 @@ await test("cast_at_player stores a public damage card: the casting enemy's, or 
   assert.equal(trap.ok, true, trap.error);
   const [spell, dart] = combatSince(before, spells.campaignId);
   expectRoll(spell, { kind: "damage", attacker: asEnemy(shaman), detail: "Sacred Flame vs Aria", characterId: fighter.id });
-  expectRoll(dart, { kind: "damage", attacker: null, detail: "Poison dart trap vs Aria", characterId: fighter.id });
+  expectRoll(dart, { kind: "damage", attacker: { kind: "hazard", id: null, name: "Poison dart trap", hazard: "named" }, detail: "1d4 poison on Aria", characterId: fighter.id });
   assert.ok(onTurn(spells.campaignId, spell.id), "the card is not on the turn's rolls");
+});
+
+// ---- rolls nobody at the table made (issue 915, ruling 2) ----
+// Each names its source as its attacker: a "hazard" with no id, a field that
+// says what it is, and the name it was given (src/lib/roll-sources.ts). The
+// character or creature it lands on is its target: characterId for a
+// character, and the detail says who. Named in front of the card, a source is
+// not named again in the detail.
+
+const source = (hazard, name) => ({ kind: "hazard", id: null, name, hazard });
+const idsOf = (campaignId) => new Set(listRecentRolls(campaignId, 200).map((roll) => roll.id));
+
+await test("A trap's attacks and the damage of each are the trap's own rolls, against the character it springs on.", async () => {
+  const { world: traps, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(traps.campaignId);
+  // The first dart's d20: a hit whatever the armour.
+  traps.dice(20);
+  const out = await traps.invoke("apply_hazard", { type: "trap", trap: "Poison Darts", characterIds: [fighter.id] });
+  traps.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const rolls = combatSince(before, traps.campaignId);
+  assert.ok(rolls.some((roll) => roll.kind === "attack") && rolls.some((roll) => roll.kind === "damage"), JSON.stringify(rolls.map((roll) => roll.detail)));
+  for (const roll of rolls) {
+    assert.deepEqual(roll.attacker, source("trap", "Poison Darts"), roll.detail);
+    assert.equal(roll.characterId, fighter.id, roll.detail);
+    assert.equal(roll.visibility, "public");
+    assert.ok(!roll.detail.includes("Poison Darts"), `the trap is named twice: ${roll.detail}`);
+    assert.match(roll.detail, roll.kind === "attack" ? /^Attack vs Aria, AC \d+$/ : / on Aria$/);
+  }
+});
+
+await test("A pit's fall is the fall's roll and its spikes are the pit's, against the character who fell in.", async () => {
+  const { world: traps, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(traps.campaignId);
+  const out = await traps.invoke("apply_hazard", { type: "trap", trap: "Spiked Pit", characterIds: [fighter.id] });
+  assert.equal(out.ok, true, out.error);
+  const [fall, spikes, ...more] = combatSince(before, traps.campaignId);
+  assert.deepEqual(more, []);
+  expectRoll(fall, { kind: "damage", attacker: source("fall", "the fall"), detail: "10 ft into Spiked Pit, 1d6 bludgeoning on Aria", characterId: fighter.id });
+  expectRoll(spikes, { kind: "damage", attacker: source("trap", "Spiked Pit"), detail: "2d10 piercing on Aria", characterId: fighter.id });
+});
+
+await test("A trap sprung on a creature is the trap's own roll too, against the creature.", async () => {
+  const { world: traps, enemies: [goblin] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(traps.campaignId);
+  traps.dice(20);
+  const out = await traps.invoke("apply_hazard", { type: "trap", trap: "Poison Darts", enemyIds: [goblin.id] });
+  traps.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const rolls = combatSince(before, traps.campaignId);
+  assert.ok(rolls.some((roll) => roll.kind === "attack") && rolls.some((roll) => roll.kind === "damage"), JSON.stringify(rolls.map((roll) => roll.detail)));
+  for (const roll of rolls) {
+    assert.deepEqual(roll.attacker, source("trap", "Poison Darts"), roll.detail);
+    assert.equal(roll.characterId, null);
+    assert.ok(!roll.detail.includes("Poison Darts"), `the trap is named twice: ${roll.detail}`);
+    assert.ok(roll.detail.includes(goblin.displayName), `the creature is not named: ${roll.detail}`);
+  }
+});
+
+await test("A spell the GM casts at a character with no creature behind it is the spell's own roll, or its named source's.", async () => {
+  const { world: spells, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(spells.campaignId);
+  const bare = await spells.invoke("cast_at_player", { characterId: fighter.id, spell: "Burning Hands", saveAbility: "dex", dc: 12, damage: "3d6", damageType: "fire", halfOnSave: true });
+  assert.equal(bare.ok, true, bare.error);
+  const named = await spells.invoke("cast_at_player", { characterId: fighter.id, spell: "Burning Hands", source: "a glyph on the door", saveAbility: "dex", dc: 12, damage: "3d6", damageType: "fire", halfOnSave: true });
+  assert.equal(named.ok, true, named.error);
+  const [first, second] = combatSince(before, spells.campaignId);
+  expectRoll(first, { kind: "damage", attacker: source("effect", "Burning Hands"), detail: "3d6 fire on Aria", characterId: fighter.id });
+  expectRoll(second, { kind: "damage", attacker: source("named", "a glyph on the door"), detail: "Burning Hands, 3d6 fire on Aria", characterId: fighter.id });
+});
+
+await test("A damage roll the GM asks the server to throw for a character is that character's own.", async () => {
+  const { world: asks, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(asks.campaignId);
+  const own = await asks.invoke("request_roll", { characterId: fighter.id, kind: "damage", expression: "1d8+3", reason: "a thrown chair" });
+  assert.equal(own.ok, true, own.error);
+  const [roll] = combatSince(before, asks.campaignId);
+  assert.ok(roll, "no damage roll was stored");
+  assert.deepEqual(roll.attacker, { kind: "sheet", id: fighter.id, name: "Aria" });
+  assert.equal(roll.characterId, fighter.id);
+});
+
+await test("The helpers that put a source's roll on record word it from what it threw and on whom, and do not say the source again.", async () => {
+  const { castDamage, castersDamage, sourceAttack, sourceDamage, sourceDamageThrown } = await import("../src/lib/dm/roll-card.ts");
+  const { rollExpression } = await import("../src/lib/dice.ts");
+  const { castSource, effectSource, fallSource, gmSource, itemSource, namedSource, trapSource } = await import("../src/lib/roll-sources.ts");
+  const { world: words, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const campaign = words.campaign();
+  const before = idsOf(words.campaignId);
+  const aria = { characterId: fighter.id, names: ["Aria"] };
+  sourceDamage(campaign, null, trapSource("Scything Blade"), aria, { dice: "2d10", type: "slashing" });
+  sourceDamage(campaign, null, fallSource(), aria, { note: "30 ft", dice: "3d6", type: "bludgeoning" });
+  sourceDamage(campaign, null, itemSource("Potion of Poison"), aria, { note: "turn 2", dice: "2d6", type: "poison" });
+  sourceAttack(campaign, null, trapSource("Scything Blade"), { characterId: fighter.id, name: "Aria" }, 16, "1d20+8");
+  // A character's later damage is theirs while their sheet is there, a creature's is that creature's, and the spell's own once neither is left.
+  castersDamage(campaign, null, fighter, "Bestow Curse vs Goblin", "Bestow Curse", "Goblin", { dice: "1d8", type: "necrotic" });
+  castersDamage(campaign, null, null, "Bestow Curse vs Goblin", "Bestow Curse", "Goblin", { dice: "1d8", type: "necrotic" });
+  castersDamage(campaign, null, null, "Acid Arrow (second burn) vs Aria", "Acid Arrow", "Aria", { dice: "2d4", type: "acid" }, { id: "enemy-mage", displayName: "Mage" });
+  // Dice a site threw itself are worded the same way.
+  sourceDamageThrown(campaign, null, gmSource(), { names: ["Goblin 1", "Goblin 2"] }, { dice: "2d6", type: "fire" }, rollExpression("2d6"));
+  // A cast with no creature behind it: the named source says its spell, the spell alone says what it throws, and so do the GM's own dice.
+  const on = { characterId: fighter.id, name: "Aria" };
+  castDamage(campaign, null, castSource("a glyph on the door", "Burning Hands"), "Burning Hands", on, { dice: "3d6", type: "fire" });
+  castDamage(campaign, null, castSource(undefined, "Burning Hands"), "Burning Hands", on, { dice: "3d6", type: "fire" });
+  castDamage(campaign, null, castSource("a gout of flame", undefined), undefined, on, { dice: "2d6", type: "fire" });
+  castDamage(campaign, null, castSource("  ", ""), undefined, on, { dice: "2d6", type: "fire" });
+  // A trap that casts a spell says the spell too.
+  castDamage(campaign, null, castSource("a rune trap", "Fireball", true), "Fireball", on, { dice: "8d6", type: "fire" });
+  const told = combatSince(before, words.campaignId).map((roll) => [roll.attacker.kind === "hazard" ? `${roll.attacker.hazard}:${roll.attacker.name}` : roll.attacker.name, roll.kind, roll.detail, roll.characterId]);
+  assert.deepEqual(told, [
+    ["trap:Scything Blade", "damage", "2d10 slashing on Aria", fighter.id],
+    ["fall:the fall", "damage", "30 ft, 3d6 bludgeoning on Aria", fighter.id],
+    ["item:Potion of Poison", "damage", "turn 2, 2d6 poison on Aria", fighter.id],
+    ["trap:Scything Blade", "attack", "Attack vs Aria, AC 16", fighter.id],
+    ["Aria", "damage", "Bestow Curse vs Goblin", fighter.id],
+    ["effect:Bestow Curse", "damage", "1d8 necrotic on Goblin", null],
+    ["Mage", "damage", "Acid Arrow (second burn) vs Aria", null],
+    ["gm:the GM", "damage", "2d6 fire on Goblin 1, Goblin 2", null],
+    ["named:a glyph on the door", "damage", "Burning Hands, 3d6 fire on Aria", fighter.id],
+    ["effect:Burning Hands", "damage", "3d6 fire on Aria", fighter.id],
+    ["named:a gout of flame", "damage", "2d6 fire on Aria", fighter.id],
+    ["gm:the GM", "damage", "2d6 fire on Aria", fighter.id],
+    ["trap:a rune trap", "damage", "Fireball, 8d6 fire on Aria", fighter.id],
+  ]);
+  // A name is kept as it was given, and a source with no name is the GM's own dice.
+  assert.deepEqual(namedSource("  a gout of flame "), { kind: "hazard", id: null, name: "a gout of flame", hazard: "named" });
+  assert.deepEqual(trapSource(""), gmSource());
+  assert.deepEqual(effectSource("  "), gmSource());
+});
+
+await test("A spell that hits with no roll and no creature behind it is the spell's own roll, and the hit's record names the same source.", async () => {
+  const { openHits } = await import("../src/lib/dm/last-hit.ts");
+  const { world: spells, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(spells.campaignId);
+  const out = await spells.invoke("cast_at_player", { characterId: fighter.id, spell: "Magic Missile", damage: "3d4+3", damageType: "force" });
+  assert.equal(out.ok, true, out.error);
+  const [roll] = combatSince(before, spells.campaignId);
+  expectRoll(roll, { kind: "damage", attacker: source("effect", "Magic Missile"), detail: "3d4+3 force on Aria", characterId: fighter.id });
+  const record = openHits(spells.campaignId, fighter.id).at(-1);
+  assert.ok(record, "the missiles left no record of the hit");
+  assert.deepEqual(record.attacker, roll.attacker);
+});
+
+await test("An improvised action's damage is the character's roll, and its card does not say their name twice.", async () => {
+  const { world: acts, sheets: [fighter], enemies: [goblin] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(acts.campaignId);
+  acts.say("dm", "A chandelier hangs low over the hall on a single rope.");
+  // The creature's d20, then the character's: the action carries.
+  acts.dice(1, 20);
+  const out = await acts.invoke("take_action", { characterId: fighter.id, action: "improvise", reason: "drops the chandelier", skill: "athletics", difficulty: "easy", scene: "the chandelier", targetEnemyId: goblin.id, damage: "1d10", damageType: "bludgeoning" });
+  acts.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const roll = combatSince(before, acts.campaignId).find((entry) => entry.kind === "damage");
+  assert.ok(roll, `the improvised action rolled no damage: ${JSON.stringify(out).slice(0, 300)}`);
+  expectRoll(roll, { kind: "damage", attacker: { kind: "sheet", id: fighter.id, name: "Aria" }, detail: "drops the chandelier", characterId: fighter.id });
+});
+
+await test("One hazard names one source for everyone it catches: the words the GM gave it, a trap by them when it is one, else the GM's own dice.", async () => {
+  const { world: pipes, sheets: [fighter], enemies: [goblin] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const rollsOf = async (args) => {
+    const before = idsOf(pipes.campaignId);
+    // Each save's d20: a failure, so the damage is rolled.
+    pipes.dice(1, 1);
+    const out = await pipes.invoke("apply_hazard", { characterIds: [fighter.id], enemyIds: [goblin.id], saveAbility: "dex", dc: 25, damage: "2d6", damageType: "fire", ...args });
+    pipes.clearDice();
+    assert.equal(out.ok, true, out.error);
+    return combatSince(before, pipes.campaignId);
+  };
+  const named = await rollsOf({ type: "generic", reason: "a burst pipe" });
+  assert.equal(named.length, 2, JSON.stringify(named.map((roll) => roll.detail)));
+  for (const roll of named) {
+    assert.deepEqual(roll.attacker, source("named", "a burst pipe"), roll.detail);
+    assert.ok(!roll.detail.includes("burst pipe"), `the source is said twice: ${roll.detail}`);
+  }
+  assert.equal(named.find((roll) => roll.characterId)?.detail, "2d6 fire on Aria");
+  assert.ok(named.find((roll) => !roll.characterId)?.detail.endsWith(` on ${goblin.displayName}`));
+  // Left unnamed, it is the GM's own dice: the words the server has for it sit in a sentence, never in front of a roll.
+  const { rollCardLabel } = await import("../src/lib/roll-labels.ts");
+  const plain = (key) => key;
+  for (const [args, words] of [[{ type: "generic" }, "the hazard"], [{ type: "trap" }, "a trap"]]) {
+    const unnamed = await rollsOf(args);
+    assert.ok(unnamed.length >= 2, JSON.stringify(unnamed.map((roll) => roll.detail)));
+    for (const roll of unnamed) {
+      assert.deepEqual(roll.attacker, source("gm", words), roll.detail);
+      assert.ok(rollCardLabel(plain, roll, "Aria").startsWith("The GM · "), rollCardLabel(plain, roll, "Aria"));
+    }
+  }
+  // A trap the GM describes is a trap by their words, for the character and the creature alike.
+  const trap = await rollsOf({ type: "trap", reason: "a scything blade" });
+  assert.ok(trap.length >= 2, JSON.stringify(trap.map((roll) => roll.detail)));
+  for (const roll of trap) {
+    assert.deepEqual(roll.attacker, source("trap", "a scything blade"), roll.detail);
+  }
+});
+
+await test("A trap cast_at_player is told of is the trap's roll.", async () => {
+  const { world: spells, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(spells.campaignId);
+  spells.dice(1);
+  const told = await spells.invoke("cast_at_player", { characterId: fighter.id, source: "a dart trap", hazard: "trap", saveAbility: "dex", dc: 25, damage: "1d4", damageType: "poison" });
+  spells.clearDice();
+  assert.equal(told.ok, true, told.error);
+  const [roll] = combatSince(before, spells.campaignId);
+  expectRoll(roll, { kind: "damage", attacker: source("trap", "a dart trap"), detail: "1d4 poison on Aria", characterId: fighter.id });
+});
+
+await test("Dice the GM sends for harm name the words they gave it, and the hit's record names the same source.", async () => {
+  const { openHits } = await import("../src/lib/dm/last-hit.ts");
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+  const { world: harm, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const turn = createDmTurn(harm.campaignId, []);
+  const before = idsOf(harm.campaignId);
+  const out = await invokeEngine(harm.campaign(), { kind: "ai", turnId: turn.id }, { name: "apply_damage", args: { characterId: fighter.id, dice: "2d6", type: "bludgeoning", reason: "falling rubble" } });
+  assert.equal(out.ok, true, out.error);
+  const [roll] = combatSince(before, harm.campaignId);
+  expectRoll(roll, { kind: "damage", attacker: source("named", "falling rubble"), detail: "2d6 bludgeoning on Aria", characterId: fighter.id });
+  const record = openHits(harm.campaignId, fighter.id).at(-1);
+  assert.ok(record, "the harm left no record of the hit");
+  assert.deepEqual(record.attacker, roll.attacker);
+});
+
+await test("An area of harm with no creature behind it names the words the GM gave it, or is the GM's own dice, and names the creatures it catches.", async () => {
+  const { world: areas, enemies: [goblin] } = await table([{ ...FIGHTER, name: "Aria" }]);
+  const before = idsOf(areas.campaignId);
+  const out = await areas.invoke("aoe_damage", { enemyIds: [goblin.id], damage: "2d6", type: "fire", saveAbility: "dex", dc: 12, halfOnSave: true, reason: "a vat of oil catches" });
+  assert.equal(out.ok, true, out.error);
+  const [roll] = combatSince(before, areas.campaignId);
+  expectRoll(roll, { kind: "damage", attacker: source("named", "a vat of oil catches"), detail: `2d6 fire on ${goblin.displayName}`, characterId: null });
+  const again = idsOf(areas.campaignId);
+  const bare = await areas.invoke("aoe_damage", { enemyIds: [goblin.id], damage: "2d6", type: "fire", saveAbility: "dex", dc: 12, halfOnSave: true });
+  assert.equal(bare.ok, true, bare.error);
+  const [own] = combatSince(again, areas.campaignId);
+  expectRoll(own, { kind: "damage", attacker: source("gm", "the GM"), detail: `2d6 fire on ${goblin.displayName}`, characterId: null });
+});
+
+await test("A damage roll the GM asks of a player on their own dice lands as that character's roll.", async () => {
+  await kit.endFight();
+  setMemberRealDice(world.campaignId, aria.userId, true);
+  const before = snapshot();
+  const parked = await world.invoke("request_roll", { characterId: aria.id, kind: "damage", expression: "1d8+3", reason: "a thrown chair" });
+  assert.equal(parked.ok, true, parked.error);
+  const pending = listOpenPendingRolls(world.campaignId).find((entry) => entry.kind === "damage");
+  assert.ok(pending, "no damage roll was parked");
+  world.signIn({ id: aria.userId });
+  const out = await call(submitRoute, "POST", { dice: [5] }, { campaignId: world.campaignId, pendingRollId: pending.id });
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  setMemberRealDice(world.campaignId, aria.userId, false);
+  const [roll] = combatSince(before);
+  assert.ok(roll, "the damage the player rolled is on no record");
+  assert.deepEqual(roll.attacker, asSheet(aria));
+  assert.equal(roll.characterId, aria.id);
+  assert.match(roll.detail, /\(physical\)$/);
 });
 
 await test("Each damaging ray of Prismatic Spray stores a card: the caster's, against the creature it strikes.", async () => {

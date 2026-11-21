@@ -26,7 +26,27 @@ export type RollVisibility = (typeof ROLL_VISIBILITIES)[number] | "secret";
 // A character's bound creature has no id of its own (it lives on its owner's
 // sheet), so a pet's id is its owner's sheet id. characterId cannot say this:
 // it is the PC the roll concerns, the target of an enemy's attack.
-export type RollAttacker = { kind: "sheet" | "enemy" | "pet"; id: string; name: string };
+// A roll nobody at the table made names its source, a "hazard" with no id,
+// as a hit's record does (src/lib/dm/last-hit.ts): unnamed, it read as the
+// roll of the character it landed on. `hazard` says what the source is, so
+// no reader works that out from its name: a fall, the GM's own dice for
+// harm nothing names, a trap, an item, the effect of a spell or feature, or
+// a hazard by the words the GM gave it. Every source is built in
+// src/lib/roll-sources.ts.
+export type HazardKind = "fall" | "gm" | "trap" | "item" | "effect" | "named";
+export type RollSource = { kind: "hazard"; id: null; name: string; hazard: HazardKind };
+export type RollAttacker = { kind: "sheet" | "enemy" | "pet"; id: string; name: string } | RollSource;
+
+// The kind and roller of a roll whose kind is only known as it runs (a roll
+// card's own dice, the roll tools): an attack or damage roll takes
+// `otherwise` when nobody else is named, and the other kinds may name nobody.
+export function kindAndRoller(
+  kind: RollKind,
+  attacker: RollAttacker | null,
+  otherwise: RollAttacker,
+): { kind: "attack" | "damage"; attacker: RollAttacker } | { kind: Exclude<RollKind, "attack" | "damage">; attacker: RollAttacker | null } {
+  return kind === "attack" || kind === "damage" ? { kind, attacker: attacker ?? otherwise } : { kind, attacker };
+}
 
 export type StoredRoll = {
   id: string;
@@ -50,8 +70,9 @@ export type StoredRoll = {
   // call of its own or as a roll card landed (markRollSpent), so it pays for
   // no number sent later.
   applied: boolean;
-  // Attack and damage rolls: who rolled. Null when nobody did (a fall), for
-  // the roll tools' rolls, and for rolls stored before it was recorded.
+  // Attack and damage rolls: who rolled, or the source of a roll nobody made
+  // (a fall). Null for other kinds of roll, and for rolls stored before it
+  // was recorded.
   attacker: RollAttacker | null;
   createdAt: string;
 };
@@ -139,7 +160,7 @@ export function landRoll<T extends object>(rollId: string, targetEnemyId: string
   return result;
 }
 
-// An attack or damage roll must say who made it, or that nobody did.
+// An attack or damage roll must say who made it, or name its source.
 export type RollInsert = {
   campaignId: string;
   characterId?: string | null;
@@ -151,7 +172,7 @@ export type RollInsert = {
   visibility?: RollVisibility;
   messageId?: string | null;
 } & (
-  | { kind: "attack" | "damage"; attacker: RollAttacker | null }
+  | { kind: "attack" | "damage"; attacker: RollAttacker }
   | { kind: Exclude<RollKind, "attack" | "damage">; attacker?: RollAttacker | null }
 );
 

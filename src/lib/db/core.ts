@@ -2263,8 +2263,9 @@ function ensureSchema(db: SqliteDatabase) {
     // Who made an attack or damage roll, by name as they were when it was
     // rolled (src/lib/db/rolls.ts RollAttacker). character_id is the PC the
     // roll concerns, which for an enemy's attack is its target, so it cannot
-    // say who rolled. NULL: nobody did (a fall), a roll tool, or a roll
-    // stored before the column.
+    // say who rolled. A roll nobody made (a fall, a trap) names its source
+    // here. NULL: a roll that is neither an attack nor damage, or one stored
+    // before the column.
     ["attacker_json", `TEXT`],
   ]);
 

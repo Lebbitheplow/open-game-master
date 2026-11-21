@@ -22,10 +22,9 @@
 import { sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import type { RollAttacker } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { isValidExpression } from "@/lib/dice";
-import { rollAgainst } from "@/lib/roll-labels";
+import { castSource } from "@/lib/roll-sources";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
@@ -39,7 +38,7 @@ import { layPetFailedSave, layPetSpellConditions, type PetLaid } from "@/lib/dm/
 import { petDamageShare } from "@/lib/dm/pet-save-logic";
 import { petIntelligence, rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
 import { findPet, hurtPet, noPet } from "@/lib/dm/pet-tools";
-import { rollCard } from "@/lib/dm/roll-card";
+import { castDamage, enemyAttacker } from "@/lib/dm/roll-card";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 
@@ -245,8 +244,10 @@ export function castAtPet(campaign: Campaign, turn: DmTurn, args: CastAtPetArgs,
     ...(use?.corrections.length ? { corrected: use.corrections } : {}),
   };
   if (damage) {
-    const caster: RollAttacker | null = use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : null;
-    const outcome = rollCard(campaign, turn, null, "damage", rollAgainst(castName || args.source || "Effect", pet.name), damage, caster);
+    // A hazard with no creature behind it is the roll of the source the GM
+    // named, else of its spell, else the GM's own dice (cast-at-player.ts).
+    const caster = use ? enemyAttacker(use.enemy) : castSource(args.source, castName);
+    const outcome = castDamage(campaign, turn, caster, castName, { name: pet.name }, { dice: damage, type: damageType });
     // A creature's effect of two types: each share meets the pet's defenses
     // on its own (src/lib/dm/cast-at-player.ts does the same for a character).
     const secondType = byBlock ? use?.secondType : undefined;

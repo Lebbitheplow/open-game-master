@@ -136,6 +136,7 @@ import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
 import { actorOfCall, calledOnItsOwn, withActor } from "@/lib/dm/acting-party";
 import { openEffect } from "@/lib/dm/last-hit";
+import { harmSource, UNNAMED_HARM } from "@/lib/roll-sources";
 
 
 // DM stat authority: the model changes sheets ONLY through these tools.
@@ -939,7 +940,9 @@ function dmMutation(
         noCreature: true,
         reason,
       });
-      effect?.close({ raw: Math.min(amount, 200), type: args.type ?? "", name: args.spell?.trim() || reason || "the harm" });
+      // The source the harm's own dice name, when the model sent dice
+      // (ai-gate.ts): both are built from the call's spell and reason.
+      effect?.close({ raw: Math.min(amount, 200), type: args.type ?? "", by: harmSource(args.spell, reason, UNNAMED_HARM) });
       return { result: landed };
     }
     case "heal": {

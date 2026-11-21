@@ -30,7 +30,7 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { castersDamage, rollCard } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 
 // `rolled`: what the die showed on the attack roll that spent it (withMoteRoll).
@@ -129,7 +129,7 @@ export function moteBurst(campaign: Campaign, turn: DmTurn, mote: HeldMote | nul
       continue;
     }
     // The mote is the bard's: the burst is theirs.
-    amount ??= rollCard(campaign, turn, bard?.id ?? null, "damage", rollAgainst("Mote of Potential", enemy.displayName), `1${mote.die}`, bard ? sheetAttacker(bard) : null).total;
+    amount ??= castersDamage(campaign, turn, bard, rollAgainst("Mote of Potential", enemy.displayName), "Mote of Potential", enemy.displayName, { dice: `1${mote.die}`, type: "thunder" }).total;
     const dealt = Math.max(1, amount);
     applyEnemyDamage(campaign, turn, encounter, getEnemy(enemy.id) ?? enemy, dealt, sheets, sheetsById, "thunder", { magical: true });
     lines.push(`${enemy.displayName} takes ${dealt} thunder damage`);
