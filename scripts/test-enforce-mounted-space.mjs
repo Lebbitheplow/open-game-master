@@ -33,6 +33,8 @@ const { getMounts } = await import("../src/lib/db/mounts.ts");
 const { tilesApart, tokenFootprint } = await import("../src/lib/dm/board-reach.ts");
 const { buildPlayerMapView, footprintLookup, occupiedTiles } = await import("../src/lib/battlemap/view.ts");
 const { creaturesInBlast, spellAreaShape } = await import("../src/lib/dm/aoe-shape.ts");
+const { approachForCompanion } = await import("../src/lib/dm/companion-approach.ts");
+const { getEnemy } = await import("../src/lib/db/encounters.ts");
 const footprints = await import("../src/lib/battlemap/footprint.ts");
 
 const RIDER = { ...FIGHTER, speed: 30 };
@@ -118,6 +120,14 @@ await test("Reach is measured from the pair's space: an enemy against the horse'
   const swing = await world.invoke("pc_attack", { characterId: hero.id, attacks: [{ targetEnemyId: foe.id }] });
   assert.equal(swing.ok, true, swing.error);
   assert.deepEqual(at(world, hero.id), [5, 3], "the rider walked to reach an enemy already beside the horse");
+});
+
+await test("A companion whose horse's far side is against its target is in reach already: the server's turn for it does not walk the pair.", async () => {
+  const { world, hero, foe } = await mounted({ enemy: { x: 7, y: 4 } });
+  assert.equal(tilesApart(tokenOf(world, hero.id), tokenOf(world, foe.id)), 1, "setup: the enemy is not against the horse's flank");
+  const walked = approachForCompanion(world.campaign(), world.encounter(), world.sheet(hero.id), getEnemy(foe.id));
+  assert.equal(walked, null, `a companion already in reach was walked: ${walked}`);
+  assert.deepEqual(at(world, hero.id), [5, 3], "the pair stepped off a square it could already strike from");
 });
 
 await test("Riding out of an enemy's reach provokes its opportunity attack when the pair's last square leaves it.", async () => {
