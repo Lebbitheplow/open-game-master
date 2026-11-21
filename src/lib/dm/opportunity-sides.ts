@@ -16,11 +16,11 @@
 // so a wolf's bite at a dominated goblin walking off its packmate rolled one
 // d20 and never knocked it down.
 
-import { allocateSeq, getCampaignById } from "@/lib/db/campaigns";
+import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, saveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { listSheets } from "@/lib/db/sheets";
 import { enemyFootprint, type Footprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
@@ -39,7 +39,7 @@ import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { enemyOpportunityRiders, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, strikeCards, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
@@ -70,6 +70,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
   }
   const walkerSide = sideOf(encounter, "enemy", walkerId);
   const notes: string[] = [];
+  // The cards of each strike's line, by the line's place in `notes`.
+  const cards = new Map<number, string[]>();
   for (const reactor of listEnemies(encounter.id)) {
     const walker = getEnemy(walkerId);
     if (!walker || walker.status !== "alive") {
@@ -139,12 +141,14 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
     spendEnemyRiders(reactor, own.riders);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
-    const hitRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
-    publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: hitRoll, source: "digital" });
+    // On the line this strike posts (opportunity-strike.ts strikeCards), and
+    // thrown here, on the server's dice.
+    const hitRoll = recordRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName }, home: "line", landing: null });
     const struck = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= vsAc);
     // The walker's Parry or Shield, as on every other door (enemy-reactions.ts).
     const parry = struck && toHit.crit !== "nat20" ? tryParry({ encounter, enemy: walker, total: toHit.total, natural20: false, ac: vsAc, melee: true, attackerUnseen: attackerUnseen(reactor.conditions, walker.conditions, sight) }) : null;
     if (!struck || parry) {
+      cards.set(notes.length, strikeCards([hitRoll.id]));
       notes.push(`${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away and misses (${toHit.total} vs AC ${vsAc}${parry ? `; ${parry.note}` : ""}).`);
       continue;
     }
@@ -158,8 +162,9 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: reactor.displayName } },
     );
-    const damageRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
-    publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });
+    const damageRoll = recordRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName }, home: "line", landing: null });
+    // What the blow goes on to roll on its short turn, for the line.
+    const onTurn: string[] = [];
     const blow = blowByType(attack, damage, crit);
     // No floor of 1: a penalty can bring a blow to nothing (SRD 5.1), as on
     // every other door; only Reduce's own "can't reduce below 1" holds one.
@@ -171,16 +176,17 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       const hit: Record<string, unknown> = dealt > 0 ? landCreatureBlow({ campaign, turn, encounter, target: walker, dealt, blow, sheets, sheetsById, crit, magical, holdVictory: true }) : {};
       const necrotic = /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
       return { landed: hit, rider: hit.dead ? null : resolveRowOnHit(campaign, turn, reactor, attack, walker.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } }) };
-    });
+    }, onTurn);
     const laid = Array.isArray(rider?.riderCondition) ? ` ${walker.displayName} is ${(rider.riderCondition as string[]).join(" and ")}.` : "";
+    cards.set(notes.length, strikeCards([hitRoll.id, damageRoll.id], onTurn));
     notes.push(
       `${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away: ${crit ? "a critical hit for " : "hit for "}${dealt} damage${landed.dead ? `, and ${walker.displayName} falls` : ""}.${laid}`,
     );
   }
-  for (const content of notes) {
+  notes.forEach((content, index) => {
     const seq = tableNoteSeq(campaignId);
-    const message = insertCampaignMessage({ campaignId, seq, authorType: "system", glyph: "cue-battle", content });
+    const message = insertCampaignMessage({ campaignId, seq, authorType: "system", glyph: "cue-battle", content, rollIds: cards.get(index) ?? [] });
     publishWithSeq(campaignId, seq, "message_added", { message });
-  }
+  });
   return notes;
 }

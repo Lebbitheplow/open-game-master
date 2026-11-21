@@ -11,13 +11,11 @@
 // stone orbiting is "an object that is being worn", and it is attuned.
 
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { regainHitPoints } from "@/lib/dm/regain";
-import { publishWithSeq } from "@/lib/events";
 import { wearsWorkingItem } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -50,15 +48,18 @@ function ringHeals(campaign: Campaign, sheet: CharacterSheet, marks: number) {
     return;
   }
   const rolled = rollExpression(`${marks}d6`);
-  const roll = insertRoll({
+  // On the turn of the call that moved the clock; the clock moved outside
+  // one holds no turn.
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "custom",
     detail: `${REGENERATION_RING}: ${marks * 10} minutes`,
     result: rolled,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   regainHitPoints(campaign, null, sheet, rolled.total, REGENERATION_RING);
 }
 

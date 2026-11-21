@@ -12,6 +12,17 @@
 // The move route that provokes these has no DM turn, and the damage paths
 // keep their rolls and audit rows on one, so a short human-DM turn is
 // opened for the swing and closed with it.
+//
+// Where a strike's cards live (issue #915): on the line the strike posts, as
+// a death save's are on its own (death.ts). Nothing draws cards from the
+// short turn, and a walk through the move route has no GM turn at all, so
+// the line is the one place every strike has. Its attack and damage are
+// recorded with `home: "line"`, and the line lists them and then what the
+// blow went on to roll on the short turn (strikeCards). Not on the line: a
+// roll the damage path makes with no turn in hand (a concentration save;
+// inside a GM call it is on that call's turn), a ward's save before the
+// attack (opportunity-wards.ts), and a War Caster's spell cast in the
+// swing's place.
 
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -19,18 +30,19 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { hasSentinel } from "@/lib/srd/feat-combat";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { XY } from "@/lib/battlemap/types";
 import { closeStandInTurn, dicePreferencesOf, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { damageDiceSteps } from "@/lib/dm/attack-damage-dice";
 import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll, markRollApplied } from "@/lib/db/rolls";
+import { getRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { recordRoll } from "@/lib/dm/roll-record";
+import { publishPersisted } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
@@ -76,18 +88,30 @@ import { inDirectSunlight } from "@/lib/dm/sunlight";
 import { characterSwims, underwaterOpportunity } from "@/lib/dm/underwater";
 
 // A turn for the swing's rolls and audit rows, closed as soon as it is used
-// so nothing waits on it.
-export function withOpportunityTurn<T>(campaignId: string, run: (turn: DmTurn) => T): T {
+// so nothing waits on it. `rolled` is handed the rolls the turn was left
+// with (the save a creature's rider forces, an answering spell's damage),
+// for the strike's line.
+export function withOpportunityTurn<T>(campaignId: string, run: (turn: DmTurn) => T, rolled?: string[]): T {
   const turn = openStandInTurn(campaignId);
   try {
     return run(turn);
   } finally {
+    // Closing saves the turn, which reads back the rolls written to its row.
     closeStandInTurn(turn);
+    rolled?.push(...turn.rollIds);
   }
 }
 
-function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
+// The cards a strike's line carries: its attack and damage, then what the
+// blow went on to roll on its short turn. A line reaches every seat, so it
+// lists only the rolls every seat is sent, as a person's record does
+// (persons-record.ts): one behind the screen stays with the seats that may
+// read it.
+export function strikeCards(own: readonly string[], onTurn: readonly string[] = []): string[] {
+  return [...new Set([...own, ...onTurn])].filter((id) => {
+    const visibility = getRoll(id)?.visibility;
+    return visibility === "public" || visibility === "blind";
+  });
 }
 
 // The light between a reactor and the creature leaving: null off the board.
@@ -185,7 +209,7 @@ export function pcOpportunitySwing(input: {
   // Divine Smite's slot, when the player took it on the card
   // (opportunity-ask.ts): paid only on a hit.
   smiteSlot?: number;
-}): { note: string; dropped: boolean } {
+}): { note: string; dropped: boolean; rollIds: string[] } {
   const { campaign, encounter, sheet, enemy, resolved } = input;
   const natural = input.natural ?? null;
   const kind = natural ? "natural" : "weapon";
@@ -277,7 +301,9 @@ export function pcOpportunitySwing(input: {
     advantage,
     attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },
   });
-  const hitRoll = insertRoll({
+  // Their own dice, through the door above: entered at the table, they are
+  // on record and sent as theirs.
+  const hitRoll = recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -286,8 +312,8 @@ export function pcOpportunitySwing(input: {
     advantage,
     result: hitOutcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
+    home: "line",
   });
-  publishRoll(campaign.id, hitRoll);
   const judged = adjudicateHit(hitOutcome.total, hitOutcome.crit, targetAc, {
     natural: hitOutcome.natural,
     critRange: riders.critRange,
@@ -323,9 +349,12 @@ export function pcOpportunitySwing(input: {
     return {
       note: `${sheet.name} swings at ${enemy.displayName} as it breaks away and misses (${hitOutcome.total} vs AC ${targetAc}${parry ? `; ${parry.note}` : ""}).`,
       dropped: false,
+      rollIds: strikeCards([hitRoll.id]),
     };
   }
   const crit = adjudicated.crit || context.autoCrit;
+  // What the hit goes on to roll on its short turns, for the line.
+  const onTurn: string[] = [];
   // A natural 20's magic weapon dice (a Vicious Weapon's 2d6).
   const critGear = hitOutcome.crit === "nat20" ? gearCritRiders(profile, enemy.stats.type) : null;
   if (critGear?.suffix) {
@@ -343,7 +372,7 @@ export function pcOpportunitySwing(input: {
     const paid = withOpportunityTurn(campaign.id, (turn) => {
       const sheets = listSheets(campaign.id);
       return spendOnHit(campaign, turn.id, spends, sheets, new Map(sheets.map((entry) => [entry.id, entry])));
-    });
+    }, onTurn);
     notes.push(...paid.notes);
     if (paid.suffix) {
       profile = { ...profile, damageExpression: `${profile.damageExpression}${paid.suffix}` };
@@ -376,17 +405,17 @@ export function pcOpportunitySwing(input: {
     ...(rerollBelow ? { throwIt: () => rollExpression(damageExpression, undefined, { rerollBelow, purpose: damageTag }) } : {}),
   });
   const dealt = Math.max(0, damageOutcome.total);
-  return withOpportunityTurn(campaign.id, (turn) => {
-    const damageRoll = insertRoll({
-      campaignId: campaign.id,
-      characterId: sheet.id,
-      requestedBy: "dm",
-      kind: "damage",
-      detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
-      result: damageOutcome,
-      attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
-    });
-    publishRoll(campaign.id, damageRoll);
+  const damageRoll = recordRoll({
+    campaignId: campaign.id,
+    characterId: sheet.id,
+    requestedBy: "dm",
+    kind: "damage",
+    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    result: damageOutcome,
+    attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
+    home: "line",
+  });
+  const swing = withOpportunityTurn(campaign.id, (turn) => {
     const sheets = listSheets(campaign.id);
     const applied = landBlow({
       campaign,
@@ -448,7 +477,8 @@ export function pcOpportunitySwing(input: {
       }`,
       dropped,
     };
-  });
+  }, onTurn);
+  return { ...swing, rollIds: strikeCards([hitRoll.id, damageRoll.id], onTurn) };
 }
 
 // What the swing uses up: the attacker's hiding, Invisibility and Sanctuary
