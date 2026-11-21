@@ -394,12 +394,17 @@ export function enemyMoveTraits(width: number, tokens: BattleToken[], mover: Bat
   };
   const footprintOf = (token: BattleToken) =>
     token.kind === "enemy" ? enemyFootprint(enemies.get(token.refId)) : tokenFootprint(token);
-  const speed = enemies.get(mover.refId)?.stats.speed;
+  // The creature walking. A rider's token is walked only by its mount, on
+  // the mount's legs (issue 1055, ruling 2), so a crocodile's swim speed is
+  // the pair's: read from the goblin on its back, the pair waded.
+  const standing = enemies.get(mover.refId);
+  const walker = standing?.ridesEnemyId ? (enemies.get(standing.ridesEnemyId) ?? standing) : standing;
+  const speed = walker?.stats.speed;
   // And what the spell areas on the board make of each step (zone-rules.ts).
   return zoneStepsFor({
     swims: swimsFrom(speed),
     climbs: climbsFrom(speed),
     passable: passableTiles({ width, tokens, mover, footprintOf, sizeOf, sideOf: tokenSides(getEncounter(encounterId)) }),
     squeeze: footprintOf(mover) > 1,
-  }, encounterId, "enemy", mover.refId);
+  }, encounterId, "enemy", walker?.id ?? mover.refId);
 }

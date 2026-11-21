@@ -134,6 +134,17 @@ await test("Ruling 2: the mount's move carries the pair at the mount's speed, an
   assert.equal(more.ok, false, "the mount walked past its speed");
 });
 
+await test("Ruling 2: the pair walks on the mount's legs, so a crocodile's swim speed carries a goblin through water at the plain cost.", async () => {
+  const { world, rider, mount } = await pair({ mount: "crocodile" });
+  // Water all round: a creature with no swimming speed pays two squares for one.
+  await layMap(world, Array.from({ length: 9 }, () => "~".repeat(24)), { [world.sheets()[0].id]: { x: 2, y: 4 }, [rider.id]: { x: 12, y: 4 } });
+  turnOf(world, mount.id);
+  // Its 20 feet are four squares of water to a swimmer, two to a goblin.
+  const walk = await world.invoke("move_token", { token: mount.id, x: 20, y: 4 });
+  assert.equal(walk.ok, true, walk.error);
+  assert.deepEqual(at(world, rider.id), [16, 4], "the pair swam on its rider's traits, not the crocodile's");
+});
+
 await test("Ruling 2: the rider has no movement of its own, and is told its mount moves the pair.", async () => {
   const { world, rider, mount } = await pair();
   turnOf(world, rider.id);
