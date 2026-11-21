@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -128,6 +128,15 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/inferno/iron-chain-frame-v1.webp",
       corner: "/assets/themes/inferno/gem-ring-corner-v1.webp",
       backdrop: "/assets/themes/inferno/brimstone-cavern-v1.webp",
+    },
+  },
+  {
+    id: "fey", name: "Twilight Court", description: "Dusk rose, gossamer thread, and pearl silverwork.", icon: "flower",
+    art: {
+      texture: "/assets/themes/fey/gossamer-silk-v1.webp",
+      frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
+      corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
+      backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];

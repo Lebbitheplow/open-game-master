@@ -1,0 +1,130 @@
+/* fey (Twilight Court): both brightness palettes, then its materials. See docs/appearance-themes.md. */
+[data-appearance="fey"][data-theme="dark"] {
+  --background: #1a0f18;
+  --foreground: #f4e6ec;
+  --color-stone-950: #1d111b;
+  --color-stone-900: #2a1826;
+  --color-stone-800: #3a2335;
+  --color-stone-700: #55364d;
+  --color-stone-600: #836176;
+  --color-stone-500: #c2a3b4;
+  --color-stone-400: #cbb0bf;
+  --color-stone-300: #dcc6d1;
+  --color-stone-200: #ead9e1;
+  --color-stone-100: #f3e8ed;
+  --color-stone-50: #faf3f6;
+  --color-amber-950: #330a1e;
+  --color-amber-900: #521232;
+  --color-amber-800: #7a1d4b;
+  --color-amber-700: #a22c65;
+  --color-amber-600: #c5477f;
+  --color-amber-500: #e0689a;
+  --color-amber-400: #ec8bb2;
+  --color-amber-300: #f3a9c6;
+  --color-amber-200: #f8c8da;
+  --color-amber-100: #fbe0ea;
+  --color-amber-50: #fdf1f5;
+  --material-inset: #231421;
+  --material-paper: #2b1a28;
+  --material-metal: #ecd6e1;
+  --material-edge: #8f6a80;
+  --material-panel-wash: linear-gradient(#24141fc4, #1a0f18de);
+  --material-control-wash: linear-gradient(#45293dc9, #2d1a29e3);
+  --material-body-wash: linear-gradient(#160c14f0, #1a0f18f0);
+  --material-rail-wash: linear-gradient(#2a172599, #2a172599);
+  --material-primary-wash: linear-gradient(#a22c65eb, #6f1a45f2);
+  --material-send-edge: #f3a9c6;
+  --material-scrim: linear-gradient(#1d0f1aa6, #1d0f1a59 45%, #1d0f1acc);
+}
+[data-appearance="fey"][data-theme="light"] {
+  --background: #f8ece9;
+  --foreground: #2e1a25;
+  --color-stone-950: #fdf6f3;
+  --color-stone-900: #f7ebe8;
+  --color-stone-800: #eedcda;
+  --color-stone-700: #d6b9bb;
+  --color-stone-600: #9c7c85;
+  --color-stone-500: #654a56;
+  --color-stone-400: #5b414d;
+  --color-stone-300: #48323d;
+  --color-stone-200: #36242d;
+  --color-stone-100: #26181f;
+  --color-stone-50: #1a0f15;
+  --color-amber-950: #fdebf1;
+  --color-amber-900: #f9d5e2;
+  --color-amber-800: #f0b0c8;
+  --color-amber-700: #db7a9f;
+  --color-amber-600: #b8437a;
+  --color-amber-500: #96285f;
+  --color-amber-400: #7c1f4e;
+  --color-amber-300: #641a40;
+  --color-amber-200: #4f1533;
+  --color-amber-100: #3b1026;
+  --color-amber-50: #290a1a;
+  --material-inset: #fbf1ee;
+  --material-paper: #f4e5e3;
+  --material-metal: #6a2f50;
+  --material-edge: #b08c98;
+  --material-panel-wash: linear-gradient(#fdf5f2eb, #f5e6e4eb);
+  --material-control-wash: linear-gradient(#fbeeecde, #ecd3d6de);
+  --material-body-wash: linear-gradient(#f6e9e6eb, #ecd9d8eb);
+  --material-rail-wash: linear-gradient(#8a5f7340, #8a5f7340);
+  --material-primary-wash: linear-gradient(#a22c65f0, #6f1a45f5);
+  --material-send-edge: #b08c98;
+  --material-scrim: linear-gradient(#f8e8e699, #f8e8e640 45%, #f8e8e6bb);
+}
+
+/* Materials that hold in both brightness modes: pearl and pale silverwork
+   fittings, and keys cut like a petal, three soft corners and one fine tip. */
+[data-appearance="fey"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #1a0f18;
+  --theme-night-foreground: #f4e6ec;
+  --theme-night-stone-950: #1d111b;
+  --theme-night-stone-900: #2a1826;
+  --theme-night-stone-800: #3a2335;
+  --theme-night-stone-700: #55364d;
+  --theme-night-stone-600: #836176;
+  --theme-night-stone-500: #c2a3b4;
+  --theme-night-stone-400: #cbb0bf;
+  --theme-night-stone-300: #dcc6d1;
+  --theme-night-stone-200: #ead9e1;
+  --theme-night-stone-100: #f3e8ed;
+  --theme-night-stone-50: #faf3f6;
+  --theme-night-amber-950: #330a1e;
+  --theme-night-amber-900: #521232;
+  --theme-night-amber-800: #7a1d4b;
+  --theme-night-amber-700: #a22c65;
+  --theme-night-amber-600: #c5477f;
+  --theme-night-amber-500: #e0689a;
+  --theme-night-amber-400: #ec8bb2;
+  --theme-night-amber-300: #f3a9c6;
+  --theme-night-amber-200: #f8c8da;
+  --theme-night-amber-100: #fbe0ea;
+  --theme-night-amber-50: #fdf1f5;
+  --material-metal-finish: linear-gradient(135deg, #f8eff4, #b7a2b3 46%, #f3c9da 52%, #8d7388);
+  --material-metal-ink: #3b1026;
+  --material-fitting-radius: 50%;
+  --material-control-radius: 14px 14px 14px 4px;
+  --material-panel-radius: 18px 18px 18px 6px;
+  --material-bubble-radius: 14px 14px 14px 4px;
+  --material-tab-radius: 12px 12px 12px 3px;
+  --material-chip-radius: 12px 12px 12px 3px;
+  --material-sigil-radius: 10px 10px 10px 3px;
+  --material-crest-tilt: -6deg;
+  /* Rose keys in place of the shared leaf greens; the health bar keeps a
+     green, the pale glow of the glade's mushrooms. */
+  --material-send-wash: linear-gradient(#b23870, #7a1d4b);
+  --material-chosen-wash: linear-gradient(#96285f, #641a40);
+  --material-vital-fill: linear-gradient(90deg, #5fa878, #dfe7a2);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%23c5477f' stroke-width='1'%3E%3Cpath d='M70 70C62 58 62 48 70 40C78 48 78 58 70 70ZM70 70C82 62 92 62 100 70C92 78 82 78 70 70ZM70 70C78 82 78 92 70 100C62 92 62 82 70 70ZM70 70C58 78 48 78 40 70C48 62 58 62 70 70Z'/%3E%3Ccircle cx='0' cy='0' r='6'/%3E%3Ccircle cx='140' cy='0' r='6'/%3E%3Ccircle cx='0' cy='140' r='6'/%3E%3Ccircle cx='140' cy='140' r='6'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 140px 140px;
+  --appearance-corner: 0.9rem;
+}
+/* A flat panel keeps the app's own brackets, eased into a petal curve. */
+/* On blossom-pale panels the bar's pale end needs more body to show. */
+[data-appearance="fey"][data-theme="light"] { --material-vital-fill: linear-gradient(90deg, #3f8f66, #a6c56a); }
+html[data-appearance="fey"] .ornate::before { border-radius: 10px 0 0 0; }
+html[data-appearance="fey"] .ornate::after { border-radius: 0 0 10px 0; }
