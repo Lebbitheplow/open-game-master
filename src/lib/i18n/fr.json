@@ -10865,7 +10865,9 @@
     "winter": "hiver",
     "spring": "printemps",
     "summer": "été",
-    "autumn": "automne"
+    "autumn": "automne",
+    "{name} comes round with {hp} hit point.": "{name} reprend connaissance avec {hp} point de vie.",
+    "{name} comes round with {hp} hit points.": "{name} reprend connaissance avec {hp} points de vie."
   },
   "contexts": {
     "Remove": {

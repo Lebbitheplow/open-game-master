@@ -251,6 +251,11 @@ function translateSystemNote(t: T, raw: string): string {
   out = out.replace(/([^.\n]+?) fails their final death save and dies\./g, (_, name) =>
     t("{name} fails their final death save and dies.", { name: name.trim() }),
   );
+  out = out.replace(/([^.\n]+?) comes round with (\d+) hit points?\./g, (_, name, hp) =>
+    Number(hp) === 1
+      ? t("{name} comes round with {hp} hit point.", { name: name.trim(), hp })
+      : t("{name} comes round with {hp} hit points.", { name: name.trim(), hp }),
+  );
   // Stand-still & skipped enemy lines (src/lib/dm/turn-lines-logic.ts)
   out = out.replace(/([^.\n]+?) is ([^.\n]+?) and loses (its|their) turn\./g, (_, name, by, pron) =>
     pron === "their"
