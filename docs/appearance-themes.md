@@ -244,10 +244,12 @@ Shared ornament measurements can be overridden in the theme selector:
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane, Hearth and High Kingdoms each paint a separate corner piece, as Woodland,
-Tide and Forge do, and set their own phone lobby corner size so the piece keeps its
-proportion to the rail. Gothic still crops its corner from its frame: its pinnacle
-piece hung upside down in the lower corners and waits for a repaint.
+No shipped theme crops its corner from its frame now: Arcane, Gothic, Hearth and
+High Kingdoms each paint a separate corner piece, as Woodland, Tide and Forge do, and
+set their own phone lobby corner size so the piece keeps its proportion to the rail.
+A corner piece is mirrored into the other three corners, so it must read the same
+upside down: Gothic's first piece had pinnacles and lancet windows that hung from
+the lower corners, and its rose window and bare briars replaced it.
 For a theme that does crop its corner, `themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
 and it keeps the frame's rail width. The phone sizes keep the art off the bottom bar's end
 labels and the session title, which sit 8 to 17px from the screen's edge; the
