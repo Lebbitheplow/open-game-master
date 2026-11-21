@@ -7,8 +7,14 @@ its location and next step for whoever follows. Use
 [Build an appearance theme](appearance-themes.md) for implementation
 and [the validation record](appearance-validation.md) for completed checks.
 
-Last reconciled: 2026-11-15. Suggested priorities and genre claims below are
+Last reconciled: 2026-11-21. Suggested priorities and genre claims below are
 proposals until agreed.
+
+Pull requests 962, 967, 973, 977 and 978 merged on 2026-11-16, so Arcane,
+Ancient Woodland, Gothic, Hearth & Haven, High Kingdoms, Sunken Tide and Deep
+Forge are on main. The handoff table and the built rows below still describe
+them as drafts; read them as history. The ideas added on 2026-11-21 come from a
+discussion on 2026-11-16 and are proposals: none is started or agreed.
 
 ## Active work and handoffs
 
@@ -85,9 +91,9 @@ real-device checks must not be inferred from this table.
 | `skyhold` | Radiant Heights | White marble, gold leaf, sky blue; halos, feathers and sunbursts | **idea** | Formerly Cloud Citadel, widened to a heavenly realm; the display name is a placeholder. Only white-and-gold theme. Lightest of the set: check text, disabled controls and selected states against pale surfaces before adding ornament. Arcane already owns celestial brass on indigo, so give night mode a warm dawn palette (deep rose and gold), not a starry one. |
 | `inferno` | Inferno | Obsidian, black iron chains, crimson glow, cracked brimstone | **idea** | Proposed 2026-11-14 (Albert and Fable). Only red theme. Keep it apart from Deep Forge: red, sharp and spiked, not orange, square and crafted. Day mode needs a plan first: ash white and bone with a crimson accent. |
 | `fey` | Twilight Court | Rose and violet dusk, gossamer, moth wings, glowing mushrooms, blossom | **idea** | Proposed 2026-11-14 (Albert and Fable). Only pink theme. No oak or ivy, so it stays apart from Ancient Woodland; keep violet from drifting into Arcane's amethyst. The display name is a placeholder that avoids a published setting's name. |
-| `storm` | Stormreach | Slate thundercloud, copper lightning rods, electric yellow; jagged lightning borders | **idea** | Proposed 2026-11-14 (Albert and Fable), from the elemental planes: fire, water and earth are already covered by Inferno and Deep Forge, Sunken Tide, and Crystal Caverns, so only storm adds a look. Only yellow theme. Day mode: pale rain-grey with the same yellow. The display name is a placeholder. |
+| `storm` | Stormreach | Slate thundercloud, copper lightning rods, electric yellow; jagged lightning borders | **idea**, on hold | Proposed 2026-11-14 (Albert and Fable), from the elemental planes. Put on hold 2026-11-16: Galvanic, under genre themes, carries electricity with objects to paint (tubes, coils) where this has only weather. Revisit if a natural storm look is wanted beside it. The display name is a placeholder. |
 | `caverns` | Crystal Caverns | Faceted amethyst and quartz, wet cave stone, glowing fungus | **idea**, on hold | Proposed 2026-11-14 (Albert and Fable) as the underground realm. Overlaps Sunken Tide (teal glow), Arcane (violet) and Deep Forge (dark stone). Worth building only if crystal borders carry the identity, and it needs a day-mode idea first. |
-| `ossuary` | Ossuary | Bone, black cloth, tallow candles, sickly green glow | **idea**, on hold | Proposed 2026-11-14 (Albert and Fable) as the necromancer's domain. Its materials are its own, but Gothic already covers the mood and Inferno would be a third dark theme. Revisit after Inferno ships, and build it only if the two read clearly apart side by side. Claims no genre; Gothic keeps dark fantasy and horror. |
+| `ossuary` | Ossuary | Bone, black cloth, tallow candles, sickly green glow | **idea** | Proposed 2026-11-14 (Albert and Fable) as the necromancer's domain. Taken off hold 2026-11-16: it fits horror better than Gothic's cathedral stone, and a better fit for a genre is a reason to build it even where the mood overlaps. Proposed claim: horror, with Gothic keeping dark fantasy; that moves an existing default, so it needs agreement first. Check it reads apart from Gothic and Inferno side by side. |
 
 These are additional fantasy settings, not automatic genre claims. In
 particular, Deep Forge should not acquire steampunk by default merely because
@@ -109,13 +115,84 @@ identities. Proposed claims are not active defaults.
 | `neon` | Neon District | Black glass, magenta/cyan signage, brushed steel | Cyberpunk | **idea** | Fine illuminated lines may suit SVG. Keep the glow decorative, preserve semantic warning colors, and design a readable day mode. |
 | `brassworks` | Brassworks | Riveted brass, oxblood leather, gauge glass | Steampunk | **idea** | Keep it mechanical and precise, distinct from Deep Forge's hammered metal and basalt. Decorative gauges must not look like controls. |
 | `wasteland` | Wasteland | Rusted sheet metal, hazard yellow, sun-bleached canvas | Post-apocalyptic | **idea** | Keep rust and scratches off reading surfaces. Hazard stripes must not compete with real warnings or selected states. |
-| `gaslight` | Gaslight | Dark walnut, green baize, brass lamp glow | Mystery | **idea** | Use restrained joinery and lamp fittings, distinct from Woodland's living vines and Gothic's cathedral tracery. |
+| `gaslight` | Gaslight | Dark walnut, green baize, brass lamp glow | Mystery | **idea** | Use restrained joinery and lamp fittings, distinct from Woodland's living vines and Gothic's cathedral tracery. Hearth & Haven now also has dark wood and lamp glow: the green baize and a cooler detective's-office feel have to carry it. Compare the two side by side before building. |
+| `depths` | Unquiet Depths | By day the investigator's desk: manila case files, typewriter ink, sepia photographs, red string. By night what the case uncovers: green-black deep water, wet stone, watching eyes, angles that do not quite meet | None; suits horror and mystery | **idea** | Proposed 2026-11-16 (Albert and Fable) as the cosmic horror look. The two brightness modes are two halves of one story. Use no named beings or places from published stories or games, and no tentacle-faced figures. The display name is a placeholder. |
+| `galvanic` | Galvanic | Glowing vacuum tubes, copper coils, ceramic insulators, violet arcs on dark bakelite | None; suits steampunk | **idea** | Proposed 2026-11-16 (Albert and Fable) as the electrical laboratory. Keep it apart from Brassworks: glass, wire and arc light, not cogs and rivets. Decorative dials and switches must not look like controls. The display name is a placeholder. |
+| `skyfarer` | Skyfarer | Canvas envelopes, rope rigging, teak decks, brass instruments, open sky | None; suits steampunk and high fantasy | **idea** | Proposed 2026-11-16 (Albert and Fable) for airships and sky islands. Shares sky blue with Radiant Heights; rigging and canvas against marble and halos keep them apart. The display name is a placeholder. |
+| `noir` | Noir | Black and white, window-blind shadows, one red accent | None; suits mystery and cyberpunk | **idea** | Proposed 2026-11-16 (Albert and Fable). Nearly colourless, so selected, warning and disabled states need a plan before any ornament. |
+
+A genre may have more than one theme. A look earns a place when it reads as
+different from every other theme, or when it fits a genre better than anything
+that genre has now; sharing a colour scheme with a theme made for another genre
+does not rule it out (Albert, 2026-11-16). Only one theme is a genre's default.
+The others are picked by hand.
+
+Second themes noted for later, once the first for their genre exists: a
+corporate tower for cyberpunk (white panels, chrome, one cold accent) and an
+overgrown ruin for post-apocalyptic (cracked concrete, moss, faded road signs).
+Horror shares Gothic with dark fantasy today; Ossuary and Unquiet Depths above
+are the proposals for it.
 
 **Science fiction** was also mentioned as a later direction in the original
 discussion, but has no named theme or visual brief yet. Define that brief before
 creating a separate theme row; Neon District covers cyberpunk, not all science
 fiction. Science fiction is not currently a built-in genre, so this direction
 does not claim a genre default.
+
+## Picker filter by genre (proposed)
+
+With several themes for each genre the picker gets long. Proposed on 2026-11-16
+(Albert and Fable); needs the maintainer's agreement and is not built.
+
+- The picker opens showing the themes that suit the campaign's genre, with the
+  default marked. The others appear only when the player asks for them, through
+  one control, not one for each genre.
+- The theme a campaign already uses always shows, even when the filter would
+  hide it. A custom campaign sees every theme.
+- The filter stays hidden while the whole list is short.
+- Each catalog entry needs the genres it suits, kept apart from the one genre
+  it is the default for. A theme can suit several.
+
+| Suits | Themes |
+| --- | --- |
+| High fantasy | Arcane, Ancient Woodland, High Kingdoms, Hearth & Haven, Deep Forge, Sunken Tide, Frostbound, Sunscorched, Radiant Heights, Twilight Court, Inferno, Skyfarer |
+| Dark fantasy | Gothic, Ossuary, Inferno, Deep Forge, Arcane |
+| Horror | Ossuary, Unquiet Depths, Gothic |
+| Mystery | Gaslight, Unquiet Depths, Noir |
+| Steampunk | Brassworks, Galvanic, Skyfarer |
+| Cyberpunk | Neon District, Noir |
+| Post-apocalyptic | Wasteland |
+
+## Follow the story (later idea)
+
+A third choice in the picker beside a named theme and "match the genre": the
+table's look follows where the party is. Proposed on 2026-11-16 (Albert and
+Fable) as a long-term, low-priority feature. Not designed in detail and not
+agreed.
+
+- Change by region, not by room. The party travels to the frozen north and the
+  table turns to Frostbound for that stretch; a tavern stop there stays
+  Frostbound. A tavern in a great city stays High Kingdoms.
+- Change only when the scene changes, never during combat, and with a slow fade.
+- Stay inside the themes that suit the campaign's genre.
+- Each player can hold their own screen on one theme while the table follows.
+- A place that matches no theme keeps the current one.
+- It needs each theme to list the places it stands for, the scene to carry a
+  place label (whether scenes record one today has not been checked), and the
+  next theme's images loaded before the fade.
+- A cheaper first step: change only the backdrop and accent colour by place and
+  leave the frame and controls alone.
+- Wait until there are enough place themes to travel between.
+
+| Place | Theme |
+| --- | --- |
+| Countryside, homesteads, villages, small towns, roadside inns | Hearth & Haven |
+| Great cities, castles, courts, manors | High Kingdoms |
+| Wild forest | Ancient Woodland |
+| Mines, mountain holds, foundries | Deep Forge |
+| Coasts, ports, the sea | Sunken Tide |
+| Tundra and high peaks | Frostbound |
+| Desert and old ruins | Sunscorched |
 
 ## Suggested build order
 
@@ -135,8 +212,8 @@ does not claim a genre default.
   both night and day. Record its materials, border shapes and accent colors.
 - Avoid named settings, characters and creatures from published games in the
   name, description and artwork. Record asset sources and generation prompts.
-- A genre belongs to at most one theme. A theme with no natural genre claims
-  none. Discuss changes to existing genre defaults before adding claims.
+- A genre has at most one default theme; other themes may suit it without
+  claiming it. A theme with no natural genre claims none. Discuss changes to existing genre defaults before adding claims.
 - Record the worker/owner, branch or worktree, and the next concrete step in the
   row or a linked handoff. Preserve unfinished work before handing it off.
 - Parallel themes own separate asset folders and stylesheets. Coordinate their
@@ -166,6 +243,6 @@ does not claim a genre default.
 | --- | --- | --- |
 | Add themes to PR 962 or separate PRs? | Keep PR 962 focused on the three existing themes and framework. Add each later theme in its own PR after the framework settles. | Maintainer's preferred sequence; a dependent PR can identify its base explicitly. |
 | When does a genre theme become the default? | Register the visual theme first; make a genre-default change an explicit reviewed decision. Existing campaigns following genre will change appearance. | Maintainer agreement for each claim. |
-| How many themes before grouping the picker? | The current checks cover three real choices and four/six-card layout fixtures. Reassess with the first seventh theme and actual phone use. | Whether grouping or filtering helps; six is a test case, not a product limit. |
+| How many themes before grouping the picker? | The current checks cover three real choices and four/six-card layout fixtures. Reassess with the first seventh theme and actual phone use. | Seven themes are on main since 2026-11-16. A filter by genre is proposed above; the maintainer has not ruled on it. |
 | What is the asset budget per theme? | Measure the complete shipped set and retain the existing 2 MiB limit per image. | The suggested 0.5–2 MB per-theme range is an estimate, not an enforced total. |
 | Who continues Forge/Tide? | Build on Fable's groundwork and record the handoff in the active-work table. Tide is now built in PR 977. | Forge's next owner; Tide's rebase and final validation after the shared fixes. |
