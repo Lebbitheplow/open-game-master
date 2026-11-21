@@ -142,6 +142,10 @@ export const SERVER_FEATURES = {
   // shaken out of Sleep or Hypnotic Pattern. The Hand's Wake card and the
   // console's "Shake awake" ask for it; an older host refuses the action.
   shakeAwake: true,
+  // The Hand's Mount card (hand-mount-logic.ts): the "mount" action of a
+  // basic card and the creature it names. An older host's actions route
+  // refuses the message, so the card is not dealt there.
+  mountCard: true,
   // An improvised action in a fight (take_action improvise): the console's
   // Improvise, the improvised action Ready holds, and every skill for its
   // check. An older host refuses the action and takes only Perception or
