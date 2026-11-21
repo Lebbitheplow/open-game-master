@@ -7,6 +7,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import type { AuditEntry, CampaignLocation } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { prefersReducedMotion, useLowEffects } from "@/lib/effects-mode";
+import { useT } from "@/lib/locale";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { magicItemBonus } from "@/lib/srd/item-row";
 import { matchMagicItem } from "@/lib/srd/magic-items";
@@ -170,6 +171,7 @@ function packOf(sheet: CharacterSheet): Map<string, number> {
 // with its painted icon. Read off the sheet itself, so every way an item can
 // arrive is covered and nothing about how it arrives changes.
 export function LootMoment({ sheet }: { sheet: CharacterSheet | null | undefined }) {
+  const t = useT();
   const signature = sheet ? `${sheet.id}|${sheet.equipment.map((item) => `${item.name}x${item.qty}`).join("|")}` : "";
   const [known, setKnown] = useState({ signature, id: sheet?.id ?? "", pack: sheet ? packOf(sheet) : new Map<string, number>() });
   const [queue, setQueue] = useState<Gain[]>([]);
@@ -209,7 +211,7 @@ export function LootMoment({ sheet }: { sheet: CharacterSheet | null | undefined
         <span className="moment-loot-plate">
           <GameIcon icon={{ kind: "item", key: current.name, family: "item-gear" }} size="size-20" />
         </span>
-        <span className="moment-loot-kicker">{tier === "epic" ? "A treasure" : tier === "rare" ? "A rare find" : "Added to your pack"}</span>
+        <span className="moment-loot-kicker">{tier === "epic" ? t("A treasure") : tier === "rare" ? t("A rare find") : t("Added to your pack")}</span>
         <span className="moment-loot-name">
           {current.name}
           {current.qty > 1 ? ` x${current.qty}` : ""}
@@ -225,6 +227,7 @@ const TRAVEL_MS = 3400;
 // is open, its name rides in under a compass rose. A place already current
 // when the table opened is not announced.
 export function TravelBanner({ locations }: { locations: CampaignLocation[] }) {
+  const t = useT();
   const place = locations.find((location) => location.isCurrent) ?? null;
   const visited = locations.filter((location) => location.visited).map((location) => location.id).join(",");
   const [known, setKnown] = useState({ id: place?.id ?? "", visited });
@@ -253,7 +256,7 @@ export function TravelBanner({ locations }: { locations: CampaignLocation[] }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/ui/compass-rose.webp" alt="" className="moment-travel-rose" />
       <span className="min-w-0">
-        <span className="moment-travel-kicker">{shown.firstVisit ? "New place discovered" : "The party arrives"}</span>
+        <span className="moment-travel-kicker">{shown.firstVisit ? t("New place discovered") : t("The party arrives")}</span>
         <span className="gold-title moment-travel-name">{shown.name}</span>
       </span>
     </div>

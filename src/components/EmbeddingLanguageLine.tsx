@@ -3,6 +3,7 @@
 import { TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { CampaignLanguage } from "@/lib/db/campaigns";
+import { useT } from "@/lib/locale";
 import { TABLE_LANGUAGE_NAMES, type TableLanguage } from "@/lib/schemas/game-settings-options";
 import { useEmbeddingWarning } from "@/lib/use-embedding-warning";
 
@@ -21,6 +22,7 @@ export function EmbeddingLanguageLine({
   campaigns?: readonly CampaignLanguage[];
   className?: string;
 }) {
+  const t = useT();
   const warning = useEmbeddingWarning(languages);
   if (!warning) {
     return null;
@@ -32,7 +34,7 @@ export function EmbeddingLanguageLine({
       <span className="min-w-0 break-words">
         {warning.body}
         {concerned.length
-          ? ` Campaigns concerned: ${concerned.map((campaign) => `${campaign.title} (${TABLE_LANGUAGE_NAMES[campaign.language].english})`).join(", ")}.`
+          ? ` ${t("Campaigns concerned: {list}.", { list: concerned.map((campaign) => `${campaign.title} (${t(TABLE_LANGUAGE_NAMES[campaign.language].english)})`).join(", ") })}`
           : null}
       </span>
     </p>

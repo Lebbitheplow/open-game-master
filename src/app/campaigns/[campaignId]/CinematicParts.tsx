@@ -2,6 +2,7 @@
 
 import { isOocAnswer } from "@/lib/dm/ooc-question";
 import { CardReturnedNote } from "@/app/campaigns/[campaignId]/CardReturnedNote";
+import type { translateSystemNote as TranslateSystemNote } from "@/app/campaigns/[campaignId]/MessageParts";
 import { extraTurnTag, litOrderRows, pointerOrderIndex } from "@/lib/battlemap/initiative-rows";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { EyeOff } from "lucide-react";
@@ -600,6 +601,21 @@ export function TabletopChronicle({
 }) {
   const t = useT();
   const tp = useTp();
+  const locale = useLocale();
+  // Lazy-load MessageParts so its transcript dependencies stay out of the
+  // table route's first-load JS bundle (scripts/bundle-budget.json).
+  const [translateNote, setTranslateNote] = useState<typeof TranslateSystemNote | null>(null);
+  useEffect(() => {
+    if (locale === "en") return;
+    let cancelled = false;
+    void import("@/app/campaigns/[campaignId]/MessageParts").then((mod) => {
+      if (!cancelled) setTranslateNote(() => mod.translateSystemNote);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+  const formatSystem = (raw: string) => (translateNote ? translateNote(t, raw) : raw);
   const rollsById = useMemo(() => new Map(rolls.map((roll) => [roll.id, roll])), [rolls]);
   const { recent, earlier } = useMemo(() => chronicleWindow(messages), [messages]);
   const signature = useMemo(() => chronicleSignature(recent, rolls.length), [recent, rolls.length]);
@@ -691,13 +707,13 @@ export function TabletopChronicle({
                     const roll = rollsById.get(id);
                     return roll ? <ChronicleRoll key={roll.id} roll={roll} sheets={sheets} /> : null;
                   })}
-                  <p className="cine-chronicle-system">{chronicleSystemLine(message.content)}</p>
+                  <p className="cine-chronicle-system">{formatSystem(chronicleSystemLine(message.content))}</p>
                 </div>
               );
             }
             return (
               <p key={message.id} className="cine-chronicle-system">
-                {chronicleSystemLine(message.content)}
+                {formatSystem(chronicleSystemLine(message.content))}
               </p>
             );
           })}

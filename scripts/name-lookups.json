@@ -420,6 +420,7 @@
     "app/campaigns/[campaignId]/BoardStageLayers.tsx#first": [["key",1,"the first icon file of a family (no record chosen)"]],
     "app/campaigns/[campaignId]/CalendarSection.tsx#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/campaigns/[campaignId]/CalendarSection.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
+    "app/campaigns/[campaignId]/CardReturnedNote.tsx#partial": [["pattern",2,"a fixed pattern over DB-stored English card-return reach/range refusal lines"]],
     "app/campaigns/[campaignId]/CharacterSheetDialog.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/campaigns/[campaignId]/CharacterVoices.tsx#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/campaigns/[campaignId]/CharacterVoices.tsx#whole": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
@@ -510,10 +511,11 @@
     "app/campaigns/[campaignId]/MarketShopEditor.tsx#whole": [["identity",2,"a stock line by whole name"]],
     "app/campaigns/[campaignId]/MessageActions.tsx#whole": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/MessageContent.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
+    "app/campaigns/[campaignId]/MessageParts.tsx#keyed": [["key",2,"condition word lookup in translateConditionWord"]],
     "app/campaigns/[campaignId]/MessageParts.tsx#partial": [
       [
         "pattern",
-        7,
+        21,
         "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
       ],
       [
@@ -961,6 +963,7 @@
     "components/InviteShareDialog.tsx#partial": [["key",2,"UI keys, file names, glyphs and markdown"]],
     "components/NotificationBell.tsx#partial": [["key",5,"UI keys, file names, glyphs and markdown"]],
     "components/SafetyToneFields.tsx#partial": [["key",1,"UI keys, file names, glyphs and markdown"]],
+    "components/SceneTitle.tsx#partial": [["pattern",3,"a fixed pattern over server title-card labels (Chapter / Act / End of Act)"]],
     "components/ScheduleSection.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "components/ServerAddressButton.tsx#first": [["key",1,"the first shareable address"]],
     "components/ServerAddressButton.tsx#partial": [["key",1,"UI keys, file names, glyphs and markdown"]],
@@ -2317,7 +2320,7 @@
     "lib/dm/speech.ts#partial": [
       [
         "pattern",
-        15,
+        18,
         "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
       ],
       [

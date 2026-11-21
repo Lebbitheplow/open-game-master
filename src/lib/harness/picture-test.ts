@@ -25,6 +25,10 @@ export type PictureStageId = "painted" | "saved" | "shape";
 
 export type PictureStage = { id: PictureStageId; ok: boolean | null; detail?: string };
 
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const passT: T = (key, vars) =>
+  vars ? key.replace(/\{([^{}]+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : key;
+
 export type PictureTestResult = {
   image?: GeneratedImage;
   stages: PictureStage[];
@@ -44,14 +48,17 @@ export const TEST_MAP_PROMPT = locationMapPrompt("hand-drawn parchment cartograp
 
 // Pure: the stages a finished run earned, so scripts/test-harness-pictures.mjs
 // can check every verdict without painting.
-export function pictureStages(input: {
-  image: GeneratedImage | null;
-  error: string;
-  file: { bytes: number; kind: string | null; width: number; height: number } | null;
-}): PictureStage[] {
+export function pictureStages(
+  input: {
+    image: GeneratedImage | null;
+    error: string;
+    file: { bytes: number; kind: string | null; width: number; height: number } | null;
+  },
+  t: T = passT,
+): PictureStage[] {
   if (!input.image) {
     return [
-      { id: "painted", ok: false, detail: input.error || "No picture came back." },
+      { id: "painted", ok: false, detail: input.error || t("No picture came back.") },
       { id: "saved", ok: null },
       { id: "shape", ok: null },
     ];
@@ -60,23 +67,23 @@ export function pictureStages(input: {
   const width = input.file?.width || input.image.width;
   const height = input.file?.height || input.image.height;
   return [
-    { id: "painted", ok: true, detail: `${input.image.elapsedSeconds ?? "?"} s through the tables' own picture queue` },
+    { id: "painted", ok: true, detail: t("{seconds} s through the tables' own picture queue", { seconds: input.image.elapsedSeconds ?? "?" }) },
     {
       id: "saved",
       ok: savedOk,
-      detail: savedOk ? `${input.file?.kind?.toUpperCase()}, ${Math.round((input.file?.bytes ?? 0) / 1024)} KB` : "The file the table would be sent is missing or unreadable.",
+      detail: savedOk ? `${input.file?.kind?.toUpperCase()}, ${Math.round((input.file?.bytes ?? 0) / 1024)} KB` : t("The file the table would be sent is missing or unreadable."),
     },
     // A square picture still shows (the map panel crops it), so the shape
     // informs rather than fails.
     {
       id: "shape",
       ok: width > 0 && height > 0 ? width > height : null,
-      detail: width && height ? `${width} x ${height}${width > height ? "" : ", not the landscape a map asks for; the table crops it"}` : undefined,
+      detail: width && height ? `${width} x ${height}${width > height ? "" : t(", not the landscape a map asks for; the table crops it")}` : undefined,
     },
   ];
 }
 
-export async function testHarnessPictures(): Promise<PictureTestResult> {
+export async function testHarnessPictures(t: T = passT): Promise<PictureTestResult> {
   const settings = { ...configuredDefaultStorySettings(), imageBackend: "harness" as const };
   let image: GeneratedImage | null = null;
   let error = "";
@@ -104,7 +111,7 @@ export async function testHarnessPictures(): Promise<PictureTestResult> {
   const campaigns = await campaignPictures();
   return {
     ...(painted ? { image: painted } : {}),
-    stages: pictureStages({ image: painted, error, file }),
+    stages: pictureStages({ image: painted, error, file }, t),
     ...(error ? { error } : {}),
     campaigns,
     wouldMove: strandedMoves(campaigns, "harness", Boolean(painted)).length,

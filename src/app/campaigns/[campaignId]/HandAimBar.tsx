@@ -5,9 +5,10 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { replayAnimation } from "@/lib/motion/replay";
 import { ui } from "@/lib/ui";
-import { useT } from "@/lib/locale";
+import { useLocale, useT } from "@/lib/locale";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { HandAttackOption, HandAttackOptionId, HandCard } from "@/lib/battlemap/hand";
+import { cardDisplayName } from "@/lib/battlemap/hand-display";
 import { handReady, shareList, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { hasPick, pickHint, pickWords, type AreaPick } from "@/lib/battlemap/hand-area";
@@ -197,6 +198,7 @@ function HandOptionChip({
 // Closed until asked for: Wish's runs to pages, and it would push the Play
 // button off a phone.
 export function HandFullText({ card }: { card: HandCard }) {
+  const t = useT();
   // Less the rules line written just above (hand-full-text-logic.ts).
   const text = cardFullText(card);
   if (!text) return null;
@@ -222,7 +224,7 @@ export function HandFullText({ card }: { card: HandCard }) {
       }}
     >
       <summary className="hand-full-text-toggle inline-flex min-h-10 cursor-pointer items-center rounded-md px-1 text-xs uppercase tracking-wider text-amber-200/80 hover:text-amber-100 sm:min-h-8">
-        Full text
+        {t("Full text")}
       </summary>
       <p className="hand-full-text-body mt-1 max-h-60 overflow-y-auto whitespace-pre-line font-serif text-sm leading-snug text-stone-300">{text}</p>
     </details>
@@ -235,19 +237,21 @@ export function HandFullText({ card }: { card: HandCard }) {
 // which stays: the reason is still said on the Hand's notice line below it.
 export function HandReadPanel({ card, onClose }: { card: HandCard; onClose: () => void }) {
   const t = useT();
+  const locale = useLocale();
+  const displayName = cardDisplayName(card, locale);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.scrollIntoView({ block: "nearest" });
   }, [card.id]);
   return (
-    <div ref={ref} className="hand-aim hand-read mt-1 rounded-xl border border-stone-600/60 bg-stone-950/80 p-2.5 shadow-elev-1" role="region" aria-label={`${card.name}, cannot be played now`}>
+    <div ref={ref} className="hand-aim hand-read mt-1 rounded-xl border border-stone-600/60 bg-stone-950/80 p-2.5 shadow-elev-1" role="region" aria-label={t("{name}, cannot be played now", { name: displayName })}>
       <div className="hand-read-head flex min-w-0 items-center gap-2">
         <span className="hand-type-chip" style={{ "--chip-tone": typeTone(card.type) } as CSSProperties}>
           {typeLabel(t, card.type)}
         </span>
-        <span className="min-w-0 truncate font-display text-sm font-semibold text-amber-100">{card.name}</span>
+        <span className="min-w-0 truncate font-display text-sm font-semibold text-amber-100">{displayName}</span>
         <button type="button" onClick={onClose} className={cn(ui.btnSmall, "ml-auto min-h-10 shrink-0")}>
-          <X className="size-4" /> Close
+          <X className="size-4" /> {t("Close", { context: "action.close" })}
         </button>
       </div>
       {card.rules ? <p className="hand-aim-rules mt-1.5 font-serif text-sm leading-snug text-stone-300">{card.rules}</p> : null}
@@ -328,6 +332,8 @@ export function HandAimBar({
   onCommit: () => void;
 }) {
   const t = useT();
+  const locale = useLocale();
+  const displayName = cardDisplayName(card, locale);
   const toggles = options.filter((option) => !option.group);
   const grouped = options.filter((option) => option.group);
   const needsTarget = card.target === "enemy" || card.target === "ally";
@@ -371,7 +377,7 @@ export function HandAimBar({
         <span className="hand-type-chip" style={{ "--chip-tone": typeTone(card.type) } as CSSProperties}>
           {typeLabel(t, card.type)}
         </span>
-        <span className="min-w-0 truncate font-display text-sm font-semibold text-amber-100">{card.name}</span>
+        <span className="min-w-0 truncate font-display text-sm font-semibold text-amber-100">{displayName}</span>
         <span className="ml-auto min-w-0 truncate text-xs text-stone-400">{hint}</span>
       </div>
 
@@ -594,7 +600,7 @@ export function HandAimBar({
                 className={cn(ui.btnPrimary, "max-w-full")}
               >
                 {sending ? <Loader2 className="size-4 animate-spin" /> : null}
-                <span className="truncate">{card.compose ? t("Write it") : card.name}</span>
+                <span className="truncate">{card.compose ? t("Write it") : displayName}</span>
               </button>
             </Tooltip>
           </div>

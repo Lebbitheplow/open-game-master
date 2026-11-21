@@ -197,7 +197,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       { riders, offHand, martialArts, worn: magicItemRiders(sheet.equipment, sheet).weaponRiders },
     );
     // The damage and the roll as pc_attack makes them (hand-attack-lines.ts).
-    const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
+    const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" }, t);
     const rolled = attackRollLine(sheet, profile.toHit, options.board?.attackAura, profile);
     const damage = line.damage;
     const notes: string[] = [];
@@ -205,11 +205,18 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     // pair of shortswords is one row of two), so it says what it is first: a
     // player with two blades equipped took it for a second copy and thought
     // two-weapon fighting was missing.
-    if (offHand) notes.push(`Off-hand attack, your bonus action: the ${name} in your other hand, after you take the Attack action with a ${dualWields(sheet.feats, sheet.campaignId) ? "one-handed melee" : "light melee"} weapon.`);
+    if (offHand) {
+      notes.push(
+        t("Off-hand attack, your bonus action: the {name} in your other hand, after you take the Attack action with a {kind} weapon.", {
+          name,
+          kind: dualWielder ? t("one-handed melee") : t("light melee"),
+        }),
+      );
+    }
     // Which weapon is out, on the card itself (held-default.ts): a player
     // could not tell, and asked for one they thought was drawn.
     const wield = natural ? undefined : wieldOf(sheet, name);
-    if (wield === "stowed") notes.push(guessDrawNote(sheet, name) ?? "Packed away: the attack draws it with your free object interaction.");
+    if (wield === "stowed") notes.push(guessDrawNote(sheet, name) ?? t("Packed away: the attack draws it with your free object interaction."));
     if (!offHand && allowed > 1) notes.push(tp("Extra Attack: {count} swings on this action.", "Extra Attack: {count} swings on this action.", { count: allowed }));
     if (riders.sneakAttackDice > 0 && profile.sneakEligible) {
       notes.push(t("Sneak Attack +{dice}d6 once a turn when it applies.", { dice: riders.sneakAttackDice }));
@@ -219,7 +226,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     // pc_attack rolls without Rage or a melee hit's riders (Improved Divine
     // Smite). The card showed the melee sum for a throw too.
     const thrown = profile.thrown && !profile.ranged && !offHand
-      ? attackDamageLine({ sheet, turn, profile, riders, kind: "weapon", atRange: true }).damage
+      ? attackDamageLine({ sheet, turn, profile, riders, kind: "weapon", atRange: true }, t).damage
       : null;
     const thrownDamage = thrown && thrown !== damage ? thrown : null;
     if (thrownDamage) notes.push(`Thrown at range: ${thrownDamage}, without the melee bonuses.`);
