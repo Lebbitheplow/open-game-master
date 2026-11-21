@@ -191,10 +191,16 @@ export default {
       await untilStill(page);
       await t.shot("drag-over");
       const dragTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
-      await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+      // The scheme too, as the app's own switch sets it (src/lib/theme-mode.ts):
+      // an item chip's colour follows it, and stays the night's without it.
+      const setTheme = (mode) => page.evaluate((to) => {
+        document.documentElement.dataset.theme = to;
+        document.documentElement.style.colorScheme = to;
+      }, mode);
+      await setTheme("light");
       await page.waitForTimeout(800);
       await t.shot("drag-over-day");
-      await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), dragTheme);
+      await setTheme(dragTheme || "dark");
       await page.mouse.up();
       await eventually(async () => (await gear())["Wand of Magic Missiles"]?.equipped === true, { label: "the dropped wand in hand" });
       await eventually(async () => (await place("held").getAttribute("data-filled")) === "true", { label: "the In hand tile filled" });
