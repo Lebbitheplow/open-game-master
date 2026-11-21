@@ -110,7 +110,7 @@ function translateCalendarClause(t: T, raw: string): string {
   const PARTS = ["deep night", "before dawn", "morning", "midday", "afternoon", "evening", "night"];
   const SEASONS = ["winter", "spring", "summer", "autumn"];
   let out = raw;
-  out = out.replace(/It is now ([^.]+)\./g, (_: string, rest: string) => {
+  out = out.replace(/It is now ([^.\n]*\b(?:year \d+|Day \d+)\b[^.\n]*)\./g, (_: string, rest: string) => {
     let dateStr = rest;
     for (const d of DAYS) dateStr = dateStr.replace(new RegExp(`(?<!\\p{L})${d}(?!\\p{L})`, "gu"), t(d));
     for (const m of MONTHS) dateStr = dateStr.replace(new RegExp(`(?<!\\p{L})${m}(?!\\p{L})`, "gu"), t(m));
@@ -130,8 +130,25 @@ function translateMountDesc(t: T, desc: string): string {
     .replace(/(?<!\p{L})independent \(acts on its own turn\)/gu, () => t("independent (acts on its own turn)"));
 }
 
+function translateConditionWord(t: T, word: string): string {
+  const MAP: Record<string, string> = {
+    incapacitated: "incapacitated",
+    stunned: "stunned",
+    paralyzed: "paralyzed",
+    unconscious: "unconscious",
+    petrified: "petrified",
+    held: "held",
+    charmed: "charmed",
+    calmed: "calmed",
+  };
+  return MAP[word] ? t(MAP[word]) : word;
+}
+
 function translateSystemNote(t: T, raw: string): string {
   if (raw === "The fight is over.") return t("The fight is over.");
+  if (raw === "Every character is down and none can rise on their own.") {
+    return t("Every character is down and none can rise on their own.");
+  }
   let m = /^Chapter (\d+)(?:, "([^"]+)",)? comes to a close\.(.*)$/.exec(raw);
   if (m) {
     const head = m[2]
@@ -161,7 +178,6 @@ function translateSystemNote(t: T, raw: string): string {
   out = out.replace(/^(\d+ (?:week|weeks|day|days|hour|hours|minute|minutes)) pass(?:es)?: /, (_, dur) =>
     `${t("{duration} pass:", { duration: translateDuration(t, dur) })} `,
   );
-  out = translateCalendarClause(t, out);
   out = out.replace(/It is now ([^']+)'s turn \(round (\d+)\)\./g, (_, ch, r) =>
     t("It is now {character}'s turn (round {n}).", { character: ch, n: r }),
   );
@@ -174,6 +190,7 @@ function translateSystemNote(t: T, raw: string): string {
   out = out.replace(/It is now ([^']+)'s turn\./g, (_, ch) =>
     t("It is now {character}'s turn.", { character: ch }),
   );
+  out = translateCalendarClause(t, out);
   out = out.replace(/([^.\n]+?) ends their turn\./g, (_, ch) =>
     t("{character} ends their turn.", { character: ch.trim() }),
   );
@@ -191,8 +208,87 @@ function translateSystemNote(t: T, raw: string): string {
   out = out.replace(/Skipped enemy turns resolve automatically:/g, () =>
     t("Skipped enemy turns resolve automatically:"),
   );
+  // Death saves (src/lib/dm/death.ts)
   out = out.replace(
-    /([^:;]+) attacks ([^:]+?) with ([^(:]+) \(([^)]+) vs AC (\d+): (HIT|CRIT|MISS)(?: for ([^)]+))?\)\./g,
+    /([^.\n]+?) death save: rolled (\d+), (natural 20|success|failure)(?: \(([^)]+)\))?\./g,
+    (_, name, total, result, tally) => {
+      const resultFr = t(result);
+      return tally
+        ? t("{name} death save: rolled {total}, {result} ({tally}).", { name: name.trim(), total, result: resultFr, tally })
+        : t("{name} death save: rolled {total}, {result}.", { name: name.trim(), total, result: resultFr });
+    },
+  );
+  out = out.replace(/([^.\n]+?) rolls a natural 20 on their death save and regains 1 HP!/g, (_, name) =>
+    t("{name} rolls a natural 20 on their death save and regains 1 HP!", { name: name.trim() }),
+  );
+  out = out.replace(
+    /([^.\n]+?) succeeds their third death save and is stable \(unconscious at 0 HP\)\. They regain 1 hit point in (\d+) hours?\./g,
+    (_, name, hours) =>
+      Number(hours) === 1
+        ? t("{name} succeeds their third death save and is stable (unconscious at 0 HP). They regain 1 hit point in {hours} hour.", { name: name.trim(), hours })
+        : t("{name} succeeds their third death save and is stable (unconscious at 0 HP). They regain 1 hit point in {hours} hours.", { name: name.trim(), hours }),
+  );
+  out = out.replace(
+    /([^.\n]+?) succeeds their third death save and is stable at 0 HP, still raging on their feet\./g,
+    (_, name) => t("{name} succeeds their third death save and is stable at 0 HP, still raging on their feet.", { name: name.trim() }),
+  );
+  out = out.replace(
+    /([^.\n]+?) fails their third death save\. Rage Beyond Death holds the death off: they die when the rage ends, if they are still at 0 hit points then\./g,
+    (_, name) => t("{name} fails their third death save. Rage Beyond Death holds the death off: they die when the rage ends, if they are still at 0 hit points then.", { name: name.trim() }),
+  );
+  out = out.replace(/([^.\n]+?) fails their final death save and dies\./g, (_, name) =>
+    t("{name} fails their final death save and dies.", { name: name.trim() }),
+  );
+  // Stand-still & skipped enemy lines (src/lib/dm/turn-lines-logic.ts)
+  out = out.replace(/([^.\n]+?) is ([^.\n]+?) and loses (its|their) turn\./g, (_, name, by, pron) =>
+    pron === "their"
+      ? t("{name} is {by} and loses their turn.", { name: name.trim(), by: translateConditionWord(t, by.trim()) })
+      : t("{name} is {by} and loses its turn.", { name: name.trim(), by: translateConditionWord(t, by.trim()) }),
+  );
+  out = out.replace(/([^.\n]+?) is caught by surprise and does nothing this round\./g, (_, name) =>
+    t("{name} is caught by surprise and does nothing this round.", { name: name.trim() }),
+  );
+  out = out.replace(/([^.\n]+?) has no one left to fight\./g, (_, name) =>
+    t("{name} has no one left to fight.", { name: name.trim() }),
+  );
+  out = out.replace(/([^.\n]+?) closes in on ([^.\n]+?) but cannot reach them this turn\./g, (_, name, target) =>
+    t("{name} closes in on {target} but cannot reach them this turn.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) cannot reach ([^.\n]+?) this turn\./g, (_, name, target) =>
+    t("{name} cannot reach {target} this turn.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) moves for a shot at ([^.\n]+?) but is still out of range\./g, (_, name, target) =>
+    t("{name} moves for a shot at {target} but is still out of range.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) cannot get ([^.\n]+?) within range this turn\./g, (_, name, target) =>
+    t("{name} cannot get {target} within range this turn.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) moves but still has no clear line to ([^.\n]+)\./g, (_, name, target) =>
+    t("{name} moves but still has no clear line to {target}.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) has no clear line to ([^.\n]+?) this turn\./g, (_, name, target) =>
+    t("{name} has no clear line to {target} this turn.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) is too frightened to close in on ([^.\n]+)\./g, (_, name, target) =>
+    t("{name} is too frightened to close in on {target}.", { name: name.trim(), target }),
+  );
+  out = out.replace(/([^.\n]+?) does not close in while ([^.\n]+?) holds a readied action\./g, (_, name, holder) =>
+    t("{name} does not close in while {holder} holds a readied action.", { name: name.trim(), holder }),
+  );
+  out = out.replace(/([^.\n]+?) is ([^.\n]+?) and makes no attack\./g, (_, name, by) =>
+    t("{name} is {by} and makes no attack.", { name: name.trim(), by: translateConditionWord(t, by.trim()) }),
+  );
+  out = out.replace(/([^.\n]+?) finds no one it can attack this turn\./g, (_, name) =>
+    t("{name} finds no one it can attack this turn.", { name: name.trim() }),
+  );
+  out = out.replace(/([^.\n]+?)'s turn has not come yet\./g, (_, name) =>
+    t("{name}'s turn has not come yet.", { name: name.trim() }),
+  );
+  out = out.replace(/([^.\n]+?) does not attack this turn\./g, (_, name) =>
+    t("{name} does not attack this turn.", { name: name.trim() }),
+  );
+  out = out.replace(
+    /([^:;]+) attacks ([^:]+?) with ([^(:]+) \(([^)]+) vs AC (\d+): (HIT|CRIT|MISS)(?: for ([^)]+(?:\([^)]*\))?))?\)\./g,
     (_, enemy, target, weapon, roll, ac, outcome, dmg) => {
       const outcomeFr =
         outcome === "HIT" ? t("HIT") : outcome === "CRIT" ? t("CRIT") : t("MISS");
@@ -216,6 +312,7 @@ function translateSystemNote(t: T, raw: string): string {
           });
     },
   );
+  out = out.replace(/ ([^.\n!]+) falls!/g, (_, target) => ` ${t("{target} falls!", { target })}`);
   out = out.replace(/^Combat begins\. Initiative order: /, () => `${t("Combat begins. Initiative order:")} `);
   return out;
 }

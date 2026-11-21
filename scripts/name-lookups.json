@@ -510,6 +510,7 @@
     "app/campaigns/[campaignId]/MarketShopEditor.tsx#whole": [["identity",2,"a stock line by whole name"]],
     "app/campaigns/[campaignId]/MessageActions.tsx#whole": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/MessageContent.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
+    "app/campaigns/[campaignId]/MessageParts.tsx#keyed": [["key",2,"condition word lookup in translateConditionWord"]],
     "app/campaigns/[campaignId]/MessageParts.tsx#partial": [
       [
         "pattern",

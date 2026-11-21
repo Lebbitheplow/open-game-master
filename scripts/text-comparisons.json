@@ -3969,10 +3969,17 @@
         "display-only tool grant category splitting in ClassChoices.tsx"
       ]
     ],
+    "app/campaigns/[campaignId]/MessageParts.tsx#\\b": [
+      [
+        "display",
+        2,
+        "display-only calendar year/day boundary in translateCalendarClause"
+      ]
+    ],
     "app/campaigns/[campaignId]/MessageParts.tsx#re-word": [
       [
         "display",
-        33,
+        55,
         "display-only translation of DB-stored English system note and player action templates"
       ]
     ],
@@ -3986,8 +3993,15 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#str-eq": [
       [
         "display",
-        20,
+        21,
         "display-only translation of DB-stored English system note and player action templates"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MessageParts.tsx#str-key": [
+      [
+        "display",
+        1,
+        "display-only condition word lookup in translateConditionWord"
       ]
     ],
     "app/campaigns/[campaignId]/MessageParts.tsx#str-list": [
