@@ -1,3 +1,4 @@
+import { recordRoll } from "@/lib/dm/roll-record";
 import { z } from "zod";
 import { sellsAtFullValue } from "@/lib/dm/genre-cc-a-fixer";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -8,7 +9,6 @@ import { getClock } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { getNpcById, getNpcByName } from "@/lib/db/npcs";
-import { insertRoll } from "@/lib/db/rolls";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { findShopNear, getShop, insertShop, listShops, listShopsAt, shopStandsAt, updateShop } from "@/lib/db/shops";
@@ -626,8 +626,7 @@ export function handleHaggle(campaign: Campaign, rawArguments: string, at: Trade
   // they roll it, and the price moves once it lands.
   const detail = `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`;
   const rolled = rollCharacterD20(campaign, sheet, { kind: "skill_check", expression: resolved.expression, detail, dc, settleHeldDie: waits });
-  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: rolled });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: rolled });
   const steps = haggleSteps(skill, rolled.total, dc);
   // A companion who already haggled here keeps the price they got.
   const joining = company.filter((other) => !dealFor(shop, other.id));

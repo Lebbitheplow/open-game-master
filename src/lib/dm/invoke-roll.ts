@@ -11,6 +11,7 @@
 // after the dice land (src/lib/dm/after-roll.ts) whether they are physical or
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
+import { recordRoll } from "@/lib/dm/roll-record";
 import { beforeRollWords, ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { recordRequestedSave } from "@/lib/dm/last-save";
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
@@ -32,13 +33,10 @@ import { heroRollTag } from "@/lib/dice-script-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { charmedBy } from "@/lib/dm/enemy-profile";
-import { insertRoll } from "@/lib/db/rolls";
 import { createPendingRoll, listOpenPendingRolls, publicPendingRoll, setPendingCombatNote, type DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { allocateSeq } from "@/lib/db/campaigns";
+import { publishPersisted } from "@/lib/events";
 import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
-import { redactRoll } from "@/lib/dm/viewer";
 import { autoApplyDamageRoll } from "@/lib/dm/enemy-damage";
 import { heldInitiative, recordInitiativeRoll } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
@@ -402,7 +400,15 @@ export function handleRequestRoll(
         note: `Waiting on ${sheet.name} to decide what to do with their roll.`,
       };
     }
-    const roll = insertRoll({
+    // Stored, sent and added to the turn by the one door for a roll's record
+    // (roll-record.ts). The log every seat may replay carries what a PLAYER
+    // may see: a roll that is not public is kept there with its number taken
+    // out (src/lib/table-delivery.ts tablePayload). A blind roll is sent to
+    // every seat that way, and whoever is allowed the number re-fetches it
+    // from GET /rolls, exactly as the DM re-fetches their own enemy numbers.
+    // A roll behind the screen ("dm", "self") is sent whole to the seats that
+    // may read it and to no other.
+    const roll = recordRoll({
       campaignId,
       characterId: sheet?.id ?? null,
       requestedBy: "dm",
@@ -415,14 +421,9 @@ export function handleRequestRoll(
       attacker: null,
       // A screen is a person's tool; the model's rolls are the table's.
       visibility: model ? "public" : args.visibility ?? "public",
-    });
-    turn.rollIds.push(roll.id);
-    // The stream is shared, so it carries what a PLAYER may see. Whoever is
-    // allowed the number re-fetches it from GET /rolls, exactly as the DM
-    // re-fetches their own enemy numbers.
-    publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", {
-      roll: roll.visibility === "public" ? roll : redactRoll(roll),
-      source: "digital",
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
     const combatNote =
       args.kind === "initiative"

@@ -117,10 +117,7 @@ export function characterHoldEscape(campaign: Campaign, turn: DmTurn, sheet: Cha
     return { error: `${sheet.name} is held by nothing they can break free of.`, refused: "rules" };
   }
   spend();
-  const check = rollCharacterCheck(campaign, sheet, { ability: hold.check.ability, dc: hold.check.dc }, `${sheet.name}: ${hold.check.ability.toUpperCase()} check to break free of the ${hold.name}`);
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
+  const check = rollCharacterCheck(campaign, sheet, { ability: hold.check.ability, dc: hold.check.dc }, `${sheet.name}: ${hold.check.ability.toUpperCase()} check to break free of the ${hold.name}`, turn);
   const escaped = !check.autoFailed && check.total >= hold.check.dc;
   return {
     ok: true,

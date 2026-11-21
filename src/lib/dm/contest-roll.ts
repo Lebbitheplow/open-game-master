@@ -5,14 +5,17 @@
 // too: Reliable Talent's floor, Halfling Lucky's reroll, a held Bardic
 // Inspiration die (spent by the roll), Guidance, the lasting effects on
 // checks, conditions, exhaustion, armor, and the items that ride checks.
-// The roll is stored and published like any other.
+// The roll goes on record through the one door for that
+// (src/lib/dm/roll-record.ts recordRoll): stored, sent as it landed (a d20
+// the player rolled at the table is theirs, not the server's), and added to
+// the turn's cards.
 
 import { rollCard } from "@/lib/dm/roll-card";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { insertRoll } from "@/lib/db/rolls";
+import type { Campaign } from "@/lib/db/campaigns";
+import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { withSpellCheckBonus } from "@/lib/dm/ar-ws-spell-check";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -28,7 +31,6 @@ export type CharacterCheck = {
   total: number;
   expression: string;
   notes: string[];
-  rollId: string | null;
   // Set when a condition decided the check with no die rolled; the total is
   // then the lowest a check can be.
   autoFailed?: boolean;
@@ -73,22 +75,25 @@ export function checkCeiling(campaign: Campaign, stale: CharacterSheet, check: C
   return rollExpression(resolved.expression, (sides) => sides).total;
 }
 
+// `turn`: the turn the caller holds, whose cards the check joins. Inside a GM
+// call the check joins the call's own turn whether or not one is handed in.
 export function rollCharacterCheck(
   campaign: Campaign,
   stale: CharacterSheet,
   check: CheckAsked,
   detail: string,
+  turn: DmTurn | null = null,
 ): CharacterCheck {
   const sheet = getSheetById(stale.id) ?? stale;
   const waits = heldDieWaits(sheet, check.dc);
   const resolved = resolveCheck(campaign, sheet, check, waits);
   if ("error" in resolved) {
     // An unknown skill: fall back to the plain ability, never to nothing.
-    const outcome = rollCard(campaign, null, sheet.id, check.skill ? "skill_check" : "ability_check", `${detail}: ${check.skill ?? check.ability ?? "check"}`, d20Expression(0, check.advantage ?? "none"), null);
-    return { total: outcome.total, expression: "1d20", notes: [resolved.error], rollId: null };
+    const outcome = rollCard(campaign, turn, sheet.id, check.skill ? "skill_check" : "ability_check", `${detail}: ${check.skill ?? check.ability ?? "check"}`, d20Expression(0, check.advantage ?? "none"), null);
+    return { total: outcome.total, expression: "1d20", notes: [resolved.error] };
   }
   if ("autoFail" in resolved) {
-    return { total: 1, expression: "", notes: resolved.notes, rollId: null, autoFailed: true };
+    return { total: 1, expression: "", notes: resolved.notes, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const kind = check.skill ? "skill_check" : "ability_check";
@@ -102,7 +107,7 @@ export function rollCharacterCheck(
     ...(check.advantage ? { advantage: check.advantage } : {}),
     settleHeldDie: waits,
   });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -110,16 +115,12 @@ export function rollCharacterCheck(
     detail: `${detail}: ${resolved.detail}`.slice(0, 120),
     ...(check.dc ? { dc: check.dc } : {}),
     result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
+    turn,
   });
   return {
     total: outcome.total,
     expression: resolved.expression,
     notes: resolved.conditionNotes ?? [],
-    rollId: roll.id,
   };
 }
 
@@ -170,7 +171,7 @@ export function rollFeatureSave(
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const said = `${sheet.name}: ${ability.toUpperCase()} save, ${detail}`.slice(0, 120);
   const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: said, dc, settleHeldDie: waits });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -178,10 +179,6 @@ export function rollFeatureSave(
     detail: said,
     dc,
     result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
   });
   return { success: outcome.total >= dc, total: outcome.total, notes: resolved.conditionNotes ?? [] };
 }

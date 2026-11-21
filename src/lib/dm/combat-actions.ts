@@ -89,10 +89,7 @@ export function hide(
   }
   // A Stealth check like any other (src/lib/dm/contest-roll.ts): noisy
   // armor, Reliable Talent, a held inspiration die, Guidance.
-  const stealth = rollCharacterCheck(campaign, sheet, { skill: "stealth" }, `${sheet.name}: Stealth to hide`);
-  if (stealth.rollId) {
-    turn.rollIds.push(stealth.rollId);
-  }
+  const stealth = rollCharacterCheck(campaign, sheet, { skill: "stealth" }, `${sheet.name}: Stealth to hide`, turn);
   // Compared against the sharpest living enemy's real passive Perception
   // rather than left to judgement.
   const watchers = listEnemies(encounter.id).filter((enemy) => enemy.status === "alive");
@@ -265,10 +262,7 @@ export function contest(
   // (STR) and Acrobatics (DEX). Ties go to the defender.
   const rollContest = (die: { die: string; label: string } | undefined): { text: string; won: boolean } => {
     // About a grapple or a shove, for what is keyed to one (Juggernaut).
-    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics", about: "grapple_shove", ...(nemesisClaim(campaign.id, sheet, enemy) ? { advantage: "advantage" as const } : {}) }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
-    if (checked.rollId) {
-      turn.rollIds.push(checked.rollId);
-    }
+    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics", about: "grapple_shove", ...(nemesisClaim(campaign.id, sheet, enemy) ? { advantage: "advantage" as const } : {}) }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`, turn);
     const extra = die ? rollCard(campaign, turn, sheet.id, "custom", `${sheet.name}: ${die.label}`, `1${die.die.replace(/^1/, "")}`, null).total : 0;
     const mine = extra ? { ...checked, total: checked.total + extra } : checked;
     if (die) {
@@ -281,7 +275,7 @@ export function contest(
     // A Chronal Shift a watch stop armed for either side (contest-roll.ts).
     const settled = contestShift(
       campaign.id,
-      { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}, rolled again`).total + extra },
+      { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}, rolled again`, turn).total + extra },
       { tag: enemyContestTag(enemy), total: rolledTheirs, again: () => rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the ${action}, rolled again`) },
       (a, b) => a > b,
     );

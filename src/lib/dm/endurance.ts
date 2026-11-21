@@ -12,12 +12,10 @@
 // Flash of Genius, Favored by the Gods: src/lib/dm/foresight.ts) lands on the
 // first hour's save it answers.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { publishWithSeq } from "@/lib/events";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { applyDmMutation } from "@/lib/dm/mutations";
@@ -81,7 +79,7 @@ export function hourlyConSaves(input: {
       // physical dice they roll it, hour by hour.
       const rolled = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail(hour), dc, settleHeldDie: waits });
       save = rolled.total;
-      const roll = insertRoll({
+      recordRoll({
         campaignId: campaign.id,
         characterId: sheet.id,
         requestedBy: "dm",
@@ -89,9 +87,8 @@ export function hourlyConSaves(input: {
         detail: input.detail(hour),
         dc,
         result: rolled,
+        turn,
       });
-      publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-      turn.rollIds.push(roll.id);
       failed = rolled.total < dc;
     }
     const entry: HourSave = { hour, dc, save, failed };

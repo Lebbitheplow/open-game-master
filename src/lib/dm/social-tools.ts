@@ -1,10 +1,10 @@
+import { recordRoll } from "@/lib/dm/roll-record";
 import { z } from "zod";
 import { reactionBias } from "@/lib/dm/safety-logic";
 import { reputationDcOffset } from "@/lib/dm/faction-logic";
 import { getParty } from "@/lib/db/party";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById } from "@/lib/db/sheets";
-import { insertRoll } from "@/lib/db/rolls";
 import { listActiveFacts } from "@/lib/db/facts";
 import { renderWitnessNote } from "@/lib/dm/witness-logic";
 import {
@@ -37,7 +37,6 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
 import { TOLD_RACE_HELP, raceWords, storedRace, unreadRace } from "@/lib/npc-race";
 import { rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { swayUnasked } from "@/lib/dm/player-word";
 import {
   approachSkill,
@@ -176,10 +175,6 @@ export const socialTools: ToolDef[] = [
     },
   },
 ];
-
-function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
-}
 
 // ---- agency bootstrap shared by set_npc and npc_reaction ----
 
@@ -362,16 +357,17 @@ export function handleNpcReaction(
   const modifier = args.modifier ?? 0;
   // A penalty is written as 2d6-3, never 2d6+-3, which no dice parser reads.
   const outcome = rollExpression(modifier ? `2d6${modifier < 0 ? "-" : "+"}${Math.abs(modifier)}` : "2d6");
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: null,
     requestedBy: "dm",
     kind: "custom",
     detail: `Reaction roll for ${args.name}`,
     result: outcome,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishRoll(campaign.id, roll);
-  turn.rollIds.push(roll.id);
   // Strictness leans the stranger a step (docs/vtt-parity-implementation-
   // plan.md 9.2): warmer when lenient, warier when harsh.
   const attitude = shiftAttitude(reactionAttitude(outcome.total), reactionBias(campaign.gameSettings.gm?.strictness ?? "standard"));
@@ -490,7 +486,7 @@ export function handleSocialCheck(
     ...(args.reason ? { reason: args.reason } : {}),
     settleHeldDie: waits,
   });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -498,9 +494,8 @@ export function handleSocialCheck(
     detail: `${sheet.name}: ${skill} on ${npc.name}`,
     dc,
     result: rolled,
+    turn,
   });
-  publishRoll(campaign.id, roll);
-  turn.rollIds.push(roll.id);
   // Talking someone round, or failing to, is dealing with them; the first
   // time opens every character's bond with them, not only this one's.
   if (meetNpc(campaign, npc).opened) {

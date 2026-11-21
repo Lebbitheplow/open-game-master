@@ -1,13 +1,12 @@
+import { recordRoll } from "@/lib/dm/roll-record";
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
 import { CHECK_KEY_PROPERTIES, CHECK_SENSES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { z } from "zod";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById } from "@/lib/db/sheets";
-import { insertRoll } from "@/lib/db/rolls";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived, SRD_SKILLS } from "@/lib/srd";
 import { dcForDifficulty, difficultyOfDc, normalizeDifficulty } from "@/lib/srd/dc";
 import { strictnessShift } from "@/lib/dm/safety-logic";
@@ -198,10 +197,6 @@ function resolveTargets(
   return resolved;
 }
 
-function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
-}
-
 // ---- group_check ----
 
 const groupCheckSchema = z.object({
@@ -312,7 +307,7 @@ export function handleGroupCheck(
       ...(args.reason ? { reason: args.reason } : {}),
       settleHeldDie: waits,
     });
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
@@ -320,9 +315,8 @@ export function handleGroupCheck(
       detail: `${sheet.name}: group ${args.skill ?? args.ability} check`,
       dc: dc.dc,
       result: rolled,
+      turn,
     });
-    publishRoll(campaign.id, roll);
-    turn.rollIds.push(roll.id);
     results.push({ name: sheet.name, total: rolled.total, success: rolled.total >= dc.dc });
   }
 

@@ -114,13 +114,8 @@ export function characterSpellEscape(
     return { ok: true, action: "escape", save: `${save.total} vs DC ${hold.dc}`, success: save.success, note: save.success ? `${sheet.name} breaks free of ${hold.spell}.` : `${sheet.name} is still ${hold.name} by ${hold.spell}.` };
   }
   const checks = hold.abilities.map((ability) =>
-    rollCharacterCheck(campaign, sheet, { ability }, `${sheet.name}: ${ability.toUpperCase()} check to break free of ${hold.spell}`),
+    rollCharacterCheck(campaign, sheet, { ability }, `${sheet.name}: ${ability.toUpperCase()} check to break free of ${hold.spell}`, turn),
   );
-  for (const check of checks) {
-    if (check.rollId) {
-      turn.rollIds.push(check.rollId);
-    }
-  }
   const best = Math.max(...checks.map((check) => (check.autoFailed ? 0 : check.total)));
   const escaped = best >= hold.dc;
   if (escaped) {

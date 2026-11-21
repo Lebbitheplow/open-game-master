@@ -23,6 +23,14 @@
 //     the only die its tools threw was behind the screen;
 //   - dice the player entered are on record and sent as physical, with
 //     nothing for the site to carry, and dice the server threw as digital;
+//   - a check or save a tool rolls for a character (contest-roll.ts
+//     rollCharacterCheck, rollFeatureSave; between-io.ts characterSave;
+//     forced-save.ts rollCharacterSave) goes the same way: on the call's
+//     turn, or the turn it is handed, and as the player's own when they
+//     rolled its d20;
+//   - a roll that is not public is handed to the door whole (request_roll
+//     with a visibility, a creature's side of a contest) and is in the log
+//     with its number taken out (src/lib/table-delivery.ts);
 //   - at the engine: Sleep's pool and a creature's initiative are on the
 //     turn of the call that rolled them.
 //
@@ -56,6 +64,9 @@ const { rollExpression } = await import("../src/lib/dice.ts");
 const { isHeldPark, parkHeldCall, runHeld, takeDecided } = await import("../src/lib/dm/held-call.ts");
 const { recordRoll } = await import("../src/lib/dm/roll-record.ts");
 const { dmRoll, rollCard, secretRoll } = await import("../src/lib/dm/roll-card.ts");
+const { rollCharacterCheck, rollFeatureSave } = await import("../src/lib/dm/contest-roll.ts");
+const { characterSave } = await import("../src/lib/dm/between-io.ts");
+const { rollCharacterSave } = await import("../src/lib/dm/forced-save.ts");
 const { startDmTurn } = await import("../src/lib/dm/turn.ts");
 
 const hero = world.addHero({ name: "Dicey", class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED });
@@ -119,6 +130,51 @@ await test("the helpers a site calls put their roll on the call's turn when hand
   const rolls = rollsAfter(world.campaignId, mark);
   assert.deepEqual(rolls.map((roll) => roll.detail), ["a card's die", "the GM's die"]);
   assert.deepEqual(storedIds(turn.id), rolls.map((roll) => roll.id));
+});
+
+await test("a check or save a tool rolls for a character is on the call's turn handed none or a copy, and outside a call on the turn it is handed, once each", () => {
+  const turn = newTurn();
+  const mark = rollMark();
+  const sheet = () => world.sheet(hero.id);
+  runHeld(campaign(), turn, SPEC, () => {
+    rollCharacterCheck(campaign(), sheet(), { skill: "athletics" }, "Dicey: a check handed no turn");
+    rollCharacterCheck(campaign(), sheet(), { skill: "athletics" }, "Dicey: a check handed a copy", getDmTurn(turn.id));
+    rollFeatureSave(campaign(), sheet(), "con", 10, "a feature's save");
+    characterSave(campaign(), sheet(), { ability: "con", dc: 10, detail: "Dicey: CON save in a call" });
+  });
+  saveDmTurn(turn);
+  const inCall = rollsAfter(world.campaignId, mark);
+  assert.equal(inCall.length, 4, `the call stored ${inCall.length} rolls`);
+  assert.deepEqual(storedIds(turn.id), inCall.map((roll) => roll.id));
+  const other = newTurn();
+  const outside = rollMark();
+  rollCharacterCheck(campaign(), sheet(), { skill: "athletics" }, "Dicey: a check outside a call", other);
+  const made = rollsAfter(world.campaignId, outside).map((roll) => roll.id);
+  assert.equal(made.length, 1);
+  assert.deepEqual(other.rollIds, made);
+  assert.deepEqual(storedIds(other.id), made);
+});
+
+await test("a d20 the player entered for a check or save a tool rolls is on record and sent as theirs, by each helper", () => {
+  const sheet = () => world.sheet(hero.id);
+  const helpers = {
+    rollCharacterCheck: ["skill_check", () => rollCharacterCheck(campaign(), sheet(), { skill: "athletics" }, "Dicey: Athletics")],
+    rollFeatureSave: ["saving_throw", () => rollFeatureSave(campaign(), sheet(), "con", 10, "a feature's save")],
+    characterSave: ["saving_throw", () => characterSave(campaign(), sheet(), { ability: "con", dc: 10, detail: "Dicey: CON save" })],
+    rollCharacterSave: ["saving_throw", (turn) => rollCharacterSave(campaign(), turn, sheet(), "con", 10, "Dicey: CON save, forced")],
+  };
+  for (const [name, [kind, roll]] of Object.entries(helpers)) {
+    const turn = newTurn();
+    const seq = lastSeq(world.campaignId);
+    const mark = rollMark();
+    const entered = { characterId: hero.id, kind, outcome: rollExpression("1d20", () => 14), raw: true, landing: { physical: true, source: "physical" } };
+    runHeld(campaign(), turn, SPEC, () => void roll(turn), { decided: [entered], tape: [], recorded: new Map() });
+    const made = rollsAfter(world.campaignId, mark);
+    assert.equal(made.length, 1, `${name} stored ${made.length} roll(s)`);
+    assert.match(made[0].detail, /\(physical\)$/, `${name}: the record does not say the dice were the player's`);
+    assert.deepEqual(announced(world.campaignId, seq, made[0].id).map((payload) => payload.source), ["physical"], `${name}: the stage was told to throw a d20 the player had already rolled`);
+    assert.deepEqual(turn.rollIds, [made[0].id], `${name}: the roll is not on the call's turn once`);
+  }
 });
 
 await test("a call that parks takes its rolls back: none on record, none on the turn", () => {
@@ -270,6 +326,45 @@ await test("Sleep's pool of hit points is on the turn of the call that cast it",
   assert.ok(pool, "Sleep rolled no pool");
   assert.equal(homeProblem(pool.id), null);
   assert.deepEqual(rollHomes(pool.id).turns, [getLatestDmTurnId(world.campaignId)], "the pool is on another turn than the cast's");
+  await kit.endFight();
+});
+
+// Every roll_result the log holds for a roll, read from the table itself:
+// the reader every seat replays through leaves out a roll behind the screen.
+const logged = (rollId) =>
+  getDatabase()
+    .prepare("SELECT payload_json FROM campaign_events WHERE campaign_id = ? AND type = 'roll_result'")
+    .all(world.campaignId)
+    .map((row) => JSON.parse(row.payload_json))
+    .filter((payload) => payload.roll?.id === rollId);
+
+await test("a requested roll that is not public, and a creature's side of a contest, are handed to the door whole and are in the log with their number taken out", async () => {
+  const hiddenInLog = (roll, what) => {
+    const rows = logged(roll.id);
+    assert.equal(rows.length, 1, `${what} is in the log ${rows.length} time(s)`);
+    assert.equal(rows[0].roll.total, null, `${what}: its total is in the log`);
+    assert.equal(rows[0].roll.breakdown, null, `${what}: its dice are in the log`);
+    assert.equal(rows[0].roll.hidden, true);
+    assert.equal(homeProblem(roll.id), null, what);
+  };
+  for (const visibility of ["blind", "dm", "self"]) {
+    const mark = rollMark();
+    const out = await world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: "perception", dc: 10, visibility, reason: "a noise" });
+    assert.equal(out.ok, true, `refused: ${out.error}`);
+    const [roll, ...more] = rollsAfter(world.campaignId, mark);
+    assert.deepEqual(more, []);
+    assert.equal(roll.visibility, visibility);
+    assert.equal(typeof getRoll(roll.id).total, "number", "the record itself lost its number");
+    hiddenInLog(roll, `a ${visibility} roll`);
+  }
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  const mark = rollMark();
+  const out = await world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: "stealth", againstEnemyId: enemy.id, reason: "slipping past" });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  const theirs = rollsAfter(world.campaignId, mark).find((roll) => roll.visibility === "dm" && /contest/.test(roll.detail));
+  assert.ok(theirs, "the creature's side of the contest is on no record");
+  hiddenInLog(theirs, "the creature's side of the contest");
   await kit.endFight();
 });
 
