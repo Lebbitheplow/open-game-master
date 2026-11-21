@@ -163,10 +163,7 @@ export function enemyNetEscape(campaign: Campaign, turn: DmTurn, enemy: Encounte
 // `spend` pays it.
 export function characterNetEscape(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet, spend: () => void): ToolResult {
   spend();
-  const check = rollCharacterCheck(campaign, sheet, { ability: "str", dc: NET_ESCAPE_DC }, `${sheet.name}: STR check to break free of the net`);
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
+  const check = rollCharacterCheck(campaign, sheet, { ability: "str", dc: NET_ESCAPE_DC }, `${sheet.name}: STR check to break free of the net`, turn);
   const escaped = !check.autoFailed && check.total >= NET_ESCAPE_DC;
   return {
     ok: true,

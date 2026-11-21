@@ -17,6 +17,7 @@
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path. Must not import mutations.ts (which imports it).
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getClock } from "@/lib/db/clock";
@@ -26,12 +27,11 @@ import { unseenBecause } from "@/lib/dm/authored-saves";
 import { presenceHold } from "@/lib/dm/mt-srd-barbarian";
 import { shedLight } from "@/lib/dm/mt-srd-paladin";
 import { seesOrHears } from "@/lib/dm/mt-srd-reach";
-import { insertRoll } from "@/lib/db/rolls";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { tilesApart } from "@/lib/dm/board-reach";
 
 import { spendAction } from "@/lib/dm/action-budget";
@@ -353,15 +353,16 @@ function divineIntervention(campaign: Campaign, turnId: string, stale: Character
   if (level < 20) {
     const outcome = rollExpression("1d100");
     rolled = outcome.total;
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
       kind: "ability_check",
       detail: `${sheet.name}: Divine Intervention (at or under ${level})`,
       result: outcome,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   }
   const intervenes = rolled === null || rolled <= level;
   spendUse(campaign, turnId, sheet, "divine_intervention", "Divine Intervention");

@@ -18,12 +18,11 @@
 // ability, DC 10 + the spell's level, and a failure wastes the scroll; a
 // spell off your list is unintelligible.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import { coatWithPoison, poisonCoatRefusal } from "@/lib/dm/attack-onhit";
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { removeConditions, withTempHpClaim, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { VITAL_HIT_DICE } from "@/lib/dm/hit-dice";
@@ -344,8 +343,7 @@ function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail:
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   // The drinker's own save (src/lib/dm/character-roll.ts).
   const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail, dc, settleHeldDie: heldDieWaits(sheet, dc) });
-  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, dc, result: outcome });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, dc, result: outcome });
   return { success: outcome.total >= dc };
 }
 
@@ -372,8 +370,7 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
       // The reader's own check (src/lib/dm/character-roll.ts).
       const outcome = rollCharacterD20(campaign, reader, { kind: "ability_check", expression: resolved.expression, detail: `${reader.name}: reading a scroll of ${name}`, dc, settleHeldDie: heldDieWaits(reader, dc) });
       total = outcome.total;
-      const roll = insertRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, dc, result: outcome });
-      publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+      recordRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, dc, result: outcome });
     }
     if (total < dc) {
       return {

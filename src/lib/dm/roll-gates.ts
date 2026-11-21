@@ -13,6 +13,7 @@
 // (contest-roll.ts rollCharacterCheck: proficiency and expertise, its
 // advantage and conditions, its features and effects).
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { authoredStealthAtNormal, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -24,20 +25,16 @@ import { getSheetById } from "@/lib/db/sheets";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { stealthyAlone } from "@/lib/dm/mt-srd-ranger";
 import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { resolveMonster } from "@/lib/bestiary";
 import type { EnemyStats, SaveAbility } from "@/lib/bestiary/statblock";
 import { mergeAdvantage, rollDerivation } from "@/lib/dm/condition-logic";
 import { unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import { redactRoll } from "@/lib/dm/viewer";
 import { findSkill } from "@/lib/srd";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
@@ -191,10 +188,8 @@ export function rollContest(
       asSheet,
       { ...(theirs ? { skill: theirs } : { ability }), ...(charmer && input.roller ? { charmedTarget: input.roller.name } : {}), ...(hardToCatch ? { advantage: "disadvantage" as const } : {}) },
       `${opponent.name}: ${label} (contest)`,
+      turn,
     );
-    if (checked.rollId) {
-      turn?.rollIds.push(checked.rollId);
-    }
     const total = checked.autoFailed ? 0 : checked.total;
     return { name: opponent.name, skill: label, total, dc: Math.max(1, answering ? total : total + 1), answering };
   }
@@ -218,7 +213,10 @@ export function rollContest(
   const outcome = derivation.autoFail ? null : rollExpression(d20Expression(modifier, advantage), undefined, opponent.enemyId ? { purpose: { roller: "enemy", kind: "check", who: opponent.name } } : {});
   const total = outcome?.total ?? 0;
   if (outcome) {
-    const roll = insertRoll({
+    // Behind the screen: sent whole to the seats that may read it and to no
+    // other, and kept in the log every seat may replay with its number taken
+    // out (src/lib/table-delivery.ts).
+    recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -227,9 +225,10 @@ export function rollContest(
       ...(advantage === "none" ? {} : { advantage }),
       result: outcome,
       visibility: "dm",
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    turn?.rollIds.push(roll.id);
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: redactRoll(roll), source: "digital" });
   }
   return { name: opponent.name, skill: label, total, dc: Math.max(1, answering ? total : total + 1), answering };
 }

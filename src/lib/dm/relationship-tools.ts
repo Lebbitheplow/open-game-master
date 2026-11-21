@@ -1,7 +1,7 @@
+import { recordRoll } from "@/lib/dm/roll-record";
 import { z } from "zod";
 import { dmRoll } from "@/lib/dm/roll-card";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { insertRoll } from "@/lib/db/rolls";
+import type { Campaign } from "@/lib/db/campaigns";
 import {
   endRelationshipsWithSubject,
   getRelationship,
@@ -54,7 +54,6 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { actNote, outwardApproval } from "@/lib/dm/scheme-logic";
 import { revealAct, runningAct, schemesPossible, schemeTool } from "@/lib/dm/scheme-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { publishWithSeq } from "@/lib/events";
 import { resolveRollExpression, unknownSheetRef } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -363,7 +362,7 @@ export function handleRelationshipBeat(
       settleHeldDie: waits,
     });
     rollTotal = rolled.total;
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
@@ -371,12 +370,8 @@ export function handleRelationshipBeat(
       detail: `${sheet.name}: ${spec.skill} toward ${subject.name}`,
       dc,
       result: rolled,
+      turn,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll,
-      source: "digital",
-    });
-    turn.rollIds.push(roll.id);
     outcome = beatOutcome(rolled.total, dc);
   }
 

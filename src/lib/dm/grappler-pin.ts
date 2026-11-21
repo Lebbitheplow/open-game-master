@@ -87,17 +87,14 @@ export function pin(
   spend();
   // "Make another grapple check": the grappler's Athletics against the
   // creature's better of Athletics and Acrobatics; a tie leaves it unpinned.
-  const mine = rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to pin ${enemy.displayName}`);
-  if (mine.rollId) {
-    turn.rollIds.push(mine.rollId);
-  }
+  const mine = rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to pin ${enemy.displayName}`, turn);
   const rolledTheirs = rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the pin`);
   // A Chronal Shift a watch stop armed for either side (contest-roll.ts).
   const settled = mine.autoFailed
     ? { mine: mine.total, theirs: rolledTheirs }
     : contestShift(
         campaign.id,
-        { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to pin ${enemy.displayName}, rolled again`).total },
+        { tag: { roller: "hero", kind: "check", who: sheet.name }, total: mine.total, again: () => rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to pin ${enemy.displayName}, rolled again`, turn).total },
         { tag: enemyContestTag(enemy), total: rolledTheirs, again: () => rollEnemyContest(campaign, turn, enemy, "either", `${enemy.displayName}: contest against the pin, rolled again`) },
         (a, b) => a > b,
       );

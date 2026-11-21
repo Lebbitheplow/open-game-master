@@ -8,6 +8,7 @@
 // point after 1d4 hours (src/lib/dm/death.ts rollStableTimer).
 //
 // This module must not import mutations.ts (which imports it).
+import { recordRoll } from "@/lib/dm/roll-record";
 import { recordSteadied } from "@/lib/dm/last-save";
 import { fieldSurgeonWait } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { catalogName } from "@/lib/srd/adventuring-gear";
@@ -20,9 +21,8 @@ import { survivorTended } from "@/lib/srd/feat-combat";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { stableDeathTrack } from "@/lib/dm/death-logic";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { insertRoll } from "@/lib/db/rolls";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import type { CharacterSheet, EquipmentItem, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { spendAction } from "@/lib/dm/action-budget";
@@ -262,7 +262,7 @@ export function handleStabilize(
       dc: STABILIZE_DC,
       settleHeldDie: heldDieWaits(healer, STABILIZE_DC),
     });
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: healer.id,
       requestedBy: "dm",
@@ -270,12 +270,8 @@ export function handleStabilize(
       detail: `medicine, to stabilize ${sheet.name}`,
       dc: STABILIZE_DC,
       result: outcome,
+      turn,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll,
-      source: "digital",
-    });
-    turn?.rollIds.push(roll.id);
     check = { rolled: outcome.total, dc: STABILIZE_DC };
     if (outcome.total < STABILIZE_DC) {
       return {

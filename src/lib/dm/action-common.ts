@@ -3,17 +3,17 @@
 // block. Split from action-tools.ts so the grapple, object and reaction
 // modules can use them without importing the take_action handler.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { abilityMod, computeSheetDerived } from "@/lib/srd";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { mergeAdvantage, rollDerivation } from "@/lib/dm/condition-logic";
@@ -91,10 +91,7 @@ export function rollEnemyContest(
   if (asSheet) {
     const skills = computeSheetDerived(asSheet).skills;
     const skill = which === "either" && (skills.acrobatics ?? 0) > (skills.athletics ?? 0) ? "acrobatics" : "athletics";
-    const checked = rollCharacterCheck(campaign, asSheet, { skill, ...(hindered ? { advantage: "disadvantage" as const } : {}) }, detail);
-    if (checked.rollId) {
-      turn.rollIds.push(checked.rollId);
-    }
+    const checked = rollCharacterCheck(campaign, asSheet, { skill, ...(hindered ? { advantage: "disadvantage" as const } : {}) }, detail, turn);
     return checked.autoFailed ? 0 : checked.total;
   }
   const worn = enemyExhaustion(enemy.conditions) >= 1;
@@ -102,16 +99,17 @@ export function rollEnemyContest(
   // Tagged as the creature's check, so a foretold number a watch stop armed
   // for its side of the contest lands on its d20 (foresight-saves.ts).
   const outcome = rollExpression(d20Expression(contestModifier(enemy.stats, which), advantage), undefined, { purpose: { roller: "enemy", kind: "check", who: enemy.displayName } });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: null,
     requestedBy: "dm",
     kind: "skill_check",
     detail,
     result: outcome,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn.rollIds.push(roll.id);
   return outcome.total;
 }
 

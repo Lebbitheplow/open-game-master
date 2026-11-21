@@ -147,7 +147,7 @@ export function swordWoundTurnStart(campaign: Campaign, encounter: Encounter, en
 // A character's action at a wounded creature within 5 feet: the DC 15
 // Wisdom (Medicine) check closes every sword wound on it. Null when the
 // creature bears none, so the improvised action goes on as any other.
-export function tendSwordWounds(campaign: Campaign, encounter: Encounter, sheet: CharacterSheet, enemyId: string, spend: () => void): { result: ToolResult; rollId: string | null } | null {
+export function tendSwordWounds(campaign: Campaign, encounter: Encounter, turn: DmTurn, sheet: CharacterSheet, enemyId: string, spend: () => void): ToolResult | null {
   const enemy = getEnemy(enemyId);
   const held = enemy && enemy.status === "alive" ? woundOf(enemy) : null;
   if (!enemy || !held) {
@@ -156,15 +156,12 @@ export function tendSwordWounds(campaign: Campaign, encounter: Encounter, sheet:
   const apart = feetBetween(encounter.id, sheet.id, enemy.id);
   if (apart !== null && apart > TEND_REACH_FT) {
     return {
-      result: {
-        error: `${enemy.displayName} is ${apart} ft from ${sheet.name}: a creature's sword wounds are tended from within 5 feet. Nothing was spent.`,
-        refused: "rules",
-      },
-      rollId: null,
+      error: `${enemy.displayName} is ${apart} ft from ${sheet.name}: a creature's sword wounds are tended from within 5 feet. Nothing was spent.`,
+      refused: "rules",
     };
   }
   spend();
-  const check = rollCharacterCheck(campaign, sheet, { skill: "medicine", dc: TEND_DC }, `${sheet.name}: Medicine to close ${enemy.displayName}'s wounds`);
+  const check = rollCharacterCheck(campaign, sheet, { skill: "medicine", dc: TEND_DC }, `${sheet.name}: Medicine to close ${enemy.displayName}'s wounds`, turn);
   const closed = check.total >= TEND_DC;
   if (closed) {
     const now = getEnemy(enemy.id) ?? enemy;
@@ -173,15 +170,12 @@ export function tendSwordWounds(campaign: Campaign, encounter: Encounter, sheet:
     publishEncounter(campaign.id);
   }
   return {
-    result: {
-      ok: true,
-      action: "Tend the wounds",
-      check: `Medicine ${check.total} vs DC ${TEND_DC}`,
-      success: closed,
-      note: closed
-        ? `${sheet.name} closes ${enemy.displayName}'s sword wounds: they bleed no more. The hit points the blade took still come back only with a rest.`
-        : `${sheet.name} cannot close ${enemy.displayName}'s sword wounds; they keep bleeding.`,
-    },
-    rollId: check.rollId,
+    ok: true,
+    action: "Tend the wounds",
+    check: `Medicine ${check.total} vs DC ${TEND_DC}`,
+    success: closed,
+    note: closed
+      ? `${sheet.name} closes ${enemy.displayName}'s sword wounds: they bleed no more. The hit points the blade took still come back only with a rest.`
+      : `${sheet.name} cannot close ${enemy.displayName}'s sword wounds; they keep bleeding.`,
   };
 }

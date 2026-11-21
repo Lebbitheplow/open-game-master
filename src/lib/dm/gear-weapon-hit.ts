@@ -6,13 +6,12 @@
 // fire damage it takes deals 5 more (enemy-damage.ts reads the mark). Holy
 // water on a creature that is neither fiend nor undead does nothing.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getEnemy, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
-import { allocateSeq } from "@/lib/db/campaigns";
-import { insertRoll } from "@/lib/db/rolls";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { rollExpression } from "@/lib/dice";
 import { publicDie } from "@/lib/dm/between-io";
 import { removeConditions } from "@/lib/dm/condition-logic";
@@ -95,10 +94,7 @@ export function enemyBurning(enemy: EncounterEnemy): boolean {
 // `spend` pays it.
 export function characterExtinguish(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet, spend: () => void): ToolResult {
   spend();
-  const check = rollCharacterCheck(campaign, sheet, { ability: "dex", dc: EXTINGUISH_DC }, `${sheet.name}: DEX check to put out the alchemist's fire (DC ${EXTINGUISH_DC})`);
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
+  const check = rollCharacterCheck(campaign, sheet, { ability: "dex", dc: EXTINGUISH_DC }, `${sheet.name}: DEX check to put out the alchemist's fire (DC ${EXTINGUISH_DC})`, turn);
   const out = !check.autoFailed && check.total >= EXTINGUISH_DC;
   if (out) {
     const fresh = getSheetById(sheet.id) ?? sheet;
@@ -121,16 +117,17 @@ export function characterExtinguish(campaign: Campaign, turn: DmTurn, sheet: Cha
 // The caller has checked the enemy may act and spends the action.
 export function enemyExtinguish(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy): ToolResult {
   const outcome = rollExpression(`1d20${signed(abilityMod(enemy.stats.abilities?.dex ?? 10))}`);
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: null,
     requestedBy: "dm",
     kind: "ability_check",
     detail: `${enemy.displayName}: DEX check to put out the alchemist's fire (DC ${EXTINGUISH_DC})`,
     result: outcome,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn.rollIds.push(roll.id);
   const out = outcome.total >= EXTINGUISH_DC;
   if (out) {
     const fresh = getEnemy(enemy.id) ?? enemy;
