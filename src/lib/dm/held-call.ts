@@ -44,7 +44,9 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { ownTurnOf } from "@/lib/dm/held-turn";
-import { getRoll, insertRoll, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import { getRoll, insertRoll, kindAndRoller, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import { getSheetById } from "@/lib/db/sheets";
+import { cardRoller } from "@/lib/dm/roll-card";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -591,12 +593,12 @@ export function runHeldAgain(
       campaignId: campaign.id,
       characterId: pending.characterId,
       requestedBy: "player",
-      kind: pending.kind,
+      // A card's own attack or damage dice are its character's.
+      ...kindAndRoller(pending.kind, null, cardRoller(getSheetById(pending.characterId))),
       detail: landing.physical ? `${pending.detail || pending.kind} (physical)`.trim() : pending.detail,
       advantage: pending.advantage,
       dc: pending.dc,
       result: outcome,
-      attacker: null,
       visibility: pending.visibility,
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, pendingRollId: pending.id, source: landing.source });

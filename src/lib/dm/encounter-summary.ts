@@ -24,7 +24,7 @@ export type SummaryRoll = {
   characterId: string | null;
   // Who rolled it (src/lib/db/rolls.ts); absent or null, the roll is the
   // characterId sheet's, as every roll was before it was recorded.
-  attacker?: { kind: string; id: string; name?: string } | null;
+  attacker?: { kind: string; id: string | null; name?: string } | null;
   kind: string;
   total: number;
   applied?: boolean;
@@ -35,7 +35,7 @@ export type SummaryRoll = {
 export type SummaryAudit = { characterId: string; kind: string; delta: Record<string, unknown> };
 
 // The sheet that made a roll: its attacker when one is recorded (none for
-// an enemy's), else the sheet the roll concerns.
+// an enemy's, or for a trap's or a fall's), else the sheet the roll concerns.
 function rollerOf(roll: SummaryRoll): string | null {
   return roll.attacker ? (roll.attacker.kind === "sheet" ? roll.attacker.id : null) : roll.characterId;
 }

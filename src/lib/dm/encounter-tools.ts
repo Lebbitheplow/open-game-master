@@ -16,7 +16,6 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
 import { z } from "zod";
 import {
-  allocateSeq,
   getCampaignById,
   latestSeq,
   listMembers,
@@ -47,7 +46,8 @@ import {
 } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
-import { getRoll, insertRoll } from "@/lib/db/rolls";
+import { getRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
 import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
@@ -1010,17 +1010,17 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
     const outcome = rollExpression(characterInitiativeExpression(campaign, sheet, computeSheetDerived(sheet).initiative), undefined, {
       purpose: { roller: "hero", kind: "initiative", who: sheet.name },
     });
-    const roll = insertRoll({
+    // Rolled before the AI's turn is opened (turn.ts openTurn), so it is on
+    // no turn.
+    recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
       kind: "initiative",
       detail: "initiative",
       result: outcome,
-    });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll,
-      source: "digital",
+      // Thrown here, on the server's dice.
+      landing: null,
     });
     note = recordInitiativeRoll(campaign.id, sheet.id, outcome.total) ?? note;
   }

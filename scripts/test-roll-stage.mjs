@@ -168,6 +168,16 @@ test("the stream keeps a three-swing burst with its on-hit dice whole", () => {
   assert.ok(STAGE_HEARD_MAX >= 9);
 });
 
+test("a source nobody is (a trap) keeps its own damage with its attack, and not another source's", () => {
+  const darts = { kind: "hazard", id: null, name: "Poison Darts", hazard: "trap" };
+  const pit = { kind: "hazard", id: null, name: "Spiked Pit", hazard: "trap" };
+  const attack = placeRoll(null, roll("dart", "attack", darts), 1, 0);
+  assert.equal(placeRoll(attack.open, roll("dart-damage", "damage", darts), 2, 10).group, attack.group);
+  assert.notEqual(placeRoll(attack.open, roll("spikes", "damage", pit), 3, 20).group, attack.group);
+  // The same name on another kind of source is another source.
+  assert.notEqual(placeRoll(attack.open, roll("named", "damage", { ...darts, hazard: "named" }), 4, 30).group, attack.group);
+});
+
 test("the stale window sits under the stuck-throw deadline", () => {
   assert.ok(DICE_STALE_MS < DICE_ROLL_DEADLINE_MS);
 });

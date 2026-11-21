@@ -33,8 +33,8 @@ import {
 import { pcResistances } from "@/lib/dm/condition-logic";
 import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import type { Ability, CharacterSheet } from "@/lib/schemas/sheet";
-import { rollCard } from "@/lib/dm/roll-card";
-import { rollOn } from "@/lib/roll-labels";
+import { sourceDamage } from "@/lib/dm/roll-card";
+import { castSource, fallSource } from "@/lib/roll-sources";
 import { springTrapOn } from "@/lib/dm/trap-run";
 import { setTrapAt } from "@/lib/dm/set-traps";
 import { rollExpression } from "@/lib/dice";
@@ -323,6 +323,13 @@ function resolveHazard(
   }
 
   const source = (args.reason ?? "").trim() || defaultSource(args);
+  // What this hazard's rolls name as their source (roll-sources.ts): the
+  // words the GM gave for it, a trap by them when it is one. Given none, it
+  // is the GM's own dice, which a sentence still calls "a trap" or "the
+  // hazard". Built once here and handed to the two doors that roll for it
+  // (the save asked of a character, the trap sprung on a creature), so
+  // everyone one hazard catches names the same source. A fall is the fall.
+  const by = castSource(args.reason, null, args.type === "trap", source);
   const damageType =
     args.damageType?.trim() || (args.type === "falling" ? "bludgeoning" : "piercing");
 
@@ -343,8 +350,9 @@ function resolveHazard(
       if (genre.immune || ownDice === "0") {
         return { name: sheet.name, damage: 0, note: `${sheet.name} lands unhurt (${genre.notes.join("; ")}).` };
       }
-      // A fall: nobody made it, as an enemy's fall (src/lib/dm/enemy-fall.ts).
-      const thrown = rollCard(campaign, turn, sheet.id, "damage", rollOn(`${genre.feet} ft fall (${ownDice} bludgeoning)`, [sheet.name]), ownDice, null);
+      // A fall: nobody made it, so the roll names the fall, as an enemy's
+      // fall does (src/lib/dm/enemy-fall.ts), and the character is its target.
+      const thrown = sourceDamage(campaign, turn, fallSource(), { characterId: sheet.id, names: [sheet.name] }, { note: `${genre.feet} ft`, dice: ownDice, type: "bludgeoning" });
       const rolled = genre.halved ? { ...thrown, total: Math.floor(thrown.total / 2) } : thrown;
       // Kept so Slow Fall and Feather Fall can answer it (src/lib/dm/last-hit.ts).
       const fall = openFall(campaign.id, sheet.id);
@@ -616,6 +624,7 @@ function resolveHazard(
       }),
       sheets,
       sheetsById,
+      by,
     );
     return { name: sheet.name, ...result };
   });
@@ -642,6 +651,7 @@ function resolveHazard(
           },
           fromOf(args),
           "saveEnds",
+          by,
         );
       })
     : [];

@@ -16,10 +16,10 @@
 
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { listSheets, patchSheet } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { MINUTES_PER_DAY, MINUTES_PER_HOUR } from "@/lib/dm/calendar";
 import type { ChargeRule } from "@/lib/srd/magic-gear";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -277,15 +277,18 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
           continue;
         }
         const rolled = rollExpression(rule.regain);
-        const roll = insertRoll({
+        // On the turn of the call that moved the clock (a rest, a journey);
+        // the clock moved outside one holds no turn.
+        recordRoll({
           campaignId,
           characterId: sheet.id,
           requestedBy: "dm",
           kind: "custom",
           detail: `${item.name} regains charges at ${rule.regainAtDusk ? "dusk" : "dawn"}`,
           result: rolled,
+          // Thrown here, on the server's dice.
+          landing: null,
         });
-        publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
         charges = Math.min(most, charges + Math.max(0, rolled.total));
       }
       if (charges === item.charges) {

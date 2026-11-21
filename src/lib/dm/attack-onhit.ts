@@ -19,6 +19,7 @@ import { settleEnemyIncapacitation } from "@/lib/dm/enemy-incapacitation";
 import { getActiveEncounter, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
+import { castersDamage } from "@/lib/dm/roll-card";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
@@ -342,20 +343,10 @@ export function hurlReturn(campaign: Campaign, enemy: EncounterEnemy, meta: Cond
   if (/fiend/i.test(String(enemy.stats.type ?? ""))) {
     return `${enemy.displayName} returns from the lower planes unharmed: it is a fiend.`;
   }
-  const outcome = rollExpression("10d10");
   const warlock = meta.source ? getSheetById(meta.source) : null;
-  // Handed no turn: inside a GM call it joins the call's own.
-  recordRoll({
-    campaignId: campaign.id,
-    characterId: meta.source ?? null,
-    requestedBy: "dm",
-    kind: "damage",
-    detail: rollAgainst("Hurl Through Hell", enemy.displayName),
-    result: outcome,
-    attacker: warlock ? { kind: "sheet", id: warlock.id, name: warlock.name } : null,
-    // Thrown here, on the server's dice.
-    landing: null,
-  });
+  // The warlock's roll; the feature's own once their sheet has left the
+  // table. Handed no turn: inside a GM call it joins the call's own.
+  const outcome = castersDamage(campaign, null, warlock, rollAgainst("Hurl Through Hell", enemy.displayName), "Hurl Through Hell", enemy.displayName, { dice: "10d10", type: "psychic" });
   damageEnemy(campaign, enemy, outcome.total, "psychic");
   return `${enemy.displayName} returns from the lower planes, reeling from the horror, and takes ${outcome.total} psychic damage (Hurl Through Hell).`;
 }

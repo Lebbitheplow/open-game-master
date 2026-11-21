@@ -21,7 +21,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { regainHitPoints } from "@/lib/dm/regain";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { castersDamage, rollCard } from "@/lib/dm/roll-card";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { liveZones } from "@/lib/dm/zone-store";
 import { chebyshev } from "@/lib/battlemap/types";
@@ -68,7 +68,7 @@ function crownBites(campaign: Campaign, encounter: Encounter, ids: string[]): st
       continue;
     }
     const lord = getSheetById(String(((enemy.conditionMeta ?? {}) as ConditionMetaMap)[held]?.source ?? ""));
-    const amount = rollCard(campaign, null, lord?.id ?? null, "damage", `The Crown Descends: ${enemy.displayName}`, "1d6", lord ? sheetAttacker(lord) : null).total;
+    const amount = castersDamage(campaign, null, lord, `The Crown Descends: ${enemy.displayName}`, "The Crown Descends", enemy.displayName, { dice: "1d6", type: "piercing" }).total;
     lines.push(hurtEnemy(campaign, encounter, enemy, amount, "piercing", "The Crown Descends", true));
   }
   return lines;

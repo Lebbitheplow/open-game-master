@@ -7,8 +7,8 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getEnemy, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { recordRoll } from "@/lib/dm/roll-record";
-import { rollOn } from "@/lib/roll-labels";
+import { sourceDamageThrown } from "@/lib/dm/roll-card";
+import { fallSource } from "@/lib/roll-sources";
 import { rollExpression } from "@/lib/dice";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { fallingDamageDice } from "@/lib/srd/hazards";
@@ -28,18 +28,8 @@ export function enemyFalls(
     return { ok: true, name: enemy.displayName, feet, note: "Too short a fall to hurt." };
   }
   const outcome = rollExpression(dice);
-  recordRoll({
-    campaignId: campaign.id,
-    characterId: null,
-    requestedBy: "dm",
-    kind: "damage",
-    detail: rollOn(`${feet} ft fall (${dice} bludgeoning)`, [enemy.displayName]),
-    result: outcome,
-    attacker: null,
-    turn,
-    // Thrown here, on the server's dice.
-    landing: null,
-  });
+  // Nobody made it: the roll names the fall.
+  sourceDamageThrown(campaign, turn, fallSource(), { names: [enemy.displayName] }, { note: `${feet} ft`, dice, type: "bludgeoning" }, outcome);
   const applied = applyEnemyDamage(
     campaign,
     turn,

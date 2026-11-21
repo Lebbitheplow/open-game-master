@@ -16,7 +16,8 @@ import {
   publicPendingRoll,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
-import { insertRoll, markRollSpent, type StoredRoll } from "@/lib/db/rolls";
+import { insertRoll, kindAndRoller, markRollSpent, type StoredRoll } from "@/lib/db/rolls";
+import { cardRoller } from "@/lib/dm/roll-card";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { rollsCanWait } from "@/lib/dm/after-roll";
@@ -133,19 +134,20 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
     campaignId,
     characterId: pending.characterId,
     requestedBy: "player",
-    kind: pending.kind,
+    // A parked pc_attack roll (to-hit or damage) is the PC's own; any other
+    // parked roll is a roll tool's free text about its sheet, whose attack or
+    // damage roll is that character's too.
+    ...kindAndRoller(
+      pending.kind,
+      pending.attack && pending.characterId ? { kind: "sheet", id: pending.characterId, name: pending.attack.attacker } : null,
+      cardRoller(pending.characterId ? getSheetById(pending.characterId) : null),
+    ),
     // Once any face was drawn by the server the "(physical)" label would
     // overclaim, so a mixed or fully digital submission keeps the plain detail.
     detail: landing.physical ? `${pending.detail || pending.kind} (physical)`.trim() : pending.detail,
     advantage: pending.advantage,
     dc: pending.dc,
     result: outcome,
-    // A parked pc_attack roll (to-hit or damage) is the PC's own; any other
-    // parked roll is a roll tool's free text about its sheet.
-    attacker:
-      pending.attack && pending.characterId
-        ? { kind: "sheet", id: pending.characterId, name: pending.attack.attacker }
-        : null,
     // A roll the DM asked for behind the screen lands behind it.
     visibility: pending.visibility,
   });

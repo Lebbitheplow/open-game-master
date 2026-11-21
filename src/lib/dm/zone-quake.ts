@@ -36,8 +36,8 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { breakConcentration, clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { laySpellConditionsOnEnemy } from "@/lib/dm/spell-effects";
-import { rollCard } from "@/lib/dm/roll-card";
-import { rollOn } from "@/lib/roll-labels";
+import { sourceDamage } from "@/lib/dm/roll-card";
+import { fallSource } from "@/lib/roll-sources";
 import { layPetCondition } from "@/lib/dm/pet-condition-lay";
 import { rollPetSave } from "@/lib/dm/pet-save-roll";
 
@@ -179,7 +179,7 @@ export function quakeFissures(campaign: Campaign, encounter: Encounter, map: Bat
 function fallIn(campaign: Campaign, encounter: Encounter, zone: SpellZone, token: BattleToken, dc: number, depth: number): string | null {
   const dice = `${Math.min(20, Math.max(1, Math.floor(depth / 10)))}d6`;
   // A fall: nobody made it, as an enemy's fall (src/lib/dm/enemy-fall.ts).
-  const fall = `${depth} ft fall into a fissure (${dice} bludgeoning)`;
+  const fall = { note: `${depth} ft into a fissure`, dice, type: "bludgeoning" };
   if (token.kind === "enemy") {
     const enemy = getEnemy(token.refId);
     if (!enemy || enemy.status !== "alive") {
@@ -189,7 +189,7 @@ function fallIn(campaign: Campaign, encounter: Encounter, zone: SpellZone, token
     if (save.success) {
       return `${enemy.displayName} keeps its footing at the fissure's edge.`;
     }
-    const landed = rollCard(campaign, null, null, "damage", rollOn(fall, [enemy.displayName]), dice, null).total;
+    const landed = sourceDamage(campaign, null, fallSource(), { names: [enemy.displayName] }, fall).total;
     const hurt = hurtEnemy(campaign, encounter, enemy, landed, "bludgeoning", `falling ${depth} feet into a fissure`);
     const standing = getEnemy(enemy.id);
     if (standing?.status === "alive") {
@@ -206,7 +206,7 @@ function fallIn(campaign: Campaign, encounter: Encounter, zone: SpellZone, token
     if (save.success) {
       return `${sheet.name} keeps their footing at the fissure's edge.`;
     }
-    const amount = rollCard(campaign, turn, sheet.id, "damage", rollOn(fall, [sheet.name]), dice, null).total;
+    const amount = sourceDamage(campaign, turn, fallSource(), { characterId: sheet.id, names: [sheet.name] }, fall).total;
     applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { noCreature: true, amount, type: "bludgeoning", reason: `fell ${depth} feet into a fissure (${zone.spell})` });
     const standing = getSheetById(sheet.id);
     if (standing && !standing.deathSaves?.dead && !prone(standing.conditions)) {

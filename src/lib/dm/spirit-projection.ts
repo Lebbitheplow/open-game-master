@@ -41,7 +41,7 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { currentActor } from "@/lib/dm/acting-party";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
-import { enemyAttacker, rollCard } from "@/lib/dm/roll-card";
+import { enemyAttacker, rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -185,7 +185,7 @@ export function projectionTurnEnd(campaign: Campaign, combatantIds: string[]): s
     // spell area's turn-end strike has (zone-triggers.ts).
     const turn = openStandInTurn(campaign.id);
     try {
-      const rolled = rollCard(campaign, turn, sheet.id, "damage", `${sheet.name}: the turn ends inside ${inside.name}`, INSIDE_DAMAGE, null);
+      const rolled = rollCard(campaign, turn, sheet.id, "damage", `the turn ends inside ${inside.name}`, INSIDE_DAMAGE, sheetAttacker(sheet));
       const hurt = applyPcDamage(campaign, turn.id, sheet, { amount: rolled.total, type: "force", reason: `the spirit's turn ended inside ${inside.name}` });
       lines.push(`${sheet.name}'s spirit ends its turn inside ${inside.name} and takes ${"error" in hurt ? rolled.total : (hurt.damageApplied ?? rolled.total)} force damage.`);
     } finally {

@@ -36,7 +36,8 @@ import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter,
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 import type { RollResult, Advantage } from "@/lib/dice";
-import { listRecentRolls, type RollAttacker } from "@/lib/db/rolls";
+import { listRecentRolls, type HazardKind, type RollAttacker, type RollSource } from "@/lib/db/rolls";
+import { fallSource, recordSource } from "@/lib/roll-sources";
 import { spellMechanicsFor } from "@/lib/content";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { wardOf } from "@/lib/dm/arcane-ward";
@@ -226,7 +227,9 @@ export type LastHit = {
   undo?: Array<{ turnId: string; was: LastHit }>;
   // Who made it: an enemy, a character fighting on the other side (a
   // turncoat's pc_attack, issue 503), or a hazard, which is nobody.
-  attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string };
+  // A hazard says what it is (src/lib/roll-sources.ts), as its roll does; a
+  // record written before that was kept says nothing.
+  attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string; hazard?: HazardKind };
   attack: string;
   type: string;
   ranged: boolean;
@@ -267,12 +270,14 @@ export type LastHit = {
 };
 
 // Who rolls the recorded attack again (Protection and its kin): the enemy
-// that made it; a hazard is nobody.
-export function rerollAttacker(record: LastHit): RollAttacker | null {
+// that made it. A record with no creature behind it hands back its source,
+// which no attack on record has today (a hazard's records are falls, effects
+// and missiles): the roll must still name someone.
+export function rerollAttacker(record: LastHit): RollAttacker {
   const id = attackerFoeId(record);
   return id && (record.attacker.kind === "enemy" || record.attacker.kind === "sheet")
     ? { kind: record.attacker.kind, id, name: record.attacker.name }
-    : null;
+    : recordSource(record.attacker);
 }
 
 // The creature that made the recorded attack, by combatant id (an enemy row
@@ -975,7 +980,8 @@ export function recordFall(
     turn: encounter ? turnKey(encounter) : "",
     ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
     ...rollingTurn(),
-    attacker: { kind: "hazard", id: null, name: "the fall" },
+    // The same source the fall's own roll names.
+    attacker: fallSource(),
     attack: "falling",
     type: "bludgeoning",
     ranged: false,
@@ -1003,7 +1009,9 @@ export function openEffect(campaignId: string, characterId: string) {
   const startedAt = nowIso();
   const openSeq = latestSeq(campaignId);
   return {
-    close(what: { raw: number; type: string; name: string }) {
+    // `by` is the source of the damage, built by the door that deals it
+    // (src/lib/roll-sources.ts): the one its own roll names, where it rolled.
+    close(what: { raw: number; type: string; by: RollSource }) {
       const now = getSheetById(characterId);
       if (!before || !now || what.raw <= 0) {
         return;
@@ -1016,7 +1024,7 @@ export function openEffect(campaignId: string, characterId: string) {
         turn: encounter ? turnKey(encounter) : "",
         ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
         ...rollingTurn(),
-        attacker: { kind: "hazard", id: null, name: what.name },
+        attacker: what.by,
         attack: "damage",
         type: what.type,
         ranged: false,
