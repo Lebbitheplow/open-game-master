@@ -487,9 +487,11 @@ export function learnContextWindow(baseUrl: string, model: string, window: numbe
 
 // Every window learned so far is dropped; the admin's text settings changed.
 // The saved ones stay: each comes back due, so it is asked again before use.
+// The model sizes go with them: a miss is otherwise kept two minutes.
 export function forgetContextWindows(): void {
   probedContextWindows.clear();
   reasoningKnobs.clear();
+  probedModelParams.clear();
 }
 
 // What a backend's refusal says of its window, when the request was too big

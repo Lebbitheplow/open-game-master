@@ -210,6 +210,7 @@ const requests = [];
 let script = [];
 // A DM call: tools offered, or the game state in the message after the rules
 // (src/lib/dm/prompt.ts stateAfterRules).
+let stallSizeOnce = false;
 const isDmCall = (body) => Array.isArray(body.tools) || String(body.messages[1]?.content ?? "").includes("=== GAME STATE");
 const server = http.createServer((req, res) => {
   const chunks = [];
@@ -222,7 +223,16 @@ const server = http.createServer((req, res) => {
     }
     // Its listing: the tests' model reports no size, a small one does.
     if (req.url.endsWith("/v1/models")) {
-      res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ data: [{ id: "fake" }, { id: "small-dm", meta: { n_params: 8_953_803_264 } }] }));
+      const answer = () => res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ data: [{ id: "fake" }, { id: "small-dm", meta: { n_params: 8_953_803_264 } }] }));
+      // Answered late once, past the 2-second timeout the size probe gives
+      // the server (model-client.ts probeCustomModelParams), as this process
+      // answers late when a loaded runner holds its loop.
+      if (stallSizeOnce) {
+        stallSizeOnce = false;
+        setTimeout(answer, 2_500);
+      } else {
+        answer();
+      }
       return;
     }
     if (!req.url.endsWith("/chat/completions")) {
@@ -257,7 +267,8 @@ const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
 const { getDmTurn, getLatestDmTurnId, listRecentDmTurns } = await import("../src/lib/db/dm-turns.ts");
 const { startDmTurn, dmTurnTuning, dmTurnTools } = await import("../src/lib/dm/turn.ts");
-const { forgetContextWindows } = await import("../src/lib/model-client.ts");
+const { forgetContextWindows, storyModelParams } = await import("../src/lib/model-client.ts");
+const { probeStoryWindow } = await import("../src/lib/dm/context-retrieval.ts");
 const { dmQueueDepth, enqueueDmJob } = await import("../src/lib/dm/queue.ts");
 
 // A turn as the server plays one: through the campaign's DM queue, behind
@@ -345,6 +356,21 @@ await test("the suite plays a turn in the campaign's DM queue, as the server doe
 await test("a small model, sized by its server, plays on the short rules: no rulebook, enemy health in words, no dice markers in its transcript", async () => {
   const campaign = table("Goblins leap from the ditch! I raise my shield.", "small-dm");
   const hero = listSheets(campaign.id)[0];
+  // The size comes from the fake server, which answers in this process: a
+  // loop held past the probe's 2-second timeout (a loaded Windows runner)
+  // read as a miss, kept two minutes, and the turn played on the full rules
+  // ("the 9B the server reported is small"). Asked here until the server
+  // answers, the turn reads the size it reported. The first answer is held
+  // late on purpose, so this holds the suite to that.
+  stallSizeOnce = true;
+  const settings = getCampaignById(campaign.id).settings;
+  for (let tries = 0; tries < 5; tries += 1) {
+    await probeStoryWindow(settings);
+    if (storyModelParams(settings)) {
+      break;
+    }
+    forgetContextWindows();
+  }
   script = [
     { call: "request_roll", args: { characterId: hero.id, kind: "skill_check", skill: "athletics", difficulty: "easy" } },
     { call: "start_encounter", args: { enemies: [{ monster: "goblin", count: 1 }] } },
