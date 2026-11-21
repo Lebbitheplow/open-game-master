@@ -1042,7 +1042,6 @@ export function handleMoveToken(
 // that moved its mount a moment ago has already carried it.
 function riderNamed(
   campaignId: string,
-  mapId: string,
   targetRef: string,
   shared: BattleToken,
   at: { x: number; y: number },
@@ -1094,7 +1093,7 @@ export function pushTokenAway(
     x: target.x + Math.sign(target.x - pusher.x),
     y: target.y + Math.sign(target.y - pusher.y),
   };
-  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, map.id, targetRef, target, at) : null;
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
   if (saddle && "reason" in saddle) {
     return { moved: false, reason: saddle.reason };
   }
@@ -1150,7 +1149,7 @@ export function pullTokenToward(
     x: target.x + Math.sign(puller.x - target.x),
     y: target.y + Math.sign(puller.y - target.y),
   };
-  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, map.id, targetRef, target, at) : null;
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
   if (saddle && "reason" in saddle) {
     return { moved: false, reason: saddle.reason };
   }
