@@ -1,5 +1,6 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
 import { mountMoved } from "@/lib/dm/mount-moved";
+import { enemyMountMoved, forcedEnemyMove, movedWithMount, shovedFromSaddle } from "@/lib/dm/enemy-rider-falls";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { boardLight } from "@/lib/dm/light-timers";
@@ -23,7 +24,7 @@ import {
   createBattleMap,
   getBattleMapForEncounter,
   getTokenByRef,
-  listTokens,
+  listStandings, listTokens,
   moveToken,
   placeTokens,
   resetTurnBudgets,
@@ -315,7 +316,7 @@ function resolveAnyToken(
 
 // A name the board holds no single token for: the names it does hold.
 function unknownCombatant(map: BattleMap, name: string): ToolError {
-  return { error: `No combatant on the battle map is called "${name}"; it holds ${listTokens(map.id).map((token) => token.name).join(", ")}.`, retry: true };
+  return { error: `No combatant on the battle map is called "${name}"; it holds ${listStandings(map.id).map((token) => token.name).join(", ")}.`, retry: true };
 }
 
 // Whether `token` may teleport to (x, y): on the map, open floor, nobody
@@ -738,6 +739,34 @@ export function handleMoveToken(
   if (occupied.has(tileIndex(map.width, args.x, args.y))) {
     return { error: `(${args.x},${args.y}) is occupied by another combatant.`, retry: true };
   }
+  // A push, a drag or a carry that names a rider takes the rider alone out of
+  // the saddle, and the mount stays (issue 1055, ruling 6:
+  // enemy-rider-falls.ts). The rider is its own size on the way, and a square
+  // inside its mount's space sets it down just outside.
+  if (args.forced && resolved.kind === "enemy" && resolved.enemy?.ridesEnemyId) {
+    const rider = resolved.enemy;
+    const way = findPath(map.terrain, map.width, map.height, occupied, resolved.token, { x: args.x, y: args.y }, 1, resolved.token.movement === "fly", false);
+    if (!way) {
+      return { error: `No path to (${args.x},${args.y}); walls block the way.`, retry: true };
+    }
+    const from = { x: resolved.token.x, y: resolved.token.y };
+    const together = movedWithMount(campaign.id, rider);
+    const out = forcedEnemyMove(campaign, map.id, rider, { x: args.x, y: args.y });
+    if (out) {
+      publishBattleMapUpdate(campaign.id);
+      releaseGrapplesOutOfReach(campaign);
+      const zoneEffects = together ? [] : zonesAfterMove(campaign, encounter.id, { kind: "enemy", refId: rider.id }, from, walkedPart(way, out.at), {});
+      return {
+        ok: true,
+        name: moverName,
+        at: `(${out.at.x},${out.at.y})`,
+        ...(zoneEffects.length ? { zoneEffects } : {}),
+        note: together
+          ? `${moverName} went with its mount, which this call already moved: the pair moved as one, and the rider saves once to stay on.`
+          : `${moverName} was taken out of the saddle and lies prone at (${out.at.x},${out.at.y}); its mount stays where the pair stood. No save to stay mounted.`,
+      };
+    }
+  }
   // An enemy walking on its own passes its allies and squeezes where it
   // must (enemy-approach.ts enemyMoveTraits); a forced move does neither.
   const traits =
@@ -931,6 +960,12 @@ export function handleMoveToken(
   if (args.forced && resolved.token.kind === "pc" && (landing.x !== origin.x || landing.y !== origin.y)) {
     mountMoved(campaign.id, moverId);
   }
+  // The same for an enemy's mount, named by the forced move
+  // (enemy-rider-falls.ts); a forced move that named its rider was answered
+  // above, and took the rider alone.
+  if (args.forced && resolved.kind === "enemy" && resolved.enemy && (landing.x !== origin.x || landing.y !== origin.y)) {
+    enemyMountMoved(campaign.id, resolved.enemy.id);
+  }
   // The Disengage and this walk were the turn it was owed; its own turn
   // follows on fresh movement, with no Disengage (enemy-actions.ts
   // spendEnemyDisengage).
@@ -1000,6 +1035,39 @@ export function handleMoveToken(
   };
 }
 
+// A push or a pull that names an enemy rider takes the rider alone (issue
+// 1055, ruling 6): the square it is sent to may lie inside its own mount's
+// space, which is no obstacle to leaving it (the rider then lands just
+// outside). Null when the one named rides nothing; a reason when the push
+// that moved its mount a moment ago has already carried it.
+function riderNamed(
+  campaignId: string,
+  targetRef: string,
+  shared: BattleToken,
+  at: { x: number; y: number },
+): { rider: EncounterEnemy; insideMount: boolean } | { reason: string } | null {
+  const rider = getEnemy(targetRef);
+  if (!rider?.ridesEnemyId || shared.refId !== rider.id) {
+    return null;
+  }
+  if (movedWithMount(campaignId, rider)) {
+    return { reason: "it went with its mount, which this already moved: the pair moved as one, and the rider saves once to stay on" };
+  }
+  const wide = footprintLookup(new Map([[rider.id, rider]]))(shared);
+  return { rider, insideMount: at.x >= shared.x && at.x < shared.x + wide && at.y >= shared.y && at.y < shared.y + wide };
+}
+
+// The rider leaves the saddle for `at`, prone, and the mount stays.
+function leavesSaddle(campaign: Campaign, rider: EncounterEnemy, at: { x: number; y: number }): { moved: true; at: { x: number; y: number } } | { moved: false; reason: string } {
+  const thrown = shovedFromSaddle(campaign, rider, at);
+  if (!thrown) {
+    return { moved: false, reason: "there is no saddle to leave" };
+  }
+  releaseGrapplesOutOfReach(campaign);
+  publishBattleMapUpdate(campaign.id);
+  return { moved: true, at: thrown.at };
+}
+
 // A shove: the target goes one square straight away from whoever pushed it.
 // Forced movement, so nothing is spent and nothing is provoked. The square
 // has to be open floor with nobody on it; otherwise the target stays.
@@ -1025,19 +1093,28 @@ export function pushTokenAway(
     x: target.x + Math.sign(target.x - pusher.x),
     y: target.y + Math.sign(target.y - pusher.y),
   };
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
+  if (saddle && "reason" in saddle) {
+    return { moved: false, reason: saddle.reason };
+  }
   if (at.x < 0 || at.y < 0 || at.x >= map.width || at.y >= map.height) {
     return { moved: false, reason: "the edge of the map is behind it" };
   }
   if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
     return { moved: false, reason: "a wall is behind it" };
   }
-  if (occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+  if (!saddle?.insideMount && occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
     return { moved: false, reason: "someone stands behind it" };
+  }
+  if (saddle) {
+    return leavesSaddle(campaign, saddle.rider, at);
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
   // A rider pushed is a mount moved against its will (mount-moved.ts).
   if (target.kind === "pc") {
     mountMoved(campaign.id, target.refId);
+  } else if (target.kind === "enemy") {
+    enemyMountMoved(campaign.id, targetRef);
   }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
@@ -1072,16 +1149,25 @@ export function pullTokenToward(
     x: target.x + Math.sign(puller.x - target.x),
     y: target.y + Math.sign(puller.y - target.y),
   };
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
+  if (saddle && "reason" in saddle) {
+    return { moved: false, reason: saddle.reason };
+  }
   if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
     return { moved: false, reason: "a wall is in the way" };
   }
-  if (occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+  if (!saddle?.insideMount && occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
     return { moved: false, reason: "someone stands in the way" };
+  }
+  if (saddle) {
+    return leavesSaddle(campaign, saddle.rider, at);
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
   // A rider pulled is a mount moved against its will (mount-moved.ts).
   if (target.kind === "pc") {
     mountMoved(campaign.id, target.refId);
+  } else if (target.kind === "enemy") {
+    enemyMountMoved(campaign.id, targetRef);
   }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
@@ -1118,7 +1204,8 @@ export function allyAdjacentToEnemy(
   // the party dominates is.
   const encounter = getEncounter(encounterId);
   const mine = encounter ? sideOf(encounter, "sheet", attackerCharacterId) : "party";
-  return listTokens(map.id).some(
+  // A mount under a rider is a creature beside the target too (listStandings).
+  return listStandings(map.id).some(
     (token) =>
       token.refId !== attackerCharacterId &&
       token.refId !== enemyId &&
@@ -1251,7 +1338,7 @@ export function checkPcAttackRange(
   }
   // The foes this same attack reaches from where they stand, for the next
   // call to aim at instead.
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const within = (tiles: number) => {
     const line = standingFoesLine(encounter.campaignId, encounter, (id) => {
       const token = tokens.find((entry) => entry.refId === id);

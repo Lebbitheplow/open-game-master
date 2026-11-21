@@ -60,7 +60,7 @@ export function tryParry(input: DefenseInput): { bonus: number; note: string } |
 }
 
 // Whether the creature can take a reaction at all now.
-function reactionFree(encounter: Encounter, enemy: EncounterEnemy): boolean {
+export function reactionFree(encounter: Encounter, enemy: EncounterEnemy): boolean {
   return (
     !encounter.reactionsUsed.includes(enemy.id) &&
     !conditionBlocksReactions(enemy.conditions) &&

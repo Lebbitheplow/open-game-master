@@ -465,6 +465,61 @@ export function listTokens(mapId: string): BattleToken[] {
   return rows.map(mapToken);
 }
 
+// The mounts carried on this map's table, by the id of the rider whose token
+// each one shares: a character's independent mount (issue 1036) and an
+// enemy's (issue 1055).
+function carriedMounts(mapId: string): Map<string, { id: string; name: string; kind: TokenKind }> {
+  const carried = new Map<string, { id: string; name: string; kind: TokenKind }>();
+  const map = getDatabase().prepare(`SELECT campaign_id FROM battle_maps WHERE id = ?`).get(mapId) as { campaign_id?: string } | undefined;
+  if (!map?.campaign_id) {
+    return carried;
+  }
+  for (const [riderId, mount] of Object.entries(getMounts(map.campaign_id))) {
+    if (independentMount(mount)) {
+      carried.set(riderId, { id: mount.sheetId, name: mount.name, kind: "pc" });
+    }
+  }
+  const pairs = getDatabase()
+    .prepare(
+      `SELECT rider.id AS rider, mount.id AS id, mount.display_name AS name
+       FROM encounter_enemies rider JOIN encounter_enemies mount ON mount.id = rider.rides_enemy_id
+       WHERE rider.campaign_id = ?`,
+    )
+    .all(map.campaign_id) as Array<{ rider: string; id: string; name: string }>;
+  for (const pair of pairs) {
+    carried.set(pair.rider, { id: pair.id, name: pair.name, kind: "enemy" });
+  }
+  return carried;
+}
+
+// Everyone standing on the board, for a rule that asks who stands where:
+// who an area catches, who is within reach, where this creature is.
+// listTokens is the pieces on the board, and a mount with a rider on it is
+// no piece (ruling 1 of issues 1036 and 1055: one token, the rider's), so
+// a Fireball laid over a goblin on a wolf burned the goblin and never asked
+// the wolf, and a search of the list for the wolf's own id found nobody.
+// Here the mount stands too, as an entry of its own on its rider's token:
+// the same token id and square, under the mount's own id, name and kind.
+// It comes before its rider, so a rule that takes each creature in turn
+// reaches the mount first and a push that takes both moves the pair as one
+// (issue 1055, ruling 6).
+//
+// Not for code that draws, counts, places or moves the pieces themselves:
+// the two entries of a pair are one row, and a write by token id made for
+// each would be made twice.
+export function listStandings(mapId: string): BattleToken[] {
+  const tokens = listTokens(mapId);
+  const carried = carriedMounts(mapId);
+  if (!carried.size) {
+    return tokens;
+  }
+  const own = new Set(tokens.map((token) => token.refId));
+  return tokens.flatMap((token) => {
+    const mount = carried.get(token.refId);
+    return mount && !own.has(mount.id) ? [{ ...token, refId: mount.id, name: mount.name, kind: mount.kind }, token] : [token];
+  });
+}
+
 // A combatant's token. An independent mount carrying its rider has none of
 // its own: the pair stands on the rider's token (issue 1036, ruling 2: "the
 // rider's token rides on the mount", never two tokens on a square), so the
@@ -596,12 +651,23 @@ export function renameTokenByRef(mapId: string, refId: string, name: string) {
 
 // Ref ids of every token the DM is keeping off the table. The initiative
 // tracker asks for these too, so one flag hides a combatant in both places
-// (src/lib/db/encounters.ts).
+// (src/lib/db/encounters.ts). A mount under a hidden rider is hidden with
+// it: the flag is on the one token the pair shares, and asked by the mount's
+// own id it read as shown, so a hidden pair's mount was named to the table.
 export function listHiddenRefIds(mapId: string): string[] {
   const rows = getDatabase()
     .prepare(`SELECT ref_id FROM battle_tokens WHERE map_id = ? AND hidden = 1`)
     .all(mapId) as Array<{ ref_id: string }>;
-  return rows.map((row) => row.ref_id);
+  const hidden = rows.map((row) => row.ref_id);
+  if (!hidden.length) {
+    return hidden;
+  }
+  const carried = carriedMounts(mapId);
+  const own = new Set(hidden);
+  return [...hidden, ...hidden.flatMap((riderId) => {
+    const mount = carried.get(riderId);
+    return mount && !own.has(mount.id) ? [mount.id] : [];
+  })];
 }
 
 export function deleteToken(tokenId: string) {

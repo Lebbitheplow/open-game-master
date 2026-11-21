@@ -8,7 +8,7 @@
 
 import { oneWithTheRuins } from "@/lib/dm/genre-gb-ruins";
 import { fortifiedCover } from "@/lib/dm/cannon-board-dra";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings, listTokens } from "@/lib/db/battle-maps";
 import { getEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { otherSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
@@ -83,7 +83,7 @@ export function wallsBeside(encounterId: string, ref: string): string[] {
   if (!map || !self) {
     return [];
   }
-  return listTokens(map.id)
+  return listStandings(map.id)
     .filter((token) => token.id !== self.id && tilesApart(self, token) <= 1 && walledApart(map, self, token))
     .map((token) => token.refId);
 }
@@ -130,7 +130,9 @@ function sidesOf(encounterId: string): Pick<Encounter, "id" | "sides"> {
 // The squares of the creatures on `side` that threaten, but `except`.
 function threatSpots(encounterId: string, mapId: string, side: CombatSide, except: string[]) {
   const encounter = sidesOf(encounterId);
-  return listTokens(mapId)
+  // A mount under a rider threatens from the pair's space in its own right:
+  // it does when its rider cannot (listStandings).
+  return listStandings(mapId)
     .filter((token) => !except.includes(token.refId) && threateningSide(encounter, token) === side)
     .map(spotOf);
 }

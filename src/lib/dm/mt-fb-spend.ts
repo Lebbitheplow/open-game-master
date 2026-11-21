@@ -13,7 +13,7 @@
 //                    can see within 30 feet of you. A creature left in the air
 //                    falls and lands prone." It was a line asking the GM to
 //                    move the token.
-import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
@@ -28,6 +28,7 @@ import { canEnemyAct } from "@/lib/dm/can-act";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
+import { forcedEnemyMove } from "@/lib/dm/enemy-rider-falls";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -93,7 +94,8 @@ export function throwFoe(ctx: SpendContext, enemy: EncounterEnemy, feet: number)
     if (at.x < 0 || at.y < 0 || at.x >= map.width || at.y >= map.height) continue;
     if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y)) || taken.has(tileIndex(map.width, at.x, at.y))) continue;
     if (tilesApart(holder, { ...token, x: at.x, y: at.y }) * 5 > feet) continue;
-    moveToken(token.id, at.x, at.y, token.movedThisRound);
+    // As the pair it may be half of: a rider thrown goes alone (enemy-rider-falls.ts).
+    forcedEnemyMove(ctx.campaign, map.id, enemy, at);
     publishEphemeral(ctx.campaign.id, "battle_map_updated", {});
     return { thrown: `${name} is thrown to (${at.x},${at.y}), ${tilesApart(holder, { ...token, x: at.x, y: at.y }) * 5} feet from ${ctx.sheet.name}. Another unoccupied space within ${feet} feet of them is a move_token (forced); variant "up" throws it into the air to fall.` };
   }
@@ -125,7 +127,8 @@ export function pushFoe(ctx: SpendContext, enemy: EncounterEnemy, feet: number):
   if (at.x === token.x && at.y === token.y) {
     return { pushed: `${name} has no open square behind it and stays where it is.` };
   }
-  moveToken(token.id, at.x, at.y, token.movedThisRound);
+  // As the pair it may be half of: a rider pushed goes alone (enemy-rider-falls.ts).
+  forcedEnemyMove(ctx.campaign, map.id, enemy, at);
   publishEphemeral(ctx.campaign.id, "battle_map_updated", {});
   return { pushed: `${name} is pushed ${Math.max(Math.abs(at.x - token.x), Math.abs(at.y - token.y)) * 5} feet, to (${at.x},${at.y}).` };
 }

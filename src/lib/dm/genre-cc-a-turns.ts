@@ -15,7 +15,7 @@
 //
 // The swarm's squares are the area the Rat Tide laid (zones-genre-cc-a.ts).
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import { getEnemy, listEnemies, patchEnemyConditions, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -103,7 +103,7 @@ export function refreshTeeth(campaign: Campaign, encounter: Encounter): string[]
   if (!board) {
     return [];
   }
-  const tokens = listTokens(board.map.id);
+  const tokens = listStandings(board.map.id);
   const swarms = swarmsOf(board).filter((zone) => {
     const lord = getSheetById(zone.casterId);
     return Boolean(lord && holdsGenreFeature(lord, "vermin_lord", "The Walls Have Teeth"));
