@@ -336,12 +336,14 @@ async function giveAttacks(world, enemy, attacks) {
   const stats = { ...world.enemies().find((entry) => entry.id === enemy.id).stats, attacks };
   getDatabase().prepare("UPDATE encounter_enemies SET stat_json = ? WHERE id = ?").run(JSON.stringify(stats), enemy.id);
 }
+// The pair fills the warhorse's space, the rider's square and the three right
+// of and below it (issue 1055), so the enemy stands against its left side.
 async function riddenSteed(rows) {
   const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
   await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
   const [steed] = summonsOf(world, "Find Steed");
   const [enemy] = await thenFight(world, paladin.id);
-  await layMap(world, rows ?? OPEN(), { [paladin.id]: { x: 3, y: 3 }, [steed.id]: { x: 4, y: 3 }, [enemy.id]: { x: 3, y: 4 } });
+  await layMap(world, rows ?? OPEN(), { [paladin.id]: { x: 3, y: 3 }, [steed.id]: { x: 4, y: 3 }, [enemy.id]: { x: 2, y: 3 } });
   holdTurn(world, paladin.id);
   const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
   assert.equal(up.ok, true, up.error);

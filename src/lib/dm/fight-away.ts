@@ -1,3 +1,4 @@
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import { getBattleMapForEncounter, getTokenByRef, insertToken, listTokens } from "@/lib/db/battle-maps";
 import { setEncounterAway, type Encounter } from "@/lib/db/encounters";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
@@ -32,6 +33,7 @@ export function arriveAtFight(campaignId: string, encounter: Encounter, sheet: C
   );
   if (spot) {
     insertToken({ mapId: map.id, campaignId, kind: "pc", refId: sheet.id, name: sheet.name, x: spot.x, y: spot.y, ...carriedLightFields(campaignId, sheet) });
+    seatMountedParty(campaignId, map.id);
     publishBattleMapUpdate(campaignId);
   }
 }

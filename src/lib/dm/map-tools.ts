@@ -38,6 +38,7 @@ import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/l
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
@@ -211,6 +212,8 @@ export function createBattleMapForEncounter(
     ]);
     return created;
   })();
+  // A rider needs the mount's space, not the one square they were given.
+  seatMountedParty(campaign.id, map.id);
   publishBattleMapUpdate(campaign.id);
   // The tool promises the board places them at the distance asked, so a
   // distance past the board's edge is said out loud: range and movement run

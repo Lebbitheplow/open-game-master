@@ -278,7 +278,9 @@ export function walkCharacter(
     "pc",
     sheet.id,
   );
-  const path = here ? [] : findPath(map.terrain, map.width, map.height, occupied, token, destination, 1, token.movement === "fly", traits);
+  // A rider walks as the mount's space walks (issue 1055).
+  const riding = tokenFootprint(token);
+  const path = here ? [] : findPath(map.terrain, map.width, map.height, occupied, token, destination, riding, token.movement === "fly", traits);
   if (!path) {
     return { error: `No path to (${destination.x},${destination.y}); walls block the way.`, retry: true };
   }
@@ -286,7 +288,7 @@ export function walkCharacter(
   const steps = awayFromFear(token, path, fear);
   const walk = here
     ? { at: { x: token.x, y: token.y }, spent: 0, reachedEnd: true }
-    : walkPathWithBudget(map.terrain, map.width, steps, Math.floor((fullTiles - standCost) / factor), traits, token);
+    : walkPathWithBudget(map.terrain, map.width, steps, Math.floor((fullTiles - standCost) / factor), traits, token, riding > 1 ? { height: map.height, occupied, footprint: riding } : undefined);
   if (!walk.at) {
     const why = fear.length ? `${sheet.name} is frightened and cannot move closer to what it fears.` : `${sheet.name} has no movement left for that.`;
     return { error: `${why}${stillAt(listTokens(map.id), token)}`, refused: "rules" };

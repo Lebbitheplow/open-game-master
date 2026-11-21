@@ -4345,6 +4345,21 @@ const bench2Titles = {};
     }
     bench2[viewport] = at;
   }
+  // large-mount-space (146): a character on a Large warhorse fills the
+  // horse's four squares (issue 1055); her squire on foot stands in one.
+  {
+    const table = tableFor("Mounted Table", world.owner, player);
+    const ilse = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ilse Varn", class: "fighter", level: 5, maxHp: 44 }));
+    const tobin = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Tobin Hale", class: "rogue", level: 5, maxHp: 30 }));
+    const { board, rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 1 }]);
+    [[ilse.id, -3, -1], [tobin.id, -3, 2], [named(rows, "goblin").id, 3, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    const up = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, { name: "mount_up", args: { characterId: ilse.id, mount: "Warhorse" } });
+    if (!up.ok) {
+      throw new Error(`Ilse did not mount: ${up.error}`);
+    }
+    turnOf(table, ilse.id);
+    bench2.mounted = { id: table.id, tokens: 3, rider: maps.getTokenByRef(board.id, ilse.id).id, onFoot: maps.getTokenByRef(board.id, tobin.id).id };
+  }
   // hand-share (140): the turn of a companion the lead commands, on the
   // lead's own board. On a short board the turn's heading gives way, and the
   // plate still has to say whose stats it shows.

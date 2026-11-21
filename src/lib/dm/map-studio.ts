@@ -1,3 +1,4 @@
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getParty } from "@/lib/db/party";
 import { placeByFormation } from "@/lib/dm/formation-logic";
@@ -292,6 +293,7 @@ export function openScene(
       ...carriedLightFields(campaign.id, sheet),
     })),
   );
+  seatMountedParty(campaign.id, map.id);
   publishBattleMapUpdate(campaign.id);
   return { ok: true, seed, encounterId: encounter.id };
 }

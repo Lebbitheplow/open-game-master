@@ -171,9 +171,11 @@ await test("The rider cannot spend an independent mount's action on their own tu
   nextTurn(world);
   const dash = await ai.invoke("take_action", { characterId: steed.id, action: "dash" });
   assert.equal(dash.ok, true, dash.error);
-  const walk = await ai.invoke("move_token", { token: steed.name, x: 23, y: 3 });
+  // The pair fills the warhorse's space, two squares a side (issue 1055), so
+  // its corner square goes no further than the board's last column but one.
+  const walk = await ai.invoke("move_token", { token: steed.name, x: 22, y: 3 });
   assert.equal(walk.ok, true, `the mount's own Dash did not double its move: ${walk.error}`);
-  assert.deepEqual(at(world, paladin.id), [23, 3]);
+  assert.deepEqual(at(world, paladin.id), [22, 3]);
 });
 
 await test("Getting down from an independent mount costs half the rider's own speed, puts the mount back on a square beside them, and leaves its place in the order as it was.", async () => {

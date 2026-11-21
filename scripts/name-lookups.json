@@ -89,6 +89,7 @@
     "lib/dm/scribe-mind.ts#whole": [["identity",1,"the mind token by its whole name, textKey on both sides (or by its id or ref)"]],
     "lib/dm/scribe-mind.ts#partial": [["key",1,"the mind token's own ref, written by the engine: read by its prefix, and the prefix read back off it"]],
     "lib/dm/mount-area.ts#keyed": [["identity",1,"a mount's stored ref, an SRD mount id, into its Dexterity table"]],
+    "lib/dm/board-reach.ts#fallback": [["key",1,"a mount record by its rider's sheet id, else by the sheet id of the creature that is the mount: ids on both sides, no name read"]],
     "lib/dm/mount-link.ts#fallback": [["identity",1,"a creature of the rider's making by its whole name, else by its whole form; two that answer to the form are neither"]],
     "lib/dm/mount-link.ts#whole": [["identity",2,"a creature of the rider's making by its whole name, else its whole form (textKey on both sides), and only when one creature answers to it"],["key",1,"a mount on record to its SRD stat block by the slug mount_up stored, for the Dexterity barding is read with"]],
     "lib/dm/steed-fall.ts#keyed": [["key",1,"the fall decided for a rider, by the turn's id and the ids of the steed's sheet and the rider's"]],

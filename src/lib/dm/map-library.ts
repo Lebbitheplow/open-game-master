@@ -1,3 +1,4 @@
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import { isOnePageDungeon, parseOnePageDungeon } from "@/lib/battlemap/watabou";
 import { getParty } from "@/lib/db/party";
 import { placeByFormation } from "@/lib/dm/formation-logic";
@@ -549,6 +550,7 @@ export function openSceneOnPreparedMap(
     })),
   );
   placeProps(map.id, campaign.id, prepared);
+  seatMountedParty(campaign.id, map.id);
   publishBattleMapUpdate(campaign.id);
   playPreparedAmbience(campaign, prepared.ambience);
   return { ok: true, map: prepared };
