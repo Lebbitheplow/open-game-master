@@ -18,7 +18,7 @@ import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { caster, closeTables } from "./lib/enforce-spell-kit.mjs";
-import { layMap } from "./lib/enforce-spells.mjs";
+import { dropMap, layMap } from "./lib/enforce-spells.mjs";
 import { mapOf, OPEN, tokenOf } from "./lib/enforce-zones.mjs";
 import { diff, revertTurn, snapshot } from "./lib/sweep-lifecycle.mjs";
 
@@ -196,6 +196,21 @@ await test("A mount slain leaves its rider on their own token, on foot, with the
   turnOf(world, rider.id);
   const walk = await world.invoke("move_token", { token: rider.id, x: 14, y: 4 });
   assert.equal(walk.ok, true, `the rider cannot walk once on foot: ${walk.error}`);
+});
+
+await test("With no battle map the two part all the same: a mount slain leaves no rider on its back, and a rider slain leaves no mount under them.", async () => {
+  const first = await pair();
+  await dropMap(first.world);
+  const horse = await first.world.invoke("damage_enemy", { enemyId: first.mount.id, amount: 99, reason: "test" });
+  assert.equal(horse.ok, true, horse.error);
+  assert.equal(live(first.world, first.rider.id).ridesEnemyId, undefined, "the rider still rides a dead mount");
+  assert.match(horse.result.pair ?? "", /on foot/);
+  const second = await pair();
+  await dropMap(second.world);
+  const goblin = await second.world.invoke("damage_enemy", { enemyId: second.rider.id, amount: 99, reason: "test" });
+  assert.equal(goblin.ok, true, goblin.error);
+  assert.equal(live(second.world, second.rider.id).ridesEnemyId, undefined, "a dead rider still names its mount");
+  assert.match(goblin.result.pair ?? "", /riderless/);
 });
 
 await test("A rider left lying on the board lies beside its mount, never on its square: the mount takes the space the pair held.", async () => {

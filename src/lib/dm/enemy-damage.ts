@@ -708,24 +708,27 @@ export function applyEnemyDamage(
     base.dead = true;
     base.note = `${updated.displayName} is slain. You may now narrate its death.`;
     const map = getBattleMapForEncounter(encounter.id);
+    // The death plays where the token stood, then the token goes. A hidden
+    // ambusher dying unseen plays nothing for the party. Read before the
+    // pair parts, which hands a dead rider's token to its mount.
+    const pos = map ? tokenPosition(campaign.id, enemy.id) : null;
+    // A mount dies under a rider who lives: the token it stood on is its
+    // rider's and stays, so the death names no token to take with it.
+    const ridersToken = Boolean(listEnemies(encounter.id).some((entry) => entry.ridesEnemyId === enemy.id));
+    // Its mount keeps the space the pair held; its rider keeps their token
+    // (issue 1055, ruling 4: enemy-riders.ts). With no board the two part
+    // all the same: a rider was left on a dead mount, and a mount under a
+    // dead rider.
+    const parted = partPair(campaign, enemy, true);
+    if (parted) {
+      base.pair = parted;
+    }
     if (map) {
-      // The death plays where the token stood, then the token goes. A
-      // hidden ambusher dying unseen plays nothing for the party.
-      const pos = tokenPosition(campaign.id, enemy.id);
-      // A mount dies under a rider who lives: the token it stood on is its
-      // rider's and stays, so the death names no token to take with it.
-      const ridersToken = Boolean(listEnemies(encounter.id).some((entry) => entry.ridesEnemyId === enemy.id));
       if (pos && !pos.hidden) {
         publishFx(
           campaign.id,
           planDeathFx({ to: pos.at, ...(ridersToken ? {} : { toTokenId: pos.tokenId }), name: updated.displayName }),
         );
-      }
-      // Its mount keeps the space the pair held; its rider keeps their token
-      // (issue 1055, ruling 4: enemy-riders.ts).
-      const parted = partPair(campaign, enemy, true);
-      if (parted) {
-        base.pair = parted;
       }
       removeTokenByRef(map.id, enemy.id);
       publishBattleMapUpdate(campaign.id);
