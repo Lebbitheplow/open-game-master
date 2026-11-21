@@ -513,7 +513,7 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#partial": [
       [
         "pattern",
-        7,
+        21,
         "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
       ],
       [
@@ -961,6 +961,7 @@
     "components/InviteShareDialog.tsx#partial": [["key",2,"UI keys, file names, glyphs and markdown"]],
     "components/NotificationBell.tsx#partial": [["key",5,"UI keys, file names, glyphs and markdown"]],
     "components/SafetyToneFields.tsx#partial": [["key",1,"UI keys, file names, glyphs and markdown"]],
+    "components/SceneTitle.tsx#partial": [["pattern",3,"a fixed pattern over server title-card labels (Chapter / Act / End of Act)"]],
     "components/ScheduleSection.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "components/ServerAddressButton.tsx#first": [["key",1,"the first shareable address"]],
     "components/ServerAddressButton.tsx#partial": [["key",1,"UI keys, file names, glyphs and markdown"]],
