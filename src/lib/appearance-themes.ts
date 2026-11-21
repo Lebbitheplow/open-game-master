@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -95,6 +95,21 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/forge/bronze-band-frame-v1.webp",
       corner: "/assets/themes/forge/ember-plate-corner-v1.webp",
       backdrop: "/assets/themes/forge/forge-hall-v1.webp",
+    },
+  },
+  {
+    id: "depths", name: "Unquiet Depths", description: "A case file and red string by day; drowned green-black stone by night.", icon: "eye",
+    art: {
+      texture: "/assets/themes/depths/wet-stone-v1.webp",
+      frame: "/assets/themes/depths/drowned-stone-frame-v1.webp",
+      corner: "/assets/themes/depths/ring-eye-boss-v1.webp",
+      backdrop: "/assets/themes/depths/drowned-vault-v1.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/depths/manila-card-v1.webp",
+      frame: "/assets/themes/depths/case-file-frame-v1.webp",
+      corner: "/assets/themes/depths/wax-seal-string-v1.webp",
+      backdrop: "/assets/themes/depths/evidence-desk-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];

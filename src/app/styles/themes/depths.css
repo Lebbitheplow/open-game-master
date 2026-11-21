@@ -1,0 +1,155 @@
+/* depths: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   The two modes are two halves of one story, and each has its own artwork
+   (artDay in the catalog). Day is the investigator's desk: manila card,
+   typewriter ink and one thread of red string. Night is what the case
+   uncovers: green-black stone under cold phosphor light. Night's surfaces sit
+   at a green hue (about 155) well below Sunken Tide's blue-teal, and darker;
+   it has no bronze. The thread red is a muted brick, kept apart from the
+   app's danger red, and never fills a button: day's keys are ink. */
+[data-appearance="depths"][data-theme="dark"] {
+  --background: #050b09;
+  --foreground: #dbe7e0;
+  --color-stone-950: #070f0c;
+  --color-stone-900: #0d1a15;
+  --color-stone-800: #15271f;
+  --color-stone-700: #243d32;
+  --color-stone-600: #4b6a5c;
+  --color-stone-500: #94b3a4;
+  --color-stone-400: #a2bfb1;
+  --color-stone-300: #bdd4c8;
+  --color-stone-200: #d5e5dc;
+  --color-stone-100: #e5f0ea;
+  --color-stone-50: #f2f8f5;
+  --color-amber-950: #06200f;
+  --color-amber-900: #0b3319;
+  --color-amber-800: #124a26;
+  --color-amber-700: #1c6636;
+  --color-amber-600: #2f8a4c;
+  --color-amber-500: #4fb06a;
+  --color-amber-400: #7fd391;
+  --color-amber-300: #a6e6b2;
+  --color-amber-200: #c7f1cf;
+  --color-amber-100: #e1f8e5;
+  --color-amber-50: #f2fcf4;
+  --material-inset: #08120e;
+  --material-paper: #0c1813;
+  --material-metal: #a6e6b2;
+  --material-edge: #2f6a4c;
+  --material-panel-wash: linear-gradient(#0a1611e0, #070f0ceb);
+  --material-control-wash: linear-gradient(#173026db, #0e1f18eb);
+  --material-body-wash: linear-gradient(#050b09f0, #060e0bf0);
+  --material-rail-wash: linear-gradient(#0a1410a0, #0a1410a0);
+  --material-primary-wash: linear-gradient(#1c6636eb, #0f4124f2);
+  --material-send-wash: linear-gradient(#1c6636, #0f4124);
+  --material-send-edge: #7fd391;
+  --material-chosen-wash: linear-gradient(#17502c, #0c3219);
+  --material-vital-fill: linear-gradient(90deg, #2f8a4c, #a6e6b2);
+  --material-metal-finish: linear-gradient(135deg, #b9d6c4, #3d6b55 46%, #8fd3a4 52%, #24483a);
+  --material-metal-ink: #06180f;
+  --material-scrim: linear-gradient(#050b09a6, #050b0966 45%, #050b09cc);
+  /* Cut stone whose corners do not quite agree. */
+  --material-control-radius: 2px 7px 3px 6px;
+  --material-panel-radius: 3px 10px 4px 8px;
+  --material-bubble-radius: 2px 9px 3px 7px;
+  --material-tab-radius: 2px 8px 2px 6px;
+  --material-chip-radius: 1px 5px 2px 4px;
+  --material-sigil-radius: 2px 6px 2px 5px;
+  --appearance-corner: 0.15rem 0.6rem 0.2rem 0.5rem;
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%232f6a4c'%3E%3Ccircle cx='80' cy='80' r='9'/%3E%3Ccircle cx='80' cy='80' r='22'/%3E%3Ccircle cx='80' cy='80' r='36'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 160px 160px;
+}
+[data-appearance="depths"][data-theme="light"] {
+  --background: #eadfc4;
+  --foreground: #23201b;
+  --color-stone-950: #f6efdc;
+  --color-stone-900: #eee4c9;
+  --color-stone-800: #e2d5b3;
+  --color-stone-700: #c9b88f;
+  --color-stone-600: #8f8062;
+  --color-stone-500: #564c39;
+  --color-stone-400: #4c4332;
+  --color-stone-300: #3b3427;
+  --color-stone-200: #2b261c;
+  --color-stone-100: #1e1a13;
+  --color-stone-50: #13100b;
+  --color-amber-950: #f8e9e2;
+  --color-amber-900: #f0d3c8;
+  --color-amber-800: #e0aa9c;
+  --color-amber-700: #c27a6b;
+  --color-amber-600: #9c4a3e;
+  --color-amber-500: #7f3329;
+  --color-amber-400: #6a2820;
+  --color-amber-300: #561f19;
+  --color-amber-200: #441812;
+  --color-amber-100: #33110d;
+  --color-amber-50: #240b08;
+  --material-inset: #f4ecd8;
+  --material-paper: #ece1c6;
+  --material-metal: #561f19;
+  --material-edge: #a8926a;
+  --material-panel-wash: linear-gradient(#f3ead4e6, #e9dcbde6);
+  --material-control-wash: linear-gradient(#efe3c6d9, #dccba3de);
+  --material-body-wash: linear-gradient(#e6d9b8e0, #dccca6e6);
+  --material-rail-wash: linear-gradient(#6b573a40, #6b573a40);
+  /* Typewriter ink, not thread red: a red key beside a destructive one
+     would read as a second warning. */
+  --material-primary-wash: linear-gradient(#3b352bf0, #1f1b15f5);
+  --material-send-wash: linear-gradient(#3b352b, #1f1b15);
+  --material-send-edge: #c27a6b;
+  --material-chosen-wash: linear-gradient(#4a4234, #2b261c);
+  /* The desk lamp's green shade; red would sit beside the low-health bar. */
+  --material-vital-fill: linear-gradient(90deg, #4d7257, #86ad8c);
+  --material-metal-finish: linear-gradient(135deg, #ead9a0, #a8853d 48%, #dcc47c 52%, #7a5d26);
+  --material-metal-ink: #2a2012;
+  --material-scrim: linear-gradient(#eadfc499, #eadfc440 45%, #eadfc4bb);
+  /* Cut card and typed sheets: square, barely eased. */
+  --material-control-radius: 2px;
+  --material-panel-radius: 2px;
+  --material-bubble-radius: 2px;
+  --material-tab-radius: 2px;
+  --material-chip-radius: 1px;
+  --material-sigil-radius: 2px;
+  --material-crest-tilt: -4deg;
+  --appearance-corner: 0.15rem;
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='140' viewBox='0 0 200 140'%3E%3Cpath d='M20 30L110 60L180 20M110 60L70 120' fill='none' stroke='%239c4a3e'/%3E%3Cg fill='%23a8853d'%3E%3Ccircle cx='20' cy='30' r='2'/%3E%3Ccircle cx='110' cy='60' r='2'/%3E%3Ccircle cx='180' cy='20' r='2'/%3E%3Ccircle cx='70' cy='120' r='2'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 200px 140px;
+}
+
+[data-appearance="depths"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #050b09;
+  --theme-night-foreground: #dbe7e0;
+  --theme-night-stone-950: #070f0c;
+  --theme-night-stone-900: #0d1a15;
+  --theme-night-stone-800: #15271f;
+  --theme-night-stone-700: #243d32;
+  --theme-night-stone-600: #4b6a5c;
+  --theme-night-stone-500: #94b3a4;
+  --theme-night-stone-400: #a2bfb1;
+  --theme-night-stone-300: #bdd4c8;
+  --theme-night-stone-200: #d5e5dc;
+  --theme-night-stone-100: #e5f0ea;
+  --theme-night-stone-50: #f2f8f5;
+  --theme-night-amber-950: #06200f;
+  --theme-night-amber-900: #0b3319;
+  --theme-night-amber-800: #124a26;
+  --theme-night-amber-700: #1c6636;
+  --theme-night-amber-600: #2f8a4c;
+  --theme-night-amber-500: #4fb06a;
+  --theme-night-amber-400: #7fd391;
+  --theme-night-amber-300: #a6e6b2;
+  --theme-night-amber-200: #c7f1cf;
+  --theme-night-amber-100: #e1f8e5;
+  --theme-night-amber-50: #f2fcf4;
+  --material-fitting-radius: 50%;
+}
+/* The wax seal's arms are strips of the rail's own paper, 18% of the piece,
+   so the piece is sized for them to be the rail's width: 150px on the
+   desktop's 26px rail; a phone takes 84px, a little over its 12px rail, so the seal still reads. The stone boss keeps the
+   shared sizes; its arms are thin weed-hung spars over the rail. */
+[data-appearance="depths"][data-theme="light"] .theme-ornaments[data-surface="lobby"] {
+  --theme-lobby-corner-size: 150px;
+  --theme-lobby-corner-size-small: 84px;
+}
