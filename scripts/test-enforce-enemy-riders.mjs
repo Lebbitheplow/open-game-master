@@ -197,6 +197,19 @@ await test("Ruling 4: a rider slain leaves its mount on a token of its own where
   assert.deepEqual([ownToken(world, mount.id).x, ownToken(world, mount.id).y], [15, 4]);
 });
 
+await test("A rider drained to 0 of a score that kills dies off its mount: the mount gets the pair's token, as a death by damage leaves it.", async () => {
+  const { world, rider, mount } = await pair();
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { drainCreature } = await import("../src/lib/dm/creature-drain.ts");
+  const said = drainCreature(world.campaign(), createDmTurn(world.campaignId, []), mount, rider.id, "Bite", { ability: "str", dice: "40d6", diesAtZero: true });
+  assert.match(said ?? "", /dies/, `the drain did not kill: ${said}`);
+  assert.equal(live(world, rider.id).status, "dead");
+  assert.equal(live(world, rider.id).ridesEnemyId ?? null, null, "the dead rider still rides its mount");
+  const left = ownToken(world, mount.id);
+  assert.ok(left, "the mount has no token after its rider died");
+  assert.deepEqual([left.x, left.y], [12, 4], "the mount is not where the pair stood");
+});
+
 await test("A mount slain leaves its rider on their own token, on foot, with their own movement again.", async () => {
   const { world, rider, mount } = await pair();
   const slain = await world.invoke("damage_enemy", { enemyId: mount.id, amount: 99, reason: "test" });
