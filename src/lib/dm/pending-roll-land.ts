@@ -16,7 +16,7 @@ import {
   publicPendingRoll,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
-import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
+import { insertRoll, markRollSpent, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { rollsCanWait } from "@/lib/dm/after-roll";
@@ -235,6 +235,18 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
     settleTurn(campaign, holder);
     carryEndTurn(campaign, pending);
   });
+  // The dice the landing threw are the engine's own, used where they were
+  // thrown (a hit's damage, its rider's, the swings queued behind it), as a
+  // call's are (held-call.ts spendOwnRolls). They join the turn as they are
+  // made (roll-record.ts), so on an AI's turn they are stamped spent before
+  // it resumes: a bare number the model sends then is paid for only by a
+  // roll it asked for (ai-gate.ts number). The landed roll itself joins when
+  // the turn resumes, and stays the model's to use.
+  if (parkedOn?.actor === "ai") {
+    for (const id of (getDmTurn(pending.turnId)?.rollIds ?? []).slice(parkedOn.rollIds.length)) {
+      markRollSpent(id);
+    }
+  }
   const after = record ? getDmTurn(pending.turnId) : null;
   if (record && after) {
     postPersonsRecord(campaign, after, record, { rollIds: [roll.id] });

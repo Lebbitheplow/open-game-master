@@ -14,14 +14,15 @@
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { catalogName } from "@/lib/srd/adventuring-gear";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { DmTurn } from "@/lib/db/dm-turns";
 import { settleEnemyIncapacitation } from "@/lib/dm/enemy-incapacitation";
 import { getActiveEncounter, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { isIncapacitated, removeConditions, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
@@ -45,10 +46,6 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { rowName, type RowItem } from "@/lib/srd/item-row";
 import { textKey } from "@/lib/language/text-logic";
-
-function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital" });
-}
 
 // Typed damage on an enemy with a short turn for its audit rows, outside the
 // hit's own damage roll.
@@ -185,7 +182,8 @@ export function carriesPoison(sheet: CharacterSheet, weaponAttack: boolean, dama
 
 // The coated hit: the coat is used, the creature saves, and a failure takes
 // the poison's damage or its condition. Returns the line for the result.
-export function poisonOnHit(campaign: Campaign, sheetId: string, enemyId: string): string | null {
+// `turn` is the turn the hit is made on: the poison's dice are its cards.
+export function poisonOnHit(campaign: Campaign, sheetId: string, enemyId: string, turn: DmTurn | null): string | null {
   const sheet = getSheetById(sheetId);
   if (!sheet) {
     return null;
@@ -209,7 +207,7 @@ export function poisonOnHit(campaign: Campaign, sheetId: string, enemyId: string
   if (coat.damage) {
     const outcome = rollExpression(coat.damage);
     const dealt = save.success ? Math.floor(outcome.total / 2) : outcome.total;
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
@@ -217,8 +215,10 @@ export function poisonOnHit(campaign: Campaign, sheetId: string, enemyId: string
       detail: rollAgainst(label, enemy.displayName),
       result: outcome,
       attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishRoll(campaign.id, roll);
     // A Poisoner's coat is poison damage they deal: "You ignore resistance
     // to poison damage" held on a poisoned blade's own damage type and was
     // halved here, on the coat (src/lib/srd/feat-combat.ts).
@@ -344,7 +344,8 @@ export function hurlReturn(campaign: Campaign, enemy: EncounterEnemy, meta: Cond
   }
   const outcome = rollExpression("10d10");
   const warlock = meta.source ? getSheetById(meta.source) : null;
-  const roll = insertRoll({
+  // Handed no turn: inside a GM call it joins the call's own.
+  recordRoll({
     campaignId: campaign.id,
     characterId: meta.source ?? null,
     requestedBy: "dm",
@@ -352,8 +353,9 @@ export function hurlReturn(campaign: Campaign, enemy: EncounterEnemy, meta: Cond
     detail: rollAgainst("Hurl Through Hell", enemy.displayName),
     result: outcome,
     attacker: warlock ? { kind: "sheet", id: warlock.id, name: warlock.name } : null,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishRoll(campaign.id, roll);
   damageEnemy(campaign, enemy, outcome.total, "psychic");
   return `${enemy.displayName} returns from the lower planes, reeling from the horror, and takes ${outcome.total} psychic damage (Hurl Through Hell).`;
 }

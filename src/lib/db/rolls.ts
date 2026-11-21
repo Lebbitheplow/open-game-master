@@ -47,7 +47,8 @@ export type StoredRoll = {
   // set together with `applied` (the damage_enemy double-apply guard).
   targetEnemyId: string | null;
   // Spent: the server applied its total, or the engine threw it inside a
-  // call of its own (markRollSpent), so it pays for no number sent later.
+  // call of its own or as a roll card landed (markRollSpent), so it pays for
+  // no number sent later.
   applied: boolean;
   // Attack and damage rolls: who rolled. Null when nobody did (a fall), for
   // the roll tools' rolls, and for rolls stored before it was recorded.
@@ -114,7 +115,9 @@ export function markRollApplied(rollId: string, targetEnemyId: string) {
 // Stamp a damage or custom roll the engine threw and used inside one of its
 // own calls (a spell's damage, a hazard's, the dice a damage or healing tool
 // was sent) as spent, so its total never pays for a number an AI GM sends
-// later (src/lib/dm/ai-gate.ts number, src/lib/dm/held-call.ts runHeld). It
+// later (src/lib/dm/ai-gate.ts number, src/lib/dm/held-call.ts runHeld). The
+// dice thrown as a roll card lands outside any call are stamped the same way
+// (src/lib/dm/pending-roll-land.ts). It
 // names no target: what the roll landed on is the call's own business, and
 // the damage_enemy guard reads only a stamp that names its enemy.
 export function markRollSpent(rollId: string) {
@@ -201,6 +204,20 @@ export function getRoll(rollId: string): StoredRoll | null {
     | RollRow
     | undefined;
   return row ? mapRoll(row) : null;
+}
+
+// The first of these rolls that was stored after this one, or null: where a
+// roll that joins a list late belongs in it. A roll card's roll is stored as
+// it lands and joins its turn when the turn resumes, or the line a person's
+// turn posts. The dice its landing threw (a hit's damage, the swings queued
+// behind it) join the turn as they are made (src/lib/dm/roll-record.ts), and
+// would otherwise be listed ahead of the roll they answer.
+export function firstStoredAfter(rollId: string, among: readonly string[]): string | null {
+  const rows = getDatabase()
+    .prepare(`SELECT id FROM rolls WHERE rowid > (SELECT rowid FROM rolls WHERE id = ?) AND id IN (SELECT value FROM json_each(?))`)
+    .all(rollId, JSON.stringify(among)) as Array<{ id: string }>;
+  const later = new Set(rows.map((row) => row.id));
+  return among.find((id) => later.has(id)) ?? null;
 }
 
 // The label of a character's own latest attack roll ("Longbow vs Goblin",

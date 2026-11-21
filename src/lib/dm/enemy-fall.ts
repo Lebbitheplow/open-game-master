@@ -4,13 +4,12 @@
 // apply_hazard's "falling" (hazard-tools.ts); this is the enemies' side,
 // reached through damage_enemy's fallFeet.
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getEnemy, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollOn } from "@/lib/roll-labels";
 import { rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { fallingDamageDice } from "@/lib/srd/hazards";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -29,7 +28,7 @@ export function enemyFalls(
     return { ok: true, name: enemy.displayName, feet, note: "Too short a fall to hurt." };
   }
   const outcome = rollExpression(dice);
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: null,
     requestedBy: "dm",
@@ -37,9 +36,10 @@ export function enemyFalls(
     detail: rollOn(`${feet} ft fall (${dice} bludgeoning)`, [enemy.displayName]),
     result: outcome,
     attacker: null,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn.rollIds.push(roll.id);
   const applied = applyEnemyDamage(
     campaign,
     turn,

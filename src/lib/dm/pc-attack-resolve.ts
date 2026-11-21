@@ -10,21 +10,19 @@ import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { takeLineage } from "@/lib/dm/lineage-watch";
 import { settleAttackDie } from "@/lib/dm/forced-save";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
 import type { RollVisibility } from "@/lib/battlemap/fx-plan";
 import { attacksLeft } from "@/lib/dm/action-budget";
 import { attackRecord, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
 import { hitSwing, judgeSwing, missSwing, type SwingScene } from "@/lib/dm/attack-swing";
-import { landSwingBlow, publishRoll } from "@/lib/dm/attack-blow";
+import { landSwingBlow } from "@/lib/dm/attack-blow";
 import { throwDamage } from "@/lib/dm/attack-damage-dice";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import type { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { hasElvenAccuracy, hasHalflingLuck } from "@/lib/srd/feature-effects";
 import { rollAgainst } from "@/lib/roll-labels";
-
-export { publishRoll };
 
 // The roll the attack makes and the damage it carries, built once the
 // attack is paid for and shared by both dice paths.
@@ -112,7 +110,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
   if (hitOutcome !== thrown) {
     notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
   }
-  const hitRoll = insertRoll({
+  const hitRoll = recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -121,9 +119,10 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
     advantage: plan.advantage,
     result: hitOutcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishRoll(campaign.id, hitRoll);
-  turn.rollIds.push(hitRoll.id);
   const judged = judgeSwing(scene, record, hitOutcome, notes);
   const base = () => ({
     attacker: sheet.name,
@@ -189,7 +188,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
 export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
   const { campaign, turn, sheet } = scene;
   const outcome = throwDamage(ask, sheet.name, notes);
-  const damageRoll = insertRoll({
+  const damageRoll = recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -197,8 +196,9 @@ export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageA
     detail,
     result: outcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishRoll(campaign.id, damageRoll);
-  turn.rollIds.push(damageRoll.id);
   return landSwingBlow(scene, record, ask, damageRoll, hitOutcome, visibility, notes);
 }

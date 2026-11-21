@@ -16,13 +16,12 @@
 // (pet-tools.ts hurtPet) and the condition a failed save lays
 // (pet-condition-lay.ts) are its own.
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, isValidExpression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { riderSpares, type OnHitRider } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
@@ -125,9 +124,12 @@ export function strikePet(input: {
     const label = rollAgainst(attack.name, pet.name);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
-    const hitRoll = insertRoll({ campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
-    turn.rollIds.push(hitRoll.id);
+    recordRoll({
+      campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
+    });
     const ac = pet.ac + input.cover;
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= ac);
     if (!hit) {
@@ -141,9 +143,12 @@ export function strikePet(input: {
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
-    const damageRoll = insertRoll({ campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", detail: `${label}${crit ? " (CRIT)" : ""}`, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
-    turn.rollIds.push(damageRoll.id);
+    recordRoll({
+      campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", detail: `${label}${crit ? " (CRIT)" : ""}`, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
+    });
     const blow = blowByType(attack, damage, crit);
     const magical = hasTrait(enemy.stats, "magicWeapons") || Boolean(attack.magical);
     const { ok: _ok, pet: _name, ...landed } = hurtPet(campaign, getSheetById(owner.id) ?? owner, pet, { parts: blow.parts ?? [{ amount: blow.amount, type: blow.type }], magical });
@@ -194,9 +199,12 @@ function landRider(campaign: Campaign, turn: DmTurn, owner: CharacterSheet, enem
     const share = rider.save && rider.dc ? petDamageShare({ saved, halfOnSave: Boolean(rider.halfOnSave), ability: rider.save, evasion: false }) : "full";
     if (share !== "none") {
       const rolled = rollExpression(rider.damage, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
-      const roll = insertRoll({ campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", detail: rollAgainst(`${attack.name} (rider)`, pet.name), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
-      publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-      turn.rollIds.push(roll.id);
+      recordRoll({
+        campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", detail: rollAgainst(`${attack.name} (rider)`, pet.name), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+        turn,
+        // Thrown here, on the server's dice.
+        landing: null,
+      });
       const amount = share === "half" ? Math.floor(rolled.total / 2) : rolled.total;
       const now = currentPet(owner.id, name);
       if (now && amount > 0) {
