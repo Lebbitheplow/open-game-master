@@ -572,7 +572,7 @@ export function composeDisplaySentence(
         return aim && aim.kind !== "self" ? t("I give {who} my {item} to drink.", { who, item }) : t("I drink my {item}.", { item });
     }
   }
-  const route = intent.bonus ? card.name.split(":")[0].trim() : "";
+  const route = intent.bonus ? card.name.replace(/:.*/, "").trim() : "";
   const bonus = route ? ` ${t("as a bonus action ({route})", { route: t(route) })}` : "";
   switch (intent.action) {
     case "dodge":
@@ -588,13 +588,13 @@ export function composeDisplaySentence(
     case "search":
       return t("I take the Search action.");
     case "escape":
-      return card.name.startsWith("Escape: ")
+      return card.name.slice(0, 8) === "Escape: "
         ? t("I try to break free of {spell}.", { spell: contentName("spells", card.name.slice("Escape: ".length), locale) })
         : t("I try to escape the grapple.");
     case "ready": {
       const trigger = choices.trigger?.trim().replace(/\.$/, "");
       const picked = chosenValue(card, choices) ?? "";
-      const held = picked.startsWith("@") ? t(READIED_WORDS[picked.slice(1) as Readiable] ?? picked.slice(1)) : picked ? contentName("spells", picked, locale) : t("an attack");
+      const held = picked.slice(0, 1) === "@" ? t(READIED_WORDS[picked.slice(1) as Readiable] ?? picked.slice(1)) : picked ? contentName("spells", picked, locale) : t("an attack");
       return trigger ? t("I ready {held} for when {trigger}.", { held, trigger }) : t("I ready an action: ");
     }
     case "grapple":

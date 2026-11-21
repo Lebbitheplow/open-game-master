@@ -27,7 +27,7 @@ export type PictureStage = { id: PictureStageId; ok: boolean | null; detail?: st
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 const passT: T = (key, vars) =>
-  vars ? key.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : key;
+  vars ? key.replace(/\{([^{}]+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : key;
 
 export type PictureTestResult = {
   image?: GeneratedImage;
