@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {APPEARANCE_THEMES, themeArtStyle} from '../../src/lib/appearance-themes.ts';
+import {APPEARANCE_THEMES, themeArt, themeArtStyle} from '../../src/lib/appearance-themes.ts';
 
 export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,shot,origin}) {
   await send('Page.navigate',{url:origin});
@@ -28,15 +28,16 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
         await evaluate('document.fonts.ready.then(()=>true)');
         // CSS URL equality does not mean its image has decoded. A cold profile
         // otherwise captures empty frames while reporting a passing preview.
-        const previewArt = [...new Set(APPEARANCE_THEMES.flatMap(theme => Object.values(theme.art ?? {})))];
+        const previewArt = [...new Set(APPEARANCE_THEMES.flatMap(theme => Object.values(themeArt(theme.id, mode) ?? {})))];
         await evaluate(`Promise.all(${JSON.stringify(previewArt)}.map(src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>img.decode().then(resolve,reject);img.onerror=()=>reject(new Error('Preview artwork failed: '+src));img.src=src})))`);
         assert.equal(await evaluate(`document.querySelectorAll('.appearance-option').length`),APPEARANCE_THEMES.length);
         assert.equal(await evaluate(`document.querySelector('.appearance-follow').getAttribute('aria-pressed')`),'true','Picker starts by following the campaign');
         const baseline=await previews();
         for (const definition of APPEARANCE_THEMES) {
-          const expected=themeArtStyle(definition.id)['--theme-art-frame'];
-          assert.equal(baseline[definition.id].frame.trim(),expected);
-          if(definition.art?.frame) assert.equal(baseline[definition.id].slice,themeArtStyle(definition.id)['--theme-frame-slice'],'Thumbnail uses the registered frame geometry');
+          // Each preview shows the artwork of the brightness it previews.
+          const expected=themeArtStyle(definition.id,mode)['--theme-art-frame'];
+          assert.equal(baseline[definition.id].frame.trim(),expected,`${definition.id}: preview frame in ${mode} mode`);
+          if(themeArt(definition.id,mode)?.frame) assert.equal(baseline[definition.id].slice,themeArtStyle(definition.id,mode)['--theme-frame-slice'],'Thumbnail uses the registered frame geometry');
         }
         fits(await layout(),width,height);
         await shot(`picker-${width}-${mode}-${scale}`);

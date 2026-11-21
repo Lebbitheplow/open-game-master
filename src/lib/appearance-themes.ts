@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -23,7 +23,11 @@ export interface AppearanceDefinition {
   cornerScale?: number;
   frameSlice?: number;
   art?: ThemeArt;
+  // Day artwork: a slot given here replaces the same slot of `art` while the
+  // brightness is light. The corner crop and frame slice serve both sets.
+  artDay?: ThemeArt;
 }
+export type ThemeBrightness = "dark" | "light";
 
 // Add a theme here once. Schema IDs, both pickers and validation use this list.
 // See docs/appearance-themes.md for palette, artwork and preview requirements.
@@ -93,6 +97,21 @@ export const APPEARANCE_THEMES = [
       backdrop: "/assets/themes/forge/forge-hall-v1.webp",
     },
   },
+  {
+    id: "depths", name: "Unquiet Depths", description: "A case file and red string by day; drowned green-black stone by night.", icon: "eye",
+    art: {
+      texture: "/assets/themes/depths/wet-stone-v1.webp",
+      frame: "/assets/themes/depths/drowned-stone-frame-v1.webp",
+      corner: "/assets/themes/depths/ring-eye-boss-v1.webp",
+      backdrop: "/assets/themes/depths/drowned-vault-v1.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/depths/manila-card-v1.webp",
+      frame: "/assets/themes/depths/case-file-frame-v1.webp",
+      corner: "/assets/themes/depths/wax-seal-string-v1.webp",
+      backdrop: "/assets/themes/depths/evidence-desk-v1.webp",
+    },
+  },
 ] as const satisfies readonly AppearanceDefinition[];
 export type AppearanceTheme = (typeof APPEARANCE_THEMES)[number]["id"];
 
@@ -109,12 +128,21 @@ export function appearanceDefinition(id: AppearanceTheme): AppearanceDefinition 
   return APPEARANCE_THEMES.find((theme) => theme.id === id)!;
 }
 
+// The artwork a theme shows at one brightness. Every slot is written on each
+// change of theme or brightness, so neither set outlives its mode.
+export function themeArt(id: AppearanceTheme, mode: ThemeBrightness = "dark"): ThemeArt | undefined {
+  return modeArt(appearanceDefinition(id), mode);
+}
+export function modeArt({ art, artDay }: Pick<AppearanceDefinition, "art" | "artDay">, mode: ThemeBrightness): ThemeArt | undefined {
+  return mode === "light" && artDay ? { ...art, ...artDay } : art;
+}
+
 // Explicit none values prevent artwork leaking when switching themes or when
 // a picker thumbnail is nested inside a different theme. Safe during SSR too.
-export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, string> {
+export function themeArtStyle(id: AppearanceTheme, mode: ThemeBrightness = "dark"): Record<`--theme-${string}`, string> {
   const definition = appearanceDefinition(id);
   return {
-    ...artSlotStyle(definition.art),
+    ...artSlotStyle(themeArt(id, mode)),
     "--theme-frame-slice": `${definition.frameSlice ?? 22}%`,
     "--theme-corner-background-size": definition.cornerScale ? `${definition.cornerScale * 100}%` : "contain",
     ...cornerStyle(definition),

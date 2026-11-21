@@ -4,7 +4,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
-import {assertThemeCss, assertSharedCss, assertArtAsset} from './appearance/contracts.mjs';
+import {assertThemeCss, assertSharedCss, assertArtAsset, assertThemeArt, themeArtAssets} from './appearance/contracts.mjs';
 register('./lib/register-alias.mjs', import.meta.url);
 const {APPEARANCE_THEMES, themeStylesheet} = await import('../src/lib/appearance-themes.ts');
 const repo = fileURLToPath(new URL('../', import.meta.url));
@@ -51,10 +51,35 @@ await test('no stylesheet puts a pseudo-element inside :is() or :where(), where 
   }
 });
 await test('shipped art satisfies transparent frame/corner and opaque surface contracts', async () => {
-  for (const theme of APPEARANCE_THEMES) for (const [slot,asset] of Object.entries(theme.art??{})) {
-    try {await assertArtAsset(path.join(repo,'public',asset),slot,theme.cornerScale??1,theme.frameSlice??22);}
-    catch(error){throw new Error(`${theme.id}/${slot}: ${error.message}`,{cause:error});}
+  for (const theme of APPEARANCE_THEMES) await assertThemeArt(theme,asset=>path.join(repo,'public',asset));
+});
+await test('day artwork meets the same contracts as the set it replaces', async () => {
+  const solid=await sharp({create:{width:100,height:100,channels:4,background:'#ffffffff'}}).png().toBuffer();
+  const clear=await sharp({create:{width:100,height:100,channels:4,background:'#ffffff00'}}).png().toBuffer();
+  // A sound border: opaque rails around a transparent centre, and for the
+  // corner an L along the top and left.
+  const rails=Buffer.alloc(100*100*4), bracket=Buffer.alloc(100*100*4), thick=Buffer.alloc(100*100*4);
+  for(let y=0;y<100;y++)for(let x=0;x<100;x++) {
+    if(x<10||y<10||x>=90||y>=90) rails[(y*100+x)*4+3]=255;
+    if(x<10||y<10) bracket[(y*100+x)*4+3]=255;
+    if(x<20||y<20) thick[(y*100+x)*4+3]=255;
   }
+  const frame=await sharp(rails,{raw:{width:100,height:100,channels:4}}).png().toBuffer();
+  const corner=await sharp(bracket,{raw:{width:100,height:100,channels:4}}).png().toBuffer();
+  const images={frame,corner,solid,clear,thick:await sharp(thick,{raw:{width:100,height:100,channels:4}}).png().toBuffer()};
+  const open=name=>images[name];
+  const night={texture:'solid',frame:'frame',corner:'corner',backdrop:'solid'};
+  await assertThemeArt({id:'probe',art:night,artDay:{...night}},open);
+  assert.deepEqual(themeArtAssets({art:{frame:'a'},artDay:{frame:'b',texture:'c'}}),[{set:'art',slot:'frame',asset:'a'},{set:'artDay',slot:'frame',asset:'b'},{set:'artDay',slot:'texture',asset:'c'}]);
+  await assert.rejects(()=>assertThemeArt({id:'probe',art:night,artDay:{frame:'solid'}},open),/probe\/artDay\.frame: .*transparent interior/);
+  await assert.rejects(()=>assertThemeArt({id:'probe',art:night,artDay:{corner:'solid'}},open),/probe\/artDay\.corner: .*transparent interior/);
+  await assert.rejects(()=>assertThemeArt({id:'probe',art:night,artDay:{frame:'clear'}},open),/probe\/artDay\.frame: .*empty/);
+  await assert.rejects(()=>assertThemeArt({id:'probe',art:night,artDay:{texture:'clear'}},open),/probe\/artDay\.texture: .*opaque/);
+  await assert.rejects(()=>assertThemeArt({id:'probe',art:night,artDay:{backdrop:'clear'}},open),/probe\/artDay\.backdrop: .*opaque/);
+  // The declared corner crop serves both sets: a day corner that only fits
+  // uncropped is refused under the theme's scale.
+  await assertThemeArt({id:'probe',art:{corner:'thick'},artDay:{corner:'thick'}},open);
+  await assert.rejects(()=>assertThemeArt({id:'probe',cornerScale:4,art:{corner:'corner'},artDay:{corner:'thick'}},open),/probe\/artDay\.corner: .*transparent interior/);
 });
 await test('art guard rejects opaque and empty borders, and translucent surfaces', async () => {
   const solid=await sharp({create:{width:100,height:100,channels:4,background:'#ffffffff'}}).png().toBuffer();
