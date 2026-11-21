@@ -638,8 +638,6 @@ function openHitsForState(campaignId: string, encounter: Encounter, sheets: Char
   return open.length ? { openHits: open } : {};
 }
 
-// An enemy's movement left this turn when it is not its plain speed (a
-// Dash, a walk already made, a Disengage), from the count its walks use.
 // Who an enemy rides or carries (issue 1055, enemy-riders.ts): the pair has
 // one token, and only the mount's move_token moves it.
 function pairNote(enemies: EncounterEnemy[], enemy: EncounterEnemy): { pair?: string } {
@@ -654,6 +652,8 @@ function pairNote(enemies: EncounterEnemy[], enemy: EncounterEnemy): { pair?: st
   return rider ? { pair: `carries ${rider.displayName} [enemyId=${rider.id}] on ${rider.displayName}'s token: its own turn, its own attacks, and its move_token moves both` } : {};
 }
 
+// An enemy's movement left this turn when it is not its plain speed (a
+// Dash, a walk already made, a Disengage), from the count its walks use.
 function enemyMoving(encounter: Encounter, enemy: EncounterEnemy, board: BattleMap | null): { moving?: string } {
   const token = board && enemy.status === "alive" ? getTokenByRef(board.id, enemy.id) : null;
   const note = token ? enemyMovementNote(enemyMoveBudget(encounter, enemy, token)) : null;
