@@ -2,6 +2,7 @@
 
 import { isOocAnswer } from "@/lib/dm/ooc-question";
 import { CardReturnedNote } from "@/app/campaigns/[campaignId]/CardReturnedNote";
+import { translateSystemNote } from "@/app/campaigns/[campaignId]/MessageParts";
 import { extraTurnTag, litOrderRows, pointerOrderIndex } from "@/lib/battlemap/initiative-rows";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { EyeOff } from "lucide-react";
@@ -691,13 +692,13 @@ export function TabletopChronicle({
                     const roll = rollsById.get(id);
                     return roll ? <ChronicleRoll key={roll.id} roll={roll} sheets={sheets} /> : null;
                   })}
-                  <p className="cine-chronicle-system">{chronicleSystemLine(message.content)}</p>
+                  <p className="cine-chronicle-system">{translateSystemNote(t, chronicleSystemLine(message.content))}</p>
                 </div>
               );
             }
             return (
               <p key={message.id} className="cine-chronicle-system">
-                {chronicleSystemLine(message.content)}
+                {translateSystemNote(t, chronicleSystemLine(message.content))}
               </p>
             );
           })}

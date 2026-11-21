@@ -144,7 +144,7 @@ function translateConditionWord(t: T, word: string): string {
   return MAP[word] ? t(MAP[word]) : word;
 }
 
-function translateSystemNote(t: T, raw: string): string {
+export function translateSystemNote(t: T, raw: string): string {
   if (raw === "The fight is over.") return t("The fight is over.");
   if (raw === "Every character is down and none can rise on their own.") {
     return t("Every character is down and none can rise on their own.");
