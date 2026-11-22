@@ -130,6 +130,7 @@ identities. Proposed claims are not active defaults.
 | `galvanic` | Galvanic | Glowing vacuum tubes, copper coils, ceramic insulators, violet arcs on dark bakelite | None; suits steampunk | **idea** | Proposed 2026-11-16 (Albert and Fable) as the electrical laboratory. Keep it apart from Brassworks: glass, wire and arc light, not cogs and rivets. Decorative dials and switches must not look like controls. The display name is a placeholder. |
 | `skyfarer` | Skyfarer | Canvas envelopes, rope rigging, teak decks, brass instruments, open sky | None; suits steampunk and high fantasy | **idea** | Proposed 2026-11-16 (Albert and Fable) for airships and sky islands. Shares sky blue with Radiant Heights; rigging and canvas against marble and halos keep them apart. The display name is a placeholder. |
 | `noir` | Noir | Black and white, window-blind shadows, one red accent | None; suits mystery and cyberpunk | **idea** | Proposed 2026-11-16 (Albert and Fable). Nearly colourless, so selected, warning and disabled states need a plan before any ornament. |
+| `atomic` | Atomic Age | The cheerful 1950s future after it ended. By day pastel enamel steel, rounded chrome, cream and mint panels, faded poster colour; by night the shelter underneath: steel bulkheads, bakelite dials, green screen glow | None; suits post-apocalyptic | **idea** | Proposed 2026-11-22 (Albert and Fable) as the second post-apocalyptic theme, held for the batch after Wasteland. Wasteland carries the desert road war by day and by night; this carries the shelter. Mid-century atomic-age design is a general style, but use nothing owned by a published game: no mascot figures, wrist computers, branded drinks, numbered shelter doors, or a blue and yellow suit pairing. Painted dials and switches must not look like controls. The display name is a placeholder. |
 
 A genre may have more than one theme. A look earns a place when it reads as
 different from every other theme, or when it fits a genre better than anything
@@ -187,7 +188,7 @@ suit the genre and it would leave out at least three.
 | Mystery | Gaslight, Unquiet Depths, Noir |
 | Steampunk | Brassworks, Galvanic, Skyfarer |
 | Cyberpunk | Neon District, Noir |
-| Post-apocalyptic | Wasteland |
+| Post-apocalyptic | Wasteland, Atomic Age |
 
 ## Follow the story (later idea)
 
