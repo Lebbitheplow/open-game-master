@@ -45,7 +45,10 @@ export const applyDamageTool: ToolDef = {
           },
           description: "Several targets from ONE total, each at its share for a reason no save covers (cover, immunity). Instead of characterId or enemyId.",
         },
-        amount: { type: "integer", minimum: 1, maximum: 200, description: "A damage total the server rolled this turn (request_roll kind=damage)." },
+        // A total is a character's own roll and nothing else: the harm this
+        // tool is for (a hazard's, the world's) nobody at the table rolls,
+        // so it is sent as dice (prompt.ts requestRollTool).
+        amount: { type: "integer", minimum: 1, maximum: 200, description: "A character's own damage total, rolled this turn (request_roll kind=damage)." },
         dice: { type: "string", description: "Dice the server rolls instead ('2d6')." },
         fallFeet: {
           type: "integer",
