@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "wrench"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -142,6 +142,22 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
       corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
       backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
+    },
+  },
+  {
+    id: "wasteland", name: "Wasteland", description: "Rusted scrap plate, sun-bleached canvas, and chipped teal paint.", icon: "wrench", suits: ["post_apocalyptic"],
+    // The scrap frame and corner serve both modes: rust reads on bone and on
+    // steel. Day and night are different hours of one place, so the ground
+    // under the panels and the view change: canvas and noon, steel and a fire.
+    art: {
+      texture: "/assets/themes/wasteland/cooled-steel-v1.webp",
+      frame: "/assets/themes/wasteland/bent-sheet-frame-v1.webp",
+      corner: "/assets/themes/wasteland/welded-scrap-corner-v1.webp",
+      backdrop: "/assets/themes/wasteland/starlit-camp-v1.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/wasteland/bleached-canvas-v1.webp",
+      backdrop: "/assets/themes/wasteland/wrecked-horizon-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];

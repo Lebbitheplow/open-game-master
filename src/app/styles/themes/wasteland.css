@@ -1,0 +1,142 @@
+/* wasteland: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   Salvage. Day is the natural home: sun-bleached canvas, dust and hard light.
+   Night is the camp after dark: cooled gunmetal with almost no colour in it
+   (Frostbound's steel is bluer, Deep Forge's basalt brown) under bone-pale
+   lamplit ink. The accent is sun-bleached teal paint, at a blue-leaning hue
+   (about 190) and chalkier than Sunken Tide's sea-glass. It was chosen
+   against the app's own signals: warnings are amber (#f59e0b), the low-health
+   bar is orange (#c65a24 to #ff9d5c) and danger is red, so a safety orange,
+   an ochre or a hazard yellow would each sit beside one of them. Rust is kept
+   to edges and artwork, dark and dull, and never fills a key. */
+[data-appearance="wasteland"][data-theme="dark"] {
+  --background: #0d0f11;
+  --foreground: #e6e4de;
+  --color-stone-950: #101315;
+  --color-stone-900: #181c1f;
+  --color-stone-800: #23282c;
+  --color-stone-700: #363d43;
+  --color-stone-600: #646c73;
+  --color-stone-500: #a6adb1;
+  --color-stone-400: #b5bbbe;
+  --color-stone-300: #cdd1d2;
+  --color-stone-200: #dfe1e0;
+  --color-stone-100: #ecedea;
+  --color-stone-50: #f6f6f3;
+  --color-amber-950: #0a2126;
+  --color-amber-900: #10343b;
+  --color-amber-800: #184d57;
+  --color-amber-700: #256a76;
+  --color-amber-600: #3a8794;
+  --color-amber-500: #5ea5b1;
+  --color-amber-400: #86bfc9;
+  --color-amber-300: #aad5dc;
+  --color-amber-200: #cae6ea;
+  --color-amber-100: #e2f2f4;
+  --color-amber-50: #f2f9fa;
+  /* Reading surfaces are flat and opaque: no rust, scratch or grime reaches
+     them. The steel plate under panels shows through a nearly opaque wash. */
+  --material-inset: #111416;
+  --material-paper: #161a1d;
+  --material-metal: #ddd5c2;
+  --material-edge: #80604a;
+  --material-panel-wash: linear-gradient(#14181be6, #0f1214f0);
+  --material-control-wash: linear-gradient(#2a3035e0, #1b2023f0);
+  --material-body-wash: linear-gradient(#0d0f11f2, #0f1113f2);
+  --material-rail-wash: linear-gradient(#1a1e219e, #1a1e219e);
+  --material-send-edge: var(--color-amber-400);
+  --material-scrim: linear-gradient(#0d0f11a6, #0d0f1159 45%, #0d0f11cc);
+}
+[data-appearance="wasteland"][data-theme="light"] {
+  --background: #e9e4d6;
+  --foreground: #29241c;
+  --color-stone-950: #f8f4e8;
+  --color-stone-900: #efe9da;
+  --color-stone-800: #e2dac7;
+  --color-stone-700: #c7bda5;
+  --color-stone-600: #8e8571;
+  --color-stone-500: #585041;
+  --color-stone-400: #4e4739;
+  --color-stone-300: #3d372c;
+  --color-stone-200: #2d2820;
+  --color-stone-100: #201c16;
+  --color-stone-50: #15120e;
+  --color-amber-950: #e8f4f5;
+  --color-amber-900: #cfe7ea;
+  --color-amber-800: #a3cfd6;
+  --color-amber-700: #62a5b1;
+  --color-amber-600: #2b7886;
+  --color-amber-500: #1d606d;
+  --color-amber-400: #174f5a;
+  --color-amber-300: #123f48;
+  --color-amber-200: #0e3239;
+  --color-amber-100: #0a262c;
+  --color-amber-50: #061a1f;
+  --material-inset: #f6f2e6;
+  --material-paper: #eee8d9;
+  --material-metal: #4a3526;
+  --material-edge: #a17c5f;
+  --material-panel-wash: linear-gradient(#f8f4e8eb, #ece6d6eb);
+  --material-control-wash: linear-gradient(#f3eddee0, #dcd3bde0);
+  --material-body-wash: linear-gradient(#e9e4d6eb, #ddd6c4eb);
+  --material-rail-wash: linear-gradient(#8a745a40, #8a745a40);
+  --material-send-edge: var(--material-edge);
+  --material-scrim: linear-gradient(#ebe5d699, #ebe5d640 45%, #ebe5d6bb);
+}
+
+/* Materials that hold in both brightness modes: lamplit worn-steel
+   fittings, teal-paint keys, and sheet cut by hand, so no shape is quite
+   square and none is rounded. */
+[data-appearance="wasteland"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #0d0f11;
+  --theme-night-foreground: #e6e4de;
+  --theme-night-stone-950: #101315;
+  --theme-night-stone-900: #181c1f;
+  --theme-night-stone-800: #23282c;
+  --theme-night-stone-700: #363d43;
+  --theme-night-stone-600: #646c73;
+  --theme-night-stone-500: #a6adb1;
+  --theme-night-stone-400: #b5bbbe;
+  --theme-night-stone-300: #cdd1d2;
+  --theme-night-stone-200: #dfe1e0;
+  --theme-night-stone-100: #ecedea;
+  --theme-night-stone-50: #f6f6f3;
+  --theme-night-amber-950: #0a2126;
+  --theme-night-amber-900: #10343b;
+  --theme-night-amber-800: #184d57;
+  --theme-night-amber-700: #256a76;
+  --theme-night-amber-600: #3a8794;
+  --theme-night-amber-500: #5ea5b1;
+  --theme-night-amber-400: #86bfc9;
+  --theme-night-amber-300: #aad5dc;
+  --theme-night-amber-200: #cae6ea;
+  --theme-night-amber-100: #e2f2f4;
+  --theme-night-amber-50: #f2f9fa;
+  --material-metal-finish: linear-gradient(135deg, #e6dcc6, #8d8579 46%, #cdc2aa 52%, #5b554c);
+  --material-metal-ink: #1d1a15;
+  /* Deep teal paint under light labels, the same in day and night. The
+     health bar keeps the shared green; orange there is the low-health mark. */
+  --material-primary-wash: linear-gradient(#246773f0, #174a54f5);
+  --material-send-wash: linear-gradient(#246773, #174a54);
+  --material-chosen-wash: linear-gradient(#1e5964, #123c45);
+  --material-fitting-radius: 3px 6px 3px 5px;
+  --material-control-radius: 2px 5px 2px 4px;
+  --material-panel-radius: 3px 7px 3px 5px;
+  --material-bubble-radius: 2px 6px 2px 4px;
+  --material-tab-radius: 2px 5px 2px 2px;
+  --material-chip-radius: 2px 4px 2px 3px;
+  --material-sigil-radius: 2px 5px 2px 3px;
+  --material-crest-tilt: -3deg;
+  /* Four bolt heads a long way apart and nothing between them. */
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%2380604a' stroke-width='1'%3E%3Ccircle cx='14' cy='14' r='3'/%3E%3Ccircle cx='166' cy='18' r='2'/%3E%3Ccircle cx='12' cy='168' r='2'/%3E%3Ccircle cx='168' cy='164' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 180px 180px;
+  --appearance-corner: 0.15rem;
+}
+/* Cut-plate corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+html[data-appearance="wasteland"] .ornate::before,
+html[data-appearance="wasteland"] .ornate::after { width: 18px; height: 18px; }
+html[data-appearance="wasteland"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="wasteland"] .ornate::after { border-width: 0 2px 2px 0; }
