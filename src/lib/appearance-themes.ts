@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -142,6 +142,21 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
       corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
       backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
+    },
+  },
+  {
+    id: "brassworks", name: "Brassworks", description: "Polished brass pipework, oxblood leather, and green gauge glass.", icon: "cog", suits: ["steampunk"],
+    // The brass pipework is the same by day; the page under it changes from
+    // the engine hall's leather to the drawing office's linen.
+    art: {
+      texture: "/assets/themes/brassworks/oxblood-leather-v1.webp",
+      frame: "/assets/themes/brassworks/brass-pipe-frame-v1.webp",
+      corner: "/assets/themes/brassworks/porthole-flange-corner-v1.webp",
+      backdrop: "/assets/themes/brassworks/engine-hall-v1.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/brassworks/drawing-linen-v1.webp",
+      backdrop: "/assets/themes/brassworks/drawing-office-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
