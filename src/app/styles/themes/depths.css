@@ -5,7 +5,10 @@
    uncovers: green-black stone under cold phosphor light. Night's surfaces sit
    at a green hue (about 155) well below Sunken Tide's blue-teal, and darker;
    it has no bronze. The thread red is a muted brick, kept apart from the
-   app's danger red, and never fills a button: day's keys are ink. */
+   app's danger red, and never fills a button: day's keys are ink.
+   One colour does not belong in either mode: a bruised violet-magenta that
+   marks only what is chosen or focused. It is colder and greyer than
+   Arcane's amethyst and sits nowhere near brass or the danger red. */
 [data-appearance="depths"][data-theme="dark"] {
   --background: #050b09;
   --foreground: #dbe7e0;
@@ -42,19 +45,23 @@
   --material-primary-wash: linear-gradient(#1c6636eb, #0f4124f2);
   --material-send-wash: linear-gradient(#1c6636, #0f4124);
   --material-send-edge: #7fd391;
-  --material-chosen-wash: linear-gradient(#17502c, #0c3219);
+  --material-chosen-wash: linear-gradient(#5e2a58, #371637);
   --material-vital-fill: linear-gradient(90deg, #2f8a4c, #a6e6b2);
   --material-metal-finish: linear-gradient(135deg, #b9d6c4, #3d6b55 46%, #8fd3a4 52%, #24483a);
   --material-metal-ink: #06180f;
   --material-scrim: linear-gradient(#050b09a6, #050b0966 45%, #050b09cc);
-  /* Cut stone whose corners do not quite agree. */
-  --material-control-radius: 2px 7px 3px 6px;
-  --material-panel-radius: 3px 10px 4px 8px;
-  --material-bubble-radius: 2px 9px 3px 7px;
-  --material-tab-radius: 2px 8px 2px 6px;
-  --material-chip-radius: 1px 5px 2px 4px;
-  --material-sigil-radius: 2px 6px 2px 5px;
-  --appearance-corner: 0.15rem 0.6rem 0.2rem 0.5rem;
+  /* Nothing sits quite square: each shape has one corner cut unlike its
+     other three, and no two kinds of shape agree on which. */
+  --material-control-radius: 2px 2px 11px 2px;
+  --material-panel-radius: 3px 16px 3px 3px / 3px 9px 3px 3px;
+  --material-bubble-radius: 2px 2px 2px 12px;
+  --material-tab-radius: 10px 2px 2px 2px;
+  --material-chip-radius: 1px 7px 1px 1px;
+  --material-sigil-radius: 2px 2px 7px 2px;
+  --material-fitting-radius: 50% 50% 50% 36%;
+  --material-crest-tilt: 7deg;
+  --appearance-corner: 0.15rem 0.15rem 0.8rem 0.15rem;
+  --depths-wrong: #c06ab0;
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%232f6a4c'%3E%3Ccircle cx='80' cy='80' r='9'/%3E%3Ccircle cx='80' cy='80' r='22'/%3E%3Ccircle cx='80' cy='80' r='36'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 160px 160px;
 }
@@ -96,21 +103,24 @@
   --material-primary-wash: linear-gradient(#3b352bf0, #1f1b15f5);
   --material-send-wash: linear-gradient(#3b352b, #1f1b15);
   --material-send-edge: #c27a6b;
-  --material-chosen-wash: linear-gradient(#4a4234, #2b261c);
+  --material-chosen-wash: linear-gradient(#6b2f62, #43193f);
   /* The desk lamp's green shade; red would sit beside the low-health bar. */
   --material-vital-fill: linear-gradient(90deg, #4d7257, #86ad8c);
   --material-metal-finish: linear-gradient(135deg, #ead9a0, #a8853d 48%, #dcc47c 52%, #7a5d26);
   --material-metal-ink: #2a2012;
   --material-scrim: linear-gradient(#eadfc499, #eadfc440 45%, #eadfc4bb);
-  /* Cut card and typed sheets: square, barely eased. */
-  --material-control-radius: 2px;
-  --material-panel-radius: 2px;
-  --material-bubble-radius: 2px;
-  --material-tab-radius: 2px;
-  --material-chip-radius: 1px;
-  --material-sigil-radius: 2px;
-  --material-crest-tilt: -4deg;
-  --appearance-corner: 0.15rem;
+  /* Cut card and typed sheets, each with one corner that was not cut like
+     the rest; no two kinds of shape agree on which. */
+  --material-control-radius: 2px 9px 2px 2px;
+  --material-panel-radius: 2px 2px 2px 13px / 2px 2px 2px 8px;
+  --material-bubble-radius: 2px 2px 10px 2px;
+  --material-tab-radius: 2px 2px 2px 8px;
+  --material-chip-radius: 6px 1px 1px 1px;
+  --material-sigil-radius: 2px 6px 2px 2px;
+  --material-fitting-radius: 50% 38% 50% 50%;
+  --material-crest-tilt: -6deg;
+  --appearance-corner: 0.15rem 0.15rem 0.15rem 0.7rem;
+  --depths-wrong: #7a2e6b;
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='140' viewBox='0 0 200 140'%3E%3Cpath d='M20 30L110 60L180 20M110 60L70 120' fill='none' stroke='%239c4a3e'/%3E%3Cg fill='%23a8853d'%3E%3Ccircle cx='20' cy='30' r='2'/%3E%3Ccircle cx='110' cy='60' r='2'/%3E%3Ccircle cx='180' cy='20' r='2'/%3E%3Ccircle cx='70' cy='120' r='2'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 200px 140px;
 }
@@ -143,12 +153,32 @@
   --theme-night-amber-200: #c7f1cf;
   --theme-night-amber-100: #e1f8e5;
   --theme-night-amber-50: #f2fcf4;
-  --material-fitting-radius: 50%;
+}
+/* The colour that does not belong: focus and the chosen picker card. Focus
+   rings are set per component across the shared styles, so only their colour
+   is taken here, with the one !important that reaches all of them. */
+html[data-appearance="depths"] :focus-visible { outline-color: var(--depths-wrong) !important; }
+html[data-appearance="depths"] .appearance-option[aria-pressed="true"] {
+  border-color: var(--depths-wrong);
+  box-shadow: 0 0 0 1px var(--depths-wrong);
 }
 /* The wax seal's arms are strips of the rail's own paper, 18% of the piece,
    so the piece is sized for them to be the rail's width: 150px on the
    desktop's 26px rail; a phone takes 84px, a little over its 12px rail, so the seal still reads. The stone boss keeps the
    shared sizes; its arms are thin weed-hung spars over the rail. */
+/* Night's frame is dark stone on a dark page. It takes a wider table rail,
+   larger corners and a thin phosphor rim light so the limbs read; the table
+   pads its text from the same rail width, so nothing is covered. */
+[data-appearance="depths"][data-theme="dark"] {
+  --theme-table-frame-width: 32px;
+  --theme-table-corner-size: 112px;
+  --theme-lobby-corner-size: 248px;
+  --theme-lobby-corner-size-small: 128px;
+}
+[data-appearance="depths"][data-theme="dark"] .theme-ornaments::before,
+[data-appearance="depths"][data-theme="dark"] .theme-ornaments > span {
+  filter: drop-shadow(0 0 5px #7fd39170) drop-shadow(0 2px 3px #000a);
+}
 [data-appearance="depths"][data-theme="light"] .theme-ornaments[data-surface="lobby"] {
   --theme-lobby-corner-size: 150px;
   --theme-lobby-corner-size-small: 84px;

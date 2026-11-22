@@ -98,18 +98,18 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "depths", name: "Unquiet Depths", description: "A case file and red string by day; drowned green-black stone by night.", icon: "eye",
+    id: "depths", name: "Unquiet Depths", description: "A case file gone wrong by day; what it found, coiled in drowned stone, by night.", icon: "eye",
     art: {
       texture: "/assets/themes/depths/wet-stone-v1.webp",
-      frame: "/assets/themes/depths/drowned-stone-frame-v1.webp",
-      corner: "/assets/themes/depths/ring-eye-boss-v1.webp",
-      backdrop: "/assets/themes/depths/drowned-vault-v1.webp",
+      frame: "/assets/themes/depths/limb-wound-frame-v2.webp",
+      corner: "/assets/themes/depths/slit-eye-coil-v2.webp",
+      backdrop: "/assets/themes/depths/drowned-abyss-v2.webp",
     },
     artDay: {
       texture: "/assets/themes/depths/manila-card-v1.webp",
       frame: "/assets/themes/depths/case-file-frame-v1.webp",
-      corner: "/assets/themes/depths/wax-seal-string-v1.webp",
-      backdrop: "/assets/themes/depths/evidence-desk-v1.webp",
+      corner: "/assets/themes/depths/ring-slit-seal-v2.webp",
+      backdrop: "/assets/themes/depths/case-gone-wrong-v2.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
