@@ -98,7 +98,7 @@ export function toastShows(roll: Pick<StageRoll, "visibility" | "total">): boole
   return roll.visibility === "public" || typeof roll.total === "number";
 }
 
-// A revealed roll (src/lib/dm/roll-card.ts revealRolls) is published again for
+// A revealed roll (src/lib/dm/roll-record.ts revealRolls) is published again for
 // every seat. It is news only to a seat that did not already hold its number;
 // the roller and the GM saw it land the first time.
 export function revealIsNews(held: Pick<StageRoll, "total" | "hidden"> | undefined): boolean {

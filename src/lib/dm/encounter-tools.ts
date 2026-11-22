@@ -1086,8 +1086,13 @@ function handleDamageEnemy(
   }
   // Double-apply guard: a damage roll carrying targetEnemyId already landed
   // this hit the moment the dice resolved; a damage_enemy call repeating the
-  // same number out of habit must not stack the damage.
-  const alreadyApplied = turn.rollIds
+  // same number out of habit must not stack the damage. The habit is a
+  // model's, so the guard is for an AI's turn: a number a person sends from
+  // the console is their ruling and lands. Their turn stays open while a
+  // roll card of it waits, and a damage card that landed on it is on its
+  // cards from that moment (pending-roll-land.ts): read here, it swallowed
+  // the GM's own damage of the same amount on the same creature.
+  const alreadyApplied = turn.actor === "ai" && turn.rollIds
     .map((rollId) => getRoll(rollId))
     .some(
       (roll) => roll?.applied && roll.targetEnemyId === enemy.id && roll.total === amount,

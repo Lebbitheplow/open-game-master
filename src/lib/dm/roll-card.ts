@@ -1,21 +1,21 @@
 // A die the engine rolls inside the rules, stored and published as a dice
 // card like any other: the table sees every roll the server makes. Its own
-// module, importing only the roll store and the event stream, so the clock
-// paths (a spell's tick at a turn's start or end, src/lib/dm/spell-aura.ts)
-// can card their dice without the import cycles action-common.ts would bring.
+// module, importing only the dice and the door a roll goes on record
+// through, so the clock paths (a spell's tick at a turn's start or end,
+// src/lib/dm/spell-aura.ts) can card their dice without the import cycles
+// action-common.ts would bring.
 //
 // Each helper here puts its roll on record through the one door for that
 // (src/lib/dm/roll-record.ts recordRoll): inside a GM call the card joins the
 // call's own turn, so a caller that holds a copy of the turn, or none, no
 // longer leaves its card out of the chronicle (issue #915).
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { revealRollRow, type RollAttacker, type RollKind, type RollSource } from "@/lib/db/rolls";
+import type { RollAttacker, RollKind, RollSource } from "@/lib/db/rolls";
 import { rollExpression, type RollOptions, type RollResult } from "@/lib/dice";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { recordRoll } from "@/lib/dm/roll-record";
-import { publishWithSeq } from "@/lib/events";
 import { attackOn, rollAgainst, thrownOn, type Thrown } from "@/lib/roll-labels";
 import { effectSource, gmSource } from "@/lib/roll-sources";
 
@@ -253,16 +253,4 @@ export function secretRoll(
     send: Boolean(characterId),
   });
   return { ...outcome, rollId: roll.id };
-}
-
-// The reveal path for hidden rolls: when a secret comes out (a pact's plan
-// goes, a secret action is caught), each roll behind it turns public and
-// every seat is sent it whole, number and all.
-export function revealRolls(campaignId: string, rollIds: readonly string[]) {
-  for (const id of rollIds) {
-    const roll = id ? revealRollRow(id) : null;
-    if (roll) {
-      publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll, source: "digital", revealed: true });
-    }
-  }
 }

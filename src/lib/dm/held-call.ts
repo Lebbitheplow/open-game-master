@@ -24,7 +24,7 @@
 // more to write.
 
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { holdDeliveries, publishPersisted, publishWithSeq } from "@/lib/events";
+import { holdDeliveries, publishPersisted } from "@/lib/events";
 import {
   createPendingRoll,
   ensurePendingColumns,
@@ -41,12 +41,13 @@ import {
   type WatchStop,
 } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { ownTurnOf } from "@/lib/dm/held-turn";
-import { getRoll, insertRoll, kindAndRoller, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import { getRoll, kindAndRoller, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { cardRoller } from "@/lib/dm/roll-card";
+import { recordRoll } from "@/lib/dm/roll-record";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -589,19 +590,33 @@ export function runHeldAgain(
   let roll: StoredRoll | null = found ? getRoll(found.id) : null;
   const recorded = Boolean(roll);
   if (!roll && !waits && !ask) {
-    roll = insertRoll({
+    // The run is over, so nothing holds the turn: the roll goes on record
+    // through the one door (roll-record.ts) on the turn the call was made on,
+    // as the player's own dice, and takes its card down. By hand it was on
+    // no turn.
+    roll = recordRoll({
       campaignId: campaign.id,
       characterId: pending.characterId,
       requestedBy: "player",
       // A card's own attack or damage dice are its character's.
       ...kindAndRoller(pending.kind, null, cardRoller(getSheetById(pending.characterId))),
-      detail: landing.physical ? `${pending.detail || pending.kind} (physical)`.trim() : pending.detail,
+      detail: pending.detail,
       advantage: pending.advantage,
       dc: pending.dc,
       result: outcome,
       visibility: pending.visibility,
+      turn,
+      landing,
+      answers: pending.id,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, pendingRollId: pending.id, source: landing.source });
+    // Dice a call was refused with paid for nothing before, being on no
+    // turn: on an AI's turn they are spent as a call's own are (spendOwnRolls
+    // above), so their total pays for no bare number now either. A check
+    // among them is on the turn like any check the character rolled this
+    // turn, where the escape gate reads it (ai-gate.ts escapeRolled).
+    if (turn.actor === "ai") {
+      markRollSpent(roll.id);
+    }
   }
   const told = waits ? null : answer;
   getDatabase()

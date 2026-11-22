@@ -138,7 +138,8 @@ export function markRollApplied(rollId: string, targetEnemyId: string) {
 // was sent) as spent, so its total never pays for a number an AI GM sends
 // later (src/lib/dm/ai-gate.ts number, src/lib/dm/held-call.ts runHeld). The
 // dice thrown as a roll card lands outside any call are stamped the same way
-// (src/lib/dm/pending-roll-land.ts). It
+// (src/lib/dm/pending-roll-land.ts), and so are the dice entered for a held
+// call that is refused once they land (held-call.ts runHeldAgain). It
 // names no target: what the roll landed on is the call's own business, and
 // the damage_enemy guard reads only a stamp that names its enemy.
 export function markRollSpent(rollId: string) {
@@ -228,11 +229,10 @@ export function getRoll(rollId: string): StoredRoll | null {
 }
 
 // The first of these rolls that was stored after this one, or null: where a
-// roll that joins a list late belongs in it. A roll card's roll is stored as
-// it lands and joins its turn when the turn resumes, or the line a person's
-// turn posts. The dice its landing threw (a hit's damage, the swings queued
-// behind it) join the turn as they are made (src/lib/dm/roll-record.ts), and
-// would otherwise be listed ahead of the roll they answer.
+// roll that joins a list late belongs in it. The line a person's turn posts
+// lists the turn's rolls, and with them a roll its call made on a short turn
+// of its own (src/lib/dm/persons-record.ts), which goes among them in the
+// order the dice were thrown.
 export function firstStoredAfter(rollId: string, among: readonly string[]): string | null {
   const rows = getDatabase()
     .prepare(`SELECT id FROM rolls WHERE rowid > (SELECT rowid FROM rolls WHERE id = ?) AND id IN (SELECT value FROM json_each(?))`)

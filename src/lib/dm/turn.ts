@@ -85,7 +85,7 @@ import { doorArgs, strictBooleanArgs, type DoorField } from "@/lib/dm/arg-coerce
 import { sideAllyInList } from "@/lib/dm/cast-buff-allies";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
-import { firstStoredAfter, getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
+import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { forcerOfCall, holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
 import { beforeChoiceOf } from "@/lib/dm/foresight-before";
@@ -1318,12 +1318,8 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // parked a roll per part under one call: its answer, written when it
   // parked with the parts that needed no roll, takes each roll in the
   // part's place, so the call has one answer, as the API requires.
-  // The dice a landing threw (a hit's damage, the swings queued behind it)
-  // joined the turn as they were made. A card's roll with such dice after it
-  // goes where it was stored, ahead of them and in its place among the other
-  // cards' rolls. One with none after it goes at the end, so cards that only
-  // waited on dice keep the order they were dealt in.
-  const joinedBefore = [...turn.rollIds];
+  // Each card's roll joined the turn's cards as it landed, ahead of the dice
+  // its landing threw (pending-roll-land.ts): nothing is added to them here.
   for (const pending of pendings) {
     // A roll that held its whole call (src/lib/dm/held-call.ts): the call ran
     // again when it landed, and this is what it answered. One that parked
@@ -1338,12 +1334,13 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     }
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
     // A turn that parks more than once (a stop before a later roll) comes back
-    // here with the rolls of its last resume, already answered.
-    if (!roll || turn.rollIds.includes(roll.id)) {
+    // here with the cards of its last resume, already answered. The turn
+    // keeps which: a card's roll is on the turn from the moment it lands, so
+    // that no longer says the model was handed it.
+    if (!roll || turn.answeredPendingIds.includes(pending.id)) {
       continue;
     }
-    const next = firstStoredAfter(roll.id, joinedBefore) ? firstStoredAfter(roll.id, turn.rollIds) : null;
-    turn.rollIds.splice(next ? turn.rollIds.indexOf(next) : turn.rollIds.length, 0, roll.id);
+    turn.answeredPendingIds.push(pending.id);
     const answer = pendingRollAnswer(pending, roll);
     // A card the AI's fight sent when it opened: the call that opened it was
     // answered then, and the total joins that answer (initiative-cards-logic.ts).

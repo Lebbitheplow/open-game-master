@@ -46,11 +46,12 @@
 //           which goes in front of its card: its words do not say the source
 //           a second time, and they name the character it lands on.
 //
-// One function does all of these (src/lib/dm/roll-record.ts recordRoll). A
-// row whose site still records its roll by hand and misses one is listed
-// under `rows` in scripts/roll-record-sites.json with the checks it fails.
-// A row that fails a check it is not listed for fails this suite, and so
-// does a row listed for a check it now passes: the list only gets shorter.
+// One function does all of these (src/lib/dm/roll-record.ts recordRoll), and
+// every row passes all three. `rows` in scripts/roll-record-sites.json held
+// the rows whose site recorded its roll by hand and missed one, with the
+// checks each failed; it is empty now. A row that fails a check it is not
+// listed there for fails this suite, and so does a row listed for a check
+// it passes.
 // The dice the server throws are seeded row by row, so a row stores the same
 // rolls on every run. `ODM_SWEEP_ROWS=print` prints the list as it stands.
 import assert from "node:assert/strict";
@@ -420,15 +421,10 @@ function recordProblems(mark, seq, cards, hazardRow = false) {
   }
   for (const roll of rolls) {
     const what = `${roll.kind} "${roll.detail}"`;
-    // A roll card's roll (request_roll, an attack's parts) on an AI's turn is
-    // added to the turn when the turn resumes (turn.ts resumeDmTurn), which
-    // this row does not wait for: the card that names it is its place till
-    // then. A roll that held its whole call is recorded by the call's own
-    // run, and is read where that run left it.
-    const resumes = getDatabase()
-      .prepare("SELECT 1 FROM pending_rolls p JOIN dm_turns t ON t.id = p.turn_id WHERE p.roll_id = ? AND t.actor = 'ai' AND json_extract(p.carry_json, '$.call') IS NULL")
-      .get(roll.id);
-    const home = resumes ? null : homeProblem(roll.id);
+    // A roll card's roll (request_roll, an attack's parts) is on its turn
+    // from the moment it lands, at either door: this row does not wait for
+    // an AI's turn to resume, and no longer has to.
+    const home = homeProblem(roll.id);
     if (home) {
       problems.home.push(`${what}: ${home}`);
     }
