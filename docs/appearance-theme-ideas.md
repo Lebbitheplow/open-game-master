@@ -137,6 +137,18 @@ that genre has now; sharing a colour scheme with a theme made for another genre
 does not rule it out (Albert, 2026-11-16). Only one theme is a genre's default.
 The others are picked by hand.
 
+Overlap is judged inside a genre (Albert, 2026-11-22, on the batch 3 briefs):
+"Overlap within the same genre is more of an issue. Overlap with a theme in a
+different genre is not a big deal." A table's shortlist shows the themes that
+suit its genre, so those are the ones a player chooses between. A brief names
+only same-genre neighbours as looks to stay apart from (Gaslight against
+Unquiet Depths, both mystery), and a theme does not thin out its own idea to
+avoid one made for another genre (Gaslight's walnut and lamplight beside
+Hearth & Haven, Brassworks' metal beside Deep Forge). A theme that suits two
+genres has neighbours in both. Rules about function are separate and stay:
+ornament that could pass for a control, wear on reading surfaces, colours
+that compete with warnings.
+
 Second themes noted for later, once the first for their genre exists: a
 corporate tower for cyberpunk (white panels, chrome, one cold accent) and an
 overgrown ruin for post-apocalyptic (cracked concrete, moss, faded road signs).
@@ -246,8 +258,10 @@ not built.
 
 ## Before a row moves to started
 
-- The look must read as different from every shipped theme at picker size, in
-  both night and day. Record its materials, border shapes and accent colors.
+- The look must read as different from every theme that suits the same genre
+  at picker size, in both night and day; likeness to a theme made for another
+  genre does not hold it back. Record its materials, border shapes and accent
+  colors.
 - Avoid named settings, characters and creatures from published games in the
   name, description and artwork. Record asset sources and generation prompts.
 - A genre has at most one default theme; other themes may suit it without
