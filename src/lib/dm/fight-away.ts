@@ -1,6 +1,8 @@
 import { seatMountedParty } from "@/lib/dm/mount-space";
 import { getBattleMapForEncounter, getTokenByRef, insertToken, listTokens } from "@/lib/db/battle-maps";
+import { getCampaignById } from "@/lib/db/campaigns";
 import { setEncounterAway, type Encounter } from "@/lib/db/encounters";
+import { joinScene } from "@/lib/dm/party-split";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { carriedLightFields, publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -17,6 +19,11 @@ export function arriveAtFight(campaignId: string, encounter: Encounter, sheet: C
   }
   encounter.awayIds = encounter.awayIds.filter((id) => id !== sheet.id);
   setEncounterAway(encounter.id, encounter.awayIds);
+  // Someone of a split party who was elsewhere is in the scene now (issue 951).
+  const campaign = getCampaignById(campaignId);
+  if (campaign) {
+    joinScene(campaign, [sheet.id]);
+  }
   const map = getBattleMapForEncounter(encounter.id);
   if (!map || getTokenByRef(map.id, sheet.id)) {
     return;

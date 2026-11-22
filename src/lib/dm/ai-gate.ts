@@ -22,6 +22,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getRoll, markRollApplied, markRollSpent } from "@/lib/db/rolls";
 import { awayRefusal, canCrossAway } from "@/lib/dm/fight-away-logic";
+import { sceneCallRefusal } from "@/lib/dm/party-split";
 import { isValidExpression } from "@/lib/dice";
 import { spellFactsFor } from "@/lib/content";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -62,7 +63,9 @@ const NUMBER_TOOLS = new Set(["apply_damage", "heal", "damage_enemy", "split_dam
 // refused later would come after the others had landed and spent.
 export function awayCall(name: string, args: Record<string, unknown>, ctx: Pick<GateContext, "campaign" | "sheetsById">): ToolError | null {
   const awayIds = canCrossAway(name, args) ? (getActiveEncounter(ctx.campaign.id)?.awayIds ?? []) : [];
-  const error = awayIds.length ? awayRefusal(name, args, awayIds.flatMap((id) => ctx.sheetsById.get(id) ?? [])) : null;
+  // Nor does it cross between the groups of a party that split up (issue
+  // 951): a call names only who is in the scene.
+  const error = (awayIds.length ? awayRefusal(name, args, awayIds.flatMap((id) => ctx.sheetsById.get(id) ?? [])) : null) ?? sceneCallRefusal(ctx.campaign, name, args, ctx.sheetsById);
   return error ? { error, retry: true } : null;
 }
 

@@ -1690,6 +1690,8 @@
     "lib/dm/enemy-conditions.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/enemy-damage.ts#RegExp i": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-damage.ts#re-word": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/party-split-logic.ts#str-eq": [["key",4,"a transcript row's author type, the engine's own vocabulary (issue 951)"]],
+    "lib/dm/party-split-logic.ts#toUpperCase": [["display",1,"the first letter of a place the players named, raised for its name on the record; shown, never compared"]],
     "lib/dm/fight-away-logic.ts#str-case": [["key",2,"DM tool names and typeof checks on a tool's arguments (issue 740)"]],
     "lib/dm/foe-carry-logic.ts#str-eq": [["key",5,"enemy statuses and fight outcomes (engine vocabulary), issue #667"]],
     "lib/dm/foe-carry-logic.ts#str-list": [["key",1,"fight outcomes (engine vocabulary), issue #667"]],
@@ -3977,8 +3979,15 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#re-word": [
       [
         "display",
-        9,
+        13,
         "display-only translation of DB-stored English system note templates in translateSystemNote"
+      ]
+    ],
+    "app/campaigns/[campaignId]/MessageParts.tsx#str-startsWith": [
+      [
+        "display",
+        1,
+        "display-only: whether the split and the joining lines came back in English (no translation for them), so the server's own sentence is shown"
       ]
     ],
     "app/campaigns/[campaignId]/MessageParts.tsx#str-eq": [

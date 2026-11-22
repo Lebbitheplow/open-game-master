@@ -95,6 +95,7 @@ import { useTableAudio } from "@/app/campaigns/[campaignId]/useTableAudio";
 import type { SoundSteering } from "@/app/campaigns/[campaignId]/SoundPanel";
 import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { InitiativeRibbon, PartyRail, QuestGlance, RollToast, SceneBackdrop, TabletopChronicle } from "@/app/campaigns/[campaignId]/CinematicParts";
+import { sceneWithWords } from "@/app/campaigns/[campaignId]/ElsewhereBadge";
 import {
   NarrationFailureBanner,
   useNarrationReplay,
@@ -1393,7 +1394,7 @@ export function SessionView({
       <CorrectionReasonChips campaignId={campaign.id} />
       <SessionHeader
         title={campaign.title}
-        scene={campaign.scene}
+        scene={sceneWithWords(campaign.scene, campaign.party, sheets)}
         user={me}
         voice={voice}
         dice3d={dice3d}
@@ -1440,6 +1441,7 @@ export function SessionView({
                 meUserId={me.id}
                 encounter={state.encounter}
                 genre={campaign.genre}
+                away={campaign.party?.away}
                 onOpen={() => openTab("party")}
               />
             ),
@@ -1597,6 +1599,7 @@ export function SessionView({
                     spotlighted={gate.spotlighted}
                     heldSpotlightNames={gate.heldSpotlightNames}
                     encounter={state.encounter}
+                    party={campaign.party}
                     onReleaseFloor={releaseFloor}
                     joinBanner={joinBanner}
                     notice={tableNotice}

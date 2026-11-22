@@ -22,6 +22,7 @@ import {
   type PreparedMap,
 } from "@/lib/db/prepared-maps";
 import { listSheets } from "@/lib/db/sheets";
+import { sceneSheets } from "@/lib/dm/party-split";
 import { isWorkshop } from "@/lib/workshop/kind";
 import {
   MAP_SIZE,
@@ -504,7 +505,9 @@ export function openSceneOnPreparedMap(
   if (!prepared) {
     return { error: "That map is not in this library." };
   }
-  const sheets = listSheets(campaign.id);
+  // Those in the scene: someone elsewhere while the party is split up
+  // (party-split.ts) stands on no board here.
+  const sheets = sceneSheets(campaign.id, listSheets(campaign.id));
   if (!sheets.length) {
     return { error: "There are no characters to put on a map yet." };
   }

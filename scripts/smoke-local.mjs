@@ -18,9 +18,11 @@
 //   node scripts/smoke-local.mjs --provider local --model gemma4:31b-it-qat [--runs 6]
 //       (Ollama native API at OLLAMA_BASE_URL; LOCAL_TEXT_CONTEXT caps num_ctx)
 //   options: --turns N (how many of the scenario's turns to play, default all)
-//            --scenario ford|town|skirmish (the ford's five turns, the town's
-//            eight: arrival, an NPC, persuasion, a purchase, stealth, a fight,
-//            attacks; or the skirmish's nine, a fight over several rounds)
+//            --scenario ford|town|skirmish|split (the ford's five turns, the
+//            town's eight: arrival, an NPC, persuasion, a purchase, stealth, a
+//            fight, attacks; the skirmish's nine, a fight over several rounds;
+//            or the split's five, a party that splits up, acts in two places
+//            at once and comes back together)
 //            --label NAME  --out DIR (writes <label>.json)
 //            --context N (the window the prompt packs against; custom provider)
 //            --key KEY (the custom provider's API key, default OPENAI_COMPAT_API_KEY;
@@ -121,6 +123,10 @@ const { getActiveEncounter, listEnemies } = await import("../src/lib/db/encounte
 const { listQuests } = await import("../src/lib/db/quests.ts");
 const { listActiveFacts } = await import("../src/lib/db/facts.ts");
 const { listNpcs } = await import("../src/lib/db/npcs.ts");
+const { getParty } = await import("../src/lib/db/party.ts");
+const { getCurrentLocation } = await import("../src/lib/db/locations.ts");
+const { dmQueueDepth } = await import("../src/lib/dm/queue.ts");
+const { tableWaitTurnStarted } = await import("../src/lib/dm/table-wait.ts");
 const { EMPTY_TURN_LINE, RESOLVED_TURN_LINE } = await import("../src/lib/dm/empty-turn.ts");
 const { DM_HALTED_PREFIX } = await import("../src/lib/campaign-types.ts");
 const { storyContextTokens } = await import("../src/lib/model-client.ts");
@@ -344,6 +350,45 @@ const SKIRMISH = [
   },
 ];
 
+// --scenario split: a party of two parts ways, each acts where they are, both
+// act in the same beat, and they come back together (issue 951). Measured on
+// whether the model records who went (move_party with characterIds), whether
+// each group gets a passage of its own, and whether the party is one again
+// when they meet. `also` is a line another player sends in the same beat.
+const SPLIT = [
+  {
+    label: "arrive",
+    who: "avery",
+    text: "We ride into the fishing village of Saltmere at dusk and stop on the quay.",
+    expect: (turn) => called(turn, ["move_party", "update_location"], "the party arrived somewhere new and no move_party recorded it"),
+  },
+  {
+    label: "split",
+    who: "avery",
+    text: "Bram stays on the quay to keep watch. I leave him there and slip off alone to the chandler's warehouse at the far end of the harbour.",
+    expect: (turn) => (turn.away.length ? null : "the party split up in the story and nothing recorded who went (move_party with characterIds)"),
+  },
+  {
+    label: "scene-a",
+    who: "avery",
+    text: "I pick the lock on the warehouse door and look inside.",
+    expect: (turn) => (turn.away.length ? null : "the split was dropped: everyone is in one scene again though nobody moved"),
+  },
+  {
+    label: "both",
+    who: "avery",
+    also: [{ who: "bram", text: "Back on the quay, I walk over to the fishermen mending their nets and ask who owns that warehouse." }],
+    text: "Inside the warehouse I search the crates for anything marked with a smuggler's sign.",
+    expect: (turn) => (turn.passages >= 2 ? null : `two groups acted and ${turn.passages} passage(s) answered them`),
+  },
+  {
+    label: "regroup",
+    who: "bram",
+    text: "I have heard enough. I walk down the harbour to the warehouse and find Avery.",
+    expect: (turn) => (turn.away.length ? "Bram went to where Avery is and the party was not brought back together" : null),
+  },
+];
+
 // The player who speaks a scripted line: the character whose turn the fight
 // is on for who "current", the line's own speaker otherwise.
 function speakerFor(script, players, campaignId) {
@@ -368,6 +413,12 @@ const SCENARIOS = {
     description: "A one-scene caravan job that goes wrong at the ford.",
     theme: "low fantasy, coastal trade road",
     turns: FORD,
+  },
+  split: {
+    title: "The Saltmere Ledger",
+    description: "A smuggler's ledger is hidden somewhere in a fishing village, and the party splits up to find it.",
+    theme: "low fantasy, a fishing village at dusk",
+    turns: SPLIT,
   },
   town: {
     title: "The Thornwick Inn",
@@ -430,6 +481,17 @@ async function settleRolls(campaignId) {
   }
 }
 
+// Whatever the turn queued behind itself, run to the end, with any roll it
+// parked on answered.
+async function drainQueue(campaignId) {
+  const until = Date.now() + 15 * 60_000;
+  while (dmQueueDepth(campaignId) > 0 || listOpenPendingRolls(campaignId).length) {
+    assert.ok(Date.now() < until, "the GM queue never ran dry");
+    await settleRolls(campaignId);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 let lastSettings = null;
 async function playRun(runNumber) {
   // An admin: only an admin's campaign runs on a backend address of its own
@@ -474,6 +536,10 @@ async function playRun(runNumber) {
   const turns = [];
   for (const script of TURNS.slice(0, MAX_TURNS)) {
     const player = speakerFor(script, players, campaign.id);
+    // Lines other players send in the same beat, ahead of this one.
+    for (const extra of script.also ?? []) {
+      insertCampaignMessage({ campaignId: campaign.id, seq: allocateSeq(campaign.id), authorType: "player", userId: players[extra.who].user.id, characterId: players[extra.who].sheet.id, content: extra.text });
+    }
     const playerSeq = allocateSeq(campaign.id);
     insertCampaignMessage({
       campaignId: campaign.id,
@@ -490,8 +556,15 @@ async function playRun(runNumber) {
     const started = Date.now();
     let thrown = null;
     try {
+      // As the queue's own turn job does before it starts one
+      // (src/lib/dm/loop.ts): everything posted so far is this turn's, so the
+      // table wait counts no line twice once the turn ends.
+      tableWaitTurnStarted(campaign.id, playerSeq);
       await startDmTurn(campaign.id);
       await settleRolls(campaign.id);
+      // A reply owed to a group the scene was not with follows as a turn of
+      // its own, queued as this one ended (src/lib/dm/turn.ts sceneOwesReply).
+      await drainQueue(campaign.id);
     } catch (error) {
       thrown = error instanceof Error ? error.message : String(error);
     }
@@ -522,6 +595,16 @@ async function playRun(runNumber) {
       tools: calls.flatMap((call) => call.tools),
       rolls: listRecentRolls(campaign.id, 500).length - rollsBefore,
       encounter: Boolean(getActiveEncounter(campaign.id)),
+      // How many passages answered the beat, where the scene is, who is
+      // elsewhere, and what the server told the table about it.
+      passages: dm.length,
+      place: getCurrentLocation(campaign.id)?.name ?? "",
+      away: getParty(campaign.id).away.map((group) => `${group.ids.map((id) => getSheetById(id)?.name ?? id).join(" and ")} at ${group.place}`),
+      tableNotes: written.filter((message) => message.authorType === "system" && !message.content.startsWith(DM_HALTED_PREFIX)).map((message) => message.content),
+      narrations: dm.map((message) => String(message.content).replace(ROLL_MARKER, "").trim()),
+      // What each move_party of the beat's last turn was sent, and answered.
+      moves: (stored?.conversation ?? []).flatMap((message) => (Array.isArray(message.tool_calls) ? message.tool_calls : []).filter((call) => call?.function?.name === "move_party").map((call) => String(call.function.arguments).slice(0, 300))),
+      moveResults: (stored?.conversation ?? []).filter((message) => message.role === "tool" && /"location"/.test(String(message.content))).map((message) => String(message.content).slice(0, 600)),
       empty,
       cause: empty ? emptyCause(calls, rescues) : null,
       rescues: rescues.map((rescue) => (rescue.ok ? "ok" : "empty")),
@@ -545,6 +628,9 @@ async function playRun(runNumber) {
       turn.softFail ? `MISSED:${turn.softFail}` : "",
     ].filter(Boolean);
     say(`  run ${runNumber} ${turn.label.padEnd(10)} ${String(seconds).padStart(4)}s ${turn.calls} calls  tools: ${turn.tools.join(", ") || "(none)"}${flags.length ? `  [${flags.join("; ")}]` : ""}`);
+    if (turn.away.length) {
+      say(`      scene at ${turn.place || "(no place)"}; elsewhere: ${turn.away.join("; ")}; ${turn.passages} passage(s)`);
+    }
   }
 
   const encounter = getActiveEncounter(campaign.id);

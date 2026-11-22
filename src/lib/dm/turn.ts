@@ -190,7 +190,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { conscienceSecretLines, souredLeaving } from "@/lib/dm/conscience";
 import { companionMomentBlock, settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { intentLinesForPrompt } from "@/lib/dm/departure";
-import { partySplit, splitsParty } from "@/lib/dm/party-split";
+import { clearParting, elsewhereBySheet, followersOf, noteWalk, partingOwed, planPartyMove, readParting, sceneCutDue, sceneHistory, settlePartyMove, splitBlockFor } from "@/lib/dm/party-split";
 import { ridingAboard } from "@/lib/dm/march-state";
 import { agendaLinesForPrompt } from "@/lib/dm/companion-agenda";
 import { pactLinesForPrompt } from "@/lib/dm/pacts";
@@ -733,7 +733,7 @@ export const NARRATOR_NOT_ANSWERING =
   "the narrator's server is not answering yet (it may still be loading). Press Retry once it is up.";
 
 export async function startDmTurn(campaignId: string, carried: CarriedTurn = {}) {
-  const campaign = getCampaignById(campaignId);
+  let campaign = getCampaignById(campaignId);
   if (!campaign || campaign.status !== "active") {
     // A turn asked of a table that is not playing (back in the lobby, ended)
     // has nothing to answer, and the "thinking" its request raised goes.
@@ -746,7 +746,19 @@ export async function startDmTurn(campaignId: string, carried: CarriedTurn = {})
 
   // 400 recent messages always over-covers the prompt builder's 100k-char
   // budget; the full transcript stays in the DB for compaction and chapters.
-  const history = listRecentMessages(campaignId, 400);
+  let history = listRecentMessages(campaignId, 400);
+  // A party split up (issue 951): the scene goes to the group whose move has
+  // waited longest before anything is read, so the prompt, the place and the
+  // people in it are theirs. Then the transcript is read as this scene reads
+  // it: a move by someone elsewhere waits for the scene to come to them.
+  if (cutSceneIfDue(campaign, history)) {
+    campaign = getCampaignById(campaignId) ?? campaign;
+    history = listRecentMessages(campaignId, 400);
+  }
+  history = sceneHistory(campaign, history);
+  // And the players' own words are read for whether they part the party
+  // this turn: a small narrator moves "the party" when one slips off alone.
+  await readParting(campaign, history);
   // Coalesced follow-up turn with nothing new to answer (the previous turn
   // already covered every message): skip instead of narrating into silence.
   // Pending player whispers count as new input: they never appear in the
@@ -780,6 +792,25 @@ export async function startDmTurn(campaignId: string, carried: CarriedTurn = {})
   if (opened) {
     await advance(opened.context, opened.turn);
   }
+}
+
+// The scene cut to the group of a split party that is owed the next reply
+// (party-split-logic.ts cutDue), as the move_party a person would run for
+// it: the place, its sound and its people change as on any move, and the
+// table reads the cut as a line of its own. True when it cut.
+function cutSceneIfDue(campaign: Campaign, history: CampaignMessage[]): boolean {
+  const group = sceneCutDue(campaign, history);
+  if (!group?.place) {
+    return false;
+  }
+  const cut = handleLocationCall(campaign, "move_party", JSON.stringify({ name: group.place, characterIds: group.ids }), false, true);
+  return !("error" in cut);
+}
+
+// Whether a reply is owed to a group the scene is not with, once this one is
+// written: the turn that follows cuts to them.
+function sceneOwesReply(campaign: Campaign): boolean {
+  return Boolean(sceneCutDue(campaign, listRecentMessages(campaign.id, 60)));
 }
 
 // How far a turn got before its first model call: the stage it was on, and
@@ -1090,6 +1121,10 @@ async function openTurn(
             ...heldStepNotes(campaign),
           ],
       conversation: talk,
+      // A party split up (issue 951): who the scene is with, and who is not
+      // in it.
+      splitBlock: oocOnly ? "" : splitBlockFor(campaign, context.sheets, currentLocation?.name ?? "", history),
+      elsewhere: elsewhereBySheet(campaignId, context.sheets),
       // The storyteller's section: who is open to advances, an NPC ready to
       // make a move (issue 501, said while its window is open), an NPC's act,
       // and a companion's plan to leave (issue 503).
@@ -3483,7 +3518,10 @@ function turnCalls(conversation: DmTurn["conversation"], pending: readonly Parse
 // as a card). System lines are passed over, so the lines a halted turn left
 // unanswered are still here for the retry.
 function playerLinesSinceDm(campaignId: string): CampaignMessage[] {
-  const recent = listRecentMessages(campaignId, 40);
+  const campaign = getCampaignById(campaignId);
+  // Read as the scene reads them: a card played by someone elsewhere in a
+  // split party is not this turn's to resolve (party-split-logic.ts).
+  const recent = campaign ? sceneHistory(campaign, listRecentMessages(campaignId, 40)) : listRecentMessages(campaignId, 40);
   let from = 0;
   for (let index = recent.length - 1; index >= 0; index -= 1) {
     if (recent[index].authorType === "dm") {
@@ -4126,6 +4164,9 @@ export function handleLocationCall(
   // them to a place with no kind of its own (#929).
   let leftBed: string | null = null;
   let split = "";
+  // The scene left one group of a split party for another (issue 951):
+  // nobody walked from the last place to this one.
+  let cutTo = false;
   // Things lying aboard what the party travels on, carried along.
   let carried = 0;
   if (toolName === "move_party") {
@@ -4135,23 +4176,34 @@ export function handleLocationCall(
     }
     const previous = getCurrentLocation(campaign.id);
     const onRecord = getLocationByName(campaign.id, name);
+    // Who goes, read against who is where (src/lib/dm/party-split.ts), before
+    // the place changes. A party that has not set out yet has not split: the
+    // model's first move_party of a table names nobody left behind, whatever
+    // it lists. (Until 2026-11-14 a table with no place was offered the tool
+    // without the field; it is one tool now, see dmTurnTools.) A person who
+    // picked "Who goes" meant it, so theirs splits the party wherever it
+    // stands.
+    const move = previous || byPerson ? planPartyMove(campaign, args.characterIds, name, previous?.name ?? "", byPerson) : null;
+    cutTo = Boolean(move) && !move?.outcome.followed;
     location = upsertCurrentLocation({
       campaignId: campaign.id,
       name,
       layoutDescription,
       connections,
       // Some of the party going on: whoever travels with it stays put.
-      followers: !splitsParty(campaign, args.characterIds),
+      followers: followersOf(move),
     });
     if (!onRecord) {
       madeIds.push(location.id);
     }
-    setOutFrom = previous?.id ?? null;
+    // A group that came from elsewhere set out from where it was.
+    const cameFrom = cutTo && move?.outcome.origin ? getLocationByName(campaign.id, move.outcome.origin) : null;
+    setOutFrom = cutTo ? (cameFrom?.id ?? null) : (previous?.id ?? null);
     movedToNewLocation = !previous || previous.id !== location.id;
     // Aboard a raft, a boat or a cart, what lies on its deck comes along: the
     // model says so, or the last leg was ridden aboard (travel's aboard) and
     // no time has passed since. Not on a split: who took the boat is unsaid.
-    if (movedToNewLocation && previous && !splitsParty(campaign, args.characterIds) && (args.aboard === true || ridingAboard(getClock(campaign.id)))) {
+    if (movedToNewLocation && previous && !cutTo && !move?.outcome.stayed.length && (args.aboard === true || ridingAboard(getClock(campaign.id)))) {
       carried = carryDroppedItems(campaign.id, previous.name, location.name);
     }
     leftBed = movedToNewLocation ? previous?.ambience?.bed || null : null;
@@ -4170,8 +4222,9 @@ export function handleLocationCall(
       }
       location = getCurrentLocation(campaign.id) ?? location;
     }
-    // Keep the old area linked to the new one so routes stay consistent.
-    if (previous && previous.id !== location.id) {
+    // Keep the old area linked to the new one so routes stay consistent. A
+    // cut is no route: the two groups may be a day's ride apart.
+    if (previous && previous.id !== location.id && !cutTo) {
       const merged = withNewNames(location.connections, [previous.name]);
       if (merged.length !== location.connections.length) {
         location =
@@ -4188,14 +4241,12 @@ export function handleLocationCall(
     // the opening ever told the table; it named the first place for the
     // whole campaign.
     publishPersisted(campaign.id, "campaign_updated", { scene: location.name });
-    // Some of the party went and the rest stayed (issue 563): a moment a
-    // companion may slip away.
-    // A party that has not set out yet has not split: the model's first
-    // move_party of a table names nobody left behind, whatever it lists.
-    // (Until 2026-11-14 a table with no place was offered the tool without
-    // the field; it is one tool now, see dmTurnTools.) A person who picked
-    // "Who goes" meant it, so theirs splits the party wherever it stands.
-    split = previous || byPerson ? partySplit(campaign, args.characterIds, location.name) : "";
+    // Who is where now is kept, the table is told, and a companion holding a
+    // plan to slip away may take the moment (issue 563).
+    split = move ? settlePartyMove(campaign, { ...move, to: location.name }) : "";
+    if (movedToNewLocation && previous && !cutTo) {
+      noteWalk(campaign.id, previous.name);
+    }
   } else {
     previousLayout = getCurrentLocation(campaign.id)?.layoutDescription ?? "";
     location = updateCurrentLocationDetails(campaign.id, { layoutDescription, connections });
@@ -4262,7 +4313,7 @@ export function handleLocationCall(
     location: location.name,
     note:
       (returnedTo && recorded
-        ? `Recorded. The party is back at ${location.name}, as it was left: ${recorded} Continue the scene.`
+        ? `Recorded. ${cutTo ? "The scene is" : "The party is back"} at ${location.name}, as it was left: ${recorded} Continue the scene.`
         : peopled
           ? `Recorded. ${peopled} Continue the scene.`
           : "Recorded. Continue the scene.") +
@@ -4436,6 +4487,17 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
     content = `${turn.rollIds.map((id) => `[roll:${id}]`).join("\n")}\n\n${content}`;
   }
 
+  // The players parted the party this turn and nothing recorded it (issue
+  // 951): the server makes the move their words named, before the narration
+  // is stored, so what those left behind said in this beat is still owed an
+  // answer (party-split-logic.ts MoveInput heard). Either way the read is
+  // spent with the turn it was read for.
+  const owedMove = partingOwed(context.campaign);
+  if (owedMove) {
+    handleLocationCall(context.campaign, "move_party", JSON.stringify(owedMove), false, true);
+  }
+  clearParting(campaignId);
+
   const imageEnabled =
     context.campaign.settings.imageGenerationEnabled && context.campaign.settings.autoImages;
   const seq = claimed ?? allocateSeq(campaignId);
@@ -4510,6 +4572,10 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   if (backstopHeld) {
     // Woken by resumeBackstop once the pass is done.
   } else if (settleTableWait(campaignId)) {
+    wakeDm(campaignId);
+  } else if (sceneOwesReply(context.campaign)) {
+    // A move by someone elsewhere in a split party waited while this reply
+    // was written (issue 951): the next turn cuts to them.
     wakeDm(campaignId);
   }
 
