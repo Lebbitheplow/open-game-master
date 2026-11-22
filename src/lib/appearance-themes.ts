@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog", "circuit", "wrench"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog", "circuit", "wrench", "lamp"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -190,6 +190,27 @@ export const APPEARANCE_THEMES = [
     artDay: {
       texture: "/assets/themes/wasteland/bleached-canvas-v1.webp",
       backdrop: "/assets/themes/wasteland/dust-storm-road-v1.webp",
+    },
+  },
+  {
+    id: "gaslight", name: "Gaslight", description: "Dark walnut, polished brass, and green baize by gaslight.", icon: "lamp", suits: ["mystery"],
+    // The rail is one plain walnut bead with a brass line, painted in the
+    // outer 8% of the frame; a wider slice would leave it a thread.
+    frameSlice: 8,
+    // Night is the room itself: walnut for the page, with baize kept for the
+    // panels by the palette.
+    art: {
+      texture: "/assets/themes/gaslight/walnut-panel-v1.webp",
+      frame: "/assets/themes/gaslight/walnut-brass-frame-v1.webp",
+      corner: "/assets/themes/gaslight/gas-bracket-lamp-lit-v1.webp",
+      backdrop: "/assets/themes/gaslight/reading-room-walnut-v1.webp",
+    },
+    // The same room on a grey morning with the gas turned off: the green
+    // cloth under pale paper, the bracket lamp unlit, cream walls behind.
+    artDay: {
+      texture: "/assets/themes/gaslight/green-baize-v1.webp",
+      corner: "/assets/themes/gaslight/gas-bracket-lamp-unlit-v1.webp",
+      backdrop: "/assets/themes/gaslight/reading-room-morning-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
