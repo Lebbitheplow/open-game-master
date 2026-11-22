@@ -145,19 +145,21 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "wasteland", name: "Wasteland", description: "Rusted scrap plate, sun-bleached canvas, and chipped teal paint.", icon: "wrench", suits: ["post_apocalyptic"],
-    // The scrap frame and corner serve both modes: rust reads on bone and on
-    // steel. Day and night are different hours of one place, so the ground
-    // under the panels and the view change: canvas and noon, steel and a fire.
+    id: "wasteland", name: "Wasteland", description: "Roll-cage tube, tyre tread and chain: the desert road by day, the convoy's fires by night.", icon: "wrench", suits: ["post_apocalyptic"],
+    // The machine-built frame and corner serve both modes: the same rig at
+    // noon and by firelight. The ground under the panels and the view change:
+    // canvas and the storm road by day, steel and the convoy camp by night.
+    // The frame's welded joints reach further along the rails than the default slice.
+    frameSlice: 28,
     art: {
       texture: "/assets/themes/wasteland/cooled-steel-v1.webp",
-      frame: "/assets/themes/wasteland/bent-sheet-frame-v1.webp",
-      corner: "/assets/themes/wasteland/welded-scrap-corner-v1.webp",
-      backdrop: "/assets/themes/wasteland/starlit-camp-v1.webp",
+      frame: "/assets/themes/wasteland/roll-cage-frame-v1.webp",
+      corner: "/assets/themes/wasteland/war-rig-wheel-corner-v1.webp",
+      backdrop: "/assets/themes/wasteland/convoy-fires-v1.webp",
     },
     artDay: {
       texture: "/assets/themes/wasteland/bleached-canvas-v1.webp",
-      backdrop: "/assets/themes/wasteland/wrecked-horizon-v1.webp",
+      backdrop: "/assets/themes/wasteland/dust-storm-road-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
