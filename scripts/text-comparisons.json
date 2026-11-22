@@ -2032,7 +2032,7 @@
     "lib/dm/rest-logic.ts#toLowerCase": [["key",3,"condition labels (engine vocabulary)"]],
     "lib/dm/rest-logic.ts#re-word": [["key",1,"the engine's own recovery condition label"]],
     "lib/dm/rest-tools.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/retry-turn-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",4,"chat message roles and the context trace's block ids (protocol)"]],
+    "lib/dm/retry-turn-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",5,"chat message roles and the context trace's block ids (protocol)"]],
     "lib/dm/roll-about.ts#str-list": [["key",4,"fixed choices a check or a save names (tool enums)"]],
     "lib/srd/travel.ts#str-list": [["key",1,"the vehicles travel's aboard names (a tool enum)"]],
     "lib/dm/roll-about.ts#toLowerCase": [["key",1,"a spell's school as an id"]],

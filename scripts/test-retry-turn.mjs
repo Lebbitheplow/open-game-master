@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import {
   assistantTextOf,
+  callAwaitsAnswer,
   carriedDirectorBlock,
   checkRetryEligible,
   danglingToolCallIds,
@@ -145,6 +146,20 @@ test("an id asked for twice is only repaired once", () => {
     { role: "assistant", content: "", tool_calls: [{ id: "call_1" }] },
   ]);
   assert.deepEqual(dangling, ["call_1"]);
+});
+
+test("a call awaits its answer while the conversation holds more calls of its id than answers, however many replies used the id", () => {
+  const asks = (...ids) => ({ role: "assistant", content: "", tool_calls: ids.map((id) => ({ id })) });
+  const answers = (id) => ({ role: "tool", tool_call_id: id, content: "{}" });
+  assert.equal(callAwaitsAnswer([asks("call_0")], "call_0"), true);
+  assert.equal(callAwaitsAnswer([asks("call_0"), answers("call_0")], "call_0"), false);
+  // A backend that numbers each reply's calls from zero.
+  assert.equal(callAwaitsAnswer([asks("call_0"), answers("call_0"), asks("call_0")], "call_0"), true);
+  assert.equal(callAwaitsAnswer([asks("call_0"), answers("call_0"), asks("call_0"), answers("call_0")], "call_0"), false);
+  // The reply that asked was never stored: nothing waits, whatever landed.
+  assert.equal(callAwaitsAnswer([{ role: "user", content: "I climb." }], "call_0"), false);
+  assert.equal(callAwaitsAnswer([asks("call_1")], "call_0"), false);
+  assert.equal(callAwaitsAnswer([null, undefined, { role: "assistant", content: "", tool_calls: "not an array" }], "call_0"), false);
 });
 
 test("malformed conversations do not throw", () => {

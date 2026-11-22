@@ -1,6 +1,6 @@
 import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
-import { fileAnsweredRollCards } from "./answered-cards-backfill.ts";
+import { fileAnsweredHeldCards, fileAnsweredRollCards } from "./answered-cards-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
 import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
 import { repairFeatSpellMisreadings } from "./feat-spell-repair.ts";
@@ -2671,6 +2671,21 @@ function ensureSchema(db: SqliteDatabase) {
     db.transaction(() => {
       backfillLegacyItemRows(db);
       db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("item_row_backfill_done", "true", new Date().toISOString());
+    })();
+  }
+
+  // A turn lists the held roll cards it has answered with the plain ones
+  // (dm-turns.ts answeredPendingIds, issue #1073), where it used to find a
+  // held card's answer by reading its conversation. The turns open across
+  // the upgrade are read that way one last time
+  // (src/lib/db/answered-cards-backfill.ts). One pass, guarded by an
+  // app_settings marker: read again later, a held card that has landed and
+  // not been answered could be marked, and its call left unanswered.
+  const heldCardMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'held_cards_answered_backfill_done'`).get();
+  if (!heldCardMarker) {
+    db.transaction(() => {
+      fileAnsweredHeldCards(db);
+      db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("held_cards_answered_backfill_done", "true", new Date().toISOString());
     })();
   }
 
