@@ -151,7 +151,7 @@ export const APPEARANCE_THEMES = [
     art: {
       texture: "/assets/themes/brassworks/oxblood-leather-v1.webp",
       frame: "/assets/themes/brassworks/brass-pipe-frame-v1.webp",
-      corner: "/assets/themes/brassworks/porthole-flange-corner-v1.webp",
+      corner: "/assets/themes/brassworks/porthole-window-corner-v2.webp",
       backdrop: "/assets/themes/brassworks/engine-hall-v1.webp",
     },
     artDay: {
