@@ -43,12 +43,13 @@ export type StoredRoll = {
   breakdown: RollResult;
   visibility: RollVisibility;
   messageId: string | null;
-  // Damage rolls only: the enemy the server applied this roll's total to,
-  // set together with `applied` (the damage_enemy double-apply guard).
+  // Damage rolls only: the enemy the server itself landed this roll's total
+  // on, set together with `applied` (the damage_enemy double-apply guard).
+  // Nothing else is written here: a roll that is only used up names nobody.
   targetEnemyId: string | null;
-  // Spent: the server applied its total, or the engine threw it inside a
-  // call of its own or as a roll card landed (markRollSpent), so it pays for
-  // no number sent later.
+  // Spent: the server applied its total, the engine threw it inside a call
+  // of its own or as a roll card landed (markRollSpent), or it paid for what
+  // an AI GM sent (markRollPaid), so it pays for no number sent later.
   applied: boolean;
   // Attack and damage rolls: who rolled. Null when nobody did (a fall), for
   // the roll tools' rolls, and for rolls stored before it was recorded.
@@ -104,12 +105,29 @@ function mapRoll(row: RollRow): StoredRoll {
   };
 }
 
-// Stamp a damage roll as server-applied to a specific enemy; the
-// damage_enemy double-apply guard reads these.
+// Stamp a damage roll as landed by the server on a specific enemy. The
+// damage_enemy double-apply guard, the after-fight card, the evidence Ask
+// reads (src/lib/dm/ask.ts) and the swarm's die taken back
+// (authored-spend-more.ts swarmDieBack) read these. Only for a blow the
+// server lands itself as its dice resolve: a roll that is used up some other
+// way is stamped below, with no target.
 export function markRollApplied(rollId: string, targetEnemyId: string) {
   getDatabase()
     .prepare(`UPDATE rolls SET applied = 1, target_enemy_id = ? WHERE id = ?`)
     .run(targetEnemyId, rollId);
+}
+
+// Stamp a roll as having paid for what an AI GM sent: the total behind a
+// bare damage or healing number, or the check behind a trap's hold lifted
+// (src/lib/dm/ai-gate.ts). It names no target. The gate used to stamp a
+// paying total with whatever its number was sent for, in the column that
+// says where the server landed a blow. Sent for a creature by its id, the
+// total then read to the damage_enemy guard as a blow already landed there,
+// and the hazard it was rolled for did nothing. And whatever it was sent
+// for, the after-fight card counted it as damage dealt by the character the
+// roll was made for: poison a hero took read as damage that hero dealt.
+export function markRollPaid(rollId: string) {
+  getDatabase().prepare(`UPDATE rolls SET applied = 1 WHERE id = ?`).run(rollId);
 }
 
 // Stamp a damage or custom roll the engine threw and used inside one of its

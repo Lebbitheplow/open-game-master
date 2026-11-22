@@ -20,7 +20,7 @@ import { splitParts } from "@/lib/dm/action-parts-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getRoll, markRollApplied, markRollSpent } from "@/lib/db/rolls";
+import { getRoll, markRollPaid, markRollSpent } from "@/lib/db/rolls";
 import { awayRefusal, canCrossAway } from "@/lib/dm/fight-away-logic";
 import { isValidExpression } from "@/lib/dice";
 import { spellFactsFor } from "@/lib/content";
@@ -270,7 +270,9 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
   if (!rolled) {
     return { result: AI_NUMBER_REFUSAL(what) };
   }
-  markRollApplied(rolled.id, targetId || "split");
+  // Paid, not landed: the call let through below is what lands it, and the
+  // stamp names no target (src/lib/db/rolls.ts markRollPaid).
+  markRollPaid(rolled.id);
   return { args: JSON.stringify(args) };
 }
 
@@ -344,6 +346,6 @@ function escapeRolled(ctx: GateContext, sheet: CharacterSheet, condition: string
   if (!roll) {
     return false;
   }
-  markRollApplied(roll.id, `escape:${hold.trap}`.slice(0, 80));
+  markRollPaid(roll.id);
   return true;
 }
