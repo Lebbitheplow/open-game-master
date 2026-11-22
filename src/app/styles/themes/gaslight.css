@@ -1,13 +1,15 @@
 /* gaslight: both brightness palettes, then its materials. See docs/appearance-themes.md.
-   A club reading room that is also a detective's office. The surfaces are
-   green baize, the accent ramp is polished brass (hue about 49), and walnut
-   is trim: the painted rails and the rail wash, never a reading surface.
-   Night is the room by gas: warm lamplit baize (hue about 140) under ivory
-   text, a lit and far warmer green than Unquiet Depths' cold green-black
-   (hue 155), the other theme that suits mystery. Day is the same room on a
-   grey morning with the gas off: fog-pale paper on a cool green table. */
+   A club reading room that is also a detective's office. Green baize is the
+   table: every surface that is read or played on. The accent ramp is
+   polished brass (hue about 49). Walnut is the room: the painted rails and,
+   at night, the page itself, the table's header and the plain keys.
+   Night is the room by gas: dark walnut under amber lamplight, with lit
+   baize (hue about 140) as the panels. Unquiet Depths, the other theme that
+   suits mystery, is cold green-black from edge to edge at night; here green
+   is only the cloth. Day is the same room on a grey morning with the gas
+   off: fog-pale paper on a cool green table. */
 [data-appearance="gaslight"][data-theme="dark"] {
-  --background: #0f2a1a;
+  --background: #1a100a;
   --foreground: #efe9d6;
   --color-stone-950: #11301e;
   --color-stone-900: #173d26;
@@ -35,15 +37,19 @@
   --material-paper: #153823;
   --material-metal: #f0e2aa;
   --material-edge: #9e8831;
-  /* The cloth shows through: enough nap to read as baize, not paint. */
-  --material-panel-wash: linear-gradient(#173d26cc, #11301edb);
-  --material-control-wash: linear-gradient(#255a3ac7, #1a4329e0);
-  --material-body-wash: linear-gradient(#0f2a1ad4, #102d1cdc);
-  /* Walnut, the one place it sits in the page itself. */
-  --material-rail-wash: linear-gradient(#3a2415a6, #26170dba);
+  /* The night grain is walnut. Panels lay baize over it, close to opaque,
+     so the wood does not show through the cloth. */
+  --material-panel-wash: linear-gradient(#173d26f5, #11301ef7);
+  /* The header and the plain keys are the room's own walnut. */
+  --material-control-wash: linear-gradient(#55361fb8, #321e11d6);
+  /* The page: walnut in shadow, with one pool of lamplight falling from the top. */
+  --material-body-wash: radial-gradient(ellipse 85% 55% at 50% 0%, #e0a03c33, transparent 72%), linear-gradient(#1a100a8c, #0f0805c4);
+  --material-rail-wash: linear-gradient(#3a241566, #1f120a8c);
   --material-send-edge: #dac365;
-  /* Gas light: a warm gold lift at the top of a scene, shadow below. */
-  --material-scrim: linear-gradient(#3a2d109c, #0f2a1a5c 45%, #0f2a1acc);
+  /* Gas light: a warm amber lift at the top of a scene, walnut shadow below. */
+  --material-scrim: linear-gradient(#4a2e0c9c, #1a100a52 45%, #1a100acc);
+  /* What is chosen is lit brass: lighter and yellower than a walnut key. */
+  --material-chosen-wash: linear-gradient(#7d6820, #55450f);
   --gaslight-flame: #bfe3f2;
 }
 [data-appearance="gaslight"][data-theme="light"] {
@@ -92,7 +98,7 @@
   /* The night palette again, in either brightness: what a painting carries
      (the title screen's top fold) stays night in the day theme too.
      scripts/test-appearance.mjs holds it equal to the dark block. */
-  --theme-night-background: #0f2a1a;
+  --theme-night-background: #1a100a;
   --theme-night-foreground: #efe9d6;
   --theme-night-stone-950: #11301e;
   --theme-night-stone-900: #173d26;
@@ -139,16 +145,19 @@ html[data-appearance="gaslight"] .ornate::before,
 html[data-appearance="gaslight"] .ornate::after { width: 14px; height: 14px; }
 html[data-appearance="gaslight"] .ornate::before { border-width: 2px 0 0 2px; }
 html[data-appearance="gaslight"] .ornate::after { border-width: 0 2px 2px 0; }
-/* The lamp boss is the heavy piece: its walnut arms are 11% of its side, so
-   it is sized for them to sit on the rail at about the rail's own width. */
+/* The bracket lamp lies on the diagonal and its globe reaches 54% of the
+   piece's side into the page, further than a boss on the joint would. On
+   the table that reach has to stop short of the session title's first
+   letter, so the piece is smaller there than the default; the lobby, where
+   it hangs over the cover painting, takes it large. */
 [data-appearance="gaslight"] {
-  --theme-table-corner-size: 92px;
-  /* A phone's bottom bar starts 13px from the edge: 32px keeps the boss off its first icon and label. */
+  --theme-table-corner-size: 72px;
+  /* A phone's bottom bar starts 13px from the edge: 32px keeps the globe off its first icon and label. */
   --theme-table-corner-size-small: 32px;
-  --theme-lobby-corner-size: 204px;
+  --theme-lobby-corner-size: 232px;
   --theme-lobby-corner-size-small: 100px;
 }
-/* Dark walnut on dark baize: a warm rim of lamplight lifts the joinery. */
+/* Dark walnut on a dark walnut page: a warm rim of lamplight lifts the joinery. */
 [data-appearance="gaslight"][data-theme="dark"] .theme-ornaments::before,
 [data-appearance="gaslight"][data-theme="dark"] .theme-ornaments > span {
   filter: drop-shadow(0 0 5px #f3d98a47) drop-shadow(0 2px 3px #000a);
