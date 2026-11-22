@@ -149,11 +149,12 @@ export const APPEARANCE_THEMES = [
     // The machine-built frame and corner serve both modes: the same rig at
     // noon and by firelight. The ground under the panels and the view change:
     // canvas and the storm road by day, steel and the convoy camp by night.
-    // The frame's welded joints reach further along the rails than the default slice.
-    frameSlice: 28,
+    // The slice is cut at the tube's elbow, so the tube fills the rail. The
+    // corner piece covers the elbow everywhere but the picker.
+    frameSlice: 13,
     art: {
       texture: "/assets/themes/wasteland/cooled-steel-v1.webp",
-      frame: "/assets/themes/wasteland/roll-cage-frame-v1.webp",
+      frame: "/assets/themes/wasteland/roll-cage-frame-v2.webp",
       corner: "/assets/themes/wasteland/war-rig-wheel-corner-v1.webp",
       backdrop: "/assets/themes/wasteland/convoy-fires-v1.webp",
     },

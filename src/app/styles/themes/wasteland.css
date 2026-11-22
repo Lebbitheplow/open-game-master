@@ -84,7 +84,9 @@
   --material-panel-wash: linear-gradient(#f9f0deeb, #eedfc4eb);
   --material-control-wash: linear-gradient(#f4e7cfe0, #dfc9a6e0);
   --material-body-wash: linear-gradient(#ead8b8eb, #dfc49eeb);
-  --material-rail-wash: linear-gradient(#b85a2a99, #8f4322a6);
+  /* The tube is the rail. What shows beside it is its shadow on the sand,
+     not a second band of colour. */
+  --material-rail-wash: linear-gradient(#6a4a3038, #6a4a3038);
   --material-send-edge: var(--material-edge);
   --material-scrim: linear-gradient(#f0e2c880, #f0e2c826 45%, #ecdcc0b3);
 }
