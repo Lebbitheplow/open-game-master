@@ -392,6 +392,29 @@ export function d20Expression(modifier: number, advantage: Advantage = "none") {
   return base;
 }
 
+// A count of same-sized dice, written as a roll may hold it. One term holds
+// MAX_DICE_PER_TERM dice at most, so a count past that is shared out over
+// several ("144d6" is "100d6+44d6"), and the roll throws every die of it.
+// For a site whose count grows with something no rule caps short of that:
+// the ten-minute marks of a day on the clock (a Ring of Regeneration's d6
+// for each) asked for "144d6", and the roll refused it, and with it the
+// rest of whatever had moved the clock. No dice at all, more than a whole
+// roll's terms hold, or a die no roll throws is refused here, where the
+// count is still in hand.
+export function diceExpression(count: number, sides: number): string {
+  if (!Number.isInteger(count) || count < 1 || count > MAX_DICE_PER_TERM * MAX_TERMS) {
+    throw new Error(`Dice count out of range: ${count}d${sides}`);
+  }
+  if (!Number.isInteger(sides) || sides < MIN_SIDES || sides > MAX_SIDES) {
+    throw new Error(`Die size out of range: ${count}d${sides}`);
+  }
+  const terms: string[] = [];
+  for (let left = count; left > 0; left -= MAX_DICE_PER_TERM) {
+    terms.push(`${Math.min(left, MAX_DICE_PER_TERM)}d${sides}`);
+  }
+  return terms.join("+");
+}
+
 export function rollD20(
   modifier: number,
   advantage: Advantage = "none",
