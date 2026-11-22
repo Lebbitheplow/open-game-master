@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "circuit"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -142,6 +142,18 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
       corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
       backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
+    },
+  },
+  {
+    id: "neon", name: "Neon District", description: "Black glass, magenta and cyan tube signs, and brushed steel.", icon: "circuit", suits: ["cyberpunk"],
+    art: {
+      texture: "/assets/themes/neon/black-glass-v1.webp",
+      frame: "/assets/themes/neon/tube-channel-frame-v1.svg",
+      corner: "/assets/themes/neon/junction-box-corner-v1.webp",
+      backdrop: "/assets/themes/neon/rain-street-v1.webp",
+    },
+    artDay: {
+      backdrop: "/assets/themes/neon/tower-terrace-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
