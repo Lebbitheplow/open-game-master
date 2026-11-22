@@ -1,0 +1,80 @@
+{
+  "generator": "OpenAI built-in image_gen, through the Codex CLI (codex-cli 0.158.0), for the painted WebP files. The SVG frame is drawn by hand.",
+  "rights": "Generated or drawn for this project; no third-party source images and no reference images.",
+  "date": "2026-11-22",
+  "assets": [
+    {
+      "file": "black-glass-v1.webp",
+      "mode": "night and day",
+      "transparent": false,
+      "encoding": "WebP quality 84, 1024px. Edges cross-faded with the half-offset image by a small sharp script (prepare-art.mjs, not shipped) so the tile repeats without a seam.",
+      "prompt": "Use case: stylized-concept. Asset type: production seamless material texture for the panels and buttons of a cyberpunk city roleplaying game UI. A square, edge-to-edge close-up of black smoked glass over dark brushed steel: a sheet of near-black tinted glass with very fine horizontal brushed-metal grain faintly visible beneath it, a few hairline micro-scratches, and a scatter of very small fine rain droplets and mist beads on the surface. Straight-on orthographic surface, no perspective, no objects, no border or frame, no panel joints, no rivets, no screws. Rich hand-painted game-art material, tactile and crafted rather than a photograph. Color and contrast restrained enough to sit beneath readable light UI text: cold blue-black, almost neutral, with only the faintest hint of violet in the darkest areas; no bright highlights, no reflections of signs, no colored light, no glow, no large streaks. Seamless repeating tile in both axes, evenly lit, no vignette, no directional lighting gradient, no letters, no glyphs, no symbols, no circuitry traces, no logos, no scenery, no watermark. Output 1024 square."
+    },
+    {
+      "file": "tube-channel-frame-v1.svg",
+      "mode": "night",
+      "transparent": true,
+      "encoding": "SVG, 1000 by 1000 units, written by hand (Claude, 2026-11-22). No generated image. Gradients and two blur filters only: four steel channels, each with one lit tube in a black glass groove, cyan along the top and bottom and magenta down the sides. Every rail is uniform along its length, so the stretched middle of the nine-slice has nothing to repeat. Rails and their glow stay inside the outer 22%.",
+      "prompt": "None: drawn as vector shapes. Chosen over a painted frame because a tube line has to stay a crisp, even line at a 12px rail on a phone and a 26px rail on a desktop, and a painted rail blurs at one size or the other."
+    },
+    {
+      "file": "junction-box-corner-v1.webp",
+      "mode": "night",
+      "transparent": true,
+      "encoding": "WebP quality 90 with lossless alpha, 768px. Painted on flat green, which a small sharp script (prepare-art.mjs, not shipped) keyed to alpha, removing the green cast from the edges; the box was then trimmed to its outline and placed in the top-left 58% of an empty canvas.",
+      "prompt": "Use case: stylized-concept. One production cyberpunk game interface fitting, square image, front-facing orthographic, no perspective. ONE heavy square electrical junction box seen exactly from the front, centred, filling about 70 percent of the image. The box is thick dark brushed steel with a chamfered raised rim, four large hex bolts (one at each corner), scuffs, rain beads and small welded seams. Its face is a square plate of black glass set into the steel, and mounted on the glass is an abstract neon sign made of real bent glass tubes: one hot MAGENTA tube ring (a perfect circle) and inside it one electric CYAN tube bent into a perfect square with rounded corners, both brightly lit with a white-hot core, with tiny steel tube clips and short black cable tails. The tube light spills softly onto the glass and the steel rim INSIDE the box only. The right face and the bottom face of the box each carry a wide, recessed, dark cable-entry slot with a thick rubber gland, the two slots identical. The whole object is exactly symmetric across the diagonal from its top-left corner to its bottom-right corner, so it looks the same when mirrored left to right or flipped upside down: no element has an up or a down. Rich hand-painted realistic game UI art, sculpted volume, hard specular edges on the steel, heavy and industrial, readable when shrunk to a 48 pixel icon: big simple shapes, thick tubes. BACKGROUND: everything that is not the box must be perfectly flat, uniform pure green #00FF00 with no shadow, no gradient, no texture and no glow spilling onto it, so it can be keyed out to transparency. Do not use green anywhere in the object. No arms, no pipes leaving the box, no letters, no numbers, no glyphs, no logos, no warning symbols, no arrows, no lightning bolt, no screen, no buttons, no switches, no dials, no scenery, no frame around the image, no watermark. A practical small detailed asset, not an illustration of a room.",
+      "note": "First generation from this prompt."
+    },
+    {
+      "file": "rain-street-v1.webp",
+      "mode": "night",
+      "transparent": false,
+      "encoding": "WebP quality 86, 2160px wide, cropped to 3:1.",
+      "prompt": "Use case: stylized-concept. Production wide 3:1 landscape banner artwork for a cyberpunk roleplaying game's campaign lobby. Hand-painted premium environment art with deep atmospheric perspective. A narrow city street after dark in heavy rain, seen from street level looking down its length. On the right two thirds: tall black glass towers and stacked brushed-steel balconies, fire escapes and cable bundles closing in overhead, crowded with glowing neon tube signs in hot magenta and electric cyan. Every sign is an ABSTRACT SHAPE only: bare bent glass tubes forming rings, concentric circles, plain triangles, chevrons, zigzags, parallel bars, arcs and simple outlines of rectangles, mounted on steel brackets and junction boxes with visible conduit runs. Wet asphalt mirrors the magenta and cyan light in long streaked reflections; steam rises from a grate; rain falls in fine lines; a few distant window lights in dull amber far down the street. On the left third a calm stretch: a dark wet wall of black glass and steel shutters with one single long horizontal cyan tube and soft reflections, nothing else. Strong contrast between deep blue-black shadow and saturated tube light, glow haloes in the rain mist. Reads well as a very wide shallow header: the largest shapes on the right, a calm dark left third, the interesting content in the middle horizontal band. Painterly realism, moody, dense, alive. Absolutely NO lettering of any kind: no words, no letters, no numbers, no kanji, no kana, no hangul, no pseudo-writing, no glyphs, no logos, no brand marks, no billboards with pictures, no holograms of figures. No people, no vehicles, no characters, no UI widgets, no picture frame, no watermark. Entire canvas opaque edge-to-edge scenery.",
+      "note": "First generation from this prompt."
+    },
+    {
+      "file": "tube-channel-frame-day-v1.svg",
+      "mode": "day",
+      "transparent": true,
+      "encoding": "SVG, 1000 by 1000 units. tube-channel-frame-v1.svg with its steel gradient stops, plate fills and ferrules swapped for pale daylight steel and the halo opacity lowered from .85 to .5 (Claude, 2026-11-22). Geometry, tubes and slice are unchanged.",
+      "prompt": "None: derived from the hand-drawn night frame."
+    },
+    {
+      "file": "junction-box-corner-day-v1.webp",
+      "mode": "day",
+      "transparent": true,
+      "encoding": "WebP quality 90 with lossless alpha, 768px. junction-box-corner-v1.webp with its steel housing lifted to pale steel by a small sharp script (prepare-day.mjs, not shipped): low-saturation pixels outside the glass window get a square-root brightness curve and a faint lilac tint. The glass window, the tubes and their coloured spill are untouched, and the outline is the night piece's.",
+      "prompt": "None of its own: an edit of junction-box-corner-v1.webp, whose prompt is recorded above."
+    },
+    {
+      "file": "overcast-street-v1.webp",
+      "mode": "day",
+      "transparent": false,
+      "encoding": "WebP quality 86, 2160px wide, cropped to 3:1. One small glyph-like cyan mark on the far bridge (about 28 by 20px) was covered with the plain wall beside it, feathered, by the same script.",
+      "prompt": "Use case: stylized-concept. Production wide 3:1 landscape banner artwork for a cyberpunk roleplaying game's campaign lobby, daytime. Hand-painted premium environment art with deep atmospheric perspective. A narrow working-class city street on a wet overcast day, seen from street level looking down its length, the cheap neon signs left switched on in the grey daylight. On the right two thirds: rain-dark concrete walls, stained steel balconies and fire escapes closing in overhead, thick tangles of black cable sagging between junction boxes, and many LIT neon tube signs that look pale and thin in daylight: hot pink and cyan glass tubes bent into abstract shapes only (rings, concentric circles, plain triangles, chevrons, zigzags, parallel bars) on rusty brackets, each with only a small soft halo. Wet asphalt with shallow puddles holding soft pink and cyan reflections, steam from a vent, faded pink and teal shutters, a low heavy pale lilac-grey smog sky between the buildings, soft shadowless light. On the left third a calm stretch: a plain damp pale concrete wall with a closed steel shutter and one single long pink tube, lit, nothing else. Overall pale and light in value: cool lilac-grey, misty, washed, with clear accents of pink and cyan. It must read as DAY, bright enough to sit behind a light interface, never dark. Reads well as a very wide shallow header: the largest shapes on the right, a calm pale left third, the interesting content in the middle horizontal band. Painterly realism, damp, tired, still alive. Absolutely NO lettering of any kind: no words, no letters, no numbers, no kanji, no kana, no hangul, no pseudo-writing, no graffiti, no glyphs, no logos, no brand marks, no posters. No people, no vehicles, no UI widgets, no picture frame, no watermark. Entire canvas opaque edge-to-edge scenery.",
+      "note": "First generation from this prompt."
+    }
+  ],
+  "history": "Generated 2026-11-22 for the first Neon District build, one image per prompt, each kept from its first generation. The night set is the catalog's art. Every sign in the artwork is a bare abstract tube shape (rings, bars, chevrons, triangles, arcs); each file was inspected at full size for lettering, glyphs and logos and none was found. The corner piece is a single junction box with no arms, so it has no up: its two cable slots face the two rails and swap places across the diagonal. Day direction, chosen by Albert on 2026-11-22: the same street on a wet overcast day with the signs left on. It replaced two earlier day candidates, the corporate tower and the sunny street with the signs off; the tower was set aside as another district's theme. The day frame and corner are edits of the night pieces so the geometry is identical.",
+  "candidates": [
+    {
+      "file": "signs-off-street-v1.webp",
+      "mode": "day (earlier option b, not chosen)",
+      "shipped": false,
+      "where": "theme-review/day-options/signs-off-street-v1.webp",
+      "encoding": "WebP quality 86, 2160px wide, cropped to 3:1.",
+      "prompt": "Use case: stylized-concept. Production wide 3:1 landscape banner artwork for a cyberpunk roleplaying game's campaign lobby, daytime. Hand-painted premium environment art with deep atmospheric perspective. A narrow city street in flat hard daylight with every sign switched off, seen from street level looking down its length. On the right two thirds: sun-bleached concrete walls, stained steel balconies and fire escapes closing in overhead, thick tangles of black cable sagging between junction boxes, and many DEAD neon tube signs: unlit grey-white glass tubes bent into abstract shapes only (rings, concentric circles, plain triangles, chevrons, zigzags, parallel bars) on rusty brackets, dusty and dull. Faded painted panels and shutters in washed-out pink and washed-out teal, peeling; dry cracked asphalt, a pale dusty haze, laundry-white sky glare between the buildings, sharp short shadows. On the left third a calm stretch: a plain sun-bleached concrete wall with a closed steel shutter and one single long dead grey tube, nothing else. Pale, warm-grey, chalky, bleached, with only ghosts of pink and teal. Reads well as a very wide shallow header: the largest shapes on the right, a calm pale left third, the interesting content in the middle horizontal band. Painterly realism, quiet, hung-over, the morning after. Absolutely NO lettering of any kind: no words, no letters, no numbers, no kanji, no kana, no hangul, no pseudo-writing, no graffiti, no glyphs, no logos, no brand marks, no posters. No people, no vehicles, no glowing lights, no UI widgets, no picture frame, no watermark. Entire canvas opaque edge-to-edge scenery.",
+      "note": "First generation from this prompt."
+    },
+    {
+      "file": "tower-terrace-v1.webp",
+      "mode": "day (earlier option a, not chosen)",
+      "shipped": false,
+      "where": "theme-review/day-options/tower-terrace-v1.webp",
+      "encoding": "WebP quality 86, 2160px wide, cropped to 3:1.",
+      "prompt": "Use case: stylized-concept. Production wide 3:1 landscape banner artwork for a cyberpunk roleplaying game's campaign lobby, daytime, high above the street. Hand-painted premium environment art with deep atmospheric perspective. The upper floors of a corporate tower in bright cold daylight: on the right two thirds, a vast clean atrium terrace of white composite panels, polished chrome columns and floor-to-ceiling glass, looking out over a pale hazy skyline of other white and glass towers far below and beyond; crisp panel seams, a chrome handrail, a long reflecting pool of still water, thin cold shadows. ONE single cold cyan light line runs along a panel seam as the only accent colour in the whole image. On the left third a calm stretch of plain white panel wall and frosted glass with soft reflections, nothing else. Very bright, clean, sterile, expensive and slightly menacing: white, pale grey, chrome, glass, pale blue sky, one cyan accent. Reads well as a very wide shallow header: the largest shapes on the right, a calm pale left third, the interesting content in the middle horizontal band. Painterly realism. Absolutely NO lettering of any kind: no words, no letters, no numbers, no glyphs, no logos, no brand marks, no screens with content. No people, no vehicles, no drones, no plants, no magenta, no pink, no neon signs, no UI widgets, no picture frame, no watermark. Entire canvas opaque edge-to-edge scenery.",
+      "note": "First generation from this prompt."
+    }
+  ]
+}

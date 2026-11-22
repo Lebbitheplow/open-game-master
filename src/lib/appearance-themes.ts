@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog", "circuit"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -157,6 +157,20 @@ export const APPEARANCE_THEMES = [
     artDay: {
       texture: "/assets/themes/brassworks/drawing-linen-v1.webp",
       backdrop: "/assets/themes/brassworks/drawing-office-gears-v2.webp",
+    },
+  },
+  {
+    id: "neon", name: "Neon District", description: "Black glass, magenta and cyan tube signs, and brushed steel.", icon: "circuit", suits: ["cyberpunk"],
+    art: {
+      texture: "/assets/themes/neon/black-glass-v1.webp",
+      frame: "/assets/themes/neon/tube-channel-frame-v1.svg",
+      corner: "/assets/themes/neon/junction-box-corner-v1.webp",
+      backdrop: "/assets/themes/neon/rain-street-v1.webp",
+    },
+    artDay: {
+      frame: "/assets/themes/neon/tube-channel-frame-day-v1.svg",
+      corner: "/assets/themes/neon/junction-box-corner-day-v1.webp",
+      backdrop: "/assets/themes/neon/overcast-street-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
