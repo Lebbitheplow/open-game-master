@@ -153,7 +153,9 @@ export const APPEARANCE_THEMES = [
       backdrop: "/assets/themes/neon/rain-street-v1.webp",
     },
     artDay: {
-      backdrop: "/assets/themes/neon/tower-terrace-v1.webp",
+      frame: "/assets/themes/neon/tube-channel-frame-day-v1.svg",
+      corner: "/assets/themes/neon/junction-box-corner-day-v1.webp",
+      backdrop: "/assets/themes/neon/overcast-street-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];

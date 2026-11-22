@@ -53,52 +53,53 @@
   --material-scrim: linear-gradient(#08060f99, #08060f40 45%, #08060fc4);
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%232e2947' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='40' cy='42' r='15'/%3E%3Ccircle cx='40' cy='42' r='8'/%3E%3Cpath d='M112 26h36M112 34h36M112 42h36M22 128l12-12 12 12M22 140l12-12 12 12M118 142l16-28 16 28z'/%3E%3C/g%3E%3C/svg%3E");
 }
-/* Day, provisional: the corporate tower above the street. White panels and
-   chrome with one cold cyan accent. The day frame and corner are not painted
-   yet, so day borrows the night ones. */
+/* Day: the same street on a wet overcast day, the cheap signs left on.
+   Lilac-grey wet concrete with the night's own roles: magenta is the accent
+   and what is chosen, cyan edges panels and fills the ordinary keys. The
+   tower above the street is another district and is left for its own theme. */
 [data-appearance="neon"][data-theme="light"] {
-  --background: #eef2f5;
-  --foreground: #131a21;
-  --color-stone-950: #fafcfd;
-  --color-stone-900: #f0f4f7;
-  --color-stone-800: #e1e8ed;
-  --color-stone-700: #bfcad3;
-  --color-stone-600: #7c8a96;
-  --color-stone-500: #47545f;
-  --color-stone-400: #3d4953;
-  --color-stone-300: #2e3841;
-  --color-stone-200: #212a31;
-  --color-stone-100: #161d23;
-  --color-stone-50: #0c1216;
-  --color-amber-950: #e6f8fc;
-  --color-amber-900: #c9eef6;
-  --color-amber-800: #98dcea;
-  --color-amber-700: #4fbcd2;
-  --color-amber-600: #0f8aa3;
-  --color-amber-500: #0a6f85;
-  --color-amber-400: #085a6d;
-  --color-amber-300: #064858;
-  --color-amber-200: #053a47;
-  --color-amber-100: #042c36;
-  --color-amber-50: #021e25;
-  --material-inset: #fbfdfe;
-  --material-paper: #f1f5f8;
+  --background: #e9e7f0;
+  --foreground: #1a1724;
+  --color-stone-950: #f8f7fb;
+  --color-stone-900: #efedf5;
+  --color-stone-800: #e1deeb;
+  --color-stone-700: #c1bcd2;
+  --color-stone-600: #7f7896;
+  --color-stone-500: #4b4560;
+  --color-stone-400: #403a54;
+  --color-stone-300: #312c42;
+  --color-stone-200: #241f33;
+  --color-stone-100: #181424;
+  --color-stone-50: #0e0b17;
+  /* Sign magenta, taken dark enough to carry text on a pale page. */
+  --color-amber-950: #fdeaf7;
+  --color-amber-900: #f9d2ee;
+  --color-amber-800: #f0a3dc;
+  --color-amber-700: #dc63bf;
+  --color-amber-600: #b82a96;
+  --color-amber-500: #981c7b;
+  --color-amber-400: #7c1464;
+  --color-amber-300: #630f50;
+  --color-amber-200: #4d0b3e;
+  --color-amber-100: #38072d;
+  --color-amber-50: #25041d;
+  --material-inset: #faf9fc;
+  --material-paper: #f0eef6;
   --material-metal: #0a5f73;
-  --material-edge: #8fa3b1;
-  --material-panel-wash: linear-gradient(#fcfdfeeb, #eef3f6eb);
-  --material-control-wash: linear-gradient(#f8fbfce0, #dfe7ede0);
-  --material-body-wash: linear-gradient(#eef2f5eb, #e2e9eeeb);
-  --material-rail-wash: linear-gradient(#8fa3b140, #8fa3b140);
+  --material-edge: #4f9fb3;
+  --material-panel-wash: linear-gradient(#fbfafdeb, #eeecf5eb);
+  --material-control-wash: linear-gradient(#f6f4fae0, #dcd8e8e0);
+  --material-body-wash: linear-gradient(#e9e7f0eb, #dedbe8eb);
+  --material-rail-wash: linear-gradient(#7f789640, #7f789640);
   --material-primary-wash: linear-gradient(#0c7690f0, #085468f5);
   --material-send-wash: linear-gradient(#0c7690, #085468);
   --material-send-edge: #0f8aa3;
-  /* Graphite, not a second cyan: the chosen key must not pass for send. */
-  --material-chosen-wash: linear-gradient(#2b3540, #141b22);
+  --material-chosen-wash: linear-gradient(#a01c7e, #5f0f4b);
   --material-vital-fill: linear-gradient(90deg, #1f8f66, #56c79a);
-  --material-metal-finish: linear-gradient(135deg, #ffffff, #9aa9b6 46%, #eef3f6 52%, #73838f);
-  --material-metal-ink: #0a4a5a;
-  --material-scrim: linear-gradient(#eef2f599, #eef2f540 45%, #eef2f5bb);
-  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%23bfcad3' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='40' cy='42' r='15'/%3E%3Ccircle cx='40' cy='42' r='8'/%3E%3Cpath d='M112 26h36M112 34h36M112 42h36M22 128l12-12 12 12M22 140l12-12 12 12M118 142l16-28 16 28z'/%3E%3C/g%3E%3C/svg%3E");
+  --material-metal-finish: linear-gradient(135deg, #f4f3f8, #9a96ab 46%, #e4e1ec 52%, #6f6a82);
+  --material-metal-ink: #1a1724;
+  --material-scrim: linear-gradient(#e9e7f099, #e9e7f040 45%, #e9e7f0bb);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%23c1bcd2' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='40' cy='42' r='15'/%3E%3Ccircle cx='40' cy='42' r='8'/%3E%3Cpath d='M112 26h36M112 34h36M112 42h36M22 128l12-12 12 12M22 140l12-12 12 12M118 142l16-28 16 28z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 /* What holds in both modes: tube shapes. Keys and chips are round-ended like
@@ -170,6 +171,14 @@ html[data-appearance="neon"][data-theme="dark"] .theme-key-primary:not(.theme-ke
 }
 html[data-appearance="neon"][data-theme="dark"] .appearance-option[aria-pressed="true"] {
   box-shadow: 0 0 0 1px var(--color-amber-400), 0 0 0 3px #3fe6ff80, 0 0 16px #e040b666;
+}
+/* By day the signs are still on, only paler: a thin glow round the corner
+   boxes and the one key that acts. */
+[data-appearance="neon"][data-theme="light"] .theme-ornaments > span {
+  filter: drop-shadow(0 0 7px #dc63bf80) drop-shadow(0 1px 2px #0005);
+}
+html[data-appearance="neon"][data-theme="light"] .theme-key-primary:not(.theme-key-danger):not(:disabled) {
+  box-shadow: 0 0 0 1px #b82a96b0, 0 0 12px #dc63bf73;
 }
 /* A phone's table has no margin to glow into: the bar's labels and icons sit
    a few pixels from the rail, and the browser scenario phone-frame counts a
