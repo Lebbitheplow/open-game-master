@@ -100,18 +100,21 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "depths", name: "Unquiet Depths", description: "A case file and red string by day; drowned green-black stone by night.", icon: "eye", suits: ["horror", "mystery"],
+    id: "depths", name: "Unquiet Depths", description: "A case file gone wrong by day; what it found, coiled in drowned stone, by night.", icon: "eye", suits: ["horror", "mystery"],
+    // Each rail is one long painted strip, so its corners are a small share
+    // of the image and the stretched middle repeats only every 8 rail widths.
+    frameSlice: 10,
     art: {
       texture: "/assets/themes/depths/wet-stone-v1.webp",
-      frame: "/assets/themes/depths/drowned-stone-frame-v1.webp",
-      corner: "/assets/themes/depths/ring-eye-boss-v1.webp",
-      backdrop: "/assets/themes/depths/drowned-vault-v1.webp",
+      frame: "/assets/themes/depths/cracked-stone-frame-v4.webp",
+      corner: "/assets/themes/depths/slit-eye-coil-v3.webp",
+      backdrop: "/assets/themes/depths/drowned-abyss-v2.webp",
     },
     artDay: {
       texture: "/assets/themes/depths/manila-card-v1.webp",
-      frame: "/assets/themes/depths/case-file-frame-v1.webp",
-      corner: "/assets/themes/depths/wax-seal-string-v1.webp",
-      backdrop: "/assets/themes/depths/evidence-desk-v1.webp",
+      frame: "/assets/themes/depths/case-file-frame-v2.webp",
+      corner: "/assets/themes/depths/ring-slit-seal-v2.webp",
+      backdrop: "/assets/themes/depths/case-gone-wrong-v2.webp",
     },
   },
   {
