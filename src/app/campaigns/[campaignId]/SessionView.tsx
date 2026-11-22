@@ -2,7 +2,7 @@
 
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
 import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
-import { useThemePrefs } from "@/lib/theme-mode";
+import { useTableThemeControl, useThemePrefs } from "@/lib/theme-mode";
 import { EquipmentArtProvider } from "@/components/ui/EquipmentArtProvider";
 import { ThemeOrnaments } from "@/components/ThemeOrnaments";
 
@@ -619,6 +619,7 @@ export function SessionView({
   const floor = useMemo(() => campaign?.floor ?? { mode: "open" as const }, [campaign?.floor]);
   const isDm = caps.role === "dm";
   const steersStory = caps.steersStory;
+  useTableThemeControl(campaign?.id ?? "", steersStory);
   // Who may change what the table hears, for the header's sound panel.
   const sound = useMemo<SoundSteering>(
     () => ({

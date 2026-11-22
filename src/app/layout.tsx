@@ -4,6 +4,7 @@ import "@/lib/i18n/fr-catalog";
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { LOCALE_COOKIE, localeOfServerLanguage, resolveLocale } from "@/lib/i18n/locale";
 import { ThemeApplier } from "@/lib/theme-mode";
+import { ThemePanelHost } from "@/components/ThemePanelHost";
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
 import localFont from "next/font/local";
@@ -97,6 +98,7 @@ export default async function RootLayout({
         {/* The reader's theme and scale, applied to <html> before anything
             else paints (docs/vtt-parity-implementation-plan.md section 14). */}
         <ThemeApplier />
+        <ThemePanelHost />
         {/* The reader's language, the same on-device contract: the stored
             choice (or the browser's) lands on <html lang> before paint. */}
         <LocaleApplier />
