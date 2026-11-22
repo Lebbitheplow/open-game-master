@@ -20,8 +20,8 @@ written story theme. A player can use Woodland in either day or night mode.
 | --- | --- | --- |
 | Catalog | `src/lib/appearance-themes.ts` | IDs, names, symbols, genre associations, base style, corner crop and artwork slots, with optional day artwork |
 | Preferences | `src/lib/theme-mode.ts` | Campaign choice, personal override, brightness, scale and root artwork variables |
-| Personal picker | `src/components/AppearancePicker.tsx` | Catalog-driven choices with independent day/night previews |
-| Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
+| Picker | `src/components/AppearancePicker.tsx` | One picker for both choices: the reader's own screen and, for whoever steers the story, the whole table (saved through the existing settings schema). Catalog-driven cards with independent day/night previews, and a shortlist of the themes that suit the table's genre (`genreShortlist()`, from each entry's `suits` and `genres`) |
+| Theme panel | `src/components/ThemePanel.tsx`, `ThemePanelHost.tsx` | The picker as a panel beside the page (a sheet on a phone), not a dialog over it: a pick restyles the page in view. Not modal; Escape or its close button dismisses it. Opened by the account menu's Appearance, the lobby's Theme button and the Atmosphere row in table settings; loaded on first open |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
 | Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece is mirrored into the other three), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
@@ -370,9 +370,11 @@ The current browser matrix covers:
 - Dice dialog sizing, a roll, and Escape dismissal.
 - Map keyboard zoom, enlarged-map opening and closing, and combat-card selection.
 - Artwork replacement across all registered themes in day and night, and hiding in forced-colors mode.
-- The actual account Appearance dialog at desktop/phone widths, day/night and
-  enlarged text: keyboard theme selection, Follow campaign, isolated preview
-  colors/artwork, and layout-only fixtures one, three and five choices ahead of the catalog.
+- The actual theme panel, opened from the account menu, at desktop/phone widths,
+  day/night and enlarged text: keyboard theme selection, Follow campaign, isolated
+  preview colors/artwork, that it neither dims nor traps the page (the right half
+  of a desktop, one sideways row in a phone's sheet), and layout-only fixtures
+  one, three and five choices ahead of the catalog.
 - Visible title characters, back-link collisions and header control bounds at
   enlarged text sizes, including 320/390px phones and 1024/1360/1920px desktops.
 - Enlarged-map content clearance from the painted frame, including initiative

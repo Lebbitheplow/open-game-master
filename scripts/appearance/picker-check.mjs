@@ -14,12 +14,25 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
     const d=document.querySelector('.appearance-picker').closest('[role="dialog"]');const r=d.getBoundingClientRect();
     const grid=document.querySelector('.appearance-grid');
     return {dialog:{x:r.x,y:r.y,right:r.right,bottom:r.bottom},client:d.clientWidth,scroll:d.scrollWidth,columns:getComputedStyle(grid).gridTemplateColumns,
+      rail:{client:grid.clientWidth,scroll:grid.scrollWidth,overflow:getComputedStyle(grid).overflowX},modal:d.getAttribute('aria-modal'),overlay:!!document.querySelector('.dialog-overlay'),
       cards:[...grid.children].map(e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,row:e.offsetTop,width:b.width,height:b.height}})};
   })()`);
   const fits = (g,width,height) => {
     assert.ok(g.dialog.x>=-1 && g.dialog.y>=-1 && g.dialog.right<=width+1 && g.dialog.bottom<=height+1, 'Picker dialog must fit the viewport');
     assert.ok(g.scroll<=g.client+1,'Picker must not scroll horizontally');
-    assert.ok(g.cards.every(card=>card.width>=40 && card.height>=40 && card.x>=-1 && card.x+card.width<=width+1),'Every theme card fits horizontally and remains a finger-sized target');
+    assert.ok(g.cards.every(card=>card.width>=40 && card.height>=40),'Every theme card remains a finger-sized target');
+    // The panel is beside the page, not over it: no dimming layer, and the
+    // page keeps half the width of a desktop or the top of a phone.
+    assert.ok(!g.overlay && g.modal!=='true','The theme panel must not dim or trap the page');
+    const rows=Object.values(Object.groupBy(g.cards,card=>card.row));
+    if(width>540) {
+      assert.ok(g.dialog.x>=width/2,`The panel keeps to the right half of a desktop: ${JSON.stringify(g.dialog)}`);
+      assert.ok(rows.every(row=>row.length===1) && g.cards.every(card=>card.x>=-1 && card.x+card.width<=width+1),`One card to a row beside the page: ${JSON.stringify(g)}`);
+    } else {
+      assert.ok(g.dialog.y>=height*0.3,`The sheet leaves the top of a phone to the page: ${JSON.stringify(g.dialog)}`);
+      // One row that scrolls sideways inside the sheet, never the sheet itself.
+      assert.ok(rows.length===1 && g.rail.overflow==='auto' && g.rail.scroll>=g.rail.client,`The cards form one sideways row: ${JSON.stringify(g.rail)} rows ${rows.length}`);
+    }
   };
   try {
     for (const [width,height,mode,scale] of [[1360,1000,'dark',1],[1360,1000,'light',1],[390,844,'dark',1],[390,844,'light',1],[320,640,'light',1.25]]) {
@@ -52,8 +65,8 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
             await waitFor(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-pressed')==='true'`);
             assert.deepEqual(await previews(),baseline,'Changing the page theme must not recolor neighboring previews');
           }
-          // Past nine themes the last card scrolls the dialog, and the nearest
-          // scroll back leaves this button under the dialog's sticky title.
+          // Past nine themes the last card scrolls the panel, and the nearest
+          // scroll back leaves this button under the panel's sticky title.
           await evaluate(`document.querySelector('.appearance-follow').scrollIntoView({block:'center'})`);
           await click('.appearance-follow');
           await waitFor(`document.querySelector('.appearance-follow').getAttribute('aria-pressed')==='true'`);
@@ -73,11 +86,7 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
           await evaluate(`(()=>{const g=document.querySelector('.appearance-grid');g.querySelectorAll('[data-layout-fixture]').forEach(e=>e.remove());while(g.children.length<${count}){const c=g.firstElementChild.cloneNode(true);c.dataset.layoutFixture='true';c.disabled=true;g.append(c)}})()`);
           await dimensions(width,height,'light',scale);
           const g=await layout();fits(g,width,height);
-          // Hover lifts a button without moving its grid row.
-          const rows=Object.values(Object.groupBy(g.cards,card=>card.row));
-          // Every row is full but the last, which holds what is left over.
-          const expectedColumns=width===1360?(count===4?2:3):1;
-          assert.ok(rows.every((row,index)=>index===rows.length-1?row.length<=expectedColumns:row.length===expectedColumns),`${count} choices at ${width}px: full rows of ${expectedColumns}: ${JSON.stringify(g)}`);
+          assert.equal(g.cards.length,count,`${count} choices at ${width}px`);
           if(width===1360) await shot(`picker-layout-${count}`);
         }
       }

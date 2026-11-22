@@ -4,7 +4,7 @@ import { register } from "node:module";
 import { readFileSync, existsSync, statSync } from "node:fs";
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, themeArt, modeArt, artSlotStyle, campaignAppearance, genreAppearance, resolveAppearance, appearanceDefinition, themeStylesheet, themeProvenance } = await import("../src/lib/appearance-themes.ts");
+const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, themeArt, modeArt, artSlotStyle, campaignAppearance, genreAppearance, genreShortlist, resolveAppearance, appearanceDefinition, themeStylesheet, themeProvenance } = await import("../src/lib/appearance-themes.ts");
 const { GENRES } = await import("../src/lib/schemas/game-settings-options.ts");
 const { gameSettingsSchema, normalizeGameSettings } = await import("../src/lib/schemas/game-settings.ts");
 const prefs = await import("../src/lib/theme-mode.ts");
@@ -49,6 +49,26 @@ test("genre claims belong to the catalog and new entries need no resolver branch
   assert.equal(genreAppearance("steampunk", extended, "arcane"), "test-forge");
   assert.equal(genreAppearance("unknown", extended, "arcane"), "arcane");
   assert.equal(genreAppearance(undefined, extended, "arcane"), "arcane");
+});
+test("a picker shortlists the themes that suit a genre only when that is a real choice", () => {
+  for (const definition of APPEARANCE_THEMES) for (const genre of definition.suits ?? []) {
+    assert.ok(GENRES.includes(genre) && genre !== "custom", `${definition.id}: cannot suit ${genre}`);
+  }
+  const catalog = [
+    { id: "a", suits: ["horror", "mystery"] }, { id: "b", genres: ["horror"] }, { id: "c", suits: ["mystery"] },
+    { id: "d" }, { id: "e" }, { id: "f", suits: ["steampunk"] },
+  ];
+  // Suited and default themes show, in catalog order, with the one in use kept in view.
+  assert.deepEqual(genreShortlist("horror", catalog), ["a", "b"]);
+  assert.deepEqual(genreShortlist("horror", catalog, ["e"]), ["a", "b", "e"]);
+  // One suited theme is no choice; no genre, or one nothing suits, is nothing to go by.
+  assert.equal(genreShortlist("steampunk", catalog), null);
+  assert.equal(genreShortlist(undefined, catalog), null);
+  assert.equal(genreShortlist("cyberpunk", catalog), null);
+  // Hiding fewer than three only adds a step: the whole catalog shows.
+  assert.equal(genreShortlist("mystery", catalog, ["d", "e"]), null);
+  assert.equal(genreShortlist("high_fantasy", APPEARANCE_THEMES), null, "nearly every theme suits high fantasy");
+  assert.ok(genreShortlist("dark_fantasy", APPEARANCE_THEMES)?.includes("gothic"), "a genre's default is on its shortlist");
 });
 test("server rendering reads defaults without browser APIs", () => {
   assert.equal(prefs.readAppearanceChoice(), "campaign");

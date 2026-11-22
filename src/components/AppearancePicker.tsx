@@ -11,7 +11,8 @@ import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 const BRIGHTNESS: Array<{ id: ThemeChoice; label: string }> = [
   { id: "auto", label: "Match device" }, { id: "light", label: "Light" }, { id: "dark", label: "Dark" },
 ];
-const genreWords = (genre: string) => (genre === "post_apocalyptic" ? "post-apocalyptic" : genre.replace(/_/g, " "));
+const GENRE_WORDS: Record<string, string> = { post_apocalyptic: "post-apocalyptic" };
+const genreWords = (genre: string) => GENRE_WORDS[genre] ?? genre.replace(/_/g, " ");
 
 // One picker for both theme choices: the reader's own screen, and (for whoever
 // runs the table) the theme every seat follows. "panel" lays the cards out for
@@ -29,8 +30,9 @@ export function AppearancePicker({ layout = "grid" }: { layout?: "grid" | "panel
   const selected: AppearanceTheme | null = forTable ? (tableSetting === "genre" ? null : tableSetting) : appearanceChoice === "campaign" ? null : appearanceChoice;
   const following = selected === null;
 
-  // The one in use always shows, whatever the genre would leave out.
-  const genre = table?.genre === "custom" ? undefined : table?.genre;
+  // The one in use always shows, whatever the genre would leave out. No theme
+  // suits "custom", so a custom table gets the whole catalog.
+  const genre = table?.genre;
   const shortlist = genreShortlist(genre, APPEARANCE_THEMES, [appearance, tableTheme]);
   const shown = shortlist && !showAll ? APPEARANCE_THEMES.filter((entry) => shortlist.includes(entry.id)) : APPEARANCE_THEMES;
 
