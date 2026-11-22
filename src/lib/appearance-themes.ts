@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog", "circuit"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog", "circuit", "wrench"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -171,6 +171,25 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/neon/tube-channel-frame-day-v1.svg",
       corner: "/assets/themes/neon/junction-box-corner-day-v1.webp",
       backdrop: "/assets/themes/neon/overcast-street-v1.webp",
+    },
+  },
+  {
+    id: "wasteland", name: "Wasteland", description: "Roll-cage tube, tyre tread and chain: the desert road by day, the convoy's fires by night.", icon: "wrench", suits: ["post_apocalyptic"],
+    // The machine-built frame and corner serve both modes: the same rig at
+    // noon and by firelight. The ground under the panels and the view change:
+    // canvas and the storm road by day, steel and the convoy camp by night.
+    // The slice is cut at the tube's elbow, so the tube fills the rail. The
+    // corner piece covers the elbow everywhere but the picker.
+    frameSlice: 13,
+    art: {
+      texture: "/assets/themes/wasteland/cooled-steel-v1.webp",
+      frame: "/assets/themes/wasteland/roll-cage-frame-v2.webp",
+      corner: "/assets/themes/wasteland/war-rig-wheel-corner-v1.webp",
+      backdrop: "/assets/themes/wasteland/convoy-fires-v1.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/wasteland/bleached-canvas-v1.webp",
+      backdrop: "/assets/themes/wasteland/dust-storm-road-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
