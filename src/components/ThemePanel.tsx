@@ -29,7 +29,7 @@ export function ThemePanel() {
             </RadixDialog.Title>
             <RadixDialog.Close
               aria-label="Close"
-              className="pk-tap -m-1 flex shrink-0 items-center justify-center rounded-md p-2 text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200"
+              className="pk-tap -m-1 flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-2 text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200"
             >
               <X className="size-4" />
             </RadixDialog.Close>
