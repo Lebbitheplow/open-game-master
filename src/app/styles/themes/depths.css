@@ -37,7 +37,9 @@
   --material-inset: #08120e;
   --material-paper: #0c1813;
   --material-metal: #a6e6b2;
-  --material-edge: #2f6a4c;
+  /* Panel and key edges are the pale underside of the limbs, not stone
+     green, so the middle of the page is not calm either. */
+  --material-edge: #7c8a6c;
   --material-panel-wash: linear-gradient(#0a1611e0, #070f0ceb);
   --material-control-wash: linear-gradient(#173026db, #0e1f18eb);
   --material-body-wash: linear-gradient(#050b09f0, #060e0bf0);
@@ -52,15 +54,15 @@
   --material-scrim: linear-gradient(#050b09a6, #050b0966 45%, #050b09cc);
   /* Nothing sits quite square: each shape has one corner cut unlike its
      other three, and no two kinds of shape agree on which. */
-  --material-control-radius: 2px 2px 11px 2px;
-  --material-panel-radius: 3px 16px 3px 3px / 3px 9px 3px 3px;
-  --material-bubble-radius: 2px 2px 2px 12px;
-  --material-tab-radius: 10px 2px 2px 2px;
-  --material-chip-radius: 1px 7px 1px 1px;
-  --material-sigil-radius: 2px 2px 7px 2px;
+  --material-control-radius: 0 0 15px 0;
+  --material-panel-radius: 0 26px 0 0 / 0 13px 0 0;
+  --material-bubble-radius: 0 0 0 16px;
+  --material-tab-radius: 14px 0 0 0;
+  --material-chip-radius: 0 9px 0 0;
+  --material-sigil-radius: 0 0 9px 0;
   --material-fitting-radius: 50% 50% 50% 36%;
   --material-crest-tilt: 7deg;
-  --appearance-corner: 0.15rem 0.15rem 0.8rem 0.15rem;
+  --appearance-corner: 0 0 1.1rem 0;
   --depths-wrong: #c06ab0;
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%232f6a4c'%3E%3Ccircle cx='80' cy='80' r='9'/%3E%3Ccircle cx='80' cy='80' r='22'/%3E%3Ccircle cx='80' cy='80' r='36'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 160px 160px;
@@ -111,15 +113,15 @@
   --material-scrim: linear-gradient(#eadfc499, #eadfc440 45%, #eadfc4bb);
   /* Cut card and typed sheets, each with one corner that was not cut like
      the rest; no two kinds of shape agree on which. */
-  --material-control-radius: 2px 9px 2px 2px;
-  --material-panel-radius: 2px 2px 2px 13px / 2px 2px 2px 8px;
-  --material-bubble-radius: 2px 2px 10px 2px;
-  --material-tab-radius: 2px 2px 2px 8px;
-  --material-chip-radius: 6px 1px 1px 1px;
-  --material-sigil-radius: 2px 6px 2px 2px;
+  --material-control-radius: 1px 13px 1px 1px;
+  --material-panel-radius: 1px 1px 1px 22px / 1px 1px 1px 11px;
+  --material-bubble-radius: 1px 1px 14px 1px;
+  --material-tab-radius: 1px 1px 1px 12px;
+  --material-chip-radius: 8px 0 0 0;
+  --material-sigil-radius: 1px 8px 1px 1px;
   --material-fitting-radius: 50% 38% 50% 50%;
   --material-crest-tilt: -6deg;
-  --appearance-corner: 0.15rem 0.15rem 0.15rem 0.7rem;
+  --appearance-corner: 0.05rem 0.05rem 0.05rem 1rem;
   --depths-wrong: #7a2e6b;
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='140' viewBox='0 0 200 140'%3E%3Cpath d='M20 30L110 60L180 20M110 60L70 120' fill='none' stroke='%239c4a3e'/%3E%3Cg fill='%23a8853d'%3E%3Ccircle cx='20' cy='30' r='2'/%3E%3Ccircle cx='110' cy='60' r='2'/%3E%3Ccircle cx='180' cy='20' r='2'/%3E%3Ccircle cx='70' cy='120' r='2'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 200px 140px;
@@ -170,10 +172,17 @@ html[data-appearance="depths"] .appearance-option[aria-pressed="true"] {
    larger corners and a thin phosphor rim light so the limbs read; the table
    pads its text from the same rail width, so nothing is covered. */
 [data-appearance="depths"][data-theme="dark"] {
-  --theme-table-frame-width: 32px;
-  --theme-table-corner-size: 112px;
-  --theme-lobby-corner-size: 248px;
-  --theme-lobby-corner-size-small: 128px;
+  --theme-table-frame-width: 40px;
+  --theme-table-corner-size: 132px;
+  --theme-lobby-frame-width: 34px;
+  --theme-lobby-ornament-inset: -42px;
+  /* 200px keeps the knot about 44px inside the card, short of the text
+     that starts at 50px; 256px covered the start of a line. */
+  --theme-lobby-corner-size: 200px;
+  /* On a phone the boss must stay off the first and last panels, which
+     start 20px inside the card: 96px puts its knot about 25px in, over the
+     panel's own corner and short of any text. */
+  --theme-lobby-corner-size-small: 96px;
 }
 [data-appearance="depths"][data-theme="dark"] .theme-ornaments::before,
 [data-appearance="depths"][data-theme="dark"] .theme-ornaments > span {

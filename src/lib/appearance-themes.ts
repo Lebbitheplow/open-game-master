@@ -99,10 +99,12 @@ export const APPEARANCE_THEMES = [
   },
   {
     id: "depths", name: "Unquiet Depths", description: "A case file gone wrong by day; what it found, coiled in drowned stone, by night.", icon: "eye",
+    // The night frame's corner knots hook a limb tip inward, past the default 22%.
+    frameSlice: 26,
     art: {
       texture: "/assets/themes/depths/wet-stone-v1.webp",
-      frame: "/assets/themes/depths/limb-wound-frame-v2.webp",
-      corner: "/assets/themes/depths/slit-eye-coil-v2.webp",
+      frame: "/assets/themes/depths/limb-wound-frame-v3.webp",
+      corner: "/assets/themes/depths/slit-eye-coil-v3.webp",
       backdrop: "/assets/themes/depths/drowned-abyss-v2.webp",
     },
     artDay: {
