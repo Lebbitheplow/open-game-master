@@ -26,6 +26,7 @@ import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave, type SaveOrigin } from "@/lib/dm/forced-save";
 import { noteSaveDamage, recordTrigger } from "@/lib/dm/last-save";
 import { openEffect } from "@/lib/dm/last-hit";
+import { asPartOfAHit } from "@/lib/dm/acting-party";
 import { rollCard } from "@/lib/dm/action-common";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -296,14 +297,15 @@ function autoSpellAtPlayer(
     dealt > 0 && parts
       ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, parts, magical: true, spell: true, reason: source })
       : dealt > 0
-      ? applyDmMutation(
+      ? // The hit's record is hitLog's (acting-party.ts asPartOfAHit).
+        asPartOfAHit(() => applyDmMutation(
           campaign,
           turn.id,
           "apply_damage",
           JSON.stringify({ characterId: sheet.id, amount: dealt, ...(cast.damageType ? { type: cast.damageType } : {}), magical: true, spell, reason: source }),
           sheets,
           sheetsById,
-        ).result
+        ).result)
       : {};
   hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ...(parts && dealt > 0 ? { parts } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
   hitLog.close({
@@ -608,6 +610,9 @@ export function handleCastAtPlayer(
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
       // Kept for a reaction to damage taken (last-hit.ts openEffect): a save's
       // damage is no attack's, so until now Deflect Energy had nothing to answer.
+      // This record is the damage's only one: the apply_damage below is told
+      // so (acting-party.ts asPartOfAHit), since a hazard's save and a set
+      // trap's reach this handler outside any counted call.
       const effect = openEffect(campaign.id, sheet.id);
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })
@@ -619,7 +624,7 @@ export function handleCastAtPlayer(
               spell: Boolean(use?.spell ?? args.spell),
               reason,
             })
-        : applyDmMutation(
+        : asPartOfAHit(() => applyDmMutation(
             campaign,
             turn.id,
             "apply_damage",
@@ -633,7 +638,7 @@ export function handleCastAtPlayer(
             }),
             sheets,
             sheetsById,
-          ).result;
+          ).result);
       effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), name: source });
       // Thought Shield: the psychic damage a warlock took goes back to the caster.
       const back = thoughtShieldBack(campaign, turn, sheet, use?.enemy.id, { amount: dealt, type: typedParts ? undefined : damageType, parts: typedParts ?? undefined, flags: { magical: use?.magical === true, spell: Boolean(use?.spell ?? args.spell) } }, sheets, sheetsById);

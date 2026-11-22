@@ -32,6 +32,7 @@ import { drainConditionName, drainOf } from "@/lib/srd/ability-drain-logic";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { withHold } from "@/lib/dm/creature-hold";
+import { asPartOfAHit } from "@/lib/dm/acting-party";
 
 // What an enemy's hit does once it lands (SRD 5.1): each damage type in the
 // blow meets the target's resistances on its own ("piercing plus fire"
@@ -189,7 +190,11 @@ export function resolveOnHit(
       out.evasion = taken.evasion;
     }
     if (dealt > 0) {
-      const applied = applyDmMutation(
+      // Part of the attack's hit, whose record is its caller's to keep
+      // (acting-party.ts asPartOfAHit). On a turn the backstop plays, and on
+      // an opportunity attack from the board, no call is counted around the
+      // attack, and this was kept as a second hit.
+      const applied = asPartOfAHit(() => applyDmMutation(
         campaign,
         turn.id,
         "apply_damage",
@@ -201,7 +206,7 @@ export function resolveOnHit(
         }),
         sheets,
         sheetsById,
-      ).result;
+      ).result);
       out.riderDamage = dealt;
       if (typeof applied.hp === "string") {
         out.targetHp = applied.hp;

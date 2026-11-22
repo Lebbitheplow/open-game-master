@@ -16,8 +16,17 @@ let acting: ActingParty | null = null;
 
 // How many engine calls are running one inside another: a tool's handler is
 // the first, and a call it makes of another tool (an attack applying its
-// damage through apply_damage) the second.
+// damage through apply_damage) the second. A call is counted only where
+// withActor runs: the two tool doors (encounter-tools.ts applyEncounterCall,
+// mutations.ts applyDmMutation) and the features that name who acts. A
+// handler reached another way starts at no depth: apply_hazard
+// (invoke-dispatch.ts), a trap a hero walks onto or an opportunity attack
+// they draw through the board's move route, an enemy's turn the backstop
+// plays.
 let depth = 0;
+
+// How many asPartOfAHit calls are running.
+let inAHit = 0;
 
 export function withActor<T>(party: ActingParty | null, run: () => T): T {
   const before = acting;
@@ -31,12 +40,31 @@ export function withActor<T>(party: ActingParty | null, run: () => T): T {
   }
 }
 
+// The apply_damage run inside this lands damage that is part of a hit some
+// door already deals: a save's damage and a spell's darts (cast-at-player.ts),
+// the damage an attack prints beside its blow (enemy-hit.ts resolveOnHit).
+// Whether that hit is kept on record is the door's to say (last-hit.ts
+// openEffect, openLastHit; a blow on a steed keeps none), so apply_damage
+// keeps none of its own, whatever called the door. Depth alone said so only
+// for a door inside a counted call: at no depth the apply_damage read as
+// called on its own, and one hit was on record twice (two hits in the Hand,
+// and a ward spending a second die on damage it had already answered).
+export function asPartOfAHit<T>(run: () => T): T {
+  inAHit += 1;
+  try {
+    return run();
+  } finally {
+    inAHit -= 1;
+  }
+}
+
 // Whether the handler running now was called on its own (by the GM, the
 // console or a card), not by another tool's handler. apply_damage keeps a
 // record of its damage for a reaction to answer only then (last-hit.ts
-// openEffect): inside an attack, the attack's own record holds it.
+// openEffect): inside an attack, the attack's own record holds it. A door
+// that calls it for part of its own hit says so (asPartOfAHit).
 export function calledOnItsOwn(): boolean {
-  return depth <= 1;
+  return depth <= 1 && inAHit === 0;
 }
 
 export function currentActor(): ActingParty | null {
