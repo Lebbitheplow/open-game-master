@@ -140,19 +140,19 @@
 }
 /* The porthole's two pipes are fatter than the rail, and the rail runs into
    the middle of their end collars on every surface. The rail's centre line
-   lies 41.3% across the frame's band, and the pipes' centre line 13.2%
+   lies 41.3% across the frame's band, and the pipes' centre line 14.6%
    across the corner piece, so each piece's size follows from where its
    rail sits: 9.9px inside the piece at the table (a 24px band), 5px on a
-   phone (12px), and 24.7px and 13px in the lobby, where the pieces sit
-   14px and 8px outside the card (16px scrolled the page sideways at 541px
-   wide once the piece grew). Change a size and the rail leaves the middle. */
+   phone (12px), and 26.7px and 13px in the lobby, where the pieces sit
+   16px and 8px outside the card (3px more scrolled the page sideways at
+   541px wide). Change a size and the rail leaves the middle. */
 [data-appearance="brassworks"] {
-  --theme-table-corner-size: 75px;
-  --theme-table-corner-size-small: 38px;
-  --theme-lobby-ornament-inset: -40px;
-  --theme-lobby-corner-size: 186px;
+  --theme-table-corner-size: 68px;
+  --theme-table-corner-size-small: 34px;
+  --theme-lobby-ornament-inset: -42px;
+  --theme-lobby-corner-size: 182px;
   --theme-lobby-ornament-inset-small: -20px;
-  --theme-lobby-corner-size-small: 98px;
+  --theme-lobby-corner-size-small: 88px;
 }
 /* Machined corner brackets where a flat panel keeps the app's own. Each
    bracket thickens its own two sides, so neither closes into a box. */

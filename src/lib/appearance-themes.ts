@@ -145,18 +145,18 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "brassworks", name: "Brassworks", description: "Polished brass pipework, oxblood leather, and green gauge glass.", icon: "cog", suits: ["steampunk"],
+    id: "brassworks", name: "Brassworks", description: "Brass pipework and meshed gears, oxblood leather, and green gauge glass.", icon: "cog", suits: ["steampunk"],
     // The brass pipework is the same by day; the page under it changes from
     // the engine hall's leather to the drawing office's linen.
     art: {
       texture: "/assets/themes/brassworks/oxblood-leather-v1.webp",
       frame: "/assets/themes/brassworks/brass-pipe-frame-v1.webp",
-      corner: "/assets/themes/brassworks/porthole-window-corner-v2.webp",
-      backdrop: "/assets/themes/brassworks/engine-hall-v1.webp",
+      corner: "/assets/themes/brassworks/porthole-gears-corner-v3.webp",
+      backdrop: "/assets/themes/brassworks/engine-hall-gears-v2.webp",
     },
     artDay: {
       texture: "/assets/themes/brassworks/drawing-linen-v1.webp",
-      backdrop: "/assets/themes/brassworks/drawing-office-v1.webp",
+      backdrop: "/assets/themes/brassworks/drawing-office-gears-v2.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
