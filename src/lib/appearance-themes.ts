@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "lamp"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -142,6 +142,24 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
       corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
       backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
+    },
+  },
+  {
+    id: "gaslight", name: "Gaslight", description: "Green baize, walnut trim, and polished brass by gaslight.", icon: "lamp", suits: ["mystery"],
+    // The rail is one plain walnut bead with a brass line, painted in the
+    // outer 8% of the frame; a wider slice would leave it a thread.
+    frameSlice: 8,
+    art: {
+      texture: "/assets/themes/gaslight/green-baize-v1.webp",
+      frame: "/assets/themes/gaslight/walnut-brass-frame-v1.webp",
+      corner: "/assets/themes/gaslight/brass-lamp-boss-lit-v1.webp",
+      backdrop: "/assets/themes/gaslight/reading-room-lamplit-v1.webp",
+    },
+    // The same room on a grey morning with the gas turned off: the same
+    // baize and joinery, the lamp boss unlit, cream walls behind.
+    artDay: {
+      corner: "/assets/themes/gaslight/brass-lamp-boss-unlit-v1.webp",
+      backdrop: "/assets/themes/gaslight/reading-room-morning-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
