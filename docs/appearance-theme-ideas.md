@@ -203,6 +203,30 @@ agreed.
 | Tundra and high peaks | Frostbound |
 | Desert and old ruins | Sunscorched |
 
+## Slow movement in theme artwork (later idea)
+
+Proposed on 2026-11-21 (Albert and Fable) while making Unquiet Depths more
+unsettling. A possible later addition. Not designed in detail, not agreed and
+not built.
+
+- A theme's painted artwork moves very slowly, barely noticed: light that
+  drifts across the backdrop over a minute, or a frame whose limbs shift a
+  little every so often. It suits Unquiet Depths first; Frostbound's aurora,
+  Inferno's embers and Twilight Court's motes are the next candidates.
+- It needs a shared change. A theme's stylesheet cannot declare `@keyframes`
+  (the contract check refuses global declarations in theme files), so the
+  framework would own a few named movements and a theme would choose one and
+  set its pace through variables, as it sets materials today.
+- Rules it must keep: off when the reader asks for reduced motion and when
+  effects are set low; never under reading surfaces; nothing that reads as a
+  control or draws the eye from the story; no cost while the page is hidden;
+  hidden in forced-colors mode with the rest of the ornaments.
+- No new setting. The reader's existing reduced-motion and effects choices
+  decide it.
+- Still to settle: whether movement is a second image layer, a transform on the
+  existing art or a CSS gradient over it; what it costs a phone's battery; how
+  the checks prove it stays still when it should.
+
 ## Suggested build order
 
 1. Finish PR 962's validation and settle the reusable theme contracts.
