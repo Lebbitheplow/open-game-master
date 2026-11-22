@@ -38,11 +38,11 @@
   --material-inset: #111416;
   --material-paper: #161a1d;
   --material-metal: #ddd5c2;
-  --material-edge: #80604a;
+  --material-edge: #9a623c;
   --material-panel-wash: linear-gradient(#14181be6, #0f1214f0);
   --material-control-wash: linear-gradient(#2a3035e0, #1b2023f0);
   --material-body-wash: linear-gradient(#0d0f11f2, #0f1113f2);
-  --material-rail-wash: linear-gradient(#1a1e219e, #1a1e219e);
+  --material-rail-wash: linear-gradient(#2a1c149e, #1a1e219e);
   --material-send-edge: var(--color-amber-400);
   --material-scrim: linear-gradient(#0d0f11a6, #0d0f1159 45%, #0d0f11cc);
 }
@@ -74,11 +74,11 @@
   --material-inset: #f6f2e6;
   --material-paper: #eee8d9;
   --material-metal: #4a3526;
-  --material-edge: #a17c5f;
+  --material-edge: #a8663c;
   --material-panel-wash: linear-gradient(#f8f4e8eb, #ece6d6eb);
   --material-control-wash: linear-gradient(#f3eddee0, #dcd3bde0);
   --material-body-wash: linear-gradient(#e9e4d6eb, #ddd6c4eb);
-  --material-rail-wash: linear-gradient(#8a745a40, #8a745a40);
+  --material-rail-wash: linear-gradient(#9a623c4d, #8a745a40);
   --material-send-edge: var(--material-edge);
   --material-scrim: linear-gradient(#ebe5d699, #ebe5d640 45%, #ebe5d6bb);
 }
@@ -114,7 +114,7 @@
   --theme-night-amber-200: #cae6ea;
   --theme-night-amber-100: #e2f2f4;
   --theme-night-amber-50: #f2f9fa;
-  --material-metal-finish: linear-gradient(135deg, #e6dcc6, #8d8579 46%, #cdc2aa 52%, #5b554c);
+  --material-metal-finish: linear-gradient(135deg, #d9cdb8, #9a8a78 44%, #c7b79e 52%, #7a4e30);
   --material-metal-ink: #1d1a15;
   /* Deep teal paint under light labels, the same in day and night. The
      health bar keeps the shared green; orange there is the low-health mark. */
@@ -130,7 +130,7 @@
   --material-sigil-radius: 2px 5px 2px 3px;
   --material-crest-tilt: -3deg;
   /* Four bolt heads a long way apart and nothing between them. */
-  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%2380604a' stroke-width='1'%3E%3Ccircle cx='14' cy='14' r='3'/%3E%3Ccircle cx='166' cy='18' r='2'/%3E%3Ccircle cx='12' cy='168' r='2'/%3E%3Ccircle cx='168' cy='164' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%239a623c' stroke-width='1'%3E%3Ccircle cx='14' cy='14' r='3'/%3E%3Ccircle cx='166' cy='18' r='2'/%3E%3Ccircle cx='12' cy='168' r='2'/%3E%3Ccircle cx='168' cy='164' r='3'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 180px 180px;
   --appearance-corner: 0.15rem;
 }
@@ -140,3 +140,12 @@ html[data-appearance="wasteland"] .ornate::before,
 html[data-appearance="wasteland"] .ornate::after { width: 18px; height: 18px; }
 html[data-appearance="wasteland"] .ornate::before { border-width: 2px 0 0 2px; }
 html[data-appearance="wasteland"] .ornate::after { border-width: 0 2px 2px 0; }
+/* The scrap is the theme, so the table carries more of it than the shared
+   sizes give: a wider rail and a heavier corner. The shared renderer already puts a
+   shadow under both. The table pads its text from the rail width.
+   96px keeps the plate short of the session title and the account button;
+   the phone keeps the shared small sizes, which clear the bottom bar. */
+[data-appearance="wasteland"] {
+  --theme-table-frame-width: 30px;
+  --theme-table-corner-size: 96px;
+}
