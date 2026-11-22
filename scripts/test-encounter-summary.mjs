@@ -36,8 +36,9 @@ const summary = computeEncounterSummary({
     { characterId: "b", kind: "damage", total: 6, applied: true, targetEnemyId: "e2", crit: null },
     { characterId: "b", kind: "attack", total: 3, crit: "nat1" },
     { characterId: null, kind: "damage", total: 40, applied: true, targetEnemyId: "e1", crit: null },
-    // A fall that hurt Orla, spent inside the engine's own call with no
-    // target named (rolls.ts markRollSpent): no blow of hers.
+    // A fall that hurt Orla, on a row from when a roll used up inside the
+    // engine's own call was stamped with no target named (rolls.ts
+    // `applied`): no blow of hers.
     { characterId: "b", kind: "damage", total: 9, applied: true, targetEnemyId: null, crit: null },
   ],
   audits: [

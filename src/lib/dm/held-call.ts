@@ -44,7 +44,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { ownTurnOf } from "@/lib/dm/held-turn";
-import { getRoll, kindAndRoller, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import { getRoll, kindAndRoller, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { cardRoller } from "@/lib/dm/roll-card";
 import { recordRoll } from "@/lib/dm/roll-record";
@@ -293,30 +293,6 @@ function rearm(campaignId: string, armed: ReturnType<typeof armedNow>) {
   }
 }
 
-// The dice a call threw are the engine's own, used where they were thrown: a
-// spell's damage, a hazard's, a potion's healing. An AI GM may send a bare
-// number for damage or healing only when it is a total it asked the server
-// for this turn and nothing has spent (request_roll; src/lib/dm/ai-gate.ts
-// number). So as a call of any other name ends on an AI's turn, the damage
-// and custom rolls it added to the turn are stamped spent. Left unspent, the
-// total of a blow the engine had already landed paid for the model's own
-// apply_damage of the same number, and the blow landed twice.
-function spendOwnRolls(turn: DmTurn, call: HeldCallSpec, from: number, result: unknown) {
-  if (turn.actor !== "ai" || call.name === "request_roll") {
-    return;
-  }
-  const spend = () => {
-    for (const id of turn.rollIds.slice(from)) {
-      markRollSpent(id);
-    }
-  };
-  spend();
-  // An async handler's dice after its first wait.
-  if (result && typeof (result as { then?: unknown }).then === "function") {
-    void (result as unknown as Promise<unknown>).then(spend, () => {});
-  }
-}
-
 // Runs one tool call so a roll inside it may wait on its player. A call
 // inside another held call is part of it: the outer one is what waits.
 export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, run: () => T, previous?: Previous): T | ToolResult {
@@ -341,7 +317,15 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
     drawn: [],
     park: null,
   };
+  // Where the turn's lists stand as the call begins: a run that parks is
+  // taken back, and they are cut back to here with it. The marks for the
+  // rolls an AI GM asked for (dm-turns.ts askedRollIds, paidRollIds) go back
+  // with the rolls, so no mark outlives the roll it was for. What the gate
+  // paid for this call was paid before the call began (ai-gate.ts), and
+  // stands whether the call parks or not.
   const rollIds = turn.rollIds.length;
+  const askedRollIds = turn.askedRollIds.length;
+  const paidRollIds = turn.paidRollIds.length;
   const armed = armedNow(campaign.id);
   const deliveries = holdDeliveries();
   let result: T | undefined;
@@ -408,7 +392,6 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   }
   if (!rolledBack || (!trial.park && !trial.watchStop)) {
     deliveries.release(true);
-    spendOwnRolls(turn, call, rollIds, result);
     return result as T;
   }
   // The watch's card was opened inside the run and rolled back with it:
@@ -419,6 +402,8 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
     void (result as unknown as Promise<unknown>).catch(() => {});
   }
   turn.rollIds.length = rollIds;
+  turn.askedRollIds.length = askedRollIds;
+  turn.paidRollIds.length = paidRollIds;
   rearm(campaign.id, armed);
   if (!trial.park) {
     return parkWatch(campaign, turn, call, trial);
@@ -593,7 +578,9 @@ export function runHeldAgain(
     // The run is over, so nothing holds the turn: the roll goes on record
     // through the one door (roll-record.ts) on the turn the call was made on,
     // as the player's own dice, and takes its card down. By hand it was on
-    // no turn.
+    // no turn. No AI GM asked for it with request_roll (the call it was for
+    // was another, and was refused), so it carries no mark and pays for
+    // nothing the GM sends (ai-gate.ts).
     roll = recordRoll({
       campaignId: campaign.id,
       characterId: pending.characterId,
@@ -609,14 +596,6 @@ export function runHeldAgain(
       landing,
       answers: pending.id,
     });
-    // Dice a call was refused with paid for nothing before, being on no
-    // turn: on an AI's turn they are spent as a call's own are (spendOwnRolls
-    // above), so their total pays for no bare number now either. A check
-    // among them is on the turn like any check the character rolled this
-    // turn, where the escape gate reads it (ai-gate.ts escapeRolled).
-    if (turn.actor === "ai") {
-      markRollSpent(roll.id);
-    }
   }
   const told = waits ? null : answer;
   getDatabase()

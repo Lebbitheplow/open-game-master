@@ -1850,6 +1850,15 @@ function ensureSchema(db: SqliteDatabase) {
     // openStandInTurn): its rolls are that turn's, and that turn's revert
     // marks it too. Null on every other turn.
     ["owner_turn_id", `TEXT`],
+    // The rolls an AI GM asked for with request_roll on this turn, and the
+    // ones among them that have paid for something it sent (JSON lists of
+    // roll ids; dm-turns.ts askedRollIds, paidRollIds). The gate that holds
+    // the model's numbers reads these two and nothing else
+    // (src/lib/dm/ai-gate.ts). Nothing is filed for the turns already open:
+    // a turn with no marks is refused a bare number, and the model sends
+    // dice or rolls again.
+    ["asked_roll_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
+    ["paid_roll_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
   ]);
   // The roll cards whose roll the turn's conversation has been handed (a
   // JSON list of pending_rolls ids; dm-turns.ts answeredPendingIds), so a

@@ -73,9 +73,13 @@
 // And one thing the door must not widen: the number gate for an AI GM's heal
 // and apply_damage (src/lib/dm/ai-gate.ts) takes a bare number that equals a
 // total the model asked for this turn. A roll that missed its turn was out of
-// the gate's sight by that accident. It is on the turn now, and is the
-// engine's own, spent as its call ends (src/lib/dm/held-call.ts
-// spendOwnRolls), so it pays for no number the model sends.
+// the gate's sight by that accident. It is on the turn now, and is no roll
+// the model asked for: the door marks those and no others on the turn's own
+// list (`asked`, issue #1073), so it pays for no number the model sends.
+// The mark's own cases are here too: the door writes it in the step that
+// joins the roll, a copy of the turn saved later keeps it, a call that parks
+// takes it back, and a roll card says whether an AI GM's request_roll dealt
+// it.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -90,7 +94,7 @@ const { test, finish } = suite("test-enforce-roll-record");
 const world = await openWorld({ campaign: { maxPlayers: 8 } });
 const kit = await combatKit(world);
 
-const { closeStandInTurn, createDmTurn, createPendingRoll, getDmTurn, getLatestDmTurnId, listOpenPendingRolls, openStandInTurn, resolvePendingRoll, saveDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { closeStandInTurn, createDmTurn, createPendingRoll, getDmTurn, getLatestDmTurnId, listOpenPendingRolls, openStandInTurn, payOnTurn, resolvePendingRoll, saveDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { rollPetSave } = await import("../src/lib/dm/pet-save-roll.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
@@ -828,9 +832,71 @@ await test("the dice the clock throws inside a GM call are on that call's turn: 
   }
 });
 
+// ---- the mark for a roll an AI GM asked for (issue #1073) ----
+
+// The two lists a turn's stored row keeps.
+const marksOf = (turnId) => {
+  const turn = getDmTurn(turnId);
+  return { asked: turn.askedRollIds, paid: turn.paidRollIds };
+};
+
+await test("a roll a site says an AI GM asked for is on its turn's asked list from the step that joins it, on the stored row outside a call and on the call's own turn inside one. A roll no site marked is on no list, and a roll with no turn to join carries no mark", () => {
+  const stored = createDmTurn(world.campaignId, [], "ai");
+  const plain = recordRoll(aRoll({ turnId: stored.id }));
+  const asked = recordRoll(aRoll({ turnId: stored.id, asked: true }));
+  assert.deepEqual(storedIds(stored.id), [plain.id, asked.id]);
+  assert.deepEqual(marksOf(stored.id), { asked: [asked.id], paid: [] }, "outside a call, the stored row does not hold the mark with the roll");
+  // Inside a call the turn in hand holds it, and its save writes it.
+  const live = createDmTurn(world.campaignId, [], "ai");
+  const made = runHeld(campaign(), live, SPEC, () => [recordRoll(aRoll()), recordRoll(aRoll({ asked: true }))]);
+  assert.deepEqual(live.rollIds, made.map((roll) => roll.id));
+  assert.deepEqual(live.askedRollIds, [made[1].id], "inside a call, the call's own turn does not hold the mark");
+  saveDmTurn(live);
+  assert.deepEqual(marksOf(live.id), { asked: [made[1].id], paid: [] });
+  const line = recordRoll(aRoll({ turnId: stored.id, home: "line", asked: true }));
+  assert.equal(marksOf(stored.id).asked.includes(line.id), false, "a roll on no turn is on a turn's asked list");
+});
+
+await test("a copy of the turn read before a roll was marked and paid, and saved after, writes neither mark away; a roll paid twice is on the paid list once", () => {
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const older = getDmTurn(turn.id);
+  const roll = recordRoll(aRoll({ turnId: turn.id, asked: true }));
+  payOnTurn(getDmTurn(turn.id), roll.id);
+  assert.deepEqual(marksOf(turn.id), { asked: [roll.id], paid: [roll.id] }, "a payment is not on the stored row as it is made");
+  older.callIndex += 1;
+  saveDmTurn(older);
+  assert.deepEqual(marksOf(turn.id), { asked: [roll.id], paid: [roll.id] }, "the older copy's save dropped a mark");
+  assert.deepEqual([older.askedRollIds, older.paidRollIds], [[roll.id], [roll.id]], "the copy in hand does not know the marks it now holds");
+  payOnTurn(older, roll.id);
+  assert.deepEqual(marksOf(turn.id).paid, [roll.id]);
+});
+
+await test("a call that parks takes its marks back with its rolls: the turn's asked and paid lists stand where they stood as the call began, in hand and on the stored row", () => {
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const kept = recordRoll(aRoll({ turn, asked: true }));
+  payOnTurn(turn, kept.id);
+  const sheet = world.sheet(hero.id);
+  const PARKS = { name: "roll_record_marks_park", rawArguments: "{}", toolCallId: null };
+  try {
+    const parked = runHeld(campaign(), turn, PARKS, () => {
+      const made = recordRoll(aRoll({ asked: true }));
+      payOnTurn(turn, made.id);
+      assert.deepEqual([turn.askedRollIds.length, turn.paidRollIds.length], [2, 2], "the run's own marks are not on the turn while it runs");
+      return parkHeldCall({ sheet: { id: sheet.id, userId: sheet.userId, name: sheet.name }, kind: "custom", detail: "a die to wait on", expression: "1d6", advantage: "none", dc: null, reason: "the mark's test", visibility: "public", parkedFor: "real_dice", note: "wait" });
+    });
+    assert.equal(isHeldPark(parked), true, "the call did not park");
+    assert.deepEqual([turn.rollIds, turn.askedRollIds, turn.paidRollIds], [[kept.id], [kept.id], [kept.id]], "the turn in hand keeps a mark of the run that was taken back");
+    saveDmTurn(turn);
+    assert.deepEqual(marksOf(turn.id), { asked: [kept.id], paid: [kept.id] }, "the stored row keeps a mark of the run that was taken back");
+  } finally {
+    // The card the park dealt is not one a later case waits on.
+    getDatabase().prepare("DELETE FROM pending_rolls WHERE turn_id = ?").run(turn.id);
+  }
+});
+
 // ---- a roll that joins its turn pays for no number of the model's ----
 
-await test("an AI GM's bare heal equal to a Ring of Regeneration's dice is refused: thrown as its pass_time moved the clock, they are on the turn now, and spent as that call ends", async () => {
+await test("an AI GM's bare heal equal to a Ring of Regeneration's dice is refused: thrown as its pass_time moved the clock, they are on the turn now, and are no roll the model asked for", async () => {
   world.patch(hero.id, { currentHp: 10, equipment: [{ name: "Ring of Regeneration", qty: 1, attuned: true, equipped: true }] });
   world.say("player", "We wait ten minutes for the rain to pass.", getSheetById(hero.id));
   const turn = createDmTurn(world.campaignId, [], "ai");
@@ -844,6 +910,7 @@ await test("an AI GM's bare heal equal to a Ring of Regeneration's dice is refus
   assert.ok(found, "the ring rolled nothing");
   const ring = getRoll(found.id);
   assert.deepEqual(rollHomes(ring.id).turns, [turn.id], "the ring's dice are not on the AI's turn");
+  assert.deepEqual(marksOf(turn.id).asked, [], "the clock's dice are marked as a roll the model asked for");
   const before = world.sheet(hero.id).currentHp;
   const healed = await call("heal", { characterId: hero.id, amount: ring.total });
   const after = world.sheet(hero.id).currentHp;
@@ -854,7 +921,7 @@ await test("an AI GM's bare heal equal to a Ring of Regeneration's dice is refus
   assert.equal(after, before);
 });
 
-await test("an AI GM's bare heal equal to Sleep's pool is refused: the pool is on the turn now, and it is the engine's own, spent as its call ends", async () => {
+await test("an AI GM's bare heal equal to Sleep's pool is refused: the pool is on the turn now, and it is the engine's own, no roll the model asked for", async () => {
   await kit.fight(2, { heroFaces: { [mage.id]: 19, [hero.id]: 5 } });
   const [enemy] = world.enemies();
   world.patch(hero.id, { currentHp: 4 });
@@ -869,6 +936,7 @@ await test("an AI GM's bare heal equal to Sleep's pool is refused: the pool is o
   assert.ok(found, "Sleep rolled no pool");
   const pool = getRoll(found.id);
   assert.deepEqual(rollHomes(pool.id).turns, [turn.id], "the pool is not on the AI's turn");
+  assert.deepEqual(marksOf(turn.id).asked, [], "a spell's own dice are marked as a roll the model asked for");
   const healed = await call("heal", { characterId: hero.id, amount: pool.total });
   const hp = world.sheet(hero.id).currentHp;
   world.patch(hero.id, { currentHp: 44 });
@@ -1021,7 +1089,7 @@ await test("at a table a person runs, a player's dice for a held call whose run 
   table.close();
 });
 
-await test("on an AI's turn, a damage roll the model asked for and the player rolled is on the turn as it lands and is not spent by its own landing: it pays for the model's bare number, once", async () => {
+await test("on an AI's turn, a damage roll the model asked for and the player rolled is on the turn as it lands, marked as asked for because its card says so: it pays for the model's bare number, once", async () => {
   const { table, seat } = await realDiceTable();
   table.say("player", "I tip the vial over the ropes on my own wrists.", table.sheet(seat.id));
   const turn = createDmTurn(table.campaignId, [], "ai");
@@ -1030,18 +1098,124 @@ await test("on an AI's turn, a damage roll the model asked for and the player ro
   assert.equal(asked.ok, true, `refused: ${asked.error}`);
   const [pending] = listOpenPendingRolls(table.campaignId);
   assert.ok(pending, "the damage did not wait on the seat's dice");
+  assert.equal(pending.carry?.asked, true, "the card does not say an AI GM's request_roll dealt it");
   const landed = await enter(table, pending, () => 5);
   assert.deepEqual(getDmTurn(turn.id).rollIds, [landed.id], "the landed roll is not on the turn as it lands");
+  assert.deepEqual(marksOf(turn.id), { asked: [landed.id], paid: [] }, "the landed roll is not marked as asked for in the step that joins it");
   await settleQueue(table.campaignId);
-  assert.equal(getRoll(landed.id).applied, false, "the landing stamped the roll it landed as spent");
+  assert.equal(getRoll(landed.id).applied, false, "the landing stamped the roll it landed");
   const before = table.sheet(seat.id).currentHp;
   const paid = await call("apply_damage", { characterId: seat.id, amount: 5, type: "acid" });
   assert.equal(paid.ok, true, `the total the model asked for and the player rolled did not pay: ${paid.error}`);
   assert.equal(table.sheet(seat.id).currentHp, before - 5);
+  assert.deepEqual(marksOf(turn.id), { asked: [landed.id], paid: [landed.id] }, "the roll that paid is not on the turn's paid list");
+  assert.equal(getRoll(landed.id).applied, false, "the gate stamped the roll that paid");
   const again = await call("apply_damage", { characterId: seat.id, amount: 5, type: "acid" });
   assert.equal(again.ok, false, "the same total paid twice");
   assert.match(String(again.error), /rolled by the server, never written/, "refused, but not by the number gate");
   table.close();
+});
+
+await test("a card that does not say an AI GM asked for it lands a roll that pays for nothing: one dealt before the card carried the word, on a turn open across the upgrade, and one a person dealt from the console", async () => {
+  const { table, seat } = await realDiceTable();
+  table.say("player", "I tip the vial over the ropes on my own wrists.", table.sheet(seat.id));
+  const turn = createDmTurn(table.campaignId, [], "ai");
+  const call = (name, args) => invokeEngine(table.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+  const asked = await call("request_roll", { characterId: seat.id, kind: "damage", expression: "1d8", reason: "a splash of acid" });
+  assert.equal(asked.ok, true, `refused: ${asked.error}`);
+  const [pending] = listOpenPendingRolls(table.campaignId);
+  assert.ok(pending, "the damage did not wait on the seat's dice");
+  // As a server from before the mark dealt it: the card carries no word.
+  getDatabase().prepare("UPDATE pending_rolls SET carry_json = NULL WHERE id = ?").run(pending.id);
+  const landed = await enter(table, pending, () => 5);
+  await settleQueue(table.campaignId);
+  assert.deepEqual(getDmTurn(turn.id).rollIds, [landed.id], "the landed roll is not on the turn");
+  assert.deepEqual(marksOf(turn.id), { asked: [], paid: [] }, "a card with no word of who asked landed a roll marked as asked for");
+  const before = table.sheet(seat.id).currentHp;
+  const bare = await call("apply_damage", { characterId: seat.id, amount: 5, type: "acid" });
+  assert.equal(bare.ok, false, "the total of a card nobody is known to have asked for paid for a bare number");
+  assert.match(String(bare.error), /rolled by the server, never written/, "refused, but not by the number gate");
+  assert.equal(table.sheet(seat.id).currentHp, before);
+  // The way on is the one the refusal names: dice the server rolls.
+  table.dice(3);
+  const dice = await call("apply_damage", { characterId: seat.id, dice: "1d8", type: "acid", reason: "a splash of acid" });
+  table.clearDice();
+  assert.equal(dice.ok, true, `dice were refused: ${dice.error}`);
+  // A person's own call from the console deals a card with no word either.
+  const person = await table.invoke("request_roll", { characterId: seat.id, kind: "damage", expression: "1d8", reason: "the roll record's test" });
+  assert.equal(person.ok, true, `refused: ${person.error}`);
+  const [card] = listOpenPendingRolls(table.campaignId);
+  assert.ok(card, "the console's roll did not wait on the seat's dice");
+  assert.equal(card.carry?.asked, undefined, "a person's card says an AI GM asked for it");
+  const entered = await enter(table, card, () => 5);
+  assert.deepEqual(getDmTurn(card.turnId).rollIds, [entered.id]);
+  assert.deepEqual(marksOf(card.turnId), { asked: [], paid: [] }, "a person's roll is marked as one an AI GM asked for");
+  table.close();
+});
+
+// A damage card that names a creature is landed by the server as its dice
+// land (enemy-blow.ts applyPendingDamageRoll), so nothing of it is left for
+// the GM to send. The card says an AI GM asked for it all the same: what the
+// landing does with the roll decides the mark, as it does where the server
+// throws the dice itself (test-enforce-ai-gates.mjs).
+await test("a damage card an AI GM asked for that names a creature still standing is landed by the server as its dice land, and its roll is not marked as asked for: the total pays for no bare number after", async () => {
+  const { table, seat } = await realDiceTable();
+  const tableKit = await combatKit(table);
+  table.say("player", "I throw the flask at whatever comes through the door.", table.sheet(seat.id));
+  const turn = createDmTurn(table.campaignId, [], "ai");
+  const call = (name, args) => invokeEngine(table.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+  // Dealt before the fight: once one is running, a character's damage on a
+  // creature is pc_attack's to roll.
+  const asked = await call("request_roll", { characterId: seat.id, kind: "damage", expression: "1d8", targetEnemyId: "the first through the door", reason: "a thrown flask" });
+  assert.equal(asked.ok, true, `refused: ${asked.error}`);
+  const [pending] = listOpenPendingRolls(table.campaignId);
+  assert.ok(pending?.targetEnemyId, "the card does not name what its damage lands on");
+  assert.equal(pending.carry?.asked, true, "the card does not say an AI GM's request_roll dealt it");
+  // The fight opens on the server's dice, so no initiative card joins this one.
+  setMemberRealDice(table.campaignId, table.sheet(seat.id).userId, false);
+  await tableKit.fight(1, { heroFaces: { [seat.id]: 19 } });
+  setMemberRealDice(table.campaignId, table.sheet(seat.id).userId, true);
+  const [enemy] = table.enemies();
+  tableKit.setEnemy(enemy.id, { maxHp: 100, currentHp: 100 });
+  // The creature the card names is in the fight by the time the dice land.
+  getDatabase().prepare("UPDATE pending_rolls SET target_enemy_id = ? WHERE id = ?").run(enemy.id, pending.id);
+  const landed = await enter(table, pending, () => 5);
+  await settleQueue(table.campaignId);
+  assert.equal(tableKit.enemy(enemy.id).currentHp, 95, "the server did not land the card's damage on the creature it names");
+  assert.ok(getDmTurn(turn.id).rollIds.includes(landed.id), "the landed roll is not on the turn");
+  assert.deepEqual(marksOf(turn.id), { asked: [], paid: [] }, "a roll the server landed itself is marked as one left to send");
+  const before = table.sheet(seat.id).currentHp;
+  const bare = await call("apply_damage", { characterId: seat.id, amount: 5, type: "acid" });
+  assert.equal(bare.ok, false, "the total of a roll the server had landed paid for a bare number");
+  assert.match(String(bare.error), /rolled by the server, never written/, "refused, but not by the number gate");
+  assert.equal(table.sheet(seat.id).currentHp, before);
+  table.close();
+});
+
+// A fight the model opens asks its real-dice seats for initiative itself,
+// through request_roll's own handler and with the model's tool call for the
+// cards to answer (src/lib/dm/initiative-ask.ts). The fight asked for those
+// rolls: the model's request_roll did not.
+await test("the initiative card a fight deals as the model opens it does not say the model asked for it, and the roll it lands is not marked as asked for", async () => {
+  const { table, seat } = await realDiceTable({ ttsEnabled: false });
+  const model = await fakeModel();
+  try {
+    model.pointAt(table);
+    model.script([reply({ calls: [modelCall("start_encounter", { enemies: [{ monster: "goblin", count: 1 }] })] }), reply({ text: "Steel is drawn." })]);
+    await model.turn(table, "I kick the door in.", seat.id, table.sheet(seat.id).userId);
+    const cards = listOpenPendingRolls(table.campaignId).filter((pending) => pending.kind === "initiative");
+    assert.equal(cards.length, 1, `the fight dealt ${cards.length} initiative cards to its one real-dice seat`);
+    const [card] = cards;
+    assert.ok(card.toolCallId, "the card does not name the model's call it answers, so this case holds nothing");
+    assert.equal(card.carry?.asked, undefined, "the fight's own initiative card says the model asked for it");
+    const landed = await enter(table, card);
+    await settleQueue(table.campaignId);
+    assert.ok(getDmTurn(card.turnId).rollIds.includes(landed.id), "the initiative is not on the turn");
+    assert.deepEqual(marksOf(card.turnId).asked, [], "the fight's own initiative is marked as a roll the model asked for");
+  } finally {
+    model.close();
+    table.close();
+  }
 });
 
 await test("an AI's turn that waits on a player's dice twice hands the model each card's roll once, and holds each roll once", async () => {
@@ -1187,8 +1361,9 @@ await test("dice a player entered for a held call that is refused once they land
     } else {
       assert.deepEqual(rollHomes(roll.id).lines, [], `${what}: a table the AI runs posted a line for them`);
     }
+    assert.equal(getRoll(roll.id).applied, false, `${what}: the landing stamped the dice`);
+    assert.deepEqual(marksOf(turn.id), { asked: [], paid: [] }, `${what}: the dice of a refused call are marked as a roll an AI GM asked for`);
     if (actor === "ai") {
-      assert.equal(getRoll(roll.id).applied, true, "the dice of a refused call are not spent on an AI's turn");
       table.say("player", "I drink what is left in the flask.", sheet);
       const before = table.sheet(roller.id).currentHp;
       const total = getRoll(roll.id).total;
@@ -1196,8 +1371,6 @@ await test("dice a player entered for a held call that is refused once they land
       assert.equal(healed.ok, false, `a bare heal of ${total}, the total of the refused call's dice, was taken`);
       assert.match(String(healed.error), /rolled by the server, never written/, `refused, but not by the number gate: ${healed.error}`);
       assert.equal(table.sheet(roller.id).currentHp, before);
-    } else {
-      assert.equal(getRoll(roll.id).applied, false, `${what}: a person's turn stamped the dice spent`);
     }
     const done = getDmTurn(turn.id);
     done.status = "done";

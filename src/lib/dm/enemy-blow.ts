@@ -237,6 +237,25 @@ export function landCreatureBlow(input: {
   });
 }
 
+// The creature still standing that a damage roll's target names, or null.
+function standingTarget(encounter: Encounter, targetEnemyRef: string) {
+  const enemy = resolveTargetFoe(encounter.campaignId, encounter, targetEnemyRef);
+  return enemy && enemy.status === "alive" ? enemy : null;
+}
+
+// Whether the server lands a damage roll that names this target itself as
+// the roll resolves (autoApplyDamageRoll below): a fight is running and the
+// name is a creature still standing in it. Asked by the two sites that put
+// such a roll on record for an AI GM's request_roll (invoke-roll.ts,
+// pending-roll-land.ts), before they record it: a roll the server lands is
+// not marked as asked for, since nothing of it is left for the GM to send
+// (roll-record.ts `asked`). One it cannot land is answered with a warning
+// that tells the GM to send the total, and is marked so the total pays.
+export function serverLandsDamageRoll(campaignId: string, targetEnemyRef: string): boolean {
+  const encounter = getActiveEncounter(campaignId);
+  return Boolean(encounter && standingTarget(encounter, targetEnemyRef));
+}
+
 // A resolved damage roll that names its target: apply it before the model
 // even sees the number. Returned payload merges into the roll's tool result.
 export function autoApplyDamageRoll(
@@ -253,8 +272,8 @@ export function autoApplyDamageRoll(
   if (!encounter) {
     return { warning: "No active encounter; this damage was not applied to anyone." };
   }
-  const enemy = resolveTargetFoe(encounter.campaignId, encounter, targetEnemyRef);
-  if (!enemy || enemy.status !== "alive") {
+  const enemy = standingTarget(encounter, targetEnemyRef);
+  if (!enemy) {
     return {
       warning: `targetEnemyId "${targetEnemyRef}" matched no living enemy; the damage was NOT applied. Call apply_damage with an exact enemyId from GAME STATE.`,
     };

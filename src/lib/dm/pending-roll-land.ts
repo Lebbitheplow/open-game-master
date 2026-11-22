@@ -17,7 +17,7 @@ import {
   type PendingRoll,
 } from "@/lib/db/dm-turns";
 import { getDatabase } from "@/lib/db/core";
-import { kindAndRoller, markRollSpent, type StoredRoll } from "@/lib/db/rolls";
+import { kindAndRoller, type StoredRoll } from "@/lib/db/rolls";
 import { cardRoller } from "@/lib/dm/roll-card";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
@@ -30,7 +30,7 @@ import { heroRollTag } from "@/lib/dice-script-logic";
 import { throwDamage } from "@/lib/dm/attack-damage-dice";
 import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
-import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
+import { applyPendingDamageRoll, serverLandsDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
 import { lostSwingNote, parkedTargetAc, resolvePendingPcDamage } from "@/lib/dm/pc-attack-parked";
 import { attackTurnOver, type AttackRecord } from "@/lib/dm/attack-record";
@@ -193,6 +193,11 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
         // happened at the table).
         landing,
         answers: pending.id,
+        // The card says whether an AI GM's request_roll dealt it
+        // (invoke-roll.ts): nothing here works that out from the card's
+        // shape or its turn. A total the server lands itself, below, leaves
+        // nothing for the GM to send.
+        asked: pending.carry?.asked === true && !(pending.kind === "damage" && pending.targetEnemyId && serverLandsDamageRoll(campaignId, pending.targetEnemyId)),
       });
       resolvePendingRoll(pending.id, landing.status, made.id);
       return made;
@@ -270,20 +275,6 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
     settleTurn(campaign, holder);
     carryEndTurn(campaign, pending);
   });
-  // The dice the landing threw are the engine's own, used where they were
-  // thrown (a hit's damage, its rider's, the swings queued behind it), as a
-  // call's are (held-call.ts spendOwnRolls). They join the turn as they are
-  // made (roll-record.ts), so on an AI's turn they are stamped spent before
-  // it resumes: a bare number the model sends then is paid for only by a
-  // roll it asked for (ai-gate.ts number). The landed roll itself is on the
-  // turn with them, and is left out: it stays the model's to use.
-  if (parkedOn?.actor === "ai") {
-    for (const id of (getDmTurn(pending.turnId)?.rollIds ?? []).slice(parkedOn.rollIds.length)) {
-      if (id !== roll.id) {
-        markRollSpent(id);
-      }
-    }
-  }
   const after = record ? getDmTurn(pending.turnId) : null;
   if (record && after) {
     postPersonsRecord(campaign, after, record);

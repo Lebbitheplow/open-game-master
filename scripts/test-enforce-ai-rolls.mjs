@@ -36,6 +36,7 @@ function modelRolls(world, args, toolCallId = "call_1") {
     new Map(sheets.map((sheet) => [sheet.id, sheet])),
     heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(world.campaignId)),
     { toolCallId },
+    true,
   );
   return { result, turn };
 }
