@@ -2,7 +2,7 @@
 // hit points every 10 minutes, provided that you have at least 1 hit
 // point." The clock's half of it (src/lib/db/clock.ts advanceClock): every
 // ten-minute mark the clock moves past heals a worn, attuned ring's wearer
-// a d6, rolled where the table sees it. Nothing read the ring before: its
+// a d6, rolled where the table sees it, until they are whole. Nothing read the ring before: its
 // wearer healed nothing on the road or through a short rest.
 //
 // SRD 5.1, Ioun Stone, Regeneration: "You regain 15 hit points at the end of
@@ -13,9 +13,9 @@
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import { rollExpression } from "@/lib/dice";
+import { diceExpression, rollExpression } from "@/lib/dice";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
-import { regainHitPoints } from "@/lib/dm/regain";
+import { regainHitPoints, regainRoom } from "@/lib/dm/regain";
 import { wearsWorkingItem } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -47,7 +47,18 @@ function ringHeals(campaign: Campaign, sheet: CharacterSheet, marks: number) {
   if (!marks || !heals(sheet, REGENERATION_RING)) {
     return;
   }
-  const rolled = rollExpression(`${marks}d6`);
+  // No more dice than the hit points the wearer is short of: each d6 heals at
+  // least 1, so a die past that count changes nothing, and a wearer who can
+  // regain none (mummy rot, Chill Touch) rolls none. Rolled for every mark of
+  // a day, the dice healed a wearer 5 short as they would a wearer 500 short,
+  // and a cursed wearer's were thrown for nothing.
+  const dice = Math.min(marks, regainRoom(campaign.id, sheet));
+  if (dice < 1) {
+    return;
+  }
+  // Still more, for a wearer far down over most of a day, than one term of a
+  // roll holds: the count is written as a roll may hold it.
+  const rolled = rollExpression(diceExpression(dice, 6));
   // On the turn of the call that moved the clock; the clock moved outside
   // one holds no turn.
   recordRoll({
@@ -55,7 +66,7 @@ function ringHeals(campaign: Campaign, sheet: CharacterSheet, marks: number) {
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "custom",
-    detail: `${REGENERATION_RING}: ${marks * 10} minutes`,
+    detail: `${REGENERATION_RING}: ${dice * 10} minutes`,
     result: rolled,
     // Thrown here, on the server's dice.
     landing: null,

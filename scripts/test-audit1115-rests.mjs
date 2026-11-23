@@ -165,6 +165,62 @@ await test("R06 a worn, attuned Ring of Regeneration heals 1d6 every 10 minutes 
   assert.equal(table.sheet(wearer.id).currentHp, 60);
 });
 
+await test("R06 a day on the clock heals the ring's wearer, in a GM's call and with the clock moved by hand: a d6 for each ten minutes until they are whole, more dice than one term of a roll may hold for a wearer far down, a handful for one who is 5 short, and none for one who can regain nothing", async () => {
+  // The ring heals for every mark of a day (regeneration-ring.ts MOST_MARKS),
+  // and a roll's term holds 100 dice at most (src/lib/dice.ts). Asked as
+  // "144d6" the roll threw, and with it the rest of whatever moved the clock:
+  // a day passed, a day's journey, the GM's own clock.
+  const { advanceClock } = await import("../src/lib/db/clock.ts");
+  const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+  const ring = { name: "Ring of Regeneration", qty: 1, attuned: true, equipped: true };
+  const ringRolls = (table) => listRecentRolls(table.campaignId, 20).filter((entry) => entry.detail.startsWith("Ring of Regeneration"));
+  // One table and one wearer for each way, 300 at the most and `down` below it.
+  async function aDay(by, down, faces, more = {}) {
+    const table = await openTable();
+    const wearer = table.addHero({ class: "fighter", level: 5, maxHp: 300, equipment: [ring], hitDice: { die: "d10", total: 5, spent: 5 } });
+    table.patch(wearer.id, { currentHp: 300 - down, ...more });
+    table.clearDice();
+    table.diceLog();
+    const began = clockOf(table);
+    table.dice(...faces);
+    let moved;
+    try {
+      moved = by === "call" ? await table.invoke("pass_time", { amount: 1, unit: "days" }) : advanceClock(table.campaignId, 1, "days");
+    } finally {
+      // Dice a failure left queued are not the next case's.
+      if (!moved || moved.error) table.clearDice();
+    }
+    assert.ok(moved && !moved.error, `${by}: ${moved?.error}`);
+    const left = table.clearDice();
+    const d6s = table.diceLog().filter((die) => die.sides === 6).length;
+    assert.equal(clockOf(table) - began, 24 * 60, `${by}: the clock did not move the day`);
+    return { table, wearer, left, d6s, rolls: ringRolls(table), hp: () => table.sheet(wearer.id).currentHp };
+  }
+  for (const by of ["call", "hand"]) {
+    // 290 short over 144 marks: every mark's die, each a 1.
+    const far = await aDay(by, 290, new Array(144).fill(1));
+    assert.equal(far.left, 0, `${by}: ${far.left} of the ring's 144 dice were never rolled`);
+    assert.equal(far.d6s, 144, `${by}: the ring's d6s`);
+    assert.equal(far.rolls.length, 1, `${by}: ${far.rolls.length} rolls on record for the day`);
+    assert.equal(far.rolls[0].total, 144, by);
+    assert.equal(far.rolls[0].detail, "Ring of Regeneration: 1440 minutes");
+  }
+  // Moved by hand nothing else heals them: the ring's 144 and no more.
+  const far = await aDay("hand", 290, new Array(144).fill(1));
+  assert.equal(far.hp(), 10 + 144);
+
+  // 5 short: five dice make them whole whatever they show, and no sixth is thrown.
+  const near = await aDay("hand", 5, [1, 1, 1, 1, 1, 6, 6, 6]);
+  assert.equal(near.left, 3, "a die was thrown for a wearer already whole");
+  assert.equal(near.hp(), 300);
+  assert.deepEqual(near.rolls.map((roll) => [roll.total, roll.detail]), [[5, "Ring of Regeneration: 50 minutes"]]);
+
+  // A wearer who can regain nothing rolls nothing, and heals nothing.
+  const cursed = await aDay("hand", 290, [], { conditions: ["cursed (mummy rot)"] });
+  assert.deepEqual(cursed.rolls, [], "the ring's dice were thrown for a wearer who cannot regain hit points");
+  assert.ok(cursed.hp() <= 10, `a cursed wearer healed to ${cursed.hp()}`);
+});
+
 await test("R07 a barbarian or monk with Draconic Resilience stands at the better of the two unarmored armor classes", async () => {
   // SRD 5.1: Draconic Resilience, "when you aren't wearing armor, your AC
   // equals 13 + your Dexterity modifier"; Unarmored Defense, 10 + DEX + CON
