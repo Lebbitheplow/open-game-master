@@ -16,6 +16,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { recordRoll } from "@/lib/dm/roll-record";
+import { checkParts } from "@/lib/roll-parts";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { withSpellCheckBonus } from "@/lib/dm/ar-ws-spell-check";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -89,7 +90,7 @@ export function rollCharacterCheck(
   const resolved = resolveCheck(campaign, sheet, check, waits);
   if ("error" in resolved) {
     // An unknown skill: fall back to the plain ability, never to nothing.
-    const outcome = rollCard(campaign, turn, sheet.id, check.skill ? "skill_check" : "ability_check", `${detail}: ${check.skill ?? check.ability ?? "check"}`, d20Expression(0, check.advantage ?? "none"), null);
+    const outcome = rollCard(campaign, turn, sheet.id, check.skill ? "skill_check" : "ability_check", `${detail}: ${check.skill ?? check.ability ?? "check"}`, d20Expression(0, check.advantage ?? "none"), null, undefined, checkParts(check));
     return { total: outcome.total, expression: "1d20", notes: [resolved.error] };
   }
   if ("autoFail" in resolved) {
@@ -103,6 +104,7 @@ export function rollCharacterCheck(
     kind,
     expression: resolved.expression,
     detail: `${detail}: ${resolved.detail}`.slice(0, 120),
+    parts: resolved.parts,
     dc: check.dc ?? null,
     ...(check.advantage ? { advantage: check.advantage } : {}),
     settleHeldDie: waits,
@@ -113,6 +115,7 @@ export function rollCharacterCheck(
     requestedBy: "dm",
     kind,
     detail: `${detail}: ${resolved.detail}`.slice(0, 120),
+    parts: resolved.parts,
     ...(check.dc ? { dc: check.dc } : {}),
     result: outcome,
     turn,
@@ -170,13 +173,14 @@ export function rollFeatureSave(
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const said = `${sheet.name}: ${ability.toUpperCase()} save, ${detail}`.slice(0, 120);
-  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: said, dc, settleHeldDie: waits });
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: said, parts: resolved.parts, dc, settleHeldDie: waits });
   recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "saving_throw",
     detail: said,
+    parts: resolved.parts,
     dc,
     result: outcome,
   });

@@ -328,7 +328,7 @@ export function concentrationShaken(
     if (!enemy?.concentration || enemy.status !== "alive") {
       continue;
     }
-    const save = rollEnemySave(campaign.id, enemy, ability, dc, { magical: true, record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save to keep concentrating` } });
+    const save = rollEnemySave(campaign.id, enemy, ability, dc, { magical: true, record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save to keep concentrating`, purpose: "concentration" } });
     if (!save.success) {
       const spell = enemy.concentration;
       setEnemyConcentration(enemy.id, null);
@@ -341,7 +341,7 @@ export function concentrationShaken(
     if (!sheet?.concentratingOn) {
       continue;
     }
-    const save = rollCharacterSave(campaign, turn, sheet, ability, dc, `${sheet.name}: ${ability.toUpperCase()} save to keep concentrating`);
+    const save = rollCharacterSave(campaign, turn, sheet, ability, dc, `${sheet.name}: ${ability.toUpperCase()} save to keep concentrating`, undefined, null, null, false, { purpose: "concentration" });
     if (!save.success) {
       const spell = breakConcentration(campaign, turn.id, sheet.id, "the storm broke it");
       if (spell) {

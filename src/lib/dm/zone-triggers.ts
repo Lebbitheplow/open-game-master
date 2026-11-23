@@ -225,7 +225,7 @@ function strike(
     // Sleet Storm's concentration save is its own, whatever the DEX save did.
     const holding = getEnemy(enemy.id);
     if (trigger.concentrationSave && holding?.status === "alive" && holding.concentration) {
-      const kept = rollEnemySave(campaign.id, holding, "con", dc, { magical: true, record: { detail: `${holding.displayName}: CON save to keep concentration in ${zone.spell}` } });
+      const kept = rollEnemySave(campaign.id, holding, "con", dc, { magical: true, record: { detail: `${holding.displayName}: CON save to keep concentration in ${zone.spell}`, purpose: "concentration" } });
       if (!kept.success) {
         const spell = holding.concentration;
         setEnemyConcentration(holding.id, null);
@@ -289,7 +289,7 @@ function strike(
     // Sleet Storm's concentration save is its own, whatever the DEX save did.
     const holding = getSheetById(sheet.id);
     if (trigger.concentrationSave && holding?.concentratingOn && !holding.deathSaves?.dead) {
-      const kept = rollCharacterSave(campaign, turn, holding, "con", dc, `CON save to keep concentration in ${zone.spell}`);
+      const kept = rollCharacterSave(campaign, turn, holding, "con", dc, `CON save to keep concentration in ${zone.spell}`, undefined, null, null, false, { purpose: "concentration" });
       if (!kept.success) {
         const spell = breakConcentration(campaign, turn.id, holding.id, `lost in ${zone.spell}`);
         if (spell) {

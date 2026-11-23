@@ -22,6 +22,7 @@ import { getCurrentLocation } from "@/lib/db/locations";
 import type { ObjectRecord } from "@/lib/dm/march-state";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
+import { attackParts, type RollParts } from "@/lib/roll-parts";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { d20Expression, isValidExpression, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { ragingMeleeBonus, type AttackProfile } from "@/lib/dm/attack-logic";
@@ -89,8 +90,8 @@ function keyOf(campaignId: string, name: string): string {
 // A roll at an object, on record. A character's own attack and damage come
 // through rollCharacterD20, so the door reads whose dice they were: entered
 // at the table, they are stored and sent as the player's.
-function cardRoll(campaign: Campaign, turn: DmTurn | null, characterId: string | null, kind: "attack" | "damage", detail: string, result: RollResult, attacker: RollAttacker) {
-  recordRoll({ campaignId: campaign.id, characterId, requestedBy: "dm", kind, detail, result, attacker, turn });
+function cardRoll(campaign: Campaign, turn: DmTurn | null, characterId: string | null, kind: "attack" | "damage", detail: string, result: RollResult, attacker: RollAttacker, parts?: RollParts) {
+  recordRoll({ campaignId: campaign.id, characterId, requestedBy: "dm", kind, detail, ...(parts ? { parts } : {}), result, attacker, turn });
 }
 
 // What the clock keeps of a named object, or null for one never named.
@@ -203,15 +204,19 @@ export function damageObject(
     // a natural 1. The object's roll was a plain d20 whatever they were.
     const own = objectSwingState(sheet, built.profile);
     notes.push(...own.notes);
+    // The weapon swung, as a field (src/lib/roll-parts.ts): the character's
+    // last attack roll is what a fight's guess at the hand in use reads.
+    const swung = attackParts({ name: built.profile.weapon, base: built.profile.base });
     const attack = rollCharacterD20(campaign, sheet, {
       kind: "attack",
+      parts: swung,
       expression: d20Expression(built.profile.toHit, own.advantage).replace(/^(\d+d20(?:k[hl]\d+)?)/, hasHalflingLuck(sheet) ? "$1r1" : "$1"),
       detail: rollAgainst(built.profile.weapon, args.name ?? "an object"),
       advantage: own.advantage,
       attack: { ac },
     });
     const striker: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
-    cardRoll(campaign, turn, sheet.id, "attack", rollAgainst(built.profile.weapon, args.name ?? "an object"), attack, striker);
+    cardRoll(campaign, turn, sheet.id, "attack", rollAgainst(built.profile.weapon, args.name ?? "an object"), attack, striker, swung);
     const natural = attack.natural ?? 0;
     const hit = natural !== 1 && (natural === 20 || attack.total >= ac);
     if (!hit) {

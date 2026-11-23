@@ -32,7 +32,7 @@
 //
 // Then the row's record (issue #915). The seat enters its own dice for every
 // card the row parked, so the call runs to its end, and every roll the call
-// stored is held to four things:
+// stored is held to five things:
 //
 //   home    it is on one turn once, or on the one line its site posted for
 //           it: a roll on neither is thrown on the dice stage and never shown
@@ -55,9 +55,14 @@
 //           and for a site added later. An AI GM's request_roll marks the
 //           one roll it asked for, whether the server threw it or the seat
 //           entered it for the card.
+//   parts   it says in its fields what a rule reads back from it (issue
+//           #1064, src/lib/roll-parts.ts): a rule no longer reads a roll's
+//           words, so a check, save or attack whose words name a skill, an
+//           ability, the save that keeps concentration or a carried weapon,
+//           and whose fields do not, is one the rule has stopped seeing.
 //
 // One function does all of these (src/lib/dm/roll-record.ts recordRoll), and
-// every row passes all four. `rows` in scripts/roll-record-sites.json held
+// every row passes all five. `rows` in scripts/roll-record-sites.json held
 // the rows whose site recorded its roll by hand and missed one, with the
 // checks each failed; it is empty now. A row that fails a check it is not
 // listed there for fails this suite, and so does a row listed for a check
@@ -85,6 +90,8 @@ const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { ABILITIES, rollAbility, rollKeepsConcentration, rollPhysical, rollSkill, rollWeaponRow } = await import("../src/lib/roll-parts.ts");
+const { SRD_SKILLS } = await import("../src/lib/srd/index.ts");
 const { REAL_DICE_SCOPE } = await import("../src/lib/dice/held-rolls.ts");
 const { entryDice } = await import("../src/lib/dice.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
@@ -413,9 +420,44 @@ async function enterParked() {
 // What a source can say it is (src/lib/db/rolls.ts HazardKind).
 const HAZARDS = new Set(["fall", "gm", "trap", "item", "effect", "named"]);
 
+// What a rule read from a roll's words before its parts were stored, and its
+// fields do not say: the same roll read both ways, as stored and as a roll
+// from before the column would be.
+const SKILL_IDS = SRD_SKILLS.map((skill) => skill.id);
+function partsGaps(roll) {
+  if (roll.parts === null) {
+    return ["stored without its parts, so it is read by its words"];
+  }
+  const sheet = roll.characterId ? world.sheet(roll.characterId) : null;
+  if (!sheet) {
+    return [];
+  }
+  const worded = { ...roll, parts: null };
+  const gaps = [];
+  const differs = (what, read) => {
+    const [said, held] = [read(worded), read(roll)];
+    if (said && said !== held) {
+      gaps.push(`its words say ${what} "${said}", and its fields ${held ? `"${held}"` : "nothing"}`);
+    }
+  };
+  if (roll.kind === "skill_check" || roll.kind === "ability_check") {
+    differs("the skill", (read) => rollSkill(read, SKILL_IDS));
+  }
+  if (roll.kind === "saving_throw" || roll.kind === "ability_check") {
+    differs("the ability", (read) => rollAbility(read, ABILITIES));
+  }
+  if (roll.kind === "saving_throw") {
+    differs("it keeps concentration:", (read) => (rollKeepsConcentration(read) ? "yes" : null));
+  }
+  if (roll.kind === "attack" && roll.attacker?.kind === "sheet" && roll.attacker.id === roll.characterId) {
+    differs("the weapon", (read) => rollWeaponRow(read, sheet.equipment)?.name ?? null);
+  }
+  return gaps;
+}
+
 function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false) {
   const rolls = rollsAfter(world.campaignId, mark);
-  const problems = { home: [], sent: [], roller: [], asked: [] };
+  const problems = { home: [], sent: [], roller: [], asked: [], parts: [] };
   const marked = [];
   const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;
   // The roll each entered card became: the one its card names, else the
@@ -432,6 +474,7 @@ function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false) {
   }
   for (const roll of rolls) {
     const what = `${roll.kind} "${roll.detail}"`;
+    problems.parts.push(...partsGaps(roll).map((gap) => `${what}: ${gap}`));
     // A roll card's roll (request_roll, an attack's parts) is on its turn
     // from the moment it lands, at either door: this row does not wait for
     // an AI's turn to resume, and no longer has to.
@@ -455,13 +498,13 @@ function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false) {
     // every seat may replay; what the log holds is read.
     const told = announced(world.campaignId, seq, roll.id).map((payload) => payload.source);
     if (entered.has(roll.id)) {
-      if (!/\(physical\)$/.test(roll.detail)) {
+      if (!rollPhysical(roll)) {
         problems.sent.push(`${what}: the seat's own dice, and the record does not say so`);
       }
       if (told.some((source) => source !== "physical") || (roll.visibility === "public" && !told.length)) {
         problems.sent.push(`${what}: the seat's own dice, sent as [${told.join(", ")}]`);
       }
-    } else if (told.some((source) => source !== "digital") || /\(physical\)$/.test(roll.detail)) {
+    } else if (told.some((source) => source !== "digital") || rollPhysical(roll)) {
       problems.sent.push(`${what}: the server's dice, sent as [${told.join(", ")}]`);
     } else if (roll.visibility === "public" && !told.length) {
       problems.sent.push(`${what}: the server's dice, for every seat, sent to none`);
@@ -499,7 +542,7 @@ function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false) {
   }
   return { problems, rolls: rolls.length };
 }
-const CHECKS = ["home", "sent", "roller", "asked"];
+const CHECKS = ["home", "sent", "roller", "asked", "parts"];
 const recordNow = {};
 
 async function run(entry, door, seed) {
@@ -594,14 +637,14 @@ for (const [index, entry] of rows.entries()) {
       });
     }
     const listed = RECORD_ROWS[id] ?? [];
-    await test(`${id}: every roll the call stored has one home, is sent as it was made, names its roller and is marked as asked for only by an AI GM's own request_roll${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
+    await test(`${id}: every roll the call stored has one home, is sent as it was made, names its roller, is marked as asked for only by an AI GM's own request_roll and says in its fields what a rule reads back${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
       assert.ok(record, `${id} did not run to its record`);
       const failing = CHECKS.filter((check) => record.problems[check].length);
       if (failing.length) {
         recordNow[id] = failing;
       }
       const fresh = failing.filter((check) => !listed.includes(check));
-      assert.deepEqual(fresh, [], `${id} fails a check of its record it is not listed for. Record the roll through recordRoll (src/lib/dm/roll-record.ts).\n  ${fresh.flatMap((check) => record.problems[check].map((problem) => `${check}: ${problem}`)).join("\n  ")}`);
+      assert.deepEqual(fresh, [], `${id} fails a check of its record it is not listed for. Record the roll through recordRoll (src/lib/dm/roll-record.ts), with its parts (src/lib/roll-parts.ts).\n  ${fresh.flatMap((check) => record.problems[check].map((problem) => `${check}: ${problem}`)).join("\n  ")}`);
       const closed = listed.filter((check) => !failing.includes(check));
       assert.deepEqual(closed, [], `${id} now passes ${closed.join(", ")}: strike it from "rows" in scripts/roll-record-sites.json.`);
     });

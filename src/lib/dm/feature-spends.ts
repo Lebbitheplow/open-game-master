@@ -56,6 +56,7 @@ import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 import { classSaveDc, controlUndead } from "@/lib/dm/command-undead";
 import { openFailedSave, turnFailedSave } from "@/lib/dm/save-turned";
+import { rollAbility, rollResists } from "@/lib/roll-parts";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -592,14 +593,12 @@ function indomitable(campaign: Campaign, turnId: string, sheet: CharacterSheet):
       roll.dc !== null &&
       roll.total < roll.dc,
   );
-  const ability = failed
-    ? ((/\b(str|dex|con|int|wis|cha)\b/i.exec(failed.detail)?.[1] ?? "").toLowerCase() as Ability | "")
-    : "";
+  const ability = failed ? (rollAbility(failed) ?? "") : "";
   if (!failed || !ability) {
     return { error: `${sheet.name} has no failed saving throw to reroll; Indomitable was not spent.`, refused: "rules" };
   }
   const dc = failed.dc!;
-  const against = /\bvs\.? (.+)$/i.exec(failed.detail)?.[1];
+  const against = rollResists(failed);
   const save = rollFeatureSave(campaign, sheet, ability, dc, "Indomitable reroll", against);
   const bulwark = bulwarkReroll(campaign, sheet, ability, dc, against);
   if (!save.success) {
@@ -645,8 +644,7 @@ function bulwarkReroll(campaign: Campaign, sheet: CharacterSheet, ability: Abili
     if (roll.characterId === sheet.id || roll.kind !== "saving_throw" || roll.dc !== dc || roll.total >= dc) {
       return false;
     }
-    const rolledAbility = (/\b(str|dex|con|int|wis|cha)\b/i.exec(roll.detail)?.[1] ?? "").toLowerCase();
-    return rolledAbility === ability && (!encounter || withinFeet(encounter.id, sheet.id, roll.characterId ?? "", held.effect.rangeFt));
+    return rollAbility(roll) === ability && (!encounter || withinFeet(encounter.id, sheet.id, roll.characterId ?? "", held.effect.rangeFt));
   });
   const ally = failed?.characterId ? getSheetById(failed.characterId) : null;
   if (!ally || ally.campaignId !== campaign.id) {

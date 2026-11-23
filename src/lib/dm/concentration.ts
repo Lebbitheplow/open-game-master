@@ -484,7 +484,7 @@ export function concentrationDamageHook(
     null,
     warCaster || focus ? { advantage: "advantage", reason: `${warCaster ? "War Caster" : focus}: advantage to keep concentration` } : redundant ? { advantage: "advantage", reason: "Redundant Systems: advantage to keep concentration" } : null,
     false,
-    { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}) },
+    { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}), purpose: "concentration" },
   );
   // An artificer's Mind Sharpener turns the failure into a success with a
   // charge and the reaction (src/lib/dm/infusion-charges.ts).

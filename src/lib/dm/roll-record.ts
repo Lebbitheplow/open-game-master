@@ -57,6 +57,7 @@ import { getDatabase } from "@/lib/db/core";
 import { joinStoredTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { insertRoll, revealRollRow, type RollInsert, type RollKind, type StoredRoll } from "@/lib/db/rolls";
 import { publishWithSeq } from "@/lib/events";
+import { PHYSICAL } from "@/lib/roll-parts";
 
 // How the dice came in: thrown by the server, or rolled by the player on
 // their own dice and entered (src/lib/dm/pending-roll-land.ts RollLanding).
@@ -101,8 +102,9 @@ export function recordRoll(record: RollRecord): StoredRoll {
   const { turn, turnId, home, landing: said, send, answers, asked, ...insert } = record;
   const landing = said === undefined ? (globalThis.__odmTakenLanding?.(insert.characterId ?? null, insert.kind) ?? null) : said;
   // Dice rolled at the table are on record as the player's own, as a roll
-  // card's are (pending-roll-land.ts).
-  const stored = { ...insert, ...(landing?.physical ? { detail: `${insert.detail || insert.kind} (physical)` } : {}) } as RollInsert;
+  // card's are (pending-roll-land.ts): a field says so (roll-parts.ts
+  // rollPhysical), and the words say it to whoever reads the card.
+  const stored = { ...insert, ...(landing?.physical ? { detail: `${insert.detail || insert.kind} ${PHYSICAL}`, ...(insert.parts === null ? {} : { parts: { ...insert.parts, physical: true } }) } : {}) } as RollInsert;
   // An id handed with a turn that is not that turn's own wins: the roll joins
   // one turn, never the two.
   const id = turnId ?? turn?.id ?? null;

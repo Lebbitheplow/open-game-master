@@ -625,8 +625,8 @@ export function handleHaggle(campaign: Campaign, rawArguments: string, at: Trade
   // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
   // they roll it, and the price moves once it lands.
   const detail = `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`;
-  const rolled = rollCharacterD20(campaign, sheet, { kind: "skill_check", expression: resolved.expression, detail, dc, settleHeldDie: waits });
-  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: rolled });
+  const rolled = rollCharacterD20(campaign, sheet, { kind: "skill_check", expression: resolved.expression, detail, parts: resolved.parts, dc, settleHeldDie: waits });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail, parts: resolved.parts, dc, result: rolled });
   const steps = haggleSteps(skill, rolled.total, dc);
   // A companion who already haggled here keeps the price they got.
   const joining = company.filter((other) => !dealFor(shop, other.id));

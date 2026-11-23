@@ -17,6 +17,7 @@ import { rollExpression, type RollOptions, type RollResult } from "@/lib/dice";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { attackOn, rollAgainst, thrownOn, type Thrown } from "@/lib/roll-labels";
+import type { RollParts } from "@/lib/roll-parts";
 import { effectSource, gmSource } from "@/lib/roll-sources";
 
 // `turn` is the DM turn the card belongs to, when the site holds one; inside
@@ -36,6 +37,7 @@ export function rollCard(
   expression: string,
   attacker: RollAttacker,
   options?: RollOptions,
+  parts?: RollParts,
 ): RollResult;
 export function rollCard(
   campaign: Pick<Campaign, "id">,
@@ -46,6 +48,7 @@ export function rollCard(
   expression: string,
   attacker: RollAttacker | null,
   options?: RollOptions,
+  parts?: RollParts,
 ): RollResult;
 export function rollCard(
   campaign: Pick<Campaign, "id">,
@@ -57,6 +60,8 @@ export function rollCard(
   attacker: RollAttacker | null,
   // How the dice are thrown (an Empowered Spell's rerolls: src/lib/dice.ts).
   options: RollOptions = {},
+  // What the roll says of itself as fields (src/lib/roll-parts.ts).
+  parts?: RollParts,
 ): RollResult {
   const outcome = rollExpression(expression, undefined, options);
   if (!outcome.terms.some((term) => term.kind === "dice")) {
@@ -69,6 +74,7 @@ export function rollCard(
     // The signatures above hold an attack or damage roll to a named roller.
     ...(kind === "attack" || kind === "damage" ? { kind, attacker: attacker as RollAttacker } : { kind, attacker }),
     detail: detail.slice(0, 120),
+    ...(parts ? { parts } : {}),
     result: outcome,
     turn,
     // Thrown here, on the server's dice.
@@ -233,6 +239,8 @@ export function secretRoll(
   detail: string,
   expression: string,
   dc: number | null = null,
+  // What the roll says of itself as fields (src/lib/roll-parts.ts).
+  parts?: RollParts,
 ) {
   const outcome = rollExpression(expression);
   const roll = recordRoll({
@@ -241,6 +249,7 @@ export function secretRoll(
     requestedBy: "dm",
     kind,
     detail: detail.slice(0, 200),
+    ...(parts ? { parts } : {}),
     result: outcome,
     dc,
     visibility: "secret",

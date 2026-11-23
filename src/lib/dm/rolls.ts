@@ -1,6 +1,6 @@
 import type { LentRoll } from "@/lib/srd/genre-a-lent";
 import { juryRigged } from "@/lib/dm/genre-cc-a-fixer";
-import { named } from "@/lib/dm/roll-about";
+import { listedAgainst, named } from "@/lib/dm/roll-about";
 import { LUCK_SPEND, computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { saveAuraRiders, type GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
@@ -38,6 +38,7 @@ import { senseCheckFailure } from "@/lib/srd/sense-checks";
 import { sightRotPenalty } from "@/lib/srd/afflictions";
 import { unknownRef, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { checkParts, type RollParts } from "@/lib/roll-parts";
 import { authoredCheckFloor } from "@/lib/srd/authored-effects-more";
 import { authoredCheckSwap } from "@/lib/srd/authored-effects";
 import { tranceResolved } from "@/lib/dm/ar-ws-trance-floor";
@@ -397,6 +398,10 @@ function resolveUnfloored(
   | {
       expression: string;
       detail: string;
+      // What the roll is, as fields, for the site that records it: a check's
+      // skill or ability, a save's ability and what it resists
+      // (src/lib/roll-parts.ts). None where no rule reads anything back.
+      parts?: RollParts;
       conditionNotes?: string[];
       // Condition name the caller must clear: an inspiration die was folded
       // into the expression and is now spent.
@@ -718,6 +723,7 @@ function resolveUnfloored(
     return {
       expression: `${base}${bonusDie}${featRider?.die ? `+${featRider.die}` : ""}`,
       detail: skill.id,
+      parts: checkParts({ skill: skill.id }),
       ...(skillNotes.length ? { conditionNotes: skillNotes } : {}),
       ...inspirationFields,
     };
@@ -808,6 +814,7 @@ function resolveUnfloored(
       // Jury-Rig: "gives a tool user +1d4 for 1 hour" (genre-cc-a-spends.ts).
       expression: `${luckyBase}${bonusDie}${args.kind === "ability_check" && args.tool && juryRigged(sheet) ? "+1d4" : ""}`,
       detail: args.ability,
+      parts: { ...checkParts({ ability: args.ability }), ...(args.kind === "saving_throw" && listedAgainst(named(args.against)) ? { resists: listedAgainst(named(args.against)) } : {}) },
       ...(abilityNotes.length ? { conditionNotes: abilityNotes } : {}),
       ...inspirationFields,
     };

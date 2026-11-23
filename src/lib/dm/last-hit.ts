@@ -44,6 +44,7 @@ import { wardOf } from "@/lib/dm/arcane-ward";
 import { actedThisTurn, recordTurnEnd } from "@/lib/dm/last-save";
 import type { BlowFlags } from "@/lib/dm/pc-damage";
 import type { Retort, RiderMark, WaitingAnswer } from "@/lib/dm/retort-logic";
+import { rollKeepsConcentration } from "@/lib/roll-parts";
 
 export type SwingRecord = {
   // The attack this swing was, when a multiattack swings several (a
@@ -819,7 +820,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         (roll) =>
           roll.characterId === characterId &&
           roll.kind === "saving_throw" &&
-          roll.detail.startsWith("CON save to keep concentration") &&
+          rollKeepsConcentration(roll) &&
           roll.createdAt >= from,
       )
       .at(-1);

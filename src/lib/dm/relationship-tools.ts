@@ -358,6 +358,7 @@ export function handleRelationshipBeat(
       kind: "skill_check",
       expression: resolved.expression,
       detail: `${sheet.name}: ${spec.skill} toward ${subject.name}`,
+      parts: resolved.parts,
       dc: target,
       settleHeldDie: waits,
     });
@@ -368,6 +369,7 @@ export function handleRelationshipBeat(
       requestedBy: "dm",
       kind: "skill_check",
       detail: `${sheet.name}: ${spec.skill} toward ${subject.name}`,
+      parts: resolved.parts,
       dc,
       result: rolled,
       turn,

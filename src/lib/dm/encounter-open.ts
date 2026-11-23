@@ -105,6 +105,7 @@ export function decideAmbush(
       kind: "skill_check",
       expression: resolved.expression,
       detail: "stealth, lying in wait",
+      parts: resolved.parts,
       dc: unseen,
       settleHeldDie: waits,
     });
@@ -116,6 +117,7 @@ export function decideAmbush(
       requestedBy: "dm",
       kind: "skill_check",
       detail: "stealth, lying in wait",
+      parts: resolved.parts,
       result: outcome,
     });
     stealth.push(outcome.total);

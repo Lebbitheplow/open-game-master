@@ -22,6 +22,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 const { test, finish } = suite("test-enforce-after-roll");
 const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { rollPhysical } = await import("../src/lib/roll-parts.ts");
 const { AFTER_ROLL_SECONDS, keepAfterRollWhenDue, rearmAfterRollKeeps } = await import("../src/lib/dm/after-roll-timer.ts");
 const { pauseTable, resumeTable } = await import("../src/lib/dm/table-break.ts");
 const { subscribe } = await import("../src/lib/events.ts");
@@ -268,7 +269,7 @@ await test("Typed dice wait too; a server die on them drops the \"(physical)\" l
   await choose(first.id, { use: "bardic" });
   world.clearDice();
   assert.equal(getPendingRoll(first.id).status, "fallback");
-  assert.ok(!landed(first.id).detail.includes("physical"));
+  assert.ok(!rollPhysical(landed(first.id)));
 
   hero({ conditions: ["bardic inspiration (d8)"] });
   await check();

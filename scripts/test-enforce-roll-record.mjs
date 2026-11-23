@@ -75,7 +75,12 @@
 //   - the dice the clock throws inside a GM call (an item's charges at dawn,
 //     a Ring of Regeneration's) are on that call's turn;
 //   - at the engine: Sleep's pool and a creature's initiative are on the
-//     turn of the call that rolled them.
+//     turn of the call that rolled them;
+//   - a roll says what a rule reads back from it in its fields, as it is
+//     recorded (issue #1064, src/lib/roll-parts.ts): one that names nothing
+//     still has its parts, a roll card keeps them while it waits and hands
+//     them over as its dice land, and a database from before the column
+//     keeps its rolls without them, read by their words.
 //
 // And one thing the door must not widen: the number gate for an AI GM's heal
 // and apply_damage (src/lib/dm/ai-gate.ts) takes a bare number that equals a
@@ -114,6 +119,7 @@ const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const { entryDice, rollExpression } = await import("../src/lib/dice.ts");
 const { isHeldPark, parkHeldCall, registerNamedHeldRunner, runHeld, takeDecided } = await import("../src/lib/dm/held-call.ts");
 const { recordRoll, revealRolls } = await import("../src/lib/dm/roll-record.ts");
+const { checkParts, rollPhysical, rollSkill, saveParts } = await import("../src/lib/roll-parts.ts");
 const { dmRoll, rollCard, secretRoll } = await import("../src/lib/dm/roll-card.ts");
 const { rollCharacterCheck, rollFeatureSave } = await import("../src/lib/dm/contest-roll.ts");
 const { characterSave } = await import("../src/lib/dm/between-io.ts");
@@ -293,16 +299,20 @@ await test("dice the player entered are on record and sent as physical with noth
       const before = recordRoll(aRoll({ kind: "saving_throw", detail: "a save the server threw" }));
       const decided = takeDecided(hero.id, "saving_throw");
       assert.ok(decided, "the run was not handed the player's roll");
-      const theirs = recordRoll(aRoll({ kind: "saving_throw", detail: "a save", dc: 10, result: decided.outcome }));
+      const theirs = recordRoll(aRoll({ kind: "saving_throw", detail: "a save", dc: 10, result: decided.outcome, parts: saveParts("wis") }));
       // A site that threw its dice where it stands says so.
       const after = recordRoll(aRoll({ kind: "saving_throw", detail: "another the server threw", landing: null }));
       return { before, theirs, after };
     },
     { decided: [entered], tape: [], recorded: new Map() },
   );
+  // A field says whose dice they were, and the words still say it to a reader.
+  assert.ok(rollPhysical(getRoll(made.theirs.id)), "the record does not say the dice were the player's own");
+  assert.deepEqual(getRoll(made.theirs.id).parts, { ...saveParts("wis"), physical: true }, "what the site said of the roll did not stand beside whose dice they were");
   assert.equal(getRoll(made.theirs.id).detail, "a save (physical)");
   assert.deepEqual(announced(world.campaignId, seq, made.theirs.id).map((payload) => payload.source), ["physical"], "the stage was told to throw a die the player had already rolled");
   for (const roll of [made.before, made.after]) {
+    assert.ok(!rollPhysical(getRoll(roll.id)));
     assert.doesNotMatch(getRoll(roll.id).detail, /physical/);
     assert.deepEqual(announced(world.campaignId, seq, roll.id).map((payload) => payload.source), ["digital"]);
   }
@@ -1866,6 +1876,62 @@ await test("a server that opens a database from before the column files its open
   getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(world.campaignId);
   filed.status = "done";
   saveDmTurn(filed);
+});
+
+// ---- a roll's parts (issue #1064) ----
+
+await test("a roll says what it is in its fields as it is recorded, and one that names nothing still has its parts", () => {
+  const turn = newTurn();
+  const save = recordRoll(aRoll({ turnId: turn.id, kind: "saving_throw", detail: "a save against the storm", parts: saveParts("dex") }));
+  assert.deepEqual(getRoll(save.id).parts, saveParts("dex"));
+  const plain = recordRoll(aRoll({ turnId: turn.id }));
+  assert.deepEqual(getRoll(plain.id).parts, {}, "a roll stored now has no parts, so a rule would read it by its words");
+});
+
+await test("a roll card keeps what its roll is while it waits and hands it to the door as the dice land, with whose dice they were; a card dealt before cards kept it lands a roll read by its words", async () => {
+  const { table, seat } = await realDiceTable();
+  const deal = async () => {
+    const out = await table.invoke("request_roll", { characterId: seat.id, kind: "skill_check", skill: "athletics", dc: 12, reason: "to force the gate" });
+    assert.equal(out.ok, true, `refused: ${out.error}`);
+    const [pending] = listOpenPendingRolls(table.campaignId);
+    assert.ok(pending, "the check did not wait on the seat's dice");
+    return pending;
+  };
+  const landed = (pending) => {
+    landPendingRoll(table.campaign(), pending, rollExpression("1d20", () => 14), { status: "submitted", physical: true, source: "physical" });
+    return getRoll(getDatabase().prepare("SELECT roll_id FROM pending_rolls WHERE id = ?").get(pending.id).roll_id);
+  };
+  try {
+    const card = await deal();
+    assert.deepEqual(card.parts, checkParts({ skill: "athletics" }), "the card does not keep what its roll is");
+    assert.deepEqual(landed(card).parts, { ...checkParts({ skill: "athletics" }), physical: true });
+    // A card dealt before cards kept their parts, landing now.
+    const old = await deal();
+    getDatabase().prepare("UPDATE pending_rolls SET parts_json = NULL WHERE id = ?").run(old.id);
+    const roll = landed(listOpenPendingRolls(table.campaignId).find((pending) => pending.id === old.id));
+    assert.equal(roll.parts, null, "a roll from a card with no parts was stored as one that has them, so no rule can find its skill");
+    assert.equal(rollSkill(roll, ["athletics"]), "athletics");
+    assert.ok(rollPhysical(roll));
+  } finally {
+    table.close();
+  }
+});
+
+await test("a server's start on a database from before rolls had parts adds the columns, and the rolls and cards stored before are left without them", () => {
+  const turn = newTurn();
+  const before = recordRoll(aRoll({ turnId: turn.id, kind: "skill_check", detail: "Grapple: athletics", parts: checkParts({ skill: "athletics" }) }));
+  const card = oldCard(turn);
+  getDatabase().exec("ALTER TABLE rolls DROP COLUMN parts_json");
+  getDatabase().exec("ALTER TABLE pending_rolls DROP COLUMN parts_json");
+  // A server start in a process of its own, on this suite's database.
+  execFileSync(process.execPath, [path.join(import.meta.dirname, "lib", "boot-db.mjs")], { env: process.env, stdio: "ignore" });
+  const old = getRoll(before.id);
+  assert.equal(old.parts, null, "a roll stored before its parts reads as one that has them");
+  assert.equal(rollSkill(old, ["athletics"]), "athletics", "a roll stored before its parts is no longer read by its words");
+  assert.equal(listOpenPendingRolls(world.campaignId).find((pending) => pending.id === card.id).parts, null);
+  const after = recordRoll(aRoll({ turnId: turn.id }));
+  assert.deepEqual(getRoll(after.id).parts, {});
+  getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(world.campaignId);
 });
 
 world.close();

@@ -38,6 +38,7 @@ import { damageDiceSteps } from "@/lib/dm/attack-damage-dice";
 import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
+import { attackParts } from "@/lib/roll-parts";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -298,6 +299,7 @@ export function pcOpportunitySwing(input: {
     // Halfling), this one too.
     expression: `${d20Expression(profile.toHit, advantage).replace(/^(\d+d20(?:k[hl]\d+)?)/, hasHalflingLuck(sheet) ? "$1r1" : "$1")}${attackRiders.diceSuffix}`,
     detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    parts: attackParts({ name: profile.weapon, base: profile.base }),
     advantage,
     attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },
   });
@@ -309,6 +311,7 @@ export function pcOpportunitySwing(input: {
     requestedBy: "dm",
     kind: "attack",
     detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    parts: attackParts({ name: profile.weapon, base: profile.base }),
     advantage,
     result: hitOutcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },

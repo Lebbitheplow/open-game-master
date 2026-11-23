@@ -462,6 +462,7 @@ await test("An attack refused for full hands says the choice is the player's, an
 // hands, and the only way to shoot on turn one was to drop the sword.
 
 const { insertRoll } = await import("../src/lib/db/rolls.ts");
+const { attackParts } = await import("../src/lib/roll-parts.ts");
 const ARCHER_PACK = () => [{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }];
 const heldNames = (sheet) => world.sheet(sheet.id).equipment.filter((item) => item.equipped === true).map((item) => item.name);
 const guessFlags = (sheet) => world.sheet(sheet.id).equipment.filter((item) => item.heldGuess).map((item) => item.name);
@@ -529,7 +530,9 @@ await test("handle_item's draw while the guess stands is free too, and says what
 await test("A fight's guess takes the weapon the character's own last attack roll used, when one is stored", async () => {
   await kit.endFight();
   world.patch(archer.id, { equipment: ARCHER_PACK() });
-  insertRoll({ campaignId: world.campaignId, characterId: archer.id, requestedBy: "dm", kind: "attack", detail: "Longbow vs Goblin", advantage: "none", result: { expression: "1d20+5", total: 17, rolls: [{ sides: 20, value: 12 }], modifier: 5 } });
+  // The roll as an attack stores it: the archer's own, with its weapon in
+  // its fields, which is what the guess reads (src/lib/roll-parts.ts).
+  insertRoll({ campaignId: world.campaignId, characterId: archer.id, requestedBy: "dm", kind: "attack", detail: "Longbow vs Goblin", attacker: { kind: "sheet", id: archer.id, name: archer.name }, parts: attackParts({ name: "Longbow", base: "Longbow" }), advantage: "none", result: { expression: "1d20+5", total: 17, rolls: [{ sides: 20, value: 12 }], modifier: 5 } });
   await kit.fight(1);
   assert.deepEqual(heldNames(archer), ["Leather Armor", "Longbow"]);
   assert.deepEqual(guessFlags(archer), ["Shortsword", "Longbow"]);

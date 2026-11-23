@@ -2,6 +2,7 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import type { ChatMessage } from "@/lib/model-client";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { RollKind, RollVisibility } from "@/lib/db/rolls";
+import type { RollParts } from "@/lib/roll-parts";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
@@ -585,6 +586,9 @@ export type PendingRoll = {
   // Who may read the roll once it lands; the DM's screen, kept while the
   // roll waits.
   visibility: RollVisibility;
+  // What the roll says of itself as fields, handed to the door as the dice
+  // land (src/lib/roll-parts.ts). Null on a card dealt before they were kept.
+  parts: RollParts | null;
   status: PendingRollStatus;
   rollId: string | null;
   createdAt: string;
@@ -595,6 +599,7 @@ type PendingRow = {
   thrown_json?: string | null;
   carry_json?: string | null;
   watch_json?: string | null;
+  parts_json?: string | null;
   id: string;
   campaign_id: string;
   turn_id: string;
@@ -639,6 +644,7 @@ function mapPending(row: PendingRow): PendingRoll {
     thrown: parseJson<ThrownRoll | null>(row.thrown_json ?? null, null),
     watch: parseJson<WatchStop | null>(row.watch_json ?? null, null),
     visibility: row.visibility ?? "public",
+    parts: typeof row.parts_json === "string" ? parseJson<RollParts>(row.parts_json, {}) : null,
     status: row.status,
     rollId: row.roll_id,
     createdAt: row.created_at,
@@ -847,6 +853,7 @@ export function createPendingRoll(input: {
   parkedFor?: ParkReason;
   thrown?: ThrownRoll;
   visibility?: RollVisibility;
+  parts?: RollParts;
 }): PendingRoll {
   const id = crypto.randomUUID();
   ensureParkColumn();
@@ -862,9 +869,9 @@ export function createPendingRoll(input: {
         INSERT INTO pending_rolls (
           id, campaign_id, turn_id, tool_call_id, user_id, character_id, kind,
           detail, expression, advantage, dc, reason, target_enemy_id, carry_json, attack_json, parked_for,
-          thrown_json, visibility, status, created_at
+          thrown_json, visibility, parts_json, status, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `,
     )
     .run(
@@ -886,6 +893,7 @@ export function createPendingRoll(input: {
       parkedFor,
       input.thrown ? JSON.stringify(input.thrown) : null,
       input.visibility ?? "public",
+      JSON.stringify(input.parts ?? {}),
       nowIso(),
     );
   const pending = getPendingRoll(id);
@@ -897,10 +905,12 @@ export function createPendingRoll(input: {
 
 // Client-facing projection: the adjudication context (enemy AC) and the
 // model-facing combat note never ride events or snapshots to players.
-export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "attack" | "combatNote"> {
+export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "attack" | "combatNote" | "parts"> {
   const rest: Partial<PendingRoll> = { ...pending };
   delete rest.attack;
   delete rest.combatNote;
+  // The engine's own reading of the roll: the card says the same in words.
+  delete rest.parts;
   // A stop's held calls are the model's own words, and may name what the table
   // has not seen: the card reads its line and its time.
   // The creatures to pick from are ones the table can see (foresight.ts

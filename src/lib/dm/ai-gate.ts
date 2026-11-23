@@ -47,6 +47,7 @@ import { sentItemTags } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { unrevealedLine } from "@/lib/dm/mutation-math";
 import { enemyHoldsItem } from "@/lib/dm/gear-ground";
+import { rollAbility, rollSkill } from "@/lib/roll-parts";
 
 export type GateContext = {
   campaign: Campaign;
@@ -357,12 +358,14 @@ function escapeRolled(ctx: GateContext, sheet: CharacterSheet, condition: string
   if (!hold || canonicalCondition(hold.condition) !== condition) {
     return false;
   }
-  const fits = hold.ability === "str" ? /\b(?:athletics|str|strength)\b/i : /\b(?:acrobatics|dex|dexterity)\b/i;
+  // What the trap's escape takes, read off the check's fields
+  // (src/lib/roll-parts.ts), never off its words.
+  const fits = (check: StoredRoll) => (hold.ability === "str" ? rollSkill(check, ["athletics"]) || rollAbility(check, ["str"]) : rollSkill(check, ["acrobatics"]) || rollAbility(check, ["dex"]));
   const roll = askedUnpaid(ctx.turn).find(
     (entry) =>
       entry.characterId === sheet.id &&
       (entry.kind === "skill_check" || entry.kind === "ability_check") &&
-      fits.test(entry.detail) &&
+      fits(entry) &&
       entry.total >= hold.dc &&
       payOnTurn(ctx.turn, entry.id),
   );

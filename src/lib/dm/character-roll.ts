@@ -40,6 +40,7 @@ import { takeFate } from "@/lib/dm/fate-turn";
 import { takeLineage } from "@/lib/dm/lineage-watch";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { recordRoll } from "@/lib/dm/roll-record";
+import type { RollParts } from "@/lib/roll-parts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export type CharacterRoll = {
@@ -75,6 +76,10 @@ export type CharacterRoll = {
   settle?: (thrown: RollResult) => RollResult;
   // False for a roll that never waits on its player's choice.
   mayWait?: boolean;
+  // What the roll says of itself as fields (src/lib/roll-parts.ts), the same
+  // the site hands the door: a card this roll parks keeps them, for a
+  // landing that records the roll from the card.
+  parts?: RollParts;
 };
 
 // Why this player's rolls park, at this table, now.
@@ -167,6 +172,7 @@ function rollAtDoor(campaign: Campaign, stale: CharacterSheet, asked: CharacterR
     dc: roll.attack ? roll.attack.ac : typeof roll.dc === "number" ? roll.dc : null,
     reason: roll.reason ?? roll.detail,
     visibility: roll.visibility ?? "public",
+    ...(roll.parts ? { parts: roll.parts } : {}),
   };
   const mayWait = held && visible && roll.mayWait !== false && hasDice(roll.expression);
   const parks = mayWait ? seatParks(campaign, sheet) : null;

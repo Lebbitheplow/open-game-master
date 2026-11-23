@@ -109,13 +109,14 @@ export function characterSave(
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   // The player's own save (src/lib/dm/character-roll.ts; WAVE1 R5): on
   // physical dice they roll it.
-  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail, dc: input.dc, settleHeldDie: waits });
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail, parts: resolved.parts, dc: input.dc, settleHeldDie: waits });
   recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "saving_throw",
     detail: input.detail.slice(0, 200),
+    parts: resolved.parts,
     dc: input.dc,
     result: outcome,
   });
