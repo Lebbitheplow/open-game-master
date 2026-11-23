@@ -368,6 +368,31 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
       ),
     );
   }
+  // Mount: the other half of Dismount, dealt only beside a creature that
+  // would carry this character (hand-mount-logic.ts). One creature is named
+  // on the card; with several the aim bar asks which.
+  const steeds = context.mount ? [] : context.steeds ?? [];
+  if (steeds.length) {
+    const one = steeds.length === 1 ? steeds[0].name : null;
+    cards.push(
+      gated(
+        {
+          ...BLANK,
+          id: "basic:mount",
+          type: "basic",
+          name: t("Mount"),
+          cost: "free",
+          range: t("5 ft"),
+          rules: one ? t("Onto {mount}: half your speed.", { mount: one }) : t("Onto a creature beside you: half your speed."),
+          icon: { kind: "action", key: "stand-up" },
+          target: "none",
+          intent: { card: "basic", action: "mount", ...(one ? { mount: one } : {}) },
+          ...(one ? {} : { choice: { arg: "mount" as const, label: t("Mount"), options: steeds.map((steed) => ({ value: steed.name, label: steed.name })) } }),
+        },
+        standingGate(sheet, turn, "move", t),
+      ),
+    );
+  }
   return cards;
 }
 

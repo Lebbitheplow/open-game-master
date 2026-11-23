@@ -471,6 +471,10 @@ export function composeSentence(
       return `I shake ${who || "my ally"} awake.`;
     case "dismount":
       return "I dismount.";
+    case "mount": {
+      const steed = chosenValue(card, choices) ?? intent.mount;
+      return steed ? `I mount ${steed}.` : "I mount up.";
+    }
   }
 }
 

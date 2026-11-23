@@ -296,6 +296,18 @@ export function checkMount(input: {
   };
 }
 
+// A character's own size, which the size rule needs. The sheet does not track
+// it, so the race decides: only the small races are small, everything else
+// is medium. Wrong for a goliath, right for the ninety-nine percent, and the
+// GM can always write a custom mount. Here, not in mount-tools.ts, so the
+// Hand's Mount card (battlemap/hand-mount-logic.ts) offers only the
+// creatures mount_up would take.
+const SMALL_RACES = ["halfling", "gnome", "goblin", "kobold"];
+
+export function riderSizeOf(race: string): MountSize {
+  return SMALL_RACES.some((small) => race.toLowerCase().includes(small)) ? "small" : "medium";
+}
+
 // A creature's printed size as a mount's, or null for one too small to carry
 // anyone. Gargantuan carries as Huge does: the size rule asks only for one
 // size larger than the rider.

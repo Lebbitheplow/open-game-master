@@ -55,6 +55,7 @@ import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { offeredBoardControl, type BoardControl, type BoardPanel } from "@/lib/addons/board-bridge";
 import { describePick, hasPick, pickHint } from "@/lib/battlemap/hand-area";
 import { holdSentReactions, reactionAim, reactionCards, reactionPicks, reactionStrips, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
+import { mountableSteeds } from "@/lib/battlemap/hand-mount-logic";
 import { readSummonControl, summonBoardControls } from "@/lib/battlemap/hand-summon";
 import { aimedCard } from "@/lib/battlemap/hand-odds";
 import { liveNotice, turnCharacterId, turnFromEncounter, turnPips, turnSignature, type HandNotice } from "@/lib/battlemap/hand-table";
@@ -350,12 +351,16 @@ function HandInner({
   // a host that resolves it (src/lib/capabilities.ts shakeAwake), with the
   // board's feet to each where it measures this character.
   const wakes = hostOffers(capabilities, "shakeAwake");
+  // The creatures the Mount card offers: only from a host whose actions
+  // route knows the card (src/lib/capabilities.ts mountCard).
+  const mounting = hostOffers(capabilities, "mountCard");
   const gear = useMemo<HandGearContext | undefined>(
     () =>
       sheet
         ? {
             drops,
             mount: mounts?.[sheet.id] ?? null,
+            ...(mounting ? { steeds: mountableSteeds(sheet, sheets, ownFeet) } : {}),
             allies: sheets.filter((entry) => entry.id !== sheet.id).length,
             dying: sheets
               .filter((entry) => entry.currentHp <= 0 && !entry.deathSaves?.dead && !entry.deathSaves?.stable)
@@ -369,7 +374,7 @@ function HandInner({
               : {}),
           }
         : undefined,
-    [sheet, sheets, drops, mounts, wakes, ownFeet],
+    [sheet, sheets, drops, mounts, wakes, mounting, ownFeet],
   );
   // A host too old to catch the creatures in a laid blast keeps its blasts
   // aimed at one enemy (src/lib/capabilities.ts handBlasts).

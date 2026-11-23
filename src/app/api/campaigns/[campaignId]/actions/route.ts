@@ -122,7 +122,7 @@ function kindOfIntent(intent: MessageIntent): ActKind {
     case "feature":
       return "free";
     case "basic":
-      return intent.action === "end-turn" ? "free" : intent.action === "stand-up" || intent.action === "dismount" ? "move" : intent.bonus ? "bonus" : "action";
+      return intent.action === "end-turn" ? "free" : intent.action === "stand-up" || intent.action === "dismount" || intent.action === "mount" ? "move" : intent.bonus ? "bonus" : "action";
     case "reaction":
       return "reaction";
     // A shield's action, a draw's object interaction or a free drop: the

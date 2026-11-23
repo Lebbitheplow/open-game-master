@@ -489,6 +489,7 @@ const BASIC_RULE_KEY: Record<BasicActionId, string> = {
   "end-turn": "Done with your action, movement and bonus action.",
   stabilize: "An action: a DC 10 Medicine check, or a healer's kit with no roll, and they stop dying.",
   dismount: "Off {mount}: half your speed.",
+  mount: "Onto {mount}: half your speed.",
   wake: "An action: shake an ally within 5 ft out of Sleep or Hypnotic Pattern. They wake still prone.",
 };
 
@@ -511,6 +512,7 @@ const BASIC_NAME_KEYS: Record<BasicActionId, string> = {
   "end-turn": "End turn",
   stabilize: "Stabilize",
   dismount: "Dismount",
+  mount: "Mount",
   wake: "Wake",
 };
 
