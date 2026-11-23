@@ -228,7 +228,17 @@ export async function fakeModel({ slots = 0 } = {}) {
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       if (isReaderRequest(body)) {
         readerRequests.push(body);
-        answerReader(res, readerScript.shift() ?? []);
+        // An entry given as { for, claims } answers only the read of a
+        // passage holding those words; a read from some other turn still
+        // in flight (another world's, finishing late on a slow runner) takes
+        // the next plain entry, never it.
+        const text = JSON.stringify(body.messages ?? []);
+        const isKeyed = (entry) => typeof entry?.for === "string" && Array.isArray(entry.claims);
+        const keyed = readerScript.findIndex((entry) => isKeyed(entry) && text.includes(JSON.stringify(entry.for).slice(1, -1)));
+        const plain = readerScript.findIndex((entry) => !isKeyed(entry));
+        const at = keyed >= 0 ? keyed : plain;
+        const entry = at >= 0 ? readerScript.splice(at, 1)[0] : undefined;
+        answerReader(res, isKeyed(entry) ? entry.claims : (entry ?? []));
         return;
       }
       // The read of the players' words for whether the party parts, as a
@@ -294,7 +304,8 @@ export async function fakeModel({ slots = 0 } = {}) {
         slotState.cached = tokens;
       },
     },
-    // What the claims reader answers, one list of claims per reader call.
+    // What the claims reader answers, one list of claims per reader call,
+    // or { for: "words", claims } for the read of the passage with those words.
     claims: (entries) => {
       readerScript = [...entries];
       readerRequests.length = 0;
