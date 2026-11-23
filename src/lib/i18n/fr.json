@@ -10633,6 +10633,8 @@
     "I end my turn.": "Je termine mon tour.",
     "I stand up.": "Je me relève.",
     "I dismount.": "Je descends de monture.",
+    "I mount {steed}.": "Je monte sur {steed}.",
+    "I mount up.": "Je me mets en selle.",
     "I take the Search action.": "Je fais l’action Chercher.",
     "I try to escape the grapple.": "J’essaie de me libérer de l’empoignade.",
     "the nearest enemy": "l’ennemi le plus proche",

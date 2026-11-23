@@ -617,6 +617,10 @@ export function composeDisplaySentence(
       return t("I shake {who} awake.", { who: who || t("my ally") });
     case "dismount":
       return t("I dismount.");
+    case "mount": {
+      const steed = chosenValue(card, choices) ?? intent.mount;
+      return steed ? t("I mount {steed}.", { steed }) : t("I mount up.");
+    }
   }
 }
 
