@@ -21,7 +21,7 @@ import { getClock, setClock } from "@/lib/db/clock";
 import { getCurrentLocation } from "@/lib/db/locations";
 import type { ObjectRecord } from "@/lib/dm/march-state";
 import type { RollAttacker } from "@/lib/db/rolls";
-import { rollAgainst, rollOn } from "@/lib/roll-labels";
+import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { d20Expression, isValidExpression, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { ragingMeleeBonus, type AttackProfile } from "@/lib/dm/attack-logic";
@@ -33,6 +33,8 @@ import { hasHalflingLuck } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { recordRoll } from "@/lib/dm/roll-record";
+import { sourceDamageThrown } from "@/lib/dm/roll-card";
+import { harmSource } from "@/lib/roll-sources";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { buildAttackProfile } from "@/lib/dm/pc-attack-profile";
 import { objectProfile, type ObjectMaterial, type ObjectSize } from "@/lib/srd/objects";
@@ -86,10 +88,9 @@ function keyOf(campaignId: string, name: string): string {
 
 // A roll at an object, on record. A character's own attack and damage come
 // through rollCharacterD20, so the door reads whose dice they were: entered
-// at the table, they are stored and sent as the player's. `thrownHere` is for
-// harm no character dealt, which the server throws where it stands.
-function cardRoll(campaign: Campaign, turn: DmTurn | null, characterId: string | null, kind: "attack" | "damage", detail: string, result: RollResult, attacker: RollAttacker | null, thrownHere = false) {
-  recordRoll({ campaignId: campaign.id, characterId, requestedBy: "dm", kind, detail, result, attacker, turn, ...(thrownHere ? { landing: null } : {}) });
+// at the table, they are stored and sent as the player's.
+function cardRoll(campaign: Campaign, turn: DmTurn | null, characterId: string | null, kind: "attack" | "damage", detail: string, result: RollResult, attacker: RollAttacker) {
+  recordRoll({ campaignId: campaign.id, characterId, requestedBy: "dm", kind, detail, result, attacker, turn });
 }
 
 // What the clock keeps of a named object, or null for one never named.
@@ -244,9 +245,10 @@ export function damageObject(
       dealt = Number(args.damage.trim());
     } else if (isValidExpression(args.damage)) {
       const rolled = rollExpression(args.damage);
-      // Harm no character dealt (a hazard, a falling block): nobody's roll.
+      // Harm no character dealt (a hazard, a falling block): the roll of
+      // the words the GM gave for it, else the GM's own dice.
       if (campaign) {
-        cardRoll(campaign, turn, null, "damage", rollOn(type || "damage", [args.name ?? "an object"]), rolled, null, true);
+        sourceDamageThrown(campaign, turn, harmSource(null, args.reason), { names: [args.name ?? "an object"] }, { dice: args.damage.trim(), type: type || undefined }, rolled);
       }
       dealt = rolled.total;
     } else {

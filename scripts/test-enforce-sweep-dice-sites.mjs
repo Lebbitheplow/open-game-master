@@ -42,6 +42,9 @@
 //           the server's own as digital;
 //   roller  it names who rolled it: an attack or damage roll with no roller
 //           reads as the roll of the character it lands on (a fall, a trap).
+//           A roll nobody made names its source (src/lib/roll-sources.ts),
+//           which goes in front of its card: its words do not say the source
+//           a second time, and they name the character it lands on.
 //
 // One function does all of these (src/lib/dm/roll-record.ts recordRoll). A
 // row whose site still records its roll by hand and misses one is listed
@@ -396,7 +399,10 @@ async function enterParked() {
 }
 
 // What is wrong with the record of the rolls stored since `mark`, check by check.
-function recordProblems(mark, seq, cards) {
+// What a source can say it is (src/lib/db/rolls.ts HazardKind).
+const HAZARDS = new Set(["fall", "gm", "trap", "item", "effect", "named"]);
+
+function recordProblems(mark, seq, cards, hazardRow = false) {
   const rolls = rollsAfter(world.campaignId, mark);
   const problems = { home: [], sent: [], roller: [] };
   const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;
@@ -445,6 +451,25 @@ function recordProblems(mark, seq, cards) {
       problems.roller.push(`${what}: nobody is named as rolling it, so it reads as the roll of the character it lands on`);
     } else if (!roll.attacker && !roll.characterId && roll.requestedBy !== "dm") {
       problems.roller.push(`${what}: names nobody`);
+    }
+    const lands = roll.characterId ? world.sheet(roll.characterId)?.name : null;
+    if (roll.attacker?.kind === "hazard") {
+      const by = roll.attacker;
+      if (!HAZARDS.has(by.hazard)) {
+        problems.roller.push(`${what}: its source, ${by.name}, says it is "${by.hazard}", which is no kind of source`);
+      }
+      // Whatever the case: the words in front of the card, in its words again.
+      const said = roll.detail.toLowerCase();
+      const again = by.hazard === "fall" ? "fall" : by.hazard === "gm" ? "the gm" : by.name.toLowerCase();
+      if (said.includes(again)) {
+        problems.roller.push(`${what}: says its source, ${by.name}, a second time`);
+      }
+      if (lands && !roll.detail.includes(lands)) {
+        problems.roller.push(`${what}: ${by.name}'s roll does not name ${lands}, whom it lands on`);
+      }
+    } else if (hazardRow && roll.attacker?.kind === "sheet" && roll.attacker.id === roll.characterId && (roll.kind === "attack" || roll.kind === "damage")) {
+      // A hazard's own row: what lands on a character there is not their roll.
+      problems.roller.push(`${what}: a hazard's roll names ${lands}, whom it lands on, as its roller`);
     }
   }
   return { problems, rolls: rolls.length };
@@ -497,7 +522,7 @@ async function run(entry, door, seed) {
   }
   // The verdict is read before the seat answers: the dice it enters now are
   // its own, and the call runs on with them.
-  const record = recordProblems(mark, seq, await enterParked());
+  const record = recordProblems(mark, seq, await enterParked(), /^(apply_hazard|cast_at_player\.hazard|concentration\.damage)/.test(entry.id));
   spy.take();
   return { verdict, where: where.filter((id) => !RULED_SITES[id]), out, parked, dice, record };
 }
@@ -663,7 +688,7 @@ const SITES = {
   // An opportunity attack's damage with Great Weapon Fighting's rerolls,
   // thrown through the character's door as its throwIt (audit 1116, A06).
   "lib/dm/opportunity-strike.ts#pcOpportunitySwing": "D an opportunity attack's damage, its 1s and 2s rerolled for Great Weapon Fighting",
-  "lib/dm/attack-onhit.ts#hurlReturn": "D", "lib/dm/attack-onhit.ts#poisonOnHit": "D",
+  "lib/dm/attack-onhit.ts#poisonOnHit": "D",
   "lib/dm/between-io.ts#publicDie": "F a table die",
   "lib/dm/character-roll.ts#initiativeWaits": "F no die: the lowest initiative, to read what the after-the-roll card would offer",
   "lib/dm/character-roll.ts#rollAtDoor": "H the one door a character's d20 is thrown through (src/lib/dm/character-roll.ts rollCharacterD20)",

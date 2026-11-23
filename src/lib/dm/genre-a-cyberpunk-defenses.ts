@@ -25,7 +25,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { activeAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
@@ -71,6 +71,6 @@ export function counterIntrusion(campaign: Campaign, turn: DmTurn | null, sheet:
   if (!encounter || live.status !== "alive" || !holdsFeature(sheet, COUNTER_INTRUSION)) {
     return null;
   }
-  const amount = rollCard(campaign, turn, sheet.id, "damage", `${COUNTER_INTRUSION}: ${live.displayName}`, "2d8", null).total;
+  const amount = rollCard(campaign, turn, sheet.id, "damage", `${COUNTER_INTRUSION}: ${live.displayName}`, "2d8", sheetAttacker(sheet)).total;
   return `${COUNTER_INTRUSION}: ${hurtEnemy(campaign, encounter, live, amount, "psychic", COUNTER_INTRUSION)}`;
 }

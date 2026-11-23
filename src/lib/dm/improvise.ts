@@ -53,7 +53,7 @@ import { landTheFlightless } from "@/lib/dm/map-tools";
 import { applyRiderCondition } from "@/lib/dm/pc-attack-riders";
 import { tendSwordWounds } from "@/lib/dm/sword-wounding";
 import { rollContest, type Opponent } from "@/lib/dm/roll-gates";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { strictnessShift } from "@/lib/dm/safety-logic";
 import { swallowCover, swallowerOf } from "@/lib/dm/swallow";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -354,7 +354,7 @@ export function improviseAction(
   const said: string[] = [];
   const result: Record<string, unknown> = {};
   if (args.damage && args.damageType) {
-    const rolled = rollCard(campaign, turn, sheet.id, "damage", `${sheet.name}: ${what}`.slice(0, 120), args.damage, null);
+    const rolled = rollCard(campaign, turn, sheet.id, "damage", what.slice(0, 120), args.damage, sheetAttacker(sheet));
     Object.assign(result, applyEnemyDamage(campaign, turn, encounter, enemy, rolled.total, sheets, sheetsById, args.damageType));
     landed.push(`${rolled.total} ${args.damageType} damage (${args.damage})`);
   }

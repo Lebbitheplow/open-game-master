@@ -26,9 +26,9 @@ import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave, type SaveOrigin } from "@/lib/dm/forced-save";
 import { noteSaveDamage, recordTrigger } from "@/lib/dm/last-save";
 import { openEffect } from "@/lib/dm/last-hit";
-import { rollCard } from "@/lib/dm/action-common";
-import type { RollAttacker } from "@/lib/db/rolls";
-import { rollAgainst } from "@/lib/roll-labels";
+import { castDamage, enemyAttacker } from "@/lib/dm/roll-card";
+import type { RollSource } from "@/lib/db/rolls";
+import { castSource, effectSource } from "@/lib/roll-sources";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { applyDmMutation, canonicalCondition } from "@/lib/dm/mutations";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -265,7 +265,7 @@ function autoSpellAtPlayer(
   sheet: CharacterSheet,
   use: EnemyUse | null,
   spell: string,
-  cast: { damage?: string; damageType?: string; secondType?: string; source?: string; ward: string | null },
+  cast: { damage?: string; damageType?: string; secondType?: string; source?: string; trap?: boolean; ward: string | null },
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ToolResult {
@@ -280,9 +280,11 @@ function autoSpellAtPlayer(
   if (cast.ward) {
     return { ok: true, target: sheet.name, source, ...castToNoEffect(cast.ward) };
   }
-  const caster: RollAttacker | null = use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : null;
+  // A spell no creature cast is the roll of the source the GM named, else of
+  // the spell itself. The hit's record below is handed the same value.
+  const caster = use ? ({ kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } as const) : castSource(cast.source, spell, cast.trap);
   const hitLog = openLastHit(campaign.id, sheet.id);
-  const outcome = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spell, sheet.name), cast.damage, caster);
+  const outcome = castDamage(campaign, turn, caster, spell, { characterId: sheet.id, name: sheet.name }, { dice: cast.damage, type: cast.damageType });
   const shielded = isNamed(spell, "magic missile") && (getSheetById(sheet.id) ?? sheet).conditions.some((entry) => isConditionNamed(entry, "shielded"));
   const dealt = shielded ? 0 : Math.max(0, outcome.total);
   // A spell of two types: each part meets the character's defences on its
@@ -307,7 +309,7 @@ function autoSpellAtPlayer(
       : {};
   hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ...(parts && dealt > 0 ? { parts } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
   hitLog.close({
-    attacker: use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : { kind: "hazard", id: null, name: source },
+    attacker: caster,
     attack: spell,
     type: cast.damageType ?? "force",
     ranged: true,
@@ -330,6 +332,10 @@ export function handleCastAtPlayer(
   rawArguments: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
+  // The source a caller inside the engine already knows this harm by (a trap
+  // or hazard apply_hazard sprang): its roll names that one, not one read
+  // back from the call's words.
+  by?: RollSource,
 ): ToolResult {
   let args: z.infer<typeof castAtPlayerSchema>;
   try {
@@ -440,7 +446,7 @@ export function handleCastAtPlayer(
   const castName = use?.name || args.spell;
   const unsaved = castName && !use?.save && !args.saveAbility ? spellMechanicsFor({ spell: castName, userIds: spellAuthorsFor(campaign) }) : null;
   if (castName && unsaved?.mech.resolution === "auto") {
-    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, secondType: use?.secondType ?? unsaved.mech.secondType, source: args.source, ward }, sheets, sheetsById);
+    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, secondType: use?.secondType ?? unsaved.mech.secondType, source: args.source, trap: args.hazard === "trap", ward }, sheets, sheetsById);
   }
   const byBlock = Boolean(use?.fromBlock);
   const ability = (use?.save ?? args.saveAbility) as SaveAbility | undefined;
@@ -552,8 +558,13 @@ export function handleCastAtPlayer(
 
   if (damage) {
     // The card shows the dice as rolled; the save halves or stops what lands.
-    const caster: RollAttacker | null = use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : null;
-    const outcome = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(use?.name || args.spell || args.source || "Effect", sheet.name), damage, caster);
+    // A hazard with no creature behind it is the roll of the source its
+    // caller hands in (a trap's save is the roll of the same trap its darts
+    // were). Called on its own, it is the roll of the source the call names
+    // (a trap, when the call says it is one), else of its spell, else the
+    // GM's own dice.
+    const caster = use ? enemyAttacker(use.enemy) : (by ?? castSource(args.source, args.spell, args.hazard === "trap", source));
+    const outcome = castDamage(campaign, turn, caster, use?.name || args.spell, { characterId: sheet.id, name: sheet.name }, { dice: damage, type: damageType });
     // The one save-for-half rule every path shares, Evasion included
     // (src/lib/srd/trait-rules.ts).
     const taken = saveDamageTaken({ total: outcome.total, saved, halfOnSave, ability, sheet });
@@ -634,7 +645,10 @@ export function handleCastAtPlayer(
             sheets,
             sheetsById,
           ).result;
-      effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), name: source });
+      // The record is handed the source its roll names. A creature's spell
+      // is on record as that spell's effect, as it always was: the record of
+      // a save's damage names no creature.
+      effect.close({ raw: dealt, type: typedParts ? "" : (damageType ?? ""), by: caster.kind === "hazard" ? caster : effectSource(source) });
       // Thought Shield: the psychic damage a warlock took goes back to the caster.
       const back = thoughtShieldBack(campaign, turn, sheet, use?.enemy.id, { amount: dealt, type: typedParts ? undefined : damageType, parts: typedParts ?? undefined, flags: { magical: use?.magical === true, spell: Boolean(use?.spell ?? args.spell) } }, sheets, sheetsById);
       Object.assign(base, { damage: dealt, ...applied, ...back });

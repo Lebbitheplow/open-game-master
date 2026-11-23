@@ -2,13 +2,16 @@
 // writes, the chronicle card, cinematic mode's toast and chronicle line. An
 // attack or damage roll records its attacker, who goes in front, and its
 // detail says what was used and against whom, so each creature is named
-// once. Every other roll, and one stored before the attacker was recorded,
-// keeps the sheet it concerns (characterId) in front, as it always has.
+// once. A roll nobody at the table made (a trap's, a fall's, the GM's own
+// dice) records its source as its attacker, so the source goes in front and
+// the character it lands on is named in the detail, as a target is. Every
+// other roll, and one stored before the attacker was recorded, keeps the
+// sheet it concerns (characterId) in front, as it always has.
 // Pure (type imports only), so client components and test scripts import it.
 // The kind words are the dictionaries' (rollmap.kind.*); the surface that
 // shows them passes its translator.
 
-import type { StoredRoll } from "@/lib/db/rolls";
+import type { HazardKind, StoredRoll } from "@/lib/db/rolls";
 import { contentName } from "@/lib/content/names";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -40,6 +43,26 @@ function localizeDetail(detail: string, locale: "en" | "fr"): string {
   return localizeRollWhat(detail, locale);
 }
 
+// What a source's roll threw (src/lib/roll-sources.ts): its dice, the type
+// of harm, and a few words in front where they are needed ("30 ft").
+export type Thrown = { dice?: string; type?: string; note?: string };
+
+// The words of a roll its source made, whose name goes in front of the card:
+// what was thrown and on whom, and never the source again.
+// "30 ft, 3d6 bludgeoning on Aria".
+export function thrownOn(thrown: Thrown, targets: string[]): string {
+  const dice = [thrown.dice, thrown.type].filter(Boolean).join(" ");
+  // The note is held short, so a target after it survives the 120
+  // characters a roll card keeps of its words (roll-card.ts rollCard).
+  return rollOn([thrown.note?.slice(0, NOTE_MAX), dice].filter(Boolean).join(", ") || "damage", targets);
+}
+const NOTE_MAX = 60;
+
+// A source's attack roll against one target's armour: "Attack vs Aria, AC 16".
+export function attackOn(target: string, ac: number): string {
+  return `${rollAgainst("Attack", target)}, AC ${ac}`;
+}
+
 // One target: "Club vs Aria".
 export function rollAgainst(what: string, target: string): string {
   return `${what} vs ${target}`;
@@ -51,9 +74,31 @@ export function rollOn(what: string, targets: string[]): string {
   return targets.length ? `${what} on ${targets.join(", ")}` : what;
 }
 
-// Who made the roll: its attacker, else the sheet it concerns.
+// The two sources that are never given a name, in front of a roll. They are
+// chosen by what the source is and never by its name, which is what a
+// sentence calls it (src/lib/roll-sources.ts).
+const SERVER_NAMED: Partial<Record<HazardKind, string>> = { fall: "The fall", gm: "The GM" };
+
+// Who made the roll: its attacker, else the sheet it concerns. A trap's or a
+// hazard's own name is as it was given.
 export function rollerName(roll: Pick<StoredRoll, "attacker">, sheetName: string | undefined): string | undefined {
-  return roll.attacker ? roll.attacker.name : sheetName;
+  const by = roll.attacker;
+  if (!by) {
+    return sheetName;
+  }
+  return by.kind === "hazard" ? (SERVER_NAMED[by.hazard] ?? by.name) : by.name;
+}
+
+// The same, as a seat reads it: the server's two are the dictionaries' words.
+function shownRoller(t: T, roll: Pick<StoredRoll, "attacker">, sheetName: string | undefined): string | undefined {
+  const by = roll.attacker;
+  if (by?.kind === "hazard" && by.hazard === "fall") {
+    return t("The fall");
+  }
+  if (by?.kind === "hazard" && by.hazard === "gm") {
+    return t("The GM");
+  }
+  return rollerName(roll, sheetName);
 }
 
 // A roll kind as the table reads it, on every card and in cinematic mode.
@@ -73,7 +118,7 @@ export function rollKindLabel(t: T, kind: string): string {
 
 // The chronicle card's line: "Goblin · Attack roll (Club vs Aria)".
 export function rollCardLabel(t: T, roll: Worded, sheetName: string | undefined): string {
-  const who = rollerName(roll, sheetName);
+  const who = shownRoller(t, roll, sheetName);
   const locale = t.locale ?? "en";
   const detail = roll.detail ? localizeDetail(roll.detail.replaceAll("_", " "), locale) : "";
   return `${who ? `${who} · ` : ""}${rollKindLabel(t, roll.kind)}${detail ? ` (${detail})` : ""}`;
@@ -81,7 +126,7 @@ export function rollCardLabel(t: T, roll: Worded, sheetName: string | undefined)
 
 // Cinematic mode's roll pill, up to the dice: "Goblin · Club vs Aria".
 export function rollToastLead(t: T, roll: Worded & Pick<StoredRoll, "requestedBy">, sheetName: string | undefined): string {
-  const who = rollerName(roll, sheetName);
+  const who = shownRoller(t, roll, sheetName);
   const locale = t.locale ?? "en";
   const what = localizeDetail(roll.detail.trim(), locale) || rollKindLabel(t, roll.kind);
   return `${who ? `${who} · ` : roll.requestedBy === "dm" ? t("The GM · ") : ""}${what}`;
@@ -96,7 +141,7 @@ export function rollChronicleLead(t: T, roll: Worded, sheetName: string | undefi
   const locale = t.locale ?? "en";
   const detail = localizeDetail(roll.detail.trim(), locale);
   if (roll.attacker) {
-    return `${roll.attacker.name} · ${detail || label}`;
+    return `${shownRoller(t, roll, sheetName)} · ${detail || label}`;
   }
   return detail || (sheetName ? `${sheetName} · ${label}` : label);
 }

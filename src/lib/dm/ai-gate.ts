@@ -19,13 +19,15 @@
 import { splitParts } from "@/lib/dm/action-parts-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy } from "@/lib/db/encounters";
+import { shownName } from "@/lib/dm/board-hidden";
 import { getRoll, markRollApplied, markRollSpent } from "@/lib/db/rolls";
 import { awayRefusal, canCrossAway } from "@/lib/dm/fight-away-logic";
 import { isValidExpression } from "@/lib/dice";
 import { spellFactsFor } from "@/lib/content";
 import { rollAgainst } from "@/lib/roll-labels";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sourceDamage } from "@/lib/dm/roll-card";
+import { harmSource, UNNAMED_HARM } from "@/lib/roll-sources";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { canonicalCondition } from "@/lib/dm/set-condition";
 import { trapHoldOn } from "@/lib/dm/trap-escape";
@@ -239,9 +241,21 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
       return { result: { error: `"${dice}" is not dice the server can roll; send it like "2d6+3".`, retry: true } };
     }
     const sheet = ctx.sheetsById.get(targetId);
-    const label = rollAgainst(String(args.reason ?? (what === "damage" ? "Damage" : "Healing")).slice(0, 60), sheet?.name ?? "the target");
+    const said = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+    // Whom it lands on, as the card says it: a pet by its own name, and a
+    // creature by the name the table may read now (a hidden one stays so).
+    const foe = sheet ? null : getEnemy(targetId);
+    const whom = said(args.petName) || sheet?.name || (foe ? shownName(foe.encounterId, foe.id, foe.displayName) : "the target");
     const before = ctx.turn.rollIds.length;
-    const rolled = rollCard(ctx.campaign, ctx.turn, sheet ? sheet.id : null, what === "damage" ? "damage" : "custom", label, dice, null);
+    // The model's own dice for harm with no creature behind it: the roll of
+    // the spell it is, else of the words it gave for it, else the GM's own
+    // dice. The hit's record is built from the same two arguments
+    // (mutations.ts apply_damage). Whoever it lands on is its target.
+    // Healing is no attack and no damage: it names no roller.
+    const rolled =
+      what === "damage"
+        ? sourceDamage(ctx.campaign, ctx.turn, harmSource(said(args.spell), said(args.reason), UNNAMED_HARM), { characterId: sheet ? sheet.id : null, names: [whom] }, { dice, type: said(args.type) || undefined })
+        : rollCard(ctx.campaign, ctx.turn, sheet ? sheet.id : null, "custom", rollAgainst(said(args.reason).slice(0, 60) || "Healing", whom), dice, null);
     // Spent as it is rolled: the call let through below applies it, and the
     // same total sent bare afterwards would land it a second time.
     for (const id of ctx.turn.rollIds.slice(before)) {

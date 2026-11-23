@@ -29,7 +29,7 @@ import { BURNING_OIL_DAMAGE, oilCatches } from "@/lib/srd/gear-weapons";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { castersDamage, rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
@@ -379,7 +379,7 @@ export function curseBurn(
     return null;
   }
   const caster = getSheetById(casterId);
-  const rolled = rollCard(campaign, turn, caster?.id ?? null, "damage", rollAgainst("Bestow Curse", enemy.displayName), rider.dice, caster ? sheetAttacker(caster) : null).total;
+  const rolled = castersDamage(campaign, turn, caster, rollAgainst("Bestow Curse", enemy.displayName), "Bestow Curse", enemy.displayName, { dice: rider.dice, type: rider.type }).total;
   const applied = applyEnemyDamage(campaign, turn, encounter, enemy, rolled, sheets, sheetsById, rider.type, { magical: true, spell: true });
   // The curse's own necrotic killed it (ar-ws-harvest.ts).
   const onKill = applied.dead ? spellKill(campaign, encounter, enemy, casterId, { spell: "Bestow Curse" }) : [];

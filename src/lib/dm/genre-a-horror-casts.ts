@@ -9,7 +9,7 @@
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
@@ -30,7 +30,7 @@ export function layCastMark(ctx: SpendContext, does: Extract<SpendDoes, { kind: 
   const lines = [`${fresh.name}'s ${ctx.spend.name} is ready: their next spell it fits this turn costs no slot.`];
   if (does.backlash) {
     const dice = stepOf(does.backlash, ctx.held.level);
-    const rolled = rollCard(ctx.campaign, ctx.turn, fresh.id, "damage", ctx.spend.name, dice, null).total;
+    const rolled = rollCard(ctx.campaign, ctx.turn, fresh.id, "damage", ctx.spend.name, dice, sheetAttacker(fresh)).total;
     applyPcDamage(ctx.campaign, ctx.turnId, getSheetById(fresh.id) ?? fresh, { amount: rolled, reason: ctx.spend.name });
     lines.push(`${fresh.name} takes ${rolled} necrotic damage (${dice}), which nothing reduces.`);
   }

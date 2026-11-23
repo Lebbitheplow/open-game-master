@@ -61,6 +61,25 @@ await test("Dice the AI sends are rolled by the server: 2d6 of 3 and 4 is 7.", a
   assert.equal(hp(), 33);
 });
 
+await test("Dice the AI sends for harm are on record as the roll of the words it gave for the harm, with the character as its target; healing dice name no roller.", async () => {
+  await stage();
+  const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+  const call = aiTurn();
+  const harm = await call("apply_damage", { characterId: hero.id, dice: "2d6", type: "bludgeoning", reason: "falling rubble" });
+  assert.equal(harm.ok, true, harm.error);
+  const [rubble] = listRecentRolls(world.campaignId, 1);
+  assert.equal(rubble.kind, "damage");
+  assert.deepEqual(rubble.attacker, { kind: "hazard", id: null, name: "falling rubble", hazard: "named" });
+  assert.equal(rubble.characterId, hero.id);
+  assert.equal(rubble.detail, `2d6 bludgeoning on ${world.sheet(hero.id).name}`);
+  // Healing is no attack and no damage: it names no roller, as before.
+  const mend = await call("heal", { characterId: hero.id, dice: "2d4+2" });
+  assert.equal(mend.ok, true, mend.error);
+  const [healed] = listRecentRolls(world.campaignId, 1);
+  assert.equal(healed.kind, "custom");
+  assert.equal(healed.attacker, null);
+});
+
 await test("A damage total the server rolled this turn is accepted once, and only once.", async () => {
   await stage();
   const call = aiTurn();
