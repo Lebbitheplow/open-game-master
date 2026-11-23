@@ -35,7 +35,7 @@ import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { placeTeleported } from "@/lib/dm/teleport-place";
 import { publishFx } from "@/lib/dm/fx";
 import { buildingSkin, drawBuilding, holdsBuilding, type BuildingPlan } from "@/lib/battlemap/building";
-import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
+import { generateBattleMap, fnv1a, spotsBesideParty, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
@@ -178,7 +178,14 @@ export function createBattleMapForEncounter(
   // enemy, or the rear when they came from behind (formation-logic.ts).
   const formation = placeByFormation(sheets, partySpots, enemySpots, getParty(campaign.id).marchingOrder, from);
   const heroSpots = new Set([...formation.spots.values()].map((spot) => `${spot.x},${spot.y}`));
-  const allySpots = partySpots.filter((spot) => !heroSpots.has(`${spot.x},${spot.y}`));
+  const leftOver = partySpots.filter((spot) => !heroSpots.has(`${spot.x},${spot.y}`));
+  // The allies stand beside the heroes (generate.ts spotsBesideParty), not on
+  // the spawn spots the heroes left over, which can lie across the board.
+  for (const spot of leftOver) {
+    taken.delete(tileIndex(generated.width, spot.x, spot.y));
+  }
+  const beside = spotsBesideParty(generated, [...formation.spots.values()], allies.map((ally) => enemyFootprint(ally)), taken);
+  const allySpots = beside.length ? beside : leftOver;
   const map = getDatabase().transaction(() => {
     const created = createBattleMap({
       encounterId: encounter.id,
