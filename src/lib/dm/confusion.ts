@@ -16,7 +16,7 @@
 // turn start, under the clock path that must not reach the damage modules.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import { getEnemy, patchEnemyConditions, type Encounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
@@ -60,7 +60,7 @@ export function lashOut(campaign: Campaign, encounter: Encounter, kind: "sheet" 
   }
   const reach = reachOf(kind, id);
   const mine = tokenFootprint(me);
-  const inReach = listTokens(map.id).filter((token) => {
+  const inReach = listStandings(map.id).filter((token) => {
     if (token.refId === id || (token.kind !== "pc" && token.kind !== "enemy")) {
       return false;
     }

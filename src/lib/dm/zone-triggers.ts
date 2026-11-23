@@ -22,7 +22,7 @@ import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { getBattleMap, getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
+import { getBattleMap, getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, listStandings, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollCard } from "@/lib/dm/roll-card";
 import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
@@ -407,13 +407,16 @@ function afterFailOnCharacter(campaign: Campaign, turn: DmTurn, map: BattleMap, 
     lines.push(`${sheet.name} spends their action this turn retching.`);
   }
   if (trigger.pushFeet) {
-    const token = listTokens(map.id).find((entry) => entry.refId === sheet.id);
+    // A character's mount with its rider on it stands on the rider's token
+    // (getTokenByRef): the push moves the pair, and it is the rider who
+    // saves to stay on.
+    const token = getTokenByRef(map.id, sheet.id);
     const at = token ? pushAlong(map, zone, token, trigger.pushFeet) : null;
     if (at) {
       lines.push(`${sheet.name} is pushed to (${at.x},${at.y}).`);
       // Gust of Wind's push moves a rider's mount against its will: the save
       // to stay on is asked as the call finishes (mount-moved.ts).
-      mountMoved(campaign.id, sheet.id);
+      mountMoved(campaign.id, token?.kind === "pc" ? token.refId : sheet.id);
     }
   }
   return lines;
@@ -598,7 +601,7 @@ export function zoneTurnStart(campaign: Campaign, encounter: Encounter, combatan
     return [];
   }
   const zones = liveZones(map, encounter);
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const lines: string[] = [];
   for (const zone of zones) {
     const row = zoneRowFor(zone);
@@ -649,7 +652,7 @@ export function zoneTurnEnd(campaign: Campaign, encounterId: string, combatantId
     return [];
   }
   const zones = liveZones(map, encounter);
-  const lines = momentFor(campaign, encounter, map, zones, listTokens(map.id), combatantIds, "end");
+  const lines = momentFor(campaign, encounter, map, zones, listStandings(map.id), combatantIds, "end");
   // Earthquake shakes the ground again as its caster's turn ends
   // (zone-quake.ts): once a turn, an enemy caster's once for each turn begun.
   let shook = false;
@@ -680,11 +683,11 @@ function momentFor(
   const lines: string[] = [];
   for (const id of combatantIds) {
     // A ridden mount stands on its rider's token and suffers the area in its
-    // own name, on its own turn. Looked up by its own id alone it had no
-    // token, and its turn began and ended inside an area untouched.
-    const own = tokens.find((entry) => entry.refId === id);
-    const token = own ?? (getEnemy(id) ? getTokenByRef(map.id, id) : null);
-    const victim: Victim | null = own ? victimOf(own) : token ? { kind: "enemy", id } : null;
+    // own name, on its own turn (listStandings). Looked up among the pieces
+    // on the board it had none, and its turn began and ended inside an area
+    // untouched.
+    const token = tokens.find((entry) => entry.refId === id);
+    const victim = token ? victimOf(token) : null;
     if (!token || !victim) {
       continue;
     }

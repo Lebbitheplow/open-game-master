@@ -24,7 +24,7 @@ import {
   createBattleMap,
   getBattleMapForEncounter,
   getTokenByRef,
-  listTokens,
+  listStandings, listTokens,
   moveToken,
   placeTokens,
   resetTurnBudgets,
@@ -316,7 +316,7 @@ function resolveAnyToken(
 
 // A name the board holds no single token for: the names it does hold.
 function unknownCombatant(map: BattleMap, name: string): ToolError {
-  return { error: `No combatant on the battle map is called "${name}"; it holds ${listTokens(map.id).map((token) => token.name).join(", ")}.`, retry: true };
+  return { error: `No combatant on the battle map is called "${name}"; it holds ${listStandings(map.id).map((token) => token.name).join(", ")}.`, retry: true };
 }
 
 // Whether `token` may teleport to (x, y): on the map, open floor, nobody
@@ -1204,7 +1204,8 @@ export function allyAdjacentToEnemy(
   // the party dominates is.
   const encounter = getEncounter(encounterId);
   const mine = encounter ? sideOf(encounter, "sheet", attackerCharacterId) : "party";
-  return listTokens(map.id).some(
+  // A mount under a rider is a creature beside the target too (listStandings).
+  return listStandings(map.id).some(
     (token) =>
       token.refId !== attackerCharacterId &&
       token.refId !== enemyId &&
@@ -1337,7 +1338,7 @@ export function checkPcAttackRange(
   }
   // The foes this same attack reaches from where they stand, for the next
   // call to aim at instead.
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const within = (tiles: number) => {
     const line = standingFoesLine(encounter.campaignId, encounter, (id) => {
       const token = tokens.find((entry) => entry.refId === id);

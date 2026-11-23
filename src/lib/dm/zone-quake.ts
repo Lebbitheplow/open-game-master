@@ -23,7 +23,7 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { listTokens, type BattleMap } from "@/lib/db/battle-maps";
+import { listStandings, type BattleMap } from "@/lib/db/battle-maps";
 import { getEnemy, setEnemyConcentration, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
@@ -58,7 +58,7 @@ const prone = (conditions: string[]) => conditions.some((entry) => entry.toLower
 // that is not flying.
 function groundedIn(map: BattleMap, cells: number[]): BattleToken[] {
   const inside = new Set(cells);
-  return listTokens(map.id).filter(
+  return listStandings(map.id).filter(
     (token) => (token.kind === "pc" || token.kind === "enemy") && token.movement !== "fly" && inside.has(tileIndex(map.width, token.x, token.y)),
   );
 }

@@ -353,7 +353,7 @@ import { fightNames, getActiveEncounter, listEnemies, type Encounter, type Encou
 import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { takesOwnTurn } from "@/lib/dm/mount-link";
 import { enemyMoveBudget, enemyMovementNote } from "@/lib/dm/enemy-speed";
-import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings, type BattleMap } from "@/lib/db/battle-maps";
 import { pcMoveBudget } from "@/lib/battlemap/view";
 import { serializeMapForPrompt } from "@/lib/battlemap/serialize";
 import { suggestEnemies } from "@/lib/bestiary";
@@ -707,7 +707,10 @@ function buildMapText(encounterId: string, sheets: CharacterSheet[]): string | n
     }
   }
   // The drawn board, so the model sees the doors, with the shut ones named.
-  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses, tokenFootprint);
+  // A mount under a rider has a line of its own, with its conditions and
+  // the ranges to it (listStandings): it had none, and only the rider's
+  // note said it was there.
+  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listStandings(map.id), statuses, tokenFootprint);
 }
 
 function loadContext(campaign: Campaign): TurnContext {

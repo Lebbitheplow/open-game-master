@@ -37,7 +37,7 @@ import { UNWAVERING_STRIKE } from "@/lib/dm/feature-bonus-attacks";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { FLAMES_OF_PHLEGETHOS } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, listStandings } from "@/lib/db/battle-maps";
 import { tilesApart } from "@/lib/dm/board-reach";
 
 import {
@@ -670,7 +670,7 @@ export function authoredSneakEdge(encounterId: string, sheetId: string, enemyId:
   if (!duel || !map) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const me = tokens.find((token) => token.refId === sheetId);
   const target = tokens.find((token) => token.refId === enemyId);
   if (!me || !target || tilesApart(me, target) > 1) {
