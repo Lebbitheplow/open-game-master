@@ -1589,19 +1589,36 @@ function tableHazardLine(campaignId: string): string {
 // The request_roll tool. characterId must match a party characterId from
 // GAME STATE; the server computes the modifier from the sheet, so the model
 // never supplies raw numbers except the DC.
+//
+// One tool, one meaning (issue 915): the roll is the roll of the character it
+// names, the one who would pick up the dice at a table. "Aria, roll your
+// damage" is Aria's roll; a trap's dice are never handed to the character
+// they land on. Harm done to a character is rolled by the tool that deals it
+// (apply_hazard, cast_at_player, apply_damage with dice), which names what
+// rolled. The roll cannot tell the two intents apart once it is stored, so
+// the words here have to. "A character's own dice" rides in the tool's first
+// sentence, the one a compact call keeps (src/lib/dm/tool-profiles.ts).
+// characterId says whose roll it is not in a second sentence, which a
+// compact call drops: a 16K window had no room for it, and with it in the
+// first the players' words no longer opened a group on the first call
+// (scripts/test-tool-profiles.mjs). The trimmed tool set has a token budget
+// too (scripts/test-prompt-window.mjs), so those words are paid for by a
+// sentence targetEnemyId used to end on ("A party character's damage goes
+// through pc_attack or the spell tools"), which the server says itself when
+// a model tries it (src/lib/dm/invoke-roll.ts).
 export const requestRollTool = {
   type: "function",
   function: {
     name: "request_roll",
     description:
-      "Roll dice for an uncertain outcome; the server takes the modifier from the sheet.",
+      "Roll a character's own dice for an uncertain outcome; the server takes the modifier from the sheet.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         characterId: {
           type: "string",
-          description: "Exact characterId from GAME STATE.",
+          description: "Exact characterId from GAME STATE. Who rolls, never who a trap or hazard harms.",
         },
         kind: {
           type: "string",
@@ -1666,7 +1683,7 @@ export const requestRollTool = {
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, by an NPC with no sheet: the enemy struck (enemyId). Exact enemyId from GAME STATE; the server applies the total, no apply_damage after. A party character's damage goes through pc_attack or the spell tools.",
+            "damage only, in combat, by an NPC with no sheet: the enemy struck (enemyId). Exact enemyId from GAME STATE; the server applies the total, no apply_damage after.",
         },
         reason: {
           type: "string",
