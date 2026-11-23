@@ -185,6 +185,24 @@ await test("An attack refused for range names the mount among the foes it does r
   assert.ok(lost.error.includes(mount.displayName), `the mount is not among the names the board holds: ${lost.error}`);
 });
 
+await test("A creature that Dashes toward a ridden mount by its name walks beside the pair, where the name was refused as nobody on the board.", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 60, abilities: { str: 16, dex: 12, con: 14 } });
+  await world.beginFight([{ monster: "goblin", mount: "wolf" }, { monster: "goblin" }]);
+  const rider = world.enemies().find((enemy) => enemy.ridesEnemyId);
+  const mount = world.enemies().find((enemy) => enemy.id === rider.ridesEnemyId);
+  const far = world.enemies().find((enemy) => enemy.id !== rider.id && enemy.id !== mount.id);
+  await layMap(world, OPEN(), { [hero.id]: { x: 2, y: 8 }, [rider.id]: { x: 12, y: 4 }, [far.id]: { x: 20, y: 4 } });
+  const encounter = world.encounter();
+  saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((entry) => entry.enemyId === far.id), turnBudget: null });
+  world.clearDice();
+  const out = await world.invoke("take_action", { enemyId: far.id, action: "dash", toward: mount.displayName });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const now = ownToken(world, far.id);
+  assert.ok(Math.max(Math.abs(now.x - 12), Math.abs(now.y - 4)) <= 1, `the goblin stopped at (${now.x},${now.y}), not beside the pair`);
+});
+
 // ---- what the GM's model and the players' board are told ----
 
 await test("The board written out for the GM's model has a line for the mount, with its own id and conditions, under the letter the pair shares.", async () => {
