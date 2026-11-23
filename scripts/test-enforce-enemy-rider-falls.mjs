@@ -536,6 +536,7 @@ await test("A mount the ground throws down as its caster's player ends their tur
   assert.ok(prone(world, mount.id), "setup: the mount kept its feet");
   assertParted(world, rider, mount);
   assert.ok(prone(world, rider.id), "the rider stands, though the ground threw it down too");
+  assert.ok(!world.encounter().reactionsUsed.includes(rider.id), "a rider already prone spent its reaction to land on its feet");
 });
 
 await test("A mount the ground throws down as the party lead skips its caster's turn drops its rider then.", async () => {

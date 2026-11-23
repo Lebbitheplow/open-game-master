@@ -182,7 +182,9 @@ function landsOrFalls(campaign: Pick<Campaign, "id">, encounter: Encounter, ride
   if (live.status !== "alive") {
     return "";
   }
-  if (reactionFree(encounter, live)) {
+  // A rider already lying in the saddle (the same blast threw both down)
+  // has no feet to land on: it comes down prone and keeps its reaction.
+  if (!isProne(live) && reactionFree(encounter, live)) {
     encounter.reactionsUsed = [...encounter.reactionsUsed, live.id];
     saveEncounter(encounter);
     tableNote(campaign, live, `${mountName} goes down; ${live.displayName} jumps clear and lands on its feet.`);
@@ -190,7 +192,9 @@ function landsOrFalls(campaign: Pick<Campaign, "id">, encounter: Encounter, ride
   }
   laySpellConditionsOnEnemy(live.id, ["prone"], {});
   tableNote(campaign, live, `${mountName} goes down and ${live.displayName} falls with it.`);
-  return `${live.displayName} has no reaction to take, so it falls prone${spotOf(live)}.`;
+  return isProne(live)
+    ? `${live.displayName} was already prone, so it comes down prone${spotOf(live)} and keeps its reaction.`
+    : `${live.displayName} has no reaction to take, so it falls prone${spotOf(live)}.`;
 }
 
 // The pair this enemy is half of comes apart as it drops to 0 (enemy-damage.ts):
