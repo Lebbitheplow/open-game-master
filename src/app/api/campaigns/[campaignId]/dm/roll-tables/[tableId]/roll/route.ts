@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
-import { allocateSeq } from "@/lib/db/campaigns";
 import { getRollTable, listRollTables, markDrawn } from "@/lib/db/roll-tables";
-import { insertRoll, ROLL_VISIBILITIES } from "@/lib/db/rolls";
+import { ROLL_VISIBILITIES } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
-import { redactRoll } from "@/lib/dm/viewer";
+import { recordRoll } from "@/lib/dm/roll-record";
 import {
   describeRollChain,
   dieForTable,
@@ -71,17 +69,18 @@ export async function POST(
     total = outcome.total;
   }
 
-  const roll = insertRoll({
+  // On record through the one door (src/lib/dm/roll-record.ts), handed over
+  // whole: the event stream takes the number out for the seats not owed it.
+  // Rolled from the GM's own tools at no GM turn, so it is on none.
+  const roll = recordRoll({
     campaignId,
     requestedBy: "dm",
     kind: "custom",
     detail: table.name,
     result: outcome,
     visibility,
-  });
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", {
-    roll: roll.visibility === "public" ? roll : redactRoll(roll),
-    source: "digital",
+    // Thrown here, on the server's dice.
+    landing: null,
   });
   const entry = entryForRoll(table.entries, total);
   const chain = followTableRefs(

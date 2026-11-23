@@ -16,8 +16,10 @@ import {
   publicPendingRoll,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
-import { insertRoll, kindAndRoller, markRollSpent, type StoredRoll } from "@/lib/db/rolls";
+import { getDatabase } from "@/lib/db/core";
+import { kindAndRoller, markRollSpent, type StoredRoll } from "@/lib/db/rolls";
 import { cardRoller } from "@/lib/dm/roll-card";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { rollsCanWait } from "@/lib/dm/after-roll";
@@ -41,8 +43,8 @@ import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { claimHeldPending, runHeldAgain } from "@/lib/dm/held-call";
 import { backstopTurn } from "@/lib/dm/backstop-calls";
 import { resumeBackstop } from "@/lib/dm/backstop-resume";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { holdDeliveries, publishPersisted } from "@/lib/events";
+import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 
 // What a landed roll leaves: its record, or, for dice whose call waits again
@@ -68,7 +70,12 @@ export type RollLanding = {
 
 // A roll that held its whole call (src/lib/dm/held-call.ts): the call runs
 // again with the roll in hand, under the turn it was made on, and records the
-// roll itself as its first run would have.
+// roll itself as its first run would have. At a table a person runs, the line
+// the landing posts lists what the run left on the turn, and the player's
+// own roll with it when the run put that on a short turn of its own (a
+// zone's save), which nothing else draws. A roll a line of its own carries
+// (a death save, an opportunity swing: roll-record.ts `home: "line"`) stays
+// on that line alone (persons-record.ts).
 function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): Landed | null {
   if (!claimHeldPending(pending.id, landing.status)) {
     return null;
@@ -118,6 +125,13 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   if (pending.carry?.call) {
     return landHeld(campaign, pending, thrown, landing);
   }
+  // A card already landed stores nothing and spends nothing: asked before a
+  // held die is settled on its d20 below, and before the roll goes on
+  // record, since the door stores it, sends it and adds it to the turn at
+  // once.
+  if (getPendingRoll(pending.id)?.status !== "pending") {
+    return null;
+  }
   const campaignId = campaign.id;
   // A parked to-hit roll takes a held Bardic Inspiration die the way the
   // digital one does: only on a miss it turns into a hit (forced-save.ts).
@@ -130,46 +144,65 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
     // The server threw that die: the roll is no longer the player's alone.
     landing = { ...landing, physical: false };
   }
-  const roll = insertRoll({
-    campaignId,
-    characterId: pending.characterId,
-    requestedBy: "player",
-    // A parked pc_attack roll (to-hit or damage) is the PC's own; any other
-    // parked roll is a roll tool's free text about its sheet, whose attack or
-    // damage roll is that character's too.
-    ...kindAndRoller(
-      pending.kind,
-      pending.attack && pending.characterId ? { kind: "sheet", id: pending.characterId, name: pending.attack.attacker } : null,
-      cardRoller(pending.characterId ? getSheetById(pending.characterId) : null),
-    ),
-    // Once any face was drawn by the server the "(physical)" label would
-    // overclaim, so a mixed or fully digital submission keeps the plain detail.
-    detail: landing.physical ? `${pending.detail || pending.kind} (physical)`.trim() : pending.detail,
-    advantage: pending.advantage,
-    dc: pending.dc,
-    result: outcome,
-    // A roll the DM asked for behind the screen lands behind it.
-    visibility: pending.visibility,
-  });
-
-  const resolved = resolvePendingRoll(pending.id, landing.status, roll.id);
-  if (!resolved) {
-    return null;
-  }
-
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", {
-    roll,
-    pendingRollId: pending.id,
-    // Real dice already rolled on a real table; the overlay animates only
-    // rolls where every face was drawn digitally (a mixed submission still
-    // happened at the table).
-    source: landing.source,
-  });
-
-  // A person's turn has no narration to carry the dice entered for it: they
-  // and what they did go to the chronicle now (issue 713).
+  // The turn as the card left it, read before the roll joins it.
   const parkedOn = getDmTurn(pending.turnId);
+  // A person's turn has no narration to carry the dice entered for it: they
+  // and what they did go to the chronicle now (issue 713), on a line that
+  // lists what the turn gains from here, the roll first.
   const record = parkedOn?.actor === "human_dm" ? startPersonsRecord(campaign, parkedOn) : null;
+  // On record through the one door (roll-record.ts): the roll joins the turn
+  // the card was dealt on as it lands, ahead of the dice its landing throws.
+  // It used to wait for the turn to resume, and a turn that never resumed
+  // with a model (a person's call at the console, a turn closed untold) left
+  // it on no turn. On a turn is not yet in the chronicle: a console call at
+  // a table the AI runs posts no line and a turn closed untold writes no
+  // message, for this roll as for every other of theirs.
+  // The roll goes on record and its card is answered together or not at
+  // all: a roll on record with its card still open could be landed again.
+  // The roll's event waits until both stand, so no screen is told of a
+  // roll, and takes its card down, for a landing that was taken back.
+  const deliveries = holdDeliveries();
+  let roll: StoredRoll;
+  try {
+    roll = getDatabase().transaction(() => {
+      const made = recordRoll({
+        campaignId,
+        characterId: pending.characterId,
+        requestedBy: "player",
+        // A parked pc_attack roll (to-hit or damage) is the PC's own; any
+        // other parked roll is a roll tool's free text about its sheet,
+        // whose attack or damage roll is that character's too.
+        ...kindAndRoller(
+          pending.kind,
+          pending.attack && pending.characterId ? { kind: "sheet", id: pending.characterId, name: pending.attack.attacker } : null,
+          cardRoller(pending.characterId ? getSheetById(pending.characterId) : null),
+        ),
+        detail: pending.detail,
+        advantage: pending.advantage,
+        dc: pending.dc,
+        result: outcome,
+        // A roll the DM asked for behind the screen lands behind it.
+        visibility: pending.visibility,
+        turnId: pending.turnId,
+        // How the dice came in. The door writes "(physical)" for a roll
+        // made entirely with real dice: once any face was drawn by the
+        // server the label would overclaim, so a mixed or fully digital
+        // submission keeps the plain detail. Real dice already rolled on a
+        // real table are sent as such, and the overlay animates only rolls
+        // where every face was drawn digitally (a mixed submission still
+        // happened at the table).
+        landing,
+        answers: pending.id,
+      });
+      resolvePendingRoll(pending.id, landing.status, made.id);
+      return made;
+    })();
+  } catch (error) {
+    deliveries.release(false);
+    throw error;
+  }
+  deliveries.release(true);
+
   // What the roll does lands in the player's request, but it is the parked
   // turn's work: the order the last initiative locks (and the death saves
   // the pointer then rolls), the damage it lands. Filed under that turn, its
@@ -242,16 +275,18 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   // call's are (held-call.ts spendOwnRolls). They join the turn as they are
   // made (roll-record.ts), so on an AI's turn they are stamped spent before
   // it resumes: a bare number the model sends then is paid for only by a
-  // roll it asked for (ai-gate.ts number). The landed roll itself joins when
-  // the turn resumes, and stays the model's to use.
+  // roll it asked for (ai-gate.ts number). The landed roll itself is on the
+  // turn with them, and is left out: it stays the model's to use.
   if (parkedOn?.actor === "ai") {
     for (const id of (getDmTurn(pending.turnId)?.rollIds ?? []).slice(parkedOn.rollIds.length)) {
-      markRollSpent(id);
+      if (id !== roll.id) {
+        markRollSpent(id);
+      }
     }
   }
   const after = record ? getDmTurn(pending.turnId) : null;
   if (record && after) {
-    postPersonsRecord(campaign, after, record, { rollIds: [roll.id] });
+    postPersonsRecord(campaign, after, record);
   }
   return roll;
 }

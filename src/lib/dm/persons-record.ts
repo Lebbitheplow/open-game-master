@@ -61,11 +61,15 @@ function foeChanges(start: RecordStart): FoeChange[] {
   return changes;
 }
 
-// `rollIds` are the call's rolls the turn does not list (a player's dice
-// entered for a parked roll); `changes` false leaves the sentence to a path
-// that posts its own (the server playing the enemies says each blow). One of
-// them that a line of its own already carries (a death save, an opportunity
-// swing: roll-record.ts `home: "line"`) stays on that line alone.
+// `rollIds` are the call's rolls the turn does not list: a player's dice for
+// a roll that held its call, where the run that took them put them on a
+// short turn of its own (a zone's save: dm-turns.ts openStandInTurn), which
+// nothing else draws. A plain roll card's roll needs no word here: it joins
+// its turn as it lands (pending-roll-land.ts). One of them that a line of
+// its own already carries (a death save, an opportunity swing:
+// roll-record.ts `home: "line"`) stays on that line alone. `changes` false
+// leaves the sentence to a path that posts its own (the server playing the
+// enemies says each blow).
 export function postPersonsRecord(
   campaign: Campaign,
   turn: DmTurn,
@@ -83,8 +87,8 @@ export function postPersonsRecord(
   // with the seats that may read it (src/lib/table-delivery.ts): its id or
   // its label would tell the rest it exists.
   const rolls: RollWords[] = [];
-  // Dice entered for a parked roll are listed where they were stored: ahead
-  // of what their landing threw (a hit's damage), which the turn lists.
+  // Such a roll is listed where it was stored among the turn's own: ahead
+  // of the first the run made after it.
   const onTurn = turn.rollIds.slice(start.rolls);
   const listed = [...onTurn];
   for (const id of options.rollIds ?? []) {

@@ -60,8 +60,10 @@ export type RetryResult = { ok: true; turnId: string; correctionId?: string | nu
 
 // A tool call the halted turn never answered, where the answer is a physical
 // roll the player already submitted (the crash landed between the roll
-// resolving and resumeDmTurn appending it). Mirrors the payload shape
-// resumeDmTurn uses so the model reads it exactly the same way.
+// resolving and resumeDmTurn answering it). Mirrors the payload shape
+// resumeDmTurn uses so the model reads it exactly the same way, and marks
+// the card answered as it does, so a later resume of this turn does not
+// answer it again. The roll itself joined the turn's cards as it landed.
 function resolvedRollResult(
   turn: DmTurn,
   pendings: PendingRoll[],
@@ -74,8 +76,8 @@ function resolvedRollResult(
   if (!pending || !roll) {
     return null;
   }
-  if (!turn.rollIds.includes(roll.id)) {
-    turn.rollIds.push(roll.id);
+  if (!turn.answeredPendingIds.includes(pending.id)) {
+    turn.answeredPendingIds.push(pending.id);
   }
   return JSON.stringify({
     total: roll.total,

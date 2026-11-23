@@ -1,6 +1,7 @@
-// Every file that still puts a roll on record by hand is on a ledger
-// (scripts/roll-record-sites.json), with how many times it does each of the
-// three things by hand and which family of sites it moves with.
+// No file puts a roll on record by hand. The ones that did were on a ledger
+// (scripts/roll-record-sites.json), with how many times each did each of the
+// three things by hand and which family of sites it moved with; the ledger is
+// empty now, and this suite keeps it so.
 //
 // A roll on record is stored, sent to the table, added to the cards of the
 // turn it was made in, and says who rolled it and how. One function does all
@@ -14,9 +15,9 @@
 //   send   a publish of "roll_result"
 //   join   rollIds.push(...)
 //
-// A new one fails here until it goes through recordRoll. One moved onto
-// recordRoll is struck off, so the counts only go down: the ledger's `total`
-// is their sum, and a pull request that raises it says why in its diff.
+// A new one fails here until it goes through recordRoll. The ledger's `total`
+// is the sum of its counts, all 0: a pull request that raises one says why in
+// its diff.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -27,8 +28,10 @@ const ledgerPath = path.join(import.meta.dirname, "roll-record-sites.json");
 const ledger = JSON.parse(fs.readFileSync(ledgerPath, "utf8"));
 
 // The door itself, and the store it writes through.
-// And the turn store, which keeps the rolls its stored row lists.
-const HOMES = new Set(["lib/dm/roll-record.ts", "lib/db/rolls.ts", "lib/db/dm-turns.ts"]);
+// And the turn store, which keeps the rolls its stored row lists, with the
+// migration that files the turns open when a card's roll began to join its
+// turn as it lands (run once, on rows the door never wrote).
+const HOMES = new Set(["lib/dm/roll-record.ts", "lib/db/rolls.ts", "lib/db/dm-turns.ts", "lib/db/answered-cards-backfill.ts"]);
 const BY_HAND = {
   store: /\binsertRoll\(/g,
   // The publish and its event name, which may sit a line apart.
@@ -115,4 +118,4 @@ for (const family of unused) {
   problems.push(`family "${family}": no site is left in it; strike it.`);
 }
 assert.deepEqual(problems, [], problems.join("\n"));
-console.log(`test-roll-record-sites: ${Object.keys(found).length} files on the ledger; by hand: ${said(total)}`);
+console.log(`test-roll-record-sites: ${Object.keys(found).length} files on the ledger; by hand: ${said(total) || "none"}`);

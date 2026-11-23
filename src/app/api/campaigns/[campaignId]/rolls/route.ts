@@ -2,14 +2,14 @@ import { z } from "zod";
 import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { listSheets } from "@/lib/db/sheets";
 import { actingSheetFor } from "@/lib/character-seat";
-import { insertRoll, listRollsVisibleTo } from "@/lib/db/rolls";
+import { listRollsVisibleTo } from "@/lib/db/rolls";
 import { rollExpression, type Advantage } from "@/lib/dice";
 import { trayExpressionProblem } from "@/lib/dice/tray-rules";
 import { findSkill } from "@/lib/srd";
 import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { moteAfterRoll, moteOf, type HeldMote } from "@/lib/dm/authored-mote";
-import { publishPersisted } from "@/lib/events";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { ABILITIES } from "@/lib/schemas/sheet";
 
@@ -178,7 +178,10 @@ export async function POST(
   if (sheet && spent) {
     spendRollCarriers(campaignId, sheet.id, spent, dmSeat ? "dm" : sheet.userId === context.user.id ? "player" : "lead");
   }
-  const roll = insertRoll({
+  // On record through the one door (src/lib/dm/roll-record.ts). The tray is
+  // rolled at no GM turn, so the roll is handed none and is on none: it is
+  // stored, sent and in the roll log.
+  const roll = recordRoll({
     campaignId,
     characterId: sheet?.id ?? null,
     requestedBy: dmSeat ? "dm" : "player",
@@ -187,9 +190,9 @@ export async function POST(
     advantage,
     result,
     visibility: input.secret ? (dmSeat ? "dm" : "self") : "public",
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-
-  publishPersisted(campaignId, "roll_result", { roll, source: "digital" });
 
   // A mote spent on a save leaves its temporary hit points (src/lib/dm/authored-mote.ts).
   if (sheet && mote) {
