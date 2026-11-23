@@ -503,6 +503,21 @@ await test("A mount the webs catch as it walks is held on the square it was caug
   assert.equal(ownToken(world, mount.id), null);
 });
 
+await test("A mount drained to 0 of a score that kills goes down under its rider as a mount slain does: the rider spends its reaction to land on its feet, or with none falls prone.", async () => {
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { drainCreature } = await import("../src/lib/dm/creature-drain.ts");
+  for (const spent of [false, true]) {
+    const { world, rider, mount } = await pair();
+    if (spent) saveEncounter({ ...world.encounter(), reactionsUsed: [rider.id] });
+    const said = drainCreature(world.campaign(), createDmTurn(world.campaignId, []), rider, mount.id, "Bite", { ability: "str", dice: "40d6", diesAtZero: true });
+    world.clearDice();
+    assert.match(said ?? "", /dies/, `the drain did not kill: ${said}`);
+    assert.equal(mounted(world, rider), false, "the rider still rides its dead mount");
+    assert.equal(prone(world, rider.id), spent, spent ? "a rider with no reaction landed on its feet" : `a rider with its reaction fell prone: ${said}`);
+    assert.equal(world.encounter().reactionsUsed.includes(rider.id), true, "the reaction to land on its feet was not spent");
+  }
+});
+
 // ---- a turn passed outside an engine call ----
 
 // Earthquake laid over the pair by a cleric 50 feet off, every save of the
