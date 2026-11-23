@@ -253,3 +253,13 @@ export function genreShortlist<T extends { id: string; genres?: readonly string[
   const shown = catalog.filter((entry) => suited.includes(entry) || keep.includes(entry.id));
   return catalog.length - shown.length < 3 ? null : shown.map((entry) => entry.id);
 }
+
+// A theme's name and look in the reader's language. The name takes a context
+// of its own: "Arcane" alone is the Arcana skill's word in French.
+type ThemeT = (key: string, vars?: { context?: string }) => string;
+export function themeName(t: ThemeT, entry: Pick<AppearanceDefinition, "id" | "name">): string {
+  return t(entry.name, { context: `appearance.theme.${entry.id}` });
+}
+export function themeDescription(t: ThemeT, entry: Pick<AppearanceDefinition, "description">): string {
+  return t(entry.description);
+}

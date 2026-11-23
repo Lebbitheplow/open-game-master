@@ -784,6 +784,7 @@
     "app/workshop/world/WorldForgePanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/world/WorldForgePanel.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/world/WorldForgePanel.tsx#str-startsWith": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "components/AppearancePicker.tsx#str-key": [["key",1,"a campaign genre id (a fixed choice) read to the words the shortlist sentence says"]],
     "components/AboutDialog.tsx#re-affix": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/AboutDialog.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "components/CommandPalette.tsx#str-eq": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 
 // The skill-check card (docs/visual-overhaul-plan.md 5.4, "Rolls and
 // Effects" 5b): the violet frame with its thorn corners, the breathing halo,
@@ -195,13 +196,14 @@ export function modifierParts(expression: string): Array<{ text: string; kind: "
 }
 
 export function ModifierBreakdown({ expression, caption }: { expression: string; caption?: string }) {
+  const t = useT();
   const parts = modifierParts(expression);
   if (!parts.length) {
     return null;
   }
   return (
     <span className="flex flex-wrap items-center gap-1">
-      <span className="sr-only">{`Rolls ${expression}`}</span>
+      <span className="sr-only">{t("Rolls {expression}", { expression })}</span>
       {parts.map((part, index) => (
         <span
           key={`${part.text}-${index}`}

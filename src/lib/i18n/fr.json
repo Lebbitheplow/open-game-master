@@ -10625,6 +10625,51 @@
     "independent (acts on its own turn)": "indépendante (agit à son propre tour)",
     "{name} mounts up: {mount}.": "{name} monte en selle : {mount}.",
     "{duration} pass:": "{duration} s’écoulent :",
+    "Who the theme is for": "Pour qui est le thème",
+    "My screen": "Mon écran",
+    "Whole table": "Toute la table",
+    "Brightness": "Luminosité",
+    "Match device": "Comme l’appareil",
+    "Match the genre": "Selon le genre",
+    "Same as the table": "Comme la table",
+    "Follow campaign": "Suivre la campagne",
+    "Every theme.": "Tous les thèmes.",
+    "Themes that suit {genre}.": "Thèmes qui conviennent au genre {genre}.",
+    "high fantasy": "heroic fantasy",
+    "dark fantasy": "dark fantasy",
+    "mystery": "mystère",
+    "horror": "horreur",
+    "cyberpunk": "cyberpunk",
+    "steampunk": "steampunk",
+    "post-apocalyptic": "post-apocalyptique",
+    "Visual theme": "Thème visuel",
+    "The adventure awaits": "L’aventure t’attend",
+    "Show only themes that suit {genre}": "N’afficher que les thèmes qui conviennent au genre {genre}",
+    "Show all {count} themes": "Afficher les {count} thèmes",
+    "Your own screen is set to {theme}, so it does not show the table’s theme.": "Ton écran utilise {theme}, il n’affiche donc pas le thème de la table.",
+    "Show the table’s theme here": "Afficher ici le thème de la table",
+    "The table uses {theme}, from its genre. Every player sees it unless they pick their own.": "La table utilise {theme}, d’après son genre. Chaque joueur le voit, sauf s’il choisit le sien.",
+    "The table uses {theme}. Every player sees it unless they pick their own.": "La table utilise {theme}. Chaque joueur le voit, sauf s’il choisit le sien.",
+    "Using {theme} · personal choice.": "{theme} · choix personnel.",
+    "Using {theme} · same as the table.": "{theme} · comme la table.",
+    "Using {theme} · following campaign.": "{theme} · selon la campagne.",
+    "Same as the table uses the theme this table chose.": "Comme la table reprend le thème choisi pour cette table.",
+    "Follow campaign uses the table’s chosen theme, with Arcane elsewhere.": "Suivre la campagne reprend le thème choisi par la table, et Arcanes ailleurs.",
+    "Pick a theme to use it everywhere on this device. Brightness always stays your choice.": "Choisis un thème pour l’utiliser partout sur cet appareil. La luminosité reste toujours ton choix.",
+    "Matches the genre": "Selon le genre",
+    "Opens the theme panel: choose Whole table there. Each player keeps their own brightness and can choose a personal theme.": "Ouvre le panneau des thèmes : choisis-y Toute la table. Chaque joueur garde sa propre luminosité et peut choisir un thème personnel.",
+    "Indigo stone, celestial brass, and amethyst fittings.": "Pierre indigo, laiton céleste et garnitures d’améthyste.",
+    "Carved oak, living ivy, and silver leaf fittings.": "Chêne sculpté, lierre vivant et garnitures de feuilles d’argent.",
+    "Cathedral stone, silver tracery, and garnet glass.": "Pierre de cathédrale, remplages d’argent et vitraux grenat.",
+    "Warm parchment, crafted oak, and welcoming amber lamplight.": "Parchemin chaud, chêne ouvragé et accueillante lueur ambrée.",
+    "Ivory vellum, royal blue, and illuminated heraldry.": "Vélin ivoire, bleu roi et héraldique enluminée.",
+    "Sea-glass teal, pale driftwood, and verdigris bronze.": "Verre de mer sarcelle, bois flotté pâle et bronze vert-de-gris.",
+    "Dark basalt, hammered bronze, and ember light.": "Basalte sombre, bronze martelé et lueur de braise.",
+    "A case file gone wrong by day; what it found, coiled in drowned stone, by night.": "Le jour, un dossier qui a mal tourné ; la nuit, ce qu’il a trouvé, lové dans la pierre noyée.",
+    "Blue-white ice, pale steel, and aurora light.": "Glace bleu-blanc, acier pâle et lueur d’aurore.",
+    "Obsidian, black iron chain, and a crimson glow.": "Obsidienne, chaînes de fer noir et lueur cramoisie.",
+    "Dusk rose, gossamer thread, and pearl silverwork.": "Rose du crépuscule, fil arachnéen et orfèvrerie nacrée.",
+    "Rolls {expression}": "Jet de {expression}",
     "{duration} passes:": "{duration} s’écoule :",
     "{duration} passes.": "{duration} s’écoule.",
     "{duration} pass.": "{duration} s’écoulent.",
@@ -10991,6 +11036,42 @@
     "Onto a creature beside you: half your speed.": "En montant sur une créature à côté de toi : la moitié de ta vitesse."
   },
   "contexts": {
+    "Arcane": {
+      "appearance.theme.arcane": "Arcanes"
+    },
+    "Ancient Woodland": {
+      "appearance.theme.woodland": "Forêt ancestrale"
+    },
+    "Gothic": {
+      "appearance.theme.gothic": "Gothique"
+    },
+    "Hearth & Haven": {
+      "appearance.theme.hearth": "Âtre et refuge"
+    },
+    "High Kingdoms": {
+      "appearance.theme.kingdoms": "Hauts royaumes"
+    },
+    "Sunken Tide": {
+      "appearance.theme.tide": "Marée engloutie"
+    },
+    "Deep Forge": {
+      "appearance.theme.forge": "Forge profonde"
+    },
+    "Unquiet Depths": {
+      "appearance.theme.depths": "Profondeurs inquiètes"
+    },
+    "Frostbound": {
+      "appearance.theme.frost": "Terres de givre"
+    },
+    "Inferno": {
+      "appearance.theme.inferno": "Inferno"
+    },
+    "Twilight Court": {
+      "appearance.theme.fey": "Cour du crépuscule"
+    },
+    "Light": {
+      "appearance.brightness.light": "Clair"
+    },
     "Mount": {
       "table.hand.card.mount": "Monter en selle"
     },
@@ -11232,7 +11313,8 @@
       "scene.zone.ambient.dim": "Pénombre"
     },
     "Dark": {
-      "scene.zone.ambient.dark": "Obscur"
+      "scene.zone.ambient.dark": "Obscur",
+      "appearance.brightness.dark": "Sombre"
     },
     "Down": {
       "board.health.down": "À terre"
