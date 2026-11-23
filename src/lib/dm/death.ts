@@ -14,7 +14,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertCharacterEvent } from "@/lib/db/character-events";
 import { noteDeathMoment } from "@/lib/dm/revival";
 import { insertCampaignMessage } from "@/lib/db/messages";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet, DeathSaves, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -111,7 +111,9 @@ export function killOutright(campaign: Campaign, turnId: string | null, sheet: C
   return getSheetById(sheet.id);
 }
 
-function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph) {
+// `rollIds`: the rolls whose cards this line is the home of (a death save
+// and the die of the stable wait it rolls; roll-record.ts `home: "line"`).
+function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph, rollIds: readonly string[] = []) {
   const seq = tableNoteSeq(campaign.id);
   const message = insertCampaignMessage({
     campaignId: campaign.id,
@@ -119,6 +121,7 @@ function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph) {
     authorType: "system",
     glyph,
     content,
+    rollIds,
   });
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
@@ -204,7 +207,7 @@ export function applyDamageDeathHook(
     // Creature Out): no death saves, the stable wait for the hit point, and
     // no instant death, which the attacker chose not to deal.
     if (nonlethal) {
-      const wait = rollStableTimer(campaign, fresh);
+      const wait = rollStableTimer(campaign, fresh, { turnId });
       writeDeathState(campaign, turnId, fresh, stableDeathTrack(), "death_state", "knocked out", {
         conditions: wait.conditions,
         conditionMeta: wait.conditionMeta,
@@ -310,25 +313,28 @@ export function healDeathHook(
 
 // A stabilized creature's wait for its hit point: 1d4 hours, rolled here so
 // the table sees the die. Returns the condition metadata carrying the wait.
-export function rollStableTimer(campaign: Campaign, sheet: CharacterSheet) {
+// Its card joins the turn its caller holds (`turnId`; inside a GM call, that
+// call's own), or, `onLine`, is left to the line its caller posts (a death
+// save's), which lists `rollId`.
+export function rollStableTimer(campaign: Campaign, sheet: CharacterSheet, where: { turnId?: string | null; onLine?: boolean } = {}) {
   const outcome = rollExpression("1d4");
-  const roll = insertRoll({
+  const roll = recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "custom",
     detail: `hours until ${sheet.name} regains 1 hit point (1d4)`,
     result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
+    ...(where.onLine ? { home: "line" as const } : { turnId: where.turnId ?? null }),
+    // Thrown here, on the server's dice.
+    landing: null,
   });
   const held = downConditions(sheet);
   return {
     hours: outcome.total,
     conditions: held.conditions,
     conditionMeta: stableTimer(held, outcome.total),
+    rollId: roll.id,
   };
 }
 
@@ -368,7 +374,9 @@ export function registerDeathSaveStandIn(hook: DeathSaveStandIn) {
 
 // One automatic death save, rolled server-side when the initiative pointer
 // passes a dying PC. Publishes the dice card and a table note so both the
-// players and the model (via history) see the result.
+// players and the model (via history) see the result. The note is the home
+// of the save's card, and of the stable wait's die when the save rolls one
+// (issue #915): the save joins no turn, in a fight or out of one.
 // `at`: the in-world instant of this save when the clock has already moved
 // past it (settleDying on the clock), for the moment of a death it brings.
 export function rollDeathSave(campaign: Campaign, characterId: string, turnId: string | null = null, at?: number): string | null {
@@ -390,13 +398,13 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   // dying at the start of your turn." The save this would have been is not
   // rolled; the wearer waits out the stable creature's 1d4 hours.
   if (wearsWorkingItem(sheet.equipment, sheet, WOUND_CLOSURE)) {
-    const wait = rollStableTimer(campaign, sheet);
+    const wait = rollStableTimer(campaign, sheet, { onLine: true });
     writeDeathState(campaign, turnId, sheet, stableDeathTrack(), "death_state", WOUND_CLOSURE, {
       conditions: wait.conditions,
       conditionMeta: wait.conditionMeta,
     });
     const line = `${sheet.name}'s ${WOUND_CLOSURE} closes their wounds: they are stable (unconscious at 0 HP) and regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}.`;
-    tableNote(campaign, line, "cue-heal");
+    tableNote(campaign, line, "cue-heal", [wait.rollId]);
     return line;
   }
   // A death save is a saving throw tied to no ability: it takes what every
@@ -442,7 +450,9 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   const current = getSheetById(characterId) ?? sheet;
   const advantage = /^2d20kh1/.test(resolved.expression) ? "advantage" : /^2d20kl1/.test(resolved.expression) ? "disadvantage" : "none";
   const notes = [...(resolved.conditionNotes ?? []), ...(hope ? [`${hope}: advantage`] : []), ...(feat ? [`${feat}: advantage`] : [])];
-  const roll = insertRoll({
+  // Their own dice, through the door above: entered at the table, they are
+  // on record and sent as theirs.
+  const roll = recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -451,10 +461,7 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     dc: 10,
     ...(advantage === "none" ? {} : { advantage }),
     result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
+    home: "line",
   });
   const applied = applyDeathSaveRoll(track, outcome.natural ?? outcome.total, outcome.total);
   // A death save that succeeds steadies them (last-save.ts): Defy Death answers it.
@@ -470,7 +477,7 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
       ...wakeConditions(current),
     });
     const line = `${rolled("natural 20")} ${sheet.name} rolls a natural 20 on their death save and regains 1 HP!`;
-    tableNote(campaign, line, "cue-heal");
+    tableNote(campaign, line, "cue-heal", [roll.id]);
     return line;
   }
   // Rage Beyond Death: stable or dead on the track, a raging zealot stays up
@@ -480,30 +487,30 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     const line = applied.outcome === "stable"
       ? `${rolled("success")} ${sheet.name} succeeds their third death save and is stable at 0 HP, still raging on their feet.`
       : `${rolled("failure")} ${sheet.name} fails their third death save. Rage Beyond Death holds the death off: they die when the rage ends, if they are still at 0 hit points then.`;
-    tableNote(campaign, line, applied.outcome === "stable" ? "cue-heal" : "cue-death");
+    tableNote(campaign, line, applied.outcome === "stable" ? "cue-heal" : "cue-death", [roll.id]);
     return line;
   }
   if (applied.outcome === "stable") {
-    const wait = rollStableTimer(campaign, current);
+    const wait = rollStableTimer(campaign, current, { onLine: true });
     writeDeathState(campaign, turnId, current, applied.track, "death_state", "automatic death save", {
       conditions: wait.conditions,
       conditionMeta: wait.conditionMeta,
     });
     const line = `${rolled("success")} ${sheet.name} succeeds their third death save and is stable (unconscious at 0 HP). They regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}.`;
-    tableNote(campaign, line, "cue-heal");
+    tableNote(campaign, line, "cue-heal", [roll.id, wait.rollId]);
     return line;
   }
   writeDeathState(campaign, turnId, current, applied.track, "death_state", "automatic death save");
   if (applied.outcome === "dead") {
     recordDeath(campaign, current, "failed death saving throws", at);
     const line = `${rolled("failure")} ${sheet.name} fails their final death save and dies.`;
-    tableNote(campaign, line, "cue-death");
+    tableNote(campaign, line, "cue-death", [roll.id]);
     return line;
   }
   const line = `${sheet.name} death save: rolled ${outcome.total}, ${
     applied.outcome === "success" ? "success" : "failure"
   } (${tally(applied.track)}).`;
-  tableNote(campaign, line, "die-d20");
+  tableNote(campaign, line, "die-d20", [roll.id]);
   return line;
 }
 

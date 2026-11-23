@@ -38,6 +38,14 @@
 //     damage, the swing queued behind it), are on the attack's turn, and the
 //     d20 itself is listed ahead of them, on the turn and on the line a
 //     person's turn posts;
+//   - an opportunity attack's cards are on the line the strike posts, in a
+//     GM call and out of one: its attack, its damage, then what the blow went
+//     on to roll on its short turn. A death save's card is on its line the
+//     same way, with the die of the stable wait a third success rolls. At
+//     a table a person runs, such a roll its player entered is on that line
+//     alone, not on the line the GM's call posts as well;
+//   - the dice the clock throws inside a GM call (an item's charges at dawn,
+//     a Ring of Regeneration's) are on that call's turn;
 //   - at the engine: Sleep's pool and a creature's initiative are on the
 //     turn of the call that rolled them.
 //
@@ -65,11 +73,11 @@ const { getDatabase } = await import("../src/lib/db/core.ts");
 const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
 const { insertPlayerWhisper } = await import("../src/lib/db/dm-whispers.ts");
 const relationships = await import("../src/lib/db/relationships.ts");
-const { allocateSeq, setDmMode } = await import("../src/lib/db/campaigns.ts");
+const { allocateSeq, setDmMode, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { firstStoredAfter, getRoll } = await import("../src/lib/db/rolls.ts");
 const { getSheetById } = await import("../src/lib/db/sheets.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
-const { rollExpression } = await import("../src/lib/dice.ts");
+const { entryDice, rollExpression } = await import("../src/lib/dice.ts");
 const { isHeldPark, parkHeldCall, runHeld, takeDecided } = await import("../src/lib/dm/held-call.ts");
 const { recordRoll } = await import("../src/lib/dm/roll-record.ts");
 const { dmRoll, rollCard, secretRoll } = await import("../src/lib/dm/roll-card.ts");
@@ -552,7 +560,276 @@ await test("an AI GM's answer to a whisper stays out of the shared chat when the
   }
 });
 
+// ---- opportunity attacks, death saves and the clock's dice ----
+
+const { resolveOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
+const { enemiesStrikeWalker } = await import("../src/lib/dm/opportunity-sides.ts");
+const { strikePetsOnWalk } = await import("../src/lib/dm/opportunity-pets.ts");
+const { rollDeathSave } = await import("../src/lib/dm/death.ts");
+const { rechargeAtDawn } = await import("../src/lib/dm/item-charges.ts");
+const { regenerationClock } = await import("../src/lib/dm/regeneration-ring.ts");
+const { patchEnemyConditions } = await import("../src/lib/db/encounters.ts");
+
+// The one line that carries these rolls' cards: it lists them in the order
+// they were made, no other line lists any of them, and each has one home.
+function onOneLine(rolls, what, table = world) {
+  assert.ok(rolls.length, `${what}: no roll was made`);
+  const lines = listRecentMessages(table.campaignId, 80).filter((message) => message.authorType === "system" && rolls.some((roll) => message.rollIds?.includes(roll.id)));
+  assert.equal(lines.length, 1, `${what}: ${lines.length} lines list its rolls: ${lines.map((line) => line.content).join(" | ")}`);
+  assert.deepEqual(lines[0].rollIds, rolls.map((roll) => roll.id), `${what}: the line does not list its rolls in the order they were made`);
+  for (const roll of rolls) {
+    assert.equal(homeProblem(roll.id), null, `${what}: ${roll.kind} "${roll.detail}"`);
+  }
+  return lines[0];
+}
+
+// On no turn: its line is its only home.
+const onNoTurn = (rolls, what) => {
+  for (const roll of rolls) {
+    assert.deepEqual(rollHomes(roll.id).turns, [], `${what}: its ${roll.kind} is on a turn as well as on its line`);
+  }
+};
+
+// A fight on a bare floor with everyone far apart, and its creatures.
+async function bareFight(count = 1) {
+  await kit.fight(count, { heroFaces: { [hero.id]: 19, [mage.id]: 5 } });
+  kit.openField();
+  kit.scatter();
+  const enemies = world.enemies();
+  for (const enemy of enemies) {
+    kit.setEnemy(enemy.id, { maxHp: 200, currentHp: 200 });
+  }
+  return enemies;
+}
+
+await test("a creature's opportunity attack on a character who walks away outside any GM call is on the line the strike posts: the attack, its damage, then the save its rider forced on the strike's short turn", async () => {
+  const [enemy] = await bareFight();
+  // A wolf's bite: a Strength save or be knocked prone.
+  kit.setEnemy(enemy.id, { stats: { attacks: [{ name: "Bite", toHit: 4, damage: "2d4+2", type: "piercing", mode: "melee", onHit: { save: "str", dc: 11, condition: "prone" } }] } });
+  kit.place(enemy.id, 5, 5);
+  kit.place(mage.id, 6, 5);
+  const mark = rollMark();
+  // The creature's d20, its two damage dice, the mage's Strength save.
+  world.dice(19, 2, 2, 5);
+  const out = resolveOpportunityAttacks(campaign(), mage.id, { x: 6, y: 5 }, { x: 8, y: 5 }, false, [{ x: 7, y: 5 }, { x: 8, y: 5 }]);
+  world.clearDice();
+  const made = rollsAfter(world.campaignId, mark);
+  await kit.endFight();
+  assert.equal(out.notes.length, 1, `the walk posted ${out.notes.length} lines: ${out.notes.join(" ")}`);
+  assert.deepEqual(made.map((roll) => roll.kind), ["attack", "damage", "saving_throw"], made.map((roll) => roll.detail).join(", "));
+  const line = onOneLine(made, "the strike");
+  assert.equal(line.content, out.notes[0]);
+  const [toHit, damage, save] = made;
+  assert.equal(toHit.attacker?.id, enemy.id);
+  assert.equal(damage.attacker?.id, enemy.id);
+  onNoTurn([toHit, damage], "the strike");
+  assert.equal(rollHomes(save.id).turns.length, 1, "the save the rider forced is not on the strike's short turn");
+});
+
+await test("inside a GM call, a creature's opportunity attack is on the strike's line all the same, and not on the call's turn", async () => {
+  const [enemy] = await bareFight();
+  kit.place(enemy.id, 5, 5);
+  kit.place(mage.id, 6, 5);
+  const turn = newTurn();
+  const mark = rollMark();
+  world.dice(19, 4);
+  const out = runHeld(campaign(), turn, SPEC, () => resolveOpportunityAttacks(campaign(), mage.id, { x: 6, y: 5 }, { x: 8, y: 5 }, false, [{ x: 7, y: 5 }, { x: 8, y: 5 }]));
+  world.clearDice();
+  saveDmTurn(turn);
+  const made = rollsAfter(world.campaignId, mark);
+  await kit.endFight();
+  assert.equal(out.notes.length, 1, `the walk posted ${out.notes.length} lines: ${out.notes.join(" ")}`);
+  assert.deepEqual(made.map((roll) => roll.kind), ["attack", "damage"]);
+  onOneLine(made, "the strike");
+  onNoTurn(made, "the strike");
+  assert.deepEqual(storedIds(turn.id), [], "the call's turn lists the strike's dice");
+});
+
+await test("a character's opportunity swing at a creature the GM walks off is on the line the swing posts, and not on the turn of the call that moved the creature", async () => {
+  const [enemy] = await bareFight();
+  const carried = world.sheet(hero.id).equipment;
+  world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
+  kit.place(hero.id, 5, 5);
+  kit.place(enemy.id, 6, 5);
+  kit.enemyTurn(enemy.id);
+  const mark = rollMark();
+  // The fighter's d20 (a hit) and the sword's d8.
+  world.dice(15, 5);
+  const out = await world.invoke("move_token", { token: enemy.id, x: 9, y: 5 });
+  world.clearDice();
+  const made = rollsAfter(world.campaignId, mark).filter((roll) => /opportunity attack/.test(roll.detail));
+  await kit.endFight();
+  world.patch(hero.id, { equipment: carried });
+  assert.equal(out.ok, true, `refused: ${out.error}`);
+  assert.deepEqual(made.map((roll) => roll.kind), ["attack", "damage"]);
+  const line = onOneLine(made, "the swing");
+  assert.match(line.content, /opportunity attack/);
+  assert.ok(made.every((roll) => roll.attacker?.id === hero.id), "the swing names another roller");
+  onNoTurn(made, "the swing");
+});
+
+await test("at a table a person runs, an opportunity swing its player rolled on their own dice is on the swing's line alone, not on the line the GM's call posts as well", async () => {
+  const table = await openWorld({ gameSettings: { dicePolicy: "real_allowed" } });
+  assert.ok(setDmMode(table.campaignId, "human", table.owner.id)?.dmUserId, "the owner takes the GM's seat");
+  const tableKit = await combatKit(table);
+  const fighter = table.addHero({
+    user: table.addUser(), name: "Reya", class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED,
+    equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+  });
+  await tableKit.fight(1, { heroFaces: { [fighter.id]: 19 } });
+  tableKit.openField();
+  tableKit.scatter();
+  const [enemy] = table.enemies();
+  tableKit.setEnemy(enemy.id, { maxHp: 200, currentHp: 200 });
+  tableKit.place(fighter.id, 5, 5);
+  tableKit.place(enemy.id, 6, 5);
+  tableKit.enemyTurn(enemy.id);
+  setMemberRealDice(table.campaignId, table.sheet(fighter.id).userId, true);
+  const mark = rollMark();
+  const walked = await table.invoke("move_token", { token: enemy.id, x: 9, y: 5 });
+  assert.equal(walked.ok, true, `refused: ${walked.error}`);
+  assert.equal(walked.result?.parked, true, `the walk did not wait on the seat's dice: ${JSON.stringify(walked.result)}`);
+  // The seat enters its d20 (a hit), then the damage the call asks for next.
+  const submit = await table.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+  for (let round = 0; round < 4; round += 1) {
+    const open = listOpenPendingRolls(table.campaignId).filter((pending) => pending.parkedFor === "real_dice");
+    if (!open.length) {
+      break;
+    }
+    for (const pending of open) {
+      table.signIn({ id: pending.userId });
+      const landed = await callRoute(submit, "POST", { dice: entryDice(pending.expression).map((sides) => (sides === 20 ? 15 : 3)) }, { campaignId: table.campaignId, pendingRollId: pending.id });
+      assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    }
+  }
+  const made = rollsAfter(table.campaignId, mark).filter((roll) => /opportunity attack/.test(roll.detail));
+  assert.deepEqual(made.map((roll) => roll.kind), ["attack", "damage"]);
+  assert.ok(made.every((roll) => /\(physical\)$/.test(roll.detail)), "the seat's own dice are not on record as theirs");
+  const line = onOneLine(made, "the swing", table);
+  assert.match(line.content, /opportunity attack/);
+  onNoTurn(made, "the swing");
+  table.close();
+});
+
+await test("inside a GM call, a creature's opportunity attack on a pet walking off with its owner, and on a creature of the other side, are each on the line that strike posts and not on the call's turn", async () => {
+  const [enemy] = await bareFight();
+  world.patch(hero.id, { pets: [{ name: "Ember", kind: "familiar", form: "imp", hp: 30, maxHp: 30, ac: 10, speed: 20, attacks: [], notes: "" }] });
+  kit.place(enemy.id, 5, 5);
+  kit.place(hero.id, 6, 5);
+  const turn = newTurn();
+  let mark = rollMark();
+  world.dice(15, 4);
+  const atPet = runHeld(campaign(), turn, SPEC, () => strikePetsOnWalk(campaign(), hero.id, [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }]));
+  world.clearDice();
+  let made = rollsAfter(world.campaignId, mark);
+  world.patch(hero.id, { pets: [] });
+  await kit.endFight();
+  assert.equal(atPet.length, 1, `the pet's walk posted ${atPet.length} lines`);
+  assert.deepEqual(made.map((roll) => roll.kind), ["attack", "damage"]);
+  assert.equal(onOneLine(made, "the strike at the pet").content, atPet[0]);
+  onNoTurn(made, "the strike at the pet");
+  assert.ok(made.every((roll) => roll.attacker?.id === enemy.id && roll.characterId === hero.id), "the strike at the pet names another roller or owner");
+
+  // Two creatures: the first fights for the party (Dominate Person) and
+  // strikes the second as it walks off.
+  const [turned, walker] = await bareFight(2);
+  patchEnemyConditions(turned.id, ["charmed"], { charmed: { spell: "Dominate Person", source: hero.id } });
+  kit.place(turned.id, 5, 5);
+  kit.place(walker.id, 6, 5);
+  mark = rollMark();
+  world.dice(15, 4);
+  const atWalker = runHeld(campaign(), turn, SPEC, () => enemiesStrikeWalker(world.campaignId, walker.id, [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }], 1));
+  world.clearDice();
+  saveDmTurn(turn);
+  made = rollsAfter(world.campaignId, mark).filter((roll) => roll.visibility === "public");
+  await kit.endFight();
+  assert.equal(atWalker.length, 1, `the creature's walk posted ${atWalker.length} lines`);
+  assert.deepEqual(made.map((roll) => roll.kind), ["attack", "damage"]);
+  assert.equal(onOneLine(made, "the strike at the creature").content, atWalker[0]);
+  onNoTurn(made, "the strike at the creature");
+  assert.ok(made.every((roll) => roll.attacker?.id === turned.id), "the strike at the creature names another roller");
+  assert.deepEqual(storedIds(turn.id), [], "the call's turn lists a strike's dice");
+});
+
+await test("a death save is on the line it posts and on no turn, outside a GM call and inside one, where a third success's line lists the save and then the die of the stable wait", () => {
+  const dying = (successes = 0) => world.patch(hero.id, { currentHp: 0, deathSaves: { successes, failures: 0, stable: false, dead: false }, conditions: ["unconscious", "prone"], conditionMeta: {} });
+  const saved = (mark) => rollsAfter(world.campaignId, mark);
+  dying();
+  let mark = rollMark();
+  world.dice(12);
+  const said = rollDeathSave(campaign(), hero.id);
+  world.clearDice();
+  let made = saved(mark);
+  assert.deepEqual(made.map((roll) => roll.kind), ["saving_throw"]);
+  assert.equal(onOneLine(made, "a death save outside a call").content, said);
+  onNoTurn(made, "a death save outside a call");
+
+  dying(2);
+  const turn = newTurn();
+  mark = rollMark();
+  // The save, then the d4 of hours.
+  world.dice(12, 3);
+  runHeld(campaign(), turn, SPEC, () => rollDeathSave(campaign(), hero.id, turn.id));
+  world.clearDice();
+  saveDmTurn(turn);
+  made = saved(mark);
+  world.patch(hero.id, { currentHp: 44, deathSaves: null, conditions: [], conditionMeta: {} });
+  assert.deepEqual(made.map((roll) => roll.kind), ["saving_throw", "custom"]);
+  onOneLine(made, "a third success inside a call");
+  onNoTurn(made, "a third success inside a call");
+  assert.deepEqual(storedIds(turn.id), [], "the call's turn lists the save or the die of the stable wait");
+});
+
+await test("the dice the clock throws inside a GM call are on that call's turn: an item's charges at dawn and a Ring of Regeneration's", () => {
+  world.patch(hero.id, {
+    currentHp: 10,
+    equipment: [{ name: "Wand of Magic Missiles", qty: 1, charges: 1 }, { name: "Ring of Regeneration", qty: 1, attuned: true, equipped: true }],
+  });
+  const turn = newTurn();
+  const mark = rollMark();
+  world.dice(3, 2);
+  runHeld(campaign(), turn, SPEC, () => {
+    rechargeAtDawn(world.campaignId, 0, 24 * 60);
+    regenerationClock(world.campaignId, 0, 10);
+  });
+  world.clearDice();
+  saveDmTurn(turn);
+  const made = rollsAfter(world.campaignId, mark);
+  world.patch(hero.id, { currentHp: 44, equipment: [] });
+  assert.equal(made.length, 2, `the clock stored ${made.length} rolls: ${made.map((roll) => roll.detail).join(", ")}`);
+  assert.match(made[0].detail, /Wand of Magic Missiles regains charges at dawn/);
+  assert.match(made[1].detail, /Ring of Regeneration/);
+  assert.deepEqual(storedIds(turn.id), made.map((roll) => roll.id), "the call's turn does not hold the clock's two rolls");
+  for (const roll of made) {
+    assert.equal(homeProblem(roll.id), null, roll.detail);
+  }
+});
+
 // ---- a roll that joins its turn pays for no number of the model's ----
+
+await test("an AI GM's bare heal equal to a Ring of Regeneration's dice is refused: thrown as its pass_time moved the clock, they are on the turn now, and spent as that call ends", async () => {
+  world.patch(hero.id, { currentHp: 10, equipment: [{ name: "Ring of Regeneration", qty: 1, attuned: true, equipped: true }] });
+  world.say("player", "We wait ten minutes for the rain to pass.", getSheetById(hero.id));
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const call = (name, args) => invokeEngine(campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+  const mark = rollMark();
+  world.dice(4);
+  const waited = await call("pass_time", { amount: 10, unit: "minutes" });
+  world.clearDice();
+  assert.equal(waited.ok, true, `refused: ${waited.error}`);
+  const found = rollsAfter(world.campaignId, mark).find((roll) => /Ring of Regeneration/.test(roll.detail));
+  assert.ok(found, "the ring rolled nothing");
+  const ring = getRoll(found.id);
+  assert.deepEqual(rollHomes(ring.id).turns, [turn.id], "the ring's dice are not on the AI's turn");
+  const before = world.sheet(hero.id).currentHp;
+  const healed = await call("heal", { characterId: hero.id, amount: ring.total });
+  const after = world.sheet(hero.id).currentHp;
+  world.patch(hero.id, { currentHp: 44, equipment: [] });
+  turn.status = "done";
+  saveDmTurn(turn);
+  assert.equal(healed.ok, false, `a bare heal of ${ring.total}, the total of the ring's dice, was taken and healed ${after - before}`);
+  assert.equal(after, before);
+});
 
 await test("an AI GM's bare heal equal to Sleep's pool is refused: the pool is on the turn now, and it is the engine's own, spent as its call ends", async () => {
   await kit.fight(2, { heroFaces: { [mage.id]: 19, [hero.id]: 5 } });

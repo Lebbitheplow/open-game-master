@@ -321,7 +321,7 @@ export function handleStabilize(
   const triage = triageWait(campaign, turn ?? null, healer, sheet, { conditions: sheet.conditions, conditionMeta: sheet.conditionMeta });
   // Field Surgeon: a minute, not 1d4 hours (genre-a-cyberpunk-defenses.ts).
   const minute = triage ? null : fieldSurgeonWait(healer, sheet);
-  const wait = triage ?? minute ?? rollStableTimer(campaign, sheet);
+  const wait = triage ?? minute ?? rollStableTimer(campaign, sheet, { turnId });
   const laid = rites ? ritesWard(wait.conditions, wait.conditionMeta) : wait;
   // Stable resets both counts (SRD 5.1, Stabilizing a Creature).
   const nextTrack = stableDeathTrack();
