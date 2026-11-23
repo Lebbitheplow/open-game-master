@@ -65,7 +65,7 @@ export async function GET(
   const entry = getEntryDetail(kind as Parameters<typeof getEntryDetail>[0], decoded);
   if (entry) {
     const withLabel = withBestEffort(kind, entry, { classSlug: String(entry.data.class_slug ?? "") || undefined });
-    return Response.json({ entry: kind === "items" && french ? localizeItemEntryFr(withLabel) : withLabel });
+    return Response.json({ entry: homebrewKind === "item" && french ? localizeItemEntryFr(withLabel) : withLabel });
   }
   // The bundled book's rows the search serves with no pack ("srd:web",
   // "srd-gear:longsword"), so their info reads with no pack too.
@@ -78,7 +78,7 @@ export async function GET(
           ? bundledGearRow(decoded)
           : null;
   if (bundled) {
-    return Response.json({ entry: kind === "items" && french ? localizeItemEntryFr(bundled) : bundled });
+    return Response.json({ entry: homebrewKind === "item" && french ? localizeItemEntryFr(bundled) : bundled });
   }
   const brewed = homebrewKind ? findHomebrewBySlug(scope.userIds, homebrewKind, decoded) : null;
   return brewed ? asEntry(brewed) : Response.json({ error: "Not found." }, { status: 404 });
