@@ -478,6 +478,31 @@ export function spotsForTokens(map: Pick<GeneratedMap, "terrain" | "width" | "he
   return spots;
 }
 
+// Where the NPCs who travel with the party stand as a fight opens: on the
+// open squares nearest the heroes, each beside the next hero in turn. The
+// party's spawn spots are spread over the whole height of its edge, so the
+// spot a captain was left with could lie a dozen squares from every hero and
+// nearer the enemy than the party (about one board in sixty).
+export function spotsBesideParty(
+  map: Pick<GeneratedMap, "terrain" | "width" | "height">,
+  heroSpots: XY[],
+  footprints: number[],
+  taken: Set<number>,
+): XY[] {
+  if (!heroSpots.length) {
+    return [];
+  }
+  return footprints.map((footprint, index) => {
+    const spot = nearestOpenTile(map.terrain, map.width, map.height, heroSpots[index % heroSpots.length], taken, footprint);
+    for (let dy = 0; dy < footprint; dy += 1) {
+      for (let dx = 0; dx < footprint; dx += 1) {
+        taken.add(tileIndex(map.width, spot.x + dx, spot.y + dy));
+      }
+    }
+    return spot;
+  });
+}
+
 // Where a party stands on a map this file did not generate: an imported
 // dungeon or one the DM drew by hand carries no spawn list, but a scene
 // still has to open with everybody somewhere sensible.

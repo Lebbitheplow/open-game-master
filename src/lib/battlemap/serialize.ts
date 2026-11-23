@@ -23,6 +23,8 @@ export type SerializableMap = {
 };
 
 // PCs get A-Z in party order; enemies get digits then lowercase letters.
+// A mount and the rider on it are one piece on the board (the two entries
+// of db/battle-maps.ts listStandings share a token), so they share a letter.
 export function tokenGlyphs(tokens: BattleToken[]): Map<string, string> {
   const glyphs = new Map<string, string>();
   const pcLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -30,6 +32,9 @@ export function tokenGlyphs(tokens: BattleToken[]): Map<string, string> {
   let pcAt = 0;
   let enemyAt = 0;
   for (const token of tokens) {
+    if (glyphs.has(token.id)) {
+      continue;
+    }
     if (token.kind === "pc") {
       glyphs.set(token.id, pcLetters[pcAt % pcLetters.length]);
       pcAt += 1;
@@ -138,7 +143,7 @@ export function serializeMapForPrompt(
       `Fixed lights at ${map.lights.map((light) => `(${light.x},${light.y})`).join(", ")} (bright ${map.lights[0].brightRadius} tiles).`,
     );
   }
-  const carriers = tokens.filter((token) => token.lightRadius > 0);
+  const carriers = tokens.filter((token, at) => token.lightRadius > 0 && tokens.findIndex((other) => other.id === token.id) === at);
   if (carriers.length) {
     lightParts.push(`Carrying light: ${carriers.map((token) => token.name).join(", ")}.`);
   }

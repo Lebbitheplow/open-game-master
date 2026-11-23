@@ -19,7 +19,7 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
@@ -33,7 +33,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { lastCastSlot } from "@/lib/dm/spell-effects";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { castersDamage } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
 import { withActor, withTurnOf } from "@/lib/dm/acting-party";
@@ -63,6 +63,12 @@ function hurtHeld(campaign: Campaign, encounter: Encounter, enemy: EncounterEnem
   }
 }
 
+// The creature that laid the mark, when no character did: its later damage
+// is that creature's roll (the mark's source is a sheet's id or an enemy's).
+function castingFoe(meta: ConditionMeta, caster: { id: string } | null | undefined): EncounterEnemy | null {
+  return !caster && meta.source ? getEnemy(meta.source) : null;
+}
+
 // Acid Arrow's second burn.
 function acidArrowBurn(campaign: Campaign, enemy: EncounterEnemy, meta: ConditionMeta): string | null {
   const encounter = getActiveEncounter(campaign.id);
@@ -72,7 +78,7 @@ function acidArrowBurn(campaign: Campaign, enemy: EncounterEnemy, meta: Conditio
   const slot = meta.slotLevel ?? (meta.source ? lastCastSlot(meta.source, "Acid Arrow") : null) ?? 2;
   const dice = addDice("2d4", "1d4", Math.max(0, slot - 2));
   const caster = meta.source ? getSheetById(meta.source) : null;
-  const burn = rollCard(campaign, null, caster?.id ?? null, "damage", rollAgainst("Acid Arrow (second burn)", enemy.displayName), dice, caster ? sheetAttacker(caster) : null).total;
+  const burn = castersDamage(campaign, null, caster, rollAgainst("Acid Arrow (second burn)", enemy.displayName), "Acid Arrow", enemy.displayName, { note: "second burn", dice, type: "acid" }, castingFoe(meta, caster)).total;
   const line = hurtHeld(campaign, encounter, enemy, burn, "acid", "Acid Arrow's acid");
   // The burn killed it (Grim Harvest, ar-ws-harvest.ts).
   return [line, ...runningSpellKill(campaign, encounter, enemy, caster?.id, { spell: "Acid Arrow", slotLevel: slot })].join(" ");
@@ -150,7 +156,7 @@ function saveAtTurnEnd(campaign: Campaign, enemy: EncounterEnemy, meta: Conditio
   if (!dice) {
     return null;
   }
-  const hurt = rollCard(campaign, null, caster?.id ?? null, "damage", rollAgainst(resolved.name, enemy.displayName), dice, caster ? sheetAttacker(caster) : null).total;
+  const hurt = castersDamage(campaign, null, caster, rollAgainst(resolved.name, enemy.displayName), resolved.name, enemy.displayName, { dice, type: edge.type ?? "psychic" }, castingFoe(meta, caster)).total;
   return hurtHeld(campaign, encounter, enemy, hurt, edge.type ?? "psychic", resolved.name);
 }
 

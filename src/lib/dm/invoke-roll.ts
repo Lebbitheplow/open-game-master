@@ -12,6 +12,8 @@
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
 import { recordRoll } from "@/lib/dm/roll-record";
+import { cardRoller } from "@/lib/dm/roll-card";
+import { kindAndRoller } from "@/lib/db/rolls";
 import { beforeRollWords, ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
 import { recordRequestedSave } from "@/lib/dm/last-save";
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
@@ -412,13 +414,13 @@ export function handleRequestRoll(
       campaignId,
       characterId: sheet?.id ?? null,
       requestedBy: "dm",
-      kind: args.kind,
+      // Free text about the sheet's own roll: its owner reads as the roller,
+      // and an attack or damage roll says so. With no sheet it is the GM's.
+      ...kindAndRoller(args.kind, null, cardRoller(sheet)),
       detail: resolved.detail,
       advantage: args.advantage ?? "none",
       dc: args.dc ?? null,
       result: outcome,
-      // Free text about the sheet's own roll: its owner reads as the roller.
-      attacker: null,
       // A screen is a person's tool; the model's rolls are the table's.
       visibility: model ? "public" : args.visibility ?? "public",
       turn,

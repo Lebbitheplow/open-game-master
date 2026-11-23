@@ -26,7 +26,27 @@ export type RollVisibility = (typeof ROLL_VISIBILITIES)[number] | "secret";
 // A character's bound creature has no id of its own (it lives on its owner's
 // sheet), so a pet's id is its owner's sheet id. characterId cannot say this:
 // it is the PC the roll concerns, the target of an enemy's attack.
-export type RollAttacker = { kind: "sheet" | "enemy" | "pet"; id: string; name: string };
+// A roll nobody at the table made names its source, a "hazard" with no id,
+// as a hit's record does (src/lib/dm/last-hit.ts): unnamed, it read as the
+// roll of the character it landed on. `hazard` says what the source is, so
+// no reader works that out from its name: a fall, the GM's own dice for
+// harm nothing names, a trap, an item, the effect of a spell or feature, or
+// a hazard by the words the GM gave it. Every source is built in
+// src/lib/roll-sources.ts.
+export type HazardKind = "fall" | "gm" | "trap" | "item" | "effect" | "named";
+export type RollSource = { kind: "hazard"; id: null; name: string; hazard: HazardKind };
+export type RollAttacker = { kind: "sheet" | "enemy" | "pet"; id: string; name: string } | RollSource;
+
+// The kind and roller of a roll whose kind is only known as it runs (a roll
+// card's own dice, the roll tools): an attack or damage roll takes
+// `otherwise` when nobody else is named, and the other kinds may name nobody.
+export function kindAndRoller(
+  kind: RollKind,
+  attacker: RollAttacker | null,
+  otherwise: RollAttacker,
+): { kind: "attack" | "damage"; attacker: RollAttacker } | { kind: Exclude<RollKind, "attack" | "damage">; attacker: RollAttacker | null } {
+  return kind === "attack" || kind === "damage" ? { kind, attacker: attacker ?? otherwise } : { kind, attacker };
+}
 
 export type StoredRoll = {
   id: string;
@@ -43,15 +63,17 @@ export type StoredRoll = {
   breakdown: RollResult;
   visibility: RollVisibility;
   messageId: string | null;
-  // Damage rolls only: the enemy the server applied this roll's total to,
-  // set together with `applied` (the damage_enemy double-apply guard).
+  // Damage rolls only: the enemy the server itself landed this roll's total
+  // on, set together with `applied` (the damage_enemy double-apply guard).
+  // Nothing else is written here: a roll that is only used up names nobody.
   targetEnemyId: string | null;
-  // Spent: the server applied its total, or the engine threw it inside a
-  // call of its own or as a roll card landed (markRollSpent), so it pays for
-  // no number sent later.
+  // Spent: the server applied its total, the engine threw it inside a call
+  // of its own or as a roll card landed (markRollSpent), or it paid for what
+  // an AI GM sent (markRollPaid), so it pays for no number sent later.
   applied: boolean;
-  // Attack and damage rolls: who rolled. Null when nobody did (a fall), for
-  // the roll tools' rolls, and for rolls stored before it was recorded.
+  // Attack and damage rolls: who rolled, or the source of a roll nobody made
+  // (a fall). Null for other kinds of roll, and for rolls stored before it
+  // was recorded.
   attacker: RollAttacker | null;
   createdAt: string;
 };
@@ -104,12 +126,29 @@ function mapRoll(row: RollRow): StoredRoll {
   };
 }
 
-// Stamp a damage roll as server-applied to a specific enemy; the
-// damage_enemy double-apply guard reads these.
+// Stamp a damage roll as landed by the server on a specific enemy. The
+// damage_enemy double-apply guard, the after-fight card, the evidence Ask
+// reads (src/lib/dm/ask.ts) and the swarm's die taken back
+// (authored-spend-more.ts swarmDieBack) read these. Only for a blow the
+// server lands itself as its dice resolve: a roll that is used up some other
+// way is stamped below, with no target.
 export function markRollApplied(rollId: string, targetEnemyId: string) {
   getDatabase()
     .prepare(`UPDATE rolls SET applied = 1, target_enemy_id = ? WHERE id = ?`)
     .run(targetEnemyId, rollId);
+}
+
+// Stamp a roll as having paid for what an AI GM sent: the total behind a
+// bare damage or healing number, or the check behind a trap's hold lifted
+// (src/lib/dm/ai-gate.ts). It names no target. The gate used to stamp a
+// paying total with whatever its number was sent for, in the column that
+// says where the server landed a blow. Sent for a creature by its id, the
+// total then read to the damage_enemy guard as a blow already landed there,
+// and the hazard it was rolled for did nothing. And whatever it was sent
+// for, the after-fight card counted it as damage dealt by the character the
+// roll was made for: poison a hero took read as damage that hero dealt.
+export function markRollPaid(rollId: string) {
+  getDatabase().prepare(`UPDATE rolls SET applied = 1 WHERE id = ?`).run(rollId);
 }
 
 // Stamp a damage or custom roll the engine threw and used inside one of its
@@ -117,7 +156,8 @@ export function markRollApplied(rollId: string, targetEnemyId: string) {
 // was sent) as spent, so its total never pays for a number an AI GM sends
 // later (src/lib/dm/ai-gate.ts number, src/lib/dm/held-call.ts runHeld). The
 // dice thrown as a roll card lands outside any call are stamped the same way
-// (src/lib/dm/pending-roll-land.ts). It
+// (src/lib/dm/pending-roll-land.ts), and so are the dice entered for a held
+// call that is refused once they land (held-call.ts runHeldAgain). It
 // names no target: what the roll landed on is the call's own business, and
 // the damage_enemy guard reads only a stamp that names its enemy.
 export function markRollSpent(rollId: string) {
@@ -139,7 +179,7 @@ export function landRoll<T extends object>(rollId: string, targetEnemyId: string
   return result;
 }
 
-// An attack or damage roll must say who made it, or that nobody did.
+// An attack or damage roll must say who made it, or name its source.
 export type RollInsert = {
   campaignId: string;
   characterId?: string | null;
@@ -151,7 +191,7 @@ export type RollInsert = {
   visibility?: RollVisibility;
   messageId?: string | null;
 } & (
-  | { kind: "attack" | "damage"; attacker: RollAttacker | null }
+  | { kind: "attack" | "damage"; attacker: RollAttacker }
   | { kind: Exclude<RollKind, "attack" | "damage">; attacker?: RollAttacker | null }
 );
 
@@ -207,11 +247,10 @@ export function getRoll(rollId: string): StoredRoll | null {
 }
 
 // The first of these rolls that was stored after this one, or null: where a
-// roll that joins a list late belongs in it. A roll card's roll is stored as
-// it lands and joins its turn when the turn resumes, or the line a person's
-// turn posts. The dice its landing threw (a hit's damage, the swings queued
-// behind it) join the turn as they are made (src/lib/dm/roll-record.ts), and
-// would otherwise be listed ahead of the roll they answer.
+// roll that joins a list late belongs in it. The line a person's turn posts
+// lists the turn's rolls, and with them a roll its call made on a short turn
+// of its own (src/lib/dm/persons-record.ts), which goes among them in the
+// order the dice were thrown.
 export function firstStoredAfter(rollId: string, among: readonly string[]): string | null {
   const rows = getDatabase()
     .prepare(`SELECT id FROM rolls WHERE rowid > (SELECT rowid FROM rolls WHERE id = ?) AND id IN (SELECT value FROM json_each(?))`)

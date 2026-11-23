@@ -91,8 +91,10 @@ export type DoorField = { type?: unknown; enum?: unknown; items?: { type?: unkno
 export type DoorRecord = { id: string; name: string };
 export type DoorAlsoNames = (key: string, ref: string, args: Readonly<Record<string, unknown>>) => boolean;
 
-const SINGLE_REF = /^(?:characterId|casterId|healerId|casterCharacterId|targetCharacterId|sourceCharacterId|toCharacterId|storeInCharacterId)$/;
-const LIST_REF = /^(?:characterIds|[a-z]+CharacterIds)$/;
+// Read too by what a call may reach while the party is split
+// (party-split-logic.ts sceneRefusal), so both name a character the same way.
+export const SINGLE_REF = /^(?:characterId|casterId|healerId|casterCharacterId|targetCharacterId|sourceCharacterId|toCharacterId|storeInCharacterId)$/;
+export const LIST_REF = /^(?:characterIds|[a-z]+CharacterIds)$/;
 
 export function doorArgs(
   rawArguments: string,

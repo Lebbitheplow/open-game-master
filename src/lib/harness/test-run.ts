@@ -15,6 +15,10 @@ export type TestStage = {
   detail?: string;
 };
 
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const passT: T = (key, vars) =>
+  vars ? key.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : key;
+
 const PROBE_TOOL = {
   type: "function",
   function: {
@@ -31,7 +35,7 @@ const PROBE_TOOL = {
 
 const SECRET = "lanternfall";
 
-export async function testHarness(idOverride?: HarnessId): Promise<{ stages: TestStage[]; ms: number }> {
+export async function testHarness(idOverride?: HarnessId, t: T = passT): Promise<{ stages: TestStage[]; ms: number }> {
   const started = Date.now();
   const config = harnessConfig();
   const id = idOverride ?? (isHarnessId(config.id) ? config.id : null);
@@ -51,17 +55,17 @@ export async function testHarness(idOverride?: HarnessId): Promise<{ stages: Tes
   const done = () => ({ stages, ms: Date.now() - started });
 
   if (!id) {
-    set("found", false, "No agent program is chosen yet.");
+    set("found", false, t("No agent program is chosen yet."));
     return done();
   }
   const status = await probeHarness(id, { refresh: true });
   if (!status.installed || status.availability !== "ok") {
-    set("found", false, status.message ?? `${ADAPTERS[id].label} was not found.`);
+    set("found", false, status.message ?? t("{label} was not found.", { label: ADAPTERS[id].label }));
     return done();
   }
   set("found", true, `${status.version ?? ""} ${status.path ?? ""}`.trim());
   if (status.auth.state === "signed-out") {
-    set("signedIn", false, status.message ?? `Run \`${ADAPTERS[id].signInHint}\` on this machine.`);
+    set("signedIn", false, status.message ?? t("Run `{cmd}` on this machine.", { cmd: ADAPTERS[id].signInHint }));
     return done();
   }
   set("signedIn", true, [status.auth.plan, status.auth.account].filter(Boolean).join(" · ") || undefined);
@@ -82,14 +86,14 @@ export async function testHarness(idOverride?: HarnessId): Promise<{ stages: Tes
   );
   if (first.error) {
     const body = (await first.error.json().catch(() => ({}))) as { error?: string };
-    set("handshake", false, body.error ?? "The program did not answer.");
+    set("handshake", false, body.error ?? t("The program did not answer."));
     return done();
   }
   const calls = Array.isArray(first.message?.tool_calls) ? (first.message?.tool_calls as Array<{ id: string; function: { name: string } }>) : [];
   const probeCall = calls.find((call) => call.function?.name === "table_check");
   if (!probeCall) {
     set("handshake", true);
-    set("toolCall", false, "The program answered without calling ODM's tool, so it cannot run a table.");
+    set("toolCall", false, t("The program answered without calling ODM's tool, so it cannot run a table."));
     releaseHarnessConversation(messages);
     return done();
   }
@@ -109,14 +113,14 @@ export async function testHarness(idOverride?: HarnessId): Promise<{ stages: Tes
   );
   if (second.error) {
     const body = (await second.error.json().catch(() => ({}))) as { error?: string };
-    set("toolCall", false, body.error ?? "The program stopped after the tool call.");
+    set("toolCall", false, body.error ?? t("The program stopped after the tool call."));
     releaseHarnessConversation(messages);
     return done();
   }
   releaseHarnessConversation(messages);
   const reply = String(second.message?.content ?? "");
   const heard = reply.toLowerCase().includes(SECRET);
-  set("toolCall", heard, heard ? undefined : `It replied "${reply.slice(0, 80)}" instead of the tool's answer.`);
+  set("toolCall", heard, heard ? undefined : t("It replied \"{reply}\" instead of the tool's answer.", { reply: reply.slice(0, 80) }));
   // Every adapter stops a run that reaches for its own tools (a stray tool on
   // Claude's list, a command or file change from Codex), so a run that got
   // this far held its lockdown. That is what proves an adapter on this
@@ -125,12 +129,12 @@ export async function testHarness(idOverride?: HarnessId): Promise<{ stages: Tes
     "lockdown",
     true,
     ADAPTERS[id].lockdown === "removed"
-      ? "Its own tools are removed; only the table's tools are offered."
-      : "Its own tools are contained: read-only, an empty folder, every approval refused.",
+      ? t("Its own tools are removed; only the table's tools are offered.")
+      : t("Its own tools are contained: read-only, an empty folder, every approval refused."),
   );
   if (heard) {
     markLockdownProven(id);
   }
-  set("streaming", streamed.length > 0, streamed.length > 0 ? undefined : "The reply arrived whole rather than streamed.");
+  set("streaming", streamed.length > 0, streamed.length > 0 ? undefined : t("The reply arrived whole rather than streamed."));
   return done();
 }

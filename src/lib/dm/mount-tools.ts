@@ -22,6 +22,7 @@ import {
   mountCost,
   mountProfile,
   rideByRecord,
+  riderSizeOf,
   type MountSize,
   type MountState,
 } from "@/lib/srd/mounts";
@@ -149,14 +150,9 @@ function tableNote(campaign: Campaign, content: string) {
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
 
-// A character's own size, which the size rule needs. ODM does not track it on
-// the sheet, so the race decides: only the small races are small, everything
-// else is medium. Wrong for a goliath, right for the ninety-nine percent, and
-// the DM can always write a custom mount.
-const SMALL_RACES = ["halfling", "gnome", "goblin", "kobold"];
-
+// The rider's size by their race (srd/mounts.ts riderSizeOf).
 function riderSize(sheet: CharacterSheet): MountSize {
-  return SMALL_RACES.some((race) => sheet.race.toLowerCase().includes(race)) ? "small" : "medium";
+  return riderSizeOf(sheet.race);
 }
 
 export function handleMountUp(

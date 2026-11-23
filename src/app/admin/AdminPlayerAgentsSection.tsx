@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ui } from "@/lib/ui";
 import { Switch } from "@/components/ui/Switch";
 import { useT } from "@/lib/locale";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 // The receiver addresses player agents' webhooks may reach
 // (docs/player-webhooks.md). Saved on each change and live at once: the
@@ -68,7 +69,7 @@ export function AdminPlayerAgentsSection() {
     return loadError ? (
       <LoadFailed error={loadError} onRetry={() => setReloads((current) => current + 1)} />
     ) : (
-      <div className="skeleton-block h-12 rounded-xl" aria-label={t("Loading receiver addresses")} />
+      <LoadingBlock className="h-12 rounded-xl" label={t("Loading receiver addresses")} />
     );
   }
 

@@ -66,11 +66,15 @@ export const AI_CLEAR_REFUSAL = (who: string, condition: string): ToolError => (
 
 // Damage or healing the model sends as a bare number. It must have been
 // rolled by the server this turn (a request_roll of kind damage, not yet
-// applied), or be sent as dice the server rolls now.
+// applied), or be sent as dice the server rolls now. The refusal offers the
+// dice alone: a request_roll is the roll of the character it names (issue
+// 915, prompt.ts requestRollTool), so a trap's damage "rolled first" with the
+// id of the character it lands on is stored and shown as that character's
+// own roll.
 export const AI_NUMBER_REFUSAL = (what: "damage" | "healing"): ToolError => ({
   error:
     what === "damage"
-      ? "Damage is rolled by the server, never written: an attack is enemy_attack or pc_attack, a spell its cast tool, a trap or a fall apply_hazard. For other harm send dice (\"2d6\") instead of amount and the server rolls them, or roll it first with request_roll kind damage and send that total."
-      : "Healing is rolled by the server, never written: a spell goes through heal with spell, a potion through use_item, hit dice through take_rest. For other healing send dice (\"2d4+2\") instead of amount and the server rolls them, or roll it first with request_roll kind damage and send that total.",
+      ? "Damage is rolled by the server, never written: an attack is enemy_attack or pc_attack, a spell its cast tool, a trap or a fall apply_hazard. For other harm send dice (\"2d6\") instead of amount and the server rolls them."
+      : "Healing is rolled by the server, never written: a spell goes through heal with spell, a potion through use_item, hit dice through take_rest. For other healing send dice (\"2d4+2\") instead of amount and the server rolls them.",
   retry: true,
 });

@@ -38,6 +38,29 @@ await test("what the fight did to an ally is what their record says after it", (
   assert.equal(logic.stateAfterFight(up, { status: "alive", currentHp: 4 }), up);
 });
 
+await test("the NPCs who travel with the party open a fight beside the heroes, not on a spawn spot across the board", async () => {
+  const { generateBattleMap, spotsBesideParty, spotsForTokens } = await import("../src/lib/battlemap/generate.ts");
+  const far = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+  // Seed 2, one hero and two allies against a wolf: the party's spawn spots
+  // run down the whole western band, and the spot left for the captain was
+  // eleven squares from the hero and nearer the wolf (a CI run caught it).
+  const board = generateBattleMap({ seed: 2, scene: null, pcCount: 3, enemyCount: 1 });
+  const taken = new Set();
+  const party = spotsForTokens(board, board.pcSpawns, 3, taken);
+  const [wolf] = spotsForTokens(board, board.enemySpawns, 1, taken);
+  const hero = [...party].sort((a, b) => far(a, wolf) - far(b, wolf))[0];
+  const leftOver = party.filter((spot) => spot !== hero);
+  assert.ok(leftOver.some((spot) => far(spot, hero) >= far(spot, wolf)), "the board this test pins still scatters its spawn spots");
+  for (const spot of leftOver) taken.delete(spot.y * board.width + spot.x);
+  const allies = spotsBesideParty(board, [hero], [1, 1], taken);
+  assert.equal(allies.length, 2);
+  for (const spot of allies) {
+    assert.ok(far(spot, hero) <= 2, `an ally stands beside the hero: ${JSON.stringify({ spot, hero })}`);
+    assert.ok(far(spot, hero) < far(spot, wolf), "and nearer the hero than the wolf");
+  }
+  assert.notDeepEqual(allies[0], allies[1], "each on a square of its own");
+});
+
 // ---- A fight ------------------------------------------------------------
 
 await test("the captain and the prisoner on the cart are on the board on the party's side; someone left behind is not", async () => {
@@ -67,6 +90,7 @@ await test("the captain and the prisoner on the cart are on the board on the par
   const wolf = tokens.find((token) => token.refId === foes[0].id);
   const far = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
   assert.ok(far(her, hero) < far(her, wolf), "she stands with the party, not among the wolves");
+  assert.ok(far(her, hero) <= 2, `she stands beside the hero: ${far(her, hero)} squares off`);
   assert.ok(fight.order.some((entry) => entry.enemyId === mara.id) || encounters.getActiveEncounter(world.campaignId).order.some((entry) => entry.enemyId === mara.id), "she has a place in the order");
 });
 

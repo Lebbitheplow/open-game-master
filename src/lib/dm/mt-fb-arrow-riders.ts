@@ -19,7 +19,8 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, turnKey } from "@/lib/db/encounters";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { rollCard } from "@/lib/dm/roll-card";
+import { getSheetById } from "@/lib/db/sheets";
+import { castersDamage } from "@/lib/dm/roll-card";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { BEGUILED, GRASPING } from "@/lib/srd/mt-fb-arcane-shot";
@@ -41,7 +42,11 @@ export function bramblesAfterMove(campaign: Campaign, encounterId: string, enemy
     return [];
   }
   patchEnemyConditions(enemy.id, enemy.conditions, { ...meta, [held]: { ...meta[held], tornOn: key } } as typeof enemy.conditionMeta);
-  const rolled = rollCard(campaign, null, null, "damage", `${enemy.displayName}: the Grasping Arrow's brambles as it moves`, "2d6", null).total;
+  // The condition keeps whose arrow it was (authored-spend-effects.ts
+  // enemyCondition): the brambles are the archer's roll.
+  const by = meta[held]?.source;
+  const archer = typeof by === "string" ? getSheetById(by) : null;
+  const rolled = castersDamage(campaign, null, archer, `${enemy.displayName}: the Grasping Arrow's brambles as it moves`, "Grasping Arrow", enemy.displayName, { dice: "2d6", type: "slashing" }).total;
   return [hurtEnemy(campaign, encounter, getEnemy(enemyId) ?? enemy, rolled, "slashing", "the Grasping Arrow's brambles")];
 }
 

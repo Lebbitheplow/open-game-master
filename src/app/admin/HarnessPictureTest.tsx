@@ -162,7 +162,9 @@ export function HarnessPictureTest({
       ) : null}
 
       {painting ? (
-        <div className="hx-picture breathe aspect-[3/2] bg-stone-900" aria-label={t("Painting")} />
+        <div className="hx-picture breathe aspect-[3/2] bg-stone-900" role="status">
+          <span className="sr-only">{t("Painting")}</span>
+        </div>
       ) : result?.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img key={result.image.url} src={result.image.url} alt={t("The test map")} className="hx-picture aspect-[3/2]" />

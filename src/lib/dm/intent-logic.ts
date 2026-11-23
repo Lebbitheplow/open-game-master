@@ -97,6 +97,8 @@ export function intentTools(intent: MessageIntent): string[] {
             ? ["stabilize"]
             : intent.action === "dismount"
               ? ["dismount"]
+              : intent.action === "mount"
+                ? ["mount_up"]
               : ["take_action"];
     case "reaction":
       return ["use_reaction"];
@@ -361,6 +363,10 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
           return intent.targetId ? { name: "take_action", args: { characterId, action: "wake", targetCharacterId: intent.targetId } } : null;
         case "dismount":
           return { name: "dismount", args: { characterId } };
+        case "mount":
+          // The card names a creature the rider called up or their drake
+          // (hand-mount-logic.ts); with none named the GM hears the sentence.
+          return intent.mount ? { name: "mount_up", args: { characterId, mount: intent.mount } } : null;
         case "end-turn":
           return inFight ? { name: "end_turn", args: { characterId } } : null;
         default:

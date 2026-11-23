@@ -136,4 +136,18 @@ test("spawn tiles without anchors enter far from the party", () => {
   assert.equal(distance, 6);
 });
 
+test("a Large arrival is set down where all four of its squares are open", () => {
+  const open = makeMap(["........", "........", "........", "........"]);
+  // A two-square space at (0,0) holds (0,0) to (1,1); the anchor is its corner.
+  const taken = new Set([0, 1, open.width, open.width + 1].map((idx) => idx));
+  const [spot] = findSpawnTiles(open.terrain, open.width, open.height, taken, 1, [{ x: 0, y: 0 }], [], [2]);
+  const squares = [0, 1].flatMap((dy) => [0, 1].map((dx) => tileIndex(open.width, spot.x + dx, spot.y + dy)));
+  assert.ok(squares.every((idx) => !taken.has(idx)), `the arrival at (${spot.x},${spot.y}) overlaps the space beside it`);
+  assert.ok(spot.x + 1 < open.width && spot.y + 1 < open.height, "the arrival hangs off the board");
+  // The next pick takes none of the four.
+  const [first, second] = findSpawnTiles(open.terrain, open.width, open.height, new Set(), 2, [{ x: 0, y: 0 }], [], [2, 1]);
+  const firstSpace = [0, 1].flatMap((dy) => [0, 1].map((dx) => `${first.x + dx},${first.y + dy}`));
+  assert.ok(!firstSpace.includes(`${second.x},${second.y}`), "the second arrival stands inside the first one's space");
+});
+
 console.log(`test-battlemap-tactics: ${passed} tests passed.`);

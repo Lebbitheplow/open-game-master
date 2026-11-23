@@ -21,6 +21,7 @@ import { departureNote, departureOpenings } from "@/lib/dm/departure";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
 import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordRestEnds, setTravelPace } from "@/lib/db/clock";
+import { meanwhileMinutes, spendMeanwhile } from "@/lib/dm/party-split";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { claimWindowRestDice, partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
 import { declaredThisTurn } from "@/lib/dm/player-word";
@@ -241,7 +242,12 @@ export function handleTakeRest(
   // happens whoever gains from it: the hours pass, conditions run out and a
   // stable creature wakes, even when nobody at the table qualifies.
   const starts = getClock(campaign.id);
-  const endsAt = starts.instant + restMinutes(args.kind, variant);
+  // A party split up (issue 951): the scene has just come back to these
+  // characters after hours with the others. A rest that fits in the time it
+  // was away was taken then, so it passes none now: a night with one group
+  // and then "we slept too" from the other was two nights on the one clock.
+  const meanwhile = !vessel && meanwhileMinutes(campaign.id) >= restMinutes(args.kind, variant);
+  const endsAt = meanwhile ? starts.instant : starts.instant + restMinutes(args.kind, variant);
   const { resting, unaffected } = args.kind === "long" ? whoGainsLongRest(campaign.id, sheets, endsAt) : { resting: [], unaffected: [] };
 
   // The night watch of a long rest is a companion's opening (issue 503): one
@@ -269,12 +275,18 @@ export function handleTakeRest(
   // A long rest charges the resters' lifestyle for its dawns (below), so
   // those dawns feed them.
   const lifestyle = args.kind === "long" ? Object.fromEntries(resting.map((id) => [id, 0])) : undefined;
-  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle, resting: true });
+  const clockAfter = meanwhile
+    ? { clock: starts, minutes: 0, deathSaves: [] as string[], hourSaves: [] as string[] }
+    : advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle, resting: true });
+  if (meanwhile) {
+    spendMeanwhile(campaign.id, restedMinutes);
+  }
   // The death saves those hours rolled for the dying (condition-tick.ts):
   // the GM narrates the rest from this result, and without them told a
   // character who died in the night that they still lay dying at dawn.
   const deathSaves = "error" in clockAfter ? [] : clockAfter.deathSaves;
   const restedFor = describeDuration(restedMinutes);
+  const passed = meanwhile ? `They took the ${restedFor} while the scene was elsewhere, so no more time passed.` : `${restedFor} passed.`;
   const nowReads =
     "error" in clockAfter
       ? ""
@@ -319,14 +331,18 @@ export function handleTakeRest(
     );
     // A night passing is a timeskip: the off-screen world moves too (world
     // arcs, NPC goals), with results landing as DM-only facts and sparks.
-    const disturbed = tickWorldTimeskip(campaign.id, 3, "rest");
-    // A new day: the sky rolls again and the dawn card wipes the screen.
-    refreshSky(campaign.id, { minutes: "error" in clockAfter ? 0 : clockAfter.minutes });
-    publishTitleCard(campaign.id, {
-      title: "Dawn",
-      ...(nowReads ? { subtitle: nowReads } : {}),
-      tone: "dawn",
-    });
+    // A rest taken while the scene was elsewhere moved no clock: that night
+    // has had its timeskip and its dawn already.
+    const disturbed = meanwhile ? null : tickWorldTimeskip(campaign.id, 3, "rest");
+    if (!meanwhile) {
+      // A new day: the sky rolls again and the dawn card wipes the screen.
+      refreshSky(campaign.id, { minutes: "error" in clockAfter ? 0 : clockAfter.minutes });
+      publishTitleCard(campaign.id, {
+        title: "Dawn",
+        ...(nowReads ? { subtitle: nowReads } : {}),
+        tone: "dawn",
+      });
+    }
     return {
       ok: true,
       kind: "long",
@@ -345,8 +361,8 @@ export function handleTakeRest(
       // Something found the party in the night (world-tick-logic.ts).
       ...(disturbed ? { disturbed } : {}),
       note: rested.length
-        ? `For those who rested, HP and spell slots are fully restored, half the hit dice returned, one level of exhaustion is gone, and any spells a caster chose to prepare are now prepared. ${restedFor} passed. Narrate it.`
-        : `${restedFor} passed, but nobody gained the rest's benefits (a character needs at least 1 hit point when it begins, and gains from one long rest in 24 hours). Narrate the time passing.`,
+        ? `For those who rested, HP and spell slots are fully restored, half the hit dice returned, one level of exhaustion is gone, and any spells a caster chose to prepare are now prepared. ${passed} Narrate it.`
+        : `${passed} Nobody gained the rest's benefits (a character needs at least 1 hit point when it begins, and gains from one long rest in 24 hours). Narrate the time passing.`,
     };
   }
 
@@ -459,6 +475,7 @@ export function handleTakeRest(
     ok: true,
     kind: "short",
     restedFor,
+    ...(meanwhile ? { meanwhile: passed } : {}),
     ...(deathSaves.length ? { deathSaves } : {}),
     ...(nowReads ? { now: nowReads } : {}),
     results: results.length ? results : waiting.length ? "No hit dice spent by the server." : "Nobody needed to spend hit dice.",

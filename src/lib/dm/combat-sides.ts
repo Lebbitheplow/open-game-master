@@ -42,6 +42,7 @@ import { insertCampaignMessage } from "@/lib/db/messages";
 import { getSheetById } from "@/lib/db/sheets";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { d20Expression } from "@/lib/dice";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { withSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
@@ -188,7 +189,8 @@ function joinFight(campaign: Campaign, encounter: Encounter, sheet: CharacterShe
     map.terrain,
     map.width,
     map.height,
-    occupiedTiles(map, tokens, null),
+    // Whole spaces, so the newcomer is never set down inside a Large one.
+    occupiedTiles(map, tokens, null, tokenFootprint),
     1,
     friends.map((token) => ({ x: token.x, y: token.y })),
     others.map((token) => ({ x: token.x, y: token.y })),

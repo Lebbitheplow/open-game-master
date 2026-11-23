@@ -4360,6 +4360,24 @@ const bench2Titles = {};
     turnOf(table, ilse.id);
     bench2.mounted = { id: table.id, tokens: 3, rider: maps.getTokenByRef(board.id, ilse.id).id, onFoot: maps.getTokenByRef(board.id, tobin.id).id };
   }
+  // mount-card (147): a paladin on foot beside the warhorse Find Steed
+  // made, on her own turn: the Hand deals Mount, and playing it puts her up,
+  // so each viewport has a table of its own.
+  bench2.mountCard = {};
+  for (const viewport of ["desktop", "phone"]) {
+    const { caster } = await import("../lib/enforce-spell-kit.mjs");
+    const table = tableFor(`Mount Card Table (${viewport})`, world.owner, player);
+    const maren = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Maren Holt", maxHp: 44, ...caster("paladin", "cha", ["Find Steed"], [], 5, { speed: 30 }) }));
+    const cast = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, { name: "cast_buff", args: { characterId: maren.id, spell: "Find Steed", level: 2, variant: "warhorse" } });
+    if (!cast.ok) {
+      throw new Error(`Maren's steed did not come: ${cast.error}`);
+    }
+    const steed = sheets.listSheets(table.id).find((sheet) => sheet.summon?.casterId === maren.id);
+    const { board, rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 1 }]);
+    [[maren.id, -2, 0], [steed.id, -1, 0], [named(rows, "goblin").id, 5, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, maren.id);
+    bench2.mountCard[viewport] = { id: table.id, rider: maps.getTokenByRef(board.id, maren.id).id, steed: { id: steed.id, name: steed.name } };
+  }
   // hand-share (140): the turn of a companion the lead commands, on the
   // lead's own board. On a short board the turn's heading gives way, and the
   // plate still has to say whose stats it shows.

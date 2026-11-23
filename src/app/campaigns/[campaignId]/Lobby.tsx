@@ -560,7 +560,7 @@ export function Lobby({
 
           <div className={cn("lobby-actions lobby-enter order-4", prep ? "mb-4" : "mb-8")} style={enter(3)}>
             {campaign.gameSettings.multiCharacter !== "off" && mySheets.length > 1 ? (
-              <div className="mb-3 flex flex-wrap justify-center gap-2" aria-label={t("Your characters")}>
+              <div className="mb-3 flex flex-wrap justify-center gap-2" role="group" aria-label={t("Your characters")}>
                 {mySheets.map((sheet) => (
                   <button key={sheet.id} type="button" disabled={busy}
                     aria-pressed={mySheet?.id === sheet.id}

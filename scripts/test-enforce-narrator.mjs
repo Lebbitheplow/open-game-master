@@ -967,7 +967,9 @@ await test("An agent program's narration is checked against the live encounter, 
   await agentWorld.beginFight([{ monster: "goblin", count: 1 }]);
   const before = listRecentMessages(agentWorld.campaignId, 50).length;
   const [goblinEnemy] = agentWorld.enemies();
-  routeModel.claims([[{ kind: "dies", target: normalizeCreatureName(goblinEnemy.displayName, "english"), quote: "Tamsin cuts down the goblin." }]]);
+  // Keyed to the passage: a reader call from an earlier world's turn that
+  // lands first on a slow runner took a plain entry and the kill went through.
+  routeModel.claims([{ for: "Tamsin cuts down the goblin.", claims: [{ kind: "dies", target: normalizeCreatureName(goblinEnemy.displayName, "english"), quote: "Tamsin cuts down the goblin." }] }]);
   const refused = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", {
     content: "Tamsin cuts down the goblin.",
   });

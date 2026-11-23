@@ -20,7 +20,7 @@ import { z } from "zod";
 const text = (max: number) => z.string().trim().min(1).max(max);
 const square = z.number().int().min(0).max(200).optional();
 
-export const HAND_INTENT_ACTIONS = ["search", "escape", "stand-up", "stabilize", "dismount", "wake"] as const;
+export const HAND_INTENT_ACTIONS = ["search", "escape", "stand-up", "stabilize", "dismount", "mount", "wake"] as const;
 
 // What a gear card does with an item (issue #424): handle_item's actions,
 // and use for a potion or another consumable (use_item).
@@ -50,6 +50,8 @@ export const handIntentExtras = {
   // A summoning whose targets each take their own form, cast_buff's `mix`:
   // Animate Dead's skeletons and zombies, Animate Objects' sizes.
   mix: z.array(z.object({ variant: text(40), count: z.number().int().min(1).max(40) })).min(1).max(6).optional(),
+  // The Mount card's creature, by the name mount_up finds it under.
+  mount: text(80).optional(),
   // A ritual spell cast as one (no slot, ten minutes longer).
   ritual: z.boolean().optional(),
   // A save spell's chosen form, cast_at_enemy's `condition`: Command's word,
@@ -127,6 +129,7 @@ export type HandIntentExtras = {
   variant?: string;
   count?: number;
   mix?: Array<{ variant: string; count: number }>;
+  mount?: string;
   ritual?: boolean;
   condition?: string;
   bonus?: boolean;
@@ -155,6 +158,7 @@ export function handExtraArgs(intent: HandIntentExtras): string[] {
   if (intent.variant) args.push(`variant=${intent.variant}`);
   if (intent.count) args.push(`count=${intent.count}`);
   if (intent.mix?.length) args.push(`mix=${intent.mix.map((entry) => `${entry.count} ${entry.variant}`).join(" + ")}`);
+  if (intent.mount) args.push(`mount=${intent.mount}`);
   if (intent.ritual) args.push("ritual=true");
   if (intent.condition) args.push(`condition=${intent.condition}`);
   if (intent.bonus) args.push("bonus=true");

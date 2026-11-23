@@ -2,6 +2,7 @@
 
 import { isOocAnswer } from "@/lib/dm/ooc-question";
 import { CardReturnedNote } from "@/app/campaigns/[campaignId]/CardReturnedNote";
+import type { translateSystemNote as TranslateSystemNote } from "@/app/campaigns/[campaignId]/MessageParts";
 import { extraTurnTag, litOrderRows, pointerOrderIndex } from "@/lib/battlemap/initiative-rows";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { EyeOff } from "lucide-react";
@@ -18,6 +19,8 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { PartyGroup } from "@/lib/dm/party-split-logic";
+import { elsewherePlace, elsewhereWords } from "@/app/campaigns/[campaignId]/ElsewhereBadge";
 import { classDisplayNameFor, classLevelWords } from "@/lib/characters/class-words";
 import { useLocale, useT, useTp } from "@/lib/locale";
 import { TokenFace } from "@/app/campaigns/[campaignId]/BoardChrome";
@@ -199,12 +202,16 @@ export function PartyRail({
   meUserId,
   encounter,
   genre,
+  away,
   onOpen,
 }: {
   sheets: ReadonlyArray<CharacterSheet>;
   meUserId: string;
   encounter: PublicEncounter | null | undefined;
   genre: string | null | undefined;
+  // The groups of a party that split up who are not where the story is
+  // (party.away): their cards say where they are, dimmed.
+  away?: readonly PartyGroup[];
   onOpen: () => void;
 }) {
   // The last hit points seen per hero, so a change plays as a beat: an
@@ -248,6 +255,7 @@ export function PartyRail({
         const ratio = hp / max;
         const pct = `${Math.round(ratio * 100)}%`;
         const dir = next[sheet.id]?.dir;
+        const place = elsewherePlace(away, sheet.id, sheets);
         return (
           <button
             key={sheet.id}
@@ -257,8 +265,13 @@ export function PartyRail({
             data-current={sheet.id === currentId ? "true" : undefined}
             data-mine={sheet.userId === meUserId ? "true" : undefined}
             data-down={hp === 0 ? "true" : undefined}
+            data-elsewhere={place === null ? undefined : "true"}
             style={{ animationDelay: `${120 + index * 70}ms` }}
-            aria-label={t("{name}, {hp} of {max} hit points. Open the party.", { name: sheet.name, hp, max })}
+            aria-label={
+              place === null
+                ? t("{name}, {hp} of {max} hit points. Open the party.", { name: sheet.name, hp, max })
+                : t("{name}, {where}, {hp} of {max} hit points. Open the party.", { name: sheet.name, where: elsewhereWords(t, place), hp, max })
+            }
             data-no-motion
           >
             <span key={`pulse-${hp}`} className="cine-party-pulse" data-dir={dir} aria-hidden="true" />
@@ -277,7 +290,11 @@ export function PartyRail({
                 <span className="cine-party-fill" data-low={ratio <= 0.34 ? "true" : undefined} style={{ width: pct }} />
               </span>
               {/* A split names each class's levels (backlog F9). */}
-              <span className="cine-party-class">{classLevelWords(sheet, (id) => classDisplayNameFor(id, locale))}</span>
+              {place === null ? (
+                <span className="cine-party-class">{classLevelWords(sheet, (id) => classDisplayNameFor(id, locale))}</span>
+              ) : (
+                <span key={place} className="cine-party-class side-badge" data-elsewhere-line>{place ? t("At {place}", { place }) : t("Elsewhere")}</span>
+              )}
             </span>
           </button>
         );
@@ -600,6 +617,21 @@ export function TabletopChronicle({
 }) {
   const t = useT();
   const tp = useTp();
+  const locale = useLocale();
+  // Lazy-load MessageParts so its transcript dependencies stay out of the
+  // table route's first-load JS bundle (scripts/bundle-budget.json).
+  const [translateNote, setTranslateNote] = useState<typeof TranslateSystemNote | null>(null);
+  useEffect(() => {
+    if (locale === "en") return;
+    let cancelled = false;
+    void import("@/app/campaigns/[campaignId]/MessageParts").then((mod) => {
+      if (!cancelled) setTranslateNote(() => mod.translateSystemNote);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+  const formatSystem = (raw: string) => (translateNote ? translateNote(t, raw) : raw);
   const rollsById = useMemo(() => new Map(rolls.map((roll) => [roll.id, roll])), [rolls]);
   const { recent, earlier } = useMemo(() => chronicleWindow(messages), [messages]);
   const signature = useMemo(() => chronicleSignature(recent, rolls.length), [recent, rolls.length]);
@@ -691,13 +723,13 @@ export function TabletopChronicle({
                     const roll = rollsById.get(id);
                     return roll ? <ChronicleRoll key={roll.id} roll={roll} sheets={sheets} /> : null;
                   })}
-                  <p className="cine-chronicle-system">{chronicleSystemLine(message.content)}</p>
+                  <p className="cine-chronicle-system">{formatSystem(chronicleSystemLine(message.content))}</p>
                 </div>
               );
             }
             return (
               <p key={message.id} className="cine-chronicle-system">
-                {chronicleSystemLine(message.content)}
+                {formatSystem(chronicleSystemLine(message.content))}
               </p>
             );
           })}

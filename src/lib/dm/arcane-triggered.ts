@@ -33,7 +33,7 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { heaviestHit, hitIdOf, openHits, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { openTriggersFor, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { summonAccursedSpecter } from "@/lib/dm/summon-arcane";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -77,7 +77,7 @@ function violentAttraction(input: Input, ask: TriggerAsk): Plan | ToolError {
     if (unseen) return unseen;
     return {
       apply: () => {
-        const rolled = rollCard(campaign, turn, sheet.id, "damage", `Violent Attraction: ${striker.name}'s hit on ${enemy.displayName}`, "1d10", null).total;
+        const rolled = rollCard(campaign, turn, sheet.id, "damage", `Violent Attraction: ${striker.name}'s hit on ${enemy.displayName}`, "1d10", sheetAttacker(sheet)).total;
         const applied = turn ? applyEnemyDamage(campaign, turn, encounter, enemy, rolled, input.sheets, input.sheetsById, undefined, { magical: true }) : {};
         publishEncounter(campaign.id);
         return { rolled: `1d10: ${rolled}`, applied: `${striker.name}'s weapon hits ${enemy.displayName} harder: ${rolled} more damage.`, ...applied };
@@ -93,7 +93,7 @@ function violentAttraction(input: Input, ask: TriggerAsk): Plan | ToolError {
   if (unseen) return unseen;
   return {
     apply: () => {
-      const rolled = rollCard(campaign, turn, sheet.id, "damage", `Violent Attraction: ${record.attacker.name}'s hit`, "1d10", null).total;
+      const rolled = rollCard(campaign, turn, sheet.id, "damage", `Violent Attraction: ${record.attacker.name}'s hit`, "1d10", sheetAttacker(sheet)).total;
       const swing = record.swings[index];
       const settled = settle(input, record, record.swings.map((entry, at) => (at === index ? { ...swing, raw: swing.raw + rolled } : entry)), "violent attraction");
       return { rolled: `1d10: ${rolled}`, applied: `${record.attacker.name}'s weapon hits harder: ${rolled} more damage. HP ${settled.hp}.` };

@@ -163,6 +163,10 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     const first = await r.forced([3, 4], () => world.invoke("move_token", { token: enemy.id, x: 9, y: 5 }));
     assert.equal(first.ok, true, first.error);
     assert.equal(before - foe(enemy).currentHp, 7, `2d6 slashing (3 + 4) as it moves: ${show(first)}`);
+    // The condition keeps whose arrow it was: the brambles are the archer's roll.
+    const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+    const torn = listRecentRolls(world.campaignId, 20).find((roll) => roll.detail.includes("brambles"));
+    assert.deepEqual(torn?.attacker, { kind: "sheet", id: archer.id, name: world.sheet(archer.id).name }, "the brambles are not the archer's roll");
     const again = await r.forced([3, 4], () => world.invoke("move_token", { token: enemy.id, x: 10, y: 5 }));
     assert.equal(again.ok, true, again.error);
     assert.equal(before - foe(enemy).currentHp, 7, "a second move on the same turn tore it again");

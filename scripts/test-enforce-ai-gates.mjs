@@ -61,6 +61,25 @@ await test("Dice the AI sends are rolled by the server: 2d6 of 3 and 4 is 7.", a
   assert.equal(hp(), 33);
 });
 
+await test("Dice the AI sends for harm are on record as the roll of the words it gave for the harm, with the character as its target; healing dice name no roller.", async () => {
+  await stage();
+  const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+  const call = aiTurn();
+  const harm = await call("apply_damage", { characterId: hero.id, dice: "2d6", type: "bludgeoning", reason: "falling rubble" });
+  assert.equal(harm.ok, true, harm.error);
+  const [rubble] = listRecentRolls(world.campaignId, 1);
+  assert.equal(rubble.kind, "damage");
+  assert.deepEqual(rubble.attacker, { kind: "hazard", id: null, name: "falling rubble", hazard: "named" });
+  assert.equal(rubble.characterId, hero.id);
+  assert.equal(rubble.detail, `2d6 bludgeoning on ${world.sheet(hero.id).name}`);
+  // Healing is no attack and no damage: it names no roller, as before.
+  const mend = await call("heal", { characterId: hero.id, dice: "2d4+2" });
+  assert.equal(mend.ok, true, mend.error);
+  const [healed] = listRecentRolls(world.campaignId, 1);
+  assert.equal(healed.kind, "custom");
+  assert.equal(healed.attacker, null);
+});
+
 await test("A damage total the server rolled this turn is accepted once, and only once.", async () => {
   await stage();
   const call = aiTurn();
@@ -247,6 +266,93 @@ await test("damage_enemy from a hazard takes dice from the AI, never a bare numb
   world.clearDice();
   assert.equal(dice.ok, true, dice.error);
   assert.equal(kit.enemy(enemy.id).currentHp, 88);
+});
+
+// The two calls the tools offer for a hazard's harm: request_roll, then the
+// total. The gate stamped the paying roll with the creature's id, the mark of
+// a blow the server had landed there, and the double-apply guard answered
+// the very call the roll paid for with "already applied".
+await test("A total the AI rolled for a hazard and then sent for a creature lands on it once: it loses the hit points, and the same number sent again is refused.", async () => {
+  const enemy = await stage();
+  const turn = createDmTurn(world.campaignId, []);
+  const call = (name, args) => invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+  world.dice(5);
+  const rolled = await call("request_roll", { kind: "damage", expression: "1d8", reason: "burning oil" });
+  world.clearDice();
+  assert.equal(rolled.ok, true, rolled.error);
+  const oil = { enemyId: enemy.id, amount: 5, type: "fire", source: "hazard", reason: "burning oil" };
+  const first = await call("apply_damage", oil);
+  assert.equal(first.ok, true, first.error);
+  assert.doesNotMatch(JSON.stringify(first), /already applied/, "the hazard's own total was taken for a blow already landed");
+  assert.equal(kit.enemy(enemy.id).currentHp, 95, "the oil's 5 did not land");
+  const [paid] = getDmTurn(turn.id).rollIds.map((id) => getRoll(id));
+  assert.equal(paid.applied, true, "the total is still unspent");
+  assert.equal(paid.targetEnemyId, null, "a total that paid for a number reads as a blow the server landed");
+  const again = await call("apply_damage", oil);
+  assert.equal(again.ok, false, "one roll paid for two hits");
+  assert.match(String(again.error), /rolled by the server, never written/, "refused, but not by the number gate");
+  assert.equal(kit.enemy(enemy.id).currentHp, 95);
+});
+
+await test("A total the AI rolled and then sent for a character is no blow that character dealt: the fight's card counts nothing for the poison that hurt them.", async () => {
+  await stage();
+  const call = aiTurn();
+  world.dice(5);
+  const rolled = await call("request_roll", { characterId: hero.id, kind: "damage", expression: "1d8", reason: "poison" });
+  world.clearDice();
+  assert.equal(rolled.ok, true, rolled.error);
+  const poison = await call("apply_damage", { characterId: hero.id, amount: 5, type: "poison" });
+  assert.equal(poison.ok, true, poison.error);
+  assert.equal(hp(), 35);
+  const ended = await world.invoke("end_encounter", { outcome: "victory" });
+  assert.equal(ended.ok, true, ended.error);
+  const line = getLatestEndedEncounter(world.campaignId).summaryCard.fighters.find((fighter) => fighter.characterId === hero.id);
+  assert.ok(line, "the hero has no line on the card");
+  assert.equal(line.taken, 5);
+  assert.equal(line.dealt, 0, "the poison's 5 reads as damage the hero dealt");
+});
+
+// The guard reads as it did: the stamp of a blow the server landed. That
+// blow's own number sent bare never reaches it on an AI's turn, since the
+// number gate refuses it first. What reaches it is harm the server rolled
+// that comes to the same total for the same creature, sent here as dice (a
+// total rolled with request_roll that comes to the same reaches it too).
+// Pinned as it is on both sides of the fix, not judged.
+await test("The double-apply guard reads as it did: after a blow the server landed, its number sent bare is refused by the number gate, and dice sent for the same creature that come to the same total are answered as already applied.", async () => {
+  await kit.endFight();
+  world.patch(hero.id, { currentHp: 40, tempHp: 0, conditions: [], conditionMeta: {}, equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
+  try {
+    await kit.fight(1, { heroFaces: { [hero.id]: 19 } });
+    const [enemy] = world.enemies();
+    kit.setEnemy(enemy.id, { maxHp: 100, currentHp: 100, ac: 10 });
+    kit.place(hero.id, 5, 5);
+    kit.place(enemy.id, 5, 6);
+    world.say("player", "I swing at the goblin.", world.sheet(hero.id));
+    const turn = createDmTurn(world.campaignId, []);
+    const call = (name, args) => invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+    // The d20 (a hit on AC 10), then the sword's d8.
+    world.dice(15, 4);
+    const swing = await call("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    world.clearDice();
+    assert.equal(swing.ok, true, swing.error);
+    const blow = getDmTurn(turn.id).rollIds.map((id) => getRoll(id)).find((roll) => roll?.kind === "damage" && roll.applied && roll.targetEnemyId === enemy.id);
+    assert.ok(blow, "the swing landed no damage the server stamped on the creature");
+    const before = kit.enemy(enemy.id).currentHp;
+    assert.equal(before, 100 - blow.total);
+    const cut = { enemyId: enemy.id, type: "slashing", source: "hazard", reason: "the same cut, sent again" };
+    const bare = await call("apply_damage", { ...cut, amount: blow.total });
+    assert.equal(bare.ok, false, "the blow's number paid for a second hit");
+    assert.match(String(bare.error), /rolled by the server, never written/, "refused, but not by the number gate");
+    world.dice(4);
+    const dice = await call("apply_damage", { ...cut, dice: blow.expression });
+    world.clearDice();
+    assert.equal(dice.ok, true, dice.error);
+    assert.match(JSON.stringify(dice), /already applied/, "the call was not answered that the damage had landed");
+    assert.equal(kit.enemy(enemy.id).currentHp, before, `the blow of ${blow.total} landed a second time`);
+  } finally {
+    world.clearDice();
+    world.patch(hero.id, { equipment: [] });
+  }
 });
 
 await test("split_damage from the AI needs the server's roll.", async () => {

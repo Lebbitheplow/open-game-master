@@ -10,7 +10,7 @@
 // the DM's word places the area there.
 
 import { getEnemy } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, listStandings } from "@/lib/db/battle-maps";
 import { findSpellByName } from "@/lib/content";
 import { authoredSpellRow } from "@/lib/srd/spell-mechanics";
 import { templateTiles, type TemplateShape } from "@/lib/battlemap/template";
@@ -74,7 +74,7 @@ export function areaProblem(input: {
   if (!map || !input.creatures.length) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const caster = tokens.find((token) => token.refId === input.casterId);
   const placed = input.creatures
     .map((creature) => {
@@ -184,7 +184,7 @@ export function creaturesInBlast(input: {
   if (!map) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const casterToken = tokens.find((token) => token.refId === input.casterId);
   const caster = casterToken ? { x: casterToken.x, y: casterToken.y } : null;
   const pick = blastPickOf(input.area);
@@ -209,7 +209,7 @@ export function creaturesInBlast(input: {
 // its size, a character by its own.
 function standingIn(
   width: number,
-  tokens: ReturnType<typeof listTokens>,
+  tokens: ReturnType<typeof listStandings>,
   cells: ReadonlySet<number>,
   options: { skip: string | null; spareParty: boolean },
 ): { enemyIds: string[]; characterIds: string[]; echoes: string[] } {
@@ -218,12 +218,16 @@ function standingIn(
   // An Echo Knight's echo in the area: no creature, but it makes the save
   // with its knight's bonus (mt-fb-echo.ts echoAreaSave).
   const echoes: string[] = [];
+  // The caster an area leaves out is left out with the creature it shares a
+  // token with: a rider's cone starts at the edge of the space the pair
+  // fills, so it holds neither the rider nor the mount under them.
+  const skipped = options.skip ? (tokens.find((token) => token.refId === options.skip)?.id ?? null) : null;
   for (const token of tokens) {
     if (echoOwnerOf(token) && cells.has(tileIndex(width, token.x, token.y))) {
       echoes.push(token.refId);
       continue;
     }
-    if (token.refId === options.skip) {
+    if (token.refId === options.skip || token.id === skipped) {
       continue;
     }
     if (token.kind === "enemy") {
@@ -261,7 +265,7 @@ export function creaturesInLaidZone(input: {
   if (!row || !map) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const casterToken = tokens.find((token) => token.refId === input.casterId);
   const caster = casterToken ? { x: casterToken.x, y: casterToken.y } : null;
   const fromCaster = row.shape === "aura" || row.shape === "line" || Boolean(row.self);

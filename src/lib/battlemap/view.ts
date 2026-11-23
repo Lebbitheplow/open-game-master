@@ -35,6 +35,7 @@ import {
   getBattleMapForEncounter,
   getExplored,
   getTokenByRef,
+  listStandings,
   listTokens,
   mergeExplored,
   type BattleMap,
@@ -524,7 +525,10 @@ export function buildPlayerMapView(
   const tokenAuras: PlayerMapView["tokenAuras"] = {};
   const tokenFootprint: PlayerMapView["tokenFootprint"] = {};
   const tokenElevation: PlayerMapView["tokenElevation"] = {};
-  const tokenByRef = new Map(tokens.map((token) => [token.refId, token]));
+  // A mount under a rider is found on its rider's token (listStandings): on
+  // the mount's turn the pair's figure is the one lit, and a line drawn from
+  // or to the mount ends on it.
+  const tokenByRef = new Map(listStandings(map.id).map((token) => [token.refId, token]));
   const effectAuras = new Map<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>();
   for (const effect of listEffects(campaignId)) {
     // An effect the party cannot tell is there draws no ring on their board.

@@ -18,6 +18,8 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { recordRoll } from "@/lib/dm/roll-record";
+import { sourceDamageThrown } from "@/lib/dm/roll-card";
+import { harmSource } from "@/lib/roll-sources";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { rollOn } from "@/lib/roll-labels";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -595,13 +597,19 @@ export function handleAoeDamage(
       const outcome = burst?.outcome ?? thrown;
       bombardNote = burst?.note ?? bombardNote;
       rolled.push({ amount: outcome.total, type });
+      if (!areaBy) {
+        // An area no creature made is the roll of the spell it is, else of
+        // the words the GM gave for it, else the GM's own dice, and says
+        // what it threw, as every source's roll does.
+        sourceDamageThrown(campaign, turn, harmSource(args.spell, args.reason), { names: caught }, { dice: expression, type }, outcome);
+        continue;
+      }
       recordRoll({
         campaignId: campaign.id,
         characterId: null,
         requestedBy: "dm",
         kind: "damage",
-        // The type tells a two-type spell's rolls apart, and is all an
-        // unnamed effect has.
+        // The type tells a two-type spell's rolls apart.
         detail: rollOn(`${areaName ?? "area effect"}${type && (split || !areaName) ? ` (${type})` : ""}`, caught),
         result: outcome,
         attacker: areaBy,

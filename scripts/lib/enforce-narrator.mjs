@@ -31,6 +31,11 @@
 import http from "node:http";
 import { answerReader, isReaderRequest } from "./claims-reader.mjs";
 
+// The first words of the read that asks the players' words whether the party
+// parts (party-split-logic.ts PARTING_PROMPT_START), spelled here so this
+// helper loads before src/.
+const PARTING_PROMPT_START = "You read what the players at a tabletop RPG table just said, and tell whether the party parts ways";
+
 // The AI's door into the engine: an AI turn and actor kind "ai", the way a
 // delegated turn or an AI share of an assisted session reaches it.
 export async function aiEngine(world) {
@@ -103,6 +108,8 @@ export async function fakeModel({ slots = 0 } = {}) {
   const requests = [];
   let readerScript = [];
   const readerRequests = [];
+  let partingScript = [];
+  const partingRequests = [];
   const fallback = reply({ text: "The moment settles, and the table waits on the next move." });
 
   function sse(res, entry) {
@@ -221,7 +228,27 @@ export async function fakeModel({ slots = 0 } = {}) {
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       if (isReaderRequest(body)) {
         readerRequests.push(body);
-        answerReader(res, readerScript.shift() ?? []);
+        // An entry given as { for, claims } answers only the read of a
+        // passage holding those words; a read from some other turn still
+        // in flight (another world's, finishing late on a slow runner) takes
+        // the next plain entry, never it.
+        const text = JSON.stringify(body.messages ?? []);
+        const isKeyed = (entry) => typeof entry?.for === "string" && Array.isArray(entry.claims);
+        const keyed = readerScript.findIndex((entry) => isKeyed(entry) && text.includes(JSON.stringify(entry.for).slice(1, -1)));
+        const plain = readerScript.findIndex((entry) => !isKeyed(entry));
+        const at = keyed >= 0 ? keyed : plain;
+        const entry = at >= 0 ? readerScript.splice(at, 1)[0] : undefined;
+        answerReader(res, isKeyed(entry) ? entry.claims : (entry ?? []));
+        return;
+      }
+      // The read of the players' words for whether the party parts, as a
+      // turn opens (src/lib/dm/party-split.ts readParting): nobody parts,
+      // unless the test says who with model.parting([...]), so a scripted
+      // turn's replies are never spent on it.
+      if (String(body.messages?.[0]?.content ?? "").startsWith(PARTING_PROMPT_START)) {
+        partingRequests.push(body);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(partingScript.shift() ?? { stays: [], to: "" }) } }] }));
         return;
       }
       requests.push(body);
@@ -259,6 +286,13 @@ export async function fakeModel({ slots = 0 } = {}) {
   return {
     requests,
     readerRequests,
+    // What the parting read answers, one per read:
+    // { stays: [{ name, quote }], to }.
+    partingRequests,
+    parting: (entries) => {
+      partingScript = [...entries];
+      partingRequests.length = 0;
+    },
     slotLog,
     slots: {
       restart: () => {
@@ -270,7 +304,8 @@ export async function fakeModel({ slots = 0 } = {}) {
         slotState.cached = tokens;
       },
     },
-    // What the claims reader answers, one list of claims per reader call.
+    // What the claims reader answers, one list of claims per reader call,
+    // or { for: "words", claims } for the read of the passage with those words.
     claims: (entries) => {
       readerScript = [...entries];
       readerRequests.length = 0;

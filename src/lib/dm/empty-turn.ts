@@ -44,6 +44,8 @@ const NAMES_A_CASTING = new Map<string, (args: CastingArguments) => boolean>([
   ["take_action", (args) => Boolean(args.characterId)],
   ["end_turn", (args) => Boolean(args.characterId)],
   ["dismount", (args) => Boolean(args.characterId)],
+  // The Hand's Mount card (battlemap/hand-mount-logic.ts).
+  ["mount_up", (args) => Boolean(args.characterId)],
   ["handle_item", (args) => Boolean(args.characterId)],
   ["stabilize", (args) => Boolean(args.healerId)],
   // Standing up; the DM ends a character's other conditions as the story does.

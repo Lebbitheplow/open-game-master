@@ -4,6 +4,7 @@ import { attractionWords, openToMore } from "@/lib/attraction";
 import { TravelFormation } from "@/app/campaigns/[campaignId]/TravelFormation";
 import { PartyStory } from "@/app/campaigns/[campaignId]/PartyStory";
 import type { PartyState } from "@/lib/dm/party-logic";
+import { ElsewhereBadge, elsewherePlace } from "@/app/campaigns/[campaignId]/ElsewhereBadge";
 import { fieldedOf } from "@/lib/player-characters";
 import { Bot, Check, Crown, Heart, ImagePlus, PawPrint, Save, Sparkles, UserPlus } from "lucide-react";
 import { describeExhaustion } from "@/lib/dm/condition-logic";
@@ -618,6 +619,12 @@ export function PartyPanel({
                 <span className="block text-xs text-stone-400">
                   {speciesAndClassWords(sheet, locale)}
                 </span>
+                {/* A party that split up: who is not where the story is. */}
+                {elsewherePlace(party?.away, sheet.id, sheets) !== null ? (
+                  <span className="mt-0.5 flex min-w-0">
+                    <ElsewhereBadge place={elsewherePlace(party?.away, sheet.id, sheets)} />
+                  </span>
+                ) : null}
               </span>
               </button>
               {publicNoteCount ? (
@@ -1105,6 +1112,7 @@ function LightBar({ light }: { light: { remaining: number; total: number } }) {
   const low = light.remaining <= 15;
   return (
     <span
+      role="img"
       title={tp("Light: {count} minute left", "Light: {count} minutes left", { count: light.remaining })}
       aria-label={tp("Light: {count} minute left", "Light: {count} minutes left", { count: light.remaining })}
       className="flex h-1.5 w-8 shrink-0 items-center overflow-hidden rounded-full border border-amber-900/60 bg-stone-900"

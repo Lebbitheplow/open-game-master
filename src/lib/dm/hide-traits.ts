@@ -14,7 +14,7 @@ import { hasSkulker } from "@/lib/srd/feat-combat";
 import { zoneHidesFrom } from "@/lib/dm/zone-rules";
 import { attackSight, characterSenses, enemySenses } from "@/lib/dm/attack-light";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import { listEnemies } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { coverBetween, hasLineOfSight } from "@/lib/battlemap/los";
@@ -86,11 +86,13 @@ export function seenClearlyDespiteTraits(
   }
   const stealthy = holdsFeature(sheet, "naturally stealthy");
   const mySize = rank(sheetSize(sheet));
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   // A creature one size larger than the hider standing in the sight lines.
+  // A mount under a rider is one, read by its own size; the hider's own
+  // mount, on the token they share, is not.
   const screened = (fromX: number, fromY: number) =>
     tokens.some((token) => {
-      if (token.refId === sheet.id || (token.x === fromX && token.y === fromY)) {
+      if (token.refId === sheet.id || token.id === hider.id || (token.x === fromX && token.y === fromY)) {
         return false;
       }
       const other = getSheetById(token.refId);

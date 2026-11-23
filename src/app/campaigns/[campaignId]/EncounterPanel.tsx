@@ -87,7 +87,7 @@ export function EncounterPanel({
   }, [sheets, encounter.enemies, genre]);
 
   async function forceEnd() {
-    if (!await appConfirm("End this encounter without a resolution? No XP is awarded.")) {
+    if (!await appConfirm(t("End this encounter without a resolution? No XP is awarded."))) {
       return;
     }
     setEnding(true);
@@ -104,7 +104,7 @@ export function EncounterPanel({
   // table reached for this button and got no XP and the combat music still
   // playing. The abort stays offered when the engine will not end it.
   async function endFight() {
-    if (!await appConfirm("End the fight now? XP is awarded and the board clears; it cannot be reopened.", { title: "End the fight", actionLabel: "End it" })) {
+    if (!await appConfirm(t("End the fight now? XP is awarded and the board clears; it cannot be reopened."), { title: t("End the fight"), actionLabel: t("End it") })) {
       return;
     }
     setEnding(true);
@@ -116,7 +116,7 @@ export function EncounterPanel({
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as { error?: string };
-        if (await appConfirm(`${body.error ?? "The engine would not end the fight."} Force-end it without XP instead?`, { actionLabel: "Force-end" })) {
+        if (await appConfirm(`${body.error ?? t("The engine would not end the fight.")} ${t("Force-end it without XP instead?")}`, { actionLabel: t("Force-end") })) {
           await fetch(`/api/campaigns/${campaignId}/encounter`, { method: "DELETE" });
         }
       }
@@ -135,10 +135,11 @@ export function EncounterPanel({
       <header className="mb-2 flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold text-red-300">
           <Swords className="size-4" />
-          Combat{encounter.orderReady ? ` · Round ${encounter.round}` : " · Rolling initiative"}
+          {t("Combat")}
+          {encounter.orderReady ? ` · ${t("Round {n}", { n: encounter.round })}` : ` · ${t("Rolling initiative")}`}
           {encounter.lair ? (
             <span className={cn("ml-1.5 text-[10px] uppercase tracking-wide", encounter.lair.usedThisRound ? "text-stone-600" : "text-violet-300")}>
-              {encounter.lair.usedThisRound ? "lair acted" : "lair awake"}
+              {encounter.lair.usedThisRound ? t("lair acted") : t("lair awake")}
             </span>
           ) : null}
         </h2>
@@ -148,9 +149,9 @@ export function EncounterPanel({
             onClick={canEditOrder ? endFight : forceEnd}
             disabled={ending}
             className="text-xs text-stone-500 hover:text-red-300 disabled:opacity-50 motion-press"
-            title={canEditOrder ? "End the fight: XP and the after-the-fight card" : "Force-end the encounter (lead only)"}
+            title={canEditOrder ? t("End the fight: XP and the after-the-fight card") : t("Force-end the encounter (lead only)")}
           >
-            End encounter
+            {t("End encounter")}
           </button>
         ) : null}
       </header>
@@ -174,8 +175,8 @@ export function EncounterPanel({
                         className="flex w-full items-center gap-1 text-xs text-stone-500 hover:text-stone-300"
                       >
                         <ChevronDown className="size-3.5" />
-                        {group.members[0].name.replace(/\s+\d+$/, "")} · {standing.length} of{" "}
-                        {group.members.length} standing
+                        {group.members[0].name.replace(/\s+\d+$/, "")} ·{" "}
+                        {t("{standing} of {total} standing", { standing: standing.length, total: group.members.length })}
                       </button>
                     </li>,
                   ];
@@ -207,11 +208,11 @@ export function EncounterPanel({
                     {group.members[0].name.replace(/\s+\d+$/, "")} x{group.members.length}
                   </span>
                   <span className="shrink-0 rounded border border-stone-700 px-1 text-[10px] text-stone-500">
-                    CR {crLabel(group.members[0].cr)}
+                    {t("CR {cr}", { cr: crLabel(group.members[0].cr) })}
                   </span>
                 </span>
                 <span className="ml-2 shrink-0 text-[10px] text-stone-500">
-                  {standing.length} standing
+                  {t("{standing} standing", { standing: standing.length })}
                 </span>
               </button>
             </li>,
@@ -260,7 +261,7 @@ export function EncounterPanel({
                   ) : null}
                   <span className="truncate">{enemy.name}</span>
                   <span className="shrink-0 rounded border border-stone-700 px-1 text-[10px] text-stone-500">
-                    CR {crLabel(enemy.cr)}
+                    {t("CR {cr}", { cr: crLabel(enemy.cr) })}
                   </span>
                 </span>
                 <span
@@ -271,7 +272,7 @@ export function EncounterPanel({
                   )}
                   title={
                     enemy.knockedOut
-                      ? "Alive at 0 hit points after a blow meant to knock it out: out of the fight, not dying."
+                      ? t("Alive at 0 hit points after a blow meant to knock it out: out of the fight, not dying.")
                       : enemy.regenerating
                         ? regeneratingNote(t, enemy.regenerating.stopped)
                         : undefined
@@ -280,14 +281,14 @@ export function EncounterPanel({
                   {/* A nonlethal blow leaves it alive at 0 (src/lib/dm/knockout.ts);
                       a troll lies at 0 until its turn (src/lib/dm/regeneration.ts). */}
                   {enemy.status === "fled"
-                    ? "fled"
+                    ? t("fled")
                     : enemy.knockedOut
-                      ? "knocked out"
+                      ? t("knocked out", { context: "table.hand.target.knockedOut" })
                       : enemy.regenerating
                         ? enemy.regenerating.stopped
-                          ? "down, burning"
-                          : "down, regenerating"
-                        : enemy.health}
+                          ? t("down, burning")
+                          : t("down, regenerating")
+                        : t(enemy.health)}
                 </span>
                 {enemy.regenerating ? (
                   <span
@@ -300,21 +301,21 @@ export function EncounterPanel({
                         : "border-emerald-700/50 bg-emerald-950/30 text-emerald-200",
                     )}
                   >
-                    {enemy.regenerating.stopped ? "dies at its turn" : "regenerates at its turn"}
+                    {enemy.regenerating.stopped ? t("dies at its turn") : t("regenerates at its turn")}
                   </span>
                 ) : null}
                 {/* DM only: publicEncounter attaches these for the seat that
                     is allowed them, so their presence is the permission. */}
                 {enemy.currentHp !== undefined && enemy.status === "alive" ? (
                   <span className="ml-1.5 shrink-0 rounded-full border border-amber-900/60 bg-amber-950/30 px-2 py-0.5 font-mono text-[10px] text-amber-200/90">
-                    {enemy.currentHp}/{enemy.maxHp} AC {enemy.ac}
+                    {enemy.currentHp}/{enemy.maxHp}{enemy.ac !== undefined ? ` ${t("AC {ac}", { ac: enemy.ac })}` : ""}
                   </span>
                 ) : null}
               </div>
               {/* A creature the party dominates (issue 503, SideBadge.tsx). */}
               <SideBadge side={offSide(encounter, enemy.id, "enemy")} className="mt-1" />
               {enemy.legendary ? (
-                <div className="mt-1 flex items-center gap-1" title="Legendary actions this round and resistances this fight">
+                <div className="mt-1 flex items-center gap-1" title={t("Legendary actions this round and resistances this fight")}>
                   {Array.from({ length: enemy.legendary.actionsMax }, (_, index) => (
                     <Crown
                       key={`a${index}`}

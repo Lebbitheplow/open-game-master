@@ -1,6 +1,6 @@
 // Assert-based tests for the dice engine. Run with: npm run test:dice
 import assert from "node:assert/strict";
-import { rollExpression, rollD20, d20Expression, isValidExpression } from "../src/lib/dice.ts";
+import { rollExpression, rollD20, d20Expression, diceExpression, isValidExpression } from "../src/lib/dice.ts";
 
 // Deterministic RNG: returns values from a fixed queue.
 function queueRng(values) {
@@ -68,6 +68,31 @@ test("d20Expression canonical forms", () => {
   assert.equal(d20Expression(5), "1d20+5");
   assert.equal(d20Expression(-2, "advantage"), "2d20kh1-2");
   assert.equal(d20Expression(0, "disadvantage"), "2d20kl1");
+});
+
+test("diceExpression writes a count of dice as terms a roll may hold", () => {
+  assert.equal(diceExpression(3, 6), "3d6");
+  assert.equal(diceExpression(100, 6), "100d6");
+  // Past what one term may hold, the count is shared out over several.
+  assert.equal(diceExpression(101, 6), "100d6+1d6");
+  assert.equal(diceExpression(144, 6), "100d6+44d6");
+  assert.equal(diceExpression(250, 4), "100d4+100d4+50d4");
+  assert.equal(isValidExpression("144d6"), false, "the term the count would have been");
+  for (const count of [1, 100, 101, 144, 2000]) {
+    const written = diceExpression(count, 6);
+    assert.equal(isValidExpression(written), true, written.slice(0, 40));
+    const result = rollExpression(written, () => 2);
+    assert.equal(result.total, count * 2, `${count} dice`);
+    assert.equal(result.terms.reduce((sum, term) => sum + (term.kind === "dice" ? term.dice.length : 0), 0), count);
+  }
+  // Fewer than one die is not a roll, and more than a roll holds is refused
+  // where it is written, not when it is thrown.
+  for (const bad of [0, -3, 1.5, 2001, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => diceExpression(bad, 6), /Dice count out of range/, String(bad));
+  }
+  for (const bad of [1, 101, 6.5, Number.NaN]) {
+    assert.throws(() => diceExpression(3, bad), /Die size out of range/, `d${bad}`);
+  }
 });
 
 test("rollD20 applies advantage", () => {

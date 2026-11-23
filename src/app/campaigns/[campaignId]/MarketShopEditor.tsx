@@ -184,7 +184,7 @@ export function MarketShopEditor({
     );
 
   return (
-    <div className="panel reveal space-y-2.5 rounded-lg p-2.5" aria-label={t("Edit {name}", { name: shop.name })}>
+    <div className="panel reveal space-y-2.5 rounded-lg p-2.5" role="group" aria-label={t("Edit {name}", { name: shop.name })}>
       <div className="flex flex-wrap items-center gap-1.5">
         <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} maxLength={80} aria-label={t("Shop name")} className={cn(panelField, "min-w-[9rem] flex-1")} />
         <Select size="sm" label={t("Kind of shop")} value={draft.kind} options={KINDS.map((kind) => ({ value: kind as string, label: t(KIND_KEYS[kind]) }))} onChange={(kind) => setDraft({ ...draft, kind })} className="pk-w-28" />

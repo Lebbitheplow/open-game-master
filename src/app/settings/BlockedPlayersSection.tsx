@@ -8,6 +8,7 @@ import { UserAvatar, ui } from "@/lib/ui";
 import { useT } from "@/lib/locale";
 import { EmptyState } from "@/components/EmptyState";
 import { PageSection } from "@/components/PageShell";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 type Blocked = {
   userId: string;
@@ -58,7 +59,7 @@ export function BlockedPlayersSection() {
       intro={t("Blocked players' table messages are hidden from you, and neither of you can open a private chat or send a friend request. Block someone from their message or from the party list.")}
     >
       {blocked === null ? (
-        <div className="skeleton-block h-12 rounded-xl" aria-label={t("Loading blocked players")} />
+        <LoadingBlock className="h-12 rounded-xl" label={t("Loading blocked players")} />
       ) : blocked.length === 0 ? (
         (loadError ? (
           <LoadFailed

@@ -3,7 +3,7 @@
 // and the renderer all ask this module rather than each guessing from the
 // size word. Pure and dependency-free.
 
-import { tileIndex, type XY } from "@/lib/battlemap/types";
+import { blocksMove, tileAt, tileIndex, type XY } from "@/lib/battlemap/types";
 
 export type Footprint = 1 | 2 | 3 | 4;
 
@@ -110,4 +110,25 @@ export function footprintSide(spot: XY, spotFootprint: Footprint, at: XY, footpr
     x: side(spot.x, spotFootprint, at.x, footprint),
     y: side(spot.y, spotFootprint, at.y, footprint),
   };
+}
+
+// Why a creature `footprint` squares a side cannot stand with its corner at
+// `at`: a square of it off the board, on a wall, or in someone else's space
+// (`occupied`, every other token's whole space). Null when it fits. A push
+// or a throw that read the corner alone set a Large creature, or a rider on
+// a Large mount, half inside whoever stood past its far squares.
+export function spaceRefusal(
+  board: { terrain: string; width: number; height: number },
+  occupied: ReadonlySet<number>,
+  at: XY,
+  footprint: Footprint,
+): "edge" | "wall" | "taken" | null {
+  const squares = footprintTiles(at, footprint);
+  if (squares.some((square) => square.x < 0 || square.y < 0 || square.x >= board.width || square.y >= board.height)) {
+    return "edge";
+  }
+  if (squares.some((square) => blocksMove(tileAt(board.terrain, board.width, square.x, square.y)))) {
+    return "wall";
+  }
+  return squares.some((square) => occupied.has(tileIndex(board.width, square.x, square.y))) ? "taken" : null;
 }

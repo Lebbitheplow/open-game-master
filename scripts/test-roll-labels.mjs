@@ -169,6 +169,98 @@ await test("The post-fight summary credits a natural 20 to the PC who rolled it,
   assert.equal(summary.totals.nat20s, 1);
 });
 
+// Issue 915, ruling 2: a roll nobody at the table made names its source.
+const source = (hazard, name) => ({ kind: "hazard", id: null, name, hazard });
+const sourced = [
+  store([4, 5], "2d10", { characterId: aria.id, kind: "damage", detail: "2d10 piercing on Aria", attacker: source("trap", "Spiked Pit") }),
+  store([2, 2, 2], "3d6", { characterId: aria.id, kind: "damage", detail: "30 ft, 3d6 bludgeoning on Aria", attacker: source("fall", "the fall") }),
+  store([20], "1d20+8", { characterId: aria.id, kind: "attack", detail: "Attack vs Aria, AC 16", attacker: source("trap", "Poison Darts") }),
+  store([3, 3], "2d6", { characterId: aria.id, kind: "damage", detail: "2d6 fire on Aria", attacker: source("gm", "the GM") }),
+];
+
+// The fall and the GM's own dice are stored by a name that sits inside a
+// sentence ("the fall"), and are worded in front of a roll by what they are.
+await test("A roll nobody at the table made puts its source in front, where it read as the roll of the character it lands on.", () => {
+  assert.deepEqual(sourced.map((roll) => rollCardLabel(enT, roll, sheetName(roll))), [
+    "Spiked Pit · Damage (2d10 piercing on Aria)",
+    "The fall · Damage (30 ft, 3d6 bludgeoning on Aria)",
+    "Poison Darts · Attack roll (Attack vs Aria, AC 16)",
+    "The GM · Damage (2d6 fire on Aria)",
+  ]);
+  const leads = [
+    "Spiked Pit · 2d10 piercing on Aria",
+    "The fall · 30 ft, 3d6 bludgeoning on Aria",
+    "Poison Darts · Attack vs Aria, AC 16",
+    "The GM · 2d6 fire on Aria",
+  ];
+  assert.deepEqual(sourced.map((roll) => rollToastLead(enT, roll, sheetName(roll))), leads);
+  assert.deepEqual(sourced.map((roll) => rollChronicleLead(enT, roll, sheetName(roll))), leads);
+  assert.deepEqual(gameState(sourced), [
+    "- Spiked Pit: damage (2d10 piercing on Aria) rolled 9",
+    "- The fall: damage (30 ft, 3d6 bludgeoning on Aria) rolled 6",
+    "- Poison Darts: attack (Attack vs Aria, AC 16) rolled 28 (natural 20)",
+    "- The GM: damage (2d6 fire on Aria) rolled 6",
+  ]);
+});
+
+await test("No file but roll-sources.ts writes a source out: every other one asks it for one.", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const root = path.join(import.meta.dirname, "..", "src");
+  // The module that builds them, the type that describes them, and an unrelated visual effect of the same word.
+  const allowed = new Set(["lib/roll-sources.ts", "lib/db/rolls.ts", "lib/battlemap/fx-plan.ts"]);
+  const found = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (/\.tsx?$/.test(entry.name)) {
+        const rel = path.relative(root, full).split(path.sep).join("/");
+        if (!allowed.has(rel) && /kind:\s*"hazard"/.test(fs.readFileSync(full, "utf8"))) {
+          found.push(rel);
+        }
+      }
+    }
+  };
+  walk(root);
+  assert.deepEqual(found, [], `a source is written out by hand in: ${found.join(", ")}`);
+});
+
+await test("The two sources that are never given a name are read in the table's language, by what they are and never by their name; a trap keeps the name it was given.", async () => {
+  await import("../src/lib/i18n/fr-catalog.ts");
+  const frT = Object.assign((key, vars) => translate("fr", key, vars), { locale: "fr" });
+  assert.ok(rollCardLabel(frT, sourced[1], "Aria").startsWith("La chute · "), rollCardLabel(frT, sourced[1], "Aria"));
+  assert.ok(rollToastLead(frT, sourced[3], "Aria").startsWith("Le MJ · "), rollToastLead(frT, sourced[3], "Aria"));
+  assert.ok(rollChronicleLead(frT, sourced[1], "Aria").startsWith("La chute · "), rollChronicleLead(frT, sourced[1], "Aria"));
+  assert.ok(rollCardLabel(frT, sourced[0], "Aria").startsWith("Spiked Pit · "), rollCardLabel(frT, sourced[0], "Aria"));
+  // A creature, or a hazard the GM named, that happens to be called "The fall" keeps its name.
+  assert.ok(rollCardLabel(frT, { ...sourced[1], attacker: { kind: "enemy", id: "e", name: "The fall" } }, "Aria").startsWith("The fall · "));
+  assert.ok(rollCardLabel(frT, { ...sourced[1], attacker: source("named", "The fall") }, "Aria").startsWith("The fall · "));
+  // And the fall is the fall whatever its stored name says.
+  assert.ok(rollCardLabel(frT, { ...sourced[1], attacker: source("fall", "the fall") }, "Aria").startsWith("La chute · "));
+  assert.ok(rollCardLabel(enT, { ...sourced[1], attacker: source("fall", "the fall") }, "Aria").startsWith("The fall · "));
+  // The GM's own dice for a trap nothing named: a sentence calls it "a trap", and its roll is the GM's.
+  assert.ok(rollCardLabel(enT, { ...sourced[3], attacker: source("gm", "a trap") }, "Aria").startsWith("The GM · "));
+  assert.ok(rollCardLabel(frT, { ...sourced[3], attacker: source("gm", "a trap") }, "Aria").startsWith("Le MJ · "));
+});
+
+await test("The post-fight summary does not give a character a trap's natural 20 against them.", () => {
+  const rolls = sourced.map((roll) => ({ characterId: roll.characterId, attacker: roll.attacker, kind: roll.kind, total: roll.total, applied: true, targetEnemyId: null, crit: roll.breakdown.crit ?? null }));
+  const summary = computeEncounterSummary({
+    outcome: "victory", rounds: 1, startedAt: "2026-10-01T10:00:00.000Z", endedAt: "2026-10-01T10:05:00.000Z",
+    enemies: [{ status: "dead" }], sheets: world.sheets().map((sheet) => ({ id: sheet.id, name: sheet.name })), rolls, audits: [],
+  });
+  const line = summary.fighters.find((fighter) => fighter.characterId === aria.id);
+  assert.equal(line.nat20s, 0);
+  // Stored with no attacker, as these were, the natural 20 was Aria's.
+  const unnamed = computeEncounterSummary({
+    outcome: "victory", rounds: 1, startedAt: "2026-10-01T10:00:00.000Z", endedAt: "2026-10-01T10:05:00.000Z",
+    enemies: [{ status: "dead" }], sheets: world.sheets().map((sheet) => ({ id: sheet.id, name: sheet.name })), rolls: rolls.map((roll) => ({ ...roll, attacker: null })), audits: [],
+  });
+  assert.equal(unnamed.fighters.find((fighter) => fighter.characterId === aria.id).nat20s, 1);
+});
+
 // Issue #622: the beat drafts read the newest changes, and a fight's rounds
 // write a time-only tick for each character every round. The ticks are no
 // beat, and they must not crowd the changes that are out of the forty read.

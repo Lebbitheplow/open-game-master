@@ -1,5 +1,6 @@
 import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
+import { fileAnsweredRollCards } from "./answered-cards-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
 import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
 import { repairFeatSpellMisreadings } from "./feat-spell-repair.ts";
@@ -1850,6 +1851,24 @@ function ensureSchema(db: SqliteDatabase) {
     // marks it too. Null on every other turn.
     ["owner_turn_id", `TEXT`],
   ]);
+  // The roll cards whose roll the turn's conversation has been handed (a
+  // JSON list of pending_rolls ids; dm-turns.ts answeredPendingIds), so a
+  // turn that waits on dice twice answers each card once. The turns already
+  // open are filed as the column is added, together or not at all: until
+  // now a card's roll joined its turn as the turn answered it, so "on the
+  // turn" was that mark, and the filing reads it that way one last time.
+  // Whether the column is there is asked inside the transaction that adds
+  // it: filed a second time, a card that has landed and not yet been
+  // answered would be marked answered, and the model never told its roll.
+  db.transaction(() => {
+    const kept = (db.prepare(`PRAGMA table_info(dm_turns)`).all() as Array<{ name: string }>).some(
+      (column) => column.name === "answered_pending_ids_json",
+    );
+    if (!kept) {
+      addColumns("dm_turns", [["answered_pending_ids_json", `TEXT NOT NULL DEFAULT '[]'`]]);
+      fileAnsweredRollCards(db);
+    }
+  })();
 
   addColumns("battle_maps", [
     // Under the sky (1) or a roof (0); null means "decide from the theme"
@@ -2263,8 +2282,9 @@ function ensureSchema(db: SqliteDatabase) {
     // Who made an attack or damage roll, by name as they were when it was
     // rolled (src/lib/db/rolls.ts RollAttacker). character_id is the PC the
     // roll concerns, which for an enemy's attack is its target, so it cannot
-    // say who rolled. NULL: nobody did (a fall), a roll tool, or a roll
-    // stored before the column.
+    // say who rolled. A roll nobody made (a fall, a trap) names its source
+    // here. NULL: a roll that is neither an attack nor damage, or one stored
+    // before the column.
     ["attacker_json", `TEXT`],
   ]);
 

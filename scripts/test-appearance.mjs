@@ -259,4 +259,29 @@ try {
   if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
   if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;
 }
+// A French table read the whole theme panel in English: every theme's name
+// and look, and every line of the picker, has its French entry.
+{
+  const { themeName, themeDescription } = await import("../src/lib/appearance-themes.ts");
+  const { translate } = await import("../src/lib/i18n/translate.ts");
+  await import("../src/lib/i18n/fr-catalog.ts");
+  const fr = (key, vars) => translate("fr", key, vars);
+  const en = (key, vars) => translate("en", key, vars);
+  test("every theme reads its name and look in French, and in English as the catalog says", () => {
+    for (const entry of APPEARANCE_THEMES) {
+      assert.equal(themeName(en, entry), entry.name);
+      assert.notEqual(themeName(fr, entry), entry.name === "Inferno" ? "" : entry.name, `${entry.id} has a French name`);
+      assert.notEqual(themeDescription(fr, entry), entry.description, `${entry.id} has a French description`);
+    }
+  });
+  test("every line the theme panel and its picker say has its French entry", () => {
+    const catalog = JSON.parse(readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8"));
+    for (const file of ["../src/components/AppearancePicker.tsx", "../src/components/ThemePanel.tsx", "../src/components/ThemePanelHost.tsx"]) {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      for (const [, key] of source.matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)) {
+        assert.ok(catalog.messages[key] ?? catalog.contexts[key], `${file}: "${key}" has no French`);
+      }
+    }
+  });
+}
 console.log(`${passed} appearance checks passed.`);

@@ -116,6 +116,7 @@ function ContentBody({ reference }: { reference: ContentRef }) {
       try {
         const { describeContentEntry } = await import("@/lib/help");
         const { needsNote } = await import("@/lib/content/levelup-logic");
+        const headers = { "X-Odm-Locale": t.locale };
         // An entry built on rules this game does not play, or played from
         // mechanics the app read and nobody checked, says so first (issue
         // #570). The note is the reader's words — the keyed "best effort"
@@ -126,6 +127,7 @@ function ContentBody({ reference }: { reference: ContentRef }) {
         };
         const response = await fetch(
           `/api/content/${reference.kind}/${encodeURIComponent(reference.slug)}${scopeQuery(campaignId)}`,
+          { headers },
         );
         if (response.ok) {
           const data = await response.json();
@@ -143,6 +145,7 @@ function ContentBody({ reference }: { reference: ContentRef }) {
         const wanted = textKey(reference.name ?? reference.slug);
         const search = await fetch(
           `/api/content/${reference.kind}?q=${encodeURIComponent(wanted)}&limit=20&mechanics=1${scopeQuery(campaignId, "&")}`,
+          { headers },
         );
         const results = search.ok ? ((await search.json()).results ?? []) : [];
         const hit = results.find(
@@ -166,15 +169,14 @@ function ContentBody({ reference }: { reference: ContentRef }) {
   if (state.loading) {
     return (
       <p className="flex items-center gap-2 text-sm text-stone-500">
-        <Loader2 className="size-4 animate-spin" /> Looking it up...
+        <Loader2 className="size-4 animate-spin" /> {t("Looking it up...")}
       </p>
     );
   }
   if (!state.text) {
     return (
       <p className="text-sm text-stone-500">
-        No description available. The content pack may not be installed, or this entry was added by
-        hand.
+        {t("No description available. The content pack may not be installed, or this entry was added by hand.")}
       </p>
     );
   }
@@ -222,6 +224,7 @@ function RuleList({ rows }: { rows: Array<{ label: string; text: string | null }
 // row with no stats and a genre item the pack lacks all get a full card.
 function ItemBody({ reference }: { reference: ContentRef }) {
   const campaignId = useContentCampaign();
+  const t = useT();
   const [state, setState] = useState<{ sheet: ItemSheet | null; loading: boolean }>({
     sheet: null,
     loading: true,
@@ -232,17 +235,18 @@ function ItemBody({ reference }: { reference: ContentRef }) {
     async function load() {
       const name = (reference.name ?? reference.slug).trim();
       const wanted = textKey(name);
+      const headers = { "X-Odm-Locale": t.locale };
       const readJson = async (response: Response) => (response.ok ? response.json() : null);
       try {
         const [{ buildItemSheet }, direct, search] = await Promise.all([
           import("@/lib/help/item-sheet"),
-          fetch(`/api/content/items/${encodeURIComponent(reference.slug)}${scopeQuery(campaignId)}`).then(readJson).catch(() => null),
-          fetch(`/api/content/items?q=${encodeURIComponent(wanted)}&limit=20${scopeQuery(campaignId, "&")}`).then(readJson).catch(() => null),
+          fetch(`/api/content/items/${encodeURIComponent(reference.slug)}${scopeQuery(campaignId)}`, { headers }).then(readJson).catch(() => null),
+          fetch(`/api/content/items?q=${encodeURIComponent(wanted)}&limit=20${scopeQuery(campaignId, "&")}`, { headers }).then(readJson).catch(() => null),
         ]);
         const hits = ((search?.results ?? []) as Array<{ name: string; data?: Record<string, unknown> }>)
           .filter((entry) => textKey(entry.name) === wanted)
           .map((entry) => entry.data);
-        const sheet = buildItemSheet(name, [direct?.entry?.data, ...hits]);
+        const sheet = buildItemSheet(name, [direct?.entry?.data, ...hits], { t, locale: t.locale });
         if (!cancelled) {
           setState({ sheet, loading: false });
         }
@@ -256,12 +260,12 @@ function ItemBody({ reference }: { reference: ContentRef }) {
     return () => {
       cancelled = true;
     };
-  }, [reference.slug, reference.name, campaignId]);
+  }, [reference.slug, reference.name, campaignId, t]);
 
   if (state.loading) {
     return (
       <p className="flex items-center gap-2 text-sm text-stone-500">
-        <Loader2 className="size-4 animate-spin" /> Looking it up...
+        <Loader2 className="size-4 animate-spin" /> {t("Looking it up...")}
       </p>
     );
   }
@@ -269,59 +273,59 @@ function ItemBody({ reference }: { reference: ContentRef }) {
   if (!sheet) {
     return (
       <p className="text-sm text-stone-500">
-        No details available. The content pack may not be installed, or this item was added by hand.
+        {t("No details available. The content pack may not be installed, or this item was added by hand.")}
       </p>
     );
   }
 
   const tags = [
     sheet.rarity,
-    sheet.attunement ? "Requires attunement" : null,
-    sheet.bonus ? `+${sheet.bonus} magic` : null,
+    sheet.attunement ? t("Requires attunement") : null,
+    sheet.bonus ? t("+{bonus} magic", { bonus: sheet.bonus }) : null,
   ].filter((tag): tag is string => Boolean(tag));
   const tiles: Array<{ label: string; value: string | null; note?: string | null }> = [
-    { label: "Weight", value: sheet.weight },
-    { label: "Value", value: sheet.cost },
+    { label: t("Weight"), value: sheet.weight },
+    { label: t("Value"), value: sheet.cost },
   ];
   if (sheet.armor) {
-    tiles.push({ label: sheet.armor.shield ? "AC bonus" : "Armor class", value: sheet.armor.ac });
+    tiles.push({ label: sheet.armor.shield ? t("AC bonus") : t("Armor class"), value: sheet.armor.ac });
   }
   if (sheet.weapon) {
     tiles.push({
-      label: "Damage",
-      value: sheet.weapon.damage ?? "None",
+      label: t("Damage"),
+      value: sheet.weapon.damage ?? t("None"),
       note: sheet.weapon.damageType,
     });
     if (sheet.weapon.range) {
-      tiles.push({ label: "Range", value: sheet.weapon.range });
+      tiles.push({ label: t("Range"), value: sheet.weapon.range });
     }
   }
 
   const armorRows: Array<{ label: string; text: string | null }> = [];
   if (sheet.armor) {
     if (sheet.armor.shield) {
-      armorRows.push({ label: "Shield", text: "Carried in one hand; only one shield counts at a time." });
+      armorRows.push({ label: t("Shield"), text: t("Carried in one hand; only one shield counts at a time.") });
     }
     if (sheet.armor.dex) {
-      armorRows.push({ label: "Dexterity", text: sheet.armor.dex });
+      armorRows.push({ label: t("Dexterity"), text: sheet.armor.dex });
     }
     armorRows.push({
-      label: "Strength",
+      label: t("Strength"),
       text: sheet.armor.strength
-        ? `Needs ${sheet.armor.strength}; below that, your speed drops by 10 feet while wearing it.`
-        : "No minimum.",
+        ? t("Needs {strength}; below that, your speed drops by 10 feet while wearing it.", { strength: sheet.armor.strength })
+        : t("No minimum."),
     });
     armorRows.push({
-      label: "Stealth",
+      label: t("Stealth"),
       text: sheet.armor.stealthDisadvantage
-        ? "Disadvantage on Dexterity (Stealth) checks while wearing it."
-        : "No penalty.",
+        ? t("Disadvantage on Dexterity (Stealth) checks while wearing it.")
+        : t("No penalty."),
     });
   }
   const weaponRows: Array<{ label: string; text: string | null }> = [];
   if (sheet.weapon) {
     if (sheet.bonus) {
-      weaponRows.push({ label: `+${sheet.bonus} weapon`, text: `Adds ${sheet.bonus} to attack and damage rolls.` });
+      weaponRows.push({ label: t("+{bonus} weapon", { bonus: sheet.bonus }), text: t("Adds {bonus} to attack and damage rolls.", { bonus: sheet.bonus }) });
     }
     for (const property of sheet.weapon.properties) {
       weaponRows.push({ label: property.name, text: property.blurb });
@@ -330,7 +334,7 @@ function ItemBody({ reference }: { reference: ContentRef }) {
       weaponRows.push({ label: `${capitalize(sheet.weapon.damageType)}`, text: sheet.weapon.damageBlurb });
     }
     if (!sheet.weapon.damage) {
-      weaponRows.push({ label: "No damage", text: "It does not hurt on its own; its special rules say what it does." });
+      weaponRows.push({ label: t("No damage"), text: t("It does not hurt on its own; its special rules say what it does.") });
     }
   }
 
@@ -355,17 +359,17 @@ function ItemBody({ reference }: { reference: ContentRef }) {
         ))}
       </div>
       {armorRows.length ? (
-        <ItemSection title="Armor">
+        <ItemSection title={t("Armor")}>
           <RuleList rows={armorRows} />
         </ItemSection>
       ) : null}
       {weaponRows.length ? (
-        <ItemSection title="Weapon">
+        <ItemSection title={t("Weapon")}>
           <RuleList rows={weaponRows} />
         </ItemSection>
       ) : null}
       {sheet.description ? (
-        <ItemSection title="Description">
+        <ItemSection title={t("Description")}>
           <div className="space-y-2 border-t border-stone-800 pt-2">{renderRules(sheet.description)}</div>
         </ItemSection>
       ) : null}
@@ -470,6 +474,7 @@ export function InfoChipList({
   }>;
   emptyText?: string;
 }) {
+  const t = useT();
   if (!items.length) {
     return emptyText ? <p className="text-xs text-stone-500">{emptyText}</p> : null;
   }
@@ -494,7 +499,7 @@ export function InfoChipList({
                   <span className="min-w-0">
                     <span className="block font-display text-[13px] tracking-wide text-amber-100">{item.name}</span>
                     {(item.meta ?? item.lead?.label) ? <span className="block text-[10px] uppercase tracking-wider text-stone-500">{item.meta ?? item.lead?.label}</span> : null}
-                    <span className="mt-0.5 block text-stone-300">{line ?? "Select the mark beside it for the full entry."}</span>
+                    <span className="mt-0.5 block text-stone-300">{line ?? t("Select the mark beside it for the full entry.")}</span>
                   </span>
                 </span>
               }

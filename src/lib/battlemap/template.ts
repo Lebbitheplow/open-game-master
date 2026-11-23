@@ -204,14 +204,27 @@ export function templateTiles(map: TemplateMap, spec: TemplateSpec): number[] {
 }
 
 // Who is standing in it. Takes the tile set so a caller that already drew
-// the template does not compute it twice.
+// the template does not compute it twice. A creature larger than a square
+// is in it when any square of its space is, as a blast cast through the
+// engine catches it (src/lib/dm/aoe-shape.ts standingIn): asked by its
+// corner alone, an ogre or a goblin on a worg with three squares under the
+// template was read as outside it.
 export function tokensInTemplate<T extends { x: number; y: number }>(
   width: number,
   tiles: number[],
   tokens: T[],
+  footprintOf: (token: T) => number = () => 1,
 ): T[] {
   const covered = new Set(tiles);
-  return tokens.filter((token) => covered.has(tileIndex(width, token.x, token.y)));
+  return tokens.filter((token) => {
+    const size = Math.max(1, footprintOf(token));
+    for (let dy = 0; dy < size; dy += 1) {
+      for (let dx = 0; dx < size; dx += 1) {
+        if (token.x + dx < width && covered.has(tileIndex(width, token.x + dx, token.y + dy))) return true;
+      }
+    }
+    return false;
+  });
 }
 
 // One line a DM can read back before they commit: "Cone, 15 ft, 6 tiles".

@@ -3,6 +3,7 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { Campaign } from "@/lib/db/campaigns";
 import {
   getActiveEncounter,
+  getEnemy,
   insertEnemy,
   listEnemies,
   patchEnemyHp,
@@ -23,6 +24,8 @@ import { encounterCeiling, evaluateEncounter } from "@/lib/srd/encounter-math";
 import { nameArrivals, spliceIntoOrder } from "@/lib/dm/encounter-logic";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import type { SettingRef } from "@/lib/worlds/preset";
@@ -508,19 +511,24 @@ export function handleAddEnemies(
       renameTokenByRef(map.id, enemy.id, name);
     }
     const tokens = listTokens(map.id);
-    const spots = findSpawnTiles(
-      map.terrain,
-      map.width,
-      map.height,
-      occupiedTiles(map, tokens, null),
-      inserted.length + back.length,
-      tokens.filter((token) => token.kind === "enemy").map((token) => ({ x: token.x, y: token.y })),
-      tokens.filter((token) => token.kind === "pc").map((token) => ({ x: token.x, y: token.y })),
-    );
     // A creature back on the field comes in as a newcomer does; its old
     // token went when it fled.
     // A mount with its rider on it stands on its rider's token (ruling 1).
     const placing = [...onOwnToken(inserted), ...back.filter((enemy) => !getTokenByRef(map.id, enemy.id))];
+    // Each arrival is set down where its whole space is open, among the
+    // whole spaces of those already there (a rider's pair read as the
+    // mount's size): read by single squares, an ogre came in overlapping
+    // the creature beside it, and anyone could land inside a Large token.
+    const spots = findSpawnTiles(
+      map.terrain,
+      map.width,
+      map.height,
+      occupiedTiles(map, tokens, null, tokenFootprint),
+      placing.length,
+      tokens.filter((token) => token.kind === "enemy").map((token) => ({ x: token.x, y: token.y })),
+      tokens.filter((token) => token.kind === "pc").map((token) => ({ x: token.x, y: token.y })),
+      placing.map((enemy) => enemyFootprint(getEnemy(enemy.id) ?? enemy)),
+    );
     placing.forEach((enemy, index) => {
       const spot = spots[index];
       if (spot) {

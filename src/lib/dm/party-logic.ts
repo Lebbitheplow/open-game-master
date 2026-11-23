@@ -6,6 +6,7 @@ import { lineNamed } from "@/lib/srd/item-row";
 import { listedItemTags } from "@/lib/schemas/item-tags";
 import type { ItemFacts } from "@/lib/dm/mutation-math";
 import { PARTY_BACKSTORY_MAX } from "@/lib/dm/party-story";
+import { normalizeAway, normalizeCame, normalizeCut, normalizeParting, type PartyCame, type PartyCut, type PartyGroup, type PartyParting } from "@/lib/dm/party-split-logic";
 
 // The party as a thing in its own right.
 //
@@ -75,6 +76,13 @@ export type PartyState = {
   backstory: string;
   backstoryBy: string;
   backstoryAt: string;
+  // The party split up (issue 951, party-split-logic.ts): the groups that are
+  // not in the scene, each at its own place, and the last time the scene took
+  // someone in from elsewhere. Empty and null while the party is together.
+  away: PartyGroup[];
+  cut: PartyCut | null;
+  came: PartyCame | null;
+  parting: PartyParting | null;
 };
 
 export const PARTY_ITEM_NAME_MAX = 80;
@@ -97,6 +105,10 @@ export function emptyParty(): PartyState {
     backstory: "",
     backstoryBy: "",
     backstoryAt: "",
+    away: [],
+    cut: null,
+    came: null,
+    parting: null,
   };
 }
 
@@ -128,6 +140,10 @@ export function normalizeParty(raw: unknown): PartyState {
     backstory: String(record.backstory ?? "").slice(0, PARTY_BACKSTORY_MAX),
     backstoryBy: String(record.backstoryBy ?? "").slice(0, 80),
     backstoryAt: String(record.backstoryAt ?? "").slice(0, 40),
+    away: normalizeAway(record.away),
+    cut: normalizeCut(record.cut),
+    came: normalizeCame(record.came),
+    parting: normalizeParting(record.parting),
   };
 }
 

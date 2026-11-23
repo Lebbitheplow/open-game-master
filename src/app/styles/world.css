@@ -1333,13 +1333,17 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: var(--color-sto
   color: var(--cine-ink);
   cursor: pointer;
   animation: ts-rise 520ms var(--ease-settle) backwards;
-  transition: border-color var(--dur-move) var(--ease-snap), box-shadow var(--dur-move) var(--ease-snap), transform var(--dur-move) var(--ease-snap);
+  transition: border-color var(--dur-move) var(--ease-snap), box-shadow var(--dur-move) var(--ease-snap), transform var(--dur-move) var(--ease-snap), opacity var(--dur-move) var(--ease-snap), filter var(--dur-move) var(--ease-snap);
 }
 .cine-party-card:hover { border-color: rgba(212, 171, 58, 0.55); transform: translateX(3px); }
 .cine-party-card:focus-visible { outline: 2px solid var(--cine-gold-pale); outline-offset: 2px; }
 .cine-party-card[data-current="true"] { border-color: #d4ab3a; box-shadow: 0 0 22px rgba(212, 171, 58, 0.3); }
 .cine-party-card[data-mine="true"] .cine-party-name::after { content: " ·"; color: var(--cine-gold); }
 .cine-party-card[data-down="true"] { filter: saturate(0.4) brightness(0.8); }
+/* A party that split up: whoever is not where the story is stands back, and
+   comes forward again when the scene cuts to them. */
+.cine-party-card[data-elsewhere="true"] { opacity: 0.62; filter: saturate(0.55); }
+.cine-party-card[data-elsewhere="true"] .cine-party-class { font-style: italic; }
 .cine-party-face {
   width: 48px;
   height: 48px;

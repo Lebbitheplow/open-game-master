@@ -4,6 +4,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { AppearancePicker } from "@/components/AppearancePicker";
 import { returnFocus } from "@/components/ui/return-focus";
+import { useT } from "@/lib/locale";
 import { setThemePanelOpen, useThemePanel } from "@/lib/theme-mode";
 
 // The theme picker as a panel beside the page, not a dialog over it: a pick
@@ -13,6 +14,7 @@ import { setThemePanelOpen, useThemePanel } from "@/lib/theme-mode";
 // and only Escape or its own close button dismisses it. Mounted once in the
 // root layout; the account menu and the lobby open it.
 export function ThemePanel() {
+  const t = useT();
   const { open } = useThemePanel();
   return (
     <RadixDialog.Root open={open} onOpenChange={setThemePanelOpen} modal={false}>
@@ -25,10 +27,10 @@ export function ThemePanel() {
         >
           <div className="theme-panel-head">
             <RadixDialog.Title className="font-display text-lg tracking-wide text-amber-100">
-              <span className="gold-title">Theme</span>
+              <span className="gold-title">{t("Theme")}</span>
             </RadixDialog.Title>
             <RadixDialog.Close
-              aria-label="Close"
+              aria-label={t("Close", { context: "action.close" })}
               className="pk-tap -m-1 flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-2 text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200"
             >
               <X className="size-4" />

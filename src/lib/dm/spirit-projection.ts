@@ -27,7 +27,7 @@
 // The passage itself is the board's (ar-ws-umbral-logic.ts
 // movesThroughEverything, read by passage.ts pcMoveTraits).
 import { regainHitPoints } from "@/lib/dm/regain";
-import { getBattleMapForEncounter, insertToken, listTokens, removeTokenByRef } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, insertToken, listStandings, listTokens, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -41,7 +41,7 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { currentActor } from "@/lib/dm/acting-party";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
-import { enemyAttacker, rollCard } from "@/lib/dm/roll-card";
+import { enemyAttacker, rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -143,7 +143,7 @@ export function enemyStrikesBody(
   }
   // "Any attack that hits the creature is a critical hit if the attacker is
   // within 5 feet of the creature" (Unconscious).
-  const striker = listTokens(map.id).find((token) => token.kind === "enemy" && token.refId === enemy.id);
+  const striker = listStandings(map.id).find((token) => token.kind === "enemy" && token.refId === enemy.id);
   const critical = natural === 20 || Boolean(striker && apart(striker, body) <= 1);
   const damage = rollCard(campaign, turn, null, "damage", `${enemy.displayName}: ${attack.name} at ${body.name}${critical ? " (critical)" : ""}`, critical ? critDamageExpression(attack.damage) : attack.damage, enemyAttacker(enemy));
   const amount = Math.max(0, damage.total);
@@ -185,7 +185,7 @@ export function projectionTurnEnd(campaign: Campaign, combatantIds: string[]): s
     // spell area's turn-end strike has (zone-triggers.ts).
     const turn = openStandInTurn(campaign.id);
     try {
-      const rolled = rollCard(campaign, turn, sheet.id, "damage", `${sheet.name}: the turn ends inside ${inside.name}`, INSIDE_DAMAGE, null);
+      const rolled = rollCard(campaign, turn, sheet.id, "damage", `the turn ends inside ${inside.name}`, INSIDE_DAMAGE, sheetAttacker(sheet));
       const hurt = applyPcDamage(campaign, turn.id, sheet, { amount: rolled.total, type: "force", reason: `the spirit's turn ended inside ${inside.name}` });
       lines.push(`${sheet.name}'s spirit ends its turn inside ${inside.name} and takes ${"error" in hurt ? rolled.total : (hurt.damageApplied ?? rolled.total)} force damage.`);
     } finally {

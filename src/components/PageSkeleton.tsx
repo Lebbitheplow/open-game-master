@@ -10,6 +10,17 @@ function Block({ className }: { className?: string }) {
   return <div className={cn("skeleton-block rounded-lg", className)} />;
 }
 
+// A lone placeholder block that says what is loading. A label on a plain
+// div has no role to carry it, so a screen reader passed the block in
+// silence; a status with its words inside is read when it appears.
+export function LoadingBlock({ label, className }: { label: string; className?: string }) {
+  return (
+    <div className={cn("skeleton-block", className)} role="status">
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}
+
 function Cards({ count, className, cell }: { count: number; className: string; cell: string }) {
   return (
     <div className={className}>
@@ -34,7 +45,8 @@ export function PageSkeleton({ kind = "flat", className }: { kind?: SkeletonKind
   const shell = cn("mx-auto w-full animate-overlay-soft px-4 py-6", className);
   if (kind === "table") {
     return (
-      <div className="flex h-dvh w-full animate-overlay-soft flex-col" aria-busy="true" aria-label="Loading the table">
+      <div className="flex h-dvh w-full animate-overlay-soft flex-col" role="status">
+        <span className="sr-only">Loading the table</span>
         <Block className="m-2 h-12 rounded-xl" />
         <div className="flex min-h-0 flex-1 gap-2 px-2 pb-2">
           <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-xl p-4">
@@ -49,7 +61,8 @@ export function PageSkeleton({ kind = "flat", className }: { kind?: SkeletonKind
     );
   }
   return (
-    <div className={cn(shell, kind === "hub" || kind === "shelf" ? "max-w-5xl" : "max-w-3xl")} aria-busy="true" aria-label="Loading">
+    <div className={cn(shell, kind === "hub" || kind === "shelf" ? "max-w-5xl" : "max-w-3xl")} role="status">
+      <span className="sr-only">Loading</span>
       <div className="mb-6 flex items-center gap-3">
         <Block className="size-12 rounded-xl" />
         <div className="flex-1 space-y-2">

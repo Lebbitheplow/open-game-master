@@ -6,6 +6,7 @@ import {
   getBattleMapForEncounter,
   getToken,
   insertToken,
+  listStandings,
   listTokens,
   placeToken,
   setTokenHidden,
@@ -21,6 +22,8 @@ import {
   isAdhocRef,
   type MapPing,
 } from "@/lib/dm/board-logic";
+import { tokenFootprint } from "@/lib/dm/board-reach";
+import { footprintTiles } from "@/lib/battlemap/footprint";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -42,6 +45,9 @@ function boardMap(campaign: Campaign): BattleMap | null {
   return board ? getBattleMapForEncounter(board.id) : null;
 }
 
+// Every square someone stands in, a Large creature or a rider on a Large
+// mount by its whole space: read by its corner, the GM set a token down
+// inside an ogre with no word against it.
 function occupiedExcept(
   map: BattleMap,
   tokens: BattleToken[],
@@ -52,7 +58,9 @@ function occupiedExcept(
     if (token.id === exceptId) {
       continue;
     }
-    taken.add(tileIndex(map.width, token.x, token.y));
+    for (const square of footprintTiles(token, tokenFootprint(token))) {
+      taken.add(tileIndex(map.width, square.x, square.y));
+    }
   }
   return taken;
 }
@@ -87,16 +95,13 @@ export function moveTokenFreely(
   if (!tokens.some((other) => other.id === token.id)) {
     return { error: "That token is not on this board." };
   }
-  const placement = checkPlacement({
-    terrain: map.terrain,
-    width: map.width,
-    height: map.height,
-    occupied: occupiedExcept(map, tokens, token.id),
-    x,
-    y,
-  });
-  if ("error" in placement) {
-    return placement;
+  // A token larger than a square needs every square of its space open.
+  const occupied = occupiedExcept(map, tokens, token.id);
+  for (const square of footprintTiles({ x, y }, tokenFootprint(token))) {
+    const placement = checkPlacement({ terrain: map.terrain, width: map.width, height: map.height, occupied, x: square.x, y: square.y });
+    if ("error" in placement) {
+      return placement;
+    }
   }
   placeToken(token.id, x, y);
   publishBattleMapUpdate(campaign.id);
@@ -222,13 +227,18 @@ export function readTemplate(campaign: Campaign, spec: TemplateSpec): TemplateRe
     { terrain: map.terrain, width: map.width, height: map.height },
     spec,
   );
-  const tokens = listTokens(map.id);
+  // Everyone standing there, a ridden mount apart from its rider (issue
+  // 1055, ruling 6: "an area that catches both creatures resolves each one
+  // separately"), by every square of their space: read from the pieces, a
+  // template over a goblin on a worg named the goblin alone, and the ids
+  // handed on to aoe_damage left the worg out.
+  const tokens = listStandings(map.id);
   const board = getActiveBoard(campaign.id);
   const enemyIds = new Set(board ? listEnemies(board.id).map((enemy) => enemy.id) : []);
   const sheetIds = new Set(listSheets(campaign.id).map((sheet) => sheet.id));
   return {
     tiles,
-    caught: tokensInTemplate(map.width, tiles, tokens).map((token) => ({
+    caught: tokensInTemplate(map.width, tiles, tokens, tokenFootprint).map((token) => ({
       tokenId: token.id,
       name: token.name,
       kind: token.kind,
