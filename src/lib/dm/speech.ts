@@ -434,7 +434,7 @@ function splitsOneLine(between: string): boolean {
 
 function attachTrailingComma(parts: SpeechCardPart[]): void {
   const last = parts.at(-1);
-  if (last?.kind === "words" && !/[,.!?…:;—–-]$/.test(last.text)) {
+  if (last?.kind === "words" && !/[,.!?…:;\u2014\u2013-]$/.test(last.text)) {
     last.text = `${last.text},`;
   }
 }

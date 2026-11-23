@@ -369,4 +369,18 @@ test("a name set off after a description is who the sentence is about", () => {
   assert.deepEqual(lines("A messenger, damp from the storm, approaches. “Captain Mira has heard of you,” he says."), [], "named inside the line is not speaking it");
 });
 
+// French puts the comma after the closing guillemet (« Tenez la porte »,
+// dit Marla): the card took the comma off the front of the prose and onto
+// the end of the words, so neither the bubble ends bare nor the prose opens
+// on ", dit". A comma outside English quotes moves the same way; a comma
+// inside them, the usual English, leaves the cards as they were.
+test("a comma after the closing quote ends the words, not the prose", () => {
+  const table = [{ kind: "npc", id: "m", name: "Marla", gender: "Female" }];
+  const cards = (text) => speech.cardsOf(attributeSpeech(text, table)).map((card) => card.kind === "prose" ? `prose: ${card.text}` : card.parts.map((part) => `${part.kind}: ${part.text}`).join(" | "));
+  assert.deepEqual(cards("« Tenez la porte », dit Marla. Le vent se lève."), ["words: Tenez la porte,", "prose: dit Marla. Le vent se lève."]);
+  assert.deepEqual(cards("« Tenez la porte », dit Marla, « et vite. »"), ["words: Tenez la porte, | tag: dit Marla, | words: et vite."]);
+  assert.deepEqual(cards('"Hold the gate", says Marla. The wind rises.'), ["words: Hold the gate,", "prose: says Marla. The wind rises."]);
+  assert.deepEqual(cards('"Hold the gate," says Marla. The wind rises.'), ["words: Hold the gate,", "prose:  says Marla. The wind rises."], "as it always was");
+});
+
 console.log(`test-speech-attribution: ${passed} passed`);
