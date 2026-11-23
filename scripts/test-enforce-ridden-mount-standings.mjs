@@ -28,6 +28,7 @@ const { characterShootsInMelee } = await import("../src/lib/dm/attack-spatial.ts
 const { lashOut } = await import("../src/lib/dm/confusion.ts");
 const { serializeMapForPrompt } = await import("../src/lib/battlemap/serialize.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+const { readTemplate } = await import("../src/lib/dm/board.ts");
 
 const ownToken = (world, refId) => listTokens(mapOf(world).id).find((token) => token.refId === refId) ?? null;
 const live = (world, id) => world.enemies().find((enemy) => enemy.id === id);
@@ -108,6 +109,16 @@ await test("An area that catches whoever stands on it as it is laid catches the 
   assert.equal(out.ok, true, out.error);
   assert.ok(has(world, rider.id, "restrained"), "the vines missed the rider");
   assert.ok(has(world, mount.id, "restrained"), "the vines passed over the mount under its rider");
+});
+
+await test("A template the GM measures on the board names the mount and its rider, caught by a square of the pair's space that is not its corner.", async () => {
+  const { world, rider, mount } = await pair(caster("wizard", "int", ["Fireball"]), { mount: "warhorse" });
+  // The warhorse holds (12,4) to (13,5); a 5-foot burst at (14,6) covers
+  // (13,5) and never the pair's corner.
+  const readout = readTemplate(world.campaign(), { shape: "sphere", origin: { x: 14, y: 6 }, target: { x: 14, y: 6 }, sizeFeet: 5 });
+  assert.ok(readout, "setup: no board to measure on");
+  const caught = readout.caught.map((entry) => entry.enemyId).filter(Boolean).sort();
+  assert.deepEqual(caught, [mount.id, rider.id].sort(), `the template caught ${JSON.stringify(readout.caught)}`);
 });
 
 await test("The ground that shakes at the end of its caster's turn throws the mount down as well as its rider (Earthquake).", async () => {

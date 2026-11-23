@@ -6,6 +6,7 @@ import {
   getBattleMapForEncounter,
   getToken,
   insertToken,
+  listStandings,
   listTokens,
   placeToken,
   setTokenHidden,
@@ -21,6 +22,7 @@ import {
   isAdhocRef,
   type MapPing,
 } from "@/lib/dm/board-logic";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -222,13 +224,18 @@ export function readTemplate(campaign: Campaign, spec: TemplateSpec): TemplateRe
     { terrain: map.terrain, width: map.width, height: map.height },
     spec,
   );
-  const tokens = listTokens(map.id);
+  // Everyone standing there, a ridden mount apart from its rider (issue
+  // 1055, ruling 6: "an area that catches both creatures resolves each one
+  // separately"), by every square of their space: read from the pieces, a
+  // template over a goblin on a worg named the goblin alone, and the ids
+  // handed on to aoe_damage left the worg out.
+  const tokens = listStandings(map.id);
   const board = getActiveBoard(campaign.id);
   const enemyIds = new Set(board ? listEnemies(board.id).map((enemy) => enemy.id) : []);
   const sheetIds = new Set(listSheets(campaign.id).map((sheet) => sheet.id));
   return {
     tiles,
-    caught: tokensInTemplate(map.width, tiles, tokens).map((token) => ({
+    caught: tokensInTemplate(map.width, tiles, tokens, tokenFootprint).map((token) => ({
       tokenId: token.id,
       name: token.name,
       kind: token.kind,
