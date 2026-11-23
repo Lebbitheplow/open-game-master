@@ -10,15 +10,14 @@
 // next turn, and an enemy_attack with targetMount strikes it.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getMounts, setMount } from "@/lib/db/mounts";
 import { getSheetById } from "@/lib/db/sheets";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { speedToTiles } from "@/lib/battlemap/movement";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
@@ -226,7 +225,7 @@ export function strikeMount(input: {
     ]);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
-    const hitRoll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: rider.id,
       requestedBy: "dm",
@@ -235,9 +234,10 @@ export function strikeMount(input: {
       advantage,
       result: toHit,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
-    turn.rollIds.push(hitRoll.id);
     const ac = (barding?.ac ?? vitals.ac) + input.cover;
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= ac);
     if (!hit) {
@@ -249,7 +249,7 @@ export function strikeMount(input: {
     const damage = rollExpression(
       crit ? critDamageExpression(attack.damage, 0, { powerfulCritical: variants.powerfulCritical, multiplyNumeric: variants.criticalDamageMods }) : attack.damage,
     );
-    const damageRoll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: rider.id,
       requestedBy: "dm",
@@ -257,9 +257,10 @@ export function strikeMount(input: {
       detail: rollAgainst(attack.name, mount.name),
       result: damage,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
-    turn.rollIds.push(damageRoll.id);
     // Each type against the mount's own block and the water it stands in,
     // and what the hit carries onto it (mount-blow.ts). A creature's sheet
     // (a steed its rider called up) takes the blow as any sheet does

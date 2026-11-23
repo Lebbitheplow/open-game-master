@@ -2,7 +2,8 @@ import { z } from "zod";
 import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { Campaign } from "@/lib/db/campaigns";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
-import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, turnCounterFor } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, setEnemyMount, turnCounterFor } from "@/lib/db/encounters";
+import { riderOf } from "@/lib/dm/enemy-riders";
 import { getBattleMapForEncounter, getTokenByRef, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { autoEndOnVictory, finishEncounter, publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
@@ -143,6 +144,12 @@ function handleEnemyFlees(
   if (isKnockedOut(enemy)) {
     return { error: `${enemy.displayName} is knocked out: unconscious, they cannot flee. They stay where they fell.`, refused: "rules" };
   }
+  // A rider has no movement of its own (issue 1055, ruling 2): its mount
+  // carries it out, on the mount's turn.
+  const steed = enemy.ridesEnemyId ? getEnemy(enemy.ridesEnemyId) : null;
+  if (steed) {
+    return { error: `${enemy.displayName} rides ${steed.displayName} and has no movement of its own: ${steed.displayName} flees on its own turn and carries them out (enemy_flees for ${steed.displayName}).`, refused: "rules" };
+  }
   // A creature goes on its own turn while initiative runs (SRD 5.1: it moves
   // on its turn), at the console too (enemy-turn-order.ts
   // enemyFleeTurnRefusal). A legendary creature may still go on a legendary
@@ -215,15 +222,26 @@ function handleEnemyFlees(
   // What it swallowed stays, prone where it stood (swallow.ts): asked while
   // its token is still there to stand them beside.
   const behind = leftBehind(campaign, encounter.id, enemy, "flees");
+  // A mount that flees carries its rider out with it (enemy-riders.ts): the
+  // pair leaves as it moved, on the mount's legs and the rider's token.
+  const carried = riderOf(listEnemies(encounter.id), enemy.id);
+  if (carried && carried.status === "alive") {
+    patchEnemyHp(carried.id, carried.currentHp, "fled");
+    setEnemyMount(carried.id, null);
+    releaseGrapplesHeldByAny(campaign, [carried.id]);
+  }
   if (map) {
     removeTokenByRef(map.id, enemy.id);
+    if (carried) {
+      removeTokenByRef(map.id, carried.id);
+    }
     publishBattleMapUpdate(campaign.id);
   }
   publishEncounter(campaign.id);
   const base: Record<string, unknown> = {
     ok: true,
-    fled: enemy.displayName,
-    note: `${enemy.displayName} has escaped and is out of the fight.`,
+    fled: carried ? `${enemy.displayName}, carrying ${carried.displayName}` : enemy.displayName,
+    note: carried ? `${enemy.displayName} has escaped with ${carried.displayName} on its back: both are out of the fight.` : `${enemy.displayName} has escaped and is out of the fight.`,
     ...swings,
     ...(behind ? { swallowedFreed: behind } : {}),
   };

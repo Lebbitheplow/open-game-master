@@ -19,16 +19,16 @@
 // saves with its sheet's Dexterity and takes the blast on its sheet.
 
 import { saveAuraBeside } from "@/lib/dm/aura";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getMounts, setMount } from "@/lib/db/mounts";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollExpression } from "@/lib/dice";
 import { getSheetById } from "@/lib/db/sheets";
 import { hurtSteed, riderOfDownedMount } from "@/lib/dm/mount-combat";
 import { mountVitals } from "@/lib/dm/mount-link";
 import { mountedPet } from "@/lib/dm/pet-mount";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { holdsFeat } from "@/lib/srd/feat-use";
@@ -76,7 +76,7 @@ export function areaOnMount(input: {
   // proficiency its block lists. It took the bare modifier before.
   const bonus = (steed ? computeSheetDerived(steed).saves.dex : (MOUNT_DEX[mount.ref] ?? 0)) + aura;
   const outcome = rollExpression(`1d20${bonus < 0 ? bonus : `+${bonus}`}`);
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: null,
     requestedBy: "dm",
@@ -84,9 +84,10 @@ export function areaOnMount(input: {
     detail: `${mount.name}: DEX save vs ${input.reason}`.slice(0, 200),
     dc: input.dc,
     result: outcome,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn.rollIds.push(roll.id);
   const success = outcome.total >= input.dc;
   const feat = input.halfOnSave && holdsFeat(rider, "Mounted Combatant");
   const share = feat ? (success ? 0 : 0.5) : success ? (input.halfOnSave ? 0.5 : 0) : 1;

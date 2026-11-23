@@ -4,11 +4,12 @@ import { register } from "node:module";
 import { readFileSync, existsSync, statSync } from "node:fs";
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, artSlotStyle, campaignAppearance, genreAppearance, resolveAppearance, appearanceDefinition, themeStylesheet, themeProvenance } = await import("../src/lib/appearance-themes.ts");
+const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, themeArt, modeArt, artSlotStyle, campaignAppearance, genreAppearance, genreShortlist, resolveAppearance, appearanceDefinition, themeStylesheet, themeProvenance } = await import("../src/lib/appearance-themes.ts");
 const { GENRES } = await import("../src/lib/schemas/game-settings-options.ts");
 const { gameSettingsSchema, normalizeGameSettings } = await import("../src/lib/schemas/game-settings.ts");
 const prefs = await import("../src/lib/theme-mode.ts");
 const { hostOffers } = await import("../src/lib/use-capabilities.ts");
+const { themeArtAssets } = await import("./appearance/contracts.mjs");
 let passed = 0;
 function test(name, fn) { fn(); passed++; console.log(`ok: ${name}`); }
 
@@ -49,6 +50,26 @@ test("genre claims belong to the catalog and new entries need no resolver branch
   assert.equal(genreAppearance("unknown", extended, "arcane"), "arcane");
   assert.equal(genreAppearance(undefined, extended, "arcane"), "arcane");
 });
+test("a picker shortlists the themes that suit a genre only when that is a real choice", () => {
+  for (const definition of APPEARANCE_THEMES) for (const genre of definition.suits ?? []) {
+    assert.ok(GENRES.includes(genre) && genre !== "custom", `${definition.id}: cannot suit ${genre}`);
+  }
+  const catalog = [
+    { id: "a", suits: ["horror", "mystery"] }, { id: "b", genres: ["horror"] }, { id: "c", suits: ["mystery"] },
+    { id: "d" }, { id: "e" }, { id: "f", suits: ["steampunk"] },
+  ];
+  // Suited and default themes show, in catalog order, with the one in use kept in view.
+  assert.deepEqual(genreShortlist("horror", catalog), ["a", "b"]);
+  assert.deepEqual(genreShortlist("horror", catalog, ["e"]), ["a", "b", "e"]);
+  // One suited theme is no choice; no genre, or one nothing suits, is nothing to go by.
+  assert.equal(genreShortlist("steampunk", catalog), null);
+  assert.equal(genreShortlist(undefined, catalog), null);
+  assert.equal(genreShortlist("cyberpunk", catalog), null);
+  // Hiding fewer than three only adds a step: the whole catalog shows.
+  assert.equal(genreShortlist("mystery", catalog, ["d", "e"]), null);
+  assert.equal(genreShortlist("high_fantasy", APPEARANCE_THEMES), null, "nearly every theme suits high fantasy");
+  assert.ok(genreShortlist("dark_fantasy", APPEARANCE_THEMES)?.includes("gothic"), "a genre's default is on its shortlist");
+});
 test("server rendering reads defaults without browser APIs", () => {
   assert.equal(prefs.readAppearanceChoice(), "campaign");
   assert.equal(prefs.readThemeChoice(), "auto");
@@ -60,7 +81,7 @@ test("every registered theme ships imported palettes and traceable local artwork
   for (const theme of APPEARANCE_THEMES) {
     assert.match(theme.id, /^[a-z][a-z0-9-]*$/);
     assert.ok(imports.includes(`@import "./${themeStylesheet(theme.id).replace("src/app/", "")}";`), `${theme.id}: import its stylesheet`);
-    const assets = Object.values(theme.art ?? {});
+    const assets = themeArtAssets(theme).map(entry => entry.asset);
     if (!assets.length) continue;
     assert.ok(existsSync(new URL(`../${themeProvenance(theme.id)}`, import.meta.url)), `${theme.id}: artwork provenance is required`);
     const provenance = JSON.parse(readFileSync(new URL(`../${themeProvenance(theme.id)}`, import.meta.url), "utf8"));
@@ -71,6 +92,23 @@ test("every registered theme ships imported palettes and traceable local artwork
       assert.ok(statSync(file).size <= 2 * 1024 * 1024, `${asset}: keep each shipped image below 2 MiB`);
       assert.ok(provenance.assets.some(entry => entry.file === asset.split('/').at(-1)), `${asset}: record its source`);
     }
+  }
+});
+test("day artwork replaces only the slots it names, and only in light mode", () => {
+  const night = { texture: "/n/texture.webp", frame: "/n/frame.webp", corner: "/n/corner.webp", backdrop: "/n/backdrop.webp" };
+  const probe = { art: night, artDay: { frame: "/d/frame.webp", backdrop: "/d/backdrop.webp" } };
+  assert.deepEqual(modeArt(probe, "dark"), night);
+  assert.deepEqual(modeArt(probe, "light"), { ...night, frame: "/d/frame.webp", backdrop: "/d/backdrop.webp" });
+  assert.deepEqual(modeArt({ artDay: { corner: "/d/corner.webp" } }, "dark"), undefined, "A day-only theme paints nothing at night");
+  assert.deepEqual(artSlotStyle(modeArt({ artDay: { corner: "/d/corner.webp" } }, "light")), { ...artSlotStyle(), [THEME_ART_SLOTS.corner]: 'url("/d/corner.webp")' });
+  assert.deepEqual(modeArt({ art: night }, "light"), night, "A theme with one set shows it in both modes");
+  // The checks that read files walk both sets.
+  assert.deepEqual(themeArtAssets(probe).map(entry => entry.asset), [...Object.values(night), "/d/frame.webp", "/d/backdrop.webp"]);
+  for (const theme of APPEARANCE_THEME_IDS) {
+    assert.deepEqual(themeArtStyle(theme), themeArtStyle(theme, "dark"), `${theme}: night is the default set`);
+    if (!appearanceDefinition(theme).artDay) assert.deepEqual(themeArtStyle(theme, "light"), themeArtStyle(theme, "dark"), `${theme}: one set serves both modes`);
+    else assert.notDeepEqual(themeArtStyle(theme, "light"), themeArtStyle(theme, "dark"), `${theme}: day artwork differs`);
+    assert.deepEqual(artSlotStyle(themeArt(theme, "light")), Object.fromEntries(Object.entries(themeArtStyle(theme, "light")).filter(([key]) => key.startsWith("--theme-art-"))));
   }
 });
 // The title screen paints its top fold in the night palette in either
@@ -167,8 +205,21 @@ try {
     assert.equal(document.documentElement.dataset.themeOrnaments, "true");
     for (const theme of APPEARANCE_THEME_IDS) {
       prefs.writeAppearanceChoice(theme);
-      for (const [key,value] of Object.entries(themeArtStyle(theme))) assert.equal(properties.get(key), value);
+      // Each brightness writes its own set over the other's, slot by slot.
+      for (const brightness of ["light", "dark", "light", "dark"]) {
+        prefs.writeThemeChoice(brightness);
+        for (const [key,value] of Object.entries(themeArtStyle(theme, brightness))) assert.equal(properties.get(key), value, `${theme}/${brightness}: ${key}`);
+        const art = themeArt(theme, brightness);
+        assert.equal(document.documentElement.dataset.themeOrnaments, String(Boolean(art?.frame || art?.corner)));
+      }
       assert.equal(document.documentElement.dataset.themeBase, appearanceDefinition(theme).baseStyle ?? "plain");
+    }
+    // Following the system: the set follows the OS brightness as it changes.
+    prefs.writeThemeChoice("auto");
+    for (const light of [true, false]) {
+      osLight = light;
+      prefs.applyTheme();
+      for (const [key,value] of Object.entries(themeArtStyle(APPEARANCE_THEME_IDS.at(-1), light ? "light" : "dark"))) assert.equal(properties.get(key), value);
     }
     assert.equal(document.documentElement.dataset.themeOrnaments, "true");
     const empty = artSlotStyle();
@@ -196,5 +247,30 @@ try {
 } finally {
   if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
   if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;
+}
+// A French table read the whole theme panel in English: every theme's name
+// and look, and every line of the picker, has its French entry.
+{
+  const { themeName, themeDescription } = await import("../src/lib/appearance-themes.ts");
+  const { translate } = await import("../src/lib/i18n/translate.ts");
+  await import("../src/lib/i18n/fr-catalog.ts");
+  const fr = (key, vars) => translate("fr", key, vars);
+  const en = (key, vars) => translate("en", key, vars);
+  test("every theme reads its name and look in French, and in English as the catalog says", () => {
+    for (const entry of APPEARANCE_THEMES) {
+      assert.equal(themeName(en, entry), entry.name);
+      assert.notEqual(themeName(fr, entry), entry.name === "Inferno" ? "" : entry.name, `${entry.id} has a French name`);
+      assert.notEqual(themeDescription(fr, entry), entry.description, `${entry.id} has a French description`);
+    }
+  });
+  test("every line the theme panel and its picker say has its French entry", () => {
+    const catalog = JSON.parse(readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8"));
+    for (const file of ["../src/components/AppearancePicker.tsx", "../src/components/ThemePanel.tsx", "../src/components/ThemePanelHost.tsx"]) {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      for (const [, key] of source.matchAll(/\bt\("((?:[^"\\]|\\.)*)"/g)) {
+        assert.ok(catalog.messages[key] ?? catalog.contexts[key], `${file}: "${key}" has no French`);
+      }
+    }
+  });
 }
 console.log(`${passed} appearance checks passed.`);

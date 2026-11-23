@@ -1,3 +1,4 @@
+import { seatMountedParty } from "@/lib/dm/mount-space";
 import { isOnePageDungeon, parseOnePageDungeon } from "@/lib/battlemap/watabou";
 import { getParty } from "@/lib/db/party";
 import { placeByFormation } from "@/lib/dm/formation-logic";
@@ -21,6 +22,7 @@ import {
   type PreparedMap,
 } from "@/lib/db/prepared-maps";
 import { listSheets } from "@/lib/db/sheets";
+import { sceneSheets } from "@/lib/dm/party-split";
 import { isWorkshop } from "@/lib/workshop/kind";
 import {
   MAP_SIZE,
@@ -455,6 +457,9 @@ export function deployPreparedMap(campaign: Campaign, mapId: string): LibraryOut
   setBattleMapBackdrop(live.id, prepared.backdrop?.path ?? "", prepared.backdrop?.transform ?? null);
   restandOnPrepared(live.id, prepared);
   placeProps(live.id, campaign.id, prepared);
+  // Everyone was restood on one square; a rider needs the mount's space on
+  // the new ground, as on a scene opened on a prepared map (issue 1055).
+  seatMountedParty(campaign.id, live.id);
   // Fog memory is a memory of a map that no longer exists.
   clearExplored(live.id);
   publishBattleMapUpdate(campaign.id);
@@ -500,7 +505,9 @@ export function openSceneOnPreparedMap(
   if (!prepared) {
     return { error: "That map is not in this library." };
   }
-  const sheets = listSheets(campaign.id);
+  // Those in the scene: someone elsewhere while the party is split up
+  // (party-split.ts) stands on no board here.
+  const sheets = sceneSheets(campaign.id, listSheets(campaign.id));
   if (!sheets.length) {
     return { error: "There are no characters to put on a map yet." };
   }
@@ -549,6 +556,7 @@ export function openSceneOnPreparedMap(
     })),
   );
   placeProps(map.id, campaign.id, prepared);
+  seatMountedParty(campaign.id, map.id);
   publishBattleMapUpdate(campaign.id);
   playPreparedAmbience(campaign, prepared.ambience);
   return { ok: true, map: prepared };

@@ -11,12 +11,12 @@ import type { SystemGlyph } from "@/lib/system-glyphs";
 import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { atTheFight, resolveAwayNames, withFollowers } from "@/lib/dm/fight-away-logic";
+import { elsewhereBySheet } from "@/lib/dm/party-split";
 import { arriveAtFight } from "@/lib/dm/fight-away";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
 import { z } from "zod";
 import {
-  allocateSeq,
   getCampaignById,
   latestSeq,
   listMembers,
@@ -47,7 +47,8 @@ import {
 } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
-import { getRoll, insertRoll } from "@/lib/db/rolls";
+import { getRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
 import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
@@ -57,7 +58,8 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budget";
 import { suggestEnemies } from "@/lib/bestiary";
-import { enemyRequestSchema, groupInitiatives, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { carriedIndexes, enemyRequestSchema, groupInitiatives, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { linkPairs, onOwnToken } from "@/lib/dm/enemy-riders";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
 import { fieldPartyNpcs } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
@@ -153,6 +155,7 @@ import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, typ
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { proneRiders, settleProneRiders } from "@/lib/dm/mount-thrown";
+import { pronePairs, settleEnemyRiders } from "@/lib/dm/enemy-rider-falls";
 import { settleMovedRiders } from "@/lib/dm/mount-tools";
 import { onFoot, riderCarriedBy, takesOwnTurn } from "@/lib/dm/mount-link";
 import { rollDeathSave } from "@/lib/dm/death";
@@ -364,6 +367,9 @@ function handleStartEncounter(
   if ("unknownReturning" in outcome) {
     return unknownReturning(campaign.id, outcome.unknownReturning);
   }
+  if ("badMount" in outcome) {
+    return { error: `${outcome.badMount} No fight was started.`, refused: "rules" };
+  }
   const resolved = outcome.resolved;
   // A character named as a foe fights as its own sheet (issue 503,
   // src/lib/dm/sheet-foes.ts): no enemy row, and not one of the party.
@@ -395,7 +401,10 @@ function handleStartEncounter(
   if ("error" in away) {
     return { error: away.error, retry: true };
   }
-  const awayIds = withFollowers(away.ids, sheets);
+  // Whoever is elsewhere while the party is split up is not at it either
+  // (issue 951), named in `absent` or not: the fight is where the scene is.
+  const elsewhere = [...elsewhereBySheet(campaign.id, sheets).keys()];
+  const awayIds = withFollowers([...new Set([...away.ids, ...elsewhere])], sheets);
   const awaySheets = sheets.filter((sheet) => awayIds.includes(sheet.id));
   // A creature carrying a rider as a controlled mount fights under them; an
   // independent one rolls its own initiative (mount-link.ts takesOwnTurn).
@@ -451,7 +460,7 @@ function handleStartEncounter(
     rows.map((entry, index) => (arrivals.carries[index] ? { ...entry, group: undefined } : entry)),
     names,
   );
-  const enemies = rows.map((entry, index) => {
+  const made = rows.map((entry, index) => {
     const carry = arrivals.carries[index];
     return insertEnemy({
       encounterId: encounter.id,
@@ -466,6 +475,8 @@ function handleStartEncounter(
       ...(carry ? { arrives: carry.arrives } : {}),
     });
   });
+  // Each rider on its mount (issue 1055, enemy-riders.ts).
+  const enemies = linkPairs(made, carriedIndexes(rows));
   // Surprise: the ambushed side loses its first turn. Stored as ids the
   // initiative pointer skips through round 1 and then forgets. An ambush is
   // decided per creature, Stealth against passive Perception; a side named
@@ -512,7 +523,7 @@ function handleStartEncounter(
   let placed: ReturnType<typeof createBattleMapForEncounter>;
   try {
     // Whoever carries a rider stands on the rider's token (mount-link.ts onFoot).
-    placed = createBattleMapForEncounter(campaign, encounter, enemies, onFoot(campaign.id, sheets), args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
+    placed = createBattleMapForEncounter(campaign, encounter, onOwnToken(enemies), onFoot(campaign.id, sheets), args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
   } catch (error) {
     endEncounter(encounter.id, "the board could not be set");
     throw error;
@@ -581,6 +592,7 @@ function handleStartEncounter(
         ac: enemy.ac,
         hp: `${enemy.currentHp}/${enemy.maxHp}`,
         ...(carry ? { returning: carry.line } : {}),
+        ...pairLine(enemies, enemy),
       };
     }),
     ...(against.length
@@ -1003,17 +1015,17 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
     const outcome = rollExpression(characterInitiativeExpression(campaign, sheet, computeSheetDerived(sheet).initiative), undefined, {
       purpose: { roller: "hero", kind: "initiative", who: sheet.name },
     });
-    const roll = insertRoll({
+    // Rolled before the AI's turn is opened (turn.ts openTurn), so it is on
+    // no turn.
+    recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
       kind: "initiative",
       detail: "initiative",
       result: outcome,
-    });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll,
-      source: "digital",
+      // Thrown here, on the server's dice.
+      landing: null,
     });
     note = recordInitiativeRoll(campaign.id, sheet.id, outcome.total) ?? note;
   }
@@ -1079,8 +1091,13 @@ function handleDamageEnemy(
   }
   // Double-apply guard: a damage roll carrying targetEnemyId already landed
   // this hit the moment the dice resolved; a damage_enemy call repeating the
-  // same number out of habit must not stack the damage.
-  const alreadyApplied = turn.rollIds
+  // same number out of habit must not stack the damage. The habit is a
+  // model's, so the guard is for an AI's turn: a number a person sends from
+  // the console is their ruling and lands. Their turn stays open while a
+  // roll card of it waits, and a damage card that landed on it is on its
+  // cards from that moment (pending-roll-land.ts): read here, it swallowed
+  // the GM's own damage of the same amount on the same creature.
+  const alreadyApplied = turn.actor === "ai" && turn.rollIds
     .map((rollId) => getRoll(rollId))
     .some(
       (roll) => roll?.applied && roll.targetEnemyId === enemy.id && roll.total === amount,
@@ -1601,6 +1618,9 @@ export type TurnHolder = {
   // The mounted riders already prone (mount-thrown.ts): the call that lays a
   // rider prone is the one that asks for their save.
   proneRiders: string[];
+  // The enemies in a pair already prone (enemy-rider-falls.ts), for the same
+  // reason.
+  pronePairs: string[];
 };
 
 export function turnHolder(campaignId: string): TurnHolder | null {
@@ -1615,6 +1635,7 @@ export function turnHolder(campaignId: string): TurnHolder | null {
     floor: fightFloor(campaignId),
     partyCouldRise: partyCanRise(encounter),
     proneRiders: proneRiders(campaignId),
+    pronePairs: pronePairs(campaignId),
   };
 }
 
@@ -1657,7 +1678,12 @@ function resumeAfter(before: Pick<TurnHolder, "order" | "turnIndex">, order: Ord
 export function settleTurn(campaign: Campaign, before: TurnHolder | null): string[] {
   // A rider the call pushed, pulled or dragged makes the same save, asked
   // first: one thrown by the move is prone by the fall, which asks no second.
-  const thrown = [...settleMovedRiders(campaign), ...(before ? settleProneRiders(campaign, before.proneRiders) : [])];
+  // An enemy on another enemy is asked the same way (enemy-rider-falls.ts).
+  const thrown = [
+    ...settleMovedRiders(campaign),
+    ...(before ? settleProneRiders(campaign, before.proneRiders) : []),
+    ...settleEnemyRiders(campaign, before?.pronePairs ?? null),
+  ];
   if (before) {
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
@@ -2596,12 +2622,19 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 // The riders the backstop's enemies knocked prone make the save to stay
 // mounted. settleTurn asks it at the end of an engine call; the backstop
 // plays enemies outside one (after the narration, or resumed after a held
-// roll), so it asks here, once for the stretch it played.
+// roll), so it asks here, once for the stretch it played. A turn a player
+// ends or the lead skips passes outside one too, and the turn's end and the
+// next one's start may knock a rider or a mount prone or push it (an
+// Earthquake at its caster's turn end, a Gust of Wind at a turn's start):
+// asked there as well, before anyone acts. Left to the next engine call, a
+// pair both knocked prone was already prone as that call began, so nobody
+// was asked and the rider sat on its fallen mount.
 function settleBackstopRiders(campaign: Campaign, holder: TurnHolder | null) {
   settleMovedRiders(campaign);
   if (holder) {
     settleProneRiders(campaign, holder.proneRiders);
   }
+  settleEnemyRiders(campaign, holder?.pronePairs ?? null);
 }
 
 function playEnemiesDue(campaign: Campaign, turn: DmTurn) {
@@ -3080,9 +3113,11 @@ function passOwnTurn(campaign: Campaign, characterId: string): boolean {
   // A person moved the fight on: the rounds it may go round alone start
   // again (idledOut). The pass below saves it.
   delete encounter.legendary.idle;
+  const holder = turnHolder(campaign.id);
   if (!advancePointer(campaign, encounter, { announce: endsTurnAnnounce(current) })) {
     return false;
   }
+  settleBackstopRiders(campaign, holder);
   // The death saves the pass rolled may have left nobody able to rise.
   partyFallen(campaign, couldRise);
   // A round this pass began brings on its prepared events (fight-events.ts).
@@ -3279,6 +3314,7 @@ function skipCurrentTurnNow(campaignId: string): boolean {
   const skipped = encounter.order[encounter.turnIndex];
   const couldRise = partyCanRise(encounter);
   delete encounter.legendary.idle;
+  const holder = turnHolder(campaign.id);
   if (
     !advancePointer(campaign, encounter, {
       announce: (next, dying) => passTurnLine(`The party lead skipped ${skipped?.name ?? "the current"}'s turn.`, skipped, next, dying),
@@ -3286,6 +3322,7 @@ function skipCurrentTurnNow(campaignId: string): boolean {
   ) {
     return false;
   }
+  settleBackstopRiders(campaign, holder);
   partyFallen(campaign, couldRise);
   fireFightEvents(campaign);
   return true;

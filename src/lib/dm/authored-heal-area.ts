@@ -64,9 +64,10 @@ function walkOf(campaign: Campaign, encounter: Encounter | null, sheet: Characte
     enemySize: (refId) => enemiesById.get(refId)?.stats.size,
     sideOf: tokenSides(encounter),
   });
-  const board = { terrain: map.terrain, width: map.width, height: map.height, occupied: occupiedTiles(map, tokens, token, footprintOf), flying: token.movement === "fly", traits };
+  const board = { terrain: map.terrain, width: map.width, height: map.height, occupied: occupiedTiles(map, tokens, token, footprintOf), flying: token.movement === "fly", traits, footprint: footprintOf(token) };
   const on = targets.flatMap((target) => {
-    const placed = tokens.find((entry) => entry.refId === target.id);
+    // A hurt mount with its rider on it stands on the rider's token.
+    const placed = getTokenByRef(map.id, target.id);
     return placed ? [{ id: target.id, tiles: spaceOf(placed) }] : [];
   });
   const budget = speedToTiles(pcMoveBudget(campaign.id, encounter, map, sheet, token).speed);

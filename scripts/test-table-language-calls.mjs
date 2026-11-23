@@ -214,6 +214,10 @@ const CLASSIFIED = {
   // JSON list of who the prose holds, frees or downs, read by the server.
   "src/lib/dm/npc-state-guard.ts": { prose: 0, machine: 1 },
   "src/lib/dm/player-word-read.ts": { prose: 0, machine: 1 },
+  // The read of the players' words for whether the party parts
+  // (src/lib/dm/party-split.ts readParting): JSON the server parses. The one
+  // text it keeps, the place the others go to, is the players' own words.
+  "src/lib/dm/party-split.ts": { prose: 0, machine: 1 },
   "src/lib/dm/continue-scene.ts": { prose: 1, machine: 0 },
   "src/lib/dm/renarrate.ts": { prose: 1, machine: 0 },
   "src/lib/dm/narration-guard.ts": { prose: 1, machine: 0 },

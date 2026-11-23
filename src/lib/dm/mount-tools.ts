@@ -22,6 +22,7 @@ import {
   mountCost,
   mountProfile,
   rideByRecord,
+  riderSizeOf,
   type MountSize,
   type MountState,
 } from "@/lib/srd/mounts";
@@ -48,6 +49,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { independentMountOf, summonedSteed } from "@/lib/dm/mount-link";
 import { leaveFightAsMount, standBesideRider } from "@/lib/dm/summon-store";
 import { tilesApart } from "@/lib/dm/board-reach";
+import { spaceToMount, takeMountSpace } from "@/lib/dm/mount-space";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
@@ -148,14 +150,9 @@ function tableNote(campaign: Campaign, content: string) {
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
 
-// A character's own size, which the size rule needs. ODM does not track it on
-// the sheet, so the race decides: only the small races are small, everything
-// else is medium. Wrong for a goliath, right for the ninety-nine percent, and
-// the DM can always write a custom mount.
-const SMALL_RACES = ["halfling", "gnome", "goblin", "kobold"];
-
+// The rider's size by their race (srd/mounts.ts riderSizeOf).
 function riderSize(sheet: CharacterSheet): MountSize {
-  return SMALL_RACES.some((race) => sheet.race.toLowerCase().includes(race)) ? "small" : "medium";
+  return riderSizeOf(sheet.race);
 }
 
 export function handleMountUp(
@@ -215,6 +212,13 @@ export function handleMountUp(
   const ridden = drake ? { state: checked.state } : rideByRecord(checked.state);
   checked.state = ridden.state;
   const independent = Boolean(steed) && !checked.state.controlled;
+  // The pair fills the mount's space on the board (issue 1055): with no room
+  // for it around the rider's square the mount is refused before anything
+  // is spent.
+  const space = spaceToMount(campaign.id, sheet, checked.state, steed?.id);
+  if (space && "error" in space) {
+    return space;
+  }
   const spent = spendMountingMovement(campaign, sheet, turn);
   if ("error" in spent) {
     return spent;
@@ -229,6 +233,10 @@ export function handleMountUp(
   const saddled = mountProfile(checked.state.ref)?.exotic && !drake && !steed && !args.customName ? saddleUp(sheet) : null;
   if (steed) {
     leaveFightAsMount(campaign, steed.id, independent);
+  }
+  if (space) {
+    takeMountSpace(space);
+    publishEphemeral(campaign.id, "battle_map_updated", {});
   }
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
   tableNote(campaign, `${sheet.name} mounts up: ${describeMount(checked.state)}.`);

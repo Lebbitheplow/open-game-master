@@ -93,6 +93,33 @@ html[data-appearance][data-theme-base="plain"] .medallion {
 .appearance-brightness button { padding: 0.45rem 0.65rem; min-height: 2.75rem; border-radius: 0.4rem; font-size: 0.75rem; color: var(--color-stone-300); cursor: pointer; }
 .appearance-brightness button[aria-pressed="true"] { background: var(--color-amber-300); color: var(--color-amber-950); }
 .appearance-picker button:focus-visible { outline: 2px solid var(--color-amber-400); outline-offset: 4px; }
+.appearance-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; margin-bottom: 0.5rem; }
+.appearance-note { margin-top: 0.6rem; font-size: 0.75rem; line-height: 1.5; color: var(--color-stone-400); }
+.appearance-more { display: block; width: 100%; min-height: 2.75rem; margin-top: 0.75rem; border: 1px dashed var(--color-stone-600); border-radius: 0.6rem; font-size: 0.8rem; color: var(--color-stone-200); cursor: pointer; }
+.appearance-more:hover { border-color: var(--color-amber-500); }
+.appearance-link { min-height: 2.5rem; color: var(--color-amber-300); text-decoration: underline; cursor: pointer; }
+.theme-button { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.5rem; padding: 0 0.8rem; border: 1px solid var(--color-stone-600); border-radius: 0.6rem; background: var(--color-stone-900); font-size: 0.8rem; color: var(--color-stone-200); cursor: pointer; }
+.theme-button:hover, .theme-button[aria-expanded="true"] { border-color: var(--color-amber-400); color: var(--color-amber-200); }
+.theme-button:focus-visible { outline: 2px solid var(--color-amber-400); outline-offset: 3px; }
+/* The theme panel sits beside the page, which stays in view and undimmed:
+   each pick restyles what the reader is looking at. */
+.theme-panel { position: fixed; z-index: 60; top: 4.75rem; right: 0; bottom: 1rem; width: min(22rem, 92vw); overflow-y: auto; padding: 0 1rem 1rem; border: 1px solid var(--color-stone-600); border-right: 0; border-radius: 0.75rem 0 0 0.75rem; background: var(--color-stone-950); box-shadow: var(--shadow-elev-2); }
+.theme-panel-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 0 -1rem 0.5rem; padding: 0.9rem 1rem 0.5rem; background: var(--color-stone-950); }
+.appearance-picker[data-layout="panel"] .appearance-grid { grid-template-columns: 1fr; }
+.appearance-picker[data-layout="panel"] .appearance-option { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: center; }
+.appearance-picker[data-layout="panel"] .appearance-preview { height: 6.5rem; padding: 0.5rem; }
+.appearance-picker[data-layout="panel"] .appearance-preview-title { display: none; }
+@media (max-width: 540px) {
+  /* A sheet over the lower part of a phone, with the cards in one row that
+     scrolls sideways, so the page above it keeps most of the screen. */
+  .theme-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 58vh; border: 1px solid var(--color-stone-600); border-bottom: 0; border-radius: 1rem 1rem 0 0; }
+  .appearance-picker[data-layout="panel"] .appearance-grid { display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.25rem 0.25rem 0.5rem; margin: 0 -0.25rem; scroll-snap-type: x proximity; }
+  .appearance-picker[data-layout="panel"] .appearance-option { display: block; flex: 0 0 9.5rem; scroll-snap-align: start; }
+  .appearance-picker[data-layout="panel"] .appearance-preview { height: 4.5rem; }
+  /* The sheet keeps to names: a description per card would crowd out the row. */
+  .appearance-picker[data-layout="panel"] .appearance-option-description { display: none; }
+  .appearance-picker[data-layout="panel"] .appearance-brightness button { min-height: 2.5rem; padding: 0.4rem 0.55rem; }
+}
 @media (max-width: 540px) {
   .appearance-grid { grid-template-columns: 1fr; }
   .appearance-option { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: center; }

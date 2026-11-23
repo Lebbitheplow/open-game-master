@@ -8,8 +8,8 @@ import { trapAt } from "@/lib/srd/table-hazards";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { rollCard } from "@/lib/dm/roll-card";
-import { rollOn } from "@/lib/roll-labels";
+import { sourceDamage } from "@/lib/dm/roll-card";
+import { trapSource } from "@/lib/roll-sources";
 
 // A trap's hold on a character (a falling net's restraint): a condition the
 // trap lays on everyone it catches (conditionsAlways in
@@ -59,14 +59,12 @@ export function characterTrapEscape(
     sheet,
     { ability: hold.ability, dc: hold.dc },
     `${sheet.name}: ${hold.ability.toUpperCase()} check to break free of the ${hold.trap}`,
+    turn,
   );
-  if (check.rollId) {
-    turn.rollIds.push(check.rollId);
-  }
   const escaped = !check.autoFailed && check.total >= hold.dc;
   // A hunting trap's jaws bite on each failed check (TrapSpec escapeHurts).
   const bitten = !escaped && hold.hurts
-    ? rollCard(campaign, turn, sheet.id, "damage", rollOn(`${hold.trap} (${hold.hurts.dice} ${hold.hurts.type})`, [sheet.name]), hold.hurts.dice, null).total
+    ? sourceDamage(campaign, turn, trapSource(hold.trap), { characterId: sheet.id, names: [sheet.name] }, { dice: hold.hurts.dice, type: hold.hurts.type }).total
     : 0;
   if (bitten > 0 && hold.hurts) {
     applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: bitten, type: hold.hurts.type, noCreature: true, reason: hold.trap });

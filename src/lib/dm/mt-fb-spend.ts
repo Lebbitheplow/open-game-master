@@ -13,13 +13,15 @@
 //                    can see within 30 feet of you. A creature left in the air
 //                    falls and lands prone." It was a line asking the GM to
 //                    move the token.
-import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
 import { publishEphemeral } from "@/lib/events";
-import { blocksMove, tileAt, tileIndex } from "@/lib/battlemap/types";
-import { occupiedTiles } from "@/lib/battlemap/view";
+import type { BattleToken } from "@/lib/battlemap/types";
+import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
+import { spaceRefusal } from "@/lib/battlemap/footprint";
+import { listEnemies } from "@/lib/db/encounters";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { damageDice, damageEnemy, enemyCondition, type SpendContext } from "@/lib/dm/authored-spend-effects";
@@ -28,6 +30,7 @@ import { canEnemyAct } from "@/lib/dm/can-act";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
+import { forcedEnemyMove } from "@/lib/dm/enemy-rider-falls";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -86,18 +89,28 @@ export function throwFoe(ctx: SpendContext, enemy: EncounterEnemy, feet: number)
   }
   const dx = Math.sign(token.x - holder.x);
   const dy = Math.sign(token.y - holder.y);
-  const taken = occupiedTiles(map, listTokens(map.id), token);
+  const { taken, wide } = landingFor(map, map.encounterId, token, enemy);
   const start = tilesApart(holder, token);
   for (let step = Math.floor(feet / 5) - start; step >= 1; step -= 1) {
     const at = { x: token.x + (dx || (dy ? 0 : 1)) * step, y: token.y + dy * step };
-    if (at.x < 0 || at.y < 0 || at.x >= map.width || at.y >= map.height) continue;
-    if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y)) || taken.has(tileIndex(map.width, at.x, at.y))) continue;
+    if (spaceRefusal(map, taken, at, wide)) continue;
     if (tilesApart(holder, { ...token, x: at.x, y: at.y }) * 5 > feet) continue;
-    moveToken(token.id, at.x, at.y, token.movedThisRound);
+    // As the pair it may be half of: a rider thrown goes alone (enemy-rider-falls.ts).
+    forcedEnemyMove(ctx.campaign, map.id, enemy, at);
     publishEphemeral(ctx.campaign.id, "battle_map_updated", {});
     return { thrown: `${name} is thrown to (${at.x},${at.y}), ${tilesApart(holder, { ...token, x: at.x, y: at.y }) * 5} feet from ${ctx.sheet.name}. Another unoccupied space within ${feet} feet of them is a move_token (forced); variant "up" throws it into the air to fall.` };
   }
   return { thrown: `${name} has no open square to be thrown to along that line and stays where it is; another unoccupied space within ${feet} feet of ${ctx.sheet.name} is a move_token (forced).` };
+}
+
+// The squares a moved foe may not land on (every other token's whole space)
+// and how wide it lands: a rider goes alone, out of the saddle, as one square
+// (enemy-rider-falls.ts), and anyone else, a ridden mount with its rider,
+// fills its own space. Read by the corner alone, a Large foe landed half
+// inside whoever stood past its far squares.
+function landingFor(map: BattleMap, encounterId: string, token: BattleToken, enemy: EncounterEnemy) {
+  const footprints = footprintLookup(new Map(listEnemies(encounterId).map((entry) => [entry.id, entry])));
+  return { taken: occupiedTiles(map, listTokens(map.id), token, footprints), wide: enemy.ridesEnemyId && token.refId === enemy.id ? 1 : footprints(token) };
 }
 
 // A failed save pushes the creature straight away from the holder, up to
@@ -114,18 +127,18 @@ export function pushFoe(ctx: SpendContext, enemy: EncounterEnemy, feet: number):
   }
   const dx = Math.sign(token.x - holder.x);
   const dy = Math.sign(token.y - holder.y);
-  const taken = occupiedTiles(map, listTokens(map.id), token);
+  const { taken, wide } = landingFor(map, map.encounterId, token, enemy);
   let at = { x: token.x, y: token.y };
   for (let step = 0; step < Math.floor(feet / 5); step += 1) {
     const next = { x: at.x + (dx || (dy ? 0 : 1)), y: at.y + dy };
-    if (next.x < 0 || next.y < 0 || next.x >= map.width || next.y >= map.height) break;
-    if (blocksMove(tileAt(map.terrain, map.width, next.x, next.y)) || taken.has(tileIndex(map.width, next.x, next.y))) break;
+    if (spaceRefusal(map, taken, next, wide)) break;
     at = next;
   }
   if (at.x === token.x && at.y === token.y) {
     return { pushed: `${name} has no open square behind it and stays where it is.` };
   }
-  moveToken(token.id, at.x, at.y, token.movedThisRound);
+  // As the pair it may be half of: a rider pushed goes alone (enemy-rider-falls.ts).
+  forcedEnemyMove(ctx.campaign, map.id, enemy, at);
   publishEphemeral(ctx.campaign.id, "battle_map_updated", {});
   return { pushed: `${name} is pushed ${Math.max(Math.abs(at.x - token.x), Math.abs(at.y - token.y)) * 5} feet, to (${at.x},${at.y}).` };
 }

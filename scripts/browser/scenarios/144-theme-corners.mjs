@@ -4,16 +4,17 @@
 // - A theme that paints one separate corner piece had the other three
 //   corners turned by 90, 180 and 270 degrees, so Forge's ember gem lay on
 //   its side at the top right. They are mirrored now, as the rulebook's
-//   corners are. A corner cropped from the frame (cornerScale; only Gothic
-//   since Arcane, Hearth and High Kingdoms got their own pieces) shows that
-//   corner of the frame as painted and is neither turned nor mirrored.
+//   corners are. A corner cropped from the frame (cornerScale; no shipped
+//   theme since Arcane, Gothic, Hearth and High Kingdoms got their own
+//   pieces) shows that corner of the frame as painted and is neither turned
+//   nor mirrored.
 // - The flat corner brackets (.ornate) of a panel: Forge drew closed boxes
 //   (its 2px reached all four sides), Gothic and Hearth asked for a double
 //   line at 1px (one stroke), and on a card that is also .texture-noise the
 //   grain's 5% opacity fell on the top-left bracket, which all but vanished.
-// - Arcane, Hearth and High Kingdoms drew their lobby corner at the rail's
-//   scale, about 30px, where the other painted themes show a 196px piece,
-//   and it was missed altogether.
+// - Arcane, Gothic, Hearth and High Kingdoms drew their lobby corner at the
+//   rail's scale, about 30px, where the other painted themes show a 196px
+//   piece, and it was missed altogether.
 import { readFileSync } from "node:fs";
 import { check, eventually, untilStill } from "../lib.mjs";
 

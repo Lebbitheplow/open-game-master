@@ -17,7 +17,7 @@
 // Off the map nothing is laid, and the spell resolves as before.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, getTokenByRef, listTokens, setTokenLight, type BattleMap } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings, setTokenLight, type BattleMap } from "@/lib/db/battle-maps";
 import { getClock } from "@/lib/db/clock";
 import { getActiveBoard, getEnemy, patchEnemyConditions, setEnemyConcentration } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -74,7 +74,7 @@ function middleOf(points: XY[]): XY | null {
 }
 
 // The nearest creature on the other side from the caster.
-function nearestFoe(tokens: ReturnType<typeof listTokens>, caster: { kind: ZoneCasterKind; id: string }, from: XY): XY | null {
+function nearestFoe(tokens: ReturnType<typeof listStandings>, caster: { kind: ZoneCasterKind; id: string }, from: XY): XY | null {
   const foes = tokens.filter((token) => (caster.kind === "enemy" ? token.kind === "pc" : token.kind === "enemy"));
   foes.sort((a, b) => chebyshev(from.x, from.y, a.x, a.y) - chebyshev(from.x, from.y, b.x, b.y));
   return foes[0] ? { x: foes[0].x, y: foes[0].y } : null;
@@ -88,7 +88,7 @@ function inside(point: XY, width: number, height: number): XY | null {
 // caster, the one nearest the caster: where a weapon that strikes appears
 // when no square is named (Spiritual Weapon, issue 659), so its first strike
 // can follow. Null when no foe is in range.
-function besideNearestFoe(map: { terrain: string; width: number; height: number }, tokens: ReturnType<typeof listTokens>, caster: { kind: ZoneCasterKind; id: string }, from: XY, rangeTiles: number, only?: string): XY | null {
+function besideNearestFoe(map: { terrain: string; width: number; height: number }, tokens: ReturnType<typeof listStandings>, caster: { kind: ZoneCasterKind; id: string }, from: XY, rangeTiles: number, only?: string): XY | null {
   const taken = new Set(tokens.map((token) => token.y * map.width + token.x));
   const foes = tokens
     .filter((token) => (only ? token.refId === only : caster.kind === "enemy" ? token.kind === "pc" : token.kind === "enemy"))
@@ -170,7 +170,7 @@ export function placeSpellZone(campaign: Campaign, cast: ZoneCast): string | nul
   if (standing) {
     return `${standing.spell} stays where it is, at (${standing.origin.x},${standing.origin.y}), ${standing.concentration ? `while ${standing.casterName} concentrates` : standing.untilRound === null ? "for the rest of the fight" : `through round ${standing.untilRound}`}.`;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const casterToken = getTokenByRef(map.id, cast.caster.id);
   const casterAt = casterToken ? { x: casterToken.x, y: casterToken.y } : null;
   const named = cast.at ? inside(cast.at, map.width, map.height) : null;

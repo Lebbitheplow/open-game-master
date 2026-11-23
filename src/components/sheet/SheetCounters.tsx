@@ -42,7 +42,7 @@ export function SlotRow({
       title={t("{left} of {max} {label} slots left", { left, max, label })}
     >
       <span className="font-display text-[11px] tracking-wide text-stone-400">{label}</span>
-      <span className="flex gap-0.5" aria-label={t("{left} of {max} left", { left, max })}>
+      <span className="flex gap-0.5" role="img" aria-label={t("{left} of {max} left", { left, max })}>
         {Array.from({ length: max }, (_, index) => (
           <span
             key={index}

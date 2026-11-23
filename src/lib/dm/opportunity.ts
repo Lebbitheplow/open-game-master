@@ -15,9 +15,10 @@ import { entersReachAt, leavesReachAt, movesWithinReachAt } from "@/lib/dm/oppor
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { characterFootprint } from "@/lib/dm/board-reach";
 
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -55,7 +56,7 @@ import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
-import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, strikeCards, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
@@ -88,7 +89,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // Resolved here rather than through handleEnemyAttack because the trigger
 // fires from the player's own token-move route, which has no DM turn to
 // hang tool calls on. The outcome posts as a table note, exactly like the
-// death saves the server rolls between turns.
+// death saves the server rolls between turns, and like theirs the note is
+// the home of the strike's cards (opportunity-strike.ts strikeCards).
 //
 // The move is walked square by square: what provokes is LEAVING a reach,
 // wherever the move began and ended, so a runner who passes a guard in a
@@ -96,7 +98,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 type XY = { x: number; y: number };
 
-function tableNote(campaign: Campaign, content: string) {
+function tableNote(campaign: Campaign, content: string, rollIds: readonly string[] = []) {
   const seq = allocateSeq(campaign.id);
   const message = insertCampaignMessage({
     campaignId: campaign.id,
@@ -104,6 +106,7 @@ function tableNote(campaign: Campaign, content: string) {
     authorType: "system",
     glyph: "cue-battle",
     content,
+    rollIds,
   });
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
@@ -185,6 +188,8 @@ export function resolveOpportunityAttacks(
   }
   const steps = [from, ...(path?.length ? path : [to])];
   const notes: string[] = [];
+  // The cards of each strike's line, by the line's place in `notes`.
+  const cards = new Map<number, string[]>();
   let downed = false;
   let downedAt: XY | undefined;
   // Only the other side reacts (src/lib/dm/combatant.ts): an enemy does not
@@ -231,7 +236,7 @@ export function resolveOpportunityAttacks(
     // (enemy-hit.ts sizedAttack), as on its own turn.
     const sized = sizedAttack(weapon.attack, enemy.conditions);
     const attack = sized.attack;
-    const leftFrom = leavesReachAt(steps, token, reach, footprintForSize(enemy.stats.size));
+    const leftFrom = leavesReachAt(steps, token, reach, enemyFootprint(enemy), characterFootprint(characterId));
 
     // A wall between them is total cover (attack-spatial.ts reachWalled).
     if (!leftFrom || reachWalled(encounter.id, enemy.id, characterId, leftFrom)) {
@@ -344,7 +349,7 @@ export function resolveOpportunityAttacks(
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
     spendEnemyRiders(enemy, own.riders);
-    const hitRoll = insertRoll({
+    const hitRoll = recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -353,19 +358,20 @@ export function resolveOpportunityAttacks(
       advantage,
       result: hitOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
-    });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll: hitRoll,
-      source: "digital",
+      home: "line",
+      // Thrown here, on the server's dice.
+      landing: null,
     });
     // Mirror Image: a duplicate may take the attack instead (spell-defenses.ts).
     const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total, enemy);
     if (decoy) {
+      cards.set(notes.length, strikeCards([hitRoll.id]));
       notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${decoy}.`);
       continue;
     }
     const adjudicated = adjudicateHit(hitOutcome.total, hitOutcome.crit, targetAc);
     if (!adjudicated.hit) {
+      cards.set(notes.length, strikeCards([hitRoll.id]));
       notes.push(
         `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away and misses (${hitOutcome.total} vs AC ${targetAc}).`,
       );
@@ -384,7 +390,7 @@ export function resolveOpportunityAttacks(
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
-    const damageRoll = insertRoll({
+    const damageRoll = recordRoll({
       campaignId: campaign.id,
       characterId: null,
       requestedBy: "dm",
@@ -392,11 +398,12 @@ export function resolveOpportunityAttacks(
       detail: rollAgainst(`${attack.name} (opportunity attack)`, sheet.name),
       result: damageOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      home: "line",
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-      roll: damageRoll,
-      source: "digital",
-    });
+    // What the blow goes on to roll on its short turn, for the line.
+    const onTurn: string[] = [];
 
     // Kept so a reaction can answer the hit (src/lib/dm/last-hit.ts).
     const hitLog = openLastHit(campaign.id, sheet.id);
@@ -452,7 +459,7 @@ export function resolveOpportunityAttacks(
       const laid = unridden && ridden ? (rider?.swallowed ? swallowMark(campaign.id, unridden, ridden, sheet.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null;
       const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0, waits), (out) => out.by, (out) => out.shares);
       return { landed: applied, onHit: rider, answered, psychicBack, laid, waits };
-    });
+    }, onTurn);
     const updated = getSheetById(sheet.id);
     // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
     const normalRoll = crit
@@ -479,6 +486,7 @@ export function resolveOpportunityAttacks(
     }
     const byType = Array.isArray(landed.damageByType) ? ` (${(landed.damageByType as string[]).join(", ")})` : typeof landed.resistance === "string" ? ` (${landed.resistance})` : "";
     const riderNote = `${Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : ""}${[...wards.notes, ...warded.notes].map((line) => ` ${line}.`).join("")}`;
+    cards.set(notes.length, strikeCards([hitRoll.id, damageRoll.id], onTurn));
     notes.push(
       `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${
         crit ? "a critical hit for " : "hit for "
@@ -489,9 +497,7 @@ export function resolveOpportunityAttacks(
     }
   }
 
-  for (const note of notes) {
-    tableNote(campaign, note);
-  }
+  notes.forEach((note, index) => tableNote(campaign, note, cards.get(index)));
   // A pet walking with them provokes too, from a creature whose reaction is
   // still in hand (opportunity-pets.ts).
   if (!downed) {
@@ -579,8 +585,10 @@ export function resolvePcOpportunityWalk(
   }
   const steps = [from, ...(path?.length ? path : [to])];
   const notes: string[] = [];
+  // The cards of each swing's line, by the line's place in `notes`.
+  const cards = new Map<number, string[]>();
   // The walker's size: an ogre leaves a reach when its last square does.
-  const moverFootprint = footprintForSize(getFoe(enemyId)?.stats.size);
+  const moverFootprint = enemyFootprint(getFoe(enemyId));
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
   // Whether the walk can go no further: dropped, or its speed at 0.
@@ -629,11 +637,13 @@ export function resolvePcOpportunityWalk(
     }
     // A wall between is total cover: no swing through it (attack-spatial.ts).
     const clear = (at: XY | null) => (at && reachWalled(encounter.id, sheet.id, enemyId, at) ? null : at);
+    // A rider's reach is measured from the mount's space (issue 1055).
+    const mine = characterFootprint(sheet.id);
     // Polearm Master: a creature entering the polearm's reach provokes too.
-    const entering = polearmReachOpportunity(sheet, resolved?.srd?.name) ? clear(entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
+    const entering = polearmReachOpportunity(sheet, resolved?.srd?.name) ? clear(entersReachAt(steps, token, profile.reachTiles, mine, moverFootprint)) : null;
     // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
     // within the reach provokes too.
-    const within = holdsFeature(sheet, "Hold the Line") ? clear(movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
+    const within = holdsFeature(sheet, "Hold the Line") ? clear(movesWithinReachAt(steps, token, profile.reachTiles, mine, moverFootprint)) : null;
     // Manifest Echo: a creature that moves 5 feet or more away from the echo
     // while within 5 feet of it provokes "as if you were in the echo's space"
     // (mt-fb-echo.ts).
@@ -641,7 +651,7 @@ export function resolvePcOpportunityWalk(
     // Where the walker is as the swing is made: the tile it left the reach
     // from, the one it entered the polearm's reach at, the one it stepped to
     // inside the reach, or the one it left the echo's side from.
-    const leaving = clear(leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint));
+    const leaving = clear(leavesReachAt(steps, token, profile.reachTiles, mine, moverFootprint));
     const moverAt = leaving ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;
@@ -697,7 +707,7 @@ export function resolvePcOpportunityWalk(
     };
     // War Caster: the spell they named is cast in the swing's place, null
     // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
-    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, 1, moverFootprint), reactionKey });
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, characterFootprint(sheet.id), moverFootprint), reactionKey });
     if (cast) {
       notes.push(cast.note);
       stops();
@@ -729,7 +739,7 @@ export function resolvePcOpportunityWalk(
 
     // The swing itself, with everything their attack carries
     // (src/lib/dm/opportunity-strike.ts).
-    const { note, dropped } = pcOpportunitySwing({
+    const { note, dropped, rollIds } = pcOpportunitySwing({
       campaign,
       encounter,
       sheet,
@@ -741,6 +751,7 @@ export function resolvePcOpportunityWalk(
       moverAt,
       ...(answer?.smite && smiteSlot ? { smiteSlot } : {}),
     });
+    cards.set(notes.length, rollIds);
     notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();
     if (dropped) {
@@ -748,9 +759,7 @@ export function resolvePcOpportunityWalk(
     }
   }
 
-  for (const note of notes) {
-    tableNote(campaign, note);
-  }
+  notes.forEach((note, index) => tableNote(campaign, note, cards.get(index)));
   // A creature the party dominates walking away from its old allies: they
   // strike it as it goes (opportunity-sides.ts posts its own lines), over
   // the squares it walked.

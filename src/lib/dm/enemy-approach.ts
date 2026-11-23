@@ -9,7 +9,7 @@ import { hasLineOfSight } from "@/lib/battlemap/los";
 import { bestFiringPosition } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { climbsFrom, crawlingTraits, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
-import { footprintDistance, footprintForSize, nearestFootprintTile, type Footprint } from "@/lib/battlemap/footprint";
+import { footprintDistance, enemyFootprint, nearestFootprintTile, type Footprint } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 
 import { passableTiles } from "@/lib/battlemap/passage";
@@ -202,7 +202,7 @@ export function approachTarget(
   // Measured between the nearest squares of the two (src/lib/battlemap/
   // footprint.ts): an ogre two squares wide reaches a character against
   // either of them, and is reached from either.
-  const mine = footprintForSize(enemy.stats.size);
+  const mine = enemyFootprint(enemy);
   const theirs = tokenFootprint(target);
   const apart = (at: XY) => footprintDistance(at, mine, target, theirs);
   const sightFrom = (at: XY) => {
@@ -393,13 +393,18 @@ export function enemyMoveTraits(width: number, tokens: BattleToken[], mover: Bat
     return undefined;
   };
   const footprintOf = (token: BattleToken) =>
-    token.kind === "enemy" ? footprintForSize(enemies.get(token.refId)?.stats.size) : 1;
-  const speed = enemies.get(mover.refId)?.stats.speed;
+    token.kind === "enemy" ? enemyFootprint(enemies.get(token.refId)) : tokenFootprint(token);
+  // The creature walking. A rider's token is walked only by its mount, on
+  // the mount's legs (issue 1055, ruling 2), so a crocodile's swim speed is
+  // the pair's: read from the goblin on its back, the pair waded.
+  const standing = enemies.get(mover.refId);
+  const walker = standing?.ridesEnemyId ? (enemies.get(standing.ridesEnemyId) ?? standing) : standing;
+  const speed = walker?.stats.speed;
   // And what the spell areas on the board make of each step (zone-rules.ts).
   return zoneStepsFor({
     swims: swimsFrom(speed),
     climbs: climbsFrom(speed),
     passable: passableTiles({ width, tokens, mover, footprintOf, sizeOf, sideOf: tokenSides(getEncounter(encounterId)) }),
     squeeze: footprintOf(mover) > 1,
-  }, encounterId, "enemy", mover.refId);
+  }, encounterId, "enemy", walker?.id ?? mover.refId);
 }

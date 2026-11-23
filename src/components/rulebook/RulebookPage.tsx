@@ -304,8 +304,9 @@ export function RulebookPage({
         ) : (
           <span />
         )}
-        <span className="rb-folio" aria-label={t("Page {n}", { n: page.folio })}>
-          {page.folio}
+        <span className="rb-folio">
+          <span className="sr-only">{t("Page {n}", { n: page.folio })}</span>
+          <span aria-hidden="true">{page.folio}</span>
         </span>
         {next ? (
           <button type="button" className="rb-turn-link rb-turn-next" onClick={() => onOpen(next.id)}>

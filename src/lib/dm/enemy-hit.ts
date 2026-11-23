@@ -9,10 +9,9 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getEnemy, patchEnemyHp, type EncounterEnemy } from "@/lib/db/encounters";
 import { enemyHpCap } from "@/lib/dm/monster-abilities";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
-import { allocateSeq } from "@/lib/db/campaigns";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
@@ -33,6 +32,7 @@ import { drainConditionName, drainOf } from "@/lib/srd/ability-drain-logic";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { withHold } from "@/lib/dm/creature-hold";
+import { asPartOfAHit } from "@/lib/dm/acting-party";
 
 // What an enemy's hit does once it lands (SRD 5.1): each damage type in the
 // blow meets the target's resistances on its own ("piercing plus fire"
@@ -172,7 +172,7 @@ export function resolveOnHit(
   }
   if (rider.damage && isValidExpression(rider.damage)) {
     const outcome = rollExpression(rider.damage);
-    const roll = insertRoll({
+    recordRoll({
       campaignId: campaign.id,
       characterId: target.id,
       requestedBy: "dm",
@@ -180,16 +180,21 @@ export function resolveOnHit(
       detail: rollAgainst(`${attack.name} (${rider.damageType ?? "rider"})`, target.name),
       result: outcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      turn,
+      // Thrown here, on the server's dice.
+      landing: null,
     });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-    turn.rollIds.push(roll.id);
     const taken = saveDamageTaken({ total: outcome.total, saved, halfOnSave: Boolean(rider.halfOnSave), ability: rider.save ?? "", sheet: target });
     const dealt = rider.save && rider.dc ? taken.damage : outcome.total;
     if (taken.evasion && rider.save && rider.dc) {
       out.evasion = taken.evasion;
     }
     if (dealt > 0) {
-      const applied = applyDmMutation(
+      // Part of the attack's hit, whose record is its caller's to keep
+      // (acting-party.ts asPartOfAHit). On a turn the backstop plays, and on
+      // an opportunity attack from the board, no call is counted around the
+      // attack, and this was kept as a second hit.
+      const applied = asPartOfAHit(() => applyDmMutation(
         campaign,
         turn.id,
         "apply_damage",
@@ -201,7 +206,7 @@ export function resolveOnHit(
         }),
         sheets,
         sheetsById,
-      ).result;
+      ).result);
       out.riderDamage = dealt;
       if (typeof applied.hp === "string") {
         out.targetHp = applied.hp;

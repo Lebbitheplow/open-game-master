@@ -18,7 +18,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -75,8 +75,8 @@ export function payOverchannel(campaign: Campaign, turn: DmTurn, casterId: strin
     return `Overchannel: ${sheet.name} deals the spell's maximum damage; the next use before a long rest will cost them.`;
   }
   const dice = `${(used + 1) * spellLevel}d12`;
-  // A cost to the caster's own hit points: their card, nobody's attack.
-  const rolled = rollCard(campaign, turn, sheet.id, "damage", "Overchannel", dice, null).total;
+  // A cost to the caster's own hit points: their own roll.
+  const rolled = rollCard(campaign, turn, sheet.id, "damage", "Overchannel", dice, sheetAttacker(sheet)).total;
   // Typeless on purpose: the SRD says this damage ignores resistance and
   // immunity.
   applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: rolled, reason: "Overchannel" });

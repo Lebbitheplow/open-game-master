@@ -345,7 +345,7 @@ function BottomTabBarInner({
                       <span className="block text-xs text-stone-400">{hint}</span>
                     </span>
                     {count(value) ? <span className={cn(tabBadgeClass(value), "static px-1.5 text-[10px]")}>{count(value)}</span> : null}
-                    {!count(value) && due(value) ? <span className="size-2 rounded-full bg-amber-400" aria-label={t("Waiting on you", { context: "table.tab.waitingAria" })} /> : null}
+                    {!count(value) && due(value) ? <span className="size-2 rounded-full bg-amber-400" role="img" aria-label={t("Waiting on you", { context: "table.tab.waitingAria" })} /> : null}
                   </button>
                 </li>
               );

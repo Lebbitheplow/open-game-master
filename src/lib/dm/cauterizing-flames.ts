@@ -15,7 +15,7 @@
 // the board; "enters that space" is read as standing in it when the reaction
 // is called, since the move that took it there is already made.
 import { getActiveEncounter, type Encounter } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
@@ -52,7 +52,7 @@ export function layFlamesOnDeath(campaignId: string, dead: { id: string; size?: 
   const where = map ? getTokenByRef(map.id, dead.id) : null;
   if (!encounter || !map || !where) return;
   if (dead.size && sizeRank(dead.size) < sizeRank("small")) return;
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   for (const stale of listSheets(campaignId)) {
     const druid = getSheetById(stale.id) ?? stale;
     if (druid.deathSaves?.dead || !holdsFeature(druid, "Cauterizing Flames")) continue;

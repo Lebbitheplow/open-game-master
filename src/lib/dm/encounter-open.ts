@@ -1,11 +1,10 @@
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
 import { canSurprise } from "@/lib/dm/genre-b-surprise";
 import type { EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import { passiveScore } from "@/lib/dm/check-tools";
 import { getClock } from "@/lib/db/clock";
@@ -22,15 +21,18 @@ import { dmRoll } from "@/lib/dm/roll-card";
 // Perception, and the initiative rolls of every character the server rolls
 // for. Split from encounter-tools.ts, which calls it; it must not import
 // encounter-tools (the initiative totals go back through a callback).
+//
+// Inside the GM call that opens the fight, every roll here joins that call's
+// turn (issue #915): a creature's Stealth through dmRoll, a character's
+// Stealth and initiative through the one door for a roll's record
+// (roll-record.ts). No turn is handed in, so a fight opened outside a call
+// (a companion turning on the party, encounter-tools.ts startFightAgainst)
+// leaves them on none.
 
 // A creature's Stealth: its block's skill, else its Dexterity.
 function enemyStealth(enemy: EncounterEnemy): number {
   const skill = enemy.stats.skills?.stealth;
   return typeof skill === "number" && Number.isFinite(skill) ? skill : enemy.stats.dexMod;
-}
-
-function publish(campaign: Campaign, roll: ReturnType<typeof insertRoll>) {
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
 }
 
 export type Ambush = { surprisedIds: string[]; lines: string[] };
@@ -106,17 +108,16 @@ export function decideAmbush(
       dc: unseen,
       settleHeldDie: waits,
     });
-    publish(
-      campaign,
-      insertRoll({
-        campaignId: campaign.id,
-        characterId: sheet.id,
-        requestedBy: "dm",
-        kind: "skill_check",
-        detail: "stealth, lying in wait",
-        result: outcome,
-      }),
-    );
+    // Their own dice, through the door above: entered at the table, they
+    // are on record and sent as theirs.
+    recordRoll({
+      campaignId: campaign.id,
+      characterId: sheet.id,
+      requestedBy: "dm",
+      kind: "skill_check",
+      detail: "stealth, lying in wait",
+      result: outcome,
+    });
     stealth.push(outcome.total);
   }
   const lowest = stealth.length ? Math.min(...stealth) : 0;
@@ -170,7 +171,7 @@ export function rollOpeningInitiative(
     // Thrown by the server, and still the player's to answer with what they
     // hold (Lucky, Bardic Inspiration: WAVE1 R4) before the order locks.
     const outcome = rollCharacterD20(campaign, sheet, { kind: "initiative", expression: resolved.expression, detail: resolved.detail, mayWait: false });
-    const roll = insertRoll({
+    const roll = recordRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
       requestedBy: "dm",
@@ -178,7 +179,6 @@ export function rollOpeningInitiative(
       detail: resolved.detail,
       result: outcome,
     });
-    publish(campaign, roll);
     note = record(sheet.id, roll.total) ?? note;
     applyInitiativeRefills(campaign, sheet.id);
     rolled.push(`${sheet.name} ${roll.total}`);

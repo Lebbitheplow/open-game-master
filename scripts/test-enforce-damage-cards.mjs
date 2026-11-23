@@ -161,7 +161,7 @@ await test("Bestow Curse: the extra necrotic when the curser's spell harms the c
 
 // ---- costs paid in the caster's own hit points ----
 
-await test("Overchannel's second use: the necrotic it costs is the wizard's card, with no attacker.", async () => {
+await test("Overchannel's second use: the necrotic it costs is the wizard's own roll.", async () => {
   const { world, sheets: [wizard], enemies: [goblin] } = await table([caster("wizard", "int", ["Fireball"], [], 14)]);
   world.patch(wizard.id, { features: [...world.sheet(wizard.id).features, { name: "Overchannel", source: "test" }] });
   world.dice(1);
@@ -175,12 +175,12 @@ await test("Overchannel's second use: the necrotic it costs is the wizard's card
   world.clearDice();
   const cost = cardsSince(world, before).find((card) => card.detail === "Overchannel");
   assert.ok(cost, "no Overchannel card");
-  assert.equal(cost.attacker, null);
+  assert.deepEqual(cost.attacker, { kind: "sheet", id: wizard.id, name: world.sheet(wizard.id).name });
   assert.equal(cost.characterId, wizard.id);
   assert.equal(cost.total, 6);
 });
 
-await test("Contact Other Plane: the psychic backlash of a failed save is the caster's card, with no attacker.", async () => {
+await test("Contact Other Plane: the psychic backlash of a failed save is the caster's own roll.", async () => {
   const world = await openWorld();
   const wizard = world.addHero(caster("wizard", "int", ["Contact Other Plane"], [], 9));
   const before = snapshot(world);
@@ -188,40 +188,44 @@ await test("Contact Other Plane: the psychic backlash of a failed save is the ca
   const cast = await world.invoke("use_spell_slot", { characterId: wizard.id, spell: "Contact Other Plane", level: 5 });
   world.clearDice();
   assert.equal(cast.ok, true, cast.error);
-  expectCard(world, before, { attacker: null, detail: "Contact Other Plane", characterId: wizard.id, total: 6 });
+  expectCard(world, before, { attacker: { kind: "sheet", id: wizard.id, name: world.sheet(wizard.id).name }, detail: "Contact Other Plane", characterId: wizard.id, total: 6 });
   world.close();
 });
 
 // ---- hazards and objects ----
+// A roll nobody at the table made names its source (issue 915, ruling 2): the
+// source is its attacker, a "hazard" with no id and a field that says what it
+// is, and the character it lands on is its target. Named in front of the
+// card, the source is not said again in the detail.
 
-await test("A character's fall is a card with no attacker that names who fell, as an enemy's fall is.", async () => {
+await test("A character's fall is the fall's roll, and names who fell as its target, as an enemy's fall does.", async () => {
   const { world, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria" }]);
   const before = snapshot(world);
   world.dice(2, 2, 2);
   const out = await world.invoke("apply_hazard", { type: "falling", characterIds: [fighter.id], feet: 30 });
   world.clearDice();
   assert.equal(out.ok, true, out.error);
-  expectCard(world, before, { attacker: null, detail: "30 ft fall (3d6 bludgeoning) on Aria", characterId: fighter.id, total: 6 });
+  expectCard(world, before, { attacker: { kind: "hazard", id: null, name: "the fall", hazard: "fall" }, detail: "30 ft, 3d6 bludgeoning on Aria", characterId: fighter.id, total: 6 });
 });
 
-await test("A potion of poison's damage is a card about the drinker, with no attacker.", async () => {
+await test("A potion of poison's damage is the potion's roll, with the drinker as its target.", async () => {
   const { world, sheets: [fighter] } = await table([{ ...FIGHTER, name: "Aria", equipment: [...FIGHTER.equipment, { name: "Potion of Poison", qty: 1 }] }]);
   const before = snapshot(world);
   world.dice(2, 2, 2, 20);
   const out = await world.invoke("use_item", { characterId: fighter.id, item: "Potion of Poison" });
   world.clearDice();
   assert.equal(out.ok, true, out.error);
-  expectCard(world, before, { attacker: null, detail: "Potion of Poison: it was poison", characterId: fighter.id, total: 6 });
+  expectCard(world, before, { attacker: { kind: "hazard", id: null, name: "Potion of Poison", hazard: "item" }, detail: "3d6 poison on Aria", characterId: fighter.id, total: 6 });
 });
 
-await test("Dice of harm no character dealt to an object are a card with no attacker that names the object.", async () => {
+await test("Dice of harm no character dealt to an object are the GM's roll, and name the object.", async () => {
   const { world } = await table([FIGHTER]);
   const before = snapshot(world);
   world.dice(3, 3);
   const out = await world.invoke("damage_object", { name: "the oak door", material: "wood", size: "medium", damage: "2d6", damageType: "fire" });
   world.clearDice();
   assert.equal(out.ok, true, out.error);
-  expectCard(world, before, { attacker: null, detail: "fire on the oak door", characterId: null, total: 6 });
+  expectCard(world, before, { attacker: { kind: "hazard", id: null, name: "the GM", hazard: "gm" }, detail: "2d6 fire on the oak door", characterId: null, total: 6 });
 });
 
 // ---- the rest of the server's dice ----

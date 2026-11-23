@@ -18,7 +18,7 @@
 //   actions route takes the words as that hero's (`reaction`).
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { openWorld } from "./lib/enforce-world.mjs";
+import { hasPack, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
@@ -30,7 +30,7 @@ const { createCompanionUser } = await import("../src/lib/db/users.ts");
 const { createSheet, markSheetAsCompanion, setCompanionCommander } = await import("../src/lib/db/sheets.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const tools = await import("../src/lib/dm/encounter-tools.ts");
-const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+const { invokeEngine, onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const { openHits, recordFall, snapshotVitals } = await import("../src/lib/dm/last-hit.ts");
 const { describeIntent, directCardCall, intentNeedsTool } = await import("../src/lib/dm/intent-logic.ts");
 const { characterAwaitingPlayer, declaredThisTurn } = await import("../src/lib/dm/player-word.ts");
@@ -901,6 +901,145 @@ await test("A corrected blow lands through the defenses the damage path applies:
   assert.equal(world.sheet(poppy.id).wildShape?.beastHp, 14, "the 6 halved to 3 still lands doubled: 6");
 });
 
+// ---- damage from no attack is on record once ----
+//
+// A save's damage is kept by the door that asks the save (cast-at-player.ts,
+// last-hit.ts openEffect), and apply_damage keeps a record of its own only
+// when called on its own (acting-party.ts calledOnItsOwn). apply_hazard and a
+// trap a hero walks onto on the board reach that door outside any counted
+// call, so the apply_damage inside it read as called on its own and the one
+// hit was on record twice: two hits for the Hand to answer, and a ward's die
+// spent a second time on damage it had already answered.
+
+const { calledOnItsOwn, asPartOfAHit, withActor } = await import("../src/lib/dm/acting-party.ts");
+const { handleCastAtPlayer } = await import("../src/lib/dm/cast-at-player.ts");
+const { wardCondition } = await import("../src/lib/dm/ar-ws-bastion-logic.ts");
+
+const effectsOn = (world, hero) => openHits(world.campaignId, hero.id).filter((hit) => hit.source === "effect");
+// Every hit kept on the character, open or closed, as the row stores them.
+const storedHits = (world, hero) => {
+  const row = getDatabase().prepare("SELECT payload_json FROM last_hits WHERE campaign_id = ? AND character_id = ?").get(world.campaignId, hero.id);
+  const kept = row ? JSON.parse(row.payload_json) : [];
+  return Array.isArray(kept) ? kept : [kept];
+};
+// A hazard of the GM's own: a Dexterity save no die makes, 2d6 fire.
+const GOUT = { type: "generic", saveAbility: "dex", dc: 25, damage: "2d6", damageType: "fire", reason: "a gout of flame" };
+
+await test("A hazard's save leaves one record of its damage, and the Hand one hit to answer", async () => {
+  const { world, mira } = await stage();
+  // The save's 2 fails; 2d6 = 10 fire: 30 to 20.
+  world.dice(2, 5, 5);
+  const out = await world.invoke("apply_hazard", { ...GOUT, characterIds: [mira.id] });
+  assert.equal(world.clearDice(), 0, "the save and the damage were not both rolled");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 20);
+  const records = effectsOn(world, mira);
+  assert.deepEqual(records.map((hit) => hit.attacker.name), ["a gout of flame"], "one hit, on record twice");
+  assert.deepEqual([records[0].swings[0].raw, records[0].before.currentHp, records[0].after.currentHp], [10, 30, 20]);
+  assert.equal(hitsOn(world, mira).length, 1, "the Hand was shown one hit twice");
+});
+
+await test("cast_at_player's own save leaves the one record it always left", async () => {
+  const { world, mira } = await stage();
+  world.dice(2, 5, 5);
+  const out = await world.invoke("cast_at_player", { characterId: mira.id, source: "a gout of flame", saveAbility: "dex", dc: 25, damage: "2d6", damageType: "fire" });
+  assert.equal(world.clearDice(), 0, "the save and the damage were not both rolled");
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(effectsOn(world, mira).map((hit) => [hit.attacker.name, hit.swings[0].raw]), [["a gout of flame", 10]]);
+});
+
+await test("A named trap's save leaves one record too, the trap's", async () => {
+  const { world, mira } = await stage();
+  // Fire-Breathing Statue: DC 13 Dexterity, a 2 fails; 4d10 = 3 + 3 + 2 + 2.
+  world.dice(2, 3, 3, 2, 2);
+  const out = await world.invoke("apply_hazard", { type: "trap", trap: "Fire-Breathing Statue", characterIds: [mira.id] });
+  assert.equal(world.clearDice(), 0, "the save and the damage were not both rolled");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 20);
+  assert.deepEqual(effectsOn(world, mira).map((hit) => [hit.attacker.name, hit.swings[0].raw]), [["Fire-Breathing Statue", 10]]);
+});
+
+await test("A trap set on a square leaves one record when the hero who walks onto it on the board springs it", async () => {
+  const { world, kit, poppy, mira, g1, g2 } = await stage();
+  // Passive Perception under the statue's DC 15: she does not notice it.
+  world.patch(mira.id, { abilities: { ...world.sheet(mira.id).abilities, wis: 6 } });
+  kit.place(mira.id, 2, 6);
+  kit.place(poppy.id, 9, 9);
+  kit.place(g1.id, 12, 12);
+  kit.place(g2.id, 12, 13);
+  const placed = await world.invoke("apply_hazard", { type: "trap", trap: "Fire-Breathing Statue", place: true, fromX: 3, fromY: 6 });
+  assert.equal(placed.ok, true, placed.error);
+  world.dice(2, 3, 3, 2, 2);
+  // Her player's own step, through the board's move route: no tool call runs.
+  const walked = await route(world, "battle-map/move", { x: 3, y: 6 }, world.owner);
+  assert.equal(walked.status, 200, JSON.stringify(walked.body));
+  assert.equal(world.clearDice(), 0, "the trap was not sprung");
+  assert.equal(hp(world, mira), 20);
+  assert.deepEqual(effectsOn(world, mira).map((hit) => hit.swings[0].raw), [10]);
+});
+
+await test("A ward's dice come off a hazard's damage once: a second spend is refused and the ward keeps its die (Bastion of Law)", async () => {
+  const { world, mira } = await stage();
+  world.patch(mira.id, { conditions: [wardCondition(4)] });
+  world.dice(2, 5, 5);
+  const hazard = await world.invoke("apply_hazard", { ...GOUT, characterIds: [mira.id] });
+  world.clearDice();
+  assert.equal(hazard.ok, true, hazard.error);
+  const spend = () => world.invoke("use_resource", { characterId: mira.id, resource: "Bastion of Law", variant: "reduce", amount: 1 });
+  // 1d8 = 4 off the 10: 20 to 24, and three dice left.
+  world.dice(4);
+  const first = await spend();
+  assert.equal(first.ok, true, first.error);
+  assert.equal(hp(world, mira), 24);
+  world.dice(4);
+  const second = await spend();
+  world.clearDice();
+  assert.equal(second.ok, false, "the ward answered the same damage a second time");
+  assert.ok(world.sheet(mira.id).conditions.includes(wardCondition(3)), world.sheet(mira.id).conditions.join(", "));
+  assert.equal(hp(world, mira), 24);
+});
+
+await test("Damage dealt as part of a hit is not read as called on its own, whatever called its door, and only for as long as the call runs", () => {
+  const inner = () => withActor(null, () => calledOnItsOwn());
+  assert.equal(inner(), true, "a tool called on its own");
+  assert.equal(withActor(null, inner), false, "a tool another tool's handler called");
+  assert.equal(asPartOfAHit(inner), false, "called by a door that no call counted");
+  assert.equal(withActor(null, () => asPartOfAHit(inner)), false);
+  assert.throws(() => asPartOfAHit(() => { throw new Error("thrown inside"); }), /thrown inside/);
+  assert.equal(inner(), true, "a call that threw left its mark behind");
+});
+
+await test("Damage shared out by one call keeps the record each share had: no door above the shares keeps one", async () => {
+  const { world, mira, poppy } = await stage();
+  // 10 fire to each of the two, from 30.
+  const out = await world.invoke("apply_damage", { amount: 10, type: "fire", targets: [{ characterId: mira.id }, { characterId: poppy.id }], reason: "a shared blast" });
+  assert.equal(out.ok, true, out.error);
+  for (const hero of [mira, poppy]) {
+    assert.equal(hp(world, hero), 20);
+    assert.deepEqual(effectsOn(world, hero).map((hit) => [hit.attacker.name, hit.swings[0].raw]), [["a shared blast", 10]]);
+  }
+});
+
+if (hasPack) {
+  // No caller reaches the darts this way today (a hazard and a trap always
+  // send a save): the handler is called as one would.
+  await test("Darts that need no roll are on record as the one missile hit when no call is counted around their door", async () => {
+    const { world, mira } = await stage();
+    const sheets = world.sheets();
+    const turn = createDmTurn(world.campaignId, [], "ai");
+    // 3d4 + 3 = 9 force: 30 to 21.
+    world.dice(2, 2, 2);
+    const out = handleCastAtPlayer(world.campaign(), turn, JSON.stringify({ characterId: mira.id, spell: "Magic Missile", damage: "3d4+3", damageType: "force" }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+    assert.equal(world.clearDice(), 0, "the darts were not rolled");
+    assert.equal(out.ok, true, out.error);
+    assert.equal(hp(world, mira), 21);
+    // Read as stored: with no GM turn running, the darts' record closes one
+    // written a millisecond or more before it, so the open hits alone would
+    // show a second on some runs and not on others.
+    assert.deepEqual(storedHits(world, mira).map((hit) => hit.source), ["missile"]);
+  });
+}
+
 // ---- a reaction answers a hit it covers ----
 
 await test("A reaction for the reactor alone, sent with another hero's hit, is sent back with the reactor's own hits, and nothing is spent", async () => {
@@ -1277,6 +1416,76 @@ await test("The AI table's backstop still plays the goblin the reply left, and M
   world.say("player", "Mira raises her guard.", world.sheet(mira.id));
   const dodge = await invokeEngine(world.campaign(), { kind: "ai", turnId: later.id }, { name: "take_action", args: { characterId: mira.id, action: "dodge" } });
   assert.equal(dodge.ok, true, dodge.error);
+});
+
+// ---- an attack's rider is on record with its attack ----
+//
+// The damage an attack prints beside its blow (a bite's poison) goes through
+// apply_damage inside the attack's own record (enemy-hit.ts resolveOnHit).
+// Sent as enemy_attack that is a call inside a call. Played by the engine
+// (the backstop's turn for an enemy the reply left) or struck as a hero walks
+// away on the board, no call is counted around the attack, so the rider read
+// as called on its own and a second record was written beside the bite's.
+// Inside a GM turn both stayed open. On the board no GM turn is running, so
+// the bite's record, written after the rider's, closed it unless the two
+// were stamped in one millisecond: stored, and as good as never offered.
+
+// A bite that always hits AC 12, with 2d6 poison no save turns away.
+const VENOM = [{ name: "Bite", toHit: 30, damage: "1d4", type: "piercing", onHit: { damage: "2d6", damageType: "poison" } }];
+const withVenom = (kit, goblin) => kit.setEnemy(goblin.id, { stats: { ...kit.enemy(goblin.id).stats, attacks: VENOM } });
+
+await test("A bite's poison, on the turn the backstop plays for a goblin, is on record with the bite and nowhere else", async () => {
+  const table = await stage();
+  const { world, kit, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2]);
+  withVenom(kit, g1);
+  const { turn } = await aiHandsOn(table);
+  // The bite's d20, its 1d4 = 2, the poison's 2d6 = 6: 30 to 22.
+  world.dice(10, 2, 3, 3);
+  tools.advanceAfterTurn(world.campaign(), turn);
+  assert.equal(world.clearDice(), 0, "the bite and its poison were not both rolled");
+  assert.equal(hp(world, mira), 22);
+  assert.deepEqual(openHits(world.campaignId, mira.id).map((hit) => hit.source), ["attack"]);
+  // Read as stored: this test runs the backstop outside a GM turn's job, so
+  // the bite's record may close the poison's as it is written.
+  const stored = storedHits(world, mira);
+  assert.deepEqual(stored.map((hit) => hit.source), ["attack"], "the poison was stored as a hit of its own");
+  assert.deepEqual([stored[0].before.currentHp, stored[0].after.currentHp], [30, 22], "the bite's record does not span its poison");
+});
+
+await test("A bite's poison, on a turn the server plays for the lead of a table a person runs, leaves the Hand one hit to answer", async () => {
+  const table = await stage();
+  const { world, kit, poppy, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2], { human: true });
+  withVenom(kit, g1);
+  assert.equal(tools.endOwnTurn(world.campaignId, poppy.userId), true, "Poppy ends her turn");
+  // The lead's "Play the rest": the goblin due before Mira is played for the
+  // table, inside one GM turn.
+  world.dice(10, 2, 3, 3);
+  onPersonsTurn(world.campaign(), (turn) => tools.handOnEnemyTurns(world.campaign(), turn, true));
+  assert.equal(world.clearDice(), 0, "the bite and its poison were not both rolled");
+  assert.equal(hp(world, mira), 22);
+  assert.deepEqual(openHits(world.campaignId, mira.id).map((hit) => hit.source), ["attack"], "the poison was kept as a hit of its own");
+  assert.equal(hitsOn(world, mira).length, 1, "the Hand was shown the bite and its poison as two hits");
+});
+
+await test("A bite's poison, struck as a hero walks out of reach on the board, is on record with the bite and nowhere else", async () => {
+  const table = await stage();
+  const { world, kit, poppy, mira, g1, g2 } = table;
+  withVenom(kit, g1);
+  kit.place(mira.id, 5, 5);
+  kit.place(g1.id, 5, 6);
+  kit.place(g2.id, 12, 12);
+  kit.place(poppy.id, 9, 9);
+  world.dice(10, 2, 3, 3);
+  const walked = await route(world, "battle-map/move", { x: 5, y: 3 }, world.owner);
+  assert.equal(walked.status, 200, JSON.stringify(walked.body));
+  assert.equal(world.clearDice(), 0, "no goblin struck as she left");
+  assert.equal(hp(world, mira), 22);
+  assert.deepEqual(openHits(world.campaignId, mira.id).map((hit) => hit.source), ["attack"]);
+  const stored = storedHits(world, mira);
+  assert.deepEqual(stored.map((hit) => hit.source), ["attack"], "the poison was stored as a hit of its own");
+  assert.deepEqual([stored[0].before.currentHp, stored[0].after.currentHp], [30, 22], "the bite's record does not span its poison");
 });
 
 finish();

@@ -15,6 +15,8 @@ const { dmTurnTools } = await import("../src/lib/dm/turn.ts");
 const { readCardTool } = await import("../src/lib/dm/prep-card-tool.ts");
 const { runPreparedEncounterTool } = await import("../src/lib/dm/prepared-encounter-tool.ts");
 const { completeBeatTool, recallStoryTool } = await import("../src/lib/dm/prompt.ts");
+const { AI_NUMBER_REFUSAL } = await import("../src/lib/dm/ai-boundary.ts");
+const { DM_SYSTEM, ENCOUNTER_RULES } = await import("../src/lib/dm/prompt-rules.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -42,7 +44,8 @@ function descriptions(tool) {
   const walk = (full, cut, path) => {
     if (!full || typeof full !== "object") return;
     // An argument the compact set leaves off (tool-profiles.ts COMPACT_OMITS) has no cut to read.
-    if (!cut && COMPACT_OMITS[tool.function.name]?.includes(path.split(".").at(-1))) return;
+    // A field of a list's entries is named "list[].field" there.
+    if (!cut && COMPACT_OMITS[tool.function.name]?.some((name) => name.split("[].").at(-1) === path.split(".").at(-1))) return;
     for (const key of Object.keys(full)) {
       if (key === "description" && typeof full[key] === "string") found.push([path, full[key], cut[key]]);
       else walk(full[key], cut[key], key === "properties" ? path : key === "items" ? path : `${path}.${key}`);
@@ -146,6 +149,10 @@ const MUST_KEEP = {
   take_action: [/a character or an enemy/],
   "take_action.enemyId": [/Dash/, /Disengage/, /Dodge/, /Escape/, /GAME STATE/],
   "pass_time.water": [/half/, /none/],
+  // Issue #915, ruling 3: a request_roll is the roll of the character it
+  // names, and harm nobody at the table rolls is dice.
+  request_roll: [/a character's own dice/],
+  "apply_damage.amount": [/character's own damage total/, /request_roll/],
 };
 
 test("what the engine reads survives the compact cut", () => {
@@ -154,6 +161,32 @@ test("what the engine reads survives the compact cut", () => {
     const { cut } = field(toolName, name.length ? name.join(".") : undefined);
     for (const fact of facts) assert.match(cut, fact, `${path} keeps ${fact}: ${cut}`);
   }
+});
+
+// Issue #915, ruling 3. A request_roll with a characterId is that character's
+// roll, the one who would pick up the dice at a table. The words the model
+// reads used to offer it as a second way to roll harm ("roll it first with
+// request_roll kind damage and send that total"), and a trap's damage rolled
+// that way is stored as the roll of the character it lands on. So no text
+// about harm or healing by hand sends the model to request_roll: the rule,
+// both refusals and apply_damage's own fields offer dice.
+test("harm and healing by hand are dice in every text the model reads, and a request_roll is its character's own roll", () => {
+  for (const what of ["damage", "healing"]) {
+    const { error } = AI_NUMBER_REFUSAL(what);
+    assert.match(error, /send dice \("\d+d\d+(?:\+\d+)?"\) instead of amount/, `the ${what} refusal offers dice`);
+    assert.doesNotMatch(error, /request_roll/, `the ${what} refusal offers no roll of a character's`);
+  }
+  // The one rule on harm by hand is a fight rule; out of a fight the tools'
+  // own first sentences carry it (MUST_KEEP above).
+  const byHand = ENCOUNTER_RULES.split("\n").find((line) => line.includes("you apply by hand"));
+  assert.ok(byHand, "the fight rules say how harm by hand is rolled");
+  assert.match(byHand, /send dice \("2d6"\) and it rolls them; a number of your own is refused\./);
+  assert.match(byHand, /request_roll is the roll of the character it names/);
+  assert.doesNotMatch(`${DM_SYSTEM}\n${ENCOUNTER_RULES}`, /total it rolled this turn|roll it first/, "no rule offers a roll made first");
+  // Where the model fills in whose roll it is, the full words say whose it is not.
+  assert.match(field("request_roll", "characterId").full, /Who rolls, never who a trap or hazard harms./);
+  // apply_damage takes a rolled total as a character's own roll only.
+  assert.doesNotMatch(field("apply_damage", "amount").full, /the server rolled this turn/);
 });
 
 test("a field several tools share reads the same in each", () => {

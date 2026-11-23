@@ -99,7 +99,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
       { name: "visionClear", label: "They can see it", kind: "boolean", default: true, help: "Off in darkness or fog: no map is drawn." },
       SCENE_FIELD,
       // Issue 563: the party splitting up, where a companion may slip away.
-      { name: "characterIds", label: "Who goes", kind: "characters", help: "Leave empty for the whole party. Naming some splits the party: the rest stay behind." },
+      { name: "characterIds", label: "Who goes", kind: "characters", help: "Leave empty for everyone the story is with. Naming some splits the party: the rest stay behind. Naming those who are elsewhere brings the story to them." },
       // Fork PR 1019: a raft's deck stayed behind when it beached. After a
       // Travel ridden aboard it comes along anyway; this is for a boat that
       // drifts or a cart pulled on with no Travel.

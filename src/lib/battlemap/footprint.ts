@@ -3,7 +3,7 @@
 // and the renderer all ask this module rather than each guessing from the
 // size word. Pure and dependency-free.
 
-import { tileIndex, type XY } from "@/lib/battlemap/types";
+import { blocksMove, tileAt, tileIndex, type XY } from "@/lib/battlemap/types";
 
 export type Footprint = 1 | 2 | 3 | 4;
 
@@ -18,6 +18,35 @@ export function footprintForSize(size: string | undefined | null): Footprint {
     default:
       return 1;
   }
+}
+
+// The squares an enemy's token fills: its own size, or its mount's while it
+// rides one, since the pair stands on the rider's token in the mount's space
+// (issue 1055, ruling 1; EncounterEnemy.pairSize).
+export function enemyFootprint(enemy: { stats: { size?: string }; pairSize?: string } | null | undefined): Footprint {
+  return footprintForSize(enemy?.pairSize ?? enemy?.stats.size);
+}
+
+// The squares a character's token fills: one, or their mount's space while
+// they ride, since the pair stands on the rider's token (issue 1055: "A Large
+// horse that fills one square is wrong the same way"). A pony under a
+// halfling is Medium and still one square.
+export function riderFootprint(mount: { size?: string } | null | undefined): Footprint {
+  return footprintForSize(mount?.size);
+}
+
+// The top-left squares a space of this size can have and still cover the
+// square `at`, nearest first: `at` itself, then the ones up and to the left.
+// Where a token that grows (a rider mounting) may come to stand without the
+// creature on it leaving its square.
+export function anchorsCovering(at: XY, footprint: Footprint): XY[] {
+  const anchors: XY[] = [];
+  for (let dy = 0; dy < footprint; dy += 1) {
+    for (let dx = 0; dx < footprint; dx += 1) {
+      anchors.push({ x: at.x - dx, y: at.y - dy });
+    }
+  }
+  return anchors.sort((a, b) => at.x - a.x + (at.y - a.y) - (at.x - b.x + (at.y - b.y)));
 }
 
 // The tiles a creature standing at (x, y) with this footprint occupies. The
@@ -81,4 +110,25 @@ export function footprintSide(spot: XY, spotFootprint: Footprint, at: XY, footpr
     x: side(spot.x, spotFootprint, at.x, footprint),
     y: side(spot.y, spotFootprint, at.y, footprint),
   };
+}
+
+// Why a creature `footprint` squares a side cannot stand with its corner at
+// `at`: a square of it off the board, on a wall, or in someone else's space
+// (`occupied`, every other token's whole space). Null when it fits. A push
+// or a throw that read the corner alone set a Large creature, or a rider on
+// a Large mount, half inside whoever stood past its far squares.
+export function spaceRefusal(
+  board: { terrain: string; width: number; height: number },
+  occupied: ReadonlySet<number>,
+  at: XY,
+  footprint: Footprint,
+): "edge" | "wall" | "taken" | null {
+  const squares = footprintTiles(at, footprint);
+  if (squares.some((square) => square.x < 0 || square.y < 0 || square.x >= board.width || square.y >= board.height)) {
+    return "edge";
+  }
+  if (squares.some((square) => blocksMove(tileAt(board.terrain, board.width, square.x, square.y)))) {
+    return "wall";
+  }
+  return squares.some((square) => occupied.has(tileIndex(board.width, square.x, square.y))) ? "taken" : null;
 }

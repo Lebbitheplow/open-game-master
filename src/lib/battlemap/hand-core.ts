@@ -31,7 +31,7 @@ export type HandCardType = "attack" | "rider" | "spell" | "control" | "mend" | "
 export type HandTarget = "enemy" | "ally" | "self" | "none";
 export type BasicActionId =
   | "dodge" | "dash" | "disengage" | "help" | "hide" | "ready" | "grapple" | "shove" | "use-object" | "end-turn"
-  | "search" | "escape" | "stand-up" | "stabilize" | "dismount" | "wake";
+  | "search" | "escape" | "stand-up" | "stabilize" | "dismount" | "mount" | "wake";
 
 // What the structured commit carries beside the sentence. An optional extra
 // field on the action body: a server that does not know it drops it. The
@@ -263,7 +263,7 @@ export type HandSummon = {
 };
 
 export type HandChoice = {
-  arg: "condition" | "variant" | "readySpell" | "item";
+  arg: "condition" | "variant" | "readySpell" | "item" | "mount";
   label: string;
   options: Array<{ value: string; label: string; note?: string }>;
   // What is sent when the player picks none (the first option otherwise).
@@ -439,6 +439,10 @@ export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?:
 export type HandGearContext = {
   drops?: Array<{ id: string; name: string; reach: boolean }>;
   mount?: string | null;
+  // The creatures this character could get onto now (hand-mount-logic.ts
+  // mountableSteeds): the Mount card. Absent from a host whose actions
+  // route does not know the card (capabilities.ts mountCard).
+  steeds?: Array<{ name: string }>;
   allies?: number;
   dying?: Array<{ id: string; name: string }>;
   // Allies held by Sleep or Hypnotic Pattern (shake-awake-logic.ts), with
@@ -611,6 +615,9 @@ function standingReason(sheet: CharacterSheet, turn: HandTurn, kind: ActKind, ve
       const acting = actingEncounter(turn, kind)?.order[0]?.name;
       const who = acting ?? "someone else";
       if (verdict.error === `It is ${who}'s turn, not ${name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.`) {
+        if (who === "the enemy") {
+          return t("It is the enemy's turn, not {name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.", { name });
+        }
         return t("It is {who}'s turn, not {name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.", { who: acting ? acting : t("someone else"), name });
       }
       break;

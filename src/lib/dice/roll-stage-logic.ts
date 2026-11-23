@@ -20,7 +20,7 @@ export type StageRoll = {
   kind: RollKind;
   visibility: RollVisibility;
   total: number | null;
-  attacker: Pick<RollAttacker, "kind" | "id"> | null;
+  attacker: (Pick<RollAttacker, "kind" | "id"> & { name?: string; hazard?: string }) | null;
   hidden?: boolean;
 };
 
@@ -66,8 +66,12 @@ export const STAGE_HEARD_MAX = 12;
 // on-hit roll of the same attacker joins.
 export type OpenAction = { group: number; actor: string | null; lastAt: number } | null;
 
+// A source nobody at the table is (a trap, a fall: src/lib/db/rolls.ts) has
+// no id: it is told apart by what it is and the name it was given, so a
+// trap's damage joins the attack that trap made and no other source's.
 export function actorOf(roll: Pick<StageRoll, "attacker">): string | null {
-  return roll.attacker ? `${roll.attacker.kind}:${roll.attacker.id}` : null;
+  const by = roll.attacker;
+  return by ? `${by.kind}:${by.id ?? `${by.hazard ?? ""}:${by.name ?? ""}`}` : null;
 }
 
 // Which action a roll heard at `at` belongs to. An attack always opens a new
@@ -94,7 +98,7 @@ export function toastShows(roll: Pick<StageRoll, "visibility" | "total">): boole
   return roll.visibility === "public" || typeof roll.total === "number";
 }
 
-// A revealed roll (src/lib/dm/roll-card.ts revealRolls) is published again for
+// A revealed roll (src/lib/dm/roll-record.ts revealRolls) is published again for
 // every seat. It is news only to a seat that did not already hold its number;
 // the roller and the GM saw it land the first time.
 export function revealIsNews(held: Pick<StageRoll, "total" | "hidden"> | undefined): boolean {

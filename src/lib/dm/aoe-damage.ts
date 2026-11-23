@@ -14,16 +14,18 @@ import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rero
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { allyCreatureConditionAura } from "@/lib/dm/aura";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
+import type { RollAttacker } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
+import { sourceDamageThrown } from "@/lib/dm/roll-card";
+import { harmSource } from "@/lib/roll-sources";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { rollOn } from "@/lib/roll-labels";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression, rollExpression } from "@/lib/dice";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { expressionMaximum } from "@/lib/dm/destructive-wrath-logic";
-import { publishWithSeq } from "@/lib/events";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
@@ -595,21 +597,25 @@ export function handleAoeDamage(
       const outcome = burst?.outcome ?? thrown;
       bombardNote = burst?.note ?? bombardNote;
       rolled.push({ amount: outcome.total, type });
-      const roll = insertRoll({
+      if (!areaBy) {
+        // An area no creature made is the roll of the spell it is, else of
+        // the words the GM gave for it, else the GM's own dice, and says
+        // what it threw, as every source's roll does.
+        sourceDamageThrown(campaign, turn, harmSource(args.spell, args.reason), { names: caught }, { dice: expression, type }, outcome);
+        continue;
+      }
+      recordRoll({
         campaignId: campaign.id,
         characterId: null,
         requestedBy: "dm",
         kind: "damage",
-        // The type tells a two-type spell's rolls apart, and is all an
-        // unnamed effect has.
+        // The type tells a two-type spell's rolls apart.
         detail: rollOn(`${areaName ?? "area effect"}${type && (split || !areaName) ? ` (${type})` : ""}`, caught),
         result: outcome,
         attacker: areaBy,
-      });
-      turn.rollIds.push(roll.id);
-      publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-        roll,
-        source: "digital",
+        turn,
+        // Thrown here, on the server's dice.
+        landing: null,
       });
     }
     total = partsTotal(rolled);

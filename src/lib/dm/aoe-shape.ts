@@ -10,11 +10,12 @@
 // the DM's word places the area there.
 
 import { getEnemy } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, listStandings } from "@/lib/db/battle-maps";
 import { findSpellByName } from "@/lib/content";
 import { authoredSpellRow } from "@/lib/srd/spell-mechanics";
 import { templateTiles, type TemplateShape } from "@/lib/battlemap/template";
-import { footprintDistance, footprintForSize, footprintTiles } from "@/lib/battlemap/footprint";
+import { footprintDistance, enemyFootprint, footprintTiles } from "@/lib/battlemap/footprint";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { layZone } from "@/lib/battlemap/zones";
 import { zoneRowFor, type ZoneNamed } from "@/lib/battlemap/zones-spells";
 import { tileIndex, type BattleToken, type XY } from "@/lib/battlemap/types";
@@ -52,8 +53,7 @@ type Creature = { id: string; name: string };
 // every other range on the board is measured. From a Large caster's top-left
 // square a point 60 feet from its side read 65 and was refused.
 function feetFromCaster(caster: Pick<BattleToken, "x" | "y" | "kind" | "refId">, at: XY): number {
-  const size = caster.kind === "enemy" ? getEnemy(caster.refId)?.stats.size : undefined;
-  return footprintDistance(caster, footprintForSize(size), at, 1) * FEET_PER_TILE;
+  return footprintDistance(caster, tokenFootprint(caster), at, 1) * FEET_PER_TILE;
 }
 
 // Null when one placement of the area holds everyone named (or there is no
@@ -74,14 +74,13 @@ export function areaProblem(input: {
   if (!map || !input.creatures.length) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const caster = tokens.find((token) => token.refId === input.casterId);
   const placed = input.creatures
     .map((creature) => {
       const token = tokens.find((entry) => entry.refId === creature.id);
       if (!token) return null;
-      const size = token.kind === "enemy" ? getEnemy(token.refId)?.stats.size : undefined;
-      const cells = footprintTiles({ x: token.x, y: token.y }, footprintForSize(size)).map((cell) => tileIndex(map.width, cell.x, cell.y));
+      const cells = footprintTiles({ x: token.x, y: token.y }, tokenFootprint(token)).map((cell) => tileIndex(map.width, cell.x, cell.y));
       return { ...creature, at: { x: token.x, y: token.y }, cells };
     })
     .filter((entry): entry is Creature & { at: XY; cells: number[] } => Boolean(entry));
@@ -91,7 +90,7 @@ export function areaProblem(input: {
   const shape: TemplateShape = input.area.shape === "cylinder" ? "sphere" : input.area.shape;
   // The caster's space: a Large dragon fills four squares, a Huge one nine.
   const casterSpace = caster
-    ? footprintTiles({ x: caster.x, y: caster.y }, footprintForSize(caster.kind === "enemy" ? getEnemy(caster.refId)?.stats.size : undefined))
+    ? footprintTiles({ x: caster.x, y: caster.y }, tokenFootprint(caster))
     : [];
   // A burst around a creature larger than a square spreads from its whole
   // space: every square within reach of any square it fills.
@@ -185,7 +184,7 @@ export function creaturesInBlast(input: {
   if (!map) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const casterToken = tokens.find((token) => token.refId === input.casterId);
   const caster = casterToken ? { x: casterToken.x, y: casterToken.y } : null;
   const pick = blastPickOf(input.area);
@@ -210,7 +209,7 @@ export function creaturesInBlast(input: {
 // its size, a character by its own.
 function standingIn(
   width: number,
-  tokens: ReturnType<typeof listTokens>,
+  tokens: ReturnType<typeof listStandings>,
   cells: ReadonlySet<number>,
   options: { skip: string | null; spareParty: boolean },
 ): { enemyIds: string[]; characterIds: string[]; echoes: string[] } {
@@ -219,20 +218,24 @@ function standingIn(
   // An Echo Knight's echo in the area: no creature, but it makes the save
   // with its knight's bonus (mt-fb-echo.ts echoAreaSave).
   const echoes: string[] = [];
+  // The caster an area leaves out is left out with the creature it shares a
+  // token with: a rider's cone starts at the edge of the space the pair
+  // fills, so it holds neither the rider nor the mount under them.
+  const skipped = options.skip ? (tokens.find((token) => token.refId === options.skip)?.id ?? null) : null;
   for (const token of tokens) {
     if (echoOwnerOf(token) && cells.has(tileIndex(width, token.x, token.y))) {
       echoes.push(token.refId);
       continue;
     }
-    if (token.refId === options.skip) {
+    if (token.refId === options.skip || token.id === skipped) {
       continue;
     }
     if (token.kind === "enemy") {
       const enemy = getEnemy(token.refId);
       if (!enemy || enemy.status !== "alive") continue;
-      const covered = footprintTiles({ x: token.x, y: token.y }, footprintForSize(enemy.stats.size)).some((cell) => cells.has(tileIndex(width, cell.x, cell.y)));
+      const covered = footprintTiles({ x: token.x, y: token.y }, enemyFootprint(enemy)).some((cell) => cells.has(tileIndex(width, cell.x, cell.y)));
       if (covered) enemyIds.push(enemy.id);
-    } else if (token.kind === "pc" && !options.spareParty && cells.has(tileIndex(width, token.x, token.y))) {
+    } else if (token.kind === "pc" && !options.spareParty && footprintTiles({ x: token.x, y: token.y }, tokenFootprint(token)).some((cell) => cells.has(tileIndex(width, cell.x, cell.y)))) {
       characterIds.push(token.refId);
     }
   }
@@ -262,7 +265,7 @@ export function creaturesInLaidZone(input: {
   if (!row || !map) {
     return null;
   }
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const casterToken = tokens.find((token) => token.refId === input.casterId);
   const caster = casterToken ? { x: casterToken.x, y: casterToken.y } : null;
   const fromCaster = row.shape === "aura" || row.shape === "line" || Boolean(row.self);

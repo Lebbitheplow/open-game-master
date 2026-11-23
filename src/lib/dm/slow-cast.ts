@@ -9,12 +9,12 @@
 // caster's next turn (turn-end.ts untilTurnEndOf); casting it again on that
 // turn completes it for the turn's action and no slot.
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { recordRoll } from "@/lib/dm/roll-record";
+import type { Campaign } from "@/lib/db/campaigns";
 import { textKey } from "@/lib/language/text-logic";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { addConditionInstance, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -33,15 +33,16 @@ export function heldBySlow(sheet: Pick<CharacterSheet, "conditions" | "condition
 // Rolls Slow's d20 for a cast it applies to; true when the spell is held.
 export function slowHoldsCast(campaign: Campaign, sheet: CharacterSheet, spell: string): boolean {
   const outcome = rollExpression("1d20");
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "custom",
     detail: `Slow: ${sheet.name} casts ${spell} (11 or higher and it waits for their next turn)`,
     result: outcome,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return outcome.total >= 11;
 }
 

@@ -19,9 +19,9 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, saveEncounter } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -37,7 +37,7 @@ import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
-import { enemyOpportunityRiders, opportunitySight } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, opportunitySight, strikeCards } from "@/lib/dm/opportunity-strike";
 import { hurtPet } from "@/lib/dm/pet-tools";
 import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
@@ -73,6 +73,8 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
   }
   const ownerSide = sideOf(encounter, "sheet", ownerId);
   const notes: string[] = [];
+  // The cards of each strike's line, by the line's place in `notes`.
+  const cards = new Map<number, string[]>();
   for (const enemy of listEnemies(encounter.id)) {
     const live = getSheetById(ownerId) ?? owner;
     const pet = (live.pets ?? []).find(petProvokes);
@@ -91,7 +93,7 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     }
     const token = getTokenByRef(map.id, enemy.id);
     const weapon = opportunityWeapon(enemy.stats);
-    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(enemy.stats.size)) : null;
+    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, enemyFootprint(enemy)) : null;
     // A wall between them is total cover (attack-spatial.ts reachWalled).
     if (!weapon || !leftFrom || reachWalled(encounter.id, enemy.id, ownerId, leftFrom)) {
       continue;
@@ -128,10 +130,12 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     const label = rollAgainst(`${attack.name} (opportunity attack)`, pet.name);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
-    const hitRoll = insertRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
+    // On the line this strike posts (opportunity-strike.ts strikeCards), and
+    // thrown here, on the server's dice.
+    const hitRoll = recordRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, home: "line", landing: null });
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= pet.ac);
     if (!hit) {
+      cards.set(notes.length, strikeCards([hitRoll.id]));
       notes.push(`${enemy.displayName} takes an opportunity attack as ${pet.name} pulls away with ${live.name} and misses (${toHit.total} vs AC ${pet.ac}).`);
       continue;
     }
@@ -141,8 +145,7 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
-    const damageRoll = insertRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
+    const damageRoll = recordRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, home: "line", landing: null });
     const blow = blowByType(attack, damage, crit);
     // Enlarge/Reduce's floor and Ray of Enfeeblement's halving on the whole
     // blow, then a blow of two types (a hell hound's piercing and fire) meets
@@ -155,12 +158,13 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
       magical: hasTrait(enemy.stats, "magicWeapons") || attack.magical === true,
     });
     const after = String(struck.vanished ?? struck.down ?? (struck.hp ? `${pet.name} is at ${struck.hp}` : ""));
+    cards.set(notes.length, strikeCards([hitRoll.id, damageRoll.id]));
     notes.push(`${enemy.displayName} takes an opportunity attack as ${pet.name} pulls away with ${live.name}: ${crit ? "a critical hit for " : "hit for "}${String(struck.damage ?? 0)} damage.${after ? ` ${after}` : ""}`);
   }
-  for (const content of notes) {
+  notes.forEach((content, index) => {
     const seq = allocateSeq(campaign.id);
-    const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph: "cue-battle", content });
+    const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph: "cue-battle", content, rollIds: cards.get(index) ?? [] });
     publishWithSeq(campaign.id, seq, "message_added", { message });
-  }
+  });
   return notes;
 }

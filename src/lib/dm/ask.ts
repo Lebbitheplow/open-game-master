@@ -9,6 +9,7 @@ import { listRecentMessages } from "@/lib/db/messages";
 import { listNpcs } from "@/lib/db/npcs";
 import { listRuleChunks } from "@/lib/db/rules";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
+import { rollerName } from "@/lib/roll-labels";
 import { getSheetForUser, listSheets } from "@/lib/db/sheets";
 import { arcTextTimeoutMs, utilityContextTokens, type ChatMessage } from "@/lib/model-client";
 import { requestUtilityMessage } from "@/lib/dm/model";
@@ -176,7 +177,7 @@ function mechanicalRecord(campaignId: string, ownedCharacterIds: string[]): stri
     rolls.length
       ? `The most recent dice the server rolled, oldest first (every attack and every point of damage is here; "not applied" means it changed no hit points):\n${rolls
           .map((roll) => {
-            const roller = roll.attacker?.name ?? (roll.characterId ? names.get(roll.characterId) : null) ?? "The table";
+            const roller = rollerName(roll, roll.characterId ? names.get(roll.characterId) : undefined) ?? "The table";
             const outcome = roll.success === null ? "" : roll.success ? ", success" : ", failure";
             const landed = roll.kind === "damage" && roll.targetEnemyId ? (roll.applied ? ", applied" : ", not applied") : "";
             return `[roll:${roll.id.slice(0, 8)}] ${roller}: ${roll.kind}, ${roll.detail.slice(0, 120)} (${roll.expression}) = ${roll.total}${outcome}${landed}`;

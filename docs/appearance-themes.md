@@ -18,10 +18,10 @@ written story theme. A player can use Woodland in either day or night mode.
 
 | Piece | Location | Responsibility |
 | --- | --- | --- |
-| Catalog | `src/lib/appearance-themes.ts` | IDs, names, symbols, genre associations, base style, corner crop and artwork slots |
+| Catalog | `src/lib/appearance-themes.ts` | IDs, names, symbols, genre associations, base style, corner crop and artwork slots, with optional day artwork |
 | Preferences | `src/lib/theme-mode.ts` | Campaign choice, personal override, brightness, scale and root artwork variables |
-| Personal picker | `src/components/AppearancePicker.tsx` | Catalog-driven choices with independent day/night previews |
-| Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
+| Picker | `src/components/AppearancePicker.tsx` | One picker for both choices: the reader's own screen and, for whoever steers the story, the whole table (saved through the existing settings schema). Catalog-driven cards with independent day/night previews, and a shortlist of the themes that suit the table's genre (`genreShortlist()`, from each entry's `suits` and `genres`) |
+| Theme panel | `src/components/ThemePanel.tsx`, `ThemePanelHost.tsx` | The picker as a panel beside the page (a sheet on a phone), not a dialog over it: a pick restyles the page in view. Not modal; Escape or its close button dismisses it. Opened by the account menu's Appearance, the lobby's Theme button and the Atmosphere row in table settings; loaded on first open |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
 | Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece is mirrored into the other three), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
@@ -62,7 +62,7 @@ Next must see each CSS import when building the app.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
-   `church`, `flame`, `shield`, `waves` and `anvil`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   `church`, `flame`, `shield`, `waves`, `anvil` and `eye`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 
@@ -120,9 +120,47 @@ art: {
 Record every image's source in `public/assets/themes/moonlit/art-provenance.json`.
 
 These are example paths. Supply real files before registering them. Each slot is
-optional. `themeArtStyle()` writes all four CSS variables, using `none` for an
+optional. `themeArtStyle(id, mode)` writes all four CSS variables, using `none` for an
 absent slot. It runs for the root appearance and for each picker preview. That
 explicit reset prevents one theme from inheriting another theme's artwork.
+
+### Different artwork by day
+
+One set of artwork serves both brightness modes unless the theme also
+registers `artDay`. A slot given there replaces the same slot of `art` while
+the brightness is light; a slot left out keeps the `art` image in both modes
+(share the texture this way before sharing anything else).
+
+```ts
+art: { texture: "…/stone-v1.webp", frame: "…/stone-frame-v1.webp", corner: "…/stone-boss-v1.webp", backdrop: "…/vault-v1.webp" },
+artDay: { frame: "…/paper-frame-v1.webp", corner: "…/wax-seal-v1.webp", backdrop: "…/desk-v1.webp" },
+```
+
+- `art` is the night set and the default. `themeArt(id, mode)` returns the
+  set for a mode and `themeArtStyle(id, mode)` its CSS variables; both treat
+  a missing mode as night.
+- `applyTheme()` passes the resolved brightness, so changing brightness
+  (the picker, the system setting, another tab) rewrites all four variables
+  and the ornament flag in the same pass as `data-theme`. Nothing of the
+  other mode's set stays on the root.
+- Each picker preview passes the brightness it previews.
+- The server renders no artwork and no brightness: both land on `<html>`
+  together when `ThemeApplier` runs, so there is no moment with one mode's
+  palette under the other mode's paintings.
+- `cornerScale` and `frameSlice` are declared once and serve both sets, so
+  paint the day frame and corner to the same geometry as the night ones.
+- Day images live in the same folder, are listed in the same
+  `art-provenance.json`, and meet the same contracts. The checks walk both
+  sets through `themeArtAssets()` and `assertThemeArt()` in
+  `scripts/appearance/contracts.mjs`; a failure names the set, as
+  `depths/artDay.frame`.
+- Set mode-specific material variables under
+  `[data-appearance="<id>"][data-theme="light"]` as usual. Look at both sets
+  in the lobby, the table, the enlarged map and the picker.
+
+Use it when the two modes are different places (Unquiet Depths: a paper case
+file by day, drowned stone by night). A theme whose materials only need
+lighter washes by day does not need a second set.
 
 | Slot | CSS variable | Asset contract |
 | --- | --- | --- |
@@ -244,10 +282,12 @@ Shared ornament measurements can be overridden in the theme selector:
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
-Arcane, Hearth and High Kingdoms each paint a separate corner piece, as Woodland,
-Tide and Forge do, and set their own phone lobby corner size so the piece keeps its
-proportion to the rail. Gothic still crops its corner from its frame: its pinnacle
-piece hung upside down in the lower corners and waits for a repaint.
+No shipped theme crops its corner from its frame now: Arcane, Gothic, Hearth and
+High Kingdoms each paint a separate corner piece, as Woodland, Tide and Forge do, and
+set their own phone lobby corner size so the piece keeps its proportion to the rail.
+A corner piece is mirrored into the other three corners, so it must read the same
+upside down: Gothic's first piece had pinnacles and lancet windows that hung from
+the lower corners, and its rose window and bare briars replaced it.
 For a theme that does crop its corner, `themeArtStyle()` sizes it from the rail (frame width x 1/`cornerScale` / slice)
 and it keeps the frame's rail width. The phone sizes keep the art off the bottom bar's end
 labels and the session title, which sit 8 to 17px from the screen's edge; the
@@ -274,7 +314,8 @@ npx tsc --noEmit
 The appearance command runs both preference/palette checks and theme contracts.
 It checks registration, imports, genre claims, stylesheet ownership, complete
 palettes, selected contrast pairs, asset paths and size, provenance, preference
-precedence, and artwork reset behavior. It also decodes the production images:
+precedence, and artwork reset behavior across themes and brightness modes. It
+also decodes the production images, day artwork included:
 
 - Frames and corners must be square and contain visible artwork.
 - A frame's centre inside its declared inset must be transparent (central 56%
@@ -328,10 +369,12 @@ The current browser matrix covers:
 - Long conversations and combat at widths 1360, 390 and 320, at 100% and 125% text.
 - Dice dialog sizing, a roll, and Escape dismissal.
 - Map keyboard zoom, enlarged-map opening and closing, and combat-card selection.
-- Artwork replacement across all registered themes and hiding in forced-colors mode.
-- The actual account Appearance dialog at desktop/phone widths, day/night and
-  enlarged text: keyboard theme selection, Follow campaign, isolated preview
-  colors/artwork, and layout-only fixtures with four and six choices.
+- Artwork replacement across all registered themes in day and night, and hiding in forced-colors mode.
+- The actual theme panel, opened from the account menu, at desktop/phone widths,
+  day/night and enlarged text: keyboard theme selection, Follow campaign, isolated
+  preview colors/artwork, that it neither dims nor traps the page (the right half
+  of a desktop, one sideways row in a phone's sheet), and layout-only fixtures
+  one, three and five choices ahead of the catalog.
 - Visible title characters, back-link collisions and header control bounds at
   enlarged text sizes, including 320/390px phones and 1024/1360/1920px desktops.
 - Enlarged-map content clearance from the painted frame, including initiative

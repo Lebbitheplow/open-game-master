@@ -139,8 +139,11 @@ export function upsertCurrentLocation(input: {
   name: string;
   layoutDescription?: string;
   connections?: string[];
-  // false when the party splits: who travels with it stays where it was.
-  followers?: boolean;
+  // Who travels with the party comes along. While it is split up
+  // (src/lib/dm/party-split.ts followersOf) that is only those at the places
+  // named here, the ones the move leaves nobody of the party at: none of
+  // them when a scout goes ahead or the scene cuts to the others.
+  followers?: boolean | string[];
 }): CampaignLocation {
   const db = getDatabase();
   const now = nowIso();
@@ -189,7 +192,7 @@ export function upsertCurrentLocation(input: {
 
   const id = apply();
   if (input.followers !== false) {
-    followParty(input.campaignId, input.name.trim().slice(0, 80));
+    followParty(input.campaignId, input.name.trim().slice(0, 80), Array.isArray(input.followers) ? input.followers : null);
   }
   const location = getLocation(id);
   if (!location) {
@@ -460,7 +463,11 @@ export function setLocationLayout(locationId: string, layoutDescription: string)
 // is now (npc_state, src/lib/dm/npc-state-logic.ts): their place follows on
 // every move, so a man tied on the cart is never left "at the mill" in the
 // record. Raw rows, not src/lib/db/npcs.ts, which this module must not pull in.
-function followParty(campaignId: string, place: string) {
+function followParty(campaignId: string, place: string, from: string[] | null) {
+  if (from && !from.length) {
+    return;
+  }
+  const left = from ? new Set(from.map(textKey)) : null;
   const db = getDatabase();
   const rows = db
     .prepare(`SELECT id, name, aliases_json, state_json, location FROM npcs WHERE campaign_id = ? AND archived = 0 AND state_json != ''`)
@@ -479,7 +486,8 @@ function followParty(campaignId: string, place: string) {
   const move = db.prepare(`UPDATE npcs SET location = ?, updated_at = ? WHERE id = ?`);
   const now = nowIso();
   for (const id of partyFollowers(candidates)) {
-    if (rows.find((row) => row.id === id)?.location !== place) {
+    const at = rows.find((row) => row.id === id)?.location;
+    if (at !== place && (!left || left.has(textKey(at ?? "")))) {
       move.run(place, now, id);
     }
   }

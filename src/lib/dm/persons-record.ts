@@ -2,9 +2,9 @@ import { allocateSeq, campaignSeats, type Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, listEnemies, type EnemyStatus } from "@/lib/db/encounters";
-import { insertCampaignMessage } from "@/lib/db/messages";
+import { insertCampaignMessage, lineCarriesRoll } from "@/lib/db/messages";
 import { hasHumanDm } from "@/lib/dm/viewer";
-import { getRoll } from "@/lib/db/rolls";
+import { firstStoredAfter, getRoll } from "@/lib/db/rolls";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
 import { listSheets } from "@/lib/db/sheets";
 import { publishEphemeral, publishWithSeq } from "@/lib/events";
@@ -61,9 +61,15 @@ function foeChanges(start: RecordStart): FoeChange[] {
   return changes;
 }
 
-// `rollIds` are the call's rolls the turn does not list (a player's dice
-// entered for a parked roll); `changes` false leaves the sentence to a path
-// that posts its own (the server playing the enemies says each blow).
+// `rollIds` are the call's rolls the turn does not list: a player's dice for
+// a roll that held its call, where the run that took them put them on a
+// short turn of its own (a zone's save: dm-turns.ts openStandInTurn), which
+// nothing else draws. A plain roll card's roll needs no word here: it joins
+// its turn as it lands (pending-roll-land.ts). One of them that a line of
+// its own already carries (a death save, an opportunity swing:
+// roll-record.ts `home: "line"`) stays on that line alone. `changes` false
+// leaves the sentence to a path that posts its own (the server playing the
+// enemies says each blow).
 export function postPersonsRecord(
   campaign: Campaign,
   turn: DmTurn,
@@ -81,7 +87,17 @@ export function postPersonsRecord(
   // with the seats that may read it (src/lib/table-delivery.ts): its id or
   // its label would tell the rest it exists.
   const rolls: RollWords[] = [];
-  for (const id of new Set([...turn.rollIds.slice(start.rolls), ...(options.rollIds ?? [])])) {
+  // Such a roll is listed where it was stored among the turn's own: ahead
+  // of the first the run made after it.
+  const onTurn = turn.rollIds.slice(start.rolls);
+  const listed = [...onTurn];
+  for (const id of options.rollIds ?? []) {
+    if (!listed.includes(id) && !lineCarriesRoll(campaign.id, id)) {
+      const next = firstStoredAfter(id, onTurn);
+      listed.splice(next ? listed.indexOf(next) : listed.length, 0, id);
+    }
+  }
+  for (const id of new Set(listed)) {
     const roll = getRoll(id);
     if (roll && (roll.visibility === "public" || roll.visibility === "blind")) {
       const sheetName = roll.characterId ? sheets.get(roll.characterId)?.name : undefined;

@@ -352,6 +352,27 @@ export function isWeaponRow(item: EquipmentItem): boolean {
   return Boolean(item.gear?.weapon) || matchWeapon(item) !== null;
 }
 
+// Why a fight will not let a row go on or come off right now, or null while
+// it may: body armor takes minutes, a shield the action on the character's
+// own turn, a weapon and anything else worn the free object interaction on
+// that turn (issue #424). The row's button and a drag onto the paperdoll ask
+// the same question, so neither offers what the route refuses.
+export type WearLock = "armor" | "shield" | "weapon" | "worn";
+
+export function wearLock(item: EquipmentItem, when: { inCombat: boolean; myTurn: boolean }): WearLock | null {
+  if (!when.inCombat) {
+    return null;
+  }
+  const armor = matchArmor(item);
+  if (armor && armor.category !== "shield") {
+    return "armor";
+  }
+  if (when.myTurn) {
+    return null;
+  }
+  return armor ? "shield" : isWeaponRow(item) ? "weapon" : "worn";
+}
+
 // The rows the sheet offers the wear toggle on: armor and shields, gear whose
 // name declares a magic bonus, the magic items, anything with a place on the
 // body (a Cloak of Elvenkind only the check riders know, a workshop cloak),

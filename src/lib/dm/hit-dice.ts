@@ -23,10 +23,10 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { claimRestDie, restDieLeft } from "@/lib/db/clock";
 import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { rollEnteredDice, rollExpression, type RollResult } from "@/lib/dice";
 import { rollCharacterDice, type DoorLanding } from "@/lib/dm/character-roll";
-import { onlineUserIds, publishPersisted, publishWithSeq } from "@/lib/events";
+import { onlineUserIds, publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { songOfRestDieFor } from "@/lib/srd/feature-effects";
 import { healMath } from "@/lib/dm/mutation-math";
@@ -137,15 +137,18 @@ export function spendHitDice(input: {
   } else {
     outcome = rollExpression(expression);
   }
-  const roll = insertRoll({
+  // On the turn of the call that spends them (the rest's, a feature's). The
+  // player's own spend from their sheet is made on no turn.
+  const roll = recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: input.requestedBy,
     kind: "custom",
-    detail: landing?.physical ? `${detail} (physical)` : detail,
+    detail,
     result: outcome,
+    turnId: input.turnId,
+    landing,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: landing?.source ?? "digital" });
   // Each die is floored at 0 on its own; the total is not what is floored.
   // Sewer plague: hit dice heal half the normal number (afflictions.ts).
   // Durable floors each die at twice the Constitution modifier; Stalwart

@@ -78,11 +78,14 @@ export function InviteQr({
 }
 
 // The room code in sigil lettering: one plate a character, arriving in turn.
-// The whole code is still one selectable, readable string for a screen reader.
+// The whole code is still one selectable, readable string for a screen reader:
+// it is said in hidden text, since a label on a paragraph has no role to
+// carry it and the code could go unread.
 export function RoomCodeSigils({ code, size = "md" }: { code: string; size?: "md" | "lg" }) {
   const t = useT();
   return (
-    <p className="lobby-sigils" data-size={size} aria-label={t("Room code {code}", { code: code.split("").join(" ") })}>
+    <p className="lobby-sigils" data-size={size}>
+      <span className="sr-only">{t("Room code {code}", { code: code.split("").join(" ") })}</span>
       {code.split("").map((char, index) => (
         <span
           // The index is the identity here: a rotated code replays the plates.

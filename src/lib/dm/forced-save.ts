@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import { magnumOpusBinds } from "@/lib/dm/genre-gb-alchemy";
 import { ruinsInitiative } from "@/lib/dm/genre-gb-ruins";
 import { ashenHymnSources, explodedDie } from "@/lib/dm/genre-cc-a-saves";
@@ -24,10 +25,9 @@ import { counterIntrusion } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND, INSPIRATION_SPEND, spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
-import { allocateSeq, getCampaignById, type Campaign } from "@/lib/db/campaigns";
+import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
@@ -35,7 +35,7 @@ import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
 import { bardOfHeldDie, heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, withBonusDie } from "@/lib/dm/after-roll-logic";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { allyCreatureSaveAura, allySaveAura } from "@/lib/dm/aura";
@@ -466,7 +466,7 @@ export function rollCharacterSave(
   if (strength) {
     outcome = { ...outcome, total: outcome.total + strength.bonus };
   }
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
@@ -474,11 +474,7 @@ export function rollCharacterSave(
     detail: detail.slice(0, 200),
     dc,
     result: outcome,
-  });
-  turn?.rollIds.push(roll.id);
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", {
-    roll,
-    source: "digital",
+    turn,
   });
   const moteLine = moteAfterRoll(campaign, sheet, mote, "saving_throw", outcome);
   // A save forced by a creature is kept, made or failed, for what answers it
@@ -667,7 +663,7 @@ export function rollEnemySave(
   // one less than the Difficulty Class, or a d4 taken off it.
   outcome = takeFate(campaignId, purpose, enemy.displayName, outcome, dc)?.outcome ?? outcome;
   if (options.record) {
-    const roll = insertRoll({
+    recordRoll({
       campaignId,
       characterId: null,
       requestedBy: "dm",
@@ -677,8 +673,12 @@ export function rollEnemySave(
       ...(advantage === "none" ? {} : { advantage }),
       result: outcome,
       visibility: "dm",
+      turn: options.record.turn,
+      // Thrown here, on the server's dice.
+      landing: null,
+      // Read on the turn's cards by the seats that may; no seat is sent it.
+      send: false,
     });
-    options.record.turn?.rollIds.push(roll.id);
   }
   // An alienist's treatment undoes the save (genre-b-mystery-dossier.ts): as
   // if it rolled a 1, or not to be resisted at all.

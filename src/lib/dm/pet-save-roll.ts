@@ -5,12 +5,11 @@
 // (pet-tools.ts, which reach enemy-damage.ts and close the cycle
 // condition-tick.ts warns about).
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll } from "@/lib/db/rolls";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
@@ -104,7 +103,7 @@ export function rollPetSave(
   // Tagged as an ally's save, as the pet's attack is tagged as an ally's
   // attack (pet-tools.ts), for what a watcher sets on the party's rolls.
   const outcome = rollExpression(expression, undefined, { purpose: { roller: "hero", kind: "save", who: pet.name } });
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: null,
     requestedBy: "dm",
@@ -113,9 +112,10 @@ export function rollPetSave(
     dc: input.dc,
     ...(shape.advantage === "none" ? {} : { advantage: shape.advantage }),
     result: outcome,
+    turn,
+    // Thrown here, on the server's dice.
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn?.rollIds.push(roll.id);
   return {
     success: outcome.total >= input.dc,
     total: outcome.total,

@@ -15,13 +15,13 @@
 //
 // The swarm's squares are the area the Rat Tide laid (zones-genre-cc-a.ts).
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import { getEnemy, listEnemies, patchEnemyConditions, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { regainHitPoints } from "@/lib/dm/regain";
-import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { castersDamage, rollCard } from "@/lib/dm/roll-card";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { liveZones } from "@/lib/dm/zone-store";
 import { chebyshev } from "@/lib/battlemap/types";
@@ -68,7 +68,7 @@ function crownBites(campaign: Campaign, encounter: Encounter, ids: string[]): st
       continue;
     }
     const lord = getSheetById(String(((enemy.conditionMeta ?? {}) as ConditionMetaMap)[held]?.source ?? ""));
-    const amount = rollCard(campaign, null, lord?.id ?? null, "damage", `The Crown Descends: ${enemy.displayName}`, "1d6", lord ? sheetAttacker(lord) : null).total;
+    const amount = castersDamage(campaign, null, lord, `The Crown Descends: ${enemy.displayName}`, "The Crown Descends", enemy.displayName, { dice: "1d6", type: "piercing" }).total;
     lines.push(hurtEnemy(campaign, encounter, enemy, amount, "piercing", "The Crown Descends", true));
   }
   return lines;
@@ -103,7 +103,7 @@ export function refreshTeeth(campaign: Campaign, encounter: Encounter): string[]
   if (!board) {
     return [];
   }
-  const tokens = listTokens(board.map.id);
+  const tokens = listStandings(board.map.id);
   const swarms = swarmsOf(board).filter((zone) => {
     const lord = getSheetById(zone.casterId);
     return Boolean(lord && holdsGenreFeature(lord, "vermin_lord", "The Walls Have Teeth"));

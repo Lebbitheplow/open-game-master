@@ -18,12 +18,11 @@
 // ability, DC 10 + the spell's level, and a failure wastes the scroll; a
 // spell off your list is unintelligible.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import { coatWithPoison, poisonCoatRefusal } from "@/lib/dm/attack-onhit";
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
-import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { publishPersisted, publishWithSeq } from "@/lib/events";
+import { publishPersisted } from "@/lib/events";
 import { removeConditions, withTempHpClaim, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { VITAL_HIT_DICE } from "@/lib/dm/hit-dice";
@@ -41,7 +40,8 @@ import { markItemSpellOnTurn } from "@/lib/dm/item-casts";
 import { casterStateProblem } from "@/lib/dm/cast-rules";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sourceDamage } from "@/lib/dm/roll-card";
+import { itemSource } from "@/lib/roll-sources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag, itemRow, type TaggedItem } from "@/lib/srd/item-tags";
@@ -278,7 +278,8 @@ export function applyConsumable(
       return "error" in applied ? { effect: `No effect: ${String(applied.error)}` } : { effect: `${sheet.name} can fly at ${feet} feet, and hover, for an hour; if the hour ends aloft they fall.` };
     }
     case "poison": {
-      const damage = rollCard(campaign, null, sheet.id, "damage", `${itemName}: it was poison`, "3d6", null);
+      // Nobody rolled it: the roll is the draught's, and the drinker its target.
+      const damage = sourceDamage(campaign, null, itemSource(itemName), { characterId: sheet.id, names: [sheet.name] }, { dice: "3d6", type: "poison" });
       const hurt = applyPcDamage(campaign, turnId, sheet, { amount: damage.total, type: "poison", reason });
       const save = rollSave(campaign, getSheetById(sheet.id) ?? sheet, 13, `${sheet.name}: CON save vs ${itemName}`);
       if (save.success) {
@@ -314,7 +315,7 @@ function poisonCourse(campaign: Campaign, turnId: string, sheetId: string, itemN
       break;
     }
     rounds += 1;
-    const hit = rollCard(campaign, null, before.id, "damage", `${itemName}: the poison, turn ${rounds}`, `${dice}d6`, null);
+    const hit = sourceDamage(campaign, null, itemSource(itemName), { characterId: before.id, names: [before.name] }, { note: `turn ${rounds}`, dice: `${dice}d6`, type: "poison" });
     dealt += hit.total;
     applyPcDamage(campaign, turnId, before, { amount: hit.total, type: "poison", reason: itemName });
     const after = getSheetById(sheetId);
@@ -344,8 +345,7 @@ function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail:
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   // The drinker's own save (src/lib/dm/character-roll.ts).
   const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail, dc, settleHeldDie: heldDieWaits(sheet, dc) });
-  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, dc, result: outcome });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, dc, result: outcome });
   return { success: outcome.total >= dc };
 }
 
@@ -372,8 +372,7 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
       // The reader's own check (src/lib/dm/character-roll.ts).
       const outcome = rollCharacterD20(campaign, reader, { kind: "ability_check", expression: resolved.expression, detail: `${reader.name}: reading a scroll of ${name}`, dc, settleHeldDie: heldDieWaits(reader, dc) });
       total = outcome.total;
-      const roll = insertRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, dc, result: outcome });
-      publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+      recordRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, dc, result: outcome });
     }
     if (total < dc) {
       return {

@@ -3,6 +3,7 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { Campaign } from "@/lib/db/campaigns";
 import {
   getActiveEncounter,
+  getEnemy,
   insertEnemy,
   listEnemies,
   patchEnemyHp,
@@ -23,6 +24,8 @@ import { encounterCeiling, evaluateEncounter } from "@/lib/srd/encounter-math";
 import { nameArrivals, spliceIntoOrder } from "@/lib/dm/encounter-logic";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import type { SettingRef } from "@/lib/worlds/preset";
@@ -36,6 +39,7 @@ import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { arrivalsFor, returningRow, survivorNamed, unknownReturning } from "@/lib/dm/foe-return";
 import { initLegendaryPools } from "@/lib/dm/legendary-tools";
 import { isDefeated } from "@/lib/dm/knockout";
+import { linkPairs, mountSizeProblem, onOwnToken } from "@/lib/dm/enemy-riders";
 import { latestAppearance, lastAppearanceOfNpc } from "@/lib/db/foe-history";
 
 // Enemy spawning shared by start_encounter and the mid-combat add_enemies
@@ -58,6 +62,9 @@ export const enemyRequestSchema = z.object({
   // refused.
   race: z.string().max(40).optional(),
   gender: z.string().max(20).optional(),
+  // The monster each of them rides (issue 1055, enemy-riders.ts): a row of
+  // its own, linked to its rider. A blank one is the same as none.
+  mount: z.preprocess((value) => (typeof value === "string" && value.trim() ? value.trim() : undefined), z.string().max(80).optional()),
 });
 export type EnemyRequest = z.infer<typeof enemyRequestSchema>;
 
@@ -81,7 +88,18 @@ export type ResolvedEnemyRequest = {
   // An SRD race id and a gender for the face, "" or absent for unspecified.
   race?: string;
   gender?: Gender;
+  // The entry this creature carries as its mount (issue 1055): made as a row
+  // of its own beside its rider's, which is linked to it once both exist.
+  carries?: ResolvedEnemyRequest;
 };
+
+// Which row each row carries, by index, for linkPairs (enemy-riders.ts).
+export function carriedIndexes(rows: readonly ResolvedEnemyRequest[]): Array<number | undefined> {
+  return rows.map((entry) => {
+    const at = entry.carries ? rows.indexOf(entry.carries) : -1;
+    return at >= 0 ? at : undefined;
+  });
+}
 
 // The look a request told, as stored values. A Cast NPC's own record is
 // read instead (src/lib/db/encounter-view.ts), so it is not copied here.
@@ -132,8 +150,26 @@ export function resolveEnemyRequests(
   // The table, for its Cast: an NPC named here with a stat block fights as
   // that block, under their own name (src/lib/npcs/forge.ts statBlock).
   campaignId?: string,
-): { resolved: ResolvedEnemyRequest[] } | { unknownMonster: string } | { unknownReturning: string } {
+): { resolved: ResolvedEnemyRequest[] } | { unknownMonster: string } | { unknownReturning: string } | { badMount: string } {
   const resolved: ResolvedEnemyRequest[] = [];
+  // The mount an entry asks for, one for each rider it fields: an enemy of
+  // its own, on one initiative roll with the entry's other mounts (they are
+  // identical creatures), one size larger than its rider at least.
+  const trouble: { size: string | null; unknown: string | null } = { size: null, unknown: null };
+  const field = (rider: ResolvedEnemyRequest, request: EnemyRequest, group: number) => {
+    resolved.push(rider);
+    if (!request.mount) {
+      return;
+    }
+    const block = resolveMonster(request.mount, setting, { userIds: authorList });
+    if (!block) {
+      trouble.unknown ??= request.mount;
+      return;
+    }
+    const name = block.reskinName || block.baseName;
+    trouble.size ??= mountSizeProblem(rider, { name, stats: block.stats });
+    resolved.push({ slug: block.slug, name, stats: block.stats, group: requests.length + group, carries: rider });
+  };
   const authorList = Array.isArray(authors) ? authors : authors ? [authors] : [];
   const cast = campaignId ? listNpcs(campaignId).filter((npc) => npc.statBlock) : [];
   // A companion who left the party and comes back against it, or one that
@@ -150,10 +186,13 @@ export function resolveEnemyRequests(
       if (!row) {
         return { unknownReturning: request.returning };
       }
-      resolved.push(carriedEntry(row));
+      field(carriedEntry(row), request, group);
       continue;
     }
     const foe = sheetFoes.get(wanted);
+    if (foe && request.mount) {
+      return { badMount: `${foe.name} fights as their own character sheet, which rides as a character does: leave mount out here and use mount_up for them.` };
+    }
     if (foe) {
       if (!resolved.some((entry) => entry.sheetFoe && textKey(entry.name) === wanted)) {
         resolved.push({ slug: "sheet", name: foe.name, stats: foe.stats, sheetFoe: foe.foe });
@@ -162,7 +201,7 @@ export function resolveEnemyRequests(
     }
     const survivor = campaignId ? survivorNamed(campaignId, setting, request) : null;
     if (survivor) {
-      resolved.push(carriedEntry(survivor));
+      field(carriedEntry(survivor), request, group);
       continue;
     }
     const npc = cast.find((entry) => textKey(entry.name) === wanted || entry.aliases.some((alias) => textKey(alias) === wanted));
@@ -183,20 +222,26 @@ export function resolveEnemyRequests(
       // of them), and comes back from their last fight as it left them.
       const last = lastAppearanceOfNpc(campaignId, npc.id);
       if (!resolved.some((entry) => entry.npcId === npc.id)) {
-        resolved.push({
+        field({
           slug: match?.slug ?? "custom",
           name: displayName,
           stats,
           npcId: npc.id,
           ...(last ? { returning: latestAppearance(last.id)?.id ?? last.id } : {}),
-        });
+        }, request, group);
       }
       continue;
     }
     const look = toldLook(request);
     for (let index = 0; index < count; index += 1) {
-      resolved.push({ slug: match?.slug ?? "custom", name: displayName, stats, group, ...look });
+      field({ slug: match?.slug ?? "custom", name: displayName, stats, group, ...look }, request, group);
     }
+  }
+  if (trouble.unknown) {
+    return { unknownMonster: trouble.unknown };
+  }
+  if (trouble.size) {
+    return { badMount: trouble.size };
   }
   return { resolved };
 }
@@ -247,17 +292,18 @@ export const addEnemiesTool: ToolDef = {
               },
               name: {
                 type: "string",
-                description: "In-world display name, to reskin one for this setting.",
+                description: "In-world display name, to reskin one.",
               },
               count: { type: "integer", minimum: 1, maximum: 8 },
               cr: {
                 type: "number",
                 description:
-                  "Only for an invented enemy with no matching monster: its challenge rating.",
+                  "Only for an invented enemy: its challenge rating.",
               },
               returning: { type: "string", description: "An earlier fight's enemyId." },
               race: { type: "string", description: "A humanoid's people (elf, dwarf...), for their face." },
               gender: { type: "string", enum: [...GENDERS] },
+              mount: { type: "string" },
             },
             required: ["monster"],
           },
@@ -273,6 +319,17 @@ const addArgsSchema = z.object({
   enemies: z.array(enemyRequestSchema).min(1).max(4),
   reason: z.string().optional(),
 });
+
+// What a tool's result says of a pair, on each of its two rows: the GM plays
+// the mount's turn to move them, and aims at either by its own enemyId.
+export function pairLine(enemies: readonly EncounterEnemy[], enemy: EncounterEnemy): { rides?: string; carries?: string } {
+  const mount = enemy.ridesEnemyId ? enemies.find((entry) => entry.id === enemy.ridesEnemyId) : null;
+  if (mount) {
+    return { rides: `${mount.displayName} (enemyId=${mount.id}): one token for the pair, moved by ${mount.displayName}'s move_token on its own turn. ${enemy.displayName} has no movement of its own.` };
+  }
+  const rider = enemies.find((entry) => entry.ridesEnemyId === enemy.id);
+  return rider ? { carries: `${rider.displayName} (enemyId=${rider.id}), on ${rider.displayName}'s token: it keeps its own turn and attacks, and its move carries them both.` } : {};
+}
 
 // Accepts the documented {enemies:[...]} shape, or flat monster/name/count
 // keys (the textual-salvage path cannot produce arrays).
@@ -319,6 +376,9 @@ export function handleAddEnemies(
   }
   if ("unknownReturning" in outcome) {
     return unknownReturning(campaign.id, outcome.unknownReturning);
+  }
+  if ("badMount" in outcome) {
+    return { error: `${outcome.badMount} Nobody was added.`, refused: "rules" };
   }
 
   // Characters named here fight as their own sheets (sheet-foes.ts): fielded
@@ -400,7 +460,7 @@ export function handleAddEnemies(
     arriving.map((arrival) => (arrival.carry ? { ...arrival.entry, group: undefined } : arrival.entry)),
     arriving.map(nameOf),
   );
-  const inserted = arriving.map((arrival, index) =>
+  const made = arriving.map((arrival, index) =>
     insertEnemy({
       encounterId: encounter.id,
       campaignId: campaign.id,
@@ -414,6 +474,9 @@ export function handleAddEnemies(
       ...(arrival.carry ? { arrives: arrival.carry.arrives } : {}),
     }),
   );
+  // Each rider on its mount (enemy-riders.ts). One who rejoins on the row it
+  // fled on is not among these, so its mount arrives beside it, unridden.
+  const inserted = linkPairs(made, carriedIndexes(arriving.map((arrival) => arrival.entry)));
   const back = rejoining.flatMap(({ id, carry }) => {
     const row = patchEnemyHp(id, carry.arrives.currentHp, "alive");
     return row ? [row] : [];
@@ -448,18 +511,24 @@ export function handleAddEnemies(
       renameTokenByRef(map.id, enemy.id, name);
     }
     const tokens = listTokens(map.id);
+    // A creature back on the field comes in as a newcomer does; its old
+    // token went when it fled.
+    // A mount with its rider on it stands on its rider's token (ruling 1).
+    const placing = [...onOwnToken(inserted), ...back.filter((enemy) => !getTokenByRef(map.id, enemy.id))];
+    // Each arrival is set down where its whole space is open, among the
+    // whole spaces of those already there (a rider's pair read as the
+    // mount's size): read by single squares, an ogre came in overlapping
+    // the creature beside it, and anyone could land inside a Large token.
     const spots = findSpawnTiles(
       map.terrain,
       map.width,
       map.height,
-      occupiedTiles(map, tokens, null),
-      inserted.length + back.length,
+      occupiedTiles(map, tokens, null, tokenFootprint),
+      placing.length,
       tokens.filter((token) => token.kind === "enemy").map((token) => ({ x: token.x, y: token.y })),
       tokens.filter((token) => token.kind === "pc").map((token) => ({ x: token.x, y: token.y })),
+      placing.map((enemy) => enemyFootprint(getEnemy(enemy.id) ?? enemy)),
     );
-    // A creature back on the field comes in as a newcomer does; its old
-    // token went when it fled.
-    const placing = [...inserted, ...back.filter((enemy) => !getTokenByRef(map.id, enemy.id))];
     placing.forEach((enemy, index) => {
       const spot = spots[index];
       if (spot) {
@@ -490,6 +559,7 @@ export function handleAddEnemies(
           ac: enemy.ac,
           hp: `${enemy.currentHp}/${enemy.maxHp}`,
           ...(carry ? { returning: carry.line } : {}),
+          ...pairLine(inserted, enemy),
         };
       }),
       ...fielded.map((sheet) => ({ characterId: sheet.id, name: sheet.name, ac: sheet.ac, hp: `${sheet.currentHp}/${sheet.maxHp}`, side: "foe" })),

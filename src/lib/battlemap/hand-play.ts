@@ -22,9 +22,10 @@ import {
   type HandIntent,
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
-import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@/lib/battlemap/hand-area";
+import { areaArgs, describePick, hasPick, pickWords, type AreaPick, type HandArea } from "@/lib/battlemap/hand-area";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
-import { conditionWord } from "@/lib/battlemap/hand-display";
+import { cardDisplayName, conditionWord } from "@/lib/battlemap/hand-display";
+import { contentName } from "@/lib/content/names";
 import { textKey } from "@/lib/language/text-logic";
 import { translate, type Locale } from "@/lib/messages-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -471,6 +472,155 @@ export function composeSentence(
       return `I shake ${who || "my ally"} awake.`;
     case "dismount":
       return "I dismount.";
+    case "mount": {
+      const steed = chosenValue(card, choices) ?? intent.mount;
+      return steed ? `I mount ${steed}.` : "I mount up.";
+    }
+  }
+}
+
+// The localized display sentence shown in the Aim Bar preview while keeping
+// `composeSentence` untouched for engine parsing.
+export function composeDisplaySentence(
+  card: HandCard,
+  aim: HandAim | null,
+  riders: HandCard[] = [],
+  choices: HandChoices = {},
+  t: T = enT,
+  locale: Locale = "en",
+): string {
+  if (locale === "en") return composeSentence(card, aim, riders, choices);
+  const who = aim?.kind === "self" ? t("myself") : aim?.name ?? "";
+  const intent = card.intent;
+  const displayCard = cardDisplayName(card, locale);
+  if (intent.card === "attack") {
+    const weapon = intent.weapon === "Unarmed strike" ? t("an unarmed strike") : contentName("items", intent.weapon, locale);
+    const bonusAttack = intent.attack?.bonusAttack;
+    const target = who || t("the nearest enemy");
+    const lead = intent.offHand
+      ? who
+        ? t("I make my off-hand attack against {who} with {weapon} as a bonus action.", { who, weapon })
+        : t("I make my off-hand attack with {weapon} as a bonus action.", { weapon })
+      : bonusAttack
+        ? t("I attack {who} with {weapon} as a bonus action ({feature}).", { who: target, weapon, feature: t(BONUS_ATTACK_NAME[bonusAttack] ?? card.name.replace(/ attack$/, "")) })
+        : t("I attack {who} with {weapon}.", { who: target, weapon });
+    const options = (choices.options ?? []).map((id) => ` ${t(OPTION_CLAUSE[id].trim())}`).join("");
+    const riderNotes = riders
+      .map((rider) => {
+        if (rider.intent.card !== "rider") return "";
+        if (rider.intent.rider === "Divine Smite") {
+          return rider.intent.slotLevel
+            ? ` ${t("If it hits, I use Divine Smite with a level {level} slot.", { level: rider.intent.slotLevel })}`
+            : ` ${t("If it hits, I use Divine Smite.")}`;
+        }
+        return ` ${t("I use {rider} on this attack.", { rider: cardDisplayName(rider, locale) })}`;
+      })
+      .join("");
+    return lead + options + riderNotes;
+  }
+  if (intent.card === "spell") {
+    const spell = contentName("spells", intent.spell, locale);
+    const shared = shareList(card, aim, choices);
+    const named = shared.length > 1 || (shared.length === 1 && shared.every((share) => share.count > 1)) ? sharePhrase(card, shared) : who;
+    const where = !named ? "" : aim?.kind === "enemy" ? ` ${t("at {who}", { who: named })}` : ` ${t("on {who}", { who: named })}`;
+    const slot = intent.item ? "" : intent.slotLevel ? ` ${t("using a level {level} slot", { level: intent.slotLevel })}` : "";
+    const ring = intent.item ? ` ${t("from my {item}", { item: contentName("items", intent.item, locale) })}` : "";
+    const how = card.cost === "bonus" ? ` ${t("as a bonus action")}` : card.cost === "reaction" ? ` ${t("as a reaction")}` : "";
+    const picked = chosenLabel(card, choices);
+    const laid = card.area && hasPick(card.area, choices.area) ? ` ${pickWords(t, card.area, choices.area ?? {})}` : "";
+    return t("I cast {spell}{ring}{picked}{where}{laid}{how}{slot}.", {
+      spell,
+      ring,
+      picked: picked ? ` (${picked})` : "",
+      where,
+      laid,
+      how,
+      slot,
+    });
+  }
+  if (intent.card === "reaction") {
+    const at = !who ? "" : aim?.kind === "enemy" ? ` ${t("at {who}", { who })}` : ` ${t("for {who}", { who })}`;
+    if (intent.spell && intent.item) {
+      return t("I cast {spell} from my {item}{at} as a reaction.", { spell: contentName("spells", intent.spell, locale), item: contentName("items", intent.item, locale), at });
+    }
+    return intent.spell
+      ? t("I cast {spell}{at} as a reaction{slot}.", { spell: contentName("spells", intent.spell, locale), at, slot: intent.slotLevel && intent.slotLevel > 1 ? ` ${t("using a level {level} slot", { level: intent.slotLevel })}` : "" })
+      : t("I use {feature}{at} as my reaction.", { feature: displayCard, at });
+  }
+  if (intent.card === "feature") {
+    const shared = shareList(card, aim, choices);
+    const chosen = shared.length > 1 ? sharePhrase(card, shared) : who;
+    const where = !chosen || aim?.kind === "self" ? "" : ` ${t("on {who}", { who: chosen })}`;
+    const how = card.cost === "bonus" ? ` ${t("as a bonus action")}` : "";
+    const picked = chosenLabel(card, choices);
+    const named = `${displayCard}${picked ? ` (${picked})` : ""}`;
+    return card.compose ? t("I use {named}{where} for  {unit}.", { named, where, unit: t(card.unit ?? "hit points") }) : t("I use {named}{where}{how}.", { named, where, how });
+  }
+  if (intent.card === "rider") return t("I use {rider} on my next hit.", { rider: displayCard });
+  if (intent.card === "monster") return "";
+  if (intent.card === "gear") {
+    const rawItem = chosenLabel(card, choices) ?? "";
+    const item = rawItem ? contentName("items", rawItem, locale) : t("it");
+    switch (intent.action) {
+      case "equip":
+        return card.id === "gear:don-shield" ? t("I strap on my {item}.", { item }) : t("I draw my {item}.", { item });
+      case "unequip":
+        return card.id === "gear:doff-shield" ? t("I take off my {item}.", { item }) : t("I stow my {item}.", { item });
+      case "drop":
+        return t("I drop my {item}.", { item });
+      case "pick_up":
+        return t("I pick up the {item}.", { item });
+      case "hand":
+        return t("I hand my {item} to {who}.", { item, who: who || t("my ally") });
+      case "use":
+        return aim && aim.kind !== "self" ? t("I give {who} my {item} to drink.", { who, item }) : t("I drink my {item}.", { item });
+    }
+  }
+  const route = intent.bonus ? card.name.replace(/:.*/, "").trim() : "";
+  const bonus = route ? ` ${t("as a bonus action ({route})", { route: t(route) })}` : "";
+  switch (intent.action) {
+    case "dodge":
+      return t("I take the Dodge action{bonus}.", { bonus });
+    case "dash":
+      return t("I Dash{bonus}.", { bonus });
+    case "disengage":
+      return t("I Disengage{bonus} and step away.", { bonus });
+    case "help":
+      return t("I take the Help action for {who}.", { who: who || t("my ally") });
+    case "hide":
+      return t("I Hide{bonus}.", { bonus });
+    case "search":
+      return t("I take the Search action.");
+    case "escape":
+      return card.name.slice(0, 8) === "Escape: "
+        ? t("I try to break free of {spell}.", { spell: contentName("spells", card.name.slice("Escape: ".length), locale) })
+        : t("I try to escape the grapple.");
+    case "ready": {
+      const trigger = choices.trigger?.trim().replace(/\.$/, "");
+      const picked = chosenValue(card, choices) ?? "";
+      const held = picked.slice(0, 1) === "@" ? t(READIED_WORDS[picked.slice(1) as Readiable] ?? picked.slice(1)) : picked ? contentName("spells", picked, locale) : t("an attack");
+      return trigger ? t("I ready {held} for when {trigger}.", { held, trigger }) : t("I ready an action: ");
+    }
+    case "grapple":
+      return t("I try to grapple {who}.", { who: who || t("the nearest enemy") });
+    case "shove":
+      return t("I shove {who}.", { who: who || t("the nearest enemy") });
+    case "use-object":
+      return t("I use an object{bonus}: ", { bonus });
+    case "end-turn":
+      return t("I end my turn.");
+    case "stand-up":
+      return t("I stand up.");
+    case "stabilize":
+      return t("I try to stabilize {who}.", { who: who || t("my dying ally") });
+    case "wake":
+      return t("I shake {who} awake.", { who: who || t("my ally") });
+    case "dismount":
+      return t("I dismount.");
+    case "mount": {
+      const steed = chosenValue(card, choices) ?? intent.mount;
+      return steed ? t("I mount {steed}.", { steed }) : t("I mount up.");
+    }
   }
 }
 

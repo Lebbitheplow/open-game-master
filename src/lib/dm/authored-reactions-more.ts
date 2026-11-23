@@ -133,7 +133,7 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
     enemySize: (refId) => enemiesById.get(refId)?.stats.size,
     sideOf: tokenSides(getActiveEncounter(ctx.campaign.id)),
   });
-  const reach = reachableTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, token, footprintOf), token, half, 1, token.movement === "fly", traits);
+  const reach = reachableTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, token, footprintOf), token, half, footprintOf(token), token.movement === "fly", traits);
   if (!reach.has(tileIndex(map.width, x, y))) {
     return { error: `${ctx.sheet.name} cannot reach (${x},${y}) with ${allowed} (${half * 5} feet). Nothing was spent.`, retry: true };
   }
@@ -182,11 +182,11 @@ function redirectMiss(ctx: Ctx, name: string, rangeFt: number): ToolResult {
   }
   const attacker = getEnemy(record.attacker.id);
   const attack = (attacker?.stats.attacks ?? []).find((entry) => textKey(entry.name) === textKey(record.attack));
-  if (!attack?.damage) {
+  if (!attacker || !attack?.damage) {
     return { error: `The server has no damage on record for ${record.attacker.name}'s ${record.attack}. Nothing was spent.`, refused: "rules" };
   }
   // The attacker's own blow, turned (Stand Against the Tide reads the same).
-  const rolled = Math.max(0, rollCard(campaign, ctx.turn, null, "damage", rollAgainst(`${attack.name} (${name})`, target.displayName), attack.damage, attacker ? enemyAttacker(attacker) : null).total);
+  const rolled = Math.max(0, rollCard(campaign, ctx.turn, null, "damage", rollAgainst(`${attack.name} (${name})`, target.displayName), attack.damage, enemyAttacker(attacker)).total);
   const type = attack.type ?? record.type;
   // Still the attacker's blow: a creature whose weapon attacks are magical,
   // or a block that prints the blow as magical, strikes the other with magic.

@@ -29,11 +29,12 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
-import { dmRoll, rollCard } from "@/lib/dm/roll-card";
+import { dmRoll, sourceAttack, sourceDamage } from "@/lib/dm/roll-card";
+import type { RollSource } from "@/lib/db/rolls";
+import { trapSource } from "@/lib/roll-sources";
 import { trapHoldOn } from "@/lib/dm/trap-escape";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { fieldedSheets } from "@/lib/dm/roster";
-import { rollOn } from "@/lib/roll-labels";
 import { abilityMod } from "@/lib/srd";
 import type { TrapSpec } from "@/lib/srd/trap-specs";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -87,6 +88,9 @@ export function springOnEnemy(
   trap: TrapSpec,
   from: { fromX?: number; fromY?: number } = {},
   lasting: "trap" | "saveEnds" = "trap",
+  // What its rolls name as their source: the trap, unless the caller sprang
+  // something else through here (a hazard the GM named: hazard-tools.ts).
+  by: RollSource = trapSource(name),
 ): Record<string, unknown> {
   const { campaign, turn, encounter, sheets, sheetsById } = ctx;
   const live = () => getEnemy(start.id) ?? start;
@@ -120,7 +124,8 @@ export function springOnEnemy(
   if (trap.attackBonus !== undefined) {
     const ac = enemyAcWithEffects(campaign.id, live());
     const sign = trap.attackBonus >= 0 ? "+" : "-";
-    const attack = rollCard(campaign, turn, null, "attack", rollOn(`${name} attacks (vs AC ${ac})`, [start.displayName]), `1d20${sign}${Math.abs(trap.attackBonus)}`, null);
+    // The trap's own roll: it is named in front, and the creature is its target.
+    const attack = sourceAttack(campaign, turn, by, { name: start.displayName }, ac, `1d20${sign}${Math.abs(trap.attackBonus)}`);
     const hit = attack.crit !== "nat1" && (attack.crit === "nat20" || attack.total >= ac);
     if (!hit) {
       return { name: start.displayName, hit: false, note: `${name} misses ${start.displayName} (${attack.crit === "nat1" ? "a natural 1" : `${attack.total} vs AC ${ac}`}).` };
@@ -141,7 +146,7 @@ export function springOnEnemy(
           multiplyNumeric: campaign.gameSettings?.variantRules?.criticalDamageMods,
         })
       : part.dice;
-    const amount = /^\d+$/.test(dice) ? Number(dice) : rollCard(campaign, turn, null, "damage", rollOn(`${name} (${dice} ${part.type})`, [start.displayName]), dice, null).total;
+    const amount = /^\d+$/.test(dice) ? Number(dice) : sourceDamage(campaign, turn, by, { names: [start.displayName] }, { dice, type: part.type }).total;
     if (amount > 0) {
       lines.push(`${land(amount, part.type)} ${part.type}.`);
     }
@@ -172,7 +177,7 @@ export function springOnEnemy(
   }
   const hpBefore = live().currentHp;
   if (trap.damage && (!save.success || halfOnSave)) {
-    const rolled = rollCard(campaign, turn, null, "damage", rollOn(`${name} (${trap.damage.dice} ${trap.damage.type})`, [start.displayName]), trap.damage.dice, null).total;
+    const rolled = sourceDamage(campaign, turn, by, { names: [start.displayName] }, { dice: trap.damage.dice, type: trap.damage.type }).total;
     const amount = save.success ? Math.floor(rolled / 2) : rolled;
     if (amount > 0) {
       lines.push(`${land(amount, trap.damage.type)} ${trap.damage.type}${save.success ? " (half, on the save)" : ""}.`);
@@ -200,10 +205,7 @@ export function springOnEnemy(
 export function rollEnemyAbilityCheck(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, ability: "str" | "dex", dc: number, detail: string): number {
   const asSheet = isSheetFoe(enemy) ? getSheetById(enemy.id) : null;
   if (asSheet) {
-    const check = rollCharacterCheck(campaign, asSheet, { ability, dc }, detail);
-    if (check.rollId) {
-      turn.rollIds.push(check.rollId);
-    }
+    const check = rollCharacterCheck(campaign, asSheet, { ability, dc }, detail, turn);
     return check.autoFailed ? 0 : check.total;
   }
   const worn = enemyExhaustion(enemy.conditions) >= 1;
@@ -233,7 +235,7 @@ export function enemyTrapEscape(campaign: Campaign, turn: DmTurn, enemy: Encount
   const escaped = total >= hold.dc;
   let bitten = 0;
   if (!escaped && hold.hurts) {
-    bitten = rollCard(campaign, turn, null, "damage", rollOn(`${hold.trap} (${hold.hurts.dice} ${hold.hurts.type})`, [enemy.displayName]), hold.hurts.dice, null).total;
+    bitten = sourceDamage(campaign, turn, trapSource(hold.trap), { names: [enemy.displayName] }, { dice: hold.hurts.dice, type: hold.hurts.type }).total;
     if (bitten > 0) {
       // The party, for the XP if the bite ends the fight.
       const party = fieldedSheets(campaign);

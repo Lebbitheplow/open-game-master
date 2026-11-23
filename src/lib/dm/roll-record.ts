@@ -25,10 +25,18 @@
 // One kind of roll has neither and stands apart (`home: "apart"`): a
 // storyteller's secret, read from the roll list by the two seats that may.
 //
+// A roll made where no turn is open (the dice tray, the GM's roll table, a
+// player's hit dice from their sheet) is handed none and is on none, as
+// before the door: it is stored, sent and in the roll log. Whether such a
+// roll should have a home is an open question on issue #915.
+//
 // A new site that stores a roll calls recordRoll rather than insertRoll, a
 // publish of "roll_result" and a push onto rollIds:
 // scripts/test-roll-record-sites.mjs walks the source for those three and
-// fails on one that is not on its ledger.
+// fails on any outside this module, the two stores it writes through and the
+// one migration that files old turns (src/lib/db/answered-cards-backfill.ts).
+// No other file sends "roll_result": a roll sent a second time (a secret
+// that comes out, revealRolls below) leaves here too.
 //
 // It imports the roll store, the turn store and the event stream, and reaches
 // the held call through globalThis as the roll store does: the clock's paths
@@ -38,7 +46,7 @@
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
 import { joinStoredTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll, type RollInsert, type RollKind, type StoredRoll } from "@/lib/db/rolls";
+import { insertRoll, revealRollRow, type RollInsert, type RollKind, type StoredRoll } from "@/lib/db/rolls";
 import { publishWithSeq } from "@/lib/events";
 
 // How the dice came in: thrown by the server, or rolled by the player on
@@ -69,10 +77,13 @@ export type RollRecord = RollInsert & {
   landing?: RollLanded | null;
   // False for a roll no seat is sent as it is made (roll-card.ts dmRoll).
   send?: boolean;
+  // The roll card these dice answer (pending-roll-land.ts): each screen takes
+  // the card down as it is told of the roll.
+  answers?: string | null;
 };
 
 export function recordRoll(record: RollRecord): StoredRoll {
-  const { turn, turnId, home, landing: said, send, ...insert } = record;
+  const { turn, turnId, home, landing: said, send, answers, ...insert } = record;
   const landing = said === undefined ? (globalThis.__odmTakenLanding?.(insert.characterId ?? null, insert.kind) ?? null) : said;
   // Dice rolled at the table are on record as the player's own, as a roll
   // card's are (pending-roll-land.ts).
@@ -99,9 +110,28 @@ export function recordRoll(record: RollRecord): StoredRoll {
   if (send !== false) {
     // Sent as it was made: told "digital", the stage threw a die on screen
     // that the player had already rolled.
-    publishWithSeq(roll.campaignId, allocateSeq(roll.campaignId), "roll_result", { roll, source: landing?.source ?? "digital" });
+    announce(roll, { source: landing?.source ?? "digital", ...(answers ? { pendingRollId: answers } : {}) });
   }
   return roll;
+}
+
+// The one place a roll is sent from. It is handed over whole: the event
+// stream takes the number out for the seats not owed it, in the log and on
+// the way to each seat (src/lib/table-delivery.ts), so no site redacts.
+function announce(roll: StoredRoll, how: { source: "digital" | "physical"; pendingRollId?: string; revealed?: true }) {
+  publishWithSeq(roll.campaignId, allocateSeq(roll.campaignId), "roll_result", { roll, ...how });
+}
+
+// A hidden roll comes out (a pact's plan goes, a secret action is caught):
+// each roll behind the secret turns public and every seat is sent it whole,
+// number and all. Sent again, not recorded again: it keeps the home it had.
+export function revealRolls(rollIds: readonly string[]) {
+  for (const id of rollIds) {
+    const roll = id ? revealRollRow(id) : null;
+    if (roll) {
+      announce(roll, { source: "digital", revealed: true });
+    }
+  }
 }
 
 // Where a roll made on a turn joins it: the object in hand that will be

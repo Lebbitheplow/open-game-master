@@ -8,7 +8,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { placeTeleported } from "@/lib/dm/teleport-place";
 import { listEnemies } from "@/lib/db/encounters";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { publishFx } from "@/lib/dm/fx";
@@ -26,7 +26,7 @@ export function distantStrikeSquare(encounterId: string, sheetId: string, enemyI
     return null;
   }
   const enemy = listEnemies(encounterId).find((entry) => entry.id === enemyId);
-  const squares = openSquaresBeside(encounterId, map, from, to, footprintForSize(enemy?.stats.size)).filter((square) => tilesApart(from, { ...from, ...square }) <= TELEPORT_TILES);
+  const squares = openSquaresBeside(encounterId, map, from, to, enemyFootprint(enemy)).filter((square) => tilesApart(from, { ...from, ...square }) <= TELEPORT_TILES);
   squares.sort((a, b) => tilesApart(from, { ...from, ...a }) - tilesApart(from, { ...from, ...b }));
   return squares[0] ?? null;
 }

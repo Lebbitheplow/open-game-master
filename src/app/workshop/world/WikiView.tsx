@@ -180,7 +180,7 @@ export function WikiView({
           />
         </label>
 
-        <div className="flex flex-wrap gap-1" aria-label={t("Types")}>
+        <div className="flex flex-wrap gap-1" role="group" aria-label={t("Types")}>
           <button type="button" onClick={() => setTypeFilter("")} className={cn("rounded-md border border-stone-700 px-1.5 py-0.5 text-[11px] motion-press", !typeFilter ? "bg-amber-400/10 text-amber-100" : "text-stone-400")}>
             {t("All {count}", { count: entities.length })}
           </button>
@@ -194,7 +194,7 @@ export function WikiView({
           })}
         </div>
 
-        <div className="flex flex-col gap-0.5" aria-label={t("Folders")}>
+        <div className="flex flex-col gap-0.5" role="group" aria-label={t("Folders")}>
           <div className="flex items-center justify-between">
             <span className="eyebrow text-[10px] text-stone-500">{t("Folders")}</span>
             <KitButton tone="icon" always aria-label={t("New folder")} onClick={() => setFolderName(folderName === null ? "" : null)}>

@@ -10,16 +10,14 @@
 // item with no charges that casts a spell at will (a Hat of Disguise) is
 // owned here too: its cast spends nothing but the action.
 
+import { recordRoll } from "@/lib/dm/roll-record";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { beginHeldCasting } from "@/lib/dm/long-casting";
 import { castingRoundsOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import type { Campaign } from "@/lib/db/campaigns";
-import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
-import { publishWithSeq } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -63,15 +61,16 @@ import { casterStateProblem } from "@/lib/dm/cast-rules";
 import { infusionOf } from "@/lib/srd/infusions";
 
 function publishRoll(campaign: Campaign, sheet: CharacterSheet, detail: string, result: RollResult) {
-  const roll = insertRoll({
+  recordRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "custom",
     detail,
     result,
+    // Thrown by the server (item-charges.ts spendChargesMath).
+    landing: null,
   });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
 }
 
 // The ability check a cast waits on (Amulet of the Planes), rolled as
@@ -85,8 +84,7 @@ function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNull
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   // The player's own check (src/lib/dm/character-roll.ts).
   const outcome = rollCharacterD20(campaign, sheet, { kind: "ability_check", expression: resolved.expression, detail, dc: check.dc, settleHeldDie: waits });
-  const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, dc: check.dc, result: outcome });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, dc: check.dc, result: outcome });
   return { total: outcome.total, success: outcome.total >= check.dc };
 }
 

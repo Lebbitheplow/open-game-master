@@ -32,6 +32,7 @@ import { BeatBoard } from "@/app/workshop/storyboard/BeatBoard";
 import { BeatEditor } from "@/app/workshop/storyboard/BeatEditor";
 import { CompileCard, SharedWorkshopCard, SuggestionsCard } from "@/app/workshop/storyboard/BoardAsides";
 import { useT, useTp } from "@/lib/locale";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 // The storyboard: cards for the things that are going to happen, and arrows
 // between them.
@@ -225,7 +226,7 @@ export function DmStoryboardPanel({
     return loadError ? (
       <LoadFailed error={loadError} onRetry={() => void load()} />
     ) : (
-      <div className="skeleton-block h-24 rounded-xl" aria-busy="true" aria-label={t("Loading the storyboard")} />
+      <LoadingBlock className="h-24 rounded-xl" label={t("Loading the storyboard")} />
     );
   }
 

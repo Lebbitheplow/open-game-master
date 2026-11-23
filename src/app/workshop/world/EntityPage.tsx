@@ -234,7 +234,7 @@ export function EntityPage({
       <ImportKept key={entity.ref} kept={entity.kept ?? []} onChoose={(key, choice) => api.settleKept(entity.ref, key, choice)} />
 
       {facts.length ? (
-        <div className="flex flex-wrap gap-1.5" aria-label={t("At the table")}>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("At the table")}>
           {facts.map(([key, value]) => (
             <span key={key} className="pk-chip motion-pop text-[11px]">
               <span className="text-stone-500">{t(TABLE_WORDS[key] ?? key)}</span> {tableValue(key, value, t)}

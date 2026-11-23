@@ -294,16 +294,16 @@ const { setMount } = await import("../src/lib/db/mounts.ts");
 
 // A goblin beside the hero walks away east; whatever the hero swings lands
 // on it. The ally stays far off with a bow.
-async function walkAway(faces) {
+async function walkAway(faces, start = 3) {
   const goblin = await freshArena();
   world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
   place(anchor.id, 9, 9);
-  place(goblin.id, 3, 0);
+  place(goblin.id, start, 0);
   place(hero.id, 2, 0);
   world.clearDice();
   world.diceLog();
   world.dice(...faces);
-  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: start, y: 0 }, { x: start + 2, y: 0 }, [{ x: start + 1, y: 0 }, { x: start + 2, y: 0 }]);
   const log = world.diceLog();
   world.clearDice();
   return { notes, damageDice: log.filter((die) => die.sides !== 20).map((die) => die.sides) };
@@ -327,7 +327,8 @@ await test("G25: a hero on foot never swings a lance on an opportunity attack be
   arm({ str: 16, armor: ["shields"], equipment: [{ name: "Lance", qty: 1 }, { name: "Shield", qty: 1 }] });
   setMount(world.campaignId, hero.id, { ref: "warhorse", name: "Warhorse", speed: 60, controlled: true, size: "Large" });
   try {
-    out = await walkAway([15, 15, 6]);
+    // The pair fills the horse's space, two squares wide (issue 1055): the goblin stands beside it.
+    out = await walkAway([15, 15, 6], 4);
     assert.deepEqual(out.damageDice, [12], `a mounted lance was not swung: ${JSON.stringify(out.notes)}`);
   } finally {
     setMount(world.campaignId, hero.id, null);

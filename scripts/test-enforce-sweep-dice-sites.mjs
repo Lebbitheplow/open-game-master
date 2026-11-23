@@ -42,12 +42,16 @@
 //           the server's own as digital;
 //   roller  it names who rolled it: an attack or damage roll with no roller
 //           reads as the roll of the character it lands on (a fall, a trap).
+//           A roll nobody made names its source (src/lib/roll-sources.ts),
+//           which goes in front of its card: its words do not say the source
+//           a second time, and they name the character it lands on.
 //
-// One function does all of these (src/lib/dm/roll-record.ts recordRoll). A
-// row whose site still records its roll by hand and misses one is listed
-// under `rows` in scripts/roll-record-sites.json with the checks it fails.
-// A row that fails a check it is not listed for fails this suite, and so
-// does a row listed for a check it now passes: the list only gets shorter.
+// One function does all of these (src/lib/dm/roll-record.ts recordRoll), and
+// every row passes all three. `rows` in scripts/roll-record-sites.json held
+// the rows whose site recorded its roll by hand and missed one, with the
+// checks each failed; it is empty now. A row that fails a check it is not
+// listed there for fails this suite, and so does a row listed for a check
+// it passes.
 // The dice the server throws are seeded row by row, so a row stores the same
 // rolls on every run. `ODM_SWEEP_ROWS=print` prints the list as it stands.
 import assert from "node:assert/strict";
@@ -396,7 +400,10 @@ async function enterParked() {
 }
 
 // What is wrong with the record of the rolls stored since `mark`, check by check.
-function recordProblems(mark, seq, cards) {
+// What a source can say it is (src/lib/db/rolls.ts HazardKind).
+const HAZARDS = new Set(["fall", "gm", "trap", "item", "effect", "named"]);
+
+function recordProblems(mark, seq, cards, hazardRow = false) {
   const rolls = rollsAfter(world.campaignId, mark);
   const problems = { home: [], sent: [], roller: [] };
   const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;
@@ -414,15 +421,10 @@ function recordProblems(mark, seq, cards) {
   }
   for (const roll of rolls) {
     const what = `${roll.kind} "${roll.detail}"`;
-    // A roll card's roll (request_roll, an attack's parts) on an AI's turn is
-    // added to the turn when the turn resumes (turn.ts resumeDmTurn), which
-    // this row does not wait for: the card that names it is its place till
-    // then. A roll that held its whole call is recorded by the call's own
-    // run, and is read where that run left it.
-    const resumes = getDatabase()
-      .prepare("SELECT 1 FROM pending_rolls p JOIN dm_turns t ON t.id = p.turn_id WHERE p.roll_id = ? AND t.actor = 'ai' AND json_extract(p.carry_json, '$.call') IS NULL")
-      .get(roll.id);
-    const home = resumes ? null : homeProblem(roll.id);
+    // A roll card's roll (request_roll, an attack's parts) is on its turn
+    // from the moment it lands, at either door: this row does not wait for
+    // an AI's turn to resume, and no longer has to.
+    const home = homeProblem(roll.id);
     if (home) {
       problems.home.push(`${what}: ${home}`);
     }
@@ -445,6 +447,25 @@ function recordProblems(mark, seq, cards) {
       problems.roller.push(`${what}: nobody is named as rolling it, so it reads as the roll of the character it lands on`);
     } else if (!roll.attacker && !roll.characterId && roll.requestedBy !== "dm") {
       problems.roller.push(`${what}: names nobody`);
+    }
+    const lands = roll.characterId ? world.sheet(roll.characterId)?.name : null;
+    if (roll.attacker?.kind === "hazard") {
+      const by = roll.attacker;
+      if (!HAZARDS.has(by.hazard)) {
+        problems.roller.push(`${what}: its source, ${by.name}, says it is "${by.hazard}", which is no kind of source`);
+      }
+      // Whatever the case: the words in front of the card, in its words again.
+      const said = roll.detail.toLowerCase();
+      const again = by.hazard === "fall" ? "fall" : by.hazard === "gm" ? "the gm" : by.name.toLowerCase();
+      if (said.includes(again)) {
+        problems.roller.push(`${what}: says its source, ${by.name}, a second time`);
+      }
+      if (lands && !roll.detail.includes(lands)) {
+        problems.roller.push(`${what}: ${by.name}'s roll does not name ${lands}, whom it lands on`);
+      }
+    } else if (hazardRow && roll.attacker?.kind === "sheet" && roll.attacker.id === roll.characterId && (roll.kind === "attack" || roll.kind === "damage")) {
+      // A hazard's own row: what lands on a character there is not their roll.
+      problems.roller.push(`${what}: a hazard's roll names ${lands}, whom it lands on, as its roller`);
     }
   }
   return { problems, rolls: rolls.length };
@@ -497,7 +518,7 @@ async function run(entry, door, seed) {
   }
   // The verdict is read before the seat answers: the dice it enters now are
   // its own, and the call runs on with them.
-  const record = recordProblems(mark, seq, await enterParked());
+  const record = recordProblems(mark, seq, await enterParked(), /^(apply_hazard|cast_at_player\.hazard|concentration\.damage)/.test(entry.id));
   spy.take();
   return { verdict, where: where.filter((id) => !RULED_SITES[id]), out, parked, dice, record };
 }
@@ -663,7 +684,7 @@ const SITES = {
   // An opportunity attack's damage with Great Weapon Fighting's rerolls,
   // thrown through the character's door as its throwIt (audit 1116, A06).
   "lib/dm/opportunity-strike.ts#pcOpportunitySwing": "D an opportunity attack's damage, its 1s and 2s rerolled for Great Weapon Fighting",
-  "lib/dm/attack-onhit.ts#hurlReturn": "D", "lib/dm/attack-onhit.ts#poisonOnHit": "D",
+  "lib/dm/attack-onhit.ts#poisonOnHit": "D",
   "lib/dm/between-io.ts#publicDie": "F a table die",
   "lib/dm/character-roll.ts#initiativeWaits": "F no die: the lowest initiative, to read what the after-the-roll card would offer",
   "lib/dm/character-roll.ts#rollAtDoor": "H the one door a character's d20 is thrown through (src/lib/dm/character-roll.ts rollCharacterD20)",

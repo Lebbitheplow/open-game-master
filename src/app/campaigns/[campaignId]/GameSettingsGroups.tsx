@@ -18,7 +18,8 @@ import { CharacterVoices } from "@/app/campaigns/[campaignId]/CharacterVoices";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import { SafetyToneFields } from "@/components/SafetyToneFields";
 import type { GameSettings } from "@/lib/schemas/game-settings";
-import { APPEARANCE_THEMES, type CampaignAppearance } from "@/lib/appearance-themes";
+import { APPEARANCE_THEMES, themeName } from "@/lib/appearance-themes";
+import { ThemeButton } from "@/components/ThemePanelHost";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { REROLL_LOW_DEFAULT, rerollBelowFor, rerollChoiceOf, type RerollChoice } from "@/lib/srd/ability-rerolls";
 import {
@@ -299,18 +300,15 @@ export function AtmosphereGroup({
 }) {
   const capabilities = useCapabilities();
   const t = useT();
+  const tableThemeName = APPEARANCE_THEMES.find((theme) => theme.id === settings.appearanceTheme);
   return (
     <>
       {hostOffers(capabilities, "appearanceThemes") ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="pk-rowlabel">Visual theme</span>
-          <Select<CampaignAppearance>
-            value={settings.appearanceTheme ?? "genre"}
-            onChange={(appearanceTheme) => patch({ appearanceTheme })}
-            options={[{ value: "genre", label: "Follow genre" }, ...APPEARANCE_THEMES.map((theme) => ({ value: theme.id, label: theme.name }))]}
-            label="Campaign visual theme"
-          />
-          <span className="text-stone-500">Sets the table’s appearance. Each player keeps their own brightness and can choose a personal theme.</span>
+          <span className="pk-rowlabel">{t("Visual theme")}</span>
+          <span className="text-stone-200" data-table-theme="">{tableThemeName ? themeName(t, tableThemeName) : t("Matches the genre")}</span>
+          <ThemeButton />
+          <span className="text-stone-500">{t("Opens the theme panel: choose Whole table there. Each player keeps their own brightness and can choose a personal theme.")}</span>
         </div>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">

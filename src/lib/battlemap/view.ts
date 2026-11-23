@@ -15,7 +15,7 @@ import { listEffects } from "@/lib/db/active-effects";
 import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy, orderEntryId } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
-import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
+import { characterFootprint, spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 import { ownZoneFeet } from "@/lib/dm/zone-reach";
 import { unseenByConditions } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
@@ -29,12 +29,13 @@ import { turnBonusTiles } from "@/lib/dm/mt-mr-turn";
 import { crossesAnyGround } from "@/lib/dm/ar-wbf-feat-turn";
 import { funeralMarchCovers } from "@/lib/dm/genre-cc-a-march";
 import { listSheets } from "@/lib/db/sheets";
-import { footprintDistance, footprintForSize, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
+import { footprintDistance, enemyFootprint, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
 import {
   getBattleMapForEncounter,
   getExplored,
   getTokenByRef,
+  listStandings,
   listTokens,
   mergeExplored,
   type BattleMap,
@@ -481,7 +482,7 @@ export function buildPlayerMapView(
       // The same passage the move route allows (src/lib/battlemap/passage.ts).
       const traits = withZoneSteps(pcMoveTraits({ width: map.width, theme: map.theme, drawnTerrain: map.drawnTerrain, tokens, mover: myToken, sheet, footprintOf: footprintLookup(enemiesById), enemySize: (refId) => enemiesById.get(refId)?.stats.size, sideOf: tokenSides(encounter), anyGround: crossesAnyGround(encounter, sheet) }), map, "pc");
       const reach = (limit: number, moveTraits: typeof traits) =>
-        [...reachableTiles(map.terrain, map.width, map.height, occupied, myToken, limit, 1, myToken.movement === "fly", moveTraits).entries()];
+        [...reachableTiles(map.terrain, map.width, map.height, occupied, myToken, limit, characterFootprint(sheet.id), myToken.movement === "fly", moveTraits).entries()];
       const costs = reach(budgetLeft, traits);
       // A prone character's crawl, every square one extra, priced on the
       // movement in hand as the move route prices it (SRD 5.1, Being Prone).
@@ -524,7 +525,10 @@ export function buildPlayerMapView(
   const tokenAuras: PlayerMapView["tokenAuras"] = {};
   const tokenFootprint: PlayerMapView["tokenFootprint"] = {};
   const tokenElevation: PlayerMapView["tokenElevation"] = {};
-  const tokenByRef = new Map(tokens.map((token) => [token.refId, token]));
+  // A mount under a rider is found on its rider's token (listStandings): on
+  // the mount's turn the pair's figure is the one lit, and a line drawn from
+  // or to the mount ends on it.
+  const tokenByRef = new Map(listStandings(map.id).map((token) => [token.refId, token]));
   const effectAuras = new Map<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>();
   for (const effect of listEffects(campaignId)) {
     // An effect the party cannot tell is there draws no ring on their board.
@@ -554,7 +558,7 @@ export function buildPlayerMapView(
       tokenHealth[shown.id] = healthWord(enemy.currentHp, enemy.maxHp, {
         dead: enemy.status === "dead",
       });
-      const footprint = footprintForSize(enemy.stats.size);
+      const footprint = enemyFootprint(enemy);
       if (footprint > 1) {
         tokenFootprint[shown.id] = footprint;
       }
@@ -568,6 +572,11 @@ export function buildPlayerMapView(
         tokenConditions[shown.id] = rows;
       }
       tokenHealth[shown.id] = characterHealthWord(pcSheet);
+      // A rider is drawn in the mount's space (issue 1055).
+      const riding = characterFootprint(pcSheet.id);
+      if (riding > 1) {
+        tokenFootprint[shown.id] = riding;
+      }
       const paladin = paladinAura(pcSheet);
       if (paladin) {
         auras.push({ id: `aura-${pcSheet.id}`, ...paladin });
@@ -768,10 +777,18 @@ export function occupiedTiles(
 }
 
 // The footprint of each token on a board, from the enemies' stat blocks.
-// Player characters are Small or Medium and take one square.
+// Player characters are Small or Medium and take one square, unless they
+// ride: a rider's token fills the mount's space (board-reach.ts
+// characterFootprint), read once for each character a lookup is asked about.
 export function footprintLookup(
-  enemiesById: Map<string, { stats: { size?: string } }>,
+  enemiesById: Map<string, { stats: { size?: string }; pairSize?: string }>,
 ): (token: BattleToken) => Footprint {
+  const riders = new Map<string, Footprint>();
+  const riding = (refId: string) => {
+    const known = riders.get(refId) ?? characterFootprint(refId);
+    riders.set(refId, known);
+    return known;
+  };
   return (token) =>
-    token.kind === "enemy" ? footprintForSize(enemiesById.get(token.refId)?.stats.size) : 1;
+    token.kind === "enemy" ? enemyFootprint(enemiesById.get(token.refId)) : token.kind === "pc" ? riding(token.refId) : 1;
 }

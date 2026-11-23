@@ -12,12 +12,12 @@
 // nothing places (loot the GM invents, an orb attuned to and never put on)
 // goes in one last tile, Other, so the doll is one size whatever a character
 // owns. Pure (no React): scripts/test-paperdoll-logic.mjs drives it.
-import { gearWornState, isAttunable, isWeaponRow, isWornGear, wearableGear } from "@/components/sheet/sheet-state";
+import { gearWornState, isAttunable, isWeaponRow, isWornGear, wearLock, wearableGear } from "@/components/sheet/sheet-state";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { hasItemTag } from "@/lib/srd/item-tags";
-import { isTack } from "@/lib/srd/tack";
+import { isTack, rowIsOn } from "@/lib/srd/tack";
 import { wearSlotOf, type WearSlot } from "@/lib/srd/wear-slots";
 import { WORN_PLACE_BLURBS } from "@/lib/srd/worn-places";
 
@@ -139,6 +139,25 @@ export function dollPlaceOf(item: EquipmentItem): DollPlaceId | null {
     return "mount";
   }
   return isWornGear(item) || isAttunable(item) ? "other" : null;
+}
+
+// The place a carried row may be dragged onto, or null for a row that cannot
+// be dragged: one already on, one with nothing to put on (an orb is attuned
+// to, never worn), and one the fight will not let change now, which the
+// row's own button refuses too (sheet-state.ts wearLock). A row goes only to
+// its own place, so a drag lights one tile and a drop anywhere else does
+// nothing. Only a row the doll lists (dollView reads wearableGear) can be
+// dragged: a stick the GM tagged a wand is worn gear with no row on the
+// doll, so a drop put it in hand with no button anywhere to stow it again.
+export function dollDropPlace(
+  item: EquipmentItem,
+  equipment: EquipmentItem[],
+  when: { inCombat: boolean; myTurn: boolean },
+): DollPlaceId | null {
+  if (!isWornGear(item) || !wearableGear([item]).length || rowIsOn(item, equipment) || wearLock(item, when)) {
+    return null;
+  }
+  return dollPlaceOf(item);
 }
 
 export type DollTile = {

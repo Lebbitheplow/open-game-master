@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { appearanceDefinition, campaignAppearance, isAppearanceTheme, resolveAppearance, themeArtStyle, type AppearanceChoice, type AppearanceTheme } from "@/lib/appearance-themes";
+import { appearanceDefinition, campaignAppearance, isAppearanceTheme, resolveAppearance, themeArtStyle, type AppearanceChoice, type AppearanceTheme, type CampaignAppearance } from "@/lib/appearance-themes";
 
 // Brightness, visual identity and scale belong to this reader and device.
 // Brightness follows the OS by default; identity follows the current campaign.
@@ -18,6 +18,13 @@ export const UI_SCALE_MAX = 1.25;
 
 const listeners = new Set<() => void>();
 let currentCampaignTheme: AppearanceTheme = "arcane";
+// What the theme panel needs to know about the table the reader is at: its
+// genre and stored choice (from the campaign stream), and whether this reader
+// may change it (from the page that knows their seat). Null away from a table.
+export interface TableAppearance { genre?: string; setting: CampaignAppearance }
+export interface TableControl { campaignId: string; canSet: boolean }
+let currentTable: TableAppearance | null = null;
+let currentControl: TableControl | null = null;
 // Storage may be blocked in an embedded browser. Changes still work for this visit.
 const memoryPrefs = new Map<string, string | null>();
 function readPreference(key: string): string | null {
@@ -88,16 +95,54 @@ function readAppearance(): AppearanceTheme {
 // live settings updates. Leaving the campaign restores the app's default.
 export function useCampaignAppearance(settings?: { appearanceTheme?: string; genre?: string } | null) {
   const theme = campaignAppearance(settings);
+  const present = Boolean(settings);
+  const genre = settings?.genre;
+  const setting: CampaignAppearance = isAppearanceTheme(settings?.appearanceTheme) ? settings.appearanceTheme : "genre";
   useEffect(() => {
     currentCampaignTheme = theme;
+    currentTable = present ? { genre, setting } : null;
     applyTheme();
     emit();
     return () => {
       currentCampaignTheme = "arcane";
+      currentTable = null;
       applyTheme();
       emit();
     };
-  }, [theme]);
+  }, [theme, present, genre, setting]);
+}
+
+// Called by the lobby and the table, which know the reader's seat.
+export function useTableThemeControl(campaignId: string, canSet: boolean) {
+  useEffect(() => {
+    if (!campaignId) return;
+    currentControl = { campaignId, canSet };
+    emit();
+    return () => {
+      currentControl = null;
+      emit();
+    };
+  }, [campaignId, canSet]);
+}
+
+// The theme panel is one surface for the whole app, opened from the account
+// menu or the lobby, so its open state lives here beside what it changes.
+let panelOpen = false;
+// Once opened, the panel's code is loaded and stays mounted.
+let panelOpened = false;
+export function setThemePanelOpen(open: boolean) {
+  if (panelOpen === open) return;
+  panelOpen = open;
+  if (open) panelOpened = true;
+  emit();
+}
+export function useThemePanel() {
+  const open = useSyncExternalStore(subscribe, () => panelOpen, () => false);
+  const table = useSyncExternalStore(subscribe, () => currentTable, () => null);
+  const control = useSyncExternalStore(subscribe, () => currentControl, () => null);
+  const tableTheme = useSyncExternalStore(subscribe, () => currentCampaignTheme, (): AppearanceTheme => "arcane");
+  const opened = useSyncExternalStore(subscribe, () => panelOpened, () => false);
+  return { open, opened, table, control, tableTheme };
 }
 
 export function clampScale(value: number): number {
@@ -130,7 +175,7 @@ export function applyTheme() {
   root.dataset.theme = mode;
   root.dataset.appearance = readAppearance();
   root.dataset.themeBase = appearanceDefinition(readAppearance()).baseStyle ?? "plain";
-  const art = themeArtStyle(readAppearance());
+  const art = themeArtStyle(readAppearance(), mode);
   for (const [property, value] of Object.entries(art)) root.style.setProperty(property, value);
   root.dataset.themeOrnaments = String(art["--theme-art-frame"] !== "none" || art["--theme-art-corner"] !== "none");
   root.style.colorScheme = mode;

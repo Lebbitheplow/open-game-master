@@ -1,5 +1,6 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
 import { mountMoved } from "@/lib/dm/mount-moved";
+import { enemyMountMoved, forcedEnemyMove, movedWithMount, shovedFromSaddle } from "@/lib/dm/enemy-rider-falls";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { boardLight } from "@/lib/dm/light-timers";
@@ -23,7 +24,7 @@ import {
   createBattleMap,
   getBattleMapForEncounter,
   getTokenByRef,
-  listTokens,
+  listStandings, listTokens,
   moveToken,
   placeTokens,
   resetTurnBudgets,
@@ -34,11 +35,12 @@ import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { placeTeleported } from "@/lib/dm/teleport-place";
 import { publishFx } from "@/lib/dm/fx";
 import { buildingSkin, drawBuilding, holdsBuilding, type BuildingPlan } from "@/lib/battlemap/building";
-import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
+import { generateBattleMap, fnv1a, spotsBesideParty, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
-import { footprintForSize } from "@/lib/battlemap/footprint";
+import { seatMountedParty } from "@/lib/dm/mount-space";
+import { enemyFootprint, spaceRefusal } from "@/lib/battlemap/footprint";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
@@ -161,7 +163,7 @@ export function createBattleMapForEncounter(
         plan: building,
         seed: fnv1a(encounter.id),
         pcCount: sheets.length + allies.length,
-        enemyFootprints: enemies.map((enemy) => footprintForSize(enemy.stats.size)),
+        enemyFootprints: enemies.map((enemy) => enemyFootprint(enemy)),
         enemyDistanceTiles: askedTiles,
       })
     : null;
@@ -176,7 +178,14 @@ export function createBattleMapForEncounter(
   // enemy, or the rear when they came from behind (formation-logic.ts).
   const formation = placeByFormation(sheets, partySpots, enemySpots, getParty(campaign.id).marchingOrder, from);
   const heroSpots = new Set([...formation.spots.values()].map((spot) => `${spot.x},${spot.y}`));
-  const allySpots = partySpots.filter((spot) => !heroSpots.has(`${spot.x},${spot.y}`));
+  const leftOver = partySpots.filter((spot) => !heroSpots.has(`${spot.x},${spot.y}`));
+  // The allies stand beside the heroes (generate.ts spotsBesideParty), not on
+  // the spawn spots the heroes left over, which can lie across the board.
+  for (const spot of leftOver) {
+    taken.delete(tileIndex(generated.width, spot.x, spot.y));
+  }
+  const beside = spotsBesideParty(generated, [...formation.spots.values()], allies.map((ally) => enemyFootprint(ally)), taken);
+  const allySpots = beside.length ? beside : leftOver;
   const map = getDatabase().transaction(() => {
     const created = createBattleMap({
       encounterId: encounter.id,
@@ -211,6 +220,8 @@ export function createBattleMapForEncounter(
     ]);
     return created;
   })();
+  // A rider needs the mount's space, not the one square they were given.
+  seatMountedParty(campaign.id, map.id);
   publishBattleMapUpdate(campaign.id);
   // The tool promises the board places them at the distance asked, so a
   // distance past the board's edge is said out loud: range and movement run
@@ -312,7 +323,7 @@ function resolveAnyToken(
 
 // A name the board holds no single token for: the names it does hold.
 function unknownCombatant(map: BattleMap, name: string): ToolError {
-  return { error: `No combatant on the battle map is called "${name}"; it holds ${listTokens(map.id).map((token) => token.name).join(", ")}.`, retry: true };
+  return { error: `No combatant on the battle map is called "${name}"; it holds ${listStandings(map.id).map((token) => token.name).join(", ")}.`, retry: true };
 }
 
 // Whether `token` may teleport to (x, y): on the map, open floor, nobody
@@ -689,6 +700,19 @@ export function handleMoveToken(
       };
     }
   }
+  // Who is moving, which is not always whose token moves: an enemy's mount
+  // stands on its rider's token (issue 1055, ruling 1), and the walk, its
+  // opportunity attacks and its turn are the mount's.
+  const moverId = resolved.kind === "enemy" && resolved.enemy ? resolved.enemy.id : resolved.token.refId;
+  const moverName = resolved.kind === "enemy" && resolved.enemy ? resolved.enemy.displayName : resolved.token.name;
+  // A rider is carried (ruling 2): the pair moves on its mount's turn.
+  const ridden = resolved.enemy?.ridesEnemyId && !args.forced ? getEnemy(resolved.enemy.ridesEnemyId) : null;
+  if (ridden) {
+    return {
+      error: `${moverName} rides ${ridden.displayName} and has no movement of its own: the pair moves on ${ridden.displayName}'s turn, with move_token for ${ridden.displayName}. Nothing was moved.`,
+      refused: "rules",
+    };
+  }
   // An enemy walking is an enemy acting: a surprised one stands where it is
   // through round 1, on its own (lost) turn too, which the reaction's
   // question let pass once the pointer had gone by its place. A legendary
@@ -721,6 +745,34 @@ export function handleMoveToken(
   const moverFootprint = footprints(resolved.token);
   if (occupied.has(tileIndex(map.width, args.x, args.y))) {
     return { error: `(${args.x},${args.y}) is occupied by another combatant.`, retry: true };
+  }
+  // A push, a drag or a carry that names a rider takes the rider alone out of
+  // the saddle, and the mount stays (issue 1055, ruling 6:
+  // enemy-rider-falls.ts). The rider is its own size on the way, and a square
+  // inside its mount's space sets it down just outside.
+  if (args.forced && resolved.kind === "enemy" && resolved.enemy?.ridesEnemyId) {
+    const rider = resolved.enemy;
+    const way = findPath(map.terrain, map.width, map.height, occupied, resolved.token, { x: args.x, y: args.y }, 1, resolved.token.movement === "fly", false);
+    if (!way) {
+      return { error: `No path to (${args.x},${args.y}); walls block the way.`, retry: true };
+    }
+    const from = { x: resolved.token.x, y: resolved.token.y };
+    const together = movedWithMount(campaign.id, rider);
+    const out = forcedEnemyMove(campaign, map.id, rider, { x: args.x, y: args.y });
+    if (out) {
+      publishBattleMapUpdate(campaign.id);
+      releaseGrapplesOutOfReach(campaign);
+      const zoneEffects = together ? [] : zonesAfterMove(campaign, encounter.id, { kind: "enemy", refId: rider.id }, from, walkedPart(way, out.at), {});
+      return {
+        ok: true,
+        name: moverName,
+        at: `(${out.at.x},${out.at.y})`,
+        ...(zoneEffects.length ? { zoneEffects } : {}),
+        note: together
+          ? `${moverName} went with its mount, which this call already moved: the pair moved as one, and the rider saves once to stay on.`
+          : `${moverName} was taken out of the saddle and lies prone at (${out.at.x},${out.at.y}); its mount stays where the pair stood. No save to stay mounted.`,
+      };
+    }
   }
   // An enemy walking on its own passes its allies and squeezes where it
   // must (enemy-approach.ts enemyMoveTraits); a forced move does neither.
@@ -810,7 +862,7 @@ export function handleMoveToken(
     const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
     const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, crawls ? crawlingTraits(traits) : traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
     if (!walk.at && allowance) {
-      return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
+      return { error: `${moverName} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
     }
     if (!walk.at) {
       const words = move && resolved.enemy ? speedWords(move.speedTiles, enemyTurnEntry(encounter, resolved.enemy.id)) : "speed 0 ft";
@@ -822,7 +874,7 @@ export function handleMoveToken(
             ? ", and it will not move closer to what it fears"
             : "";
       return {
-        error: `${resolved.token.name} has no movement left this turn (${words})${why}.${stillAt(tokens, resolved.token)}`,
+        error: `${moverName} has no movement left this turn (${words})${why}.${stillAt(tokens, resolved.token)}`,
         refused: "rules",
       };
     }
@@ -839,7 +891,7 @@ export function handleMoveToken(
   const origin = { x: resolved.token.x, y: resolved.token.y };
   const carried = drag ? dragLandings({ map, tokens, mover: resolved.token, landing, walked: [origin, ...walkedPart(path, landing)], held: drag.held, footprintOf: footprints }) : [];
   if (!carried) {
-    return { error: `There is no room beside (${landing.x},${landing.y}) to set down the character ${resolved.token.name} drags. Choose another square.`, retry: true };
+    return { error: `There is no room beside (${landing.x},${landing.y}) to set down the character ${moverName} drags. Choose another square.`, retry: true };
   }
   // Disengage first, paid for (enemy-actions.ts): then leaving reach draws
   // nothing, on this walk and every later one this turn. Every refusal is
@@ -868,7 +920,7 @@ export function handleMoveToken(
     resolved.kind === "enemy" && !args.forced && (!allowance || allowance.provokes)
       ? resolvePcOpportunityWalk(
           campaign,
-          resolved.token.refId,
+          moverId,
           origin,
           landing,
           walkedPart(path, landing),
@@ -895,8 +947,8 @@ export function handleMoveToken(
     landing.x,
     landing.y,
     resolved.kind === "enemy" && !allowance
-      ? (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound) + spent
-      : (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound),
+      ? (getTokenByRef(map.id, moverId)?.movedThisRound ?? resolved.token.movedThisRound) + spent
+      : (getTokenByRef(map.id, moverId)?.movedThisRound ?? resolved.token.movedThisRound),
     !args.forced && !allowance?.fly && resolved.token.movement === "walk" ? [origin, ...walked] : undefined,
   );
   // A flight takes it up: it stays aloft where it lands (set_movement).
@@ -913,16 +965,22 @@ export function handleMoveToken(
   // A push, a drag or a carry that moved a rider moved their mount against
   // its will: their save to stay on is asked as this call finishes.
   if (args.forced && resolved.token.kind === "pc" && (landing.x !== origin.x || landing.y !== origin.y)) {
-    mountMoved(campaign.id, resolved.token.refId);
+    mountMoved(campaign.id, moverId);
+  }
+  // The same for an enemy's mount, named by the forced move
+  // (enemy-rider-falls.ts); a forced move that named its rider was answered
+  // above, and took the rider alone.
+  if (args.forced && resolved.kind === "enemy" && resolved.enemy && (landing.x !== origin.x || landing.y !== origin.y)) {
+    enemyMountMoved(campaign.id, resolved.enemy.id);
   }
   // The Disengage and this walk were the turn it was owed; its own turn
   // follows on fresh movement, with no Disengage (enemy-actions.ts
   // spendEnemyDisengage).
   if (closesOwedTurn) {
-    resetTurnBudgets(map.id, [resolved.token.refId]);
+    resetTurnBudgets(map.id, [moverId]);
     const live = getActiveEncounter(campaign.id);
     if (live) {
-      forgetEnemyTurns(live, [resolved.token.refId]);
+      forgetEnemyTurns(live, [moverId]);
       saveEncounter(live);
     }
   }
@@ -937,7 +995,8 @@ export function handleMoveToken(
     markSqueezing(campaign.id, resolved.enemy.id, squeezedAt(map.terrain, map.width, map.height, occupied, landing, moverFootprint));
   }
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
-  const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walked, { careful });
+  // The creature walking is the one that walked in: a mount under its rider, not the rider whose token it moves.
+  const zoneEffects = zonesAfterMove(campaign, encounter.id, { kind: resolved.token.kind, refId: moverId }, origin, walked, { careful });
   // Who it came near, on record for what answers a creature moving up (move-near.ts).
   recordMovesNear(campaign.id, tokens, resolved.token, origin, walked);
   // An enemy entering an aura that asks once (Avenging Angel's aura of
@@ -947,7 +1006,7 @@ export function handleMoveToken(
   }
   return {
     ok: true,
-    name: resolved.token.name,
+    name: moverName,
     at: `(${landing.x},${landing.y})`,
     ...distancesFrom(tokens, resolved.token, landing),
     ...(zoneEffects.length ? { zoneEffects } : {}),
@@ -961,19 +1020,19 @@ export function handleMoveToken(
       : {}),
     ...(stoppedAt
       ? {
-          note: getEnemy(resolved.token.refId)?.status === "alive"
-            ? `${resolved.token.name} was stopped at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}): its speed is 0 for the rest of the turn.`
-            : `${resolved.token.name} fell at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}).`,
+          note: getEnemy(moverId)?.status === "alive"
+            ? `${moverName} was stopped at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}): its speed is 0 for the rest of the turn.`
+            : `${moverName} fell at (${landing.x},${landing.y}), where the opportunity attack was taken, short of (${intended.x},${intended.y}).`,
         }
       : clamped
       ? {
           note: approachCut
-            ? `Command draws ${resolved.token.name} only toward its caster: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+            ? `Command draws ${moverName} only toward its caster: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
             : aggressiveCut
-              ? `Aggressive carries ${resolved.token.name} only toward a hostile creature it can see: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+              ? `Aggressive carries ${moverName} only toward a hostile creature it can see: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
               : allowance
-                ? `Its legendary move goes ${allowance.tiles * 5} ft: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
-                : `Speed limited the move: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
+                ? `Its legendary move goes ${allowance.tiles * 5} ft: ${moverName} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+                : `Speed limited the move: ${moverName} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
         }
       : {}),
     ...(disengaged ? { disengaged: `Disengaged with ${disengaged}: no opportunity attacks${opportunity.length ? " but a Sentinel's" : ""}.` } : {}),
@@ -981,6 +1040,56 @@ export function handleMoveToken(
     // Read from the creature as it is now: a stop the swing laid is in it.
     ...(walking && resolved.enemy && !allowance ? { movementLeft: movementLeft(campaign.id, getEnemy(resolved.enemy.id) ?? resolved.enemy) } : {}),
   };
+}
+
+// A push or a pull that names an enemy rider takes the rider alone (issue
+// 1055, ruling 6): the square it is sent to may lie inside its own mount's
+// space, which is no obstacle to leaving it (the rider then lands just
+// outside). Null when the one named rides nothing; a reason when the push
+// that moved its mount a moment ago has already carried it.
+function riderNamed(
+  campaignId: string,
+  targetRef: string,
+  shared: BattleToken,
+  at: { x: number; y: number },
+): { rider: EncounterEnemy; insideMount: boolean } | { reason: string } | null {
+  const rider = getEnemy(targetRef);
+  if (!rider?.ridesEnemyId || shared.refId !== rider.id) {
+    return null;
+  }
+  if (movedWithMount(campaignId, rider)) {
+    return { reason: "it went with its mount, which this already moved: the pair moved as one, and the rider saves once to stay on" };
+  }
+  const wide = footprintLookup(new Map([[rider.id, rider]]))(shared);
+  return { rider, insideMount: at.x >= shared.x && at.x < shared.x + wide && at.y >= shared.y && at.y < shared.y + wide };
+}
+
+// Why the creature on `target` cannot be set down with its corner at `at`
+// by a push or a pull: its whole space must fit, clear of every other
+// token's whole space. A rider the effect named goes alone, one square, and
+// its own mount's space is no obstacle (ruling 6); the pair's token is the
+// mover, so that space is never counted against it.
+function forcedLandingRefusal(
+  map: BattleMap,
+  encounterId: string,
+  target: BattleToken,
+  at: { x: number; y: number },
+  saddle: { insideMount: boolean } | null,
+): "edge" | "wall" | "taken" | null {
+  const footprints = footprintLookup(new Map(listEnemies(encounterId).map((enemy) => [enemy.id, enemy])));
+  const refused = spaceRefusal(map, occupiedTiles(map, listTokens(map.id), target, footprints), at, saddle ? 1 : footprints(target));
+  return refused === "taken" && saddle?.insideMount ? null : refused;
+}
+
+// The rider leaves the saddle for `at`, prone, and the mount stays.
+function leavesSaddle(campaign: Campaign, rider: EncounterEnemy, at: { x: number; y: number }): { moved: true; at: { x: number; y: number } } | { moved: false; reason: string } {
+  const thrown = shovedFromSaddle(campaign, rider, at);
+  if (!thrown) {
+    return { moved: false, reason: "there is no saddle to leave" };
+  }
+  releaseGrapplesOutOfReach(campaign);
+  publishBattleMapUpdate(campaign.id);
+  return { moved: true, at: thrown.at };
 }
 
 // A shove: the target goes one square straight away from whoever pushed it.
@@ -1008,19 +1117,32 @@ export function pushTokenAway(
     x: target.x + Math.sign(target.x - pusher.x),
     y: target.y + Math.sign(target.y - pusher.y),
   };
-  if (at.x < 0 || at.y < 0 || at.x >= map.width || at.y >= map.height) {
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
+  if (saddle && "reason" in saddle) {
+    return { moved: false, reason: saddle.reason };
+  }
+  // The whole space it goes to (a rider out of the saddle goes alone): read
+  // by its corner, a Large creature or a pair on a Large mount was pushed
+  // half into whoever stood past its far squares.
+  const refused = forcedLandingRefusal(map, encounterId, target, at, saddle);
+  if (refused === "edge") {
     return { moved: false, reason: "the edge of the map is behind it" };
   }
-  if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
+  if (refused === "wall") {
     return { moved: false, reason: "a wall is behind it" };
   }
-  if (occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+  if (refused === "taken") {
     return { moved: false, reason: "someone stands behind it" };
+  }
+  if (saddle) {
+    return leavesSaddle(campaign, saddle.rider, at);
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
   // A rider pushed is a mount moved against its will (mount-moved.ts).
   if (target.kind === "pc") {
     mountMoved(campaign.id, target.refId);
+  } else if (target.kind === "enemy") {
+    enemyMountMoved(campaign.id, targetRef);
   }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
@@ -1055,16 +1177,27 @@ export function pullTokenToward(
     x: target.x + Math.sign(puller.x - target.x),
     y: target.y + Math.sign(puller.y - target.y),
   };
-  if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
+  if (saddle && "reason" in saddle) {
+    return { moved: false, reason: saddle.reason };
+  }
+  // Its whole space, as a push reads it (forcedLandingRefusal).
+  const refused = forcedLandingRefusal(map, encounterId, target, at, saddle);
+  if (refused === "edge" || refused === "wall") {
     return { moved: false, reason: "a wall is in the way" };
   }
-  if (occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+  if (refused === "taken") {
     return { moved: false, reason: "someone stands in the way" };
+  }
+  if (saddle) {
+    return leavesSaddle(campaign, saddle.rider, at);
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
   // A rider pulled is a mount moved against its will (mount-moved.ts).
   if (target.kind === "pc") {
     mountMoved(campaign.id, target.refId);
+  } else if (target.kind === "enemy") {
+    enemyMountMoved(campaign.id, targetRef);
   }
   // A push is forced movement, and "the condition also ends if an effect
   // removes the grappled creature from the reach of the grappler ... such
@@ -1101,7 +1234,8 @@ export function allyAdjacentToEnemy(
   // the party dominates is.
   const encounter = getEncounter(encounterId);
   const mine = encounter ? sideOf(encounter, "sheet", attackerCharacterId) : "party";
-  return listTokens(map.id).some(
+  // A mount under a rider is a creature beside the target too (listStandings).
+  return listStandings(map.id).some(
     (token) =>
       token.refId !== attackerCharacterId &&
       token.refId !== enemyId &&
@@ -1234,7 +1368,7 @@ export function checkPcAttackRange(
   }
   // The foes this same attack reaches from where they stand, for the next
   // call to aim at instead.
-  const tokens = listTokens(map.id);
+  const tokens = listStandings(map.id);
   const within = (tiles: number) => {
     const line = standingFoesLine(encounter.campaignId, encounter, (id) => {
       const token = tokens.find((entry) => entry.refId === id);
@@ -1250,7 +1384,7 @@ export function checkPcAttackRange(
   // sentence: a person refused at the Hand or the console reads the
   // sentence alone, and a model reads both (src/lib/dm/invoke.ts).
   const enemy = listEnemies(encounterId).find((entry) => entry.id === target.refId);
-  const square = openSquaresBeside(encounterId, map, attacker, target, footprintForSize(enemy?.stats.size))[0];
+  const square = openSquaresBeside(encounterId, map, attacker, target, enemyFootprint(enemy))[0];
   const refusal = { error: `${attacker.name} is ${distance * 5} ft from ${target.name}, out of melee reach (${options.reachTiles * 5} ft).${within(options.reachTiles)} They must move their token adjacent first or attack with a ranged weapon.`, retry: true as const };
   return square
     ? { ...refusal, closeIn: `When their player said they close in, send the attack again with approach true: the server walks them to (${square.x},${square.y}), the nearest open square beside ${target.name}, and attacks. The nearest open square beside ${target.name} is (${square.x},${square.y}): move_token ${attacker.name} there, then attack.` }

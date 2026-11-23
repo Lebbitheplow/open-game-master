@@ -12,6 +12,7 @@ import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { useT } from "@/lib/locale";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 type AccountInvite = {
   code: string;
@@ -92,7 +93,7 @@ export function AdminInvitesSection() {
 
   if (invites === null) {
     return (
-      <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label={t("Loading invites")} />
+      <LoadingBlock className="mt-3 h-16 rounded-xl" label={t("Loading invites")} />
     );
   }
 

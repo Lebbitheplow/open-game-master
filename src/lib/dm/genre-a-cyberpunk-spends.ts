@@ -24,7 +24,7 @@ import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { riggerDrones } from "@/lib/dm/genre-a-summons";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { rollCard } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { matchWeapon } from "@/lib/srd/weapons";
@@ -129,7 +129,7 @@ function whirl({ campaign, sheet, label }: Ctx): Out {
   }
   const mods = computeSheetDerived(sheet).abilityMods;
   const mod = weapon.finesse ? Math.max(mods.str, mods.dex) : mods.str;
-  const rolled = rollCard(campaign, null, sheet.id, "damage", `${label} (${weapon.name})`, mod ? `${weapon.dice}${mod > 0 ? "+" : ""}${mod}` : weapon.dice, null).total;
+  const rolled = rollCard(campaign, null, sheet.id, "damage", `${label} (${weapon.name})`, mod ? `${weapon.dice}${mod > 0 ? "+" : ""}${mod}` : weapon.dice, sheetAttacker(sheet)).total;
   storeBudget(encounter, { ...budget, actionUsed: true, attacksMade: budget.attacksMade + 1 });
   const lines = foes.map((enemy) => hurtEnemy(campaign, getActiveEncounter(campaign.id) ?? encounter, getEnemy(enemy.id) ?? enemy, Math.max(0, rolled), weapon.type, label, true));
   return { result: { applied: lines, damage: rolled } };

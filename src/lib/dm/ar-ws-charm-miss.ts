@@ -74,10 +74,11 @@ export function landTurnedMiss(ctx: Ctx, encounter: Encounter, found: { record: 
   settle(ctx, record, record.swings, key);
   const against = meets(ctx.campaign.id, taker, swing, record);
   const { attacker, attack } = attackOf(record, swing);
-  if (!against.lands || !attack) {
+  // An attack on record comes with the creature that made it.
+  if (!against.lands || !attack || !attacker) {
     return { applied: `The attack turns onto ${taker.name} and misses them too (${swing.total} against AC ${against.ac}).` };
   }
-  const rolled = Math.max(0, rollCard(ctx.campaign, ctx.turn, null, "damage", rollAgainst(`${attack.name} (${feature})`, taker.name), attack.damage!, attacker ? enemyAttacker(attacker) : null).total);
+  const rolled = Math.max(0, rollCard(ctx.campaign, ctx.turn, null, "damage", rollAgainst(`${attack.name} (${feature})`, taker.name), attack.damage!, enemyAttacker(attacker)).total);
   const type = attack.type ?? record.type;
   const magical = hasTrait(attacker?.stats, "magicWeapons") || attack.magical === true || attack.spellAttack === true;
   const applied =

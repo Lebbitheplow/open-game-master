@@ -53,7 +53,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { resolveSpendEffect } from "@/lib/dm/authored-spend-effects";
 import { refreshTeeth } from "@/lib/dm/genre-cc-a-turns";
 import { RAT_TIDE, RAT_TIDE_GROWN } from "@/lib/battlemap/zones-genre-cc-a";
-import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, listStandings } from "@/lib/db/battle-maps";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { isNamed } from "@/lib/srd/feature-names";
 import { raiseSquire } from "@/lib/dm/genre-cc-a-squire";
@@ -125,7 +125,7 @@ function ratTide(ctx: SpendContext): Resolution {
   const zone = map?.spellZones.filter((entry) => entry.casterId === ctx.sheet.id && isNamed(entry.spell, ctx.spend.name)).at(-1);
   const caught: string[] = [];
   if (map && zone) {
-    for (const token of listTokens(map.id)) {
+    for (const token of listStandings(map.id)) {
       if (token.refId === ctx.sheet.id || (token.kind !== "enemy" && token.kind !== "pc") || !zone.cells.includes(token.y * map.width + token.x)) {
         continue;
       }

@@ -75,6 +75,7 @@ import { handleSplitDamage } from "@/lib/dm/split-damage";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
+import { sceneSheets } from "@/lib/dm/party-split";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { characterCallUnasked, prepareWordFor } from "@/lib/dm/player-word";
 import { EXPLORE_TOOL_NAMES, handleExploreCall } from "@/lib/dm/explore-tools";
@@ -244,16 +245,20 @@ function engineCall(
       const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");
       return unasked ?? conductGate(campaign, name, rawArguments) ?? handleCastBuff(campaign, turn, rawArguments, sheets, sheetsById);
     }
+    // "Everyone" is everyone in the scene while the party is split up (issue
+    // 951): a rest, a group check, what there is to notice, a hoard and a
+    // road are the scene's, and a call that names someone elsewhere has been
+    // refused by now (ai-gate.ts awayCall).
     case "take_rest":
-      return handleTakeRest(campaign, turn.id, rawArguments, sheets, sheetsById);
+      return handleTakeRest(campaign, turn.id, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "group_check":
-      return handleGroupCheck(campaign, turn, rawArguments, sheets, sheetsById);
+      return handleGroupCheck(campaign, turn, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "check_notice":
-      return handleCheckNotice(campaign, turn, rawArguments, sheets, sheetsById);
+      return handleCheckNotice(campaign, turn, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "split_damage":
       return handleSplitDamage(campaign, turn, rawArguments, sheets, sheetsById);
     case "apply_hazard":
-      return handleApplyHazard(campaign, turn, rawArguments, sheets, sheetsById);
+      return handleApplyHazard(campaign, turn, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "summon_pet":
       // A familiar is Find Familiar cast (familiar-cast.ts); the other pets bind.
       return (
@@ -285,9 +290,9 @@ function engineCall(
     case "relationship_scheme":
       return handleRelationshipScheme(campaign, rawArguments, sheets, sheetsById);
     case "roll_treasure":
-      return handleRollTreasure(campaign, turn, rawArguments, sheets, sheetsById);
+      return handleRollTreasure(campaign, turn, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "travel":
-      return handleTravel(campaign, turn, rawArguments, sheets, sheetsById);
+      return handleTravel(campaign, turn, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "pass_time":
       return handlePassTime(campaign, turn.id, rawArguments, sheets);
     case "set_weather":
@@ -323,7 +328,7 @@ function engineCall(
     case "clear_effect":
       return handleClearEffect(campaign, rawArguments, sheets, sheetsById);
     case "start_scene":
-      return handleStartScene(campaign, rawArguments, sheets, sheetsById);
+      return handleStartScene(campaign, rawArguments, sceneSheets(campaign.id, sheets), sheetsById);
     case "scene_check":
       return handleSceneCheck(campaign, rawArguments, sheets, sheetsById);
     case "end_scene":

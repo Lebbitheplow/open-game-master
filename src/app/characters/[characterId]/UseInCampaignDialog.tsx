@@ -11,6 +11,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { navigateTo } from "@/lib/navigation";
 import { ui } from "@/lib/ui";
 import { useT } from "@/lib/locale";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 // The detail page's one primary action (docs/visual-overhaul-plan.md 8c.2):
 // take this library character to a table. It lists the campaigns the player
@@ -120,7 +121,7 @@ export function UseInCampaignDialog({
       {campaigns === null && loadError ? (
         <LoadFailed error={loadError} onRetry={() => setReloads((current) => current + 1)} />
       ) : campaigns === null ? (
-        <div className="skeleton-block h-24 rounded-xl" aria-label={t("Loading your campaigns")} />
+        <LoadingBlock className="h-24 rounded-xl" label={t("Loading your campaigns")} />
       ) : campaigns.length === 0 ? (
         <EmptyState
           art="map"

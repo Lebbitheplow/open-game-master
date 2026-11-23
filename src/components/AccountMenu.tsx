@@ -10,8 +10,7 @@ import { useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { AboutDialog } from "@/components/AboutDialog";
 import { HelpDialog } from "@/components/HelpDialog";
-import { Dialog } from "@/components/ui/Dialog";
-import { AppearancePicker } from "@/components/AppearancePicker";
+import { setThemePanelOpen } from "@/lib/theme-mode";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { headerButtonClass } from "@/app/campaigns/[campaignId]/headerButton";
 import { GameIcon } from "@/components/ui/GameIcon";
@@ -108,7 +107,6 @@ export function AccountMenu({
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const pathname = usePathname();
   // Inside the desktop or Android app the menu grows a door back to the
   // app's server list. The host object is a client-only global, so it is
@@ -201,7 +199,7 @@ export function AccountMenu({
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className={itemClass}
-              onSelect={() => setAppearanceOpen(true)}
+              onSelect={() => setThemePanelOpen(true)}
             >
               <Palette className="size-4" /> {t("Appearance")}
             </DropdownMenu.Item>
@@ -263,9 +261,6 @@ export function AccountMenu({
       </DropdownMenu.Root>
       {onHelp ? null : <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />}
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} isAdmin={Boolean(user.isAdmin)} />
-      <Dialog open={appearanceOpen} onOpenChange={setAppearanceOpen} title="Appearance" width="w-[min(92vw,46rem)]">
-        <AppearancePicker />
-      </Dialog>
     </>
   );
 }

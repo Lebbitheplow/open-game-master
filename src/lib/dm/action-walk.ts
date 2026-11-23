@@ -1,7 +1,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listStandings } from "@/lib/db/battle-maps";
 import type { BattleToken } from "@/lib/battlemap/types";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
@@ -84,7 +84,9 @@ export function planActionWalk(
   if (!encounter || !map || !me) {
     return { error: `There is no battle map with ${mover.name} on it to walk: drop toward and narrate the move.${tail}`, retry: true };
   }
-  const tokens = listTokens(map.id).filter((token) => token.id !== me.id);
+  // Who stands on the board, a ridden mount by its own name (listStandings):
+  // asked of the pieces, "toward the wolf" under a goblin named nobody.
+  const tokens = listStandings(map.id).filter((token) => token.id !== me.id);
   const target = getTokenByRef(map.id, toward) ?? tokens.find((token) => textKey(token.name) === textKey(toward)) ?? null;
   if (!target || target.id === me.id) {
     const names = tokens.map((token) => token.name);

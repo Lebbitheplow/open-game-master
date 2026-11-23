@@ -33,7 +33,8 @@ import { takeItem } from "@/lib/dm/pact-fire";
 import { replan } from "@/lib/dm/pacts";
 import { publicItemProposal } from "@/lib/dm/proposal-view";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-subject";
-import { revealRolls, secretRoll } from "@/lib/dm/roll-card";
+import { secretRoll } from "@/lib/dm/roll-card";
+import { revealRolls } from "@/lib/dm/roll-record";
 import { isDmSeat } from "@/lib/dm/viewer";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -190,7 +191,7 @@ export function declareSecretAction(campaign: Campaign, sheet: CharacterSheet, i
     at: getClock(campaign.id).instant,
   };
   if (caught) {
-    revealRolls(campaign.id, [roll.rollId]);
+    revealRolls([roll.rollId]);
     const line = `${PACT_REVEAL_PREFIX}${watch!.sheet.name} caught ${sheet.name} ${input.kind === "steal" ? `reaching for ${target!.name}'s ${secret.item}` : `in the act: ${secret.text}`}.`;
     tableLine(campaign, line);
     savePact({ ...pact, secrets: [...pact.secrets, secret] });

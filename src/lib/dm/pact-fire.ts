@@ -32,7 +32,8 @@ import {
 } from "@/lib/dm/pact-logic";
 import { publicItemProposal } from "@/lib/dm/proposal-view";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-subject";
-import { revealRolls, rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
+import { revealRolls } from "@/lib/dm/roll-record";
 import { listPriceCp } from "@/lib/dm/trade-value";
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -46,7 +47,7 @@ import { tableNoteSeq } from "@/lib/dm/narration-slot";
 // companions leave through Phase 2's departure (departNow), or at a Turn
 // table, in a fight, turn on the party through Phase 6's moveToSide. Every
 // secret behind it comes out: its hidden rolls turn public
-// (roll-card.ts revealRolls) and the table is told in a reveal card.
+// (roll-record.ts revealRolls) and the table is told in a reveal card.
 //
 // Must not import src/lib/dm/pacts.ts (it calls in here).
 
@@ -278,7 +279,7 @@ function falseTrail(campaign: Campaign, guide: CharacterSheet, party: readonly C
 // to the DM to resolve with the real tools.
 function revealSecrets(campaign: Campaign, secrets: SecretAction[], byId: Map<string, CharacterSheet>): string[] {
   const held = secrets.filter((secret) => !secret.revealed);
-  revealRolls(campaign.id, held.map((secret) => secret.rollId));
+  revealRolls(held.map((secret) => secret.rollId));
   const lines: string[] = [];
   for (const secret of held) {
     secret.revealed = true;

@@ -158,9 +158,9 @@ export function VoiceDock({
             <span
               key={count}
               className="count-pop absolute -right-1 -top-1 rounded-full bg-gradient-to-b from-amber-300 to-amber-500 px-1 text-[9px] font-semibold leading-3 text-amber-950 shadow-glow-gold md:static md:ml-0.5 md:px-1.5 md:text-[10px] md:leading-4"
-              aria-label={t("{count} on the call", { count })}
             >
-              {count}
+              <span className="sr-only">{t("{count} on the call", { count })}</span>
+              <span aria-hidden="true">{count}</span>
             </span>
           ) : null}
         </button>

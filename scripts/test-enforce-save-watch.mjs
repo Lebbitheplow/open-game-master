@@ -273,6 +273,33 @@ await test("A trap the GM springs with apply_hazard stops for the save it throws
   assert.equal(stops().length, 0, "a fall throws no save");
 });
 
+// The stop's answer runs apply_hazard again from the watch route, outside any
+// counted call (acting-party.ts), so the save's apply_damage read as called
+// on its own and the needle's one hit was kept twice: two hits in the Hand.
+await test("A hazard's save that stops and then fails keeps its damage as one hit for a reaction to answer", async () => {
+  reset();
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  assert.equal((await toggle(artUser, artificer.id, false)).status, 200);
+  assert.equal((await toggle(solUser, sorcerer.id)).status, 200);
+  // The row keeps the hits of the cases above too: only this one's are read.
+  const since = new Date().toISOString();
+  await enemyTurn([modelCall("apply_hazard", { type: "generic", characterIds: [sorcerer.id], saveAbility: "con", dc: 25, damage: "1d4", damageType: "poison", reason: "a poison needle trap" })], "The needle bites.");
+  const [stop] = stops();
+  assert.ok(stop, "the hazard's save stops");
+  // The save's 2 fails even with the god's 2d4; the needle's 1d4 is a 2.
+  world.dice(2, 4, 4, 2);
+  assert.equal((await answer(stop.id, { shift: true }, solUser)).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  // Read as stored: a record written after another closes it once their
+  // times differ, so the open hits alone show a second one on some runs.
+  const row = getDatabase().prepare("SELECT payload_json FROM last_hits WHERE campaign_id = ? AND character_id = ?").get(world.campaignId, sorcerer.id);
+  const kept = row ? JSON.parse(row.payload_json) : [];
+  const effects = (Array.isArray(kept) ? kept : [kept]).filter((hit) => hit.source === "effect" && hit.startedAt >= since);
+  assert.equal(effects.length, 1, `the needle's damage was kept ${effects.length} times`);
+  assert.equal(effects[0].swings[0].raw, world.sheet(sorcerer.id).maxHp - world.sheet(sorcerer.id).currentHp);
+});
+
 // The hours of cold or heat roll their saves through endurance.ts, which
 // neither stopped nor took what a stop armed.
 await test("The cold's hourly saves stop too, and Favored by the Gods lands on the first hour's save that fails.", async () => {

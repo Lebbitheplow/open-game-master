@@ -74,6 +74,21 @@ export function assertSharedCss(css, file) {
   });
 }
 
+// Every image a theme registers: its base set (`art`) and its day set
+// (`artDay`). Each check that reads artwork walks this list, so a day image
+// meets the same contracts as the image it replaces.
+export function themeArtAssets(theme) {
+  return ['art', 'artDay'].flatMap(set => Object.entries(theme[set] ?? {}).map(([slot, asset]) => ({set, slot, asset})));
+}
+
+// `open` turns a registered asset into what sharp reads (a path or a buffer).
+export async function assertThemeArt(theme, open) {
+  for (const {set, slot, asset} of themeArtAssets(theme)) {
+    try { await assertArtAsset(open(asset), slot, theme.cornerScale ?? 1, theme.frameSlice ?? 22); }
+    catch (error) { throw new Error(`${theme.id}/${set}.${slot}: ${error.message}`, {cause: error}); }
+  }
+}
+
 export async function assertArtAsset(input, slot, cornerScale = 1, frameSlice = 22) {
   assert.ok(Number.isFinite(cornerScale) && cornerScale >= 1 && cornerScale <= 8, 'Corner scale must be between 1 and 8');
   assert.ok(Number.isFinite(frameSlice) && frameSlice > 0 && frameSlice < 50, 'Frame slice must be greater than 0 and below 50 percent');
