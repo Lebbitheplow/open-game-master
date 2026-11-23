@@ -34,6 +34,7 @@ import {
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { nameArrivals } from "@/lib/dm/encounter-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { recordTurnChange } from "@/lib/db/turn-changes";
@@ -235,7 +236,9 @@ function standOnBoard(campaign: Campaign, map: BattleMap, caster: Pick<Character
     map.terrain,
     map.width,
     map.height,
-    occupiedTiles(map, tokens, null),
+    // Whole spaces: by their corners, a summon came in inside an ogre or
+    // a rider on a Large mount beside its caster.
+    occupiedTiles(map, tokens, null, tokenFootprint),
     created.length,
     anchor ? [{ x: anchor.x, y: anchor.y }] : tokens.filter((token) => token.kind === "pc").map((token) => ({ x: token.x, y: token.y })),
     tokens.filter((token) => token.kind === "enemy").map((token) => ({ x: token.x, y: token.y })),

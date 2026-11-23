@@ -42,10 +42,34 @@ export function bestFiringPosition(
   return best;
 }
 
+// The squares of a space `footprint` squares a side with its top-left
+// corner at (x,y), or null when any of them is off the board, a wall or
+// taken: where a creature that size may be set down.
+export function openSpace(terrain: string, width: number, height: number, taken: ReadonlySet<number>, x: number, y: number, footprint = 1): number[] | null {
+  const squares: number[] = [];
+  for (let dy = 0; dy < footprint; dy += 1) {
+    for (let dx = 0; dx < footprint; dx += 1) {
+      const at = { x: x + dx, y: y + dy };
+      if (at.x < 0 || at.y < 0 || at.x >= width || at.y >= height) {
+        return null;
+      }
+      const idx = tileIndex(width, at.x, at.y);
+      if (taken.has(idx) || blocksMove(tileAt(terrain, width, at.x, at.y))) {
+        return null;
+      }
+      squares.push(idx);
+    }
+  }
+  return squares;
+}
+
 // Free floor tiles for reinforcement spawns. With anchors (existing enemy
 // tokens) new arrivals cluster near them; otherwise they enter from the
 // ground farthest from the party. Each picked tile becomes occupied for the
-// next pick so a group never stacks.
+// next pick so a group never stacks. `footprints` holds the size of each
+// pick, in order (one square when none is given): an ogre arriving needs
+// four open squares, and set down on one it stood half inside whoever was
+// beside it.
 export function findSpawnTiles(
   terrain: string,
   width: number,
@@ -54,15 +78,17 @@ export function findSpawnTiles(
   count: number,
   anchors: XY[],
   awayFrom: XY[],
+  footprints: readonly number[] = [],
 ): XY[] {
   const taken = new Set(occupied);
   const picks: XY[] = [];
   for (let n = 0; n < count; n += 1) {
-    let best: { at: XY; score: number } | null = null;
+    const size = Math.max(1, footprints[n] ?? 1);
+    let best: { at: XY; score: number; squares: number[] } | null = null;
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        const idx = tileIndex(width, x, y);
-        if (taken.has(idx) || blocksMove(tileAt(terrain, width, x, y))) {
+        const squares = openSpace(terrain, width, height, taken, x, y, size);
+        if (!squares) {
           continue;
         }
         // Lower score wins: distance to the nearest anchor, or (with no
@@ -75,7 +101,7 @@ export function findSpawnTiles(
               ),
             );
         if (!best || score < best.score) {
-          best = { at: { x, y }, score };
+          best = { at: { x, y }, score, squares };
         }
       }
     }
@@ -83,7 +109,9 @@ export function findSpawnTiles(
       break;
     }
     picks.push(best.at);
-    taken.add(tileIndex(width, best.at.x, best.at.y));
+    for (const idx of best.squares) {
+      taken.add(idx);
+    }
   }
   return picks;
 }

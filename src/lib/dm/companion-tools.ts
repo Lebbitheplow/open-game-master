@@ -20,6 +20,7 @@ import {
 } from "@/lib/db/battle-maps";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { spliceIntoOrder } from "@/lib/dm/encounter-logic";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { takeOffBoard } from "@/lib/dm/leave-board";
@@ -653,7 +654,8 @@ export function finalizeNewCompanion(
         map.terrain,
         map.width,
         map.height,
-        occupiedTiles(map, tokens, null),
+        // Whole spaces, so the companion is never set down inside a Large one.
+        occupiedTiles(map, tokens, null, tokenFootprint),
         1,
         tokens.filter((token) => token.kind === "pc").map((token) => ({ x: token.x, y: token.y })),
         tokens.filter((token) => token.kind === "enemy").map((token) => ({ x: token.x, y: token.y })),

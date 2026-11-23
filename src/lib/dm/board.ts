@@ -23,6 +23,7 @@ import {
   type MapPing,
 } from "@/lib/dm/board-logic";
 import { tokenFootprint } from "@/lib/dm/board-reach";
+import { footprintTiles } from "@/lib/battlemap/footprint";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -44,6 +45,9 @@ function boardMap(campaign: Campaign): BattleMap | null {
   return board ? getBattleMapForEncounter(board.id) : null;
 }
 
+// Every square someone stands in, a Large creature or a rider on a Large
+// mount by its whole space: read by its corner, the GM set a token down
+// inside an ogre with no word against it.
 function occupiedExcept(
   map: BattleMap,
   tokens: BattleToken[],
@@ -54,7 +58,9 @@ function occupiedExcept(
     if (token.id === exceptId) {
       continue;
     }
-    taken.add(tileIndex(map.width, token.x, token.y));
+    for (const square of footprintTiles(token, tokenFootprint(token))) {
+      taken.add(tileIndex(map.width, square.x, square.y));
+    }
   }
   return taken;
 }
@@ -89,16 +95,13 @@ export function moveTokenFreely(
   if (!tokens.some((other) => other.id === token.id)) {
     return { error: "That token is not on this board." };
   }
-  const placement = checkPlacement({
-    terrain: map.terrain,
-    width: map.width,
-    height: map.height,
-    occupied: occupiedExcept(map, tokens, token.id),
-    x,
-    y,
-  });
-  if ("error" in placement) {
-    return placement;
+  // A token larger than a square needs every square of its space open.
+  const occupied = occupiedExcept(map, tokens, token.id);
+  for (const square of footprintTiles({ x, y }, tokenFootprint(token))) {
+    const placement = checkPlacement({ terrain: map.terrain, width: map.width, height: map.height, occupied, x: square.x, y: square.y });
+    if ("error" in placement) {
+      return placement;
+    }
   }
   placeToken(token.id, x, y);
   publishBattleMapUpdate(campaign.id);

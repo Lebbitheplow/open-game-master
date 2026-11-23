@@ -28,7 +28,7 @@ const { characterShootsInMelee } = await import("../src/lib/dm/attack-spatial.ts
 const { lashOut } = await import("../src/lib/dm/confusion.ts");
 const { serializeMapForPrompt } = await import("../src/lib/battlemap/serialize.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
-const { readTemplate } = await import("../src/lib/dm/board.ts");
+const { moveTokenFreely, readTemplate } = await import("../src/lib/dm/board.ts");
 
 const ownToken = (world, refId) => listTokens(mapOf(world).id).find((token) => token.refId === refId) ?? null;
 const live = (world, id) => world.enemies().find((enemy) => enemy.id === id);
@@ -203,6 +203,38 @@ await test("The board written out for the GM's model has a line for the mount, w
   // The rows of the grid, their row numbers cut off.
   const grid = text.split(NL).filter((entry) => /^[ 0-9][0-9] \S+$/.test(entry)).map((entry) => entry.slice(3)).join("");
   assert.equal(grid.split(letter).length - 1, 1, `the pair is not drawn once: ${grid}`);
+});
+
+// ---- newcomers set down beside a Large pair ----
+
+const squaresOf = (token, size) => Array.from({ length: size * size }, (_, index) => `${token.x + (index % size)},${token.y + Math.floor(index / size)}`);
+
+await test("Reinforcements come in outside the whole space of a pair on a Large mount, and an ogre among them on four open squares of its own.", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const hero = world.addHero(caster("wizard", "int", ["Fireball"]));
+  await world.beginFight([{ monster: "goblin", mount: "warhorse" }]);
+  const rider = world.enemies().find((enemy) => enemy.ridesEnemyId);
+  // In the corner, so every square a step from the pair's corner is the pair's own.
+  await layMap(world, OPEN(), { [hero.id]: { x: 20, y: 6 }, [rider.id]: { x: 0, y: 0 } });
+  const before = new Set(world.enemies().map((enemy) => enemy.id));
+  const out = await world.invoke("add_enemies", { enemies: [{ monster: "goblin" }, { monster: "ogre" }] });
+  assert.equal(out.ok, true, out.error);
+  const pairSpace = new Set(squaresOf(ownToken(world, rider.id), 2));
+  const newcomers = world.enemies().filter((enemy) => !before.has(enemy.id));
+  assert.equal(newcomers.length, 2, "setup: the two did not arrive");
+  const spaces = newcomers.map((enemy) => squaresOf(ownToken(world, enemy.id), /ogre/i.test(enemy.displayName) ? 2 : 1));
+  for (const space of spaces) {
+    assert.ok(space.every((square) => !pairSpace.has(square)), `a newcomer at ${space.join(" ")} stands inside the pair's space`);
+  }
+  assert.ok(spaces[0].every((square) => !spaces[1].includes(square)), `the newcomers overlap: ${spaces.join(" | ")}`);
+});
+
+await test("The GM's hand cannot set a token down on a square of a Large pair's space that is not its corner.", async () => {
+  const { world, hero } = await pair(caster("wizard", "int", ["Fireball"]), { mount: "warhorse" });
+  const heroToken = ownToken(world, hero.id);
+  const out = moveTokenFreely(world.campaign(), heroToken.id, 13, 5);
+  assert.ok("error" in out, `the hero was set down inside the warhorse's space: ${JSON.stringify(out)}`);
+  assert.deepEqual([ownToken(world, hero.id).x, ownToken(world, hero.id).y], [heroToken.x, heroToken.y]);
 });
 
 // ---- a character's own mount (issue 1036) ----

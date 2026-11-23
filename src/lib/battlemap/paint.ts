@@ -193,17 +193,28 @@ export function paintTerrain(input: PaintInput): PaintOutcome {
 // Where a token would have to stand after the ground under it changed:
 // itself when the tile is still walkable, otherwise the nearest open tile.
 // Used when a fresh map replaces an old one under combatants already on it.
+// `footprint` is the creature's size in squares a side, and the corner
+// returned has its whole space open.
 export function nearestOpenTile(
   terrain: string,
   width: number,
   height: number,
   from: XY,
   taken: Set<number>,
+  footprint = 1,
 ): XY {
-  const walkable = (x: number, y: number) =>
+  const open = (x: number, y: number) =>
     inBounds(width, height, x, y) &&
     !blocksMove(terrain[tileIndex(width, x, y)]) &&
     !taken.has(tileIndex(width, x, y));
+  const walkable = (x: number, y: number) => {
+    for (let dy = 0; dy < footprint; dy += 1) {
+      for (let dx = 0; dx < footprint; dx += 1) {
+        if (!open(x + dx, y + dy)) return false;
+      }
+    }
+    return true;
+  };
   if (walkable(from.x, from.y)) {
     return { x: from.x, y: from.y };
   }

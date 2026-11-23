@@ -24,6 +24,8 @@ import { publishWithSeq } from "@/lib/events";
 import { nearestOpenTile } from "@/lib/battlemap/paint";
 import { tileIndex } from "@/lib/battlemap/types";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { enemyFootprint, footprintTiles } from "@/lib/battlemap/footprint";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { setTokenVisibility } from "@/lib/dm/board";
 import { applyExtraEncounterCall } from "@/lib/dm/encounter-tools-extra";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -108,15 +110,22 @@ function placeArrivals(campaign: Campaign, encounterId: string, arrivals: Encoun
     return;
   }
   const tokens = listTokens(map.id);
-  const taken = occupiedTiles(map, tokens, null);
+  // Whole spaces, the arrivals' own as well: by single squares a wave's ogre
+  // was set down overlapping whoever stood beside the entry.
+  const taken = occupiedTiles(map, tokens, null, tokenFootprint);
   for (const enemy of arrivals) {
     const token = tokens.find((entry) => entry.refId === enemy.id);
     if (!token) {
       continue;
     }
-    taken.delete(tileIndex(map.width, token.x, token.y));
-    const spot = nearestOpenTile(map.terrain, map.width, map.height, anchor, taken);
-    taken.add(tileIndex(map.width, spot.x, spot.y));
+    const size = enemyFootprint(getEnemy(enemy.id) ?? enemy);
+    for (const square of footprintTiles(token, size)) {
+      taken.delete(tileIndex(map.width, square.x, square.y));
+    }
+    const spot = nearestOpenTile(map.terrain, map.width, map.height, anchor, taken, size);
+    for (const square of footprintTiles(spot, size)) {
+      taken.add(tileIndex(map.width, square.x, square.y));
+    }
     placeToken(token.id, spot.x, spot.y);
   }
   publishBattleMapUpdate(campaign.id);

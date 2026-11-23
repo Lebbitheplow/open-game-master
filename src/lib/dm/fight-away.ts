@@ -5,6 +5,7 @@ import { setEncounterAway, type Encounter } from "@/lib/db/encounters";
 import { joinScene } from "@/lib/dm/party-split";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { carriedLightFields, publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -33,7 +34,9 @@ export function arriveAtFight(campaignId: string, encounter: Encounter, sheet: C
     map.terrain,
     map.width,
     map.height,
-    occupiedTiles(map, tokens, null),
+    // Whole spaces: read by their corners, a joiner was set down inside a
+    // Large creature or a rider on a Large mount.
+    occupiedTiles(map, tokens, null, tokenFootprint),
     1,
     tokens.filter((token) => token.kind === "pc").map((token) => ({ x: token.x, y: token.y })),
     tokens.filter((token) => token.kind === "enemy").map((token) => ({ x: token.x, y: token.y })),
