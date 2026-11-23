@@ -245,6 +245,30 @@ not built.
   existing art or a CSS gradient over it; what it costs a phone's battery; how
   the checks prove it stays still when it should.
 
+### Movement at moments, not all the time (2026-11-23)
+
+Albert's direction on 2026-11-23, which replaces "very slowly, all the time"
+above as the starting point. Still not designed in detail and not built.
+
+- Theme artwork does not move constantly. It moves briefly, at a moment, and
+  then rests. Constant movement costs memory and battery for something the
+  reader stops seeing.
+- Fixed moments, the same for every theme: when the theme is first switched to.
+- Story moments, which depend on the theme's mood. A dark theme such as Unquiet
+  Depths stirs when something dramatically bad happens (its limbs writhe for a
+  few seconds). A bright theme such as High Kingdoms stirs at a major good
+  turn. Each theme would declare which kind of moment it answers.
+- Albert's first thought is to leave story moments to the GM. Fable's
+  suggestion, not agreed: start from events the rules engine already records
+  (a character drops to 0 hit points or dies, a critical hit, a fight won, a
+  level gained), so no new control is needed, and add a GM trigger only if
+  those prove not enough. A GM control would have to earn its place under
+  "Settings, options and toggles" in AGENTS.md.
+- Still to settle: the list of events for each mood; whether a theme answers
+  only its own mood or both in different ways; how long a moment lasts; how
+  often it may repeat in a busy fight; that each player sees it in their own
+  theme.
+
 ## Suggested build order
 
 1. Finish PR 962's validation and settle the reusable theme contracts.
