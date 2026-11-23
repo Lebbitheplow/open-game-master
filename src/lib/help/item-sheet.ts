@@ -1,5 +1,6 @@
 import { describeContentEntry } from "@/lib/help";
 import { DAMAGE_TYPE_BLURBS, WEAPON_PROPERTY_BLURBS } from "@/lib/help/terms";
+import { translate } from "@/lib/messages-logic";
 import { armorNamed, type SrdArmor } from "@/lib/srd/armor";
 import { packCostCopper, priceText } from "@/lib/srd/currency";
 import { magicItemBonus, withoutBonus } from "@/lib/srd/item-row";
@@ -21,8 +22,7 @@ type Row = Record<string, unknown>;
 type T = (key: string, vars?: Record<string, string | number>) => string;
 type Locale = "en" | "fr";
 
-const enT: T = (key, vars) =>
-  vars ? key.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, name) => (name in vars ? String(vars[name]) : match)) : key;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export type ItemProperty = { name: string; blurb: string | null };
 
@@ -98,10 +98,10 @@ function weightOf(row: Row, t: T): string | null {
 function localizeCoins(text: string, locale: Locale): string {
   if (locale !== "fr") return text;
   return text
-    .replace(/(^|\s)gp(?=$|\s)/g, "$1po")
-    .replace(/(^|\s)sp(?=$|\s)/g, "$1pa")
-    .replace(/(^|\s)cp(?=$|\s)/g, "$1pc")
-    .replace(/(^|\s)ep(?=$|\s)/g, "$1pe");
+    .replace(/ gp/g, " po")
+    .replace(/ sp/g, " pa")
+    .replace(/ cp/g, " pc")
+    .replace(/ ep/g, " pe");
 }
 
 // v1 rows say "15 gp", v2 rows a bare gold figure ("0.01"), homebrew
@@ -116,105 +116,37 @@ function costOf(row: Row, t: T, locale: Locale): string | null {
   }
   const copper = packCostCopper(text);
   if (copper === null) {
-    return text.toLowerCase() === "varies" ? t("varies") : text;
+    return t(text);
   }
   return copper > 0 ? localizeCoins(priceText(text), locale) : null;
 }
-
-const PROPERTY_LABELS: Record<string, (t: T) => string> = {
-  ammunition: (t) => t("Ammunition"),
-  "double-headed": (t) => t("Double-headed"),
-  finesse: (t) => t("Finesse"),
-  gunpowder: (t) => t("Gunpowder"),
-  heavy: (t) => t("Heavy"),
-  light: (t) => t("Light"),
-  loading: (t) => t("Loading"),
-  magazine: (t) => t("Magazine"),
-  reach: (t) => t("Reach"),
-  special: (t) => t("Special"),
-  thrown: (t) => t("Thrown"),
-  "two-handed": (t) => t("Two-handed"),
-  versatile: (t) => t("Versatile"),
-};
-
-const DAMAGE_TYPE_LABELS: Record<string, (t: T) => string> = {
-  acid: (t) => t("acid"),
-  bludgeoning: (t) => t("bludgeoning"),
-  cold: (t) => t("cold"),
-  fire: (t) => t("fire"),
-  force: (t) => t("force"),
-  lightning: (t) => t("lightning"),
-  necrotic: (t) => t("necrotic"),
-  piercing: (t) => t("piercing"),
-  poison: (t) => t("poison"),
-  psychic: (t) => t("psychic"),
-  radiant: (t) => t("radiant"),
-  slashing: (t) => t("slashing"),
-  thunder: (t) => t("thunder"),
-};
-
-const TYPE_LABELS: Record<string, (t: T) => string> = {
-  "Adventuring gear": (t) => t("Adventuring gear"),
-  "Equipment pack": (t) => t("Equipment pack"),
-  Ammunition: (t) => t("Ammunition"),
-  Mount: (t) => t("Mount"),
-  Shield: (t) => t("Shield"),
-  Armor: (t) => t("Armor"),
-  "Light armor": (t) => t("Light armor"),
-  "Medium armor": (t) => t("Medium armor"),
-  "Heavy armor": (t) => t("Heavy armor"),
-  Weapon: (t) => t("Weapon"),
-  "Simple melee weapon": (t) => t("Simple melee weapon"),
-  "Simple ranged weapon": (t) => t("Simple ranged weapon"),
-  "Martial melee weapon": (t) => t("Martial melee weapon"),
-  "Martial ranged weapon": (t) => t("Martial ranged weapon"),
-  "Magic item": (t) => t("Magic item"),
-  "Wondrous item": (t) => t("Wondrous item"),
-  Potion: (t) => t("Potion"),
-  Ring: (t) => t("Ring"),
-  Rod: (t) => t("Rod"),
-  Scroll: (t) => t("Scroll"),
-  Staff: (t) => t("Staff"),
-  Wand: (t) => t("Wand"),
-};
-
-const RARITY_LABELS: Record<string, (t: T) => string> = {
-  Common: (t) => t("Common"),
-  Uncommon: (t) => t("Uncommon"),
-  Rare: (t) => t("Rare"),
-  "Very rare": (t) => t("Very rare"),
-  Legendary: (t) => t("Legendary"),
-  Artifact: (t) => t("Artifact"),
-};
 
 function propertyOf(raw: string, t: T): ItemProperty {
   const trimmed = raw.trim();
   const paren = trimmed.indexOf(" (");
   const base = (paren === -1 ? trimmed : trimmed.slice(0, paren)).toLowerCase();
   const suffix = paren === -1 ? "" : trimmed.slice(paren).replace(/^\(range /i, `(${t("range")} `);
-  const label = PROPERTY_LABELS[base]?.(t) ?? capitalize(paren === -1 ? trimmed : trimmed.slice(0, paren));
+  const label = t(capitalize(paren === -1 ? trimmed : trimmed.slice(0, paren)));
   const rawBlurb = WEAPON_PROPERTY_BLURBS[base] ?? null;
   return { name: `${label}${suffix}`, blurb: rawBlurb ? t(rawBlurb) : null };
 }
 
 function damageOf(dice: string, type: string, bonus: number, t: T) {
   // A Net's die is "0" (or "0 (restrains)"): it deals no damage.
-  const clean = /^0(?=$|\s)/.test(dice) ? "" : dice;
+  const clean = /^0\b/.test(dice) ? "" : dice;
   const lower = type.toLowerCase();
   const rawBlurb = clean ? (DAMAGE_TYPE_BLURBS[lower] ?? null) : null;
   return {
     damage: clean ? (bonus ? `${clean} + ${bonus}` : clean) : null,
-    damageType: clean && lower ? (DAMAGE_TYPE_LABELS[lower]?.(t) ?? lower) : null,
+    damageType: clean && lower ? t(lower) : null,
     damageBlurb: rawBlurb ? t(rawBlurb) : null,
   };
 }
 
 function weaponFromSrd(weapon: SrdWeapon, bonus: number, t: T): NonNullable<ItemSheet["weapon"]> {
-  const space = weapon.damage.indexOf(" ");
-  const dice = space === -1 ? weapon.damage : weapon.damage.slice(0, space);
-  const rest = space === -1 ? "" : weapon.damage.slice(space + 1);
+  const [dice = "", ...rest] = weapon.damage.split(" ");
   return {
-    ...damageOf(dice, rest, bonus, t),
+    ...damageOf(dice, rest.join(" "), bonus, t),
     range: weapon.rangeFt ? t("{range} ft.", { range: weapon.rangeFt }) : null,
     properties: (weapon.properties ?? []).map((entry) => propertyOf(entry, t)),
   };
@@ -235,14 +167,6 @@ function weaponFromPack(row: Row, bonus: number, t: T): NonNullable<ItemSheet["w
   };
 }
 
-function localizeAc(ac: string, t: T): string {
-  return ac
-    .replace(/Dex/g, t("Dex"))
-    .replace(/Con/g, t("Con"))
-    .replace(/Wis/g, t("Wis"))
-    .replace(/\(max (\d+)\)/g, `(${t("max")} $1)`);
-}
-
 function armorFromSrd(armor: SrdArmor, bonus: number, t: T): NonNullable<ItemSheet["armor"]> {
   const shield = armor.category === "shield";
   const base = armor.baseAc + bonus;
@@ -259,7 +183,7 @@ function armorFromSrd(armor: SrdArmor, bonus: number, t: T): NonNullable<ItemShe
       ? `${base} + ${t("Dex")}`
       : armor.dexCap === 0
         ? String(base)
-        : `${base} + ${t("Dex")} (${t("max")} ${armor.dexCap})`;
+        : `${base} + ${t("Dex")} (max ${armor.dexCap})`;
   return {
     ac,
     dex,
@@ -273,13 +197,10 @@ function armorFromPack(row: Row, bonus: number, t: T): NonNullable<ItemSheet["ar
   const shield = str(row, "category").toLowerCase() === "shield";
   const baseAc = num(row.base_ac) ?? 0;
   const flat = num(row.plus_flat_mod) ?? 0;
-  const acString = localizeAc(
-    str(row, "ac_string")
-      .replace(/Dex modifier/g, "Dex")
-      .replace(/Con modifier/g, "Con")
-      .replace(/Wis modifier/g, "Wis"),
-    t,
-  );
+  const acString = str(row, "ac_string")
+    .replace(/Dex modifier/g, t("Dex"))
+    .replace(/Con modifier/g, t("Con"))
+    .replace(/Wis modifier/g, t("Wis"));
   // A shield's row reads "0 +2": it adds to AC rather than setting it.
   const ac = shield && baseAc === 0 ? `+${flat + bonus}` : bonus ? `${acString} (+${bonus})` : acString;
   const usesDex = row.plus_dex_mod === true;
@@ -372,8 +293,8 @@ export function buildItemSheet(
   if (!type && homebrew) {
     type = homebrew.itemKind === "magic_item" ? "Magic item" : capitalize(String(homebrew.itemKind));
   }
-  if (type && TYPE_LABELS[type]) {
-    type = TYPE_LABELS[type](t);
+  if (type) {
+    type = t(type);
   }
 
   const weight =
@@ -381,7 +302,7 @@ export function buildItemSheet(
   const cost = found.map((row) => costOf(row, t, locale)).find(Boolean) ?? null;
   const description = found.map((row) => describeContentEntry(row)).find(Boolean) ?? null;
   const rawRarity = magic ? capitalize(str(magic, "rarity").toLowerCase()) : null;
-  const rarity = rawRarity ? (RARITY_LABELS[rawRarity]?.(t) ?? rawRarity) : null;
+  const rarity = rawRarity ? t(rawRarity) : null;
   const attunement = found.some(
     (row) => row.requiresAttunement === true || /attunement/i.test(str(row, "requires_attunement")),
   );
