@@ -200,10 +200,12 @@ export function ModifierBreakdown({ expression, caption }: { expression: string;
     return null;
   }
   return (
-    <span className="flex flex-wrap items-center gap-1" aria-label={`Rolls ${expression}`}>
+    <span className="flex flex-wrap items-center gap-1">
+      <span className="sr-only">{`Rolls ${expression}`}</span>
       {parts.map((part, index) => (
         <span
           key={`${part.text}-${index}`}
+          aria-hidden="true"
           className={cn(
             "check-well px-1.5 py-0.5 font-mono text-[11px]",
             part.kind === "flat" && "font-semibold",

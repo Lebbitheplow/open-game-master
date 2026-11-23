@@ -124,8 +124,9 @@ function HandShares({
               <Minus className="size-3.5" />
             </button>
             <span className="px-0.5">{target.name}</span>
-            <span key={mine} className="motion-pop min-w-4 text-center font-mono" aria-label={`${mine} ${unit(mine)}`}>
-              {mine}
+            <span key={mine} className="motion-pop min-w-4 text-center font-mono">
+              <span className="sr-only">{`${mine} ${unit(mine)}`}</span>
+              <span aria-hidden="true">{mine}</span>
             </span>
             <button
               type="button"

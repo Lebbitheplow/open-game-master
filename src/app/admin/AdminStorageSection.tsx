@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { useT, useTp } from "@/lib/locale";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 // What the server keeps and what it weighs (src/lib/ops/retention.ts). The
 // story stays forever; once a day the server clears what nothing reads back
@@ -121,7 +122,7 @@ export function AdminStorageSection() {
   }
 
   if (stats === null) {
-    return <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label={t("Loading storage")} />;
+    return <LoadingBlock className="mt-3 h-16 rounded-xl" label={t("Loading storage")} />;
   }
 
   const report = stats.report;

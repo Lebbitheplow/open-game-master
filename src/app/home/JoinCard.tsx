@@ -52,10 +52,12 @@ export function JoinCard({ inputRef }: { inputRef: RefObject<HTMLInputElement | 
         <label
           key={joinError ? `refused-${shakeKey}` : "calm"}
           className={cn("ts-sigil", joinError && "motion-shake")}
-          aria-label={t("Room code")}
         >
           <input
             ref={inputRef}
+            // On the field itself: the boxes around it are hidden from a
+            // screen reader, and a label's own label does not name its field.
+            aria-label={t("Room code")}
             value={joinCode}
             onChange={(event) => setJoinCode(event.target.value.replace(/\s+/g, ""))}
             required

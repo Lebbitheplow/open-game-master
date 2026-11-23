@@ -222,7 +222,8 @@ export function HandArrange({
   return (
     <div className="flex min-h-0 flex-col">
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="hand-arrange-seats" aria-label={t("{used} of {total} seats chosen", { used, total: HAND_SEATS })}>
+        {/* The sentence beside the seats says the count, so the seats are only its picture. */}
+        <span className="hand-arrange-seats" aria-hidden="true">
           {Array.from({ length: HAND_SEATS }, (_, index) => (
             <span key={index} className="hand-arrange-seat" data-filled={index < used ? "true" : undefined} />
           ))}

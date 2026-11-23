@@ -1288,11 +1288,12 @@ export function BattleMapPanel({
   // boards drawing it let the tabletop take it and close with it, leaving
   // the panel's board bare.
   const gridWith = (picture: HTMLCanvasElement | null, expanded = false) => (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the board is a pan and zoom surface whose keys (arrows, plus, minus, 0, Ctrl+Z) act on the board itself, so it is one Tab stop named for those keys
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the board is a named group, the role its label needs to be read, and a pan and zoom surface whose keys (arrows, plus, minus, 0, Ctrl+Z) act on the board itself, so it is one Tab stop named for those keys
     <div
       ref={attachFrame}
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the board takes Tab so its pan and zoom keys can reach it
       tabIndex={0}
+      role="group"
       aria-label={t("Board view. Scroll or pinch to zoom, drag or use the arrow keys to pan, plus and minus to zoom, 0 to fit.")}
       // A container, so the stage chrome sizes to the board it sits on (the
       // side panel, a phone, the enlarged dialog) and not to the window.
@@ -1449,6 +1450,7 @@ export function BattleMapPanel({
         {drawActive && !nativeBattlefieldActive ? (
           <div
             className="absolute inset-0 z-10 cursor-crosshair"
+            role="img"
             aria-label={t("Drawing surface")}
             data-no-pan=""
             onPointerDown={onDrawDown}

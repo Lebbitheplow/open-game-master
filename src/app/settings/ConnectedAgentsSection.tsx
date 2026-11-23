@@ -18,6 +18,7 @@ import { PlayerPollLinkSetup } from "@/app/settings/PlayerPollLinkSetup";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { stopWordsForPlayer, type StopReason } from "@/lib/agents/webhook-seat-logic";
 import { pluralOf } from "@/lib/messages-logic";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 type Grant = {
   id: string;
@@ -181,7 +182,7 @@ export function ConnectedAgentsSection() {
       ) : null}
 
       {grants === null ? (
-        <div className="skeleton-block h-12 rounded-xl" aria-label={t("Loading connected agents")} />
+        <LoadingBlock className="h-12 rounded-xl" label={t("Loading connected agents")} />
       ) : grants.length === 0 && !creating ? (
         (loadError ? (
           <LoadFailed

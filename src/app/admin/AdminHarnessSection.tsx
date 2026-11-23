@@ -20,6 +20,7 @@ import type { SpeedChannel, SpeedNote } from "@/lib/speed-status";
 import { effortChoices, utilityEffortChoices, withOfferedEffort } from "@/lib/harness/effort-choices";
 import type { HarnessConfig, HarnessId, HarnessStatus } from "@/lib/harness/types";
 import { useRecheckOnReturn } from "@/app/admin/recheck-on-return";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 type Payload = {
   statuses: HarnessStatus[];
@@ -183,7 +184,7 @@ export function AdminHarnessSection({
   if (!data || !draft) {
     return (
       <PageSection id="admin-harness" heading={t("Agent program")} glyph="ui-agent">
-        <div className="skeleton-block h-28 rounded-xl" aria-label={t("Looking for agent programs")} />
+        <LoadingBlock className="h-28 rounded-xl" label={t("Looking for agent programs")} />
       </PageSection>
     );
   }
