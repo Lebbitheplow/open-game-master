@@ -29,6 +29,7 @@ import { openEffect } from "@/lib/dm/last-hit";
 import { castDamage, enemyAttacker } from "@/lib/dm/roll-card";
 import type { RollSource } from "@/lib/db/rolls";
 import { castSource, effectSource } from "@/lib/roll-sources";
+import { asPartOfAHit } from "@/lib/dm/acting-party";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { applyDmMutation, canonicalCondition } from "@/lib/dm/mutations";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -298,14 +299,15 @@ function autoSpellAtPlayer(
     dealt > 0 && parts
       ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, parts, magical: true, spell: true, reason: source })
       : dealt > 0
-      ? applyDmMutation(
+      ? // The hit's record is hitLog's (acting-party.ts asPartOfAHit).
+        asPartOfAHit(() => applyDmMutation(
           campaign,
           turn.id,
           "apply_damage",
           JSON.stringify({ characterId: sheet.id, amount: dealt, ...(cast.damageType ? { type: cast.damageType } : {}), magical: true, spell, reason: source }),
           sheets,
           sheetsById,
-        ).result
+        ).result)
       : {};
   hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ...(parts && dealt > 0 ? { parts } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
   hitLog.close({
@@ -619,6 +621,9 @@ export function handleCastAtPlayer(
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
       // Kept for a reaction to damage taken (last-hit.ts openEffect): a save's
       // damage is no attack's, so until now Deflect Energy had nothing to answer.
+      // This record is the damage's only one: the apply_damage below is told
+      // so (acting-party.ts asPartOfAHit), since a hazard's save and a set
+      // trap's reach this handler outside any counted call.
       const effect = openEffect(campaign.id, sheet.id);
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })
@@ -630,7 +635,7 @@ export function handleCastAtPlayer(
               spell: Boolean(use?.spell ?? args.spell),
               reason,
             })
-        : applyDmMutation(
+        : asPartOfAHit(() => applyDmMutation(
             campaign,
             turn.id,
             "apply_damage",
@@ -644,7 +649,7 @@ export function handleCastAtPlayer(
             }),
             sheets,
             sheetsById,
-          ).result;
+          ).result);
       // The record is handed the source its roll names. A creature's spell
       // is on record as that spell's effect, as it always was: the record of
       // a save's damage names no creature.
