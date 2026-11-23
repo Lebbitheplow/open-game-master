@@ -1,5 +1,6 @@
 import { currentUser, unauthorized } from "@/lib/auth";
 import { withBestEffort } from "@/lib/content/entry-labels";
+import { localizeItemEntryFr } from "@/lib/content/item-descriptions-fr";
 import { catalogPrices } from "@/lib/characters/catalog";
 import { contentPackInstalled } from "@/lib/content/db";
 import { contentScopeFor, unadmittedNames } from "@/lib/content/scope";
@@ -153,6 +154,9 @@ export async function GET(
           ...(itemKind === "magic_item" || packInstalled ? [] : bundledGearRows(q, itemKind)),
         ];
         results = [...results, ...notFiled(results, bundled).slice(0, base.limit ?? 50)];
+      }
+      if (bookLocaleOf(request) === "fr") {
+        results = (results as Array<{ name: string; source?: string; data?: unknown }>).map((entry) => localizeItemEntryFr(entry));
       }
       break;
     }

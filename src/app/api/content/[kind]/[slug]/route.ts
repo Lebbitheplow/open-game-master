@@ -1,6 +1,8 @@
 import { currentUser, unauthorized } from "@/lib/auth";
 import { getEntryDetail } from "@/lib/content";
 import { withBestEffort } from "@/lib/content/entry-labels";
+import { localizeItemEntryFr } from "@/lib/content/item-descriptions-fr";
+import { bookLocaleOf } from "@/lib/rulebook/book";
 import { bundledItemRows, bundledSpellRows } from "@/lib/rulebook/catalog-rows";
 import { bundledGearRow } from "@/lib/workshop/bundled-gear-rows";
 import { contentScopeFor } from "@/lib/content/scope";
@@ -59,9 +61,11 @@ export async function GET(
     return asEntry(entry);
   }
 
+  const french = bookLocaleOf(request) === "fr";
   const entry = getEntryDetail(kind as Parameters<typeof getEntryDetail>[0], decoded);
   if (entry) {
-    return Response.json({ entry: withBestEffort(kind, entry, { classSlug: String(entry.data.class_slug ?? "") || undefined }) });
+    const withLabel = withBestEffort(kind, entry, { classSlug: String(entry.data.class_slug ?? "") || undefined });
+    return Response.json({ entry: kind === "items" && french ? localizeItemEntryFr(withLabel) : withLabel });
   }
   // The bundled book's rows the search serves with no pack ("srd:web",
   // "srd-gear:longsword"), so their info reads with no pack too.
@@ -74,7 +78,7 @@ export async function GET(
           ? bundledGearRow(decoded)
           : null;
   if (bundled) {
-    return Response.json({ entry: bundled });
+    return Response.json({ entry: kind === "items" && french ? localizeItemEntryFr(bundled) : bundled });
   }
   const brewed = homebrewKind ? findHomebrewBySlug(scope.userIds, homebrewKind, decoded) : null;
   return brewed ? asEntry(brewed) : Response.json({ error: "Not found." }, { status: 404 });
