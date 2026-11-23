@@ -24,6 +24,7 @@ import {
 } from "@/lib/db/battle-maps";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { listSheets } from "@/lib/db/sheets";
+import { sceneSheets } from "@/lib/dm/party-split";
 import { generateBattleMap, type GeneratedMap, type MapTheme } from "@/lib/battlemap/generate";
 import { nearestOpenTile, paintTerrain } from "@/lib/battlemap/paint";
 import { compilePaint, emptyPaintIsFine, type PaintRequest } from "@/lib/battlemap/tools";
@@ -252,7 +253,9 @@ export function openScene(
   campaign: Campaign,
   settings: StudioSettings & { summary?: string },
 ): { ok: true; seed: number; encounterId: string } | { error: string } {
-  const sheets = listSheets(campaign.id);
+  // Those in the scene: someone elsewhere while the party is split up
+  // (party-split.ts) stands on no board here.
+  const sheets = sceneSheets(campaign.id, listSheets(campaign.id));
   if (!sheets.length) {
     return { error: "There are no characters to put on a map yet." };
   }

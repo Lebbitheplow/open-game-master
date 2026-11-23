@@ -14,6 +14,8 @@ import { useLingeringEncounter } from "@/app/campaigns/[campaignId]/useLingering
 import { Tooltip } from "@/components/ui/Tooltip";
 import { FloorBanners } from "@/app/campaigns/[campaignId]/FloorBanners";
 import { SideNotice } from "@/app/campaigns/[campaignId]/SideBadge";
+import { ElsewhereNotice } from "@/app/campaigns/[campaignId]/ElsewhereBadge";
+import type { PartyState } from "@/lib/dm/party-logic";
 import { TableWaitBanner } from "@/app/campaigns/[campaignId]/TableWaitBanner";
 import { Hand as CombatHand } from "@/app/campaigns/[campaignId]/Hand";
 import { MonsterHand } from "@/app/campaigns/[campaignId]/MonsterHand";
@@ -85,6 +87,7 @@ function ComposerInner({
   spotlighted,
   heldSpotlightNames,
   encounter,
+  party,
   onReleaseFloor,
   joinBanner,
   notice,
@@ -152,6 +155,9 @@ function ComposerInner({
   spotlighted: CampaignState["sheets"];
   heldSpotlightNames: string[];
   encounter: CampaignState["encounter"];
+  // The party record, for a player whose own character is elsewhere while
+  // the party is split up (ElsewhereBadge.tsx).
+  party?: PartyState;
   onReleaseFloor: () => Promise<void>;
   joinBanner: { text: string; onWriteIntro: () => void; onDismiss: () => void } | null;
   // One more banner in the stack, owned by the caller (narration that was
@@ -376,6 +382,7 @@ function ComposerInner({
           onRelease={onReleaseFloor}
         />
         <SideNotice encounter={encounter ?? null} sheets={sheets} meUserId={meUserId} />
+        <ElsewhereNotice party={party} sheets={sheets} meUserId={meUserId} />
         {floor.mode === "open" && dmStatus === "idle" ? (
           <TableWaitBanner
             campaignId={campaignId}

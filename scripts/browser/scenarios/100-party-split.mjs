@@ -55,6 +55,36 @@ export default {
     await untilStill(page);
     await t.shot("split");
 
+    // ---- The split is kept (issue 951): the table says who is where ----
+    // The scene line under the title names who the story is with, and the
+    // party panel marks whoever is not there. Seren may have slipped away
+    // in the split, so the mark is read off Ilse, who stayed.
+    const sceneLine = page.locator(`${root}.session-heading p`).first();
+    await eventually(async () => /The Old Mill · .*Kael Ashvale/.test((await sceneLine.textContent()) ?? ""), { label: "the scene line naming who the story is with" });
+    check(!/Ilse Marrow/.test((await sceneLine.textContent()) ?? ""), "the scene line leaves out who stayed behind");
+    await openPanelTab(t, "party");
+    const ilse = page.locator(`${root}[data-party-card]`).filter({ hasText: "Ilse Marrow" }).locator("visible=true").first();
+    await eventually(() => ilse.count(), { label: "Ilse's card in the party panel" });
+    const mark = ilse.locator("[data-elsewhere]").first();
+    await eventually(() => mark.count(), { label: "the mark on a character who is elsewhere" });
+    check((await mark.textContent())?.trim().startsWith("At "), `the mark says where: ${await mark.textContent()}`);
+    const kaelCard = page.locator(`${root}[data-party-card]`).filter({ hasText: "Kael Ashvale" }).locator("visible=true").first();
+    check((await kaelCard.locator("[data-elsewhere]").count()) === 0, "nobody the story is with is marked");
+    // The mark comes in, as a combatant's side does (globals.css .side-badge).
+    check((await mark.evaluate((node) => getComputedStyle(node).animationName)) === "side-badge-in", "the mark animates in");
+    await mark.scrollIntoViewIfNeeded();
+    await untilStill(page);
+    await t.shot("elsewhere");
+    // The same in the day theme, where the mark must still read.
+    const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    await untilStill(page);
+    const ink = await mark.evaluate((node) => ({ color: getComputedStyle(node).color, background: getComputedStyle(node).backgroundColor }));
+    check(ink.color !== ink.background, `the mark has ink on its ground in the day theme (${ink.color} on ${ink.background})`);
+    await t.shot("elsewhere-day");
+    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+    await openPanelTab(t, "dm");
+
     // ---- A deed's form: who spoke against it ----
     await tab("social");
     await open("Relationship beat");

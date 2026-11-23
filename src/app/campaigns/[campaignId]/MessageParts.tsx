@@ -174,6 +174,29 @@ export function translateSystemNote(t: T, raw: string): string {
   if (m) {
     return t("{name} mounts up: {mount}.", { name: m[1], mount: translateMountDesc(t, m[2]) });
   }
+  // A party that split up (src/lib/dm/party-split-logic.ts tableLine).
+  m = /^The party is together again at (.+)\.$/.exec(raw);
+  if (m) {
+    return t("The party is together again at {place}.", { place: m[1] });
+  }
+  m = /^Meanwhile, at (.+): (.+)\.$/.exec(raw);
+  if (m) {
+    return t("Meanwhile, at {place}: {names}.", { place: m[1], names: m[2] });
+  }
+  // English keeps the sentence the server wrote; another language gets the
+  // same facts in a form that needs no verb agreed with the names.
+  m = /^The party splits up: (.+) (?:goes|go) to (.+), and (.+) (?:stays|stay)(?: at (.+)| behind)\.$/.exec(raw);
+  if (m) {
+    const said = m[4]
+      ? t("The party splits up. To {place}: {went}. Staying at {from}: {stayed}.", { went: m[1], place: m[2], stayed: m[3], from: m[4] })
+      : t("The party splits up. To {place}: {went}. Staying behind: {stayed}.", { went: m[1], place: m[2], stayed: m[3] });
+    return said.startsWith("The party splits up. To ") ? raw : said;
+  }
+  m = /^(.+) (?:joins|join) the others at (.+)\.$/.exec(raw);
+  if (m) {
+    const said = t("Joining the others at {place}: {names}.", { names: m[1], place: m[2] });
+    return said.startsWith("Joining the others at ") ? raw : said;
+  }
   let out = raw;
   out = out.replace(/^The party takes a short rest \(([^)]+)\)/, (_, dur) =>
     t("The party takes a short rest ({duration})", { duration: translateDuration(t, dur) }),

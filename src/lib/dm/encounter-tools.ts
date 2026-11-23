@@ -11,6 +11,7 @@ import type { SystemGlyph } from "@/lib/system-glyphs";
 import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { atTheFight, resolveAwayNames, withFollowers } from "@/lib/dm/fight-away-logic";
+import { elsewhereBySheet } from "@/lib/dm/party-split";
 import { arriveAtFight } from "@/lib/dm/fight-away";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -400,7 +401,10 @@ function handleStartEncounter(
   if ("error" in away) {
     return { error: away.error, retry: true };
   }
-  const awayIds = withFollowers(away.ids, sheets);
+  // Whoever is elsewhere while the party is split up is not at it either
+  // (issue 951), named in `absent` or not: the fight is where the scene is.
+  const elsewhere = [...elsewhereBySheet(campaign.id, sheets).keys()];
+  const awayIds = withFollowers([...new Set([...away.ids, ...elsewhere])], sheets);
   const awaySheets = sheets.filter((sheet) => awayIds.includes(sheet.id));
   // A creature carrying a rider as a controlled mount fights under them; an
   // independent one rolls its own initiative (mount-link.ts takesOwnTurn).

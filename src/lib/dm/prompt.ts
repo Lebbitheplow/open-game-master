@@ -326,6 +326,10 @@ export type DmGameState = {
   // A player answering someone who just spoke to them
   // (src/lib/dm/conversation-logic.ts): that person answers first.
   conversation?: Conversation | null;
+  // A party split up (src/lib/dm/party-split.ts): the lines that say who the
+  // scene is with, and where each character who is not in it is, by id.
+  splitBlock?: string;
+  elsewhere?: Map<string, string>;
   // Tracked NPCs and how they currently feel about the party, plus a
   // bounded agency fragment (personality leans, bonds, goals, pressure).
   npcs?: Array<{
@@ -1148,6 +1152,9 @@ export function buildGameStateBlock(state: DmGameState): string {
   if (state.conversation) {
     moment.push(conversationNote(state.conversation));
   }
+  if (state.splitBlock) {
+    moment.push(state.splitBlock);
+  }
   if (campaign.scene) {
     sections.push(`Current scene: ${campaign.scene}`);
   }
@@ -1500,9 +1507,13 @@ export function buildGameStateBlock(state: DmGameState): string {
         );
         const events = state.recentEventsByCharacter?.get(sheet.id);
         const between = state.betweenBySheet?.get(sheet.id);
+        // Said on the character's own line too: a long party block is read
+        // line by line, and a small model acted for whoever it found there.
+        const place = state.elsewhere?.get(sheet.id);
+        const placed = place === undefined ? base : `${base}\n  NOT IN THIS SCENE: elsewhere${place ? `, at ${place}` : ""}.`;
         const withBetween = between?.length
-          ? `${base}\n  Afflictions, lifestyle and downtime (server-held): ${between.join(" | ")}`
-          : base;
+          ? `${placed}\n  Afflictions, lifestyle and downtime (server-held): ${between.join(" | ")}`
+          : placed;
         return events?.length
           ? `${withBetween}\n  Recent developments: ${events.join(" | ")}`
           : withBetween;
@@ -1803,7 +1814,7 @@ export const movePartyTool = {
         characterIds: {
           type: "array",
           items: { type: "string" },
-          description: "Only when the party splits up: exact characterIds (GAME STATE) of who goes; the rest stay behind.",
+          description: "When only some go and the rest stay or wait: exact characterIds (GAME STATE) of who goes.",
         },
         aboard: {
           type: "boolean",

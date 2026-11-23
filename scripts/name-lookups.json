@@ -515,7 +515,7 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#partial": [
       [
         "pattern",
-        21,
+        27,
         "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
       ],
       [
@@ -2120,8 +2120,14 @@
     "lib/dm/party-conduct.ts#whole": [["identity",1,"a companion's standing with one character, by its whole name (textKey)"]],
     "lib/dm/party-logic.ts#bypass": [["identity",1,"a stash line by its whole own name and facts"]],
     "lib/dm/party-logic.ts#whole": [["identity",1,"a stash line by its whole own name and facts"]],
-    "lib/dm/party-split.ts#first": [["key",1,"the one name of a list of one, for a sentence"]],
-    "lib/dm/party-split.ts#whole": [["identity",4,"who goes when the party splits, by characterId or whole name (textKey), and whether move_party names only some of them"]],
+    "lib/dm/party-split-logic.ts#whole-single": [["identity",1,"two place names compared whole through textKey, for whether a move goes where a group of a split party is (issue 951)"]],
+    "lib/dm/party-split-logic.ts#partial": [["key",5,"a character id in a group's or a move's list of ids, compared as stored (issue 951)"],["search",1,"a reader's quote held to the words the players wrote, both through textKey: the words being found there is the point, and a miss leaves nobody behind"]],
+    "lib/dm/party-split-logic.ts#keyed": [["key",1,"a character id as the key of the cut's own record of who came into the scene"]],
+    "lib/dm/party-split-logic.ts#whole": [["identity",3,"a character a call or a reader's reply names, by id or whole name through textKey, against those elsewhere or the party (issue 951); a name that fits nobody is nobody"]],
+    "lib/db/locations.ts#partial": [["identity",1,"a follower's recorded place among the places the party left, whole names through textKey (issue 951)"]],
+    "lib/dm/party-split.ts#partial": [["key",2,"a character id in a group's or a read's list of ids, compared as stored (issue 951)"]],
+    "lib/dm/party-split.ts#whole-single": [["identity",1,"the place a move goes to against the place the scene is at, whole names through textKey (issue 951)"]],
+    "lib/dm/party-split.ts#whole": [["identity",2,"who goes when the party splits, by characterId or whole name (textKey)"]],
     "lib/dm/party-story.ts#partial": [["parse",6,"a model draft's quotes and its last sentence end"]],
     "lib/dm/party-tools.ts#bypass": [["identity",2,"the taken line's own name, granted as it was and named in the carrying refusal"]],
     "lib/dm/party-tools.ts#whole": [["identity",1,"a sheet by whole name"]],
