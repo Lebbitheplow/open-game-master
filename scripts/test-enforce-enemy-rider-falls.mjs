@@ -31,6 +31,7 @@ const { pullTokenToward, pushTokenAway } = await import("../src/lib/dm/map-tools
 const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const { saveZones } = await import("../src/lib/dm/zone-store.ts");
 const { zoneTurnStart } = await import("../src/lib/dm/zone-triggers.ts");
+const { endOwnTurn, skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
 
 const HERO = () => caster("paladin", "cha", [], [], 5, { speed: 30 });
 // A hero of a martial subclass, every ability 16.
@@ -500,6 +501,49 @@ await test("A mount the webs catch as it walks is held on the square it was caug
   assert.deepEqual(at(world, rider.id), [entry, 4], "the restrained mount walked on past the square the webs caught it on");
   assert.equal(live(world, rider.id).ridesEnemyId, mount.id, "a mount held by the webs lost its rider");
   assert.equal(ownToken(world, mount.id), null);
+});
+
+// ---- a turn passed outside an engine call ----
+
+// Earthquake laid over the pair by a cleric 50 feet off, every save of the
+// cast made, the pointer on the cleric with nothing owed before them. The
+// ground shakes as the cleric's turn ends, and every save then fails.
+async function quakeOverPair() {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const hero = world.addHero(caster("cleric", "wis", ["Earthquake"], [], 15));
+  await world.beginFight([{ monster: "goblin", mount: "wolf" }]);
+  const rider = world.enemies().find((enemy) => enemy.ridesEnemyId);
+  const mount = world.enemies().find((enemy) => enemy.id === rider.ridesEnemyId);
+  await layMap(world, OPEN(), { [hero.id]: { x: 2, y: 4 }, [rider.id]: { x: 12, y: 4 } });
+  const encounter = world.encounter();
+  const entry = (id) => encounter.order.find((row) => (row.characterId ?? row.enemyId) === id);
+  saveEncounter({ ...encounter, order: [entry(hero.id), entry(rider.id), entry(mount.id)], turnIndex: 0, turnBudget: null, reactionsUsed: [], legendary: { ...encounter.legendary, due: [] } });
+  world.dice(...new Array(12).fill(20));
+  const cast = await world.invoke("use_spell_slot", { characterId: hero.id, spell: "Earthquake", level: 8, atX: 12, atY: 4 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(zonesOf(world).some((zone) => zone.spell === "Earthquake"), "setup: the area is laid");
+  const now = world.encounter();
+  saveEncounter({ ...now, turnIndex: 0, turnBudget: null, legendary: { ...now.legendary, due: [] } });
+  world.dice(...new Array(8).fill(1));
+  return { world, hero, rider, mount };
+}
+
+await test("A mount the ground throws down as its caster's player ends their turn drops its rider then, where nobody was asked and the goblin sat on its fallen wolf.", async () => {
+  const { world, hero, rider, mount } = await quakeOverPair();
+  assert.equal(endOwnTurn(world.campaignId, hero.userId ?? world.owner.id), true, "setup: the player's End Turn was refused");
+  world.clearDice();
+  assert.ok(prone(world, mount.id), "setup: the mount kept its feet");
+  assertParted(world, rider, mount);
+  assert.ok(prone(world, rider.id), "the rider stands, though the ground threw it down too");
+});
+
+await test("A mount the ground throws down as the party lead skips its caster's turn drops its rider then.", async () => {
+  const { world, rider, mount } = await quakeOverPair();
+  assert.equal(skipCurrentTurn(world.campaignId), true, "setup: the skip was refused");
+  world.clearDice();
+  assert.ok(prone(world, mount.id), "setup: the mount kept its feet");
+  assertParted(world, rider, mount);
 });
 
 closeTables();

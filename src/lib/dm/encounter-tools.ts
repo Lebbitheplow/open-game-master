@@ -2622,7 +2622,13 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 // The riders the backstop's enemies knocked prone make the save to stay
 // mounted. settleTurn asks it at the end of an engine call; the backstop
 // plays enemies outside one (after the narration, or resumed after a held
-// roll), so it asks here, once for the stretch it played.
+// roll), so it asks here, once for the stretch it played. A turn a player
+// ends or the lead skips passes outside one too, and the turn's end and the
+// next one's start may knock a rider or a mount prone or push it (an
+// Earthquake at its caster's turn end, a Gust of Wind at a turn's start):
+// asked there as well, before anyone acts. Left to the next engine call, a
+// pair both knocked prone was already prone as that call began, so nobody
+// was asked and the rider sat on its fallen mount.
 function settleBackstopRiders(campaign: Campaign, holder: TurnHolder | null) {
   settleMovedRiders(campaign);
   if (holder) {
@@ -3107,9 +3113,11 @@ function passOwnTurn(campaign: Campaign, characterId: string): boolean {
   // A person moved the fight on: the rounds it may go round alone start
   // again (idledOut). The pass below saves it.
   delete encounter.legendary.idle;
+  const holder = turnHolder(campaign.id);
   if (!advancePointer(campaign, encounter, { announce: endsTurnAnnounce(current) })) {
     return false;
   }
+  settleBackstopRiders(campaign, holder);
   // The death saves the pass rolled may have left nobody able to rise.
   partyFallen(campaign, couldRise);
   // A round this pass began brings on its prepared events (fight-events.ts).
@@ -3306,6 +3314,7 @@ function skipCurrentTurnNow(campaignId: string): boolean {
   const skipped = encounter.order[encounter.turnIndex];
   const couldRise = partyCanRise(encounter);
   delete encounter.legendary.idle;
+  const holder = turnHolder(campaign.id);
   if (
     !advancePointer(campaign, encounter, {
       announce: (next, dying) => passTurnLine(`The party lead skipped ${skipped?.name ?? "the current"}'s turn.`, skipped, next, dying),
@@ -3313,6 +3322,7 @@ function skipCurrentTurnNow(campaignId: string): boolean {
   ) {
     return false;
   }
+  settleBackstopRiders(campaign, holder);
   partyFallen(campaign, couldRise);
   fireFightEvents(campaign);
   return true;
