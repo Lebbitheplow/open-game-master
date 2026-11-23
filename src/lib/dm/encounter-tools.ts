@@ -154,6 +154,7 @@ import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, typ
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { proneRiders, settleProneRiders } from "@/lib/dm/mount-thrown";
+import { pronePairs, settleEnemyRiders } from "@/lib/dm/enemy-rider-falls";
 import { settleMovedRiders } from "@/lib/dm/mount-tools";
 import { onFoot, riderCarriedBy, takesOwnTurn } from "@/lib/dm/mount-link";
 import { rollDeathSave } from "@/lib/dm/death";
@@ -1613,6 +1614,9 @@ export type TurnHolder = {
   // The mounted riders already prone (mount-thrown.ts): the call that lays a
   // rider prone is the one that asks for their save.
   proneRiders: string[];
+  // The enemies in a pair already prone (enemy-rider-falls.ts), for the same
+  // reason.
+  pronePairs: string[];
 };
 
 export function turnHolder(campaignId: string): TurnHolder | null {
@@ -1627,6 +1631,7 @@ export function turnHolder(campaignId: string): TurnHolder | null {
     floor: fightFloor(campaignId),
     partyCouldRise: partyCanRise(encounter),
     proneRiders: proneRiders(campaignId),
+    pronePairs: pronePairs(campaignId),
   };
 }
 
@@ -1669,7 +1674,12 @@ function resumeAfter(before: Pick<TurnHolder, "order" | "turnIndex">, order: Ord
 export function settleTurn(campaign: Campaign, before: TurnHolder | null): string[] {
   // A rider the call pushed, pulled or dragged makes the same save, asked
   // first: one thrown by the move is prone by the fall, which asks no second.
-  const thrown = [...settleMovedRiders(campaign), ...(before ? settleProneRiders(campaign, before.proneRiders) : [])];
+  // An enemy on another enemy is asked the same way (enemy-rider-falls.ts).
+  const thrown = [
+    ...settleMovedRiders(campaign),
+    ...(before ? settleProneRiders(campaign, before.proneRiders) : []),
+    ...settleEnemyRiders(campaign, before?.pronePairs ?? null),
+  ];
   if (before) {
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
@@ -2614,6 +2624,7 @@ function settleBackstopRiders(campaign: Campaign, holder: TurnHolder | null) {
   if (holder) {
     settleProneRiders(campaign, holder.proneRiders);
   }
+  settleEnemyRiders(campaign, holder?.pronePairs ?? null);
 }
 
 function playEnemiesDue(campaign: Campaign, turn: DmTurn) {

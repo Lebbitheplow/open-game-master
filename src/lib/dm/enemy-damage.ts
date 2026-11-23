@@ -36,7 +36,7 @@ import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-w
 import { enemyDefenseLines, meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
-import { partPair } from "@/lib/dm/enemy-riders";
+import { pairWhenDown } from "@/lib/dm/enemy-rider-falls";
 import { endConditionsHeldBy, endVowsOn } from "@/lib/dm/enemy-conditions";
 import { abilityRefusal, enemyHpCap, findMonsterAbility, hasTrait, REGENERATION_STOPPED, regenerationOf, spendAbility } from "@/lib/dm/monster-abilities";
 import { absorbs, relentlessThreshold } from "@/lib/dm/monster-traits";
@@ -691,8 +691,10 @@ export function applyEnemyDamage(
     base.spellEffects = spellEffects;
   }
   // Down but on the board: a rider lies beside its mount, a mount under its
-  // rider's feet (issue 1055, enemy-riders.ts).
-  const laid = knockout || regenerating ? partPair(campaign, enemy, false) : null;
+  // rider's feet (issue 1055, enemy-riders.ts). The rider of a mount that
+  // went down lands on its feet with its reaction, or falls prone
+  // (enemy-rider-falls.ts).
+  const laid = knockout || regenerating ? pairWhenDown(campaign, encounter, enemy, false) : null;
   if (laid) {
     base.pair = laid;
     publishBattleMapUpdate(campaign.id);
@@ -718,8 +720,9 @@ export function applyEnemyDamage(
     // Its mount keeps the space the pair held; its rider keeps their token
     // (issue 1055, ruling 4: enemy-riders.ts). With no board the two part
     // all the same: a rider was left on a dead mount, and a mount under a
-    // dead rider.
-    const parted = partPair(campaign, enemy, true);
+    // dead rider. The rider of a slain mount lands on its feet with its
+    // reaction, or falls prone (enemy-rider-falls.ts).
+    const parted = pairWhenDown(campaign, encounter, enemy, true);
     if (parted) {
       base.pair = parted;
     }
