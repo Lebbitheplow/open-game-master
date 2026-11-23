@@ -40,7 +40,7 @@ import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/moveme
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { seatMountedParty } from "@/lib/dm/mount-space";
-import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { enemyFootprint, spaceRefusal } from "@/lib/battlemap/footprint";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
@@ -1057,6 +1057,23 @@ function riderNamed(
   return { rider, insideMount: at.x >= shared.x && at.x < shared.x + wide && at.y >= shared.y && at.y < shared.y + wide };
 }
 
+// Why the creature on `target` cannot be set down with its corner at `at`
+// by a push or a pull: its whole space must fit, clear of every other
+// token's whole space. A rider the effect named goes alone, one square, and
+// its own mount's space is no obstacle (ruling 6); the pair's token is the
+// mover, so that space is never counted against it.
+function forcedLandingRefusal(
+  map: BattleMap,
+  encounterId: string,
+  target: BattleToken,
+  at: { x: number; y: number },
+  saddle: { insideMount: boolean } | null,
+): "edge" | "wall" | "taken" | null {
+  const footprints = footprintLookup(new Map(listEnemies(encounterId).map((enemy) => [enemy.id, enemy])));
+  const refused = spaceRefusal(map, occupiedTiles(map, listTokens(map.id), target, footprints), at, saddle ? 1 : footprints(target));
+  return refused === "taken" && saddle?.insideMount ? null : refused;
+}
+
 // The rider leaves the saddle for `at`, prone, and the mount stays.
 function leavesSaddle(campaign: Campaign, rider: EncounterEnemy, at: { x: number; y: number }): { moved: true; at: { x: number; y: number } } | { moved: false; reason: string } {
   const thrown = shovedFromSaddle(campaign, rider, at);
@@ -1097,13 +1114,17 @@ export function pushTokenAway(
   if (saddle && "reason" in saddle) {
     return { moved: false, reason: saddle.reason };
   }
-  if (at.x < 0 || at.y < 0 || at.x >= map.width || at.y >= map.height) {
+  // The whole space it goes to (a rider out of the saddle goes alone): read
+  // by its corner, a Large creature or a pair on a Large mount was pushed
+  // half into whoever stood past its far squares.
+  const refused = forcedLandingRefusal(map, encounterId, target, at, saddle);
+  if (refused === "edge") {
     return { moved: false, reason: "the edge of the map is behind it" };
   }
-  if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
+  if (refused === "wall") {
     return { moved: false, reason: "a wall is behind it" };
   }
-  if (!saddle?.insideMount && occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+  if (refused === "taken") {
     return { moved: false, reason: "someone stands behind it" };
   }
   if (saddle) {
@@ -1153,10 +1174,12 @@ export function pullTokenToward(
   if (saddle && "reason" in saddle) {
     return { moved: false, reason: saddle.reason };
   }
-  if (blocksMove(tileAt(map.terrain, map.width, at.x, at.y))) {
+  // Its whole space, as a push reads it (forcedLandingRefusal).
+  const refused = forcedLandingRefusal(map, encounterId, target, at, saddle);
+  if (refused === "edge" || refused === "wall") {
     return { moved: false, reason: "a wall is in the way" };
   }
-  if (!saddle?.insideMount && occupiedTiles(map, listTokens(map.id), target).has(tileIndex(map.width, at.x, at.y))) {
+  if (refused === "taken") {
     return { moved: false, reason: "someone stands in the way" };
   }
   if (saddle) {

@@ -518,6 +518,42 @@ await test("A mount drained to 0 of a score that kills goes down under its rider
   }
 });
 
+// ---- a Large pair moved against its will ----
+
+// A hero at (11,4) beside a goblin on a warhorse holding (12,4) to (13,5),
+// and a second goblin at (14,5), just past the pair's far corner.
+async function largePairBeside() {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const hero = world.addHero(HERO());
+  await world.beginFight([{ monster: "goblin", mount: "warhorse" }, { monster: "goblin" }]);
+  const rider = world.enemies().find((enemy) => enemy.ridesEnemyId);
+  const mount = world.enemies().find((enemy) => enemy.id === rider.ridesEnemyId);
+  const other = world.enemies().find((enemy) => enemy.id !== rider.id && enemy.id !== mount.id);
+  await layMap(world, OPEN(), { [hero.id]: { x: 11, y: 4 }, [rider.id]: { x: 12, y: 4 }, [other.id]: { x: 14, y: 5 } });
+  const encounter = world.encounter();
+  const entry = (id) => encounter.order.find((row) => (row.characterId ?? row.enemyId) === id);
+  saveEncounter({ ...encounter, order: [entry(hero.id), entry(rider.id), entry(mount.id), entry(other.id)], turnIndex: 0, turnBudget: null, reactionsUsed: [] });
+  world.clearDice();
+  return { world, hero, rider, mount, other };
+}
+
+await test("A Large mount shoved toward a creature beside its far corner stays put: the pair's whole space must fit where the push sends it.", async () => {
+  const { world, hero, rider, mount } = await largePairBeside();
+  world.dice(20, 1);
+  const out = await world.invoke("take_action", { characterId: hero.id, action: "shove", targetEnemyId: mount.id, shove: "push" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(at(world, rider.id), [12, 4], "the pair was pushed half into the goblin beside it");
+  assert.equal(mounted(world, rider), true);
+});
+
+await test("A Large mount pushed by Telekinetic Thrust stops before a creature in the way of its far squares.", async () => {
+  const { world, rider, mount } = await largePairBeside();
+  const { pushFoe } = await import("../src/lib/dm/mt-fb-spend.ts");
+  const said = pushFoe({ campaign: world.campaign(), sheet: world.sheets()[0] }, live(world, mount.id), 10);
+  assert.deepEqual(at(world, rider.id), [12, 4], `the pair was pushed half into the goblin beside it: ${JSON.stringify(said)}`);
+});
+
 // ---- a turn passed outside an engine call ----
 
 // Earthquake laid over the pair by a cleric 50 feet off, every save of the

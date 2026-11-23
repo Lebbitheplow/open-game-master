@@ -32,7 +32,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { spellSaveDcFor } from "@/lib/srd";
 import { addDice } from "@/lib/srd/spell-scaling";
-import { blocksMove, chebyshev, tileAt, tileIndex, type BattleToken, type XY } from "@/lib/battlemap/types";
+import { chebyshev, type BattleToken, type XY } from "@/lib/battlemap/types";
 import { hostileTo, layZone, type SpellZone } from "@/lib/battlemap/zones";
 import { zoneRowFor, type ZoneMoment, type ZoneRow, type ZoneTrigger } from "@/lib/battlemap/zones-spells";
 import { holdGasesBack } from "@/lib/battlemap/zones-walls";
@@ -54,7 +54,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
 import { withActor } from "@/lib/dm/acting-party";
 import { tokenFootprint } from "@/lib/dm/board-reach";
-import { footprintIndexes } from "@/lib/battlemap/footprint";
+import { footprintIndexes, spaceRefusal } from "@/lib/battlemap/footprint";
+import { occupiedTiles } from "@/lib/battlemap/view";
 
 // Whether a creature standing at `at` is in an area: any square of its space
 // inside it. A Large ogre with three of its four squares in a Moonbeam was
@@ -121,15 +122,16 @@ function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: nu
   const distance = Math.max(1, chebyshev(zone.origin.x, zone.origin.y, toward.x, toward.y));
   const ux = Math.round((toward.x - zone.origin.x) / distance);
   const uy = Math.round((toward.y - zone.origin.y) / distance);
-  const taken = new Set(listTokens(map.id).filter((other) => other.id !== token.id).map((other) => tileIndex(map.width, other.x, other.y)));
+  // Every other token's whole space, and the pushed one's own: a rider the
+  // area caught goes alone, one square; anyone else, a ridden mount with
+  // its rider, as wide as it stands. By corners alone a pushed Large
+  // creature, or anyone pushed past one, came to rest half inside another.
+  const taken = occupiedTiles(map, listTokens(map.id), token, tokenFootprint);
+  const wide = enemy?.ridesEnemyId && token.refId === enemy.id ? 1 : tokenFootprint(token);
   let at: XY = { x: token.x, y: token.y };
   for (let step = 0; step < Math.floor(feet / 5); step += 1) {
     const next = { x: at.x + ux, y: at.y + uy };
-    if (
-      next.x < 0 || next.y < 0 || next.x >= map.width || next.y >= map.height ||
-      blocksMove(tileAt(map.terrain, map.width, next.x, next.y)) ||
-      taken.has(tileIndex(map.width, next.x, next.y))
-    ) {
+    if (spaceRefusal(map, taken, next, wide)) {
       break;
     }
     at = next;
