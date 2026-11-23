@@ -43,6 +43,7 @@ import {
   seenChips,
   type HandBoardActionDetail,
   type HandBoardControlDetail,
+  composeDisplaySentence,
   composeSentence,
   intentBody,
   previewRows,
@@ -520,6 +521,7 @@ function HandInner({
   // of the raised card from here too (useHandChoices.ts).
   const { choices, resetChoices, barProps } = useHandChoices(raised, aim);
   const sentence = picked ? composeSentence(picked, aim, attachedRiders, choices) : "";
+  const displaySentence = picked ? composeDisplaySentence(picked, aim, attachedRiders, choices, t, locale) : "";
   const rows = useMemo(
     () => (picked ? previewRows(picked, aim ?? (picked.target === "enemy" ? defaultAim : null), conditions, choices, t, locale) : []),
     [picked, aim, defaultAim, conditions, choices, t, locale],
@@ -793,7 +795,7 @@ function HandInner({
     if (!picked) return null;
     const option = (value: string, label: string, disabled: string | null = null) => ({ value, label, disabled });
     const pickedName = cardDisplayName(picked, locale);
-    return { title: pickedName, boardInput: true, lines: [picked.description ?? picked.rules, ...rows.map(row => `${row.key}: ${row.value}`), ...(picked.area ? [pickHint(t, picked.area, barProps.areaPick), ...(hasPick(picked.area, barProps.areaPick) ? [describePick(picked.area, barProps.areaPick)] : [])] : []), t("Sends: {sentence}", { sentence }), ...(notice ? [notice] : [])], controls: [
+    return { title: pickedName, boardInput: true, lines: [picked.description ?? picked.rules, ...rows.map(row => `${row.key}: ${row.value}`), ...(picked.area ? [pickHint(t, picked.area, barProps.areaPick), ...(hasPick(picked.area, barProps.areaPick) ? [describePick(picked.area, barProps.areaPick)] : [])] : []), t("Sends: {sentence}", { sentence: displaySentence }), ...(notice ? [notice] : [])], controls: [
       ...(offered.length ? [{ id: "hand-target" as const, label: t("Target"), value: aim?.id, disabled: null, options: offered.map(target => option(target.id, `${target.name}${target.note ? ` · ${target.note}` : ""}`)) }] : []),
       ...(barProps.options.length ? [{ id: "hand-option" as const, label: t("Attack options (choose to toggle)"), disabled: null, options: barProps.options.map(entry => option(entry.id, `${barProps.chosen.includes(entry.id) ? "✓ " : ""}${entry.label}`, entry.disabled ?? null)) }] : []),
       ...(picked.intent.card === "attack" && cards.some(card => card.type === "rider") ? [{ id: "hand-rider" as const, label: t("Riders (choose to toggle)"), disabled: null, options: cards.filter(card => card.type === "rider").map(card => option(card.id, `${attachedRiders.some(rider => rider.id === card.id) ? "✓ " : ""}${cardDisplayName(card, locale)}`, card.disabled)) }] : []),
@@ -808,7 +810,7 @@ function HandInner({
     ] };
   // `t` is bound to the locale (locale.tsx useT), so it stands for both:
   // listing the two left the React Compiler unable to keep this memo.
-  }, [t, boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
+  }, [t, boardNative, boardSwap, boardChoices, cards, picked, rows, displaySentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
   const nativeSignature = JSON.stringify([campaignId, sheet?.id, signature, nativePanel, sending && !boardSwap]);
   useEffect(() => {
     if (swapReply.current && swapTurn.current !== `${campaignId}:${sheet?.id}:${signature}`) {
@@ -1180,7 +1182,7 @@ function HandInner({
               riders={attachedRiders}
               onDropRider={(rider) => setRiderIds((current) => current.filter((id) => id !== rider.id))}
               rows={rows}
-              sentence={sentence}
+              sentence={displaySentence}
               sending={sending}
               {...barProps}
               onShare={splits ? barProps.onShare : undefined}

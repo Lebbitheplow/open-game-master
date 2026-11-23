@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/locale";
 import { useCapabilities } from "@/lib/use-capabilities";
 import type { ImageBackend } from "@/lib/types";
 
@@ -15,6 +16,7 @@ const noteClass = "reveal text-[11px] leading-4 text-stone-500";
 const warnClass = "reveal text-[11px] leading-4 text-amber-400/90";
 
 export function NarrationNote() {
+  const t = useT();
   const capabilities = useCapabilities();
   const tts = capabilities?.tts;
   // No answer yet, or a server older than these fields: say nothing rather
@@ -25,36 +27,35 @@ export function NarrationNote() {
   if (tts.provider === "off") {
     return (
       <p className={warnClass}>
-        Narration is switched off on this server, so nothing will be read aloud. An admin turns it on in
-        Admin &gt; Speech.
+        {t("Narration is switched off on this server, so nothing will be read aloud. An admin turns it on in Admin > Speech.")}
       </p>
     );
   }
-  const server = tts.provider === "kokoro" ? "the Kokoro speech server" : "an OpenAI-compatible speech server";
-  const where = tts.place === "local" || !tts.place ? "on this server's own network" : `at ${tts.place}`;
+  const server = tts.provider === "kokoro" ? t("the Kokoro speech server") : t("an OpenAI-compatible speech server");
+  const where = tts.place === "local" || !tts.place ? t("on this server's own network") : t("at {place}", { place: tts.place });
   // The server answers but has no model to ask for (an older server sends
   // no such field and says nothing here).
   if (tts.needsModel) {
     return (
       <p className={warnClass}>
-        Narration is on, but {server} {where} has no model picked, so nothing is read aloud until an admin picks
-        one in Admin &gt; Speech.
+        {t("Narration is on, but {server} {where} has no model picked, so nothing is read aloud until an admin picks one in Admin > Speech.", { server, where })}
       </p>
     );
   }
   if (!tts.reachable) {
     return (
       <p className={warnClass}>
-        Narration is on, but {server} {where} is not answering, so passages will stay silent until it does. An
-        admin can test it in Admin &gt; Speech.
+        {t("Narration is on, but {server} {where} is not answering, so passages will stay silent until it does. An admin can test it in Admin > Speech.", { server, where })}
       </p>
     );
   }
   return (
     <p className={noteClass}>
-      Each passage is sent as text to {server} {where} and comes back as audio.
-      {tts.place === "local" || !tts.place ? " Nothing leaves it." : ""} The address, model and key are the
-      server&apos;s, set in Admin &gt; Speech.
+      {t("Each passage is sent as text to {server} {where} and comes back as audio.{local} The address, model and key are the server's, set in Admin > Speech.", {
+        server,
+        where,
+        local: tts.place === "local" || !tts.place ? ` ${t("Nothing leaves it.")}` : "",
+      })}
     </p>
   );
 }
@@ -68,17 +69,19 @@ const PAINTERS: Record<ImageBackend, string> = {
 };
 
 export function ImagesNote({ backend }: { backend: ImageBackend }) {
+  const t = useT();
   const capabilities = useCapabilities();
   if (!capabilities) {
     return null;
   }
   const place = capabilities.images.openaiPlace;
-  const where = backend !== "openai" || !place ? "" : place === "local" ? " on this server's own network" : ` at ${place}`;
+  const where = backend !== "openai" || !place ? "" : place === "local" ? ` ${t("on this server's own network")}` : ` ${t("at {place}", { place })}`;
   return (
     <p className={noteClass}>
-      Pictures are painted by {PAINTERS[backend]}
-      {where}. Its address, model and key are the server&apos;s, set in Admin &gt; Image generation, so every
-      campaign here shares them.
+      {t("Pictures are painted by {painter}{where}. Its address, model and key are the server's, set in Admin > Image generation, so every campaign here shares them.", {
+        painter: t(PAINTERS[backend]),
+        where,
+      })}
     </p>
   );
 }

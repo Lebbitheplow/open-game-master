@@ -43,12 +43,6 @@ function formatSize(bytes: number) {
   return `${Math.max(bytes > 0 ? 1 : 0, Math.round(bytes / 1024))} KB`;
 }
 
-// "{value} live updates", keyed by noun so the table's language speaks:
-// count(t, 3, "admin.storage.liveUpdate"). The key is a plural base
-// (…_one/…_other), which translate() resolves at run time.
-const count = (t: (key: string, vars?: Record<string, string | number>) => string, value: number, key: string) =>
-  t(key, { count: value });
-
 export function AdminStorageSection() {
   const t = useT();
   const tp = useTp();
@@ -148,8 +142,8 @@ export function AdminStorageSection() {
           ) : null}
         </li>
         <li className="plate-row flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-stone-500">
-          <span>{count(t, stats.eventRows, "admin.storage.liveUpdate")}</span>
-          <span>{count(t, stats.usageRows, "admin.storage.usageRow")}</span>
+          <span>{tp("{count} live update", "{count} live updates", { count: stats.eventRows })}</span>
+          <span>{tp("{count} usage row", "{count} usage rows", { count: stats.usageRows })}</span>
           <span>{t("{size} of prompt traces", { size: formatSize(stats.traceBytes) })}</span>
         </li>
         <li className="plate-row flex-wrap gap-2 text-xs text-stone-500">
@@ -161,9 +155,9 @@ export function AdminStorageSection() {
             <span key={report.at} className="live-in">
               {t("Last tidy {date}: {events} cleared, {traces} dropped, {merged} merged, {space} returned.", {
                 date: new Date(report.at).toLocaleString(),
-                events: count(t, report.eventsRemoved, "admin.storage.update"),
-                traces: count(t, report.tracesCleared, "admin.storage.trace"),
-                merged: count(t, report.usageRowsMerged, "admin.storage.usageRow"),
+                events: tp("{count} update", "{count} updates", { count: report.eventsRemoved }),
+                traces: tp("{count} trace", "{count} traces", { count: report.tracesCleared }),
+                merged: tp("{count} usage row", "{count} usage rows", { count: report.usageRowsMerged }),
                 space: formatSize(report.bytesReclaimed),
               })}
             </span>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { ExtrudedTitle } from "@/components/ui/GoldTitle";
 import { prefersReducedMotion } from "@/lib/effects-mode";
+import { useT } from "@/lib/locale";
 import type { TitleCard } from "@/lib/scene/state";
 
 // The title card (docs/vtt-parity-implementation-plan.md section 2.4): a
@@ -50,6 +51,16 @@ const SCRIM: Record<TitleCard["tone"], string> = {
   act: "bg-[radial-gradient(ellipse_at_center,rgba(28,20,44,0.78),rgba(6,4,12,0.9))]",
 };
 
+function translateCardLabel(t: (key: string, vars?: Record<string, string | number>) => string, text: string): string {
+  const ch = /^Chapter (\d+)$/.exec(text);
+  if (ch) return t("Chapter {n}", { n: ch[1] });
+  const act = /^Act ([IVXLCDM\d]+)$/.exec(text);
+  if (act) return t("Act {n}", { n: act[1] });
+  const endAct = /^End of Act ([IVXLCDM\d]+)$/.exec(text);
+  if (endAct) return t("End of Act {n}", { n: endAct[1] });
+  return text;
+}
+
 export function SceneTitle({
   card,
   onShown,
@@ -57,6 +68,7 @@ export function SceneTitle({
   card: TitleCard | null;
   onShown: (id: string) => void;
 }) {
+  const t = useT();
   const [phase, setPhase] = useState<"in" | "hold" | "out" | null>(null);
   const [shownId, setShownId] = useState<string | null>(null);
   const reduced = prefersReducedMotion();
@@ -108,6 +120,9 @@ export function SceneTitle({
     return null;
   }
 
+  const title = translateCardLabel(t, card.title);
+  const subtitle = card.subtitle ? translateCardLabel(t, card.subtitle) : undefined;
+
   if (reduced) {
     return (
       <div
@@ -115,8 +130,8 @@ export function SceneTitle({
         className="pointer-events-none fixed inset-x-0 top-16 z-[70] flex justify-center px-4"
       >
         <div className="rounded-lg border border-stone-700 bg-stone-950/95 px-4 py-2 text-center shadow-elev-2">
-          <p className="font-display text-lg text-stone-100">{card.title}</p>
-          {card.subtitle ? <p className="text-xs text-stone-400">{card.subtitle}</p> : null}
+          <p className="font-display text-lg text-stone-100">{title}</p>
+          {subtitle ? <p className="text-xs text-stone-400">{subtitle}</p> : null}
         </div>
       </div>
     );
@@ -142,11 +157,11 @@ export function SceneTitle({
         <div className="announce-fly">
           <div className="announce-breathe">
             <ExtrudedTitle tone={card.tone} className="text-4xl sm:text-6xl">
-              {card.title}
+              {title}
             </ExtrudedTitle>
           </div>
         </div>
-        {card.subtitle ? <p className="announce-sub mt-4 font-display text-[11px] sm:text-sm">{card.subtitle}</p> : null}
+        {subtitle ? <p className="announce-sub mt-4 font-display text-[11px] sm:text-sm">{subtitle}</p> : null}
         <span className="announce-ring" aria-hidden="true" />
         {SPARKS.map((spark, index) => (
           <span key={index} aria-hidden="true" className={cn("announce-spark", index % 3 === 0 && "announce-spark-hot")} style={spark} />
