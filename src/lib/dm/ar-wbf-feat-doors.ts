@@ -80,8 +80,9 @@ function telekineticShove(campaign: Campaign, sheet: CharacterSheet, args: DoorA
   if (save?.success) {
     return { ok: true, resource: "Telekinetic", cost: "their bonus action", dc, save: save.total, saved: true, applied: `${targetName} holds its ground (a ${save.total ?? "success"} against DC ${dc}).` };
   }
-  const pushed = pushTokenAway(campaign, encounter.id, sheet.id, targetId);
-  // A willing ally and their mount go where they agreed to: no save to stay on (mount-moved.ts).
+  // A willing ally is moved with their mount under them (map-tools.ts): no
+  // save to stay on (mount-moved.ts), and nobody leaves the saddle.
+  const pushed = pushTokenAway(campaign, encounter.id, sheet.id, targetId, !save);
   if (!save) {
     mountWentWillingly(campaign.id, targetId);
   }

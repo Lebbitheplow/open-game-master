@@ -1,5 +1,7 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
-import { mountMoved } from "@/lib/dm/mount-moved";
+import { mountMoved, wentWithMount } from "@/lib/dm/mount-moved";
+import { pushedFromSaddle } from "@/lib/dm/pc-rider-push";
+import { getMounts } from "@/lib/db/mounts";
 import { enemyMountMoved, forcedEnemyMove, movedWithMount, shovedFromSaddle } from "@/lib/dm/enemy-rider-falls";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
@@ -43,7 +45,7 @@ import { seatMountedParty } from "@/lib/dm/mount-space";
 import { enemyFootprint, spaceRefusal } from "@/lib/battlemap/footprint";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
-import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
+import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 
 import {
   blocksMove,
@@ -774,6 +776,40 @@ export function handleMoveToken(
       };
     }
   }
+  // The same for a character (pc-rider-push.ts): named by their own id they
+  // are the rider. A creature mount that keeps its own turn is named by its
+  // own, which is the mount moved, answered below with the pair on it.
+  if (args.forced && resolved.kind === "pc" && resolved.sheet?.id === resolved.token.refId && getMounts(campaign.id)[resolved.sheet.id]) {
+    const rider = resolved.sheet;
+    if (wentWithMount(campaign.id, rider.id)) {
+      return {
+        ok: true,
+        name: moverName,
+        at: `(${resolved.token.x},${resolved.token.y})`,
+        note: `${moverName} went with their mount, which this call already moved: the pair moved as one, and the rider saves once to stay on.`,
+      };
+    }
+    const way = findPath(map.terrain, map.width, map.height, occupied, resolved.token, { x: args.x, y: args.y }, 1, resolved.token.movement === "fly", false);
+    if (!way) {
+      return { error: `No path to (${args.x},${args.y}); walls block the way.`, retry: true };
+    }
+    const from = { x: resolved.token.x, y: resolved.token.y };
+    const out = pushedFromSaddle(campaign, map, rider.id, { x: args.x, y: args.y });
+    if (out) {
+      publishBattleMapUpdate(campaign.id);
+      releaseGrapplesOutOfReach(campaign);
+      const leashesEnded = afterMoveLeashes(campaign);
+      const zoneEffects = zonesAfterMove(campaign, encounter.id, { kind: "pc", refId: rider.id }, from, walkedPart(way, out.at), {});
+      return {
+        ok: true,
+        name: moverName,
+        at: `(${out.at.x},${out.at.y})`,
+        ...(zoneEffects.length ? { zoneEffects } : {}),
+        ...(leashesEnded.length ? { released: leashesEnded.join(" ") } : {}),
+        note: `${moverName} was taken out of the saddle and is at (${out.at.x},${out.at.y}); their mount stays where the pair stood. No save to stay mounted.`,
+      };
+    }
+  }
   // An enemy walking on its own passes its allies and squeezes where it
   // must (enemy-approach.ts enemyMoveTraits); a forced move does neither.
   const traits =
@@ -962,8 +998,9 @@ export function handleMoveToken(
       mountMoved(campaign.id, entry.token.refId);
     }
   }
-  // A push, a drag or a carry that moved a rider moved their mount against
-  // its will: their save to stay on is asked as this call finishes.
+  // A push, a drag or a carry that moved the pair's token moved the mount
+  // against its will: the rider's save to stay on is asked as this call
+  // finishes. One that named the rider was answered above, and took them alone.
   if (args.forced && resolved.token.kind === "pc" && (landing.x !== origin.x || landing.y !== origin.y)) {
     mountMoved(campaign.id, moverId);
   }
@@ -1064,6 +1101,38 @@ function riderNamed(
   return { rider, insideMount: at.x >= shared.x && at.x < shared.x + wide && at.y >= shared.y && at.y < shared.y + wide };
 }
 
+// The same question of a character (pc-rider-push.ts): the push was given
+// their own id, and they ride. Null for a character on foot, for a creature
+// mount named by its own id (the pair's token is its rider's), and for a move
+// the rider agreed to, which their mount makes with them.
+function characterRiderNamed(
+  campaignId: string,
+  targetRef: string,
+  shared: BattleToken,
+  at: { x: number; y: number },
+  willing: boolean,
+): { riderId: string; insideMount: boolean } | { reason: string } | null {
+  if (willing || shared.kind !== "pc" || shared.refId !== targetRef || !getMounts(campaignId)[shared.refId]) {
+    return null;
+  }
+  if (wentWithMount(campaignId, shared.refId)) {
+    return { reason: "they went with their mount, which this already moved: the pair moved as one, and the rider saves once to stay on" };
+  }
+  const wide = tokenFootprint(shared);
+  return { riderId: shared.refId, insideMount: at.x >= shared.x && at.x < shared.x + wide && at.y >= shared.y && at.y < shared.y + wide };
+}
+
+// The character leaves the saddle for `at`, and the mount stays.
+function characterLeavesSaddle(campaign: Campaign, map: BattleMap, riderId: string, at: { x: number; y: number }): { moved: true; at: { x: number; y: number } } | { moved: false; reason: string } {
+  const thrown = pushedFromSaddle(campaign, map, riderId, at);
+  if (!thrown) {
+    return { moved: false, reason: "there is no saddle to leave" };
+  }
+  releaseGrapplesOutOfReach(campaign);
+  publishBattleMapUpdate(campaign.id);
+  return { moved: true, at: thrown.at };
+}
+
 // Why the creature on `target` cannot be set down with its corner at `at`
 // by a push or a pull: its whole space must fit, clear of every other
 // token's whole space. A rider the effect named goes alone, one square, and
@@ -1100,6 +1169,9 @@ export function pushTokenAway(
   encounterId: string,
   pusherRef: string,
   targetRef: string,
+  // The target lets itself be moved (an ally's Telekinetic shove): a rider's
+  // mount goes with them, and nobody leaves the saddle.
+  willing = false,
 ): { moved: true; at: { x: number; y: number } } | { moved: false; reason: string } {
   const map = getBattleMapForEncounter(encounterId);
   const pusher = map ? getTokenByRef(map.id, pusherRef) : null;
@@ -1117,7 +1189,7 @@ export function pushTokenAway(
     x: target.x + Math.sign(target.x - pusher.x),
     y: target.y + Math.sign(target.y - pusher.y),
   };
-  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : characterRiderNamed(campaign.id, targetRef, target, at, willing);
   if (saddle && "reason" in saddle) {
     return { moved: false, reason: saddle.reason };
   }
@@ -1135,12 +1207,15 @@ export function pushTokenAway(
     return { moved: false, reason: "someone stands behind it" };
   }
   if (saddle) {
-    return leavesSaddle(campaign, saddle.rider, at);
+    return "rider" in saddle ? leavesSaddle(campaign, saddle.rider, at) : characterLeavesSaddle(campaign, map, saddle.riderId, at);
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
-  // A rider pushed is a mount moved against its will (mount-moved.ts).
+  // The pair's token pushed with the pair on it (the mount was named) is a mount moved against its will (mount-moved.ts),
+  // unless they let it happen.
   if (target.kind === "pc") {
-    mountMoved(campaign.id, target.refId);
+    if (!willing) {
+      mountMoved(campaign.id, target.refId);
+    }
   } else if (target.kind === "enemy") {
     enemyMountMoved(campaign.id, targetRef);
   }
@@ -1177,7 +1252,7 @@ export function pullTokenToward(
     x: target.x + Math.sign(puller.x - target.x),
     y: target.y + Math.sign(puller.y - target.y),
   };
-  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : null;
+  const saddle = target.kind === "enemy" ? riderNamed(campaign.id, targetRef, target, at) : characterRiderNamed(campaign.id, targetRef, target, at, false);
   if (saddle && "reason" in saddle) {
     return { moved: false, reason: saddle.reason };
   }
@@ -1190,10 +1265,11 @@ export function pullTokenToward(
     return { moved: false, reason: "someone stands in the way" };
   }
   if (saddle) {
-    return leavesSaddle(campaign, saddle.rider, at);
+    return "rider" in saddle ? leavesSaddle(campaign, saddle.rider, at) : characterLeavesSaddle(campaign, map, saddle.riderId, at);
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
-  // A rider pulled is a mount moved against its will (mount-moved.ts).
+  // The pair's token pulled with the pair on it is a mount moved against its
+  // will (mount-moved.ts).
   if (target.kind === "pc") {
     mountMoved(campaign.id, target.refId);
   } else if (target.kind === "enemy") {

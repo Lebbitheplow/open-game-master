@@ -2045,6 +2045,7 @@
     "lib/dm/map-tools.ts#fallback": [["key",1,"a sheet's spawn tile, else the map's first"],["key",1,"an ally's free party tile, else the party's last"],["identity",1,"a move target by id, then whole display name"]],
     "lib/dm/map-tools.ts#first": [["key",1,"the nearest open square (no text names it)"],["key",1,"a sheet's spawn tile, else the party's first (no text names it)"]],
     "lib/dm/map-tools.ts#whole": [["identity",1,"a target by whole name"],["key",1,"a board token by its own id, as the battle map's view lists it"]],
+    "lib/dm/map-tools.ts#whole-single": [["key",1,"the id a push or a pull was given against the id of the token it moves: a character's own names the rider, a creature mount's its mount"]],
     "lib/dm/memory-index.ts#helper": [["search",2,"lexical scoring of retrieved passages"]],
     "lib/dm/message-edit-logic.ts#partial": [["parse",1,"roll markers"]],
     "lib/dm/model.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
