@@ -125,7 +125,7 @@ function propertyOf(raw: string, t: T): ItemProperty {
   const trimmed = raw.trim();
   const paren = trimmed.indexOf(" (");
   const base = (paren === -1 ? trimmed : trimmed.slice(0, paren)).toLowerCase();
-  const suffix = paren === -1 ? "" : trimmed.slice(paren).replace(/^\(range /i, `(${t("range")} `);
+  const suffix = paren === -1 ? "" : trimmed.slice(paren).replace("(range ", `(${t("range")} `);
   const label = t(capitalize(paren === -1 ? trimmed : trimmed.slice(0, paren)));
   const rawBlurb = WEAPON_PROPERTY_BLURBS[base] ?? null;
   return { name: `${label}${suffix}`, blurb: rawBlurb ? t(rawBlurb) : null };

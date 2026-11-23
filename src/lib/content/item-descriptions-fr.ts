@@ -131,8 +131,12 @@ const GEAR_DESC_FR: Record<string, string> = {
 };
 
 function stripLeadingMeta(md: string): string {
-  const idx = md.indexOf("\n\n");
-  return idx === -1 ? md : md.slice(idx + 2).trim();
+  for (let i = 0; i < md.length - 1; i += 1) {
+    if (md[i] === "\n" && md[i + 1] === "\n") {
+      return md.slice(i + 2).trim();
+    }
+  }
+  return md;
 }
 
 export function frenchItemDescription(name: string): string | null {
