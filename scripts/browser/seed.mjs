@@ -3109,6 +3109,75 @@ const opportunityTables = {};
   }
 }
 
+// Two names on a mounted pair's token (issue 1055, ruling 5): tables the
+// player runs, a goblin on a wolf beside the lead's fighter on an open board.
+// On `ride` it is the wolf's turn: the GM walks the pair away and the lead's
+// card offers the goblin or the wolf. On `aim` it is the fighter's turn: she
+// taps the pair's token to attack and is asked which of the two
+// (scripts/browser/scenarios/147-rider-two-names.mjs).
+const RIDEBY_TITLE = "Rideby Table";
+const ridebyTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    ridebyTables[viewport] = {};
+    for (const part of ["ride", "aim"]) {
+      const table = campaigns.createCampaign(player.id, {
+        title: `${RIDEBY_TITLE} (${viewport}, ${part})`,
+        description: "A goblin on a wolf, close enough to touch.",
+        theme: "high-fantasy",
+        maxPlayers: 6,
+        startingLevel: 5,
+        difficulty: "normal",
+        gameSettings: { ttsEnabled: false, dmMode: "human" },
+      });
+      const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+      if ("error" in seated) {
+        throw new Error(`could not seat the lead at the rideby table: ${seated.error}`);
+      }
+      campaigns.setCampaignStatus(table.id, "active");
+      const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
+        name: "Wren Ashby", class: "fighter", level: 5, abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+        proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+        equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+      }));
+      clearDice();
+      dice(1, 1, 18);
+      const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+        name: "start_encounter",
+        args: { enemies: [{ monster: "goblin", mount: "wolf" }] },
+      });
+      clearDice();
+      if (!started.ok) {
+        throw new Error(`the rideby table's fight did not start: ${started.error}`);
+      }
+      const encounter = encounterRows.getActiveEncounter(table.id);
+      const board = maps.getBattleMapForEncounter(encounter.id);
+      maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+      getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+      const rows = encounterRows.listEnemies(encounter.id);
+      const rider = rows.find((enemy) => enemy.ridesEnemyId);
+      const mount = rows.find((enemy) => enemy.id === rider?.ridesEnemyId);
+      if (!rider || !mount) {
+        throw new Error("the rideby table has no goblin on a wolf");
+      }
+      // Hardy enough that a Strike never ends the fight under the scenario.
+      getDatabase().prepare("UPDATE encounter_enemies SET max_hp = 200, current_hp = 200 WHERE encounter_id = ?").run(encounter.id);
+      for (const token of maps.listTokens(board.id)) {
+        maps.moveToken(token.id, token.refId === hero.id ? 2 : 3, 6, 0);
+      }
+      // Whose turn it is: the wolf's for the ride past, the fighter's to aim.
+      const live = encounterRows.getActiveEncounter(table.id);
+      const turnIndex = live.order.findIndex((slot) => (part === "ride" ? slot.enemyId === mount.id : slot.characterId === hero.id));
+      encounterRows.saveEncounter({ ...live, turnIndex, turnBudget: null, reactionsUsed: [], legendary: { ...live.legendary, due: part === "ride" ? [mount.id] : [], acted: null } });
+      ridebyTables[viewport][part] = { id: table.id, hero: hero.id, rider: rider.id, riderName: rider.displayName, mount: mount.id, mountName: mount.displayName };
+    }
+  }
+}
+
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
 // player runs, at real_allowed, in a fight with one goblin beside the lead's
 // fighter, whose Piercer and Savage Attacker change the damage dice. It is
@@ -4613,6 +4682,7 @@ const ids = {
   chronalWatchTables,
   twoHandsTables,
   opportunityTables,
+  ridebyTables,
   damageStepTables,
   healingDiceTables,
   hitDiceTables,
@@ -4754,6 +4824,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(opportunityTables).map(([viewport, table]) => [table.id, `${OPPORTUNITY_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(ridebyTables).flatMap(([viewport, parts]) => Object.entries(parts).map(([part, table]) => [table.id, `${RIDEBY_TITLE} (${viewport}, ${part})`]))),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(healingDiceTables).map(([viewport, table]) => [table.id, `${HEALING_DICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(hitDiceTables).map(([viewport, table]) => [table.id, `${HIT_DICE_TITLE} (${viewport})`])),

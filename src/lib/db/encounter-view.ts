@@ -97,6 +97,10 @@ export type PublicEncounter = {
     // when unrecorded, and nothing a player could not already see.
     race?: string;
     gender?: string;
+    // The enemy this one rides (issue 1055): the two stand on one token, the
+    // rider's, so a tap on it has to ask which of them is meant. Absent on
+    // foot, and when the mount is not in this viewer's list.
+    ridesEnemyId?: string;
     // Kept off the players' board and tracker by the DM. Only ever true in
     // the DM's own projection: a hidden enemy is absent from a player's.
     hidden: boolean;
@@ -437,6 +441,7 @@ export function publicEncounter(
       type: creatureTypeOf(enemy.stats),
       slug: enemy.slug,
       ...lookOf(cast, enemy),
+      ...(enemy.ridesEnemyId && (showNumbers || !hidden.has(enemy.ridesEnemyId)) ? { ridesEnemyId: enemy.ridesEnemyId } : {}),
       groupKey: enemy.slug,
       // Knocked out by a nonlethal blow (src/lib/dm/knockout.ts): alive at
       // 0 hit points, out of the fight, not dying.

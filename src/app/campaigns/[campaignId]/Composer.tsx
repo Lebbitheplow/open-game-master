@@ -30,6 +30,7 @@ import {
 import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
 import { WatchCard, WatchToggle } from "@/app/campaigns/[campaignId]/WatchCard";
 import { OpportunityCard } from "@/app/campaigns/[campaignId]/OpportunityCard";
+import { monsterPlaceholder } from "@/lib/placeholders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { balanceLeft, holdsBeforeRoll, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -337,6 +338,10 @@ function ComposerInner({
             meUserId={meUserId}
             steersStory={steersStory}
             smiteOffered={hostOffers(capabilities, "opportunitySmite")}
+            faceOf={(enemyId) => {
+              const foe = encounter?.enemies.find((enemy) => enemy.id === enemyId);
+              return foe ? [monsterPlaceholder(foe.type, { cr: foe.cr, genre: genre ?? undefined, seed: foe.name, slug: foe.slug, name: foe.name, race: foe.race, gender: foe.gender })] : [];
+            }}
           />
         ) : pending.parkedFor === "watch" ? (
           <WatchCard

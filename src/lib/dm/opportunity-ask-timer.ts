@@ -16,6 +16,7 @@ import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getPendingRoll, listOpenOpportunityAsks, setPendingCarry, type PendingRoll } from "@/lib/db/dm-turns";
 import type { RollResult } from "@/lib/dice";
 import { tableBreakOn } from "@/lib/dm/table-break";
+import { chosenOfPair } from "@/lib/dm/opportunity-ask-logic";
 
 const BREAK_RECHECK_MS = 5000;
 
@@ -25,14 +26,16 @@ const NO_DICE: RollResult = { expression: "0", total: 0, terms: [] };
 
 // The answer, written on the card and landed: the walk's call runs again with
 // it. Null when the card was already answered.
-export async function answerOpportunityAsk(campaign: Campaign, pending: PendingRoll, answer: { strike: boolean; smite?: boolean; timedOut?: boolean }) {
+export async function answerOpportunityAsk(campaign: Campaign, pending: PendingRoll, answer: { strike: boolean; smite?: boolean; target?: string; timedOut?: boolean }) {
   const ask = pending.carry?.ask;
   if (!ask || pending.status !== "pending") {
     return null;
   }
   // A smite only on a swing, and only where the card offered one.
   const smite = answer.strike && answer.smite === true && ask.smiteSlot !== undefined;
-  const carry = { ...pending.carry, ask: { ...ask, strike: answer.strike, ...(smite ? { smite: true } : {}), ...(answer.timedOut ? { timedOut: true } : {}) } };
+  // Which of a mounted pair, only where the card offered a rider.
+  const target = answer.strike ? chosenOfPair(ask, answer.target) : undefined;
+  const carry = { ...pending.carry, ask: { ...ask, strike: answer.strike, ...(smite ? { smite: true } : {}), ...(target ? { target } : {}), ...(answer.timedOut ? { timedOut: true } : {}) } };
   const written = setPendingCarry(pending.id, carry);
   if (!written) {
     return null;
