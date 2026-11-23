@@ -515,7 +515,7 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#partial": [
       [
         "pattern",
-        27,
+        34,
         "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"
       ],
       [

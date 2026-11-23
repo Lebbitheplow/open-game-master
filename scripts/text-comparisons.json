@@ -3987,7 +3987,7 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#re-word": [
       [
         "display",
-        65,
+        73,
         "display-only translation of DB-stored English system note and player action templates"
       ]
     ],
@@ -4008,7 +4008,7 @@
     "app/campaigns/[campaignId]/MessageParts.tsx#str-eq": [
       [
         "display",
-        21,
+        24,
         "display-only translation of DB-stored English system note and player action templates"
       ]
     ],

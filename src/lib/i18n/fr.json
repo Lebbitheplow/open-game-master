@@ -10625,6 +10625,21 @@
     "independent (acts on its own turn)": "indépendante (agit à son propre tour)",
     "{name} mounts up: {mount}.": "{name} monte en selle : {mount}.",
     "{duration} pass:": "{duration} s’écoulent :",
+    "{duration} passes:": "{duration} s’écoule :",
+    "{duration} passes.": "{duration} s’écoule.",
+    "{duration} pass.": "{duration} s’écoulent.",
+    "{n} success": "{n} réussite",
+    "{n} successes": "{n} réussites",
+    "{n} failure": "{n} échec",
+    "{n} failures": "{n} échecs",
+    "{rider} is knocked out of the saddle; {mount} stays.": "{rider} vide les étriers ; {mount} reste sur place.",
+    "{rider} is knocked prone and falls from {mount}.": "{rider} tombe de {mount} et se retrouve à terre.",
+    "{rider} is thrown from {mount}.": "{mount} désarçonne {rider}.",
+    "{mount} goes down; {rider} jumps clear and lands on its feet.": "{mount} s’effondre ; {rider} saute à temps et retombe sur ses pieds.",
+    "{mount} goes down; {rider} jumps clear and lands on their feet.": "{mount} s’effondre ; {rider} saute à temps et retombe sur ses pieds.",
+    "{mount} goes down and {rider} falls with it.": "{mount} s’effondre et {rider} tombe avec sa monture.",
+    "Onto {mount}: half your speed.": "En montant sur {mount} : la moitié de ta vitesse.",
+    "Onto a creature beside you: half your speed.": "Sur une créature à côté de toi : la moitié de ta vitesse.",
     "It is {character}'s turn again.": "C’est de nouveau le tour de {character}.",
     "{character} ends their turn.": "{character} termine son tour.",
     "{enemies} act before {character}.": "{enemies} agissent avant {character}.",
@@ -10673,7 +10688,6 @@
     "the Kokoro speech server": "le serveur vocal Kokoro",
     "an OpenAI-compatible speech server": "un serveur vocal compatible OpenAI",
     "on this server's own network": "sur le réseau local de ce serveur",
-    "at {place}": "à {place}",
     "Narration is on, but {server} {where} has no model picked, so nothing is read aloud until an admin picks one in Admin > Speech.": "La narration est activée, mais aucun modèle n’est choisi sur {server} {where} ; rien ne sera lu à voix haute tant qu’un admin n’en sélectionnera pas un dans Admin > Voix.",
     "Narration is on, but {server} {where} is not answering, so passages will stay silent until it does. An admin can test it in Admin > Speech.": "La narration est activée, mais {server} {where} ne répond pas ; les passages resteront silencieux tant qu’il ne répondra pas. Un admin peut le tester dans Admin > Voix.",
     "Each passage is sent as text to {server} {where} and comes back as audio.{local} The address, model and key are the server's, set in Admin > Speech.": "Chaque passage est envoyé en texte à {server} {where} et revient en audio.{local} L’adresse, le modèle et la clé sont ceux du serveur, configurés dans Admin > Voix.",
@@ -10806,8 +10820,8 @@
     "unconscious": "inconscient",
     "petrified": "pétrifié",
     "charmed": "charmé",
-    "{name} death save: rolled {total}, {result} ({tally}).": "{name} — jet de sauvegarde contre la mort : {total}, {result} ({tally}).",
-    "{name} death save: rolled {total}, {result}.": "{name} — jet de sauvegarde contre la mort : {total}, {result}.",
+    "{name} death save: rolled {total}, {result} ({tally}).": "Jet de sauvegarde contre la mort de {name} : {total}, {result} ({tally}).",
+    "{name} death save: rolled {total}, {result}.": "Jet de sauvegarde contre la mort de {name} : {total}, {result}.",
     "{name} rolls a natural 20 on their death save and regains 1 HP!": "{name} obtient un 20 naturel à son jet de sauvegarde contre la mort et regagne 1 PV !",
     "{name} succeeds their third death save and is stable (unconscious at 0 HP). They regain 1 hit point in {hours} hour.": "{name} réussit son troisième jet de sauvegarde contre la mort et est stable (inconscient à 0 PV). Il regagne 1 point de vie dans {hours} heure.",
     "{name} succeeds their third death save and is stable (unconscious at 0 HP). They regain 1 hit point in {hours} hours.": "{name} réussit son troisième jet de sauvegarde contre la mort et est stable (inconscient à 0 PV). Il regagne 1 point de vie dans {hours} heures.",
@@ -10977,6 +10991,9 @@
     "Onto a creature beside you: half your speed.": "En montant sur une créature à côté de toi : la moitié de ta vitesse."
   },
   "contexts": {
+    "Mount": {
+      "table.hand.card.mount": "Monter en selle"
+    },
     "Remove": {
       "creator.defaults.remove": "Supprimer"
     },

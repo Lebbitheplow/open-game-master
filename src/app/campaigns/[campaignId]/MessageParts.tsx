@@ -130,6 +130,21 @@ function translateMountDesc(t: T, desc: string): string {
     .replace(/(?<!\p{L})independent \(acts on its own turn\)/gu, () => t("independent (acts on its own turn)"));
 }
 
+// "Bram, Mira and Tovin" (party-split-logic.ts joinNames): the last "and" is
+// the language's own.
+function namesList(t: T, names: string): string {
+  return names.replace(/ and (?=(?:(?! and ).)*$)/, () => t(" and "));
+}
+
+// A death save's running count, "1 success, 2 failures" (death.ts tally).
+function translateTally(t: T, tally: string): string {
+  const m = /^(\d+) success(?:es)?, (\d+) failures?$/.exec(tally);
+  if (!m) return tally;
+  const won = m[1] === "1" ? t("{n} success", { n: m[1] }) : t("{n} successes", { n: m[1] });
+  const lost = m[2] === "1" ? t("{n} failure", { n: m[2] }) : t("{n} failures", { n: m[2] });
+  return `${won}, ${lost}`;
+}
+
 function translateConditionWord(t: T, word: string): string {
   const MAP: Record<string, string> = {
     incapacitated: "incapacitated",
@@ -181,21 +196,45 @@ export function translateSystemNote(t: T, raw: string): string {
   }
   m = /^Meanwhile, at (.+): (.+)\.$/.exec(raw);
   if (m) {
-    return t("Meanwhile, at {place}: {names}.", { place: m[1], names: m[2] });
+    return t("Meanwhile, at {place}: {names}.", { place: m[1], names: namesList(t, m[2]) });
   }
   // English keeps the sentence the server wrote; another language gets the
   // same facts in a form that needs no verb agreed with the names.
   m = /^The party splits up: (.+) (?:goes|go) to (.+), and (.+) (?:stays|stay)(?: at (.+)| behind)\.$/.exec(raw);
   if (m) {
     const said = m[4]
-      ? t("The party splits up. To {place}: {went}. Staying at {from}: {stayed}.", { went: m[1], place: m[2], stayed: m[3], from: m[4] })
-      : t("The party splits up. To {place}: {went}. Staying behind: {stayed}.", { went: m[1], place: m[2], stayed: m[3] });
+      ? t("The party splits up. To {place}: {went}. Staying at {from}: {stayed}.", { went: namesList(t, m[1]), place: m[2], stayed: namesList(t, m[3]), from: m[4] })
+      : t("The party splits up. To {place}: {went}. Staying behind: {stayed}.", { went: namesList(t, m[1]), place: m[2], stayed: namesList(t, m[3]) });
     return said.startsWith("The party splits up. To ") ? raw : said;
   }
   m = /^(.+) (?:joins|join) the others at (.+)\.$/.exec(raw);
   if (m) {
-    const said = t("Joining the others at {place}: {names}.", { names: m[1], place: m[2] });
+    const said = t("Joining the others at {place}: {names}.", { names: namesList(t, m[1]), place: m[2] });
     return said.startsWith("Joining the others at ") ? raw : said;
+  }
+  // A rider who comes off a mount, a character's (mount-thrown.ts,
+  // mount-tools.ts) or an enemy's (enemy-rider-falls.ts), whole lines.
+  m = /^(.+) is knocked out of the saddle; (.+) stays\.$/.exec(raw);
+  if (m) {
+    return t("{rider} is knocked out of the saddle; {mount} stays.", { rider: m[1], mount: m[2] });
+  }
+  m = /^(.+) is knocked prone and falls from (.+)\.$/.exec(raw);
+  if (m) {
+    return t("{rider} is knocked prone and falls from {mount}.", { rider: m[1], mount: m[2] });
+  }
+  m = /^(.+) is thrown from (.+)\.$/.exec(raw);
+  if (m) {
+    return t("{rider} is thrown from {mount}.", { rider: m[1], mount: m[2] });
+  }
+  m = /^(.+) goes down; (.+) jumps clear and lands on (its|their) feet\.$/.exec(raw);
+  if (m) {
+    return m[3] === "its"
+      ? t("{mount} goes down; {rider} jumps clear and lands on its feet.", { mount: m[1], rider: m[2] })
+      : t("{mount} goes down; {rider} jumps clear and lands on their feet.", { mount: m[1], rider: m[2] });
+  }
+  m = /^(.+) goes down and (.+) falls with it\.$/.exec(raw);
+  if (m) {
+    return t("{mount} goes down and {rider} falls with it.", { mount: m[1], rider: m[2] });
   }
   let out = raw;
   out = out.replace(/^The party takes a short rest \(([^)]+)\)/, (_, dur) =>
@@ -210,9 +249,16 @@ export function translateSystemNote(t: T, raw: string): string {
   out = out.replace(/ No benefit from it for ([^.\n]+)\./g, (_, who) =>
     ` ${t("No benefit from it for {who}.", { who })}`,
   );
-  out = out.replace(/^(\d+ (?:week|weeks|day|days|hour|hours|minute|minutes)) pass(?:es)?: /, (_, dur) =>
-    `${t("{duration} pass:", { duration: translateDuration(t, dur) })} `,
-  );
+  // pass_time writes "1 hour passes" and "10 minutes pass" (world-tools.ts
+  // passVerb), with the reason after a colon or none: the verb is kept as
+  // written, so English reads the server's own line.
+  out = out.replace(/^(\d+ (?:week|weeks|day|days|hour|hours|minute|minutes)) (passes|pass)([:.]) /, (_, dur, verb, stop) => {
+    const duration = translateDuration(t, dur);
+    const said = stop === ":"
+      ? verb === "passes" ? t("{duration} passes:", { duration }) : t("{duration} pass:", { duration })
+      : verb === "passes" ? t("{duration} passes.", { duration }) : t("{duration} pass.", { duration });
+    return `${said} `;
+  });
   out = out.replace(/It is now ([^']+)'s turn \(round (\d+)\)\./g, (_, ch, r) =>
     t("It is now {character}'s turn (round {n}).", { character: ch, n: r }),
   );
@@ -249,7 +295,7 @@ export function translateSystemNote(t: T, raw: string): string {
     (_, name, total, result, tally) => {
       const resultFr = t(result);
       return tally
-        ? t("{name} death save: rolled {total}, {result} ({tally}).", { name: name.trim(), total, result: resultFr, tally })
+        ? t("{name} death save: rolled {total}, {result} ({tally}).", { name: name.trim(), total, result: resultFr, tally: translateTally(t, tally) })
         : t("{name} death save: rolled {total}, {result}.", { name: name.trim(), total, result: resultFr });
     },
   );
@@ -369,6 +415,10 @@ function translatePlayerAction(t: T, locale: "en" | "fr", raw: string): string {
   if (trimmed === "I end my turn.") return t("I end my turn.");
   if (trimmed === "I stand up.") return t("I stand up.");
   if (trimmed === "I dismount.") return t("I dismount.");
+  // The Mount card's line (hand-play.ts composeSentence).
+  if (trimmed === "I mount up.") return t("I mount up.");
+  const steed = /^I mount (.+)\.$/.exec(trimmed);
+  if (steed) return t("I mount {steed}.", { steed: steed[1] });
   if (trimmed === "I take the Search action.") return t("I take the Search action.");
   if (trimmed === "I try to escape the grapple.") return t("I try to escape the grapple.");
   let m = /^I attack (.+?) with (an unarmed strike|my .+?)( as a bonus action \(([^)]+)\))?\.(.*)$/.exec(trimmed);
