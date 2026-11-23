@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -17,19 +17,25 @@ export interface AppearanceDefinition {
   description: string;
   icon: AppearanceIcon;
   genres?: readonly Genre[];
+  // Genres the look fits without being their default. A theme may suit several.
+  suits?: readonly Genre[];
   // Plain surfaces replace the app's original celestial furniture.
   baseStyle?: "celestial" | "plain";
   // A scaled corner reads the top-left 1/scale portion along each image axis.
   cornerScale?: number;
   frameSlice?: number;
   art?: ThemeArt;
+  // Day artwork: a slot given here replaces the same slot of `art` while the
+  // brightness is light. The corner crop and frame slice serve both sets.
+  artDay?: ThemeArt;
 }
+export type ThemeBrightness = "dark" | "light";
 
 // Add a theme here once. Schema IDs, both pickers and validation use this list.
 // See docs/appearance-themes.md for palette, artwork and preview requirements.
 export const APPEARANCE_THEMES = [
   {
-    id: "arcane", name: "Arcane", description: "Indigo stone, celestial brass, and amethyst fittings.", icon: "sparkles",
+    id: "arcane", name: "Arcane", description: "Indigo stone, celestial brass, and amethyst fittings.", icon: "sparkles", suits: ["high_fantasy", "dark_fantasy"],
     baseStyle: "celestial",
     art: {
       texture: "/assets/themes/arcane/indigo-stone-v1.webp",
@@ -39,7 +45,7 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "woodland", name: "Ancient Woodland", description: "Carved oak, living ivy, and silver leaf fittings.", icon: "leaf",
+    id: "woodland", name: "Ancient Woodland", description: "Carved oak, living ivy, and silver leaf fittings.", icon: "leaf", suits: ["high_fantasy"],
     art: {
       texture: "/assets/themes/woodland/oak-grain-v1.webp",
       frame: "/assets/themes/woodland/ivy-oak-frame-v1.webp",
@@ -48,7 +54,7 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church",
+    id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church", suits: ["dark_fantasy", "horror"],
     genres: ["dark_fantasy", "horror"],
     art: {
       texture: "/assets/themes/gothic/cathedral-slate-v1.webp",
@@ -58,7 +64,7 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "hearth", name: "Hearth & Haven", description: "Warm parchment, crafted oak, and welcoming amber lamplight.", icon: "flame",
+    id: "hearth", name: "Hearth & Haven", description: "Warm parchment, crafted oak, and welcoming amber lamplight.", icon: "flame", suits: ["high_fantasy"],
     art: {
       texture: "/assets/themes/hearth/honey-oak-v1.webp",
       frame: "/assets/themes/hearth/carved-oak-frame-v1.webp",
@@ -67,7 +73,7 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "kingdoms", name: "High Kingdoms", description: "Ivory vellum, royal blue, and illuminated heraldry.", icon: "shield",
+    id: "kingdoms", name: "High Kingdoms", description: "Ivory vellum, royal blue, and illuminated heraldry.", icon: "shield", suits: ["high_fantasy"],
     art: {
       texture: "/assets/themes/kingdoms/ivory-vellum-v1.webp",
       frame: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
@@ -76,7 +82,7 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "tide", name: "Sunken Tide", description: "Sea-glass teal, pale driftwood, and verdigris bronze.", icon: "waves",
+    id: "tide", name: "Sunken Tide", description: "Sea-glass teal, pale driftwood, and verdigris bronze.", icon: "waves", suits: ["high_fantasy"],
     art: {
       texture: "/assets/themes/tide/driftwood-v1.webp",
       frame: "/assets/themes/tide/kelp-driftwood-frame-v1.webp",
@@ -85,12 +91,57 @@ export const APPEARANCE_THEMES = [
     },
   },
   {
-    id: "forge", name: "Deep Forge", description: "Dark basalt, hammered bronze, and ember light.", icon: "anvil",
+    id: "forge", name: "Deep Forge", description: "Dark basalt, hammered bronze, and ember light.", icon: "anvil", suits: ["high_fantasy", "dark_fantasy"],
     art: {
       texture: "/assets/themes/forge/basalt-v1.webp",
       frame: "/assets/themes/forge/bronze-band-frame-v1.webp",
       corner: "/assets/themes/forge/ember-plate-corner-v1.webp",
       backdrop: "/assets/themes/forge/forge-hall-v1.webp",
+    },
+  },
+  {
+    id: "depths", name: "Unquiet Depths", description: "A case file gone wrong by day; what it found, coiled in drowned stone, by night.", icon: "eye", suits: ["horror", "mystery"],
+    // Each rail is one long painted strip, so its corners are a small share
+    // of the image and the stretched middle repeats only every 8 rail widths.
+    frameSlice: 10,
+    art: {
+      texture: "/assets/themes/depths/wet-stone-v1.webp",
+      frame: "/assets/themes/depths/cracked-stone-frame-v4.webp",
+      corner: "/assets/themes/depths/slit-eye-coil-v3.webp",
+      backdrop: "/assets/themes/depths/drowned-abyss-v2.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/depths/manila-card-v1.webp",
+      frame: "/assets/themes/depths/case-file-frame-v2.webp",
+      corner: "/assets/themes/depths/ring-slit-seal-v2.webp",
+      backdrop: "/assets/themes/depths/case-gone-wrong-v2.webp",
+    },
+  },
+  {
+    id: "frost", name: "Frostbound", description: "Blue-white ice, pale steel, and aurora light.", icon: "snowflake", suits: ["high_fantasy"],
+    art: {
+      texture: "/assets/themes/frost/rimed-steel-v1.webp",
+      frame: "/assets/themes/frost/rimed-steel-frame-v1.webp",
+      corner: "/assets/themes/frost/frost-crystal-boss-v1.webp",
+      backdrop: "/assets/themes/frost/aurora-pass-v1.webp",
+    },
+  },
+  {
+    id: "inferno", name: "Inferno", description: "Obsidian, black iron chain, and a crimson glow.", icon: "chain", suits: ["high_fantasy", "dark_fantasy"],
+    art: {
+      texture: "/assets/themes/inferno/obsidian-v1.webp",
+      frame: "/assets/themes/inferno/iron-chain-frame-v1.webp",
+      corner: "/assets/themes/inferno/gem-ring-corner-v1.webp",
+      backdrop: "/assets/themes/inferno/brimstone-cavern-v1.webp",
+    },
+  },
+  {
+    id: "fey", name: "Twilight Court", description: "Dusk rose, gossamer thread, and pearl silverwork.", icon: "flower", suits: ["high_fantasy"],
+    art: {
+      texture: "/assets/themes/fey/gossamer-silk-v1.webp",
+      frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
+      corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
+      backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];
@@ -109,12 +160,21 @@ export function appearanceDefinition(id: AppearanceTheme): AppearanceDefinition 
   return APPEARANCE_THEMES.find((theme) => theme.id === id)!;
 }
 
+// The artwork a theme shows at one brightness. Every slot is written on each
+// change of theme or brightness, so neither set outlives its mode.
+export function themeArt(id: AppearanceTheme, mode: ThemeBrightness = "dark"): ThemeArt | undefined {
+  return modeArt(appearanceDefinition(id), mode);
+}
+export function modeArt({ art, artDay }: Pick<AppearanceDefinition, "art" | "artDay">, mode: ThemeBrightness): ThemeArt | undefined {
+  return mode === "light" && artDay ? { ...art, ...artDay } : art;
+}
+
 // Explicit none values prevent artwork leaking when switching themes or when
 // a picker thumbnail is nested inside a different theme. Safe during SSR too.
-export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, string> {
+export function themeArtStyle(id: AppearanceTheme, mode: ThemeBrightness = "dark"): Record<`--theme-${string}`, string> {
   const definition = appearanceDefinition(id);
   return {
-    ...artSlotStyle(definition.art),
+    ...artSlotStyle(themeArt(id, mode)),
     "--theme-frame-slice": `${definition.frameSlice ?? 22}%`,
     "--theme-corner-background-size": definition.cornerScale ? `${definition.cornerScale * 100}%` : "contain",
     ...cornerStyle(definition),
@@ -180,4 +240,16 @@ export function genreAppearance<T extends { id: string; genres?: readonly string
 
 export function resolveAppearance(choice: AppearanceChoice, campaignTheme: AppearanceTheme): AppearanceTheme {
   return choice === "campaign" ? campaignTheme : choice;
+}
+
+// The themes a picker offers first at a table of this genre: those that suit
+// it or are its default, plus any the caller keeps in view (the one in use).
+// Null means the whole catalog: no genre to go by, too few suited to be a
+// choice, or so few left out that hiding them would only add a step.
+export function genreShortlist<T extends { id: string; genres?: readonly string[]; suits?: readonly string[] }>(genre: string | undefined, catalog: readonly T[], keep: readonly string[] = []): T["id"][] | null {
+  if (!genre) return null;
+  const suited = catalog.filter((entry) => entry.suits?.includes(genre) || entry.genres?.includes(genre));
+  if (suited.length < 2) return null;
+  const shown = catalog.filter((entry) => suited.includes(entry) || keep.includes(entry.id));
+  return catalog.length - shown.length < 3 ? null : shown.map((entry) => entry.id);
 }

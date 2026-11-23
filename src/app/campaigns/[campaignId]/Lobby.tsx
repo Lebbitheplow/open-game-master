@@ -14,6 +14,7 @@ import { useShellShare } from "@/lib/use-shell-share";
 import { ScheduleSection } from "@/components/ScheduleSection";
 import { ui } from "@/lib/ui";
 import { GameSettingsPanel } from "@/app/campaigns/[campaignId]/GameSettingsPanel";
+import { TableThemeControl, ThemeButton } from "@/components/ThemePanelHost";
 import { LobbyActions } from "@/app/campaigns/[campaignId]/LobbyActions";
 import { LobbyParty } from "@/app/campaigns/[campaignId]/LobbyParty";
 import { LobbyGroupHead, LobbyHero, LobbyRealDice, enter } from "@/app/campaigns/[campaignId]/LobbyPieces";
@@ -491,13 +492,17 @@ export function Lobby({
           </button>
         </div>
       ) : (
-        <Link
-          href="/"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm text-stone-500 transition-colors hover:text-amber-200"
-        >
-          <ArrowLeft className="size-4" /> {t("All campaigns")}
-        </Link>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-stone-500 transition-colors hover:text-amber-200"
+          >
+            <ArrowLeft className="size-4" /> {t("All campaigns")}
+          </Link>
+          <ThemeButton />
+        </div>
       )}
+      <TableThemeControl campaignId={campaign.id} canSet={steersStory} />
 
       <div className="theme-lobby-shell lobby-layout flex flex-col lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8">
         <ThemeOrnaments surface="lobby" />
