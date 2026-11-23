@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { Switch } from "@/components/ui/Switch";
 import { useT } from "@/lib/locale";
+import { LoadingBlock } from "@/components/PageSkeleton";
 
 // Verified backups of the campaign state, mirroring scripts/odm-backup.mjs
 // and scripts/odm-restore.mjs. An archive holds the encrypted database plus
@@ -163,7 +164,7 @@ export function AdminBackupSection() {
   }
 
   if (backups === null) {
-    return <div className="skeleton-block mt-3 h-16 rounded-xl" aria-label={t("Loading backups")} />;
+    return <LoadingBlock className="mt-3 h-16 rounded-xl" label={t("Loading backups")} />;
   }
 
   return (

@@ -29,20 +29,20 @@ export function HandPips({
           data-used={pip.used ? "true" : undefined}
           // The strike through a spent pip is drawn by hand-motion.css, which eases it in.
           className="hand-pip rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider"
-          aria-label={t(pip.used ? "{label} spent" : "{label} available", { label: costShort(t, pip.cost) })}
         >
+          <span className="sr-only">{t(pip.used ? "{label} spent" : "{label} available", { label: costShort(t, pip.cost) })}</span>
           {/* The engine's pip labels are data ("Reaction"); the reader's word
               comes from the cost keys, the same one the card corner wears. */}
-          {costShort(t, pip.cost)}
+          <span aria-hidden="true">{costShort(t, pip.cost)}</span>
         </span>
       ))}
       {flurryStrikes ? (
         <span
           key={`flurry-${flurryStrikes}`}
           className="hand-pip motion-pop rounded-full border border-amber-500/45 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-amber-200"
-          aria-label={tp("{count} Flurry of Blows strike left", "{count} Flurry of Blows strikes left", { count: flurryStrikes })}
         >
-          {t("Flurry {count}", { count: flurryStrikes })}
+          <span className="sr-only">{tp("{count} Flurry of Blows strike left", "{count} Flurry of Blows strikes left", { count: flurryStrikes })}</span>
+          <span aria-hidden="true">{t("Flurry {count}", { count: flurryStrikes })}</span>
         </span>
       ) : null}
     </>

@@ -368,7 +368,7 @@ function MonsterHandInner({
                   className={cn(ui.btnSmall, "hand-target min-h-11 flex-col items-start gap-0 px-3 py-1 text-left sm:min-h-9")}
                 >
                   <span className={cn("text-[13px] leading-tight text-stone-200", acted && "text-stone-500 line-through")}>
-                    {isDue ? <span className="mr-1 inline-block size-1.5 rounded-full bg-red-400 align-middle" aria-label={t("due")} /> : null}
+                    {isDue ? <span className="mr-1 inline-block size-1.5 rounded-full bg-red-400 align-middle" role="img" aria-label={t("due")} /> : null}
                     {shown(enemy.name)}
                   </span>
                   <span className="font-mono text-[10px] leading-tight text-stone-500">

@@ -41,7 +41,7 @@ export function StateTags({ sheet, className }: { sheet: CharacterSheet; classNa
   const tags = stateTags(t, sheet);
   if (!tags.length) return null;
   return (
-    <div className={cn("stagger-pop flex flex-wrap gap-1.5", className)} aria-label={t("Combat state")}>
+    <div className={cn("stagger-pop flex flex-wrap gap-1.5", className)} role="group" aria-label={t("Combat state")}>
       {tags.map((tag, index) => (
         <Tooltip key={tag.id} content={tag.note}>
           <span

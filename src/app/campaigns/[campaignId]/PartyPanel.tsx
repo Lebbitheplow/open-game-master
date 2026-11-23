@@ -1105,6 +1105,7 @@ function LightBar({ light }: { light: { remaining: number; total: number } }) {
   const low = light.remaining <= 15;
   return (
     <span
+      role="img"
       title={tp("Light: {count} minute left", "Light: {count} minutes left", { count: light.remaining })}
       aria-label={tp("Light: {count} minute left", "Light: {count} minutes left", { count: light.remaining })}
       className="flex h-1.5 w-8 shrink-0 items-center overflow-hidden rounded-full border border-amber-900/60 bg-stone-900"
