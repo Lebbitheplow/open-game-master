@@ -156,7 +156,7 @@ export async function GET(
         results = [...results, ...notFiled(results, bundled).slice(0, base.limit ?? 50)];
       }
       if (bookLocaleOf(request) === "fr") {
-        results = (results as Array<{ name: string; source?: string; data?: unknown }>).map((entry) => localizeItemEntryFr(entry));
+        results = (results as Array<{ name: string; source?: "open5e" | "srd" | "homebrew"; data?: unknown }>).map((entry) => localizeItemEntryFr(entry));
       }
       break;
     }
