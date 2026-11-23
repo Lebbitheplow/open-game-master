@@ -269,6 +269,28 @@ above as the starting point. Still not designed in detail and not built.
   often it may repeat in a busy fight; that each player sees it in their own
   theme.
 
+The discussion of 2026-11-23, so it is not lost. Albert called these decent
+points; none is agreed as a decision.
+
+- Who starts a story moment. Engine events first: they need no new control,
+  work the same for a human GM and the AI GM, and are never forgotten in the
+  middle of a scene. A GM trigger comes later, for moments the engine cannot
+  see (a betrayal in dialogue). If Albert wants GMs to stage moments by hand
+  as part of how they run a table, the control becomes the feature and not a
+  fallback, and this order reverses.
+- One mood for each theme, or both. One mood is one animation a theme and the
+  cheapest to make. Its cost: some tables see movement often and others
+  rarely (a grim campaign in High Kingdoms may go sessions without a major
+  good turn). Answering both moods doubles the artwork. Start with one mood
+  and watch how often it fires.
+- How rare it stays. A busy fight can drop three characters in two rounds, and
+  movement on each would become noise. Cap it (once a round or once a fight)
+  and keep it to a few seconds.
+- Carried over unchanged from the idea above: off when the reader asks for
+  reduced motion or sets effects low, and never under text being read.
+- Fable's recommendation: engine events first, one mood for each theme, capped
+  at once a fight.
+
 ## Suggested build order
 
 1. Finish PR 962's validation and settle the reusable theme contracts.
