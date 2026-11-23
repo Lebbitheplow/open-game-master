@@ -57,7 +57,10 @@ export default {
     check(!covered, "the page behind the theme panel is dimmed or blocked");
     await eventually(() => panel.evaluate((node) => node.contains(document.activeElement)), { label: "focus inside the opened panel" });
 
-    // Every control in the panel is at least 40px tall.
+    // Every control in the panel is at least 40px tall. Measured once the
+    // panel has finished opening: a Radix dialog scales in from 0.96
+    // (globals.css), and a slow runner caught the 40px Close at 38.
+    await panel.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     const small = await panel.evaluate((node) => [...node.querySelectorAll("button")]
       .filter((control) => control.getClientRects().length)
       .map((control) => ({ name: (control.getAttribute("aria-label") || control.innerText).trim().slice(0, 30), height: Math.round(control.getBoundingClientRect().height) }))
