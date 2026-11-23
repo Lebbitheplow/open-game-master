@@ -56,9 +56,9 @@ export function SafetyPause({
           <div className="reveal mt-4 flex flex-wrap justify-center gap-2">
             {(
               [
-                ["rewind", t("Withdraw the last passage")],
-                ["reroll", t("Write it again, elsewhere")],
-                ["continue", t("Continue")],
+                ["rewind", "Withdraw the last passage"],
+                ["reroll", "Write it again, elsewhere"],
+                ["continue", "Continue"],
               ] as const
             ).map(([action, label]) => (
               <button
@@ -72,7 +72,7 @@ export function SafetyPause({
                   busy === action && "opacity-60",
                 )}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
