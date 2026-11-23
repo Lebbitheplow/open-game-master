@@ -106,6 +106,19 @@ await test("the Hand deals Mount beside the steed, names it on the card, and say
   assert.equal(intentBody(card, null).mount, steed.name);
 });
 
+await test("at a French table the card says what it does: a verb to get on, and its rules line in French", async () => {
+  await import("../src/lib/i18n/fr-catalog.ts");
+  const { translate } = await import("../src/lib/i18n/translate.ts");
+  const fr = (key, vars) => translate("fr", key, vars);
+  const { world, paladin, steed } = await table();
+  const one = byId(deriveHand(world.sheet(paladin.id), FRESH_TURN, { gear: { steeds: [{ name: steed.name }] } }, fr, "fr"), "basic:mount");
+  assert.equal(one.name, "Monter en selle", "the card reads as the creature, not the move");
+  assert.equal(one.rules, `En montant sur ${steed.name} : la moitié de ta vitesse.`);
+  const two = byId(deriveHand(world.sheet(paladin.id), FRESH_TURN, { gear: { steeds: [{ name: "Warhorse" }, { name: "Elk" }] } }, fr, "fr"), "basic:mount");
+  assert.equal(two.rules, "En montant sur une créature à côté de toi : la moitié de ta vitesse.");
+  assert.equal(two.choice.label, "Monture", "the aim bar asks which creature");
+});
+
 await test("no Mount card with nothing to mount, and none for a rider already up, who is dealt Dismount", async () => {
   const { world, paladin, steed } = await table();
   assert.equal(byId(handOf(world, paladin.id, { steeds: [] }), "basic:mount"), undefined);

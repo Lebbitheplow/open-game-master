@@ -380,7 +380,9 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
           ...BLANK,
           id: "basic:mount",
           type: "basic",
-          name: t("Mount"),
+          // The verb, getting on; "Mount" alone is the creature (a French
+          // table read "Monture" on a card that mounts).
+          name: t("Mount", { context: "table.hand.card.mount" }),
           cost: "free",
           range: t("5 ft"),
           rules: one ? t("Onto {mount}: half your speed.", { mount: one }) : t("Onto a creature beside you: half your speed."),

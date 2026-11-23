@@ -10972,7 +10972,9 @@
     "Mental assault: mind flayers, some enchantments, telepathic damage.": "Assaut mental : flagelleurs mentaux, certains enchantements, dégâts télépathiques.",
     "Holy light and searing brilliance: celestials, clerics' spells, the sun.": "Lumière sacrée et éclat brûlant : célestes, sorts de clercs, soleil.",
     "Cutting: swords, axes, claws.": "Tranchant : épées, haches, griffes.",
-    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant."
+    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant.",
+    "Onto {mount}: half your speed.": "En montant sur {mount} : la moitié de ta vitesse.",
+    "Onto a creature beside you: half your speed.": "En montant sur une créature à côté de toi : la moitié de ta vitesse."
   },
   "contexts": {
     "Remove": {
@@ -11786,6 +11788,9 @@
     "builder.gear": {},
     "Add it anyway": {
       "admin.harness.addReduced": "L’ajouter quand même"
+    },
+    "Mount": {
+      "table.hand.card.mount": "Monter en selle"
     }
   },
   "plurals": {
