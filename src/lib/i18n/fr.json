@@ -10684,7 +10684,7 @@
     "{mount} goes down; {rider} jumps clear and lands on their feet.": "{mount} s’effondre ; {rider} saute à temps et retombe sur ses pieds.",
     "{mount} goes down and {rider} falls with it.": "{mount} s’effondre et {rider} tombe avec sa monture.",
     "Onto {mount}: half your speed.": "En montant sur {mount} : la moitié de ta vitesse.",
-    "Onto a creature beside you: half your speed.": "Sur une créature à côté de toi : la moitié de ta vitesse.",
+    "Onto a creature beside you: half your speed.": "En montant sur une créature à côté de toi : la moitié de ta vitesse.",
     "It is {character}'s turn again.": "C’est de nouveau le tour de {character}.",
     "{character} ends their turn.": "{character} termine son tour.",
     "{enemies} act before {character}.": "{enemies} agissent avant {character}.",
@@ -11031,9 +11031,7 @@
     "Mental assault: mind flayers, some enchantments, telepathic damage.": "Assaut mental : flagelleurs mentaux, certains enchantements, dégâts télépathiques.",
     "Holy light and searing brilliance: celestials, clerics' spells, the sun.": "Lumière sacrée et éclat brûlant : célestes, sorts de clercs, soleil.",
     "Cutting: swords, axes, claws.": "Tranchant : épées, haches, griffes.",
-    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant.",
-    "Onto {mount}: half your speed.": "En montant sur {mount} : la moitié de ta vitesse.",
-    "Onto a creature beside you: half your speed.": "En montant sur une créature à côté de toi : la moitié de ta vitesse."
+    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant."
   },
   "contexts": {
     "Arcane": {
@@ -11887,9 +11885,6 @@
     "builder.gear": {},
     "Add it anyway": {
       "admin.harness.addReduced": "L’ajouter quand même"
-    },
-    "Mount": {
-      "table.hand.card.mount": "Monter en selle"
     }
   },
   "plurals": {

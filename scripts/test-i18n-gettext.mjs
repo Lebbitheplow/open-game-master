@@ -25,6 +25,27 @@ assert.equal(catalogInstalled("fr"), true);
 const { localeFromAcceptLanguage, localeOfServerLanguage, resolveLocale, resolveRequestLocale } = await import("../src/lib/i18n/locale.ts");
 const frCatalog = JSON.parse(fs.readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8"));
 
+// JSON.parse keeps the last of two equal keys without a word, so a key that
+// two branches each add merges cleanly and one translation silently wins.
+// Walk the text itself: within each object every key is said once.
+{
+  const text = fs.readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8");
+  const seen = [new Set()];
+  const repeated = [];
+  const token = /"(?:[^"\\]|\\.)*"(\s*:)?|[{}]/g;
+  for (let m; (m = token.exec(text)); ) {
+    if (m[0] === "{") seen.push(new Set());
+    else if (m[0] === "}") seen.pop();
+    else if (m[1]) {
+      const key = JSON.parse(m[0].replace(/\s*:$/, ""));
+      const keys = seen[seen.length - 1];
+      if (keys.has(key)) repeated.push(key);
+      keys.add(key);
+    }
+  }
+  assert.deepEqual(repeated, [], "fr.json says each key once within its object");
+}
+
 // 1. English returns the source string verbatim with interpolation
 assert.equal(translate("en", "Loading…"), "Loading…");
 assert.equal(translate("en", "Level {level}", { level: 5 }), "Level 5");
