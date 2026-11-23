@@ -29,6 +29,7 @@ const { lashOut } = await import("../src/lib/dm/confusion.ts");
 const { serializeMapForPrompt } = await import("../src/lib/battlemap/serialize.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 const { moveTokenFreely, readTemplate } = await import("../src/lib/dm/board.ts");
+const { teleportBeside } = await import("../src/lib/dm/protective-bond.ts");
 
 const ownToken = (world, refId) => listTokens(mapOf(world).id).find((token) => token.refId === refId) ?? null;
 const live = (world, id) => world.enemies().find((enemy) => enemy.id === id);
@@ -286,6 +287,28 @@ await test("A character's independent mount stands under its own sheet on its ri
   // A steed the fire drops to 0 is gone from the table.
   const burnt = world.sheet(steed.id);
   assert.ok(!burnt || burnt.currentHp < before.steed, "the fire passed over the steed under its rider");
+});
+
+await test("A protector that teleports beside a rider on a Large warhorse comes down outside the pair's space (Protective Bond), where it landed inside the horse.", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const paladin = world.addHero(caster("paladin", "cha", ["Find Steed"], [], 5, { speed: 30, maxHp: 60 }));
+  const cleric = world.addHero(caster("cleric", "wis", ["Bless"]));
+  const cast = await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  assert.equal(cast.ok, true, cast.error);
+  const steed = world.sheets().find((sheet) => sheet.summon?.spell === "Find Steed");
+  const [enemy] = await fightDummies(world, 1, { heroFaces: { [paladin.id]: 20 } });
+  castOnOwnTurn(world);
+  await layMap(world, OPEN(), { [paladin.id]: { x: 12, y: 3 }, [steed.id]: { x: 13, y: 3 }, [cleric.id]: { x: 20, y: 4 }, [enemy.id]: { x: 13, y: 2 } });
+  holdTurn(world, paladin.id);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const pairAt = ownToken(world, paladin.id);
+  const said = teleportBeside(world.campaignId, cleric.id, paladin.id);
+  assert.ok(said, "the protector did not move");
+  const landed = ownToken(world, cleric.id);
+  const inside = landed.x >= pairAt.x && landed.x < pairAt.x + 2 && landed.y >= pairAt.y && landed.y < pairAt.y + 2;
+  assert.equal(inside, false, `the protector landed at (${landed.x},${landed.y}), inside the pair at (${pairAt.x},${pairAt.y})`);
+  assert.ok(landed.x >= pairAt.x - 1 && landed.x <= pairAt.x + 2 && landed.y >= pairAt.y - 1 && landed.y <= pairAt.y + 2, "the protector is not within 5 feet of the one it shields");
 });
 
 closeTables();
