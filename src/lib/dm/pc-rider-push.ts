@@ -23,7 +23,7 @@ import { forgetMoves } from "@/lib/battlemap/move-undo";
 import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import type { XY } from "@/lib/battlemap/types";
 import { occupiedTiles } from "@/lib/battlemap/view";
-import { listTokens, moveToken, placeToken, type BattleMap } from "@/lib/db/battle-maps";
+import { listTokens, moveToken, placeToken, setTokenMovement, type BattleMap } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { getMounts, setMount } from "@/lib/db/mounts";
@@ -35,6 +35,7 @@ import { currentTurnId } from "@/lib/dm/job-control";
 import { tellOfRider } from "@/lib/dm/mount-moved";
 import { isProne } from "@/lib/dm/mount-thrown";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { flightOf } from "@/lib/dm/token-state";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { standBesideRider } from "@/lib/dm/summon-store";
 
@@ -55,6 +56,10 @@ export function pushedFromSaddle(campaign: Campaign, map: BattleMap, riderId: st
     return null;
   }
   const stood = { x: token.x, y: token.y };
+  // Off a mount in the air, a rider with no flight of their own falls: the
+  // token comes down (token-state.ts landTheFlightless). The board keeps no
+  // height, so the fall's damage is the GM's apply_hazard falling.
+  const falls = token.movement === "fly" && flightOf(map.encounterId, token) === null;
   // Everyone else's whole space, and the mount's own: it stays in it.
   const taken = occupiedTiles(map, tokens, token, tokenFootprint);
   for (const cell of footprintIndexes(map.width, stood, tokenFootprint(token))) {
@@ -68,6 +73,9 @@ export function pushedFromSaddle(campaign: Campaign, map: BattleMap, riderId: st
   // would set one square down where the pair's space began.
   forgetMoves(map.encounterId);
   moveToken(token.id, landed.x, landed.y, token.movedThisRound);
+  if (falls) {
+    setTokenMovement(token.id, "walk");
+  }
   // A mount that is a creature has its own token and turn again, and keeps
   // the square the pair's space began on.
   const steed = mount.sheetId ? getSheetById(mount.sheetId) : null;
@@ -96,13 +104,13 @@ export function pushedFromSaddle(campaign: Campaign, map: BattleMap, riderId: st
     seq,
     authorType: "system",
     glyph: "cue-travel",
-    content: `${sheet.name} is knocked out of the saddle${standing ? " and lands on their feet" : ""}; ${mount.name} stays.`,
+    content: `${sheet.name} is knocked out of the saddle${standing ? " and lands on their feet" : falls ? " and falls" : ""}; ${mount.name} stays.`,
   });
   publishWithSeq(campaign.id, seq, "message_added", { message });
   publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
   tellOfRider(
     campaign.id,
-    `${sheet.name} is taken out of the saddle and lands ${standing ? `on their feet (${standing})` : "prone"} at (${landed.x},${landed.y}), no longer mounted, with no save to stay on: the effect named the rider, who already resisted it. ${mount.name} stays where the pair stood${steed ? ", riderless, on a token of its own, with a turn of its own" : ""}.`,
+    `${sheet.name} is taken out of the saddle and lands ${standing ? `on their feet (${standing})` : "prone"} at (${landed.x},${landed.y}), no longer mounted, with no save to stay on: the effect named the rider, who already resisted it. ${mount.name} stays where the pair stood${steed ? ", riderless, on a token of its own, with a turn of its own" : ""}.${falls ? ` They fell from ${mount.name} in the air: if it flew high, send apply_hazard falling with the feet for the fall's damage.` : ""}`,
   );
   return { at: landed };
 }

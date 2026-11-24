@@ -38,7 +38,7 @@ import { mapOf, OPEN } from "./lib/enforce-zones.mjs";
 import { diff, revertTurn, snapshot } from "./lib/sweep-lifecycle.mjs";
 
 const { test, finish } = suite("test-enforce-pc-rider-push");
-const { listTokens } = await import("../src/lib/db/battle-maps.ts");
+const { listTokens, setTokenMovement } = await import("../src/lib/db/battle-maps.ts");
 const { saveEncounter } = await import("../src/lib/db/encounters.ts");
 const { getMounts } = await import("../src/lib/db/mounts.ts");
 const { tokenFootprint } = await import("../src/lib/dm/board-reach.ts");
@@ -176,6 +176,26 @@ await test("A push that names a character on a Large mount on record takes them 
   assert.deepEqual([pushed.moved.at.x, pushed.moved.at.y], [fallen.x, fallen.y], "the push reports a square the rider is not on");
   assert.equal(prone(world, hero), true);
   assert.match(pushed.lines.join(" "), /out of the saddle.*no save/, `the call's result says nothing of it: ${JSON.stringify(pushed.lines)}`);
+});
+
+// A creature knocked off a flying mount falls. The board keeps no height, so
+// the token comes down and the GM is told the fall's damage is theirs to send.
+await test("A push that names a character on a griffon in the air takes them out of the saddle and down: on the ground, prone, and the GM told to send the fall.", async () => {
+  const { world, hero, foe } = await onRecord({
+    hero: { ...RIDER, equipment: [...RIDER.equipment, { name: "Saddle, Exotic", qty: 1 }] },
+    mount: "Griffon",
+    enemy: { x: 4, y: 3 },
+  });
+  setTokenMovement(ownToken(world, hero.id).id, "fly");
+  const pushed = onPersonsTurn(world.campaign(), () => {
+    const moved = pushTokenAway(world.campaign(), world.encounter().id, foe.id, hero.id);
+    return { moved, lines: settleMovedRiders(world.campaign()) };
+  });
+  assert.equal(pushed.moved.moved, true, pushed.moved.reason);
+  assertOut(world, hero);
+  assert.equal(ownToken(world, hero.id).movement, "walk", "the rider thrown from a flying mount is still in the air");
+  assert.equal(prone(world, hero), true);
+  assert.match(pushed.lines.join(" "), /apply_hazard falling/, `the GM is not told of the fall: ${JSON.stringify(pushed.lines)}`);
 });
 
 await test("A pull that names a character on a mount on record draws them alone out of the saddle, prone where the pull ends.", async () => {
