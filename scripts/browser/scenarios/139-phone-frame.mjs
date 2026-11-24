@@ -21,6 +21,17 @@ const SIZES = [
   // A short phone, or a tall one with its keyboard's room taken.
   [390, 600],
 ];
+// The bar's own labels were cut too, with no frame over them: seven cells
+// share the width, and a cell's side padding with the label's wide letter
+// spacing left "Table", "Party" and "Story" as "TAB..." at 360 and 390. Read
+// at every size above and on a 320px phone.
+const NARROW = [320, 640];
+const cutLabels = (page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll("nav.cine-bottombar > button > .eyebrow")]
+      .filter((label) => label.checkVisibility() && label.scrollWidth > label.clientWidth)
+      .map((label) => `"${label.textContent}" has ${label.clientWidth}px of ${label.scrollWidth}`),
+  );
 // A glyph counts as cut once this share of its pixels changes under the frame.
 const COVERED = 0.02;
 
@@ -151,9 +162,13 @@ export default {
           // The story with its composer, and a panel: the bar is the same, the rails' neighbours differ.
           for (const [view, name] of [["story", /^table$/i], ["battle panel", /^battle$/i]]) {
             await t.tap(tab(name));
-            for (const [width, height] of view === "story" ? SIZES : SIZES.slice(0, 1)) {
+            for (const [width, height] of view === "story" ? [...SIZES, NARROW] : SIZES.slice(0, 1)) {
               await page.setViewportSize({ width, height });
               const label = `${view}, ${theme} ${mode} ${width}x${height}`;
+              const short = await cutLabels(page);
+              if (short.length) faults.push(`${label}: a bar label is cut short: ${short.join(", ")}`);
+              // The frame's own cover is held from 360 up, as before.
+              if (width < 360) continue;
               const cut = await look(".theme-table", label);
               if (cut.length) faults.push(`${label}: ${cut.map((glyph) => glyph.name).join(" | ")}`);
               if (width === 390 && height === 844) await t.shot(`${theme}-${mode}-${view.split(" ")[0]}`);
@@ -180,6 +195,6 @@ export default {
         window.localStorage.removeItem("odm.theme");
       });
     }
-    check(faults.length === 0, `the painted frame covers no text or icon on a phone:\n  ${faults.join("\n  ")}`);
+    check(faults.length === 0, `the painted frame covers no text or icon on a phone, and no bar label is cut short:\n  ${faults.join("\n  ")}`);
   },
 };
