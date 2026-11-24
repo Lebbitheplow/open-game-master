@@ -1329,6 +1329,48 @@ await test("a retried turn answers a card whose roll landed before the turn halt
   }
 });
 
+// The retry hands on a card's roll by the resume's own step (#1082), and the
+// turn's lists say which rolls the model asked for and which have paid
+// (#1085): written apart, they meet here. The card the model's own
+// request_roll dealt lands on a halted turn, the retried model is told its
+// total, and that total pays for one bare number and no second.
+await test("a retried turn whose card the model asked for landed before the halt is told the roll, and its total pays for the retried model's bare damage once", async () => {
+  const { table, seat } = await realDiceTable({ ttsEnabled: false });
+  const model = await fakeModel();
+  try {
+    model.pointAt(table);
+    const asked = modelCall("request_roll", { characterId: seat.id, kind: "damage", expression: "1d8", reason: "a splash of acid" });
+    const paid = modelCall("apply_damage", { characterId: seat.id, amount: 5, type: "acid" });
+    const again = modelCall("apply_damage", { characterId: seat.id, amount: 5, type: "acid" });
+    model.script([reply({ calls: [asked] }), reply({ calls: [paid] }), reply({ calls: [again] }), reply({ text: "The acid hisses." })]);
+    await model.turn(table, "I tip the vial over the ropes on my own wrists.", seat.id, table.sheet(seat.id).userId);
+    const [pending] = listOpenPendingRolls(table.campaignId);
+    assert.equal(pending?.carry?.asked, true, "the card does not say the model's request_roll dealt it");
+    const halted = getDmTurn(pending.turnId);
+    halted.status = "failed";
+    saveDmTurn(halted);
+    const landed = await enter(table, pending, () => 5);
+    await settleQueue(table.campaignId);
+    assert.deepEqual(marksOf(halted.id), { asked: [landed.id], paid: [] }, "the roll that landed on the halted turn is not marked as asked for");
+    const before = table.sheet(seat.id).currentHp;
+    const retried = requestTurnRetry({ campaignId: table.campaignId, turnId: halted.id });
+    assert.equal(retried.ok, true, `the retry was refused: ${retried.error}`);
+    await settleQueue(table.campaignId);
+    const turn = getDmTurn(halted.id);
+    assert.equal(turn.status, "done", "the retried turn did not finish");
+    assert.deepEqual(turn.answeredPendingIds, [pending.id], "the retry did not list the card as answered");
+    const told = model.results(model.requests.at(-1));
+    assert.equal(told.find((entry) => entry.id === asked.id)?.result.total, 5, "the retried model was not handed the card's roll");
+    assert.equal(told.find((entry) => entry.id === paid.id)?.result.ok, true, `the total the model asked for did not pay: ${JSON.stringify(told.find((entry) => entry.id === paid.id)?.result)}`);
+    assert.match(String(told.find((entry) => entry.id === again.id)?.result.error), /rolled by the server, never written/, "the same total paid a second time");
+    assert.equal(table.sheet(seat.id).currentHp, before - 5, "the acid did not land once");
+    assert.deepEqual(marksOf(halted.id), { asked: [landed.id], paid: [landed.id] }, "the roll that paid is not on the turn's paid list");
+  } finally {
+    model.close();
+    table.close();
+  }
+});
+
 // A group check of one: the seat's d20 holds the whole call (held-call.ts),
 // and the call's answer says whether the group passed.
 const overTheWall = (characterId) => modelCall("group_check", { skill: "athletics", dc: 12, characterIds: [characterId], reason: "over the wall" });
