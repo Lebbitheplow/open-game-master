@@ -138,7 +138,7 @@ export function OpportunityCard({
                 title={`Swing your ${ask.weapon} at ${foe.name} and, if it hits, spend a level ${ask.smiteSlot} spell slot on Divine Smite for extra radiant damage. A miss keeps the slot.`}
                 className={STRIKE}
               >
-                {foe.id ? `${foe.name}: ${smiteChoiceLine(ask.smiteSlot)}` : smiteChoiceLine(ask.smiteSlot)}
+                {smiteChoiceLine(ask.smiteSlot, foe.id ? foe.name : undefined)}
               </button>
             ) : null}
           </span>

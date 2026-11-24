@@ -66,10 +66,12 @@ export function smiteSlotOf(casting: { slots?: Record<string, { max: number; use
   return levels.length ? Math.min(...levels) : null;
 }
 
-// The card's smite choice in words: "Strike and smite (1st-level slot)".
-export function smiteChoiceLine(slot: number): string {
+// The card's smite choice in words: "Strike and smite (1st-level slot)", or
+// on a mounted pair's card, where each of the two has its own pair of
+// buttons, "Strike Goblin and smite (1st-level slot)", beside "Strike Goblin".
+export function smiteChoiceLine(slot: number, at?: string): string {
   const suffix = slot === 1 ? "st" : slot === 2 ? "nd" : slot === 3 ? "rd" : "th";
-  return `Strike and smite (${slot}${suffix}-level slot)`;
+  return `Strike ${at ? `${at} ` : ""}and smite (${slot}${suffix}-level slot)`;
 }
 
 const MOVES: Record<OpportunityTrigger, (whose: string) => string> = {

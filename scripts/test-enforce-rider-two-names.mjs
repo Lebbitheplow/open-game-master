@@ -28,17 +28,18 @@ const { saveEncounter, listEnemies } = await import("../src/lib/db/encounters.ts
 const { publicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const { getTokenByRef, getBattleMapForEncounter, listTokens } = await import("../src/lib/db/battle-maps.ts");
 const { subscribe } = await import("../src/lib/events.ts");
-const { askLine, chosenOfPair } = await import("../src/lib/dm/opportunity-ask-logic.ts");
+const { askLine, chosenOfPair, smiteChoiceLine } = await import("../src/lib/dm/opportunity-ask-logic.ts");
 
 // A fighter beside a goblin on a wolf, on the wolf's turn, her player at the
 // table. Both creatures sturdy, so what each lost can be read.
-async function pair({ mounted = true, riderHp = 60 } = {}) {
+async function pair({ mounted = true, riderHp = 60, paladin = false } = {}) {
   const world = await openWorld({ campaign: { maxPlayers: 8 }, gameSettings: { ttsEnabled: false } });
   const user = world.addUser("kara");
   const hero = world.addHero({
-    user, name: "Kara", class: "fighter", level: 5, maxHp: 80, proficiencies: TRAINED,
-    abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+    user, name: "Kara", class: paladin ? "paladin" : "fighter", level: 5, maxHp: 80, proficiencies: TRAINED,
+    abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: paladin ? 14 : 10 },
     equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+    ...(paladin ? { spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 0 } }, prepared: [], known: [], cantrips: [] } } : {}),
   });
   await world.beginFight([mounted ? { monster: "goblin", mount: "wolf" } : { monster: "wolf" }]);
   const rider = world.enemies().find((enemy) => enemy.ridesEnemyId) ?? null;
@@ -103,6 +104,23 @@ await test("Strike the rider: the swing lands on the rider alone, the reaction i
   assert.deepEqual(at(mount), [1, 4], "the walk did not go on after the swing");
   assert.equal(hp(rider).ridesEnemyId, mount.id, "the rider struck came off its mount");
   assert.equal(getPendingRoll(ask.id)?.carry?.ask?.target, rider.id);
+  gone();
+});
+
+await test("A paladin's card offers the smite on each of the pair by name, and a smite at the rider lands on the rider alone and spends the slot.", async () => {
+  const { world, hero, rider, mount, asks, answer, hp, walk, gone } = await pair({ paladin: true });
+  await walk();
+  const [ask] = asks();
+  assert.equal(ask?.carry?.ask?.smiteSlot, 1, `the card offered no smite: ${JSON.stringify(ask?.carry?.ask)}`);
+  assert.equal(smiteChoiceLine(1, rider.displayName), `Strike ${rider.displayName} and smite (1st-level slot)`);
+  assert.equal(smiteChoiceLine(1), "Strike and smite (1st-level slot)", "the plain card's smite words changed");
+  // 15 + 3 + 3 hits; the longsword's d8 of 3 (+3), the smite's 2d8 of 4s.
+  world.dice(15, 3, 4, 4);
+  const out = await answer(ask, { strike: true, smite: true, target: rider.id });
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(60 - hp(rider).currentHp, 3 + 3 + 8, "the smite's dice did not land on the rider");
+  assert.equal(hp(mount).currentHp, 60, "the smite aimed at the rider hurt the mount");
+  assert.equal(world.sheet(hero.id).spellcasting.slots[1].used, 1, "the smite spent no slot");
   gone();
 });
 
