@@ -41,6 +41,14 @@ test("a check's skill is its field, whatever its words say, and an old roll's is
   assert.equal(rollSkill(before("Grapple: athletics"), ["stealth"]), null);
 });
 
+test("with no list, a check's skill is whichever its field names, and none for a check made with a bare ability", () => {
+  assert.equal(rollSkill(stored("Athletics to climb the wall", checkParts({ skill: "stealth" }))), "stealth");
+  assert.equal(rollSkill(stored("Stealth past the guard", checkParts({ ability: "dex" }))), null);
+  assert.equal(rollSkill(stored("Stealth past the guard")), null, "a roll with parts was matched by its words");
+  assert.equal(rollSkill(before("Stealth past the guard")), "stealth");
+  assert.equal(rollSkill(before("Strength check to lift the gate")), null);
+});
+
 test("a skill check is not a bare check of the ability behind it", () => {
   assert.equal(rollAbility(stored("athletics", checkParts({ skill: "athletics" }))), null);
   assert.equal(rollAbility(stored("str", checkParts({ ability: "str" }))), "str");

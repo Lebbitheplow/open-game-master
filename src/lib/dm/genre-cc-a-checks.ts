@@ -14,7 +14,7 @@
 //     (request_roll's againstEnemyId or againstMonster, src/lib/dm/roll-gates.ts
 //     rollContest) rolls its side at disadvantage.
 import type { Campaign } from "@/lib/db/campaigns";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll } from "@/lib/db/rolls";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { rollSkill } from "@/lib/roll-parts";
@@ -23,9 +23,7 @@ import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { findSkill } from "@/lib/srd";
 
 export function rerollFailedCheck(campaign: Campaign, sheet: CharacterSheet, label: string, skills: readonly string[]): ToolError | { result: Record<string, unknown> } {
-  const failed = listRecentRolls(campaign.id, 60)
-    .reverse()
-    .find((roll) => roll.characterId === sheet.id && (roll.kind === "skill_check" || roll.kind === "ability_check") && roll.dc !== null && roll.total < roll.dc);
+  const failed = latestRoll(campaign.id, 60, (roll) => roll.characterId === sheet.id && (roll.kind === "skill_check" || roll.kind === "ability_check") && roll.dc !== null && roll.total < roll.dc);
   // The skill the check was made with, off its fields (src/lib/roll-parts.ts).
   const skill = failed ? rollSkill(failed, skills) : null;
   if (!failed || !skill) {

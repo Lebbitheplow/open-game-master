@@ -23,7 +23,7 @@
 //
 // A refusal says what is missing and that nothing was spent.
 import { getEnemy, patchEnemyHp } from "@/lib/db/encounters";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
@@ -38,7 +38,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { GH_WARD_PLAYS } from "@/lib/dm/genre-gh-wards";
 import { learnName } from "@/lib/dm/genre-gh-names";
-import { rollAbility, rollResists } from "@/lib/roll-parts";
+import { rollAbility, rollResists, rollSkill } from "@/lib/roll-parts";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -76,7 +76,9 @@ function liftSaveEnds(campaignId: string, sheet: CharacterSheet, ability: string
 }
 
 function rerollSave(ctx: SpendContext, who: CharacterSheet, abilities: readonly string[] | null, stands: boolean): Resolution | null {
-  const failed = listRecentRolls(ctx.campaign.id, 60).find(
+  const failed = latestRoll(
+    ctx.campaign.id,
+    60,
     (roll) => roll.characterId === who.id && roll.kind === "saving_throw" && roll.dc !== null && (stands || roll.total < roll.dc) && (!abilities || abilities.includes(rollAbility(roll) ?? "")),
   );
   const ability = failed ? rollAbility(failed) : null;
@@ -106,12 +108,15 @@ function finalChapter(ctx: SpendContext): Resolution {
   if ("error" in who) return who;
   const save = rerollSave(ctx, who, null, true);
   if (save) return save;
-  const check = listRecentRolls(ctx.campaign.id, 60).find((roll) => roll.characterId === who.id && (roll.kind === "skill_check" || roll.kind === "ability_check"));
+  const check = latestRoll(ctx.campaign.id, 60, (roll) => roll.characterId === who.id && (roll.kind === "skill_check" || roll.kind === "ability_check"));
   if (!check) {
     return refused(`${who.name} has made no save or check this turn to roll again (an attack on them is answered with use_reaction The Final Chapter).`);
   }
-  const ability = rollAbility(check);
-  const again = rollCharacterCheck(ctx.campaign, who, { ...(ability ? { ability } : {}), ...(check.dc !== null ? { dc: check.dc } : {}) }, `${ctx.spend.name} reroll: ${check.detail}`);
+  // A skill check is rolled again with its skill, a bare one with its
+  // ability (src/lib/roll-parts.ts).
+  const skill = check.kind === "skill_check" ? rollSkill(check) : null;
+  const ability = skill ? null : rollAbility(check);
+  const again = rollCharacterCheck(ctx.campaign, who, { ...(skill ? { skill } : ability ? { ability } : {}), ...(check.dc !== null ? { dc: check.dc } : {}) }, `${ctx.spend.name} reroll: ${check.detail}`);
   return { result: { reroll: `${who.name}'s ${check.detail} is rolled again: ${again.total}${check.dc !== null ? ` vs DC ${check.dc}, ${again.total >= check.dc ? "a success" : "a failure"}` : ""}. The reroll stands.` } };
 }
 

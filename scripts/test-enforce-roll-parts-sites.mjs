@@ -38,7 +38,8 @@
 //     ally Bulwark brings along (src/lib/dm/feature-spends.ts), Peer Review
 //     and The Final Chapter (src/lib/dm/genre-gh-horror-plays.ts). Each
 //     rerolls the save's ability, against what the save resisted;
-//   - the rerolls of a failed check: The Final Chapter, Grease the Wheels
+//   - the rerolls of a check: The Final Chapter (a skill check with its
+//     skill, a bare one with its ability), Grease the Wheels
 //     (src/lib/dm/genre-a-cyberpunk-spends.ts grease) and the reroll Silver
 //     Tongue makes (src/lib/dm/genre-cc-a-checks.ts rerollFailedCheck).
 //
@@ -311,9 +312,10 @@ const SITES = [
   },
   { name: "Peer Review", roll: SAVE, of: borin, by: reader, spend: spend(reader, "Peer Review", { targetCharacterId: borin.id }), refusal: /no failed Intelligence, Wisdom or Charisma save/ },
   { name: "The Final Chapter", roll: SAVE, of: occultist, by: occultist, spend: spend(occultist, "The Final Chapter"), refusal: /no save or check this turn/ },
-  // With no ability read, The Final Chapter still rolls a check again, as a
-  // bare one: what it must not do is take Wisdom from the words.
+  // With no ability or skill read, The Final Chapter still rolls a check
+  // again, as a bare one: what it must not do is take either from the words.
   { name: "The Final Chapter", roll: abilityCheck("wis", "Wisdom"), of: occultist, by: occultist, spend: spend(occultist, "The Final Chapter") },
+  { name: "The Final Chapter", roll: skillCheck("persuasion", "Persuasion"), of: occultist, by: occultist, spend: spend(occultist, "The Final Chapter") },
   { name: "Grease the Wheels", roll: skillCheck("persuasion", "Persuasion"), of: fixer, by: fixer, spend: spend(fixer, "Grease the Wheels"), refusal: NO_CHA_CHECK },
   { name: "Grease the Wheels", roll: abilityCheck("cha", "Charisma"), of: fixer, by: fixer, spend: spend(fixer, "Grease the Wheels"), refusal: NO_CHA_CHECK },
   {

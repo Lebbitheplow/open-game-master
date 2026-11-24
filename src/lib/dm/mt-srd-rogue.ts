@@ -10,7 +10,7 @@
 // (resource-tools.ts) points at the attack's card.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { publishSheet } from "@/lib/dm/combat-features";
@@ -26,7 +26,7 @@ export function strokeOfLuckCheck(campaign: Campaign, stale: CharacterSheet): To
     return null;
   }
   // Their last roll, whatever it was: an older check is not what just failed.
-  const last = listRecentRolls(campaign.id, 60).find((roll) => roll.characterId === sheet.id && roll.kind !== "damage");
+  const last = latestRoll(campaign.id, 60, (roll) => roll.characterId === sheet.id && roll.kind !== "damage");
   if (!last || (last.kind !== "skill_check" && last.kind !== "ability_check") || last.dc === null || last.total >= last.dc) {
     return null;
   }
