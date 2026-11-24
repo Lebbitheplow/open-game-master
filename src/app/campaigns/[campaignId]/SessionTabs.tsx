@@ -218,9 +218,11 @@ export function useSessionTabs({
 // Seven cells share a phone's width, about 44px each at 360. The rail's own
 // side padding and the eyebrow's wide letter spacing left a label some 28px,
 // so "Table", "Party" and "Story" were cut to "TAB..." on every common phone.
-// A bar cell keeps its height and tap size and gives the label its width.
-const BAR_CELL = "min-w-0 shrink-0 grow basis-0 px-0.5";
-const BAR_LABEL = "eyebrow w-full truncate text-center text-[9px] leading-tight tracking-[0.04em]";
+// A bar cell keeps its height and tap size and gives the label its width:
+// 1px sides and 0.06em tracking leave "Battle", the widest, whole on a 320px
+// phone. This is the bar's one rule for it (session.css sets none).
+const BAR_CELL = "min-w-0 shrink-0 grow basis-0 px-px";
+const BAR_LABEL = "eyebrow w-full truncate text-center text-[9px] leading-tight tracking-[0.06em]";
 
 function BottomTabBarInner({
   tabs,

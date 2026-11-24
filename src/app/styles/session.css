@@ -703,12 +703,6 @@ html[data-effects="low"] .dice-tray-result-fresh[data-crit="nat1"] { animation: 
 
 /* The phone bar's More cell (SessionTabs): three gold diamonds, the menu
    bullet the title screen uses, standing in for a painted glyph. */
-/* The phone bar shares 412 px among seven cells: at the rail's side padding
-   and the eyebrow's wide tracking "Battle" and "Story" were cut to "Batt…"
-   and "Stor…". The cells give their sides to the name and the name sits
-   closer set. */
-.cine-bottombar > button { padding-inline: 1px; }
-.cine-bottombar > button > .eyebrow { letter-spacing: 0.06em; }
 .tab-more-diamonds {
   display: inline-flex;
   height: 1.25rem;
