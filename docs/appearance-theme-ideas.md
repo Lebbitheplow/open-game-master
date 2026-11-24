@@ -33,6 +33,11 @@ or session to coordinate with; it does not mean that session is still running.
 | Twilight Court | Fable, theme-fey session | `feat/appearance-theme-fey`, local worktree, from main 0.39.0 | Built 2026-11-21 and merged into `integrate/themes-batch2` for one pull request with the theme panel. Checks and limits are in that pull request. | 2026-11-21 |
 | Unquiet Depths | Fable, theme-depths session | `feat/appearance-theme-depths`, local worktree, from main 0.39.0 | Built 2026-11-21 and merged into `integrate/themes-batch2` for one pull request with the theme panel. Checks and limits are in that pull request. | 2026-11-21 |
 | Theme panel, genre shortlist, picker check | Fable, coordinating session | `integrate/themes-batch2`, worktree `ogm-themes-batch2`, from main 0.39.0 | Built 2026-11-21: the picker is a panel beside the page, the lobby opens it, whoever steers the story sets the table's theme in it, and a table's genre shortlists the themes that suit it. One pull request with the four themes above. | 2026-11-21 |
+| Neon District | Fable, theme-neon session | `feat/appearance-theme-neon`, local worktree, from `integrate/themes-batch3` (pull request 1071's head `79a9c0a8d`) | Built 2026-11-22 and merged into `integrate/themes-batch3` for one pull request: suits its genre, claims no default. Checks and limits are in that pull request. | 2026-11-22 |
+| Brassworks | Fable, theme-brassworks session | `feat/appearance-theme-brassworks`, local worktree, from `integrate/themes-batch3` (pull request 1071's head `79a9c0a8d`) | Built 2026-11-22 and merged into `integrate/themes-batch3` for one pull request: suits its genre, claims no default. Checks and limits are in that pull request. | 2026-11-22 |
+| Wasteland | Fable, theme-wasteland session | `feat/appearance-theme-wasteland`, local worktree, from `integrate/themes-batch3` (pull request 1071's head `79a9c0a8d`) | Built 2026-11-22 and merged into `integrate/themes-batch3` for one pull request: suits its genre, claims no default. Checks and limits are in that pull request. | 2026-11-22 |
+| Gaslight | Fable, theme-gaslight session | `feat/appearance-theme-gaslight`, local worktree, from `integrate/themes-batch3` (pull request 1071's head `79a9c0a8d`) | Built 2026-11-22 and merged into `integrate/themes-batch3` for one pull request: suits its genre, claims no default. Checks and limits are in that pull request. | 2026-11-22 |
+| Batch 3 integration | Fable, coordinating session | `integrate/themes-batch3`, worktree `ogm-themes-batch3` | Built 2026-11-22: the four genre themes above merged, the stylesheet budgets set once from the measured build, the shortlist test made independent of catalog size. One pull request. | 2026-11-22 |
 
 ### Starting, coordinating and handing off
 
@@ -117,20 +122,33 @@ identities. Proposed claims are not active defaults.
 
 | ID | Name | Look | Proposed genre claim | Status | Next design check |
 | --- | --- | --- | --- | --- | --- |
-| `neon` | Neon District | Black glass, magenta/cyan signage, brushed steel | Cyberpunk | **idea** | Fine illuminated lines may suit SVG. Keep the glow decorative, preserve semantic warning colors, and design a readable day mode. |
-| `brassworks` | Brassworks | Riveted brass, oxblood leather, gauge glass | Steampunk | **idea** | Keep it mechanical and precise, distinct from Deep Forge's hammered metal and basalt. Decorative gauges must not look like controls. |
-| `wasteland` | Wasteland | Rusted sheet metal, hazard yellow, sun-bleached canvas | Post-apocalyptic | **idea** | Keep rust and scratches off reading surfaces. Hazard stripes must not compete with real warnings or selected states. |
-| `gaslight` | Gaslight | Dark walnut, green baize, brass lamp glow | Mystery | **idea** | Use restrained joinery and lamp fittings, distinct from Woodland's living vines and Gothic's cathedral tracery. Hearth & Haven now also has dark wood and lamp glow: the green baize and a cooler detective's-office feel have to carry it. Compare the two side by side before building. |
+| `neon` | Neon District | Black glass, magenta and cyan tube signs, brushed steel. By night a rain street; by day the same street under an overcast sky, signs still lit | None; suits cyberpunk | **built** | The frame is a vector drawing, one lit tube per rail; the corner is a painted junction box. The corporate tower tried for its day half was set aside as a later theme for the wealthy district. |
+| `brassworks` | Brassworks | Brass pipework, a meshed gear train behind porthole glass, oxblood leather by night and drawing linen by day | None; suits steampunk | **built** | Gears were added on the second pass (Albert, 2026-11-22): a steampunk theme should carry them. The corner shows several meshed gears cut off by its ring, so it never reads as a settings button. |
+| `wasteland` | Wasteland | The desert road war: roll-cage tube, tyre tread and chain. By day a burnt orange storm road under a teal sky; by night the convoy's fires under a blue desert sky | None; suits post-apocalyptic | **built** | First built as rusted scrap and bleached canvas, which read as correct but generic; rebuilt as the road war (Albert, 2026-11-22). No hazard stripes remain. Nothing from a published film: no specific vehicle, emblem or figure. The shelter look is Atomic Age, below. |
+| `gaslight` | Gaslight | Dark walnut, polished brass and green baize by gaslight; gas bracket lamps at the corners, lit by night and unlit by day | None; suits mystery | **built** | By night the page is a walnut room and the baize is the surface read and played on, which keeps it apart from Unquiet Depths, the other mystery theme and also green at night. The least reviewed theme of its batch: Albert left its art direction to the coordinating session and may revisit it. |
 | `depths` | Unquiet Depths | By day the investigator's desk: manila case files, typewriter ink, sepia photographs, red string. By night what the case uncovers: green-black deep water, wet stone, watching eyes, angles that do not quite meet | None; suits horror and mystery | **built** | Proposed 2026-11-16 (Albert and Fable) as the cosmic horror look. The two brightness modes are two halves of one story. Use no named beings or places from published stories or games, and no tentacle-faced figures. The display name is a placeholder. |
 | `galvanic` | Galvanic | Glowing vacuum tubes, copper coils, ceramic insulators, violet arcs on dark bakelite | None; suits steampunk | **idea** | Proposed 2026-11-16 (Albert and Fable) as the electrical laboratory. Keep it apart from Brassworks: glass, wire and arc light, not cogs and rivets. Decorative dials and switches must not look like controls. The display name is a placeholder. |
 | `skyfarer` | Skyfarer | Canvas envelopes, rope rigging, teak decks, brass instruments, open sky | None; suits steampunk and high fantasy | **idea** | Proposed 2026-11-16 (Albert and Fable) for airships and sky islands. Shares sky blue with Radiant Heights; rigging and canvas against marble and halos keep them apart. The display name is a placeholder. |
 | `noir` | Noir | Black and white, window-blind shadows, one red accent | None; suits mystery and cyberpunk | **idea** | Proposed 2026-11-16 (Albert and Fable). Nearly colourless, so selected, warning and disabled states need a plan before any ornament. |
+| `atomic` | Atomic Age | The cheerful 1950s future after it ended. By day pastel enamel steel, rounded chrome, cream and mint panels, faded poster colour; by night the shelter underneath: steel bulkheads, bakelite dials, green screen glow | None; suits post-apocalyptic | **idea** | Proposed 2026-11-22 (Albert and Fable) as the second post-apocalyptic theme, held for the batch after Wasteland. Wasteland carries the desert road war by day and by night; this carries the shelter. Mid-century atomic-age design is a general style, but use nothing owned by a published game: no mascot figures, wrist computers, branded drinks, numbered shelter doors, or a blue and yellow suit pairing. Painted dials and switches must not look like controls. The display name is a placeholder. |
 
 A genre may have more than one theme. A look earns a place when it reads as
 different from every other theme, or when it fits a genre better than anything
 that genre has now; sharing a colour scheme with a theme made for another genre
 does not rule it out (Albert, 2026-11-16). Only one theme is a genre's default.
 The others are picked by hand.
+
+Overlap is judged inside a genre (Albert, 2026-11-22, on the batch 3 briefs):
+"Overlap within the same genre is more of an issue. Overlap with a theme in a
+different genre is not a big deal." A table's shortlist shows the themes that
+suit its genre, so those are the ones a player chooses between. A brief names
+only same-genre neighbours as looks to stay apart from (Gaslight against
+Unquiet Depths, both mystery), and a theme does not thin out its own idea to
+avoid one made for another genre (Gaslight's walnut and lamplight beside
+Hearth & Haven, Brassworks' metal beside Deep Forge). A theme that suits two
+genres has neighbours in both. Rules about function are separate and stay:
+ornament that could pass for a control, wear on reading surfaces, colours
+that compete with warnings.
 
 Second themes noted for later, once the first for their genre exists: a
 corporate tower for cyberpunk (white panels, chrome, one cold accent) and an
@@ -170,7 +188,7 @@ suit the genre and it would leave out at least three.
 | Mystery | Gaslight, Unquiet Depths, Noir |
 | Steampunk | Brassworks, Galvanic, Skyfarer |
 | Cyberpunk | Neon District, Noir |
-| Post-apocalyptic | Wasteland |
+| Post-apocalyptic | Wasteland, Atomic Age |
 
 ## Follow the story (later idea)
 
@@ -227,6 +245,52 @@ not built.
   existing art or a CSS gradient over it; what it costs a phone's battery; how
   the checks prove it stays still when it should.
 
+### Movement at moments, not all the time (2026-11-23)
+
+Albert's direction on 2026-11-23, which replaces "very slowly, all the time"
+above as the starting point. Still not designed in detail and not built.
+
+- Theme artwork does not move constantly. It moves briefly, at a moment, and
+  then rests. Constant movement costs memory and battery for something the
+  reader stops seeing.
+- Fixed moments, the same for every theme: when the theme is first switched to.
+- Story moments, which depend on the theme's mood. A dark theme such as Unquiet
+  Depths stirs when something dramatically bad happens (its limbs writhe for a
+  few seconds). A bright theme such as High Kingdoms stirs at a major good
+  turn. Each theme would declare which kind of moment it answers.
+- Albert's first thought is to leave story moments to the GM. Fable's
+  suggestion, not agreed: start from events the rules engine already records
+  (a character drops to 0 hit points or dies, a critical hit, a fight won, a
+  level gained), so no new control is needed, and add a GM trigger only if
+  those prove not enough. A GM control would have to earn its place under
+  "Settings, options and toggles" in AGENTS.md.
+- Still to settle: the list of events for each mood; whether a theme answers
+  only its own mood or both in different ways; how long a moment lasts; how
+  often it may repeat in a busy fight; that each player sees it in their own
+  theme.
+
+The discussion of 2026-11-23, so it is not lost. Albert called these decent
+points; none is agreed as a decision.
+
+- Who starts a story moment. Engine events first: they need no new control,
+  work the same for a human GM and the AI GM, and are never forgotten in the
+  middle of a scene. A GM trigger comes later, for moments the engine cannot
+  see (a betrayal in dialogue). If Albert wants GMs to stage moments by hand
+  as part of how they run a table, the control becomes the feature and not a
+  fallback, and this order reverses.
+- One mood for each theme, or both. One mood is one animation a theme and the
+  cheapest to make. Its cost: some tables see movement often and others
+  rarely (a grim campaign in High Kingdoms may go sessions without a major
+  good turn). Answering both moods doubles the artwork. Start with one mood
+  and watch how often it fires.
+- How rare it stays. A busy fight can drop three characters in two rounds, and
+  movement on each would become noise. Cap it (once a round or once a fight)
+  and keep it to a few seconds.
+- Carried over unchanged from the idea above: off when the reader asks for
+  reduced motion or sets effects low, and never under text being read.
+- Fable's recommendation: engine events first, one mood for each theme, capped
+  at once a fight.
+
 ## Suggested build order
 
 1. Finish PR 962's validation and settle the reusable theme contracts.
@@ -241,8 +305,10 @@ not built.
 
 ## Before a row moves to started
 
-- The look must read as different from every shipped theme at picker size, in
-  both night and day. Record its materials, border shapes and accent colors.
+- The look must read as different from every theme that suits the same genre
+  at picker size, in both night and day; likeness to a theme made for another
+  genre does not hold it back. Record its materials, border shapes and accent
+  colors.
 - Avoid named settings, characters and creatures from published games in the
   name, description and artwork. Record asset sources and generation prompts.
 - A genre has at most one default theme; other themes may suit it without

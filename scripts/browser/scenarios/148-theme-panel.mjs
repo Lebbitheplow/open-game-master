@@ -69,7 +69,16 @@ export default {
     check(small.length === 0, `controls under 40px in the theme panel: ${JSON.stringify(small)}`);
 
     // A pick restyles the page at once, and the panel stays open beside it.
+    // The lobby's table is high fantasy, and once enough themes suit a genre
+    // the panel opens on that shortlist, which leaves Unquiet Depths out: the
+    // whole catalog is one button away.
     const depths = panel.locator("button.appearance-option", { hasText: "Unquiet Depths" });
+    if (!(await depths.count())) {
+      const showAll = panel.getByRole("button", { name: /^Show all \d+ themes$/ });
+      check(await showAll.count(), "Unquiet Depths is not offered, and the panel has no way to show every theme");
+      await t.tap(showAll);
+      await eventually(() => depths.count(), { label: "Unquiet Depths in the whole catalog" });
+    }
     await depths.scrollIntoViewIfNeeded();
     await t.tap(depths);
     await eventually(async () => (await appearanceOf(page)) === "depths", { label: "Unquiet Depths on the page" });

@@ -1,0 +1,167 @@
+/* gaslight: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   A club reading room that is also a detective's office. Green baize is the
+   table: every surface that is read or played on. The accent ramp is
+   polished brass (hue about 49). Walnut is the room: the painted rails and,
+   at night, the page itself, the table's header and the plain keys.
+   Night is the room by gas: dark walnut under amber lamplight, with lit
+   baize (hue about 140) as the panels. Unquiet Depths, the other theme that
+   suits mystery, is cold green-black from edge to edge at night; here green
+   is only the cloth. Day is the same room on a grey morning with the gas
+   off: fog-pale paper on a cool green table. */
+[data-appearance="gaslight"][data-theme="dark"] {
+  --background: #1a100a;
+  --foreground: #efe9d6;
+  --color-stone-950: #11301e;
+  --color-stone-900: #173d26;
+  --color-stone-800: #205033;
+  --color-stone-700: #346a47;
+  --color-stone-600: #63906f;
+  --color-stone-500: #afc4a8;
+  --color-stone-400: #c4c8b0;
+  --color-stone-300: #d8d8c3;
+  --color-stone-200: #e8e5d3;
+  --color-stone-100: #f2f0e2;
+  --color-stone-50: #faf8ef;
+  --color-amber-950: #292107;
+  --color-amber-900: #3d320f;
+  --color-amber-800: #594a17;
+  --color-amber-700: #7a6722;
+  --color-amber-600: #9e8831;
+  --color-amber-500: #c5ab45;
+  --color-amber-400: #dac365;
+  --color-amber-300: #e7d488;
+  --color-amber-200: #f0e2aa;
+  --color-amber-100: #f7eecc;
+  --color-amber-50: #fcf8e8;
+  --material-inset: #0f2c1b;
+  --material-paper: #153823;
+  --material-metal: #f0e2aa;
+  --material-edge: #9e8831;
+  /* The night grain is walnut. Panels lay baize over it, close to opaque,
+     so the wood does not show through the cloth. */
+  --material-panel-wash: linear-gradient(#173d26f5, #11301ef7);
+  /* The header and the plain keys are the room's own walnut. */
+  --material-control-wash: linear-gradient(#55361fb8, #321e11d6);
+  /* The page: walnut in shadow, with one pool of lamplight falling from the top. */
+  --material-body-wash: radial-gradient(ellipse 85% 55% at 50% 0%, #e0a03c33, transparent 72%), linear-gradient(#1a100a8c, #0f0805c4);
+  --material-rail-wash: linear-gradient(#3a241566, #1f120a8c);
+  --material-send-edge: #dac365;
+  /* Gas light: a warm amber lift at the top of a scene, walnut shadow below. */
+  --material-scrim: linear-gradient(#4a2e0c9c, #1a100a52 45%, #1a100acc);
+  /* What is chosen is lit brass: lighter and yellower than a walnut key. */
+  --material-chosen-wash: linear-gradient(#7d6820, #55450f);
+  --gaslight-flame: #bfe3f2;
+}
+[data-appearance="gaslight"][data-theme="light"] {
+  --background: #d2e2d6;
+  --foreground: #14251e;
+  --color-stone-950: #f3f5e9;
+  --color-stone-900: #dfeade;
+  --color-stone-800: #c9dccd;
+  --color-stone-700: #9fbca8;
+  --color-stone-600: #5f8470;
+  --color-stone-500: #3c574a;
+  --color-stone-400: #344d41;
+  --color-stone-300: #273d33;
+  --color-stone-200: #1b2e26;
+  --color-stone-100: #12211a;
+  --color-stone-50: #0a1611;
+  --color-amber-950: #f6f0d5;
+  --color-amber-900: #ebe0b2;
+  --color-amber-800: #dbc983;
+  --color-amber-700: #bca44e;
+  --color-amber-600: #8c7424;
+  --color-amber-500: #705a15;
+  --color-amber-400: #5d4a10;
+  --color-amber-300: #4b3b0c;
+  --color-amber-200: #3b2e09;
+  --color-amber-100: #2c2206;
+  --color-amber-50: #1e1704;
+  --material-inset: #f6f6ec;
+  --material-paper: #e2ecdf;
+  --material-metal: #4b3b0c;
+  --material-edge: #8c7424;
+  /* Cream paper laid on the table: the panels are nearly opaque, the page
+     between them lets the green cloth through. */
+  --material-panel-wash: linear-gradient(#f1f5e8e6, #dce9dbea);
+  --material-control-wash: linear-gradient(#e6efdfdb, #bed5c3e6);
+  --material-body-wash: linear-gradient(#d2e2d6b8, #c0d6c6c2);
+  --material-rail-wash: linear-gradient(#4a352766, #4a352766);
+  --material-send-edge: #bca44e;
+  --material-scrim: linear-gradient(#dfe9e399, #dfe9e340 45%, #d2e2d6bb);
+  --gaslight-flame: #2f6f8c;
+}
+
+/* Materials that hold in both brightness modes: polished brass fittings,
+   keys in the lamp shade's bottle green, and plain square joinery. */
+[data-appearance="gaslight"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #1a100a;
+  --theme-night-foreground: #efe9d6;
+  --theme-night-stone-950: #11301e;
+  --theme-night-stone-900: #173d26;
+  --theme-night-stone-800: #205033;
+  --theme-night-stone-700: #346a47;
+  --theme-night-stone-600: #63906f;
+  --theme-night-stone-500: #afc4a8;
+  --theme-night-stone-400: #c4c8b0;
+  --theme-night-stone-300: #d8d8c3;
+  --theme-night-stone-200: #e8e5d3;
+  --theme-night-stone-100: #f2f0e2;
+  --theme-night-stone-50: #faf8ef;
+  --theme-night-amber-950: #292107;
+  --theme-night-amber-900: #3d320f;
+  --theme-night-amber-800: #594a17;
+  --theme-night-amber-700: #7a6722;
+  --theme-night-amber-600: #9e8831;
+  --theme-night-amber-500: #c5ab45;
+  --theme-night-amber-400: #dac365;
+  --theme-night-amber-300: #e7d488;
+  --theme-night-amber-200: #f0e2aa;
+  --theme-night-amber-100: #f7eecc;
+  --theme-night-amber-50: #fcf8e8;
+  --material-metal-finish: linear-gradient(135deg, #f8ecb0, #a98b2f 46%, #e4cf78 52%, #776020);
+  --material-metal-ink: #241d06;
+  /* Bottle-green glass under light labels, the same in day and night. */
+  --material-primary-wash: linear-gradient(#1c7350f0, #0e4a33f5);
+  --material-send-wash: linear-gradient(#1c7350, #0e4a33);
+  /* What is chosen is brass in shadow, so it never reads as one more green key. */
+  --material-chosen-wash: linear-gradient(#6d5a1c, #473a10);
+  --material-vital-fill: linear-gradient(90deg, #2f9a6b, #9be3c0);
+  --material-fitting-radius: 50%;
+  --material-control-radius: 3px;
+  --material-panel-radius: 5px;
+  --material-bubble-radius: 4px;
+  --material-tab-radius: 4px 4px 0 0;
+  --material-chip-radius: 3px;
+  --material-sigil-radius: 3px;
+  --appearance-corner: 0.2rem;
+}
+/* Brass corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+html[data-appearance="gaslight"] .ornate::before,
+html[data-appearance="gaslight"] .ornate::after { width: 14px; height: 14px; }
+html[data-appearance="gaslight"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="gaslight"] .ornate::after { border-width: 0 2px 2px 0; }
+/* The bracket lamp lies on the diagonal and its globe reaches 54% of the
+   piece's side into the page, further than a boss on the joint would. On
+   the table that reach has to stop short of the session title's first
+   letter, so the piece is smaller there than the default; the lobby, where
+   it hangs over the cover painting, takes it large. */
+[data-appearance="gaslight"] {
+  --theme-table-corner-size: 72px;
+  /* A phone's bottom bar starts 13px from the edge: 32px keeps the globe off its first icon and label. */
+  --theme-table-corner-size-small: 32px;
+  --theme-lobby-corner-size: 232px;
+  --theme-lobby-corner-size-small: 100px;
+}
+/* Dark walnut on a dark walnut page: a warm rim of lamplight lifts the joinery. */
+[data-appearance="gaslight"][data-theme="dark"] .theme-ornaments::before,
+[data-appearance="gaslight"][data-theme="dark"] .theme-ornaments > span {
+  filter: drop-shadow(0 0 5px #f3d98a47) drop-shadow(0 2px 3px #000a);
+}
+/* Focus is the blue heart of a gas flame: the one cold light in a green and
+   brass room, so it is never taken for one more brass edge. */
+html[data-appearance="gaslight"] :focus-visible { outline-color: var(--gaslight-flame) !important; }

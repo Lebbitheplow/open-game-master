@@ -67,7 +67,18 @@ test("a picker shortlists the themes that suit a genre only when that is a real 
   assert.equal(genreShortlist("cyberpunk", catalog), null);
   // Hiding fewer than three only adds a step: the whole catalog shows.
   assert.equal(genreShortlist("mystery", catalog, ["d", "e"]), null);
-  assert.equal(genreShortlist("high_fantasy", APPEARANCE_THEMES), null, "nearly every theme suits high fantasy");
+  // The shipped catalog keeps the rule at any size: a genre's shortlist is
+  // absent, or holds every theme made for it and still leaves out three.
+  // (High fantasy had none while nearly every theme suited it.)
+  const named = (theme) => [...("suits" in theme ? theme.suits : []), ...("genres" in theme ? theme.genres : [])];
+  for (const genre of new Set(APPEARANCE_THEMES.flatMap(named))) {
+    const shortlist = genreShortlist(genre, APPEARANCE_THEMES);
+    if (shortlist === null) continue;
+    const suited = APPEARANCE_THEMES.filter((theme) => named(theme).includes(genre)).map((theme) => theme.id);
+    assert.ok(shortlist.length >= 2, `${genre} offers a choice`);
+    assert.ok(suited.every((id) => shortlist.includes(id)), `${genre} shows every theme made for it`);
+    assert.ok(APPEARANCE_THEMES.length - shortlist.length >= 3, `${genre} hides at least three`);
+  }
   assert.ok(genreShortlist("dark_fantasy", APPEARANCE_THEMES)?.includes("gothic"), "a genre's default is on its shortlist");
 });
 test("server rendering reads defaults without browser APIs", () => {

@@ -62,7 +62,8 @@ Next must see each CSS import when building the app.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
-   `church`, `flame`, `shield`, `waves`, `anvil` and `eye`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   `church`, `flame`, `shield`, `waves`, `anvil`, `eye`, `snowflake`, `chain`,
+   `flower`, `cog`, `circuit`, `wrench` and `lamp`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 

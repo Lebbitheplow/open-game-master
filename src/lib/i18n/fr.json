@@ -10669,6 +10669,10 @@
     "Blue-white ice, pale steel, and aurora light.": "Glace bleu-blanc, acier pâle et lueur d’aurore.",
     "Obsidian, black iron chain, and a crimson glow.": "Obsidienne, chaînes de fer noir et lueur cramoisie.",
     "Dusk rose, gossamer thread, and pearl silverwork.": "Rose du crépuscule, fil arachnéen et orfèvrerie nacrée.",
+    "Brass pipework and meshed gears, oxblood leather, and green gauge glass.": "Tuyauterie de laiton et engrenages en prise, cuir sang-de-bœuf et verre de jauge vert.",
+    "Black glass, magenta and cyan tube signs, and brushed steel.": "Verre noir, enseignes au néon magenta et cyan, et acier brossé.",
+    "Roll-cage tube, tyre tread and chain: the desert road by day, the convoy's fires by night.": "Arceau d’acier, pneus crantés et chaînes : la route du désert le jour, les feux du convoi la nuit.",
+    "Dark walnut, polished brass, and green baize by gaslight.": "Noyer sombre, laiton poli et feutre vert à la lueur du gaz.",
     "Rolls {expression}": "Jet de {expression}",
     "{duration} passes:": "{duration} s’écoule :",
     "{duration} passes.": "{duration} s’écoule.",
@@ -11066,6 +11070,18 @@
     },
     "Twilight Court": {
       "appearance.theme.fey": "Cour du crépuscule"
+    },
+    "Brassworks": {
+      "appearance.theme.brassworks": "Atelier de laiton"
+    },
+    "Neon District": {
+      "appearance.theme.neon": "Quartier néon"
+    },
+    "Wasteland": {
+      "appearance.theme.wasteland": "Terres dévastées"
+    },
+    "Gaslight": {
+      "appearance.theme.gaslight": "Bec de gaz"
     },
     "Light": {
       "appearance.brightness.light": "Clair"
