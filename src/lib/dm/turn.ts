@@ -153,6 +153,7 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { clearWatchAnswered, isHeldPark, markWatchAnswered, runHeld, watchStopOf } from "@/lib/dm/held-call";
+import { callAwaitsAnswer } from "@/lib/dm/retry-turn-logic";
 import { backstopTurn, backstopWaiting } from "@/lib/dm/backstop-calls";
 import { resumeBackstop } from "@/lib/dm/backstop-resume";
 import { deedRefusal } from "@/lib/dm/deed-guard";
@@ -1297,6 +1298,127 @@ export function pendingRollAnswer(pending: PendingRoll, roll: StoredRoll) {
   };
 }
 
+// What a landed roll card answers the model with: the one reading, taken by
+// a turn that resumes and by a retry alike (answerLandedCards below, issue
+// #1073). A card that held its whole call (src/lib/dm/held-call.ts) answers
+// with what the call did when it ran again with the roll in hand, kept on the
+// card as the roll landed. Any other card answers with its roll. Null while
+// the card has nothing to tell: its dice are not in, it was taken off the
+// table unrolled, or its call waited again on another roll, whose card
+// answers for the call once that one lands.
+//
+// The two paths used to read a held card each their own way. The retry took
+// it for a plain one and answered its call with the die, so the model knew
+// the d20 and not what the call had done with it, and could narrate the
+// wrong outcome.
+function cardAnswer(pending: PendingRoll): { call: string } | { roll: ReturnType<typeof pendingRollAnswer> } | null {
+  if (pending.carry?.call) {
+    return pending.carry.answer ? { call: pending.carry.answer } : null;
+  }
+  const roll = pending.rollId ? getRoll(pending.rollId) : null;
+  return roll ? { roll: pendingRollAnswer(pending, roll) } : null;
+}
+
+// Puts a held call's answer in the conversation. False when it has no place
+// there: the call was sent with no id, which is also how the server's own
+// held calls are kept (the enemy-turn backstop, backstop-calls.ts), so the
+// answer cannot be told from one the model never asked for; or the
+// conversation holds no call of that id still waiting (retry-turn-logic.ts
+// callAwaitsAnswer).
+function handCallAnswer(turn: DmTurn, pending: PendingRoll, content: string): boolean {
+  if (!pending.toolCallId || !callAwaitsAnswer(turn.conversation, pending.toolCallId)) {
+    return false;
+  }
+  turn.conversation.push({ role: "tool", tool_call_id: pending.toolCallId, content });
+  return true;
+}
+
+// Puts a plain card's roll where the conversation waits for it. False when
+// it would be a tool answer to a call the conversation does not hold.
+//
+// A pc_attack of several parts parked a roll per part under one call: its
+// answer, written when it parked with the parts that needed no roll, takes
+// each roll in the part's place, so the call has one answer, as the API
+// requires.
+function handRollAnswer(turn: DmTurn, pending: PendingRoll, answer: ReturnType<typeof pendingRollAnswer>): boolean {
+  // A card the AI's fight sent when it opened: the call that opened it was
+  // answered then, and the total joins that answer (initiative-cards-logic.ts).
+  const opened =
+    pending.kind === "initiative" && pending.toolCallId && pending.characterId
+      ? turn.conversation.findLast(
+          (message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && holdsInitiativeCard(message.content, pending.characterId as string),
+        )
+      : undefined;
+  if (opened && typeof opened.content === "string" && pending.characterId) {
+    opened.content = fillInitiativeCard(opened.content, pending.characterId, answer);
+    return true;
+  }
+  // A card the turn sent before the model first spoke (openTurn) answers
+  // no call of the model's, so the total reaches it as the moment's news.
+  if (pending.kind === "initiative" && !pending.toolCallId && !turn.conversation.some((message) => message.role === "assistant")) {
+    turn.conversation.push({ role: "user", content: `[GAME STATE UPDATE] Initiative rolled at the table: ${JSON.stringify(answer)}` });
+    return true;
+  }
+  // The call whose parts wait on this roll: a tool answer of its id that
+  // still holds a part awaiting one (a backend may reuse an id across
+  // replies, and an earlier answer of that id holds no parts).
+  const waiting = pending.toolCallId
+    ? turn.conversation.findLast((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && awaitingPart(message.content) !== null)
+    : undefined;
+  const held = waiting ? awaitingPart(waiting.content) : null;
+  if (waiting && held) {
+    const { content, at } = held;
+    content.attacks[at] = { ...answer, ...(content.attacks[at].spent ? { spent: content.attacks[at].spent } : {}) };
+    // The attacks that waited behind this roll, made once it landed.
+    if ((pending.attack as AttackRecord | null)?.queue) {
+      fillQueuedParts(content.attacks, at, queuedResultsFor(pending.attack as AttackRecord));
+    }
+    waiting.content = JSON.stringify(content);
+    return true;
+  }
+  if (pending.toolCallId && !callAwaitsAnswer(turn.conversation, pending.toolCallId)) {
+    return false;
+  }
+  turn.conversation.push({
+    role: "tool",
+    ...(pending.toolCallId ? { tool_call_id: pending.toolCallId } : {}),
+    content: JSON.stringify(answer),
+  });
+  return true;
+}
+
+// Hands the turn's conversation the answer of each landed card it has not
+// been handed yet, in the order the cards were dealt, and lists each card it
+// handed on as answered (DmTurn.answeredPendingIds): a turn that waits on
+// dice more than once, or is retried and then waits, answers each card once.
+// The caller saves the turn. Each card's roll joined the turn's cards as it
+// landed, ahead of the dice its landing threw (pending-roll-land.ts): nothing
+// is added to them here.
+//
+// The list says which cards are answered, a held call's card among them. A
+// held card used to count as answered when any tool answer in the
+// conversation carried its call's id, and a backend may give the calls of
+// two replies the same id: the held call then went unanswered, behind the
+// earlier call's answer.
+//
+// A card whose answer has no place in the conversation is left unlisted and
+// untold, as it was before: a turn halted from its stored row can hold a
+// card for a call the row never recorded.
+export function answerLandedCards(turn: DmTurn, pendings: readonly PendingRoll[]) {
+  for (const pending of pendings) {
+    if (turn.answeredPendingIds.includes(pending.id)) {
+      continue;
+    }
+    const told = cardAnswer(pending);
+    if (!told) {
+      continue;
+    }
+    if ("call" in told ? handCallAnswer(turn, pending, told.call) : handRollAnswer(turn, pending, told.roll)) {
+      turn.answeredPendingIds.push(pending.id);
+    }
+  }
+}
+
 // A parked turn closed with nothing more said: the rolls it waited on have
 // published themselves and applied what they apply.
 function closeUntold(campaignId: string, turn: DmTurn) {
@@ -1351,76 +1473,7 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     return;
   }
 
-  // Answer each parked tool call with the roll the player entered (or the
-  // digital fallback), in creation order. A pc_attack of several parts
-  // parked a roll per part under one call: its answer, written when it
-  // parked with the parts that needed no roll, takes each roll in the
-  // part's place, so the call has one answer, as the API requires.
-  // Each card's roll joined the turn's cards as it landed, ahead of the dice
-  // its landing threw (pending-roll-land.ts): nothing is added to them here.
-  for (const pending of pendings) {
-    // A roll that held its whole call (src/lib/dm/held-call.ts): the call ran
-    // again when it landed, and this is what it answered. One that parked
-    // again answers through the roll it parked on.
-    const heldCall = pending.carry?.call;
-    if (heldCall) {
-      const answered = turn.conversation.some((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId);
-      if (pending.carry?.answer && pending.toolCallId && !answered) {
-        turn.conversation.push({ role: "tool", tool_call_id: pending.toolCallId, content: pending.carry.answer });
-      }
-      continue;
-    }
-    const roll = pending.rollId ? getRoll(pending.rollId) : null;
-    // A turn that parks more than once (a stop before a later roll) comes back
-    // here with the cards of its last resume, already answered. The turn
-    // keeps which: a card's roll is on the turn from the moment it lands, so
-    // that no longer says the model was handed it.
-    if (!roll || turn.answeredPendingIds.includes(pending.id)) {
-      continue;
-    }
-    turn.answeredPendingIds.push(pending.id);
-    const answer = pendingRollAnswer(pending, roll);
-    // A card the AI's fight sent when it opened: the call that opened it was
-    // answered then, and the total joins that answer (initiative-cards-logic.ts).
-    const opened =
-      pending.kind === "initiative" && pending.toolCallId && pending.characterId
-        ? turn.conversation.findLast(
-            (message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && holdsInitiativeCard(message.content, pending.characterId as string),
-          )
-        : undefined;
-    if (opened && typeof opened.content === "string" && pending.characterId) {
-      opened.content = fillInitiativeCard(opened.content, pending.characterId, answer);
-      continue;
-    }
-    // A card the turn sent before the model first spoke (openTurn) answers
-    // no call of the model's, so the total reaches it as the moment's news.
-    if (pending.kind === "initiative" && !pending.toolCallId && !turn.conversation.some((message) => message.role === "assistant")) {
-      turn.conversation.push({ role: "user", content: `[GAME STATE UPDATE] Initiative rolled at the table: ${JSON.stringify(answer)}` });
-      continue;
-    }
-    // The call whose parts wait on this roll: a tool answer of its id that
-    // still holds a part awaiting one (a backend may reuse an id across
-    // replies, and an earlier answer of that id holds no parts).
-    const waiting = pending.toolCallId
-      ? turn.conversation.findLast((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && awaitingPart(message.content) !== null)
-      : undefined;
-    const held = waiting ? awaitingPart(waiting.content) : null;
-    if (waiting && held) {
-      const { content, at } = held;
-      content.attacks[at] = { ...answer, ...(content.attacks[at].spent ? { spent: content.attacks[at].spent } : {}) };
-      // The attacks that waited behind this roll, made once it landed.
-      if ((pending.attack as AttackRecord | null)?.queue) {
-        fillQueuedParts(content.attacks, at, queuedResultsFor(pending.attack as AttackRecord));
-      }
-      waiting.content = JSON.stringify(content);
-      continue;
-    }
-    turn.conversation.push({
-      role: "tool",
-      ...(pending.toolCallId ? { tool_call_id: pending.toolCallId } : {}),
-      content: JSON.stringify(answer),
-    });
-  }
+  answerLandedCards(turn, pendings);
 
   // What a watch stop held back runs now, and may park the turn again.
   for (const pending of pendings) {

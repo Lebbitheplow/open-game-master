@@ -527,7 +527,7 @@ function runnerFor(name: string): HeldRunner | undefined {
 }
 
 // A held roll has landed: the call runs again with it, and what it answered
-// is kept for the turn to hand on (turn.ts resumeDmTurn). The roll the run
+// is kept for the turn to hand on (turn.ts answerLandedCards). The roll the run
 // recorded for the player is the card's; with none (the call was refused
 // this time) the player's dice are recorded as they landed.
 //

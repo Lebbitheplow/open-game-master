@@ -43,14 +43,14 @@ export type DmTurn = {
   // PCs whose combat turn was adjudicated this DM turn; the initiative
   // pointer only advances past a PC on this list (or with a landed roll).
   resolvedCharacterIds: string[];
-  // The roll cards whose roll this turn's conversation has been handed, by
-  // card (src/lib/dm/turn.ts resumeDmTurn, retry-turn.ts): a turn that waits
-  // on dice more than once answers each card once. A card's roll joins the
-  // turn's cards as it lands (src/lib/dm/pending-roll-land.ts), so being on
-  // `rollIds` does not say it was answered. Saved with the conversation it
-  // speaks of. A card that held its whole call is answered with the call's
-  // own stored answer, by reading the conversation, whether or not it is
-  // listed here.
+  // The roll cards whose answer this turn's conversation has been handed, by
+  // card (src/lib/dm/turn.ts answerLandedCards, which a resume and a retry
+  // both run): a turn that waits on dice more than once answers each card
+  // once. A card's roll joins the turn's cards as it lands
+  // (src/lib/dm/pending-roll-land.ts), so being on `rollIds` does not say it
+  // was answered. Saved with the conversation it speaks of. A card that held
+  // its whole call (src/lib/dm/held-call.ts) is listed like any other, as its
+  // call's stored answer is handed on (issue #1073).
   answeredPendingIds: string[];
   imageArgs: { prompt: string; reason?: string } | null;
   locationId: string | null;

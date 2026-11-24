@@ -113,9 +113,8 @@ export function recoverDmAfterRestart(): RestartRecovery | null {
 // newer turn, so Retry is refused again as the story having moved on, and a
 // physical roll it was resuming with is never narrated. So the
 // storyteller's turn gets the notice finalize writes for a turn that
-// failed, with the link that offers the lead Retry, and the retry answers
-// any roll call left dangling from the rolls already in
-// (src/lib/dm/retry-turn.ts).
+// failed, with the link that offers the lead Retry, and the retry hands on
+// the answers of the roll cards already in (src/lib/dm/retry-turn.ts).
 //
 // A turn with no conversation (a monster pass a person delegated) has
 // nothing to retry and is closed as failed without a notice, as is a turn

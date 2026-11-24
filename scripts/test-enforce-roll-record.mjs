@@ -59,6 +59,13 @@
 //   - the turns open across the upgrade to all this are filed
 //     (src/lib/db/answered-cards-backfill.ts), by a server's start on a
 //     database from before it, once;
+//   - a card that held its whole call (src/lib/dm/held-call.ts) is on the
+//     turn's list of answered cards like any other (issue #1073): its call is
+//     answered though an earlier call of the turn had the same id, and a
+//     retried turn answers it with what the call did, not with its die. A
+//     card dealt for a call its turn's stored conversation never recorded
+//     is handed on as no tool answer. The held cards of the turns open
+//     across that change are filed once too;
 //   - an opportunity attack's cards are on the line the strike posts, in a
 //     GM call and out of one: its attack, its damage, then what the blow went
 //     on to roll on its short turn. A death save's card is on its line the
@@ -1148,6 +1155,170 @@ await test("a retried turn answers a card whose roll landed before the turn halt
   }
 });
 
+// A group check of one: the seat's d20 holds the whole call (held-call.ts),
+// and the call's answer says whether the group passed.
+const overTheWall = (characterId) => modelCall("group_check", { skill: "athletics", dc: 12, characterIds: [characterId], reason: "over the wall" });
+const answersTo = (model, id) => model.requests.at(-1).messages.filter((message) => message.role === "tool" && message.tool_call_id === id).map((message) => String(message.content));
+
+await test("a held call is answered when its backend gave an earlier call the same id: the model is handed what the call did, once, and the turn lists the card as answered", async () => {
+  const { table, seat } = await realDiceTable({ ttsEnabled: false });
+  // A hero on the server's dice: their check is answered as it is made.
+  const pal = table.addHero({ name: "Pal", class: "fighter", level: 5, maxHp: 40, abilities: { str: 10 }, proficiencies: TRAINED });
+  const model = await fakeModel();
+  try {
+    model.pointAt(table);
+    // A backend that numbers the calls of each reply from zero, as local
+    // models do: the second reply's call has the id of the first's.
+    const first = { ...overTheWall(pal.id), id: "call_0" };
+    const second = { ...overTheWall(seat.id), id: "call_0" };
+    model.script([reply({ calls: [first] }), reply({ calls: [second] }), reply({ text: "Both of you drop down on the far side." })]);
+    await model.turn(table, "We climb over the wall.", seat.id, table.sheet(seat.id).userId);
+    await settleQueue(table.campaignId);
+    const [card, ...others] = listOpenPendingRolls(table.campaignId);
+    assert.ok(card?.carry?.call && !others.length, "the turn does not wait on the seat's card alone");
+    assert.equal(card.toolCallId, "call_0");
+    await enter(table, card, () => 18);
+    await settleQueue(table.campaignId);
+    const turn = getDmTurn(card.turnId);
+    assert.equal(turn.status, "done", "the turn did not finish");
+    const told = answersTo(model, "call_0");
+    assert.equal(told.length, 2, `the model was handed ${told.length} answer(s) for the two calls of that id`);
+    assert.match(told[1], /"passed":true/, `the held call was not answered with what it did: ${told[1].slice(0, 200)}`);
+    assert.deepEqual(turn.answeredPendingIds, [card.id], "the turn does not list the held card as answered");
+  } finally {
+    model.close();
+    table.close();
+  }
+});
+
+await test("a retried turn answers a held call whose dice landed before the turn halted with what the call did, not with the die, and marks its card: a later wait on dice does not answer it again", async () => {
+  const { table, seat } = await realDiceTable({ ttsEnabled: false });
+  const model = await fakeModel();
+  try {
+    model.pointAt(table);
+    const asked = overTheWall(seat.id);
+    const next = modelCall("request_roll", { characterId: seat.id, kind: "damage", expression: "1d6", reason: "the drop on the far side" });
+    model.script([reply({ calls: [asked] }), reply({ calls: [next] }), reply({ text: "You land hard." })]);
+    await model.turn(table, "I climb over the wall.", seat.id, table.sheet(seat.id).userId);
+    await settleQueue(table.campaignId);
+    const [card] = listOpenPendingRolls(table.campaignId);
+    assert.ok(card?.carry?.call, "the turn does not wait on a card that holds its call");
+    // The halt, as above: the dice land on a turn nothing resumes.
+    const halted = getDmTurn(card.turnId);
+    halted.status = "failed";
+    saveDmTurn(halted);
+    await enter(table, card, () => 18);
+    await settleQueue(table.campaignId);
+    const retried = requestTurnRetry({ campaignId: table.campaignId, turnId: halted.id });
+    assert.equal(retried.ok, true, `the retry was refused: ${retried.error}`);
+    assert.deepEqual(getDmTurn(halted.id).answeredPendingIds, [card.id], "the retry did not mark the held card answered");
+    await settleQueue(table.campaignId);
+    const [answer, ...more] = answersTo(model, asked.id);
+    assert.ok(answer && !more.length, `the retried model was handed ${more.length + (answer ? 1 : 0)} answer(s) for the held call`);
+    assert.match(answer, /"passed":true/, `the retry answered the held call with something other than what it did: ${answer.slice(0, 200)}`);
+    assert.doesNotMatch(answer, /"rolledBy"/, "the retry answered the held call with its die");
+    // The retried turn asks for a roll of its own, and waits again.
+    const [second, ...others] = listOpenPendingRolls(table.campaignId);
+    assert.ok(second && !others.length, "the retried turn does not wait on its second card");
+    await enter(table, second, () => 3);
+    await settleQueue(table.campaignId);
+    const turn = getDmTurn(halted.id);
+    assert.equal(turn.status, "done", "the retried turn did not finish");
+    assert.deepEqual(turn.answeredPendingIds, [card.id, second.id]);
+    assert.equal(answersTo(model, asked.id).length, 1, "the held call was answered a second time when the turn resumed");
+  } finally {
+    model.close();
+    table.close();
+  }
+});
+
+await test("a retried turn puts a swing's landed d20 in the place its attack's answer kept for it, as a turn that resumes does", async () => {
+  const table = await openWorld({ gameSettings: { dicePolicy: "real_allowed", ttsEnabled: false } });
+  const tableKit = await combatKit(table);
+  const seat = table.addHero({ user: table.addUser(), ...REAL_DICE_SEAT });
+  await tableKit.fight(1, { heroFaces: { [seat.id]: 19 } });
+  // The seat's own dice from here on: the fight's order is already rolled.
+  setMemberRealDice(table.campaignId, table.sheet(seat.id).userId, true);
+  const [enemy] = table.enemies();
+  // Out of the swing's reach on any d20 but a 20: a miss, and no damage card.
+  tableKit.setEnemy(enemy.id, { maxHp: 400, currentHp: 400, ac: 30 });
+  tableKit.place(seat.id, 5, 5);
+  tableKit.place(enemy.id, 5, 6);
+  const model = await fakeModel();
+  try {
+    model.pointAt(table);
+    const swing = modelCall("pc_attack", { characterId: seat.id, targetEnemyId: enemy.id });
+    model.script([reply({ calls: [swing] }), reply({ text: "The blade rings off the shell." })]);
+    await model.turn(table, "I swing at it.", seat.id, table.sheet(seat.id).userId);
+    await settleQueue(table.campaignId);
+    const [card, ...others] = listOpenPendingRolls(table.campaignId);
+    assert.ok(card?.attack && !others.length, "the turn does not wait on the swing's d20 alone");
+    const partOf = (turn) => JSON.parse(turn.conversation.findLast((message) => message.role === "tool" && message.tool_call_id === swing.id).content).attacks[0];
+    assert.equal(partOf(getDmTurn(card.turnId)).awaitingRoll, true, "the attack's answer keeps no place for the roll, so this case holds nothing");
+    const halted = getDmTurn(card.turnId);
+    halted.status = "failed";
+    saveDmTurn(halted);
+    const landed = await enter(table, card, () => 5);
+    await settleQueue(table.campaignId);
+    assert.deepEqual(listOpenPendingRolls(table.campaignId), [], "the miss left a card open");
+    const retried = requestTurnRetry({ campaignId: table.campaignId, turnId: halted.id });
+    assert.equal(retried.ok, true, `the retry was refused: ${retried.error}`);
+    await settleQueue(table.campaignId);
+    const turn = getDmTurn(halted.id);
+    assert.equal(turn.status, "done", "the retried turn did not finish");
+    const part = partOf(turn);
+    assert.equal(part.awaitingRoll, undefined, "the retried model was told the swing still waits on its roll");
+    assert.equal(part.total, landed.total, "the retried model was not handed the swing's roll");
+    assert.deepEqual(turn.answeredPendingIds, [card.id]);
+  } finally {
+    model.close();
+    table.close();
+  }
+});
+
+await test("a retried turn whose stored conversation never recorded the call a card was dealt for is handed no tool answer for it, and does not list the card: a held call's card and a plain one", async () => {
+  const asks = [
+    (seat) => overTheWall(seat.id),
+    (seat) => modelCall("request_roll", { characterId: seat.id, kind: "damage", expression: "1d8", reason: "the drop on the far side" }),
+  ];
+  for (const ask of asks) {
+    const { table, seat } = await realDiceTable({ ttsEnabled: false });
+    const model = await fakeModel();
+    try {
+      model.pointAt(table);
+      const asked = ask(seat);
+      const what = asked.name;
+      model.script([reply({ calls: [asked] }), reply({ text: "You are over." })]);
+      await model.turn(table, "I climb over the wall.", seat.id, table.sheet(seat.id).userId);
+      await settleQueue(table.campaignId);
+      const [card] = listOpenPendingRolls(table.campaignId);
+      assert.ok(card, `${what}: the turn does not wait on a card`);
+      // The halt: a turn stopped from its stored row while a reply's calls
+      // were still running has the card and not the reply that asked for it
+      // (the reply is saved once its calls have run).
+      const halted = getDmTurn(card.turnId);
+      const asksIt = (message) => message.role === "assistant" && Array.isArray(message.tool_calls) && message.tool_calls.some((call) => call.id === asked.id);
+      assert.ok(halted.conversation.some(asksIt), `${what}: the conversation does not hold the call, so this case holds nothing`);
+      halted.conversation = halted.conversation.filter((message) => !asksIt(message));
+      halted.status = "failed";
+      saveDmTurn(halted);
+      await enter(table, card);
+      await settleQueue(table.campaignId);
+      const retried = requestTurnRetry({ campaignId: table.campaignId, turnId: halted.id });
+      assert.equal(retried.ok, true, `${what}: the retry was refused: ${retried.error}`);
+      await settleQueue(table.campaignId);
+      const turn = getDmTurn(halted.id);
+      assert.equal(turn.status, "done", `${what}: the retried turn did not finish`);
+      assert.deepEqual(answersTo(model, asked.id), [], `${what}: the retried model was handed a tool answer to a call its conversation does not hold`);
+      assert.deepEqual(turn.conversation.filter((message) => message.role === "tool" && message.tool_call_id === asked.id), [], `${what}: the turn keeps a tool answer to no call`);
+      assert.deepEqual(turn.answeredPendingIds, [], `${what}: a card that was handed to nobody is listed as answered`);
+    } finally {
+      model.close();
+      table.close();
+    }
+  }
+});
+
 await test("dice a player entered for a held call that is refused once they land are on the call's turn, sent as theirs with their card taken down. On an AI's turn they pay for no bare number, and at a table a person runs the landing's line lists them once", async () => {
   const REFUSED = { name: "roll_record_refused", rawArguments: "{}", toolCallId: null };
   registerNamedHeldRunner(REFUSED.name, () => ({ error: "Not this time.", retry: true }));
@@ -1407,6 +1578,54 @@ await test("the turns open when a card's roll began to join its turn as it lands
   }
 });
 
+// A server start in a process of its own, on this suite's database.
+const start = () => execFileSync(process.execPath, [path.join(import.meta.dirname, "lib", "boot-db.mjs")], { env: process.env, stdio: "ignore" });
+
+await test("the held cards of the turns open when a turn began to list the held cards it has answered are filed by a server's start, once: a held card whose call the conversation already answers is marked, on a turn that waits and on one that failed; a held card not answered yet, one whose call waited again, a plain card and a finished turn are left as they are", () => {
+  const held = (toolCallId, answer) => ({ toolCallId, carry: { call: { name: "roll_record_test", rawArguments: "{}", toolCallId, decided: [], tape: [] }, ...(answer ? { answer } : {}) } });
+  const asks = (id) => ({ role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: "roll_record_test", arguments: "{}" } }] });
+  const answers = (id) => ({ role: "tool", tool_call_id: id, content: JSON.stringify({ ok: true }) });
+  // The first call was answered as its card landed and the turn went on; the
+  // second call's card has landed and the turn has not resumed yet.
+  const open = createDmTurn(world.campaignId, [asks("call_a"), answers("call_a"), asks("call_b")], "ai");
+  const told = oldCard(open, held("call_a", JSON.stringify({ ok: true })));
+  const waitedAgain = oldCard(open, held("call_a"));
+  const untold = oldCard(open, held("call_b", JSON.stringify({ ok: true })));
+  const plain = oldCard(open, { toolCallId: "call_a" });
+  for (const card of [told, waitedAgain, untold, plain]) {
+    oldLanding(card);
+  }
+  open.status = "awaiting_rolls";
+  saveDmTurn(open);
+  const failed = createDmTurn(world.campaignId, [asks("call_a"), answers("call_a")], "ai");
+  const lost = oldCard(failed, held("call_a", JSON.stringify({ ok: true })));
+  oldLanding(lost);
+  failed.status = "failed";
+  saveDmTurn(failed);
+  const finished = createDmTurn(world.campaignId, [asks("call_a"), answers("call_a")], "ai");
+  oldLanding(oldCard(finished, held("call_a", JSON.stringify({ ok: true }))));
+  finished.status = "done";
+  saveDmTurn(finished);
+  // A database from before the filing has no marker of it.
+  getDatabase().prepare("DELETE FROM app_settings WHERE key = 'held_cards_answered_backfill_done'").run();
+  start();
+  assert.deepEqual(getDmTurn(open.id).answeredPendingIds, [told.id], "the held card the conversation answers is not the one card marked");
+  assert.deepEqual(getDmTurn(failed.id).answeredPendingIds, [lost.id], "a failed turn's answered held card was not marked");
+  assert.deepEqual(getDmTurn(finished.id).answeredPendingIds, [], "a finished turn was filed");
+  // Later an answer of the second call's id is in the conversation, another
+  // call's: a second filing would take the card that waits for answered.
+  const later = getDmTurn(open.id);
+  later.conversation.push(answers("call_b"));
+  saveDmTurn(later);
+  start();
+  assert.deepEqual(getDmTurn(open.id).answeredPendingIds, [told.id], "a second start filed the turns again, and marked a held card nobody has answered");
+  getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(world.campaignId);
+  for (const turn of [getDmTurn(open.id), getDmTurn(failed.id)]) {
+    turn.status = "done";
+    saveDmTurn(turn);
+  }
+});
+
 // Last of all: it takes the column away, and a fresh process puts it back.
 await test("a server that opens a database from before the column files its open turns as it adds the column, and a later start files nothing again", () => {
   const open = createDmTurn(world.campaignId, [], "ai");
@@ -1416,8 +1635,6 @@ await test("a server that opens a database from before the column files its open
   open.rollIds.push(first.id);
   open.status = "awaiting_rolls";
   saveDmTurn(open);
-  // A server start in a process of its own, on this suite's database.
-  const start = () => execFileSync(process.execPath, [path.join(import.meta.dirname, "lib", "boot-db.mjs")], { env: process.env, stdio: "ignore" });
   getDatabase().exec("ALTER TABLE dm_turns DROP COLUMN answered_pending_ids_json");
   start();
   let filed = getDmTurn(open.id);

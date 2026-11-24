@@ -192,6 +192,32 @@ export function danglingToolCallIds(conversation: readonly RetryChatMessage[]): 
   return dangling;
 }
 
+// Whether the conversation holds a call of this id that still has no answer:
+// more calls of the id asked than tool answers given. A landed roll card's
+// answer goes in as a tool answer only then (turn.ts answerLandedCards). A
+// turn halted from its stored row (a restart, a job the queue gave up on)
+// can keep a card whose call the row never recorded, since the reply that
+// asked is saved after its calls have run, and a tool answer with no call
+// before it is a shape strict backends reject. Counted, where "any answer of
+// that id" would not do: a backend may give the calls of two replies the
+// same id (local models number each reply's from zero), and the earlier
+// call's answer is not this call's.
+export function callAwaitsAnswer(conversation: readonly RetryChatMessage[], toolCallId: string): boolean {
+  let open = 0;
+  for (const message of conversation ?? []) {
+    if (!message || typeof message !== "object") {
+      continue;
+    }
+    if (message.role === "tool" && message.tool_call_id === toolCallId) {
+      open -= 1;
+    }
+    if (Array.isArray(message.tool_calls)) {
+      open += message.tool_calls.filter((call) => (call as { id?: unknown } | null)?.id === toolCallId).length;
+    }
+  }
+  return open > 0;
+}
+
 // The turn as its prompt was built: the window it was packed against
 // (ContextTrace.window) and where its own calls start (shape.promptMessages).
 export type BuiltTurnSnapshot = {
