@@ -184,7 +184,7 @@ export const APPEARANCE_THEMES = [
     art: {
       texture: "/assets/themes/wasteland/cooled-steel-v1.webp",
       frame: "/assets/themes/wasteland/roll-cage-frame-v2.webp",
-      corner: "/assets/themes/wasteland/war-rig-wheel-corner-v1.webp",
+      corner: "/assets/themes/wasteland/salvage-wheel-corner-v1.webp",
       backdrop: "/assets/themes/wasteland/convoy-fires-v1.webp",
     },
     artDay: {
