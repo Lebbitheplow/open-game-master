@@ -39,7 +39,7 @@ import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { arrivalsFor, returningRow, survivorNamed, unknownReturning } from "@/lib/dm/foe-return";
 import { initLegendaryPools } from "@/lib/dm/legendary-tools";
 import { isDefeated } from "@/lib/dm/knockout";
-import { linkPairs, mountSizeProblem, onOwnToken } from "@/lib/dm/enemy-riders";
+import { linkPairs, mountSizeProblem, onOwnToken, takingOwnTurn } from "@/lib/dm/enemy-riders";
 import { latestAppearance, lastAppearanceOfNpc } from "@/lib/db/foe-history";
 
 // Enemy spawning shared by start_encounter and the mid-combat add_enemies
@@ -65,6 +65,10 @@ export const enemyRequestSchema = z.object({
   // The monster each of them rides (issue 1055, enemy-riders.ts): a row of
   // its own, linked to its rider. A blank one is the same as none.
   mount: z.preprocess((value) => (typeof value === "string" && value.trim() ? value.trim() : undefined), z.string().max(80).optional()),
+  // That mount is a controlled one, steered by its rider (ruling 2): it has
+  // no turn of its own. Anything but a plain yes is the default, a mount that
+  // acts as it wishes.
+  controlled: z.preprocess((value) => (value === true || value === "true" ? true : undefined), z.boolean().optional()),
 });
 export type EnemyRequest = z.infer<typeof enemyRequestSchema>;
 
@@ -91,7 +95,16 @@ export type ResolvedEnemyRequest = {
   // The entry this creature carries as its mount (issue 1055): made as a row
   // of its own beside its rider's, which is linked to it once both exist.
   carries?: ResolvedEnemyRequest;
+  // That rider steers it: a controlled mount, with no turn of its own.
+  led?: true;
 };
+
+// The rider whose initiative each row takes, by index: a controlled mount
+// rolls none ("The initiative of a controlled mount changes to match yours
+// when you mount it", SRD 5.1, Controlling a Mount).
+export function ledIndexes(rows: readonly ResolvedEnemyRequest[]): Array<number | undefined> {
+  return carriedIndexes(rows).map((riderAt, mountAt) => (rows[mountAt].led ? riderAt : undefined));
+}
 
 // Which row each row carries, by index, for linkPairs (enemy-riders.ts).
 export function carriedIndexes(rows: readonly ResolvedEnemyRequest[]): Array<number | undefined> {
@@ -115,9 +128,13 @@ function toldLook(request: EnemyRequest): { race?: string; gender?: Gender } {
 // the group acts at the same time" (SRD 5.1, Initiative). A group is one
 // entry of the enemies list, a monster with its count. Rolled silently, a
 // record for the DM alone, as an enemy's save is.
-export function groupInitiatives(campaignId: string, rows: ResolvedEnemyRequest[], names: string[]): number[] {
+// `follows[i]`: the row whose count row i takes with no roll of its own.
+export function groupInitiatives(campaignId: string, rows: ResolvedEnemyRequest[], names: string[], follows: ReadonlyArray<number | undefined> = []): number[] {
   const rolled = new Map<number, number>();
-  return rows.map((entry, index) => {
+  const totals = rows.map((entry, index) => {
+    if (follows[index] !== undefined) {
+      return 0;
+    }
     const held = entry.group === undefined ? undefined : rolled.get(entry.group);
     if (held !== undefined) {
       return held;
@@ -133,6 +150,7 @@ export function groupInitiatives(campaignId: string, rows: ResolvedEnemyRequest[
     }
     return total;
   });
+  return totals.map((total, index) => (follows[index] === undefined ? total : (totals[follows[index]] ?? total)));
 }
 
 // Resolves every requested enemy before anything is created. Returns the
@@ -168,7 +186,7 @@ export function resolveEnemyRequests(
     }
     const name = block.reskinName || block.baseName;
     trouble.size ??= mountSizeProblem(rider, { name, stats: block.stats });
-    resolved.push({ slug: block.slug, name, stats: block.stats, group: requests.length + group, carries: rider });
+    resolved.push({ slug: block.slug, name, stats: block.stats, group: requests.length + group, carries: rider, ...(request.controlled ? { led: true as const } : {}) });
   };
   const authorList = Array.isArray(authors) ? authors : authors ? [authors] : [];
   const cast = campaignId ? listNpcs(campaignId).filter((npc) => npc.statBlock) : [];
@@ -304,6 +322,7 @@ export const addEnemiesTool: ToolDef = {
               race: { type: "string", description: "A humanoid's people (elf, dwarf...), for their face." },
               gender: { type: "string", enum: [...GENDERS] },
               mount: { type: "string" },
+              controlled: { type: "boolean" },
             },
             required: ["monster"],
           },
@@ -324,6 +343,13 @@ const addArgsSchema = z.object({
 // the mount's turn to move them, and aims at either by its own enemyId.
 export function pairLine(enemies: readonly EncounterEnemy[], enemy: EncounterEnemy): { rides?: string; carries?: string } {
   const mount = enemy.ridesEnemyId ? enemies.find((entry) => entry.id === enemy.ridesEnemyId) : null;
+  if (mount?.ledBy === enemy.id) {
+    return { rides: `${mount.displayName} (enemyId=${mount.id}), a controlled mount: one token for the pair, moved on ${enemy.displayName}'s turn by ${mount.displayName}'s move_token, at ${mount.displayName}'s speed.` };
+  }
+  if (enemy.ledBy) {
+    const steers = enemies.find((entry) => entry.id === enemy.ledBy);
+    return { carries: `${steers?.displayName ?? "its rider"} (enemyId=${enemy.ledBy}), who steers it: no turn of its own and no attacks. On ${steers?.displayName ?? "its rider"}'s turn it moves with move_token and may take_action dash, disengage or dodge.` };
+  }
   if (mount) {
     return { rides: `${mount.displayName} (enemyId=${mount.id}): one token for the pair, moved by ${mount.displayName}'s move_token on its own turn. ${enemy.displayName} has no movement of its own.` };
   }
@@ -399,15 +425,20 @@ export function handleAddEnemies(
     const rowIndex = rows.indexOf(entry);
     return rowIndex < 0 || !arrivals.carries[rowIndex]?.knockedOut;
   });
-  if (standing.length + arrivingStanding.length > MAX_COMBATANTS) {
+  // A controlled mount takes no turn and is no combatant under the cap, nor
+  // in the multiplier; its XP counts (issue 1055, ruling 3).
+  if (takingOwnTurn(standing).length + arrivingStanding.filter((entry) => !entry.led).length > MAX_COMBATANTS) {
     return { error: `Too many combatants: keep the fight to ${MAX_COMBATANTS} living enemies or fewer.`, retry: true };
   }
   // Budget check over the whole living opposition, reinforcements included,
   // against the characters fighting it (src/lib/dm/party-budget.ts).
   const partyLevels = fightingParty(campaign, atTheFight(encounter, sheets)).map((sheet) => sheet.level);
   const evaluation = evaluateEncounter(partyLevels, [
-    ...standing.map((enemy) => enemy.cr),
-    ...arrivingStanding.map((entry) => entry.stats.cr),
+    ...takingOwnTurn(standing).map((enemy) => enemy.cr),
+    ...arrivingStanding.filter((entry) => !entry.led).map((entry) => entry.stats.cr),
+  ], [
+    ...standing.filter((enemy) => enemy.ledBy).map((enemy) => enemy.cr),
+    ...arrivingStanding.filter((entry) => entry.led).map((entry) => entry.stats.cr),
   ]);
   const ceiling = encounterCeiling(campaign.difficulty, evaluation.thresholds.deadly);
   if (evaluation.adjustedXp > ceiling) {
@@ -459,6 +490,7 @@ export function handleAddEnemies(
     campaign.id,
     arriving.map((arrival) => (arrival.carry ? { ...arrival.entry, group: undefined } : arrival.entry)),
     arriving.map(nameOf),
+    ledIndexes(arriving.map((arrival) => arrival.entry)),
   );
   const made = arriving.map((arrival, index) =>
     insertEnemy({
@@ -476,7 +508,7 @@ export function handleAddEnemies(
   );
   // Each rider on its mount (enemy-riders.ts). One who rejoins on the row it
   // fled on is not among these, so its mount arrives beside it, unridden.
-  const inserted = linkPairs(made, carriedIndexes(arriving.map((arrival) => arrival.entry)));
+  const inserted = linkPairs(made, carriedIndexes(arriving.map((arrival) => arrival.entry)), arriving.map((arrival) => arrival.entry.led));
   const back = rejoining.flatMap(({ id, carry }) => {
     const row = patchEnemyHp(id, carry.arrives.currentHp, "alive");
     return row ? [row] : [];
@@ -492,7 +524,8 @@ export function handleAddEnemies(
   // Splice into a locked order without moving the pointer off the current
   // PC; during initiative collection the order builds later from the DB.
   if (encounter.orderReady) {
-    const newEntries: OrderEntry[] = inserted.map((enemy) => ({
+    // A controlled mount takes no place of its own (enemy-riders.ts).
+    const newEntries: OrderEntry[] = takingOwnTurn(inserted).map((enemy) => ({
       kind: "enemy",
       enemyId: enemy.id,
       name: enemy.displayName,

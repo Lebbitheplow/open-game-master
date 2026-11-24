@@ -73,7 +73,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         kind: "longtext",
         required: true,
         placeholder: "goblin x4\nhobgoblin",
-        help: "One per line, name or SRD slug, optional xN for a count. Stat blocks come from the content pack. A foe of your own making takes its challenge rating (Sludge Wraith cr 2), a renamed one its name (bandit as Raider). A foe still about from the last fight comes back as it was left when named as the tracker showed it (Raider 2). A humanoid's race and gender pick their face (bandit race elf gender female x4). A mount comes in as an enemy of its own under its rider (goblin riding wolf x3): it takes its own turn and its move carries them both.",
+        help: "One per line, name or SRD slug, optional xN for a count. Stat blocks come from the content pack. A foe of your own making takes its challenge rating (Sludge Wraith cr 2), a renamed one its name (bandit as Raider). A foe still about from the last fight comes back as it was left when named as the tracker showed it (Raider 2). A humanoid's race and gender pick their face (bandit race elf gender female x4). A mount comes in as an enemy of its own under its rider (goblin riding wolf x3): it takes its own turn and its move carries them both. A mount its rider steers takes no turn and makes no attacks (knight riding warhorse controlled).",
         // An older host reads "race elf" as part of the monster's name.
         host: {
           feature: "npcRace",
@@ -182,7 +182,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         kind: "longtext",
         required: true,
         placeholder: "wolf x2",
-        help: "One per line, name or SRD slug, optional xN for a count. A foe of your own making takes its challenge rating (Sludge Wraith cr 2), a renamed one its name (bandit as Raider). A foe still about from the last fight comes back as it was left when named as the tracker showed it (Raider 2). A humanoid's race and gender pick their face (bandit race elf gender female x4). A mount comes in as an enemy of its own under its rider (goblin riding wolf x3): it takes its own turn and its move carries them both.",
+        help: "One per line, name or SRD slug, optional xN for a count. A foe of your own making takes its challenge rating (Sludge Wraith cr 2), a renamed one its name (bandit as Raider). A foe still about from the last fight comes back as it was left when named as the tracker showed it (Raider 2). A humanoid's race and gender pick their face (bandit race elf gender female x4). A mount comes in as an enemy of its own under its rider (goblin riding wolf x3): it takes its own turn and its move carries them both. A mount its rider steers takes no turn and makes no attacks (knight riding warhorse controlled).",
         host: {
           feature: "npcRace",
           older: { label: "Enemies", help: "One per line, name or SRD slug, optional xN for a count. A foe of your own making takes its challenge rating (Sludge Wraith cr 2), a renamed one its name (bandit as Raider). A foe still about from the last fight comes back as it was left when named as the tracker showed it (Raider 2)." },

@@ -711,7 +711,9 @@ export function handleMoveToken(
   const ridden = resolved.enemy?.ridesEnemyId && !args.forced ? getEnemy(resolved.enemy.ridesEnemyId) : null;
   if (ridden) {
     return {
-      error: `${moverName} rides ${ridden.displayName} and has no movement of its own: the pair moves on ${ridden.displayName}'s turn, with move_token for ${ridden.displayName}. Nothing was moved.`,
+      error: ridden.ledBy === resolved.enemy?.id
+        ? `${moverName} rides ${ridden.displayName}, a controlled mount, and moves on its legs: on ${moverName}'s turn call move_token for ${ridden.displayName}, which walks the pair at ${ridden.displayName}'s speed. Nothing was moved.`
+        : `${moverName} rides ${ridden.displayName} and has no movement of its own: the pair moves on ${ridden.displayName}'s turn, with move_token for ${ridden.displayName}. Nothing was moved.`,
       refused: "rules",
     };
   }

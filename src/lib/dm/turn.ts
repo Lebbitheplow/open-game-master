@@ -646,6 +646,13 @@ function pairNote(enemies: EncounterEnemy[], enemy: EncounterEnemy): { pair?: st
     return {};
   }
   const mount = mountOf(enemies, enemy);
+  if (mount?.ledBy === enemy.id) {
+    return { pair: `rides ${mount.displayName} [enemyId=${mount.id}], a controlled mount: one token for the pair, moved on this turn by ${mount.displayName}'s move_token at ${mount.displayName}'s speed; attacks reach it and ${mount.displayName} each by their own enemyId` };
+  }
+  if (enemy.ledBy) {
+    const steers = enemies.find((entry) => entry.id === enemy.ledBy);
+    return { pair: `controlled mount of ${steers?.displayName ?? "its rider"} [enemyId=${enemy.ledBy}], on their token: no turn of its own and no attacks; on ${steers?.displayName ?? "its rider"}'s turn its move_token moves both and it may take_action dash, disengage or dodge` };
+  }
   if (mount) {
     return { pair: `rides ${mount.displayName} [enemyId=${mount.id}]: one token for the pair, no movement of its own (${mount.displayName}'s move_token on its turn moves both); attacks reach it and ${mount.displayName} each by their own enemyId` };
   }

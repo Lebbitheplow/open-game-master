@@ -239,7 +239,14 @@ export function approachTarget(
 
   // Its movement this turn, its Dashes counted, and whether it Disengaged
   // (src/lib/dm/enemy-speed.ts enemyMoveBudget, issue #621).
-  const move = enemyMoveBudget(getEncounter(encounterId), enemy, attacker);
+  // A rider steering its mount rides it into reach (issue 1055, ruling 2: a
+  // controlled mount "moves as you direct it"): the walk is the mount's, on
+  // its movement, its Dash and its Disengage, and it is the mount that
+  // provokes. A rider on a mount that acts as it wishes stays where the
+  // mount's own turn left the pair.
+  const steed = enemy.ridesEnemyId ? listEnemies(encounterId).find((entry) => entry.id === enemy.ridesEnemyId && entry.ledBy === enemy.id && entry.status === "alive") : undefined;
+  const walker = steed ?? enemy;
+  const move = enemyMoveBudget(getEncounter(encounterId), walker, attacker);
   // A dry run asks before the turn is played, while a prone creature still
   // lies there: it will stand first (standUpIfProne), paying half its speed,
   // and only the rest walks. Uncounted, a prone goblin picked its scimitar,
@@ -304,7 +311,7 @@ export function approachTarget(
     // by this walk-up (issue #621). Rolled before the token moves, as on
     // move_token: a hit that leaves its speed at 0 (Sentinel, Hold the Line)
     // or drops it ends the walk-up on the square the swing was taken on.
-    const struck = resolvePcOpportunityWalk(campaign, enemy.id, origin, landing, walked.length ? walked : undefined, move.disengaged);
+    const struck = resolvePcOpportunityWalk(campaign, walker.id, origin, landing, walked.length ? walked : undefined, move.disengaged);
     provoked = struck.notes;
     if (struck.stoppedAt) {
       const at = walked.findIndex((step) => step.x === struck.stoppedAt?.x && step.y === struck.stoppedAt?.y);
@@ -317,7 +324,7 @@ export function approachTarget(
         attacker.movement === "walk" ? [origin, ...walked] : undefined);
       publishEphemeral(campaign.id, "battle_map_updated", {});
       // The spell areas it walked into (src/lib/dm/zone-triggers.ts).
-      provoked.push(...zonesAfterMove(campaign, encounterId, { kind: "enemy", refId: enemy.id }, origin, walked.length ? walked : [landing]));
+      provoked.push(...zonesAfterMove(campaign, encounterId, { kind: "enemy", refId: walker.id }, origin, walked.length ? walked : [landing]));
     }
   }
   const distance = apart(landing);

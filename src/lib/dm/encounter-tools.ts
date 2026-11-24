@@ -58,8 +58,8 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budget";
 import { suggestEnemies } from "@/lib/bestiary";
-import { carriedIndexes, enemyRequestSchema, groupInitiatives, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
-import { linkPairs, onOwnToken } from "@/lib/dm/enemy-riders";
+import { carriedIndexes, enemyRequestSchema, groupInitiatives, ledIndexes, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { linkPairs, onOwnToken, seatFreedMounts, takingOwnTurn } from "@/lib/dm/enemy-riders";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
 import { fieldPartyNpcs } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
@@ -389,7 +389,9 @@ function handleStartEncounter(
   if (!standingRoster.length) {
     return { error: "Every foe named is still lying knocked out from the last fight: there is nobody standing to fight.", refused: "rules" };
   }
-  if (standingRoster.length > MAX_COMBATANTS) {
+  // A controlled mount takes no turn, so it is no combatant under the cap
+  // (issue 1055, ruling 3).
+  if (standingRoster.filter((entry) => !entry.led).length > MAX_COMBATANTS) {
     return { error: `Too many enemies; keep encounters to ${MAX_COMBATANTS} combatants or fewer.`, retry: true };
   }
   const named = resolved.flatMap((entry) => (entry.sheetFoe ? [entry.sheetFoe] : []));
@@ -459,6 +461,7 @@ function handleStartEncounter(
     campaign.id,
     rows.map((entry, index) => (arrivals.carries[index] ? { ...entry, group: undefined } : entry)),
     names,
+    ledIndexes(rows),
   );
   const made = rows.map((entry, index) => {
     const carry = arrivals.carries[index];
@@ -476,7 +479,7 @@ function handleStartEncounter(
     });
   });
   // Each rider on its mount (issue 1055, enemy-riders.ts).
-  const enemies = linkPairs(made, carriedIndexes(rows));
+  const enemies = linkPairs(made, carriedIndexes(rows), rows.map((entry) => entry.led));
   // Surprise: the ambushed side loses its first turn. Stored as ids the
   // initiative pointer skips through round 1 and then forgets. An ambush is
   // decided per creature, Stealth against passive Perception; a side named
@@ -873,7 +876,9 @@ function placeInitiativeRoll(
   };
   encounter.order = buildOrder(
     withReflexTurns(staged, reflexes, encounter.surprisedIds),
-    enemies.map((enemy) => ({
+    // A controlled mount acts on its rider's turn and takes no place of its
+    // own (enemy-riders.ts takingOwnTurn).
+    takingOwnTurn(enemies).map((enemy) => ({
       enemyId: enemy.id,
       name: enemy.displayName,
       initiative: enemy.initiative ?? 0,
@@ -950,7 +955,7 @@ function openAfterAmbush(
   encounter.turnIndex = first.turnIndex;
   encounter.turnBudget = null;
   encounter.waitingSeq = latestSeq(campaignId);
-  const ambushers = enemies.filter((enemy) => enemy.status === "alive");
+  const ambushers = takingOwnTurn(enemies).filter((enemy) => enemy.status === "alive");
   oweEnemiesAnAction(
     encounter,
     ambushers.map((enemy) => enemy.id),
@@ -1830,6 +1835,12 @@ function advancePointer(
   if (leaving && !options?.rest && !options?.chained) {
     landWaits(campaign, null, { holdVictory: true, tell: true });
   }
+  // A controlled mount whose rider came off it has its own place in the
+  // order from here on (enemy-riders.ts): made sure of on this copy of the
+  // fight, the one this walk saves.
+  if (seatFreedMounts(encounter, { settle: true })) {
+    saveEncounter(encounter);
+  }
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   // A turn held for the enemies before it has begun by the time the pointer
   // moves again (src/lib/dm/held-turn.ts).
@@ -1893,6 +1904,14 @@ function advancePointer(
     }
     if (index === walkTo || starting.length >= encounter.order.length) {
       break;
+    }
+  }
+  // A controlled mount's turn is its rider's (enemy-riders.ts): what starts
+  // with a turn (its Dodge ending, its Dash forgotten, its reaction back)
+  // starts for it as its rider's turn does.
+  for (const enemy of enemiesById.values()) {
+    if (enemy.ledBy && enemy.status === "alive" && starting.includes(enemy.ledBy)) {
+      starting.push(enemy.id);
     }
   }
   // The enemies whose turns this walk hands out. A walk that turns the

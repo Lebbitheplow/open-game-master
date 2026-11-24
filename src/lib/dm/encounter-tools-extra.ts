@@ -148,7 +148,12 @@ function handleEnemyFlees(
   // carries it out, on the mount's turn.
   const steed = enemy.ridesEnemyId ? getEnemy(enemy.ridesEnemyId) : null;
   if (steed) {
-    return { error: `${enemy.displayName} rides ${steed.displayName} and has no movement of its own: ${steed.displayName} flees on its own turn and carries them out (enemy_flees for ${steed.displayName}).`, refused: "rules" };
+    return {
+      error: steed.ledBy === enemy.id
+        ? `${enemy.displayName} rides ${steed.displayName}, a controlled mount, and leaves on its legs: on ${enemy.displayName}'s turn call enemy_flees for ${steed.displayName}, which carries them both out.`
+        : `${enemy.displayName} rides ${steed.displayName} and has no movement of its own: ${steed.displayName} flees on its own turn and carries them out (enemy_flees for ${steed.displayName}).`,
+      refused: "rules",
+    };
   }
   // A creature goes on its own turn while initiative runs (SRD 5.1: it moves
   // on its turn), at the console too (enemy-turn-order.ts

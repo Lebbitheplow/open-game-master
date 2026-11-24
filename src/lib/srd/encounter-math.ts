@@ -139,11 +139,15 @@ export type EncounterEvaluation = {
   verdict: EncounterVerdict;
 };
 
+// `ledCrs`: creatures that add hit points but take no turn (an enemy's
+// controlled mount, issue 1055 ruling 3). Their XP counts in full, and they
+// are not counted for the multiplier, which is for creatures that act.
 export function evaluateEncounter(
   partyLevels: number[],
   monsterCrs: number[],
+  ledCrs: number[] = [],
 ): EncounterEvaluation {
-  const totalXp = monsterCrs.reduce((sum, cr) => sum + xpForCr(cr), 0);
+  const totalXp = [...monsterCrs, ...ledCrs].reduce((sum, cr) => sum + xpForCr(cr), 0);
   const adjustedXp = Math.round(
     totalXp * encounterMultiplier(monsterCrs.length, partyLevels.length),
   );
