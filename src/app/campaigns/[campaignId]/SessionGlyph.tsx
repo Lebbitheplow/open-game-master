@@ -20,10 +20,13 @@ export function paintedRailIcon(glyph: string): LucideIcon {
 }
 
 // A header control's painting. `off` dims it and strikes it through, which
-// is how the header says muted without a second icon.
+// is how the header says muted without a second icon. The wrapper is a flex
+// box, never an inline span: inline, the painting stood on a text line whose
+// descender room sat under it, so every header button carried its icon 2 px
+// above its middle (and a muted one, already a flex box, did not).
 export function HeaderGlyph({ glyph, off = false, className }: { glyph: string; off?: boolean; className?: string }) {
   return (
-    <span className={cn(off && "session-glyph-off", className)}>
+    <span className={cn("inline-flex", off && "session-glyph-off", className)}>
       <GameIcon icon={{ kind: "glyph", key: glyph }} size="size-7" className="session-glyph" />
     </span>
   );

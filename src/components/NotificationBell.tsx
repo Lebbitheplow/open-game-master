@@ -196,7 +196,7 @@ export function NotificationBell() {
         onClick={toggle}
         aria-label={unread > 0 ? t("Notifications, {count} unread", { count: unread }) : t("Notifications")}
         aria-expanded={open}
-        className="motion-nudge relative rounded-lg border border-stone-800 bg-stone-900/60 p-2 text-stone-300 transition-colors hover:border-amber-500/40 hover:text-amber-200"
+        className="motion-nudge tap-reach relative inline-flex items-center justify-center rounded-lg border border-stone-800 bg-stone-900/60 p-2 text-stone-300 transition-colors hover:border-amber-500/40 hover:text-amber-200"
       >
         {/* The bell swings once each time the unread count changes. */}
         <Bell key={unread} className={cn("size-4 origin-top", unread > 0 && "bell-ring")} />

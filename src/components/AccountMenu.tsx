@@ -136,7 +136,7 @@ export function AccountMenu({
             <button
               type="button"
               aria-label={t("Account")}
-              className="rounded-full outline-none transition-shadow duration-150 hover:shadow-glow-gold focus-visible:shadow-glow-gold"
+              className="tap-reach rounded-full outline-none transition-shadow duration-150 hover:shadow-glow-gold focus-visible:shadow-glow-gold"
             >
               {user.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element

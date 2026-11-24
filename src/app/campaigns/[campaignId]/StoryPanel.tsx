@@ -253,9 +253,9 @@ function NpcReviewCard({ campaignId }: { campaignId: string }) {
         className="pk-tap flex w-full items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 motion-press"
       >
         {expanded ? (
-          <ChevronDown className="mt-1 size-3.5 shrink-0 text-amber-400/80" />
+          <ChevronDown className="size-3.5 shrink-0 text-amber-400/80" />
         ) : (
-          <ChevronRight className="mt-1 size-3.5 shrink-0 text-amber-400/80" />
+          <ChevronRight className="size-3.5 shrink-0 text-amber-400/80" />
         )}
         <span className="flex items-center gap-1.5">
           <GameIcon icon={{ kind: "glyph", key: "system-cast" }} size="size-6" />
@@ -421,9 +421,9 @@ function ArcCard({ campaignId }: { campaignId: string }) {
     <div className="panel ornate rounded-lg p-2.5">
       <button type="button" onClick={toggle} aria-expanded={expanded} className="pk-tap flex w-full items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 motion-press">
         {expanded ? (
-          <ChevronDown className="mt-1 size-3.5 shrink-0 text-amber-400/80" />
+          <ChevronDown className="size-3.5 shrink-0 text-amber-400/80" />
         ) : (
-          <ChevronRight className="mt-1 size-3.5 shrink-0 text-amber-400/80" />
+          <ChevronRight className="size-3.5 shrink-0 text-amber-400/80" />
         )}
         <span className="flex items-center gap-1.5">
           <GameIcon icon={{ kind: "glyph", key: "system-storyboard" }} size="size-6" />
