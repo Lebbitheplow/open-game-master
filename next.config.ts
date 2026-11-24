@@ -20,9 +20,12 @@ const dockerBuild = process.env.DOCKER_BUILD === "1";
 // whose context leaves .git out) is told through ODM_BUILD_COMMIT and
 // ODM_BUILD_DESCRIBE instead; with neither, the About dialog shows the
 // release number alone. src/lib/build-info.ts turns these into the label.
+// windowsHide: a dev server or build started with no console of its own (a
+// background task, a service) otherwise gets a console window for each call
+// on Windows, and one that outlives its parent stays open on an error line.
 function git(...args: string[]): string {
   try {
-    return execFileSync("git", args, { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5_000 }).trim();
+    return execFileSync("git", args, { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5_000, windowsHide: true }).trim();
   } catch {
     return "";
   }
