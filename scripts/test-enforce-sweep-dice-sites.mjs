@@ -32,7 +32,7 @@
 //
 // Then the row's record (issue #915). The seat enters its own dice for every
 // card the row parked, so the call runs to its end, and every roll the call
-// stored is held to three things:
+// stored is held to four things:
 //
 //   home    it is on one turn once, or on the one line its site posted for
 //           it: a roll on neither is thrown on the dice stage and never shown
@@ -45,9 +45,19 @@
 //           A roll nobody made names its source (src/lib/roll-sources.ts),
 //           which goes in front of its card: its words do not say the source
 //           a second time, and they name the character it lands on.
+//   asked   it is marked as a roll an AI GM asked for only where that GM's
+//           own request_roll made it (issue #1073). The gate that holds an
+//           AI GM's damage and healing numbers takes a total from the turn's
+//           asked list and from nowhere else (src/lib/dm/ai-gate.ts), so a
+//           site that marked its own dice would let the model send their
+//           total as a number of its own. Every other row, at either door,
+//           leaves the list empty: that holds for every site here at once,
+//           and for a site added later. An AI GM's request_roll marks the
+//           one roll it asked for, whether the server threw it or the seat
+//           entered it for the card.
 //
 // One function does all of these (src/lib/dm/roll-record.ts recordRoll), and
-// every row passes all three. `rows` in scripts/roll-record-sites.json held
+// every row passes all four. `rows` in scripts/roll-record-sites.json held
 // the rows whose site recorded its roll by hand and missed one, with the
 // checks each failed; it is empty now. A row that fails a check it is not
 // listed there for fails this suite, and so does a row listed for a check
@@ -63,7 +73,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { aiEngine } from "./lib/enforce-narrator.mjs";
 import { d20sOf, formArgs, installDiceSpy, staticRollSites, taggedFor } from "./lib/sweep-dice.mjs";
-import { announced, homeProblem, lastSeq, rollMark, rollsAfter } from "./lib/roll-homes.mjs";
+import { announced, askedOn, homeProblem, lastSeq, rollHomes, rollMark, rollsAfter } from "./lib/roll-homes.mjs";
 
 const { test, gap, finish } = suite("test-enforce-sweep-dice-sites");
 const spy = installDiceSpy();
@@ -403,9 +413,10 @@ async function enterParked() {
 // What a source can say it is (src/lib/db/rolls.ts HazardKind).
 const HAZARDS = new Set(["fall", "gm", "trap", "item", "effect", "named"]);
 
-function recordProblems(mark, seq, cards, hazardRow = false) {
+function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false) {
   const rolls = rollsAfter(world.campaignId, mark);
-  const problems = { home: [], sent: [], roller: [] };
+  const problems = { home: [], sent: [], roller: [], asked: [] };
+  const marked = [];
   const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;
   // The roll each entered card became: the one its card names, else the
   // seat's next roll of that kind.
@@ -427,6 +438,18 @@ function recordProblems(mark, seq, cards, hazardRow = false) {
     const home = homeProblem(roll.id);
     if (home) {
       problems.home.push(`${what}: ${home}`);
+    }
+    // The mark is the turn's own: on the turn the roll is on, or on none.
+    const askedTurns = askedOn(roll.id);
+    if (askedTurns.length) {
+      marked.push(roll);
+      if (!askedRow) {
+        problems.asked.push(`${what}: marked as a roll an AI GM asked for, and no GM's request_roll made it, so its total would pay for a number the GM sends`);
+      } else if (askedTurns.length > 1 || !rollHomes(roll.id).turns.includes(askedTurns[0])) {
+        problems.asked.push(`${what}: marked as asked for on a turn it is not on`);
+      } else if (!mine(roll)) {
+        problems.asked.push(`${what}: marked as asked for, and it is not the roll the GM asked for`);
+      }
     }
     // A roll behind the screen is sent seat by seat and is not in the log
     // every seat may replay; what the log holds is read.
@@ -468,9 +491,15 @@ function recordProblems(mark, seq, cards, hazardRow = false) {
       problems.roller.push(`${what}: a hazard's roll names ${lands}, whom it lands on, as its roller`);
     }
   }
+  // An AI GM's own request_roll: the one roll it asked for is marked, so its
+  // total can pay. With none marked the gate would refuse every total the GM
+  // rolled, and with two a second one would pay.
+  if (askedRow && rolls.some(mine) && marked.length !== 1) {
+    problems.asked.push(`the AI GM's request_roll stored ${rolls.filter(mine).length} roll(s) of the seat's and ${marked.length} are marked as asked for, where one is`);
+  }
   return { problems, rolls: rolls.length };
 }
-const CHECKS = ["home", "sent", "roller"];
+const CHECKS = ["home", "sent", "roller", "asked"];
 const recordNow = {};
 
 async function run(entry, door, seed) {
@@ -518,7 +547,7 @@ async function run(entry, door, seed) {
   }
   // The verdict is read before the seat answers: the dice it enters now are
   // its own, and the call runs on with them.
-  const record = recordProblems(mark, seq, await enterParked(), /^(apply_hazard|cast_at_player\.hazard|concentration\.damage)/.test(entry.id));
+  const record = recordProblems(mark, seq, await enterParked(), /^(apply_hazard|cast_at_player\.hazard|concentration\.damage)/.test(entry.id), door === "ai" && entry.tool === "request_roll");
   spy.take();
   return { verdict, where: where.filter((id) => !RULED_SITES[id]), out, parked, dice, record };
 }
@@ -565,7 +594,7 @@ for (const [index, entry] of rows.entries()) {
       });
     }
     const listed = RECORD_ROWS[id] ?? [];
-    await test(`${id}: every roll the call stored has one home, is sent as it was made and names its roller${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
+    await test(`${id}: every roll the call stored has one home, is sent as it was made, names its roller and is marked as asked for only by an AI GM's own request_roll${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
       assert.ok(record, `${id} did not run to its record`);
       const failing = CHECKS.filter((check) => record.problems[check].length);
       if (failing.length) {

@@ -51,6 +51,16 @@ export function homeProblem(rollId) {
   return lines.length ? `on ${lines.length} lines and no turn` : "on no turn and no line";
 }
 
+// The turns whose asked list holds a roll: the mark for a roll an AI GM asked
+// for with request_roll (src/lib/db/dm-turns.ts askedRollIds, issue #1073),
+// which is what lets its total pay for a number that GM sends.
+export function askedOn(rollId) {
+  return getDatabase()
+    .prepare(`SELECT dm_turns.id AS id FROM dm_turns, json_each(dm_turns.asked_roll_ids_json) AS listed WHERE listed.value = ?`)
+    .all(rollId)
+    .map((row) => row.id);
+}
+
 export const lastSeq = (campaignId) => listEventsSince(campaignId, 0, 100000).at(-1)?.seq ?? 0;
 
 // What the table was told of a roll since `seq`: `source` says whether the

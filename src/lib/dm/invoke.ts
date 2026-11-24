@@ -342,6 +342,7 @@ export async function invokeEngine(
         sheets,
         sheetsById,
         realDiceUserIds: realDiceUsers(campaign),
+        ...(actor.kind === "ai" ? { aiCall: true } : {}),
       });
     } catch (error) {
       return { thrown: error instanceof Error ? error.message : "The engine could not resolve that." };

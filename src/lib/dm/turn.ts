@@ -3514,9 +3514,9 @@ async function resolveModelCall(
     }
     // Held, so a watcher's stop before its d20 holds it like any call.
     const result = runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
-      handleRequestRoll(campaign, turn, gated.args, sheets, sheetsById, realDiceUserIds, {
-        toolCallId: toolCall.id ?? null,
-      }),
+      // The model's own request_roll: the roll it asks for is marked so
+      // (invoke-roll.ts aiAsked).
+      handleRequestRoll(campaign, turn, gated.args, sheets, sheetsById, realDiceUserIds, { toolCallId: toolCall.id ?? null }, true),
     );
     if (isHeldPark(result)) {
       return { [PARKED]: true, ...heldStop(result) };

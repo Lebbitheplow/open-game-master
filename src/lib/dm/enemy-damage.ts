@@ -743,4 +743,4 @@ export function applyEnemyDamage(
 
 // The blow of a parked (physical dice) attack and a targeted damage roll:
 // src/lib/dm/enemy-blow.ts, re-exported for the callers that find them here.
-export { applyPendingDamageRoll, autoApplyDamageRoll } from "@/lib/dm/enemy-blow";
+export { applyPendingDamageRoll, autoApplyDamageRoll, serverLandsDamageRoll } from "@/lib/dm/enemy-blow";

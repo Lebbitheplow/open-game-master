@@ -6,6 +6,10 @@
 // a parked roll remembers the tool call it answers, so the model can be
 // resumed with the result, the refusals are worded for a model, and a field
 // it leaves unnamed that the character's traits would read is asked for.
+// A roll an AI GM asked for here is marked so, on its record or on the card
+// dealt for it (`aiAsked` below, which every caller says): the mark is what
+// lets its total pay for a number that GM sends afterwards
+// (src/lib/dm/ai-gate.ts).
 // Everything else is shared: the expression comes from the sheet, conditions
 // can decide the roll outright, a held die waits for its holder to spend it
 // after the dice land (src/lib/dm/after-roll.ts) whether they are physical or
@@ -39,7 +43,7 @@ import { createPendingRoll, listOpenPendingRolls, publicPendingRoll, setPendingC
 import { getSheetById } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
-import { autoApplyDamageRoll } from "@/lib/dm/enemy-damage";
+import { autoApplyDamageRoll, serverLandsDamageRoll } from "@/lib/dm/enemy-damage";
 import { heldInitiative, recordInitiativeRoll } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import {
@@ -74,7 +78,14 @@ export function handleRequestRoll(
   // enter instead of being rolled by the server.
   realDiceUserIds: Set<string>,
   // Set by the AI's turn loop: the tool call a parked roll answers.
-  model?: { toolCallId: string | null },
+  model: { toolCallId: string | null } | undefined,
+  // An AI GM sent this call itself: the turn loop's model, or a GM at the
+  // engine's AI door (src/lib/dm/invoke.ts: a connected agent program). Every
+  // caller says it; it is not worked out here, from `model` or from the
+  // turn. The roll is then marked as asked for, and so is a card dealt for
+  // it (roll-record.ts `asked`). A call the server makes itself says no,
+  // though it may pass `model` for its cards to answer (initiative-ask.ts).
+  aiAsked: boolean,
 ): ToolResult {
   const campaignId = campaign.id;
   const needs = model
@@ -321,6 +332,7 @@ export function handleRequestRoll(
       targetEnemyId: args.kind === "damage" ? args.targetEnemyId ?? null : null,
       // The mote the spent inspiration die carried, set off as the roll lands.
       ...(mote ? { carry: { mote } } : {}),
+      asked: aiAsked,
       // The screen holds while the player's dice are on their way.
       visibility: model ? "public" : args.visibility ?? "public",
       ...(realDiceUserIds.has(sheet.userId) ? {} : { parkedFor: "foretold" as const }),
@@ -385,6 +397,7 @@ export function handleRequestRoll(
         // The tool a check is made with, for the offers that read it again
         // as the roll changes (after-roll.ts optionsForPending).
         ...(args.tool ? { carry: { tool: args.tool } } : {}),
+        asked: aiAsked,
         parkedFor: "after_roll",
         thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline(campaignId, sheet.userId) },
       });
@@ -426,6 +439,8 @@ export function handleRequestRoll(
       turn,
       // Thrown here, on the server's dice.
       landing: null,
+      // A total the server lands itself, below, leaves nothing to send.
+      asked: aiAsked && !(args.kind === "damage" && args.targetEnemyId && serverLandsDamageRoll(campaignId, args.targetEnemyId)),
     });
     const combatNote =
       args.kind === "initiative"

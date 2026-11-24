@@ -3,7 +3,8 @@
 // src/lib/dm/ai-boundary.ts before they reach the engine:
 //
 //   - damage and healing are dice the server rolls now (`dice`), or a total
-//     the server rolled this turn and nothing has spent yet;
+//     the model asked the server to roll this turn (request_roll) that has
+//     paid for nothing yet;
 //   - a condition that binds a creature lands only after the save the server
 //     rolls (saveAbility and saveDc);
 //   - a binding condition the engine keeps (a save, a duration, a spell, a
@@ -18,10 +19,10 @@
 
 import { splitParts } from "@/lib/dm/action-parts-logic";
 import type { Campaign } from "@/lib/db/campaigns";
-import type { DmTurn } from "@/lib/db/dm-turns";
+import { payOnTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy } from "@/lib/db/encounters";
 import { shownName } from "@/lib/dm/board-hidden";
-import { getRoll, markRollPaid, markRollSpent } from "@/lib/db/rolls";
+import { getRoll, type StoredRoll } from "@/lib/db/rolls";
 import { awayRefusal, canCrossAway } from "@/lib/dm/fight-away-logic";
 import { sceneCallRefusal } from "@/lib/dm/party-split";
 import { isValidExpression } from "@/lib/dice";
@@ -231,11 +232,23 @@ function targetOf(name: string, args: Record<string, unknown>): string {
   return String((name === "damage_enemy" ? args.enemyId : name === "split_damage" ? "" : args.characterId) ?? "");
 }
 
+// The rolls an AI GM asked for on this turn that have paid for nothing yet,
+// oldest first: the only rolls either gate below takes. The turn keeps both
+// lists (src/lib/db/dm-turns.ts askedRollIds, paidRollIds). The door a roll
+// goes on record through marks one as asked for only where a site says the
+// GM's own request_roll made it (src/lib/dm/roll-record.ts), so the dice of
+// every other call (a blow the engine landed, a hazard's, the dice a landing
+// threw) are on neither list and pay for nothing here, with no stamp put on
+// them afterwards. The gates used to take any roll on the turn that nothing
+// had stamped, and a site whose dice went unstamped paid for a number the
+// model made up (#1006, #1061).
+function askedUnpaid(turn: DmTurn): StoredRoll[] {
+  const paid = new Set(turn.paidRollIds);
+  return turn.askedRollIds.flatMap((id) => (paid.has(id) ? [] : (getRoll(id) ?? [])));
+}
+
 // Damage or healing: dice the server rolls now, or (from the model) a total
-// it asked the server to roll this turn (request_roll) that nothing has
-// applied. The dice of every other call are spent as that call ends
-// (src/lib/dm/held-call.ts spendOwnRolls), so a total the engine has already
-// landed pays for nothing here.
+// it asked the server to roll this turn that has paid for nothing yet.
 function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" | "healing", targetId: string): GateOutcome {
   const dice = typeof args.dice === "string" ? args.dice.replace(/\s+/g, "") : "";
   if (dice) {
@@ -249,7 +262,6 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
     // creature by the name the table may read now (a hidden one stays so).
     const foe = sheet ? null : getEnemy(targetId);
     const whom = said(args.petName) || sheet?.name || (foe ? shownName(foe.encounterId, foe.id, foe.displayName) : "the target");
-    const before = ctx.turn.rollIds.length;
     // The model's own dice for harm with no creature behind it: the roll of
     // the spell it is, else of the words it gave for it, else the GM's own
     // dice. The hit's record is built from the same two arguments
@@ -259,11 +271,9 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
       what === "damage"
         ? sourceDamage(ctx.campaign, ctx.turn, harmSource(said(args.spell), said(args.reason), UNNAMED_HARM), { characterId: sheet ? sheet.id : null, names: [whom] }, { dice, type: said(args.type) || undefined })
         : rollCard(ctx.campaign, ctx.turn, sheet ? sheet.id : null, "custom", rollAgainst(said(args.reason).slice(0, 60) || "Healing", whom), dice, null);
-    // Spent as it is rolled: the call let through below applies it, and the
-    // same total sent bare afterwards would land it a second time.
-    for (const id of ctx.turn.rollIds.slice(before)) {
-      markRollSpent(id);
-    }
+    // Dice the gate rolls are no roll the model asked for with request_roll:
+    // the call let through below applies them, and the same total sent bare
+    // afterwards finds nothing to pay for it.
     const { dice: _sent, ...rest } = args;
     void _sent;
     // SRD 5.1 gives damage no floor: dice a penalty brings to 0 or less deal
@@ -281,15 +291,13 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
     return { args: JSON.stringify(args) };
   }
   const kinds = what === "damage" ? ["damage"] : ["damage", "custom"];
-  const rolled = ctx.turn.rollIds
-    .map((rollId) => getRoll(rollId))
-    .find((roll) => roll && kinds.includes(roll.kind) && !roll.applied && roll.total === amount);
+  // Paid, not landed: the call let through below is what lands it. The
+  // payment is taken on the turn's stored row, so a roll another copy of
+  // this turn has spent since this one was read pays for nothing here.
+  const rolled = askedUnpaid(ctx.turn).find((roll) => kinds.includes(roll.kind) && roll.total === amount && payOnTurn(ctx.turn, roll.id));
   if (!rolled) {
     return { result: AI_NUMBER_REFUSAL(what) };
   }
-  // Paid, not landed: the call let through below is what lands it, and the
-  // stamp names no target (src/lib/db/rolls.ts markRollPaid).
-  markRollPaid(rolled.id);
   return { args: JSON.stringify(args) };
 }
 
@@ -338,31 +346,25 @@ function lift(ctx: GateContext, args: Record<string, unknown>, rawArguments: str
   return kept ? { result: AI_CLEAR_REFUSAL(sheet.name, wanted) } : { args: rawArguments };
 }
 
-// A trap's hold (a falling net) the server has already seen broken: this
-// turn rolled the character a check the trap's escape takes (Strength or
-// Athletics for a net) that reached its DC, and nothing has spent it. The
-// model that rolls the check and then lifts the condition is doing what the
-// trap's rule says, as take_action escape does in one call.
+// A trap's hold (a falling net) the server has already seen broken: the
+// model asked for a check of the character's this turn that the trap's
+// escape takes (Strength or Athletics for a net), it reached the DC, and it
+// has paid for nothing yet. The model that rolls the check and then lifts
+// the condition is doing what the trap's rule says, as take_action escape
+// does in one call. A check another tool rolled is not one it asked for.
 function escapeRolled(ctx: GateContext, sheet: CharacterSheet, condition: string): boolean {
   const hold = trapHoldOn(ctx.campaign, sheet);
   if (!hold || canonicalCondition(hold.condition) !== condition) {
     return false;
   }
   const fits = hold.ability === "str" ? /\b(?:athletics|str|strength)\b/i : /\b(?:acrobatics|dex|dexterity)\b/i;
-  const roll = ctx.turn.rollIds
-    .map((rollId) => getRoll(rollId))
-    .find(
-      (entry) =>
-        entry &&
-        !entry.applied &&
-        entry.characterId === sheet.id &&
-        (entry.kind === "skill_check" || entry.kind === "ability_check") &&
-        fits.test(entry.detail) &&
-        entry.total >= hold.dc,
-    );
-  if (!roll) {
-    return false;
-  }
-  markRollPaid(roll.id);
-  return true;
+  const roll = askedUnpaid(ctx.turn).find(
+    (entry) =>
+      entry.characterId === sheet.id &&
+      (entry.kind === "skill_check" || entry.kind === "ability_check") &&
+      fits.test(entry.detail) &&
+      entry.total >= hold.dc &&
+      payOnTurn(ctx.turn, entry.id),
+  );
+  return Boolean(roll);
 }

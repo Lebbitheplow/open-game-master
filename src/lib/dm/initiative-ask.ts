@@ -83,6 +83,8 @@ export function askForInitiative(
       sheetsById,
       realDiceUserIds,
       model,
+      // The fight asks, not the model: no GM's request_roll is behind it.
+      false,
     );
     if (out.parked === true) {
       ask.waiting.push(sheet.name);

@@ -38,6 +38,15 @@
 // No other file sends "roll_result": a roll sent a second time (a secret
 // that comes out, revealRolls below) leaves here too.
 //
+// The door also keeps one mark (issue #1073): the rolls an AI GM asked for
+// with request_roll (`asked`). It goes on the turn's own list in the step
+// that joins the roll to the turn, and the gate that holds the model's
+// numbers takes a total from that list and from nowhere else
+// (src/lib/dm/ai-gate.ts). A roll no site marked pays for nothing, so a new
+// site that throws dice on an AI's turn needs to do nothing to stay out of
+// the gate's way. Before, every site's dice had to be stamped spent after
+// the fact, and a site that was missed paid for a number the model made up.
+//
 // It imports the roll store, the turn store and the event stream, and reaches
 // the held call through globalThis as the roll store does: the clock's paths
 // card their dice through roll-card.ts, which must stay free of the engine's
@@ -80,10 +89,16 @@ export type RollRecord = RollInsert & {
   // The roll card these dice answer (pending-roll-land.ts): each screen takes
   // the card down as it is told of the roll.
   answers?: string | null;
+  // An AI GM asked for this roll with request_roll. Said by two sites and no
+  // other (scripts/test-roll-record-sites.mjs): src/lib/dm/invoke-roll.ts,
+  // where the call is thrown on the server's dice, and
+  // src/lib/dm/pending-roll-land.ts, where the card it dealt lands. A roll
+  // with no turn to join carries no mark.
+  asked?: boolean;
 };
 
 export function recordRoll(record: RollRecord): StoredRoll {
-  const { turn, turnId, home, landing: said, send, answers, ...insert } = record;
+  const { turn, turnId, home, landing: said, send, answers, asked, ...insert } = record;
   const landing = said === undefined ? (globalThis.__odmTakenLanding?.(insert.characterId ?? null, insert.kind) ?? null) : said;
   // Dice rolled at the table are on record as the player's own, as a roll
   // card's are (pending-roll-land.ts).
@@ -94,11 +109,11 @@ export function recordRoll(record: RollRecord): StoredRoll {
   const target = home === "line" || home === "apart" ? null : turnFor(turn && turn.id === id ? turn : null, id);
   let roll: StoredRoll;
   if (target?.storedId) {
-    // The roll and its place on the turn stand or fall together.
+    // The roll, its place on the turn and its mark stand or fall together.
     const storedId = target.storedId;
     roll = getDatabase().transaction(() => {
       const made = insertRoll(stored);
-      joinStoredTurn(storedId, made.id);
+      joinStoredTurn(storedId, made.id, asked === true);
       return made;
     })();
   } else {
@@ -106,6 +121,9 @@ export function recordRoll(record: RollRecord): StoredRoll {
   }
   if (target?.live && !target.live.rollIds.includes(roll.id)) {
     target.live.rollIds.push(roll.id);
+  }
+  if (asked === true && target?.live && !target.live.askedRollIds.includes(roll.id)) {
+    target.live.askedRollIds.push(roll.id);
   }
   if (send !== false) {
     // Sent as it was made: told "digital", the stage threw a die on screen

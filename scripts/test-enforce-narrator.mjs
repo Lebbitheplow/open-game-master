@@ -483,7 +483,7 @@ await test("request_roll kind=damage with no character still lands on an enemy (
   world.dice(3);
   const out = handleRequestRoll(
     world.campaign(), ai.turn(), JSON.stringify({ kind: "damage", expression: "1d6", targetEnemyId: enemy.id }),
-    sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), new Set(), { toolCallId: null },
+    sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), new Set(), { toolCallId: null }, true,
   );
   world.clearDice();
   assert.equal(out.ok, true, out.error);
