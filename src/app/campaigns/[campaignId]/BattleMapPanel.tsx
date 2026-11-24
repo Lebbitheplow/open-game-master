@@ -1818,7 +1818,7 @@ export function BattleMapPanel({
           )}
         </h3>
         {orderInRow && !canDirect ? orderAboveBoard : null}
-        <div className="board-head-tools flex items-center gap-1">
+        <div className="board-head-tools tap-row flex items-center gap-1">
           {playerTools}
           <button
             type="button"
@@ -1964,7 +1964,7 @@ export function BattleMapPanel({
                     several characters picks who they play here (issue #189).
                     On a narrow phone the strip scrolls rather than pushing
                     the close off the edge: it is the only way back. */}
-                <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+                <div className="tap-row flex min-w-0 items-center gap-2 overflow-x-auto">
                   {orderInRow ? orderAboveBoard : null}
                   <PlayAsStrip
                     campaignId={campaignId}

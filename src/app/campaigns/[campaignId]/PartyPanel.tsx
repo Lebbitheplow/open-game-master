@@ -542,7 +542,7 @@ export function PartyPanel({
                 "border-amber-500/70 ring-1 ring-amber-500/60 shadow-glow-gold-strong",
             )}
           >
-            <div className="flex items-start gap-1">
+            <div className="tap-row flex items-start gap-1">
               {order.arranging ? (
                 <PartyOrderHandle
                   id={sheet.id}

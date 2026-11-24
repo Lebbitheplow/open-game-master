@@ -145,7 +145,7 @@ function SaveSlot({
             {campaign.maxPlayers === 1 ? t(" · solo") : ""}
           </span>
         </Link>
-        <span className="ts-slot-actions">
+        <span className="ts-slot-actions tap-row">
           <ExportMenu campaignId={campaign.id} variant="tile-icon" />
           {steersStory(campaign, userId) ? (
             <Tooltip content={t("Copy the world into a new campaign, without the transcript")}>
