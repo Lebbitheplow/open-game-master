@@ -276,7 +276,13 @@ export function BattleMapPanel({
   const [handAim, setHandAim] = useState<HandAimDetail | null>(null);
   const [handStatus, setHandStatus] = useState<HandBoardStatus | null>(null);
   useEffect(() => {
-    const aim = (event: Event) => setHandAim((event as CustomEvent<HandAimDetail>).detail);
+    const aim = (event: Event) => {
+      const detail = (event as CustomEvent<HandAimDetail>).detail;
+      // A pair asked about under an aim that has ended (the card played or
+      // put back) is not asked again the moment the next aim begins.
+      if (!detail?.active) setPairAskId(null);
+      setHandAim(detail);
+    };
     const status = (event: Event) => { const detail = (event as CustomEvent<HandBoardStatus>).detail; if (detail?.campaignId === campaignId) setHandStatus(detail); };
     window.addEventListener(HAND_AIM_EVENT, aim);
     window.addEventListener(HAND_BOARD_STATUS_EVENT, status);
@@ -1134,7 +1140,12 @@ export function BattleMapPanel({
         onCompose?.(text);
         setHudTokenId(null);
       },
-      (mode) => setTargeting(mode),
+      // A new aim starts with no pair asked about: one tapped under an aim
+      // that was cancelled would stand in for the target list.
+      (mode) => {
+        setPairAskId(null);
+        setTargeting(mode);
+      },
       mySheet && !scene ? boardHudGates(mySheet, encounter ?? null, { myTurn, currentName: view.currentTurnName }) : undefined,
       (reason) => setError(reason),
     );

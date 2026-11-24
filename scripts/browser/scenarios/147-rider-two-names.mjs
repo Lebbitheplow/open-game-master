@@ -10,8 +10,9 @@
 // She strikes the goblin, and the goblin alone is hurt.
 //
 // The tap: on her own turn she opens her figure's dial, picks Attack and
-// taps the pair's token. Two chips ask "Goblin or Wolf?", and the one she
-// picks is the one her sentence names. The engine's half is held by
+// taps the pair's token. Two chips ask "Goblin or Wolf?", each a finger's
+// 40px, and the one she picks is the one her sentence names. Cancelled with
+// the two names up, the next Attack opens on the target list again. The engine's half is held by
 // scripts/test-enforce-rider-two-names.mjs.
 import { request } from "playwright-core";
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
@@ -112,13 +113,24 @@ const scenario = {
       for (const name of [aim.riderName, aim.mountName]) {
         const chip = which.getByRole("button", { name: new RegExp(`^${escape(name)}`) });
         const box = await chip.boundingBox();
-        check((box?.height ?? 0) >= 32 && (await chip.locator("img").count()) === 1, `${name}'s chip has a face and a finger's height (${JSON.stringify(box)})`);
+        check((box?.height ?? 0) >= 40 && (await chip.locator("img").count()) === 1, `${name}'s chip has a face and a finger's height (${JSON.stringify(box)})`);
       }
       await setTheme("dark");
       await t.shot("tap-night");
       await setTheme("light");
       await t.shot("tap-day");
       await setTheme(theme);
+      // An aim cancelled with the two names up leaves nothing behind: the
+      // next Attack opens on the target list, not on the old pair's choice.
+      await t.tap(page.getByRole("button", { name: "Cancel aiming", exact: true }).locator("visible=true").first());
+      await eventually(async () => !(await which.count()), { timeoutMs: 15_000, label: "the two names gone with the aim" });
+      await t.tap(mine);
+      await eventually(() => dial.count(), { label: "the lead's own dial again" });
+      await t.tap(dial.getByLabel("Attack", { exact: true }));
+      await untilStill(page).catch(() => undefined);
+      check(!(await which.count()), "a new aim opened on the choice a cancelled aim had asked");
+      await t.tap(pair);
+      await eventually(() => which.count(), { timeoutMs: 15_000, label: "the two names asked again for the pair's token" });
       await t.tap(which.getByRole("button", { name: new RegExp(`^${escape(aim.mountName)}`) }));
       const box = page.locator(`${root}textarea`).locator("visible=true").first();
       await eventually(async () => (await box.inputValue().catch(() => "")) === `I attack ${aim.mountName}.`, { timeoutMs: 15_000, label: "the sentence naming the wolf the lead picked" });

@@ -678,7 +678,7 @@ export function TargetChips({
           onPointerLeave={() => onHover?.(null)}
           onFocus={() => onHover?.(token.id)}
           onBlur={() => onHover?.(null)}
-          className="motion-press flex shrink-0 animate-fade-up items-center gap-1.5 rounded-full border border-ember-500/50 bg-stone-950/80 py-0.5 pl-0.5 pr-2.5 text-left hover:border-ember-500 hover:bg-red-950/30"
+          className="motion-press flex min-h-10 shrink-0 animate-fade-up items-center gap-1.5 rounded-full border border-ember-500/50 bg-stone-950/80 py-0.5 pl-0.5 pr-2.5 text-left hover:border-ember-500 hover:bg-red-950/30"
           style={{ animationDelay: `${index * 40}ms` }}
         >
           <TokenFace
