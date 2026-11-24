@@ -146,7 +146,7 @@ export function VoiceDock({
           aria-expanded={open}
           data-tour="header-voice"
           className={cn(
-            headerButtonClass(open, "md:pl-1 md:pr-2.5"),
+            headerButtonClass(open, "session-hbtn-wide"),
             // Emerald while on the call so the header says so at a glance,
             // without stealing the gold that marks an open menu.
             !open && onCall && "session-hbtn-call",
@@ -203,7 +203,7 @@ export function VoiceDock({
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label={t("Close", { context: "voice.close" })}
-                  className="absolute right-2 top-1 z-10 rounded-md p-1.5 text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200 lg:hidden"
+                  className="tap-reach absolute right-2 top-1 z-10 rounded-md p-1.5 text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200 lg:hidden"
                 >
                   <X className="size-4" />
                 </button>

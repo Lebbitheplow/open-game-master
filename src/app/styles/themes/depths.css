@@ -61,6 +61,7 @@
   --material-chip-radius: 0 9px 0 0;
   --material-sigil-radius: 0 0 9px 0;
   --material-fitting-radius: 50% 50% 50% 36%;
+  --material-fitting-wide-radius: 1.25rem 1.25rem 1.25rem 0.9rem;
   --material-crest-tilt: 7deg;
   --appearance-corner: 0 0 1.1rem 0;
   --depths-wrong: #c06ab0;
@@ -120,6 +121,7 @@
   --material-chip-radius: 8px 0 0 0;
   --material-sigil-radius: 1px 8px 1px 1px;
   --material-fitting-radius: 50% 38% 50% 50%;
+  --material-fitting-wide-radius: 1.25rem 0.95rem 1.25rem 1.25rem;
   --material-crest-tilt: -6deg;
   --appearance-corner: 0.05rem 0.05rem 0.05rem 1rem;
   --depths-wrong: #7a2e6b;

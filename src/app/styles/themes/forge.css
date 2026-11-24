@@ -104,6 +104,7 @@
   --material-metal-finish: linear-gradient(135deg, #f1d2a4, #a9743c 48%, #e2b27a 52%, #7e5226);
   --material-metal-ink: #2b190b;
   --material-fitting-radius: 4px;
+  --material-fitting-wide-radius: 4px;
   --material-control-radius: 3px;
   --material-panel-radius: 4px;
   --material-bubble-radius: 3px;

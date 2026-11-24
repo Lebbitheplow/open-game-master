@@ -115,6 +115,7 @@
   --material-send-wash: linear-gradient(#1b7551, #0f5238);
   --material-chosen-wash: linear-gradient(#176647, #0c452f);
   --material-fitting-radius: 2px 9px;
+  --material-fitting-wide-radius: 2px 9px;
   --material-control-radius: 2px 7px;
   --material-panel-radius: 3px 10px;
   --material-bubble-radius: 2px 8px;

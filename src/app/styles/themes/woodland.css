@@ -102,6 +102,7 @@ html[data-appearance="woodland"] .ornate::after { border-radius: 80% 0; width: 2
   --material-metal-finish: linear-gradient(135deg, #e2e5d1, #8b947a 48%, #d1d5c0 51%, #778168);
   --material-metal-ink: #203327;
   --material-fitting-radius: 50% 5px 50% 5px;
+  --material-fitting-wide-radius: 1.25rem 5px 1.25rem 5px;
   --material-control-radius: 15px 4px 15px 4px;
   --material-panel-radius: 18px 4px 18px 4px;
   --material-crest-tilt: -12deg;

@@ -1706,7 +1706,7 @@ export function BattleMapPanel({
         onClick={() => setPointing((current) => !current)}
         title={t("Point at a tile")}
         aria-pressed={pointing}
-        className={`rounded p-1 ${
+        className={`tap-reach rounded p-1 ${
           pointing ? "bg-amber-950/60 text-amber-300" : "text-stone-400 hover:bg-stone-900"
         }`}
       >
@@ -1718,7 +1718,7 @@ export function BattleMapPanel({
           onClick={() => setDrawing((current) => !current)}
           title={t("Draw on the board")}
           aria-pressed={drawing}
-          className={`rounded p-1 ${
+          className={`tap-reach rounded p-1 ${
             drawing ? "bg-amber-950/60 text-amber-300" : "text-stone-400 hover:bg-stone-900"
           }`}
         >
@@ -1764,7 +1764,7 @@ export function BattleMapPanel({
             type="button"
             onClick={() => setEnlarged(true)}
 
-            className="rounded p-1 text-stone-400 hover:bg-stone-900 hover:text-stone-200"
+            className="tap-reach rounded p-1 text-stone-400 hover:bg-stone-900 hover:text-stone-200"
             aria-label={t("Enlarge battle map")}
           >
             <Maximize2 className="size-4" />

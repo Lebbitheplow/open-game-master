@@ -93,6 +93,15 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header .session
   color: var(--material-metal);
   box-shadow: inset 0 1px 0 #dce5cf30, 0 2px 5px #0003;
 }
+/* The fitting shape is drawn for a square button: its percentages turn a
+   wide one (Voice with its name) into an oval. A wide fitting takes the same
+   shape with round corners measured from its height, a pill unless the theme
+   says otherwise. */
+@media (min-width: 768px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header .session-hbtn-wide {
+    border-radius: var(--material-fitting-wide-radius, 9999px);
+  }
+}
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header .session-hbtn-lit {
   background: var(--appearance-wash);
   box-shadow: inset 0 2px 5px #0004;
