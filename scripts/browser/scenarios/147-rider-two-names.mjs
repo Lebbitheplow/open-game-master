@@ -124,7 +124,9 @@ const scenario = {
       // next Attack opens on the target list, not on the old pair's choice.
       await t.tap(page.getByRole("button", { name: "Cancel aiming", exact: true }).locator("visible=true").first());
       await eventually(async () => !(await which.count()), { timeoutMs: 15_000, label: "the two names gone with the aim" });
+      // The figure's plate may answer the first tap; the dial the next.
       await t.tap(mine);
+      await eventually(() => dial.count(), { timeoutMs: 3_000, label: "the dial" }).catch(() => t.tap(mine));
       await eventually(() => dial.count(), { label: "the lead's own dial again" });
       await t.tap(dial.getByLabel("Attack", { exact: true }));
       await untilStill(page).catch(() => undefined);
