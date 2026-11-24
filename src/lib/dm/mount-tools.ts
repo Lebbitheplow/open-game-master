@@ -7,7 +7,7 @@ import { onMount } from "@/lib/srd/tack";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { isProne, saddleSave } from "@/lib/dm/mount-thrown";
-import { takeMovedRiders } from "@/lib/dm/mount-moved";
+import { takeMovedRiders, takeToldOfRiders } from "@/lib/dm/mount-moved";
 import { listSheets } from "@/lib/db/sheets";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -106,7 +106,7 @@ export const mountTools: ToolDef[] = [
     type: "function",
     function: {
       name: "dismount",
-      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. A mount moved against its will asks their DC ${DISMOUNT_SAVE_DC} DEX save, and they come off, landing prone, only on a failure. The server asks it by itself as a push, a pull or a forced move_token of the rider finishes, so send nothing for those; cause forced-move is only for a move the board did not make. A rider knocked prone is asked the same save by the server as the call that knocked them down finishes, so send nothing for it; cause rider-prone is only for a rider the table says was knocked prone that no call laid prone (it lays the prone and asks the save once). A mount that goes down (mount-prone) costs their reaction to land standing (prone without one). Do not roll the save or set the condition yourself.`,
+      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. A mount moved against its will asks their DC ${DISMOUNT_SAVE_DC} DEX save, and they come off, landing prone, only on a failure. The server settles a push, a pull or a forced move_token of the pair by itself, so send nothing for those; cause forced-move is only for a move the board did not make. A rider knocked prone is asked the same save by the server as the call that knocked them down finishes, so send nothing for it; cause rider-prone is only for a rider the table says was knocked prone that no call laid prone (it lays the prone and asks the save once). A mount that goes down (mount-prone) costs their reaction to land standing (prone without one). Do not roll the save or set the condition yourself.`,
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -488,19 +488,22 @@ function thrownByMove(
   };
 }
 
-// The riders a call moved against their will (a push, a pull, a forced
-// move_token: mount-moved.ts) make the save to stay mounted, once each,
-// where the call finishes. What happened to each, for the call's result.
+// The riders whose mount a call moved against its will (a push, a pull or a
+// forced move_token that named the mount, a drag: mount-moved.ts) make the
+// save to stay mounted, once each, where the call finishes. What happened to
+// each, and to any rider the call named and took out of the saddle with no
+// save, for the call's result.
 export function settleMovedRiders(campaign: Campaign): string[] {
   const riders = takeMovedRiders(campaign.id);
+  // A rider the call named and took out of the saddle (pc-rider-push.ts).
+  const happened: string[] = takeToldOfRiders(campaign.id);
   if (!riders.length) {
-    return [];
+    return happened;
   }
   const sheets = listSheets(campaign.id);
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const turnId = currentTurnId();
   const on = turnId ? getDmTurn(turnId) : null;
-  const happened: string[] = [];
   for (const riderId of riders) {
     const sheet = sheetsById.get(riderId);
     const mount = getMounts(campaign.id)[riderId];

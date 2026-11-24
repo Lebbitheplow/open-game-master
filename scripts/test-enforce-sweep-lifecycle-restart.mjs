@@ -98,6 +98,7 @@ const REGISTRY = {
   "enemy-rider-falls.ts:moved": { kind: PLUMBING, what: "the enemy mounts a call moved against their will, marked as it moves them, their riders asked the save as it finishes" },
   "enemy-rider-falls.ts:told": { kind: PLUMBING, what: "what a call did to an enemy rider, said in the same call's result as it finishes" },
   "mount-moved.ts:moved": { kind: PLUMBING, what: "the riders a call moved against their will, marked as it moves them and asked their save as it finishes" },
+  "mount-moved.ts:told": { kind: PLUMBING, what: "what a call did to a rider it took out of the saddle, said in the same call's result as it finishes" },
   "steed-fall.ts:decided": { kind: PLUMBING, what: "a rider's fall, decided as the steed went and read by the same call" },
   "table-wait.ts:__odmTableWait": { kind: PLUMBING, what: "timers for a waiting table" },
   "token-calibration.ts:__odmTokenCalibration": { kind: PLUMBING, what: "a learned ratio" },

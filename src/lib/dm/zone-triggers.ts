@@ -16,7 +16,9 @@
 // roll row and its damage lands through spell-aura.ts hurtEnemy. Returns
 // the lines for the table.
 
-import { mountMoved } from "@/lib/dm/mount-moved";
+import { mountMoved, wentWithMount } from "@/lib/dm/mount-moved";
+import { pushedFromSaddle } from "@/lib/dm/pc-rider-push";
+import { getMounts } from "@/lib/db/mounts";
 import { forcedEnemyMove } from "@/lib/dm/enemy-rider-falls";
 import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
@@ -117,17 +119,17 @@ const holds = (conditions: string[], name: string) => conditions.some((entry) =>
 // square by square, stopping at a wall, the edge or another creature.
 // `enemy` is the enemy pushed, which is not always whose token moves: a
 // ridden mount stands on its rider's token.
-function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: number, enemy: EncounterEnemy | null = null): XY | null {
+function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: number, enemy: EncounterEnemy | null = null, saddle: Campaign | null = null): XY | null {
   const toward = zone.toward ?? token;
   const distance = Math.max(1, chebyshev(zone.origin.x, zone.origin.y, toward.x, toward.y));
   const ux = Math.round((toward.x - zone.origin.x) / distance);
   const uy = Math.round((toward.y - zone.origin.y) / distance);
   // Every other token's whole space, and the pushed one's own: a rider the
-  // area caught goes alone, one square; anyone else, a ridden mount with
-  // its rider, as wide as it stands. By corners alone a pushed Large
+  // area caught (an enemy, or a character sent with `saddle`) goes alone, one
+  // square; anyone else, a ridden mount with its rider, as wide as it stands. By corners alone a pushed Large
   // creature, or anyone pushed past one, came to rest half inside another.
   const taken = occupiedTiles(map, listTokens(map.id), token, tokenFootprint);
-  const wide = enemy?.ridesEnemyId && token.refId === enemy.id ? 1 : tokenFootprint(token);
+  const wide = saddle || (enemy?.ridesEnemyId && token.refId === enemy.id) ? 1 : tokenFootprint(token);
   let at: XY = { x: token.x, y: token.y };
   for (let step = 0; step < Math.floor(feet / 5); step += 1) {
     const next = { x: at.x + ux, y: at.y + uy };
@@ -144,6 +146,10 @@ function pushAlong(map: BattleMap, zone: SpellZone, token: BattleToken, feet: nu
   // its rider on it.
   if (enemy) {
     return forcedEnemyMove({ id: map.campaignId }, map.id, enemy, at)?.at ?? null;
+  }
+  // A character the area caught in the saddle, the same (pc-rider-push.ts).
+  if (saddle) {
+    return pushedFromSaddle(saddle, map, token.refId, at)?.at ?? null;
   }
   moveToken(token.id, at.x, at.y, token.movedThisRound);
   return at;
@@ -410,11 +416,19 @@ function afterFailOnCharacter(campaign: Campaign, turn: DmTurn, map: BattleMap, 
   }
   if (trigger.pushFeet) {
     // A character's mount with its rider on it stands on the rider's token
-    // (getTokenByRef): the push moves the pair, and it is the rider who
-    // saves to stay on.
+    // (getTokenByRef): a push that caught the mount moves the pair, and it is
+    // the rider who saves to stay on. One that caught the rider takes them
+    // alone out of the saddle (issue 1055, ruling 6), unless the mount it
+    // caught a moment ago has already carried them.
     const token = getTokenByRef(map.id, sheet.id);
-    const at = token ? pushAlong(map, zone, token, trigger.pushFeet) : null;
-    if (at) {
+    const rides = Boolean(token && token.refId === sheet.id && getMounts(campaign.id)[sheet.id]);
+    if (rides && wentWithMount(campaign.id, sheet.id)) {
+      return lines;
+    }
+    const at = token ? pushAlong(map, zone, token, trigger.pushFeet, null, rides ? campaign : null) : null;
+    if (at && rides) {
+      lines.push(`${sheet.name} is pushed out of the saddle to (${at.x},${at.y}).`);
+    } else if (at) {
       lines.push(`${sheet.name} is pushed to (${at.x},${at.y}).`);
       // Gust of Wind's push moves a rider's mount against its will: the save
       // to stay on is asked as the call finishes (mount-moved.ts).
