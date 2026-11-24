@@ -3,6 +3,7 @@ import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { strikesTheDisengaged } from "@/lib/srd/feat-moves";
 import { budgetFor } from "@/lib/dm/turn-budget";
 import { hiddenNow, shownName } from "@/lib/dm/board-hidden";
+import { riderOf } from "@/lib/dm/enemy-riders";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { getActiveEncounter, getEnemy, listEnemies, saveEncounter } from "@/lib/db/encounters";
@@ -723,7 +724,21 @@ export function resolvePcOpportunityWalk(
     const walker = shownName(encounter.id, enemy.id, enemy.displayName);
     // A paladin's card offers Divine Smite too (opportunity-strike.ts).
     const smiteSlot = natural ? null : opportunitySmiteSlot(sheet);
-    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger, ...(smiteSlot ? { smiteSlot } : {}) });
+    // A mount with a rider on its back: "the attacker can target you or the
+    // mount" (SRD 5.1, Mounted Combat). The card offers both by name (issue
+    // 1055, ruling 5), and a swing nobody is asked about is at the mount, the
+    // creature whose move provoked it.
+    const carried = moverKind === "enemy" ? riderOf(listEnemies(encounter.id), enemyId) : null;
+    const rider = carried && carried.status === "alive" && !hiddenNow(encounter.id).has(carried.id) ? carried : null;
+    const answer = opportunityAnswer(campaign, sheet, {
+      walkerId: enemyId,
+      walker,
+      weapon: natural?.weapon ?? resolved?.displayName ?? "",
+      trigger: reach.trigger,
+      ...(smiteSlot ? { smiteSlot } : {}),
+      ...(rider ? { rider: { id: rider.id, name: shownName(encounter.id, rider.id, rider.displayName) } } : {}),
+    });
+    const struck = rider && answer?.targetId === rider.id ? rider : enemy;
     if (answer && !answer.strike) {
       notes.push(letGoNote(sheet.name, walker));
       continue;
@@ -743,18 +758,20 @@ export function resolvePcOpportunityWalk(
       campaign,
       encounter,
       sheet,
-      enemy,
+      enemy: struck,
       resolved,
       natural,
       adjacent: reach.reachTiles <= 1,
-      targetConditions: withLiveDodge(enemy.conditions),
+      targetConditions: withLiveDodge(struck.conditions),
       moverAt,
       ...(answer?.smite && smiteSlot ? { smiteSlot } : {}),
     });
     cards.set(notes.length, rollIds);
     notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();
-    if (dropped) {
+    // A rider struck down leaves its mount walking, and the next reach on
+    // the walk still has the mount to swing at.
+    if (dropped && struck === enemy) {
       break;
     }
   }

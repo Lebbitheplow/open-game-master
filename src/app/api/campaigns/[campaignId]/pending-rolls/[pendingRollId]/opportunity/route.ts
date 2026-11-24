@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 
 // `smite`: Divine Smite on the swing, at the slot the card offered
 // (opportunity-ask-logic.ts smiteSlotOf).
-const answerSchema = z.object({ strike: z.boolean(), smite: z.boolean().optional() }).strict();
+// `target`: which of a mounted pair the swing is at, the walker's id or its
+// rider's, where the card offered both (issue 1055, ruling 5).
+const answerSchema = z.object({ strike: z.boolean(), smite: z.boolean().optional(), target: z.string().max(80).optional() }).strict();
 
 // The player answers the ask before their character's opportunity attack
 // (src/lib/dm/opportunity-ask.ts): Strike spends the reaction on the swing
@@ -47,6 +49,10 @@ export async function POST(
   if (parsed.data.smite && (!parsed.data.strike || pending.carry.ask.smiteSlot === undefined)) {
     return Response.json({ error: "No smite was offered on this attack: answer Strike or Let it go." }, { status: 400 });
   }
+  const pair = pending.carry.ask;
+  if (parsed.data.target !== undefined && (!parsed.data.strike || !pair.rider || (parsed.data.target !== pair.walkerId && parsed.data.target !== pair.rider.id))) {
+    return Response.json({ error: "That is not one of the creatures this attack can be aimed at." }, { status: 400 });
+  }
   const isPlayer = pending.userId === context.user.id;
   const deadline = pending.carry.ask.deadline;
   const due = Boolean(deadline) && Date.now() >= new Date(deadline!).getTime();
@@ -55,6 +61,6 @@ export async function POST(
   }
   // Only the player spends their slot: a swing sent on by anyone else is a plain one.
   const smite = isPlayer && parsed.data.smite === true;
-  const landed = await answerOpportunityAsk(context.campaign, pending, { strike: parsed.data.strike, ...(smite ? { smite: true } : {}), ...(!isPlayer && due ? { timedOut: true } : {}) });
+  const landed = await answerOpportunityAsk(context.campaign, pending, { strike: parsed.data.strike, ...(smite ? { smite: true } : {}), ...(isPlayer && parsed.data.target ? { target: parsed.data.target } : {}), ...(!isPlayer && due ? { timedOut: true } : {}) });
   return landed ? Response.json(landedBody(landed)) : Response.json({ error: "That opportunity attack was already decided." }, { status: 409 });
 }
