@@ -159,7 +159,7 @@ import { resumeBackstop } from "@/lib/dm/backstop-resume";
 import { deedRefusal } from "@/lib/dm/deed-guard";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall, healListRolledByServer } from "@/lib/dm/ai-gate";
-import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
+import { awaitingPlayerState, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
@@ -541,7 +541,7 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     // list never reaches its traits whole.
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
     movementLeft: encounter.orderReady ? movementLeft(campaignId, encounter, sheets) : null,
-    awaitingPlayer: characterAwaitingPlayer(campaignId)?.name ?? null,
+    ...awaitingPlayerState(campaignId),
     holding: characterHeld(campaignId)?.name ?? null,
     ...openHitsForState(campaignId, encounter, sheets),
     ...(due.length

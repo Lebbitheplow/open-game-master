@@ -106,7 +106,17 @@ export function liveStateFor(campaignId: string): LiveState | null {
 // went to the same character (the skirmish smoke, 2026-10-20). A companion's
 // turn is the model's to play whole, unless a player commands it. Null when
 // no such turn waits.
-export function turnOverFor(campaignId: string, turn: Pick<DmTurn, "resolvedCharacterIds">): string | null {
+//
+// Two turns a narration cannot end, whatever it reads as (issues 1099 and
+// 1101). One is a turn whose only word from its player came in while this DM
+// turn was already running: a card queued during the fight's opening was not
+// in the prompt, so nothing of this narration answers it. The other is the
+// first turn of a fight this DM turn opened, when no call has resolved
+// anything for its character since: the narration that announces the order
+// ("Jason (12) > The Sentry (12). It is your turn.") was read as handing the
+// turn on, the player's turn ended before they had one, and the enemies
+// went.
+export function turnOverFor(campaignId: string, turn: Pick<DmTurn, "resolvedCharacterIds" | "createdAt" | "conversation">): string | null {
   const encounter = getActiveEncounter(campaignId);
   if (!encounter || !encounter.orderReady || encounter.kind === "scene") {
     return null;
@@ -119,18 +129,25 @@ export function turnOverFor(campaignId: string, turn: Pick<DmTurn, "resolvedChar
   if (!sheet || aiPlaysSheet(getCampaignById(campaignId), sheet)) {
     return null;
   }
+  if (encounter.createdAt >= turn.createdAt && !ruledFor(turn.conversation, sheet, OPENS_NO_TURN)) {
+    return null;
+  }
   // A player who chose to stay put and do nothing may have the turn handed
   // on; words from before the fight, or a question, end nothing.
-  const word = playerWord(campaignId, sheet.id);
+  const word = playerWord(campaignId, sheet.id, turn.createdAt);
   return word.declares || word.why === "held" ? sheet.id : null;
 }
+
+// The calls that rule on nothing a character does with a turn of their own:
+// a roll asked of them before the fight or for its order.
+const OPENS_NO_TURN: ReadonlySet<string> = new Set(["request_roll", "group_check"]);
 
 // Whether this DM turn ruled on something the character did: a call that
 // names them ran and answered, as a result or a refusal (a swing out of
 // reach, a walk with no movement left). Asking them a question is no ruling.
-export function ruledFor(conversation: readonly GuardMessage[], sheet: Pick<CharacterSheet, "id" | "name">): boolean {
+export function ruledFor(conversation: readonly GuardMessage[], sheet: Pick<CharacterSheet, "id" | "name">, except: ReadonlySet<string> = new Set()): boolean {
   return collectExchanges(conversation).some((exchange) => {
-    if (!exchange.result || exchange.name === "request_player_input") {
+    if (!exchange.result || exchange.name === "request_player_input" || except.has(exchange.name)) {
       return false;
     }
     try {

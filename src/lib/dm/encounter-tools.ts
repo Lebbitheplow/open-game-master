@@ -127,7 +127,7 @@ import { companionShot, endTurnAsked } from "@/lib/dm/pc-attack-approach";
 import { backstopAttack, handleEnemyAttack } from "@/lib/dm/enemy-attack";
 import { landWaits } from "@/lib/dm/retort-wait";
 import { isCompanionUserId } from "@/lib/db/users";
-import { commanderOf, dmPlaysTurn, dominatedRefusal, turnUserId, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { aiPlaysSheet, commanderOf, dmPlaysTurn, dominatedRefusal, turnUserId, gmCompanionTurn } from "@/lib/dm/companion-command";
 import { setInitiativeFloor } from "@/lib/dm/initiative-floor";
 import { wakeDm } from "@/lib/dm/wake";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -1296,6 +1296,27 @@ function handleEndTurn(
   const ending = heldMoveLine(encounter, sheet.id);
   if (ending) {
     return { error: `${ending} Nothing was changed.`, refused: "rules" };
+  }
+  // The AI's own end_turn takes nothing the turn still owes its player: the
+  // swings of Extra Attack the Attack action paid for, and the bonus swing it
+  // earned. pc_attack's endTurn and a narration that hands the turn on were
+  // already held to this (endTurnAfterAttack, narration-guard.ts); the plain
+  // call was not, so a two-weapon fighter's scimitar card was answered with
+  // end_turn, the enemy went, and the Second Wind and off-hand swing they
+  // were about to play came back as "the fight moved on" (issue 1104). Their
+  // player ends it: the End Turn button, or their own words. A character the
+  // AI plays is its to end.
+  if (turn.actor === "ai" && !aiPlaysSheet(campaign, sheet)) {
+    const owed = turnStillOwes(campaign.id, sheet.id);
+    const endsInWords = campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(wordsThisTurn(campaign.id, sheet.id));
+    if (!endsInWords && (owed.swings > 0 || owed.bonusSwing)) {
+      const left = owed.swings;
+      const what = left > 0 ? `${left === 1 ? "1 attack" : `${left} attacks`} of this turn's Attack action to make` : `${owed.bonusSwing} to make, earned with this turn's Attack action`;
+      return {
+        error: `${sheet.name} still has ${what}, and their player has not ended the turn, so it stays open and nothing was changed. Narrate what has resolved, ask what else ${sheet.name} does, and stop: their player makes it or ends the turn.`,
+        retry: true,
+      };
+    }
   }
   markTurnResolved(turn, sheet.id);
   finishPassBeforeMove(campaign);

@@ -206,6 +206,9 @@ export type DmEncounterState = {
   // The current combatant's name while their turn waits on their player
   // (src/lib/dm/player-word.ts characterAwaitingPlayer).
   awaitingPlayer: string | null;
+  // Their player only spoke in character since the DM last spoke (issue
+  // 1108); optional for a state built before it existed.
+  awaitingSpoke?: boolean;
   // The current character's name while their player keeps them where they
   // stand (src/lib/dm/player-word.ts characterHeld); optional for a state
   // built before it existed.
@@ -1217,7 +1220,9 @@ export function buildGameStateBlock(state: DmGameState): string {
       } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
         lines.push(
-          `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
+          encounter.awaitingSpoke
+            ? `Waiting on ${name}'s player: they only spoke in character, and talking costs no action. Let whoever they spoke to answer in the story, then ask what ${name} does; the server refuses any action or end_turn for ${name} until they say.`
+            : `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
         );
       }
       if (encounter.holding) {

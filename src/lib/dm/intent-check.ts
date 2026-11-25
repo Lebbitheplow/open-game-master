@@ -8,10 +8,11 @@
 // and the route answers 409 with the engine's own reason.
 //
 // Only what the engine can judge from the card alone is asked here: whether
-// the character may act, and for a spell the whole cast guard (the spell on
-// the sheet, the slot, the casting state, the turn's room for it). Reach,
-// the target's AC and everything the dice decide stay with the DM's tool
-// call, which the model still makes.
+// the character may act, for a spell the whole cast guard (the spell on
+// the sheet, the slot, the casting state, the turn's room for it), and for a
+// weapon swing whether it reaches its target from where the character
+// stands (issue 1099). The target's AC and everything the dice decide stay
+// with the DM's tool call.
 import type { Campaign } from "@/lib/db/campaigns";
 import { fightNow, getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -44,8 +45,56 @@ import { reassertsControl, summonMixPlan, summonPlan, summonSpellFor } from "@/l
 import { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
 import { buildPet } from "@/lib/dm/pet-build";
 import type { CardMoment } from "@/lib/dm/direct-card-logic";
+import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { checkPcAttackRange } from "@/lib/dm/map-tools";
+import { buildAttackProfile } from "@/lib/dm/pc-attack-profile";
 
 const NO_HOOKS = { record: () => {}, publish: () => {} };
+
+// A weapon card aimed at a foe the weapon cannot reach from where the
+// character stands, in the engine's own words, or null. The card's call
+// (pc_attack with no approach: the Hand never asks the server to walk
+// anyone) is refused for this by its plan anyway, but only once the GM's
+// turn reads it, so a scimitar played at a sentry ten feet off was taken,
+// greyed out, and came back later as a card that "did not happen". Asked
+// before it is posted, the player reads why and still holds the card, with
+// their move unspent to close the distance. Only on their own turn in a
+// running fight, the one time the plan measures it. A weapon a spell made,
+// and a ranger whose Distant Strike carries them to the foe, are the tool's
+// to work out.
+function outOfReach(campaign: Campaign, encounter: ReturnType<typeof getActiveEncounter>, sheet: CharacterSheet, intent: MessageIntent): string | null {
+  if (intent.card !== "attack" || intent.targetKind !== "enemy" || !intent.targetId || !encounter?.orderReady || !ownTurnOf(encounter, sheet.id)) {
+    return null;
+  }
+  if (holdsFeature(sheet, "Distant Strike")) {
+    return null;
+  }
+  const found = resolveTargetFoe(campaign.id, encounter, intent.targetId);
+  if (!found || found.status !== "alive") {
+    return null;
+  }
+  const built = buildAttackProfile(
+    campaign.id,
+    sheet,
+    { ...(intent.attack ?? {}), ...(intent.weapon ? { weapon: intent.weapon } : {}), ...(intent.offHand ? { offHand: true } : {}), ...(intent.item ? { ammo: intent.item } : {}) },
+    { apart: tilesBetween(encounter.id, sheet.id, found.id), ownTurn: true },
+  );
+  if ("error" in built || built.conjured) {
+    return null;
+  }
+  const { profile } = built;
+  return (
+    checkPcAttackRange(encounter.id, sheet.id, found.id, {
+      ranged: profile.ranged,
+      rangeTiles: profile.rangeTiles,
+      reachTiles: profile.reachTiles,
+      thrown: profile.thrown,
+      longRangeTiles: profile.longRangeTiles,
+    })?.error ?? null
+  );
+}
 
 // Where the fight stands now, as a card is stamped with it when played and
 // asked again when a turn reads it (direct-card-logic.ts cardStillDue).
@@ -219,6 +268,10 @@ export function intentRefusal(
     const waiting = swings && encounter && ownTurnOf(encounter, sheet.id) ? attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, fightNow(encounter)) : null;
     if (waiting) {
       return attackCardWaitsLine(waiting);
+    }
+    const far = outOfReach(campaign, encounter, sheet, intent);
+    if (far) {
+      return far;
     }
   }
   // A reaction (Uncanny Dodge, Shield) needs the reaction the fight still

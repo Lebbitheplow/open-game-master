@@ -18,7 +18,11 @@
 //   - a line that only asks a question declares nothing;
 //   - a line that only says what the character will not do ("I won't attack
 //     again", "No more attacks from me") declares nothing either, unless it
-//     also ends the turn in words ("...that's my turn").
+//     also ends the turn in words ("...that's my turn");
+//   - a line that is only the character's speech ('"He won't get the
+//     chance."', the Say box's line) declares nothing: talking is free, and
+//     read as the player's word it let the AI swing a scimitar for a player
+//     who had only answered a taunt (issue 1108).
 // A card played from the Hand is a structured action and always declares.
 // English is read here; any other table language is read once by the
 // utility model (src/lib/dm/player-word-read.ts) and handed in as `read`.
@@ -51,8 +55,9 @@ export type PlayerWord = {
   holdQuote: string | null;
   // Why the words declare nothing: never spoke, only asked a question, spoke
   // only before the fight began about something else, chose to stay put
-  // and do nothing, or only said what the character will not do.
-  why: "silent" | "asked" | "before_fight" | "held" | "declined" | null;
+  // and do nothing, only said what the character will not do, or only spoke
+  // in character.
+  why: "silent" | "asked" | "before_fight" | "held" | "declined" | "spoke" | null;
 };
 
 const SILENT: PlayerWord = { spoke: false, declares: false, holds: false, holdQuote: null, why: "silent" };
@@ -297,6 +302,36 @@ export function onlyAsked(lines: readonly Pick<WordLine, "content" | "card">[], 
   return lines.length > 0 && lines.every((line) => !line.card && onlyAsksOrListens(line.content, english));
 }
 
+// What a line holds between double quotation marks, of any script's kind. A
+// mark left open runs to the end of the line.
+const QUOTED_SPAN = /["“”«»„][^"“”«»„]*["“”«»„]?/g;
+// The English words around a spoken line that say only who says it and how:
+// 'I mutter under my breath', 'Jason growls back at him'. "I shout as I
+// charge" says more, and is not this.
+const SPEECH_TAG =
+  /^(?:(?:i|he|she|they)|\p{Lu}[\p{L}'’-]*)\s+(?:\p{L}+ly\s+)?(?:say|says|said|reply|replies|replied|answer|answers|answered|shout|shouts|yell|yells|call|calls|whisper|whispers|mutter|mutters|murmur|murmurs|growl|growls|snarl|snarls|hiss|hisses|spit|spits|snap|snaps|laugh|laughs|taunt|taunts)(?:\s+(?:back|out|softly|quietly|coldly|under (?:my|his|her|their) breath))?(?:\s+(?:to|at)\s+(?:him|her|them|it|myself|himself|herself|themselves|(?:the\s+)?[\p{L}'’-]+(?:\s+\d+)?))?[\s,.:!…]*$/iu;
+// Spoken words that say what the speaker does now, in the first person: a
+// player who writes their action into the Say box ("I attack him!") still
+// declared it.
+const SPOKEN_ACT = new RegExp(`\\b(?:i|i['’]ll|i will|i['’]m going to|i am going to)\\s+(?:(?:also|then|now|just|quickly)\\s+)?(?:${ACT_VERBS})\\b`, "i");
+
+// A line that is only the character's speech: everything in it stands between
+// quotation marks, in any language, or at an English table the rest only says
+// who speaks. The Say box sends its line this way (speech.ts spokenLine).
+// Speech that names the speaker's own action in the first person is that
+// action, declared, and speech that ends the turn ("That's my turn.") is the
+// player ending it.
+export function onlySpeaks(text: string, english = true): boolean {
+  if (!/["“«„]/.test(text)) {
+    return false;
+  }
+  const outside = text.replace(QUOTED_SPAN, " ").trim();
+  if (/[\p{L}\p{N}]/u.test(outside) && !(english && SPEECH_TAG.test(outside))) {
+    return false;
+  }
+  return !(english && (SPOKEN_ACT.test(text) || englishEndsTurn(text)));
+}
+
 // The skills social_check rolls: the checks that try to change a mind.
 const SWAY_SKILLS = new Set(["persuasion", "deception", "intimidation"]);
 
@@ -312,7 +347,7 @@ export function askedSwayRefusal(name: string): string {
 }
 
 export function readPlayerWord(
-  lines: readonly WordLine[],
+  said: readonly WordLine[],
   options: {
     // When the running fight began; lines before it were about the scene.
     fightStartedAt: string | null;
@@ -324,13 +359,21 @@ export function readPlayerWord(
     read: WordReading | null;
   },
 ): PlayerWord {
-  if (!lines.length) {
+  if (!said.length) {
     return SILENT;
   }
-  if (lines.some((line) => line.card)) {
-    const text = lines.filter((line) => !line.card).map((line) => line.content).join("\n");
+  if (said.some((line) => line.card)) {
+    const text = said.filter((line) => !line.card).map((line) => line.content).join("\n");
     const holdQuote = options.english ? englishHold(text) : options.read?.holds ? text.trim().slice(0, 80) : null;
     return { spoke: true, declares: true, holds: holdQuote !== null, holdQuote, why: null };
+  }
+  // Words spoken in character are no action (issue 1108): the rest of what
+  // the player wrote is read as before, and with nothing else written the
+  // turn still waits on them. A reading that found an act in another
+  // language's words keeps them.
+  const lines = options.read?.acts ? said : said.filter((line) => !onlySpeaks(line.content, options.english));
+  if (!lines.length) {
+    return { spoke: true, declares: false, holds: false, holdQuote: null, why: "spoke" };
   }
   const started = options.fightStartedAt;
   // A line written in the same instant the fight began counts as in it.
@@ -401,6 +444,8 @@ export function unaskedRefusal(name: string, word: Pick<PlayerWord, "why">): str
       return `${name} has not acted: their player said ${name} stays where they are and named nothing else. Nothing was spent. If that is all ${name} does, end_turn ends the turn; otherwise wait for them to say what ${name} does.`;
     case "declined":
       return `${name}'s player only said what ${name} will not do; they did not end the turn. Nothing was spent and the turn stays open. Ask them whether ${name} moves, uses a bonus action, or ends the turn, and wait for their answer.`;
+    case "spoke":
+      return `${name} has not acted: their player only spoke in character this turn, and talking costs no action. Nothing was spent. Let whoever they spoke to answer in the story, with no attack or other action made for ${name}, then wait for them to say what ${name} does.`;
     default:
       return `${name} has not acted: their player hasn't declared an action this turn. ${tail}`;
   }
