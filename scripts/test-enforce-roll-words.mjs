@@ -60,6 +60,7 @@ const { rollExpression } = await import("../src/lib/dice.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { entryDice } = await import("../src/lib/dice.ts");
 const { translate } = await import("../src/lib/i18n/translate.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
 await import("../src/lib/i18n/fr-catalog.ts");
 const { pendingReason, pendingWords, rollAgainst, rollCardLabel } = await import("../src/lib/roll-labels.ts");
 const { rollPhysical, rollWeaponRow } = await import("../src/lib/roll-parts.ts");
@@ -163,6 +164,25 @@ await test("pc_attack with a spell attack: the roll says the spell, and the half
     note: "half_on_miss",
     french: `Flèche acide (moitié sur un raté) c/ ${again.displayName}`,
   });
+  // The spell answers to two names, and which one its content row keeps
+  // depends on the content: the bundled data's, or a content pack's. Cast
+  // under either, the roll's key is the name it was cast under, so the key
+  // and the name never disagree and the card reads as the reader this
+  // replaces read it. Keyed by the row's own name, the one that is the alias
+  // here lost its French: "Acid Arrow" on a server with no pack.
+  for (const cast of ["Acid Arrow", "Melf's Acid Arrow"]) {
+    await stage();
+    const [foe] = world.enemies();
+    const out = await kit.swing(hero.id, foe.id, [2, 2, 3, 3, 3, 3], { spell: cast });
+    assert.equal(out.ok, true, `${cast} refused: ${out.error}`);
+    const french = translate("fr", "Attack roll");
+    assert.equal(out.toHit.detail, rollAgainst(cast, foe.displayName));
+    // The same roll with no parts is read by its sentence, as before.
+    const old = rollCardLabel(fr, { ...out.toHit, parts: null }, hero.name);
+    assert.deepEqual(out.toHit.parts.used, { kind: "spell", key: textKey(cast), name: cast }, `cast as "${cast}": what was used`);
+    assert.equal(rollCardLabel(fr, out.toHit, hero.name), old, `cast as "${cast}": a French table's card is not what the old reader made of the same words`);
+    assert.ok(old.startsWith(`${hero.name} · ${french} (`), old);
+  }
 });
 
 // The seat enters its own dice for every card parked, until none waits.

@@ -163,8 +163,10 @@ export function buildAttackProfile(
     // no long range (SRD 5.1, Range), so Crown of Stars' 120 feet is all of it.
     const rangeTiles = Math.max(1, Math.round((granted.attack.rangeFeet ?? 60) / 5));
     // An attack that strikes under its spell's own name (Spiritual Weapon)
-    // is that spell's row; one a feature grants is no row.
-    const grantedRow = spellFactsFor(granted.attack.name, sheetSpellAuthors(sheet))?.name;
+    // is that spell's row; one a feature grants is no row. The row is named
+    // as the attack is carried, which the content answers to: its own name
+    // there may be another (below).
+    const grantedRow = spellFactsFor(granted.attack.name, sheetSpellAuthors(sheet)) ? granted.attack.name : null;
     profile = {
       weapon: granted.attack.name,
       ...(grantedRow ? { named: { kind: "spell" as const, name: grantedRow } } : {}),
@@ -296,7 +298,13 @@ export function buildAttackProfile(
     // creature beside the caster, and the rules for ranged attacks do not
     // apply to it.
     const melee = isMeleeSpellAttack(spellEngineName(spellName, sheetSpellAuthors(sheet)), spellFactsFor(spellName, sheetSpellAuthors(sheet))?.range.kind);
-    profile = { ...(melee ? { ...spellProfile, ranged: false, reachTiles: 1, rangeTiles: 1 } : spellProfile), ...(facts ? { named: { kind: "spell" as const, name: facts.name } } : {}) };
+    // The spell's row, where the content knows the spell, named as it was
+    // cast: a spell answers to more names than its row's own (the bundled
+    // data keeps "Acid Arrow" as "Melf's Acid Arrow", a content pack the
+    // other way round), and its roll is carried under the name cast. Named
+    // by the row's own, the roll's key and its name disagreed wherever the
+    // two differ, and the card read in English.
+    profile = { ...(melee ? { ...spellProfile, ranged: false, reachTiles: 1, rangeTiles: 1 } : spellProfile), ...(facts ? { named: { kind: "spell" as const, name: spellName } } : {}) };
     kind = "spell";
     // Option riders on named attack spells (Agonizing Blast: +CHA per
     // Eldritch Blast beam).

@@ -48,7 +48,8 @@ export type RollUsed = {
 };
 
 // The content row a name is, where the engine knows one: the table it is in
-// and the row's own name there.
+// and a name the row answers to there. For a spell that is the name it was
+// cast under, which may be an alias of the row's own.
 export type RollRow = { kind: "weapon" | "spell"; name: string };
 
 // What a rule later asks of a roll. A closed list: the save that keeps
