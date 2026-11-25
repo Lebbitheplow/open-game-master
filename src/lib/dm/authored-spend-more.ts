@@ -12,7 +12,7 @@
 import { classSaveDc } from "@/lib/dm/command-undead";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll, listRecentRolls } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { swarmKnocksProne } from "@/lib/srd/authored-effects-more";
 import { resolveFormula } from "@/lib/srd/authored-effects";
@@ -141,9 +141,7 @@ export function giveBack(enemyId: string, amount: number): string[] {
 // that failure laid on them (Fanatical Focus, as Indomitable does).
 export function rerollLastSave(ctx: SpendContext): ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> } {
   const { campaign, sheet } = ctx;
-  const failed = listRecentRolls(campaign.id, 60).find(
-    (roll) => roll.characterId === sheet.id && roll.kind === "saving_throw" && roll.dc !== null && roll.total < roll.dc,
-  );
+  const failed = latestRoll(campaign.id, 60, (roll) => roll.characterId === sheet.id && roll.kind === "saving_throw" && roll.dc !== null && roll.total < roll.dc);
   const ability = failed ? (rollAbility(failed) ?? "") : "";
   if (!failed || !ability) {
     return { error: `${sheet.name} has no failed saving throw to reroll; ${ctx.spend.name} was not spent.`, refused: "rules" };

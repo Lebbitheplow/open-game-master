@@ -15,7 +15,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll } from "@/lib/db/rolls";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
@@ -586,7 +586,9 @@ function preserveLife(
 // and the new roll stands. On a success, the conditions that failure put on
 // them (those that end on that same save) come off.
 function indomitable(campaign: Campaign, turnId: string, sheet: CharacterSheet): Resolution {
-  const failed = listRecentRolls(campaign.id, 60).find(
+  const failed = latestRoll(
+    campaign.id,
+    60,
     (roll) =>
       roll.characterId === sheet.id &&
       roll.kind === "saving_throw" &&
@@ -633,14 +635,15 @@ function indomitable(campaign: Campaign, turnId: string, sheet: CharacterSheet):
 
 // Bulwark (Banneret 18): with an Intelligence, Wisdom or Charisma save
 // rerolled and the fighter not incapacitated, one ally in range that failed
-// the same save rerolls it too, and an effect that save ends lets go.
+// the same save rerolls it too, and an effect that save ends lets go. Of
+// several such allies it is the one who failed it last.
 function bulwarkReroll(campaign: Campaign, sheet: CharacterSheet, ability: Ability, dc: number, against: string | undefined): { bulwark?: string } {
   const held = activeAuthored(sheet, "indomitable_ally")[0];
   if (!held || !["int", "wis", "cha"].includes(ability) || incapacitatedBy(sheet.conditions)) {
     return {};
   }
   const encounter = getActiveEncounter(campaign.id);
-  const failed = listRecentRolls(campaign.id, 60).find((roll) => {
+  const failed = latestRoll(campaign.id, 60, (roll) => {
     if (roll.characterId === sheet.id || roll.kind !== "saving_throw" || roll.dc !== dc || roll.total >= dc) {
       return false;
     }

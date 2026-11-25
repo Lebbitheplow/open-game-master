@@ -298,6 +298,13 @@ export function listRecentRolls(campaignId: string, limit = 20): StoredRoll[] {
   return rows.map(mapRoll);
 }
 
+// The latest of a campaign's recent rolls that fits, or null. The list above
+// comes oldest first, so its first match is the oldest: a rule that answers
+// "the save last failed" or "their last check" asks here.
+export function latestRoll(campaignId: string, among: number, fits: (roll: StoredRoll) => boolean): StoredRoll | null {
+  return listRecentRolls(campaignId, among).findLast(fits) ?? null;
+}
+
 // The recent rolls one seat may see. A hidden roll is dropped outright and a
 // blind one keeps its label and loses its number, so the table still knows
 // the dice were thrown (src/lib/dm/viewer.ts explains why).

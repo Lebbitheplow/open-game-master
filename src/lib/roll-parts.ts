@@ -26,7 +26,7 @@
 import type { StoredRoll } from "@/lib/db/rolls";
 import { textKey } from "@/lib/language/text-logic";
 import { rollAgainst } from "@/lib/roll-labels";
-import { findSkill } from "@/lib/srd";
+import { findSkill, SRD_SKILLS } from "@/lib/srd";
 import type { Ability } from "@/lib/srd/authored-effects-types";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 
@@ -83,13 +83,14 @@ export function attackParts(attack: { name: string; base?: string | null; spell?
 
 // ---- What a rule reads back ----
 
-// The skill a check was made with, when it is one of these.
-export function rollSkill(roll: Recorded, among: readonly string[]): string | null {
+// The skill a check was made with, when it is one of these; with no list,
+// whichever skill it was.
+export function rollSkill(roll: Recorded, among?: readonly string[]): string | null {
   if (roll.parts) {
     const used = roll.parts.used;
-    return used?.kind === "skill" && used.key && among.includes(used.key) ? used.key : null;
+    return used?.kind === "skill" && used.key && (!among || among.includes(used.key)) ? used.key : null;
   }
-  return sentenceSkill(roll.detail, among);
+  return sentenceSkill(roll.detail, among ?? SRD_SKILLS.map((skill) => skill.id));
 }
 
 // The ability a save or a bare ability check was made with.
