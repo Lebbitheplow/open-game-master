@@ -66,6 +66,14 @@ const DEAL =
 const NARRATION =
   "The journal's last pages are a list of names in a cramped hand, each one crossed out but the final three. A loose page slips free and drifts to the stone. What do you do?";
 
+// Issue 1095's passage, as the table read it: the beat's end noted in bold
+// where the complete_beat call belonged, the secret plan's line word for word.
+const LEDGER_OPEN =
+  "She steps forward and presses a soot-stained ledger into your hands. It's charred at the edges but legible. \"It lists who they sold to. Names, dates, prices.\"";
+const LEDGER_CLOSE = "The wind howls through the ruined courtyard, carrying the scent of ash. You have the evidence. Now you need to decide how to proceed.";
+const LEDGER_SCENE = `${LEDGER_OPEN}\n\n**Beat Complete: Jason hears of a bandit lord who burned his village.**\n\n${LEDGER_CLOSE}`;
+const LEDGER_CLEAN = `${LEDGER_OPEN}\n\n${LEDGER_CLOSE}`;
+
 // ---- the pure helpers --------------------------------------------------------
 await check("the arc's markers are found, and story brackets are not", () => {
   for (const marked of ["[waypoint=3]", "The [NOW] beat is complete.", "[ahead] the gate", "waypoint 2 is done", "waypoint: 3", "1. [x] Find the key"]) {
@@ -91,11 +99,35 @@ await check("the turn's tidy cuts the same sentences (a reroll, a continued scen
   assert.deepEqual(tableNarrationParts([JOURNAL_SCENE], [], "english"), [JOURNAL_CLEAN]);
 });
 
+await check("issue 1095: a beat's end noted in the story is an arc marker, however it is capitalised, and a beat in the story is not", () => {
+  for (const marked of ["**Beat Complete: Jason hears of a bandit lord who burned his village.**", "Beat complete.", "(beat 2 completed)", "BEAT COMPLETE: the ledger", "The beat is complete.", "This is the twist [ev2] coming due."]) {
+    assert.ok(ARC_MARKER.test(marked), marked);
+  }
+  for (const story of ["The drummer's beat complete with a flourish rolls on.", "You beat complete strangers at dice.", "Her heart skips a beat, complete silence after.", "The watch walks its beat, completely unaware."]) {
+    assert.equal(ARC_MARKER.test(story), false, story);
+  }
+});
+
+await check("issue 1095: the note is cut whole, and the bold marks it stood in do not stay behind on a line of their own", () => {
+  assert.deepEqual(tableNarrationParts([LEDGER_SCENE], ["Jason"], "english"), [LEDGER_CLEAN]);
+  for (const language of ["english", "italian"]) {
+    assert.deepEqual(tableNarrationParts([withoutAsides(LEDGER_SCENE, [], language)], ["Jason"], language), [LEDGER_CLEAN], language);
+  }
+  // A rule across the page is three marks or more, and stays; so does emphasis around words.
+  assert.deepEqual(tableNarrationParts(["The gate.\n\n***\n\nThe **old** road."], [], "english"), ["The gate.\n\n***\n\nThe **old** road."]);
+});
+
 await check("the draft never shows a bracketed arc marker as it streams", () => {
   const filter = createStreamingArtifactFilter();
   const chunks = ["The temple stretches out before you.\n\n[way", "point=3]\n\nThe [N", "OW] beat is complete."];
   const streamed = chunks.map((chunk) => filter.push(chunk)).join("") + filter.flush();
   assert.ok(!/\[waypoint|\[NOW\]/.test(streamed), streamed);
+});
+
+await check("issue 1095: nor a planned event's id", () => {
+  const filter = createStreamingArtifactFilter();
+  const streamed = ["Captain Mira looks up [e", "v1] from the fire."].map((chunk) => filter.push(chunk)).join("") + filter.flush();
+  assert.ok(!/\[ev\d/.test(streamed), streamed);
 });
 
 await check("an earlier passage said again is found, not only the newest", () => {
@@ -159,6 +191,8 @@ const server = http.createServer((req, res) => {
       sse(res, [{ content: LOOT }]);
     } else if (reply === "journal") {
       sse(res, [{ content: JOURNAL_SCENE }]);
+    } else if (reply === "ledger") {
+      sse(res, [{ content: LEDGER_SCENE }]);
     } else if (reply === "unknown-tool") {
       sse(res, [toolCall("dance_wildly", { style: "jig" })]);
     } else if (reply === "custom-dex") {
@@ -251,6 +285,22 @@ await check("issue 941: a second reply with the markers reaches the table withou
   const result = await run("Arc markers twice", ["journal", "journal"]);
   assert.equal(result.calls, 2, "sent back once, not in a loop");
   assert.equal(result.newest, JOURNAL_CLEAN);
+});
+
+await check("issue 1095: a reply that notes the beat's end in words is sent back once to call complete_beat, shown its own note", async () => {
+  const result = await run("Beat note", ["ledger", "narrate"]);
+  assert.equal(result.newest, NARRATION);
+  assert.equal(result.calls, 2);
+  const told = result.requests[1].messages.at(-1).content;
+  assert.match(told, /story arc's bookkeeping/);
+  assert.match(told, /Beat Complete: Jason hears of a bandit lord who burned his village\./, "the model is shown its own note");
+  assert.match(told, /a beat ends only with complete_beat/);
+});
+
+await check("issue 1095: a second reply with the note reaches the table without it", async () => {
+  const result = await run("Beat note twice", ["ledger", "ledger"]);
+  assert.equal(result.calls, 2, "sent back once, not in a loop");
+  assert.equal(result.newest, LEDGER_CLEAN);
 });
 
 await check("issue 942: a passage from four replies back is sent back once, not posted", async () => {

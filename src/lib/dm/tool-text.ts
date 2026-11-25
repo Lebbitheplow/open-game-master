@@ -151,10 +151,18 @@ const GM_LABEL = /\[Game Master\][ \t]*/g;
 // them, in any language: a sentence holding one is the model's note to
 // itself, and goes whole (claims-logic.ts metaQuotes, narration-tidy-logic.ts
 // withoutToolTalk). The markers are the server's words, case and all.
-export const ARC_MARKER = /\[(?:NOW|ahead|done|skipped)\]|\[[ \t]*waypoints?\b[^\]\n]{0,40}\]|\bwaypoints?[ \t]*(?:[=#:]|no\.)[ \t]*\d|\bwaypoints?[ \t]+\d+\b|(?:^|[ \t])\[[ xX]\][ \t]/;
+// And the beat's own end, noted in place of the complete_beat call: the same
+// model closed a scene on "**Beat Complete: Jason hears of a bandit lord who
+// burned his village.**", the secret plan's line word for word, and called
+// nothing, so the story's plan stood still as well (issue 1095). Read as a
+// note only: "beat", a number or not, "complete" or "completed", then a
+// colon, the sentence's end, a closing mark or the line's. In any case, for
+// the model capitalises it as it likes.
+// A planned event's id ("[ev2]") is the plan's own too, and is cut the same way.
+export const ARC_MARKER = /\[(?:NOW|ahead|done|skipped)\]|\[ev\d+\]|\[[ \t]*waypoints?\b[^\]\n]{0,40}\]|\bwaypoints?[ \t]*(?:[=#:]|no\.)[ \t]*\d|\bwaypoints?[ \t]+\d+\b|(?:^|[ \t])\[[ xX]\][ \t]|\b[Bb](?:eat|EAT)(?:[ \t]+\d+)?[ \t]+(?:is[ \t]+|IS[ \t]+)?[Cc](?:omplete|OMPLETE)[dD]?(?=[ \t]*(?:[:.!*_\])]|$))/m;
 // The same markers as the draft streams (story-prompt.ts STREAM_STRIP), the
 // bracketed ones only: the rest wait for the sentence's end in the tidy.
-export const ARC_MARKER_STREAM_SOURCE = `\\[(?:NOW|ahead|done|skipped)\\][ \\t]*|\\[[ \\t]*waypoints?\\b[^\\]\\n]{0,40}\\][ \\t]*`;
+export const ARC_MARKER_STREAM_SOURCE = `\\[(?:NOW|ahead|done|skipped)\\][ \\t]*|\\[ev\\d+\\][ \\t]*|\\[[ \\t]*waypoints?\\b[^\\]\\n]{0,40}\\][ \\t]*`;
 
 // What a reply holds of the server's own lines, cut: the card line and every
 // tagged line above.

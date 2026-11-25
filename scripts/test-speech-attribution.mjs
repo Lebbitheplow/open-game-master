@@ -383,4 +383,34 @@ test("a comma after the closing quote ends the words, not the prose", () => {
   assert.deepEqual(cards('"Hold the gate," says Marla. The wind rises.'), ["words: Hold the gate,", "prose:  says Marla. The wind rises."], "as it always was");
 });
 
+// Issue 1095: Captain Mira's first line of a scene was hers and her second
+// was nobody's, with a sentence about the ledger she hands over between her
+// action and her words. The reporter's passage.
+test("a sentence about a thing between a person's action and their line is read past, at an English table", () => {
+  const table = [
+    { kind: "npc", id: "mira", name: "Captain Mira" },
+    { kind: "npc", id: "pike", name: "Old Pike" },
+    { kind: "pc", id: "jason", name: "Jason" },
+  ];
+  const who = (text, options) =>
+    attributeSpeech(text, table, options)
+      .filter((segment) => segment.kind === "speech")
+      .map((segment) => segment.speaker.id);
+  const scene =
+    'Mira pulls a heavy blanket tighter around her shoulders, her eyes hardening as she looks out at the ruins. "Alive. That\'s all that matters anymore."\n\n' +
+    'She steps forward and presses a soot-stained ledger into your hands. It\'s charred at the edges but legible. "It lists who they sold to. Names, dates, prices."';
+  assert.deepEqual(who(scene), ["mira", "mira"]);
+  assert.deepEqual(who('Mira lifts the lantern. It is nearly out of oil. "Stay close."'), ["mira"]);
+  assert.deepEqual(who('Mira sets the box down. It was sealed with wax. "Open it."'), ["mira"]);
+  // Somebody the table has no name for is still somebody: the sentence about
+  // their box brings nobody else's face to their line.
+  assert.deepEqual(who('The stranger sets a box down. It\'s locked. "Not for sale."'), []);
+  // "It" that does something may be a creature, and so may "it" doing something now.
+  assert.deepEqual(who('Mira watches the imp. It grins. "Mine."'), []);
+  assert.deepEqual(who('Mira watches the imp. It\'s grinning. "Mine."'), []);
+  assert.deepEqual(who('Mira watches the imp. It is circling her. "Mine."'), []);
+  // The pronouns are English's own: another table reads the sentence as it did.
+  assert.deepEqual(who(scene, { englishPronouns: false }), ["mira"]);
+});
+
 console.log(`test-speech-attribution: ${passed} passed`);
