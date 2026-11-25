@@ -10,6 +10,7 @@ import {
   repeatedClosing,
   repeatsNarration,
   tableNarrationParts,
+  withoutLineLabels,
   withoutCombatBookkeeping,
   withoutOrphanClosers,
   withoutRepeatedSentences,
@@ -137,6 +138,28 @@ check("a reply that is mostly the last turn's narration is a repeat; one shared 
   assert.equal(repeatsNarration(fresh, last), false, "one sentence carried over is not a repeat");
   assert.equal(repeatsNarration("The goblin staggers back against the rocks, snarling.", last), false, "one sentence is too little to judge");
   assert.equal(repeatsNarration(last, ""), false);
+});
+
+// gpt-oss-20b, a live play of 2026-11-24: the label the transcript gives a
+// player's line, at the head of the storyteller's own reply.
+check("a player's line label at the head of a reply or a paragraph goes and the narration under it stays; the story's own brackets stay", () => {
+  const party = ["Avery", "Bram", "Old Pike"];
+  assert.equal(withoutLineLabels("[Avery] You grip your shortsword, but the nearest bandits are still far off.", party), "You grip your shortsword, but the nearest bandits are still far off.");
+  assert.equal(withoutLineLabels("[Bram | turn]\nThe wind shifts, carrying the scent of pine.", party), "The wind shifts, carrying the scent of pine.");
+  assert.equal(withoutLineLabels("The fire pops.\n\n[Old Pike | attempt] He leans in.", party), "The fire pops.\n\nHe leans in.");
+  for (const kept of [
+    "[Softly] \"Come closer,\" the witch says.",
+    "The note is signed [Avery] in a careful hand.",
+    "[Averys] is nobody at this table.",
+    "[roll:0b7a52a2-6c0f-4a53-9d0e-6a8e3a7a1c11]\n\nThe blade bites.",
+    "Two  spaces and no label stay as they came.",
+  ]) {
+    assert.equal(withoutLineLabels(kept, party), kept);
+  }
+  assert.equal(withoutLineLabels("[Avery] You wait.", []), "[Avery] You wait.", "a table with nobody named cuts nothing");
+  // The turn's tidy cuts it with the rest, in or out of a fight.
+  assert.deepEqual(tableNarrationParts(["[Avery] You grip your shortsword.", "[Bram | turn]\n\nThe wind shifts."], [], "english", party), ["You grip your shortsword.", "The wind shifts."]);
+  assert.deepEqual(tableNarrationParts(["[Avery] You grip your shortsword."], [], "english"), ["[Avery] You grip your shortsword."], "as before for a caller that names nobody");
 });
 
 check("a sentence naming a DM tool is the model thinking aloud and goes; tool names that are words stay", () => {

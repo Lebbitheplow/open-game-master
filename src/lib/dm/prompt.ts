@@ -51,7 +51,7 @@ import type { LoreTrace } from "@/lib/dm/world-lore-logic";
 import { renderWorldArcsForPrompt } from "@/lib/dm/world-arc-logic";
 import { renderFactsForPrompt, type FactLike } from "@/lib/dm/fact-logic";
 import { MOMENT_INSTRUCTION, splitAtMoment, THIS_MOMENT_HEADING, THIS_TURN_HEADING } from "@/lib/prompt-boundary";
-import { closingVarietyNote, repeatedClosing } from "@/lib/dm/narration-tidy-logic";
+import { closingVarietyNote, repeatedClosing, withoutLineLabels } from "@/lib/dm/narration-tidy-logic";
 import { companionMode } from "@/lib/dm/companion-tools";
 import { conscienceSetting, consciousCompanions, souredLeaving } from "@/lib/dm/conscience";
 import type { SouredLeaving } from "@/lib/dm/relationship-logic";
@@ -2061,8 +2061,11 @@ export function buildDmMessages(
   // A passage stored before issue 900's fix may hold the card line the model
   // copied then: read back as the model's own words, it would be copied again.
   // So would a call it wrote out as argument lines before issue 1025's fix.
+  const partyNames = state.sheets.map((sheet) => sheet.name);
   const dmText = (text: string) => {
-    const said = withoutWrittenCalls(withoutServerLines(text));
+    // Nor a passage that opens on a player's line label ("[Avery] ..."),
+    // stored before the turn's tidy cut it (narration-tidy-logic.ts).
+    const said = withoutLineLabels(withoutWrittenCalls(withoutServerLines(text)), partyNames);
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 
