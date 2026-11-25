@@ -24,6 +24,7 @@ import { modelTextLines } from "@/lib/dm/speech-lines";
 import { noteUnrecordedDeeds } from "@/lib/dm/deed-claims";
 import { exchangeWords } from "@/lib/dm/story-moves";
 import { settleStoryMoves } from "@/lib/dm/story-moves-settle";
+import { itemsReadable, readItemMoves, settleItemClaims } from "@/lib/dm/item-claims";
 
 // Every request an agent program sends carries this header
 // (src/lib/agents/workbench.ts workbenchCall).
@@ -136,6 +137,11 @@ export async function readAgentNarration(
     // which the engine records where the player declared it (issue 641).
     noteUnrecordedDeeds(campaign, turn?.conversation ?? [], claims.flatMap((claim) => (claim.kind === "deed" ? [claim] : [])));
     settleStoryMoves(campaign, { turn, sheets, claims, record: turn !== null });
+    // And a thing or money it moved that no adjudication recorded (issue
+    // 1097): the program is the GM, so it is told, never done for it.
+    const said = exchangeWords(campaign.id, sheets);
+    const moved = itemsReadable(campaign, sheets, said) ? await readItemMoves(campaign, { label: `agent turn ${turn?.id ?? "(none yet)"}`, text: narration, sheets, words: said }) : [];
+    await settleItemClaims(campaign, { turn, sheets, claims: moved });
     return { problem: null, lines };
   }
   return {

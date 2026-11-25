@@ -253,6 +253,9 @@ const CLASSIFIED = {
   // The claims reader and the waypoint judge: a JSON claim list, a list of
   // step numbers.
   "src/lib/dm/claims.ts": { prose: 0, machine: 1 },
+  // The read of an exchange for things and money changing hands (issue
+  // 1097): a JSON claim list the server holds to its own refs.
+  "src/lib/dm/item-claims.ts": { prose: 0, machine: 1 },
   "src/lib/dm/waypoint-tick.ts": { prose: 0, machine: 1 },
   // The image rewrite: English for an image model, never the table's language.
   "src/lib/image-english.ts": { prose: 0, machine: 1 },
