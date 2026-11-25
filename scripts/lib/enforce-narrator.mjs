@@ -29,7 +29,7 @@
 // the readings the server kept (src/lib/dm/claims.ts answers a passage it has
 // read before from memory), so every passage a script holds is read.
 import http from "node:http";
-import { answerReader, isReaderRequest } from "./claims-reader.mjs";
+import { answerReader, isItemRead, isReaderRequest } from "./claims-reader.mjs";
 
 // The first words of the read that asks the players' words whether the party
 // parts (party-split-logic.ts PARTING_PROMPT_START), spelled here so this
@@ -108,6 +108,8 @@ export async function fakeModel({ slots = 0 } = {}) {
   const requests = [];
   let readerScript = [];
   const readerRequests = [];
+  let itemScript = [];
+  const itemRequests = [];
   let partingScript = [];
   const partingRequests = [];
   const fallback = reply({ text: "The moment settles, and the table waits on the next move." });
@@ -226,6 +228,14 @@ export async function fakeModel({ slots = 0 } = {}) {
         return;
       }
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      // The read for things and money changing hands (item-claims.ts) is
+      // answered apart from the claims reader's: nothing moved, unless the
+      // test says what with model.items([...]).
+      if (isItemRead(body)) {
+        itemRequests.push(body);
+        answerReader(res, itemScript.shift() ?? []);
+        return;
+      }
       if (isReaderRequest(body)) {
         readerRequests.push(body);
         // An entry given as { for, claims } answers only the read of a
@@ -286,6 +296,14 @@ export async function fakeModel({ slots = 0 } = {}) {
   return {
     requests,
     readerRequests,
+    // What the read for hand-offs answers, one list of item claims per read
+    // (none once they run out), and the reads it was sent.
+    itemRequests,
+    items: (entries) => {
+      itemScript = [...entries];
+      itemRequests.length = 0;
+      globalThis.__odmItemReadings?.clear();
+    },
     // What the parting read answers, one per read:
     // { stays: [{ name, quote }], to }.
     partingRequests,
@@ -317,6 +335,7 @@ export async function fakeModel({ slots = 0 } = {}) {
       served = 0;
       requests.length = 0;
       globalThis.__odmReaderReplies?.clear();
+      globalThis.__odmItemReadings?.clear();
     },
     // The world's campaign talks to this server, with no pictures to draw.
     pointAt: (world) => {

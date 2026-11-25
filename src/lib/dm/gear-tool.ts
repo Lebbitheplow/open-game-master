@@ -193,7 +193,9 @@ export function handleItemCall(
     case "hand": {
       const to = resolveSheetRef(args.toCharacterId, sheets, sheetsById);
       if (!to || to.id === sheet.id) {
-        return retry("hand needs toCharacterId: the ally who receives it.");
+        // A gift to someone with no sheet had no road here and none named:
+        // the ration handed to an NPC stayed in the pack (issue 1097).
+        return retry("hand needs toCharacterId: the party member who receives it. A thing given to anyone else leaves the giver with remove_item.");
       }
       // Nothing passes a swallower's wall, either way (swallow.ts).
       const inside = swallowCoverError(sheet.id, to.id);

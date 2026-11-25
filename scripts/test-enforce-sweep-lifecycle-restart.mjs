@@ -68,6 +68,7 @@ const REGISTRY = {
   "chapter-close.ts:__odmChapterPacing": { kind: PLUMBING, what: "chapter pacing counters, rebuilt from the transcript" },
   "chronal-shift.ts:__odmArmedShifts": { kind: PLUMBING, what: "armed only while one call runs" },
   "claims.ts:__odmReaderReplies": { kind: PLUMBING, what: "a cache of reader replies" },
+  "item-claims.ts:__odmItemReadings": { kind: PLUMBING, what: "a cache of the hand-off read's replies: empty, a passage is read again" },
   "compaction.ts:__odmCompaction": { kind: PLUMBING, what: "compaction in flight" },
   "context-retrieval.ts:__odmIdfCache": { kind: PLUMBING, what: "a cache" },
   "embedding-reindex.ts:__odmEmbeddingCatchUp": { kind: PLUMBING, what: "a catch-up in flight" },

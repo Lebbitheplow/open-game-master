@@ -198,6 +198,10 @@ import { pactLinesForPrompt } from "@/lib/dm/pacts";
 import { returnDirectorNotes } from "@/lib/dm/companion-revenge";
 import { noteUnrecordedDeeds } from "@/lib/dm/deed-claims";
 import { settleStoryMoves } from "@/lib/dm/story-moves-settle";
+import { itemsReadable, openItems, readItemMoves, settleItemClaims } from "@/lib/dm/item-claims";
+import { unrecordedItemsPrompt, type EngineItemCall } from "@/lib/dm/item-claims-logic";
+import type { ItemClaim } from "@/lib/dm/item-read-logic";
+import { exchangeWords } from "@/lib/dm/story-moves";
 import {
   buildDmMessages,
   type DmGameState,
@@ -2187,6 +2191,25 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // The same single shot for a spell a reply cast with nothing behind it,
   // which its caster's player asked for (issue 570).
   let castNudged = false;
+  // And for a thing or money the reply moved with no tool behind it, which
+  // the engine does not settle itself (issue 1097, item-claims-logic.ts).
+  let itemNudged = false;
+  // What each passage of the turn's narration was read as moving, by its
+  // text, so the end of the turn reads only what no read covered. Read only
+  // where it can matter (item-claims.ts itemsReadable), beside what the
+  // players wrote this exchange.
+  const partItems = new Map<string, Promise<ItemClaim[]>>();
+  let saidThisTurn: ReturnType<typeof exchangeWords> | null = null;
+  const itemsIn = (text: string): Promise<ItemClaim[]> => {
+    const known = partItems.get(text);
+    if (known) {
+      return known;
+    }
+    saidThisTurn ??= exchangeWords(campaignId, sheets, turn.createdAt);
+    const read = itemsReadable(campaign, sheets, saidThisTurn) ? readItemMoves(campaign, { label: `turn ${turn.id}`, text, sheets, words: saidThisTurn }) : Promise.resolve([]);
+    partItems.set(text, read);
+    return read;
+  };
   // Every complete card from the Hand is resolved by the engine as the turn's
   // first step, with no model call to choose the tool (directCards), on a
   // turn that has run nothing yet.
@@ -2992,6 +3015,36 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         saveDmTurn(turn);
         continue;
       }
+      // A thing or money the reply moved with no tool behind it has not moved
+      // either: the pack still holds the ration the story gave away, and the
+      // ledger pressed into a hero's hands is on no sheet (issue 1097). What a
+      // player's own words declared the engine carries out itself once the
+      // turn is told (settleItemClaims below), with no call spent here; for
+      // the rest the prose is held back and the model is sent once to its
+      // tools, or to say that nothing changed hands.
+      const itemsOwed =
+        !finalCall && !itemNudged && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration
+          ? openItems(campaign, {
+              turn,
+              sheets,
+              claims: await itemsIn(narration),
+              pending: toolCalls.map((toolCall) => ({ name: toolCall.name, args: argsObject(toolCall.rawArguments), result: null })),
+            }).owed
+          : [];
+      if (itemsOwed.length) {
+        itemNudged = true;
+        turn.narrationParts.pop();
+        turn.conversation.push({
+          role: "assistant",
+          ...carried,
+          content: visibleText || "",
+          tool_calls: echoedToolCalls,
+        });
+        answerRanAbove(fightOwnsFloor(campaignId), false);
+        turn.conversation.push({ role: "user", content: unrecordedItemsPrompt(itemsOwed) });
+        saveDmTurn(turn);
+        continue;
+      }
       // A card played from the Hand as an attack or a cast that no tool
       // resolved has not happened, however the prose tells it. The prose is
       // held back and the model is sent once to the tool the card names;
@@ -3264,6 +3317,16 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // the engine records a declared one, or the GM reads a note next turn
     // (issue 641, src/lib/dm/story-moves-settle.ts).
     settleStoryMoves(campaign, { turn, sheets, claims: [...guarded.deeds, ...(guarded.bonds ?? [])], record: true });
+    // A thing or money the narration that stands moved and no call recorded
+    // (issue 1097, src/lib/dm/item-claims.ts): what a player's own words
+    // declared is carried out now, through the turn's own rails, and the rest
+    // is a note the GM reads next turn.
+    const unreadParts = turn.narrationParts.filter((part) => !partItems.has(part));
+    const itemClaims = [
+      ...(await Promise.all(turn.narrationParts.flatMap((part) => partItems.get(part) ?? []))).flat(),
+      ...(unreadParts.length ? await itemsIn(unreadParts.join("\n\n")) : []),
+    ];
+    await settleItemClaims(campaign, { turn, sheets, claims: itemClaims, run: (call) => runItemCall(context, turn, call) });
     // The narration told the table a player's turn is over ("It is now
     // Bram's turn") and no call ended it: it ends after the narration, as
     // the table was told, and the enemies it passes act then
@@ -3707,6 +3770,20 @@ function castSlotlessFor(context: TurnContext, turn: DmTurn): (cast: { casterId:
     }
     return { rolled: castRolled(call.name) };
   };
+}
+
+// One hand-off the engine carries out itself (issue 1097, item-claims.ts
+// settleItemClaims): through the same rails as a model's call, and beside
+// them in the turn's conversation, so a turn read again finds it recorded
+// and a turn taken back takes it back too.
+async function runItemCall(context: TurnContext, turn: DmTurn, call: EngineItemCall): Promise<Record<string, unknown>> {
+  const id = `item_${turn.conversation.length}`;
+  const rawArguments = JSON.stringify(call.args);
+  turn.conversation.push({ role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: call.name, arguments: rawArguments } }] });
+  const outcome = await answerModelCall(context, turn, { id, name: call.name, rawArguments });
+  turn.conversation.push({ role: "tool", tool_call_id: id, content: JSON.stringify(outcome) });
+  saveDmTurn(turn);
+  return outcome as Record<string, unknown>;
 }
 
 // The cards no call carried out go back to their players: each one's line
