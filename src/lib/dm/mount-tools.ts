@@ -94,7 +94,7 @@ export const mountTools: ToolDef[] = [
         properties: {
           characterId: { type: "string", description: "Exact characterId from GAME STATE. A character's or an enemy's id: an enemy rides the enemy mount names." },
           mount: { type: "string", description: "A known mount by its listed name, whatever the table calls it ('cavallo' is 'Riding horse'). Or a creature they called up, by its own name (Find Steed's steed): that creature is then the mount." },
-          customName: { type: "string", description: "Only for an animal no list has, by its name, with its speed and size." },
+          customName: { type: "string", description: "Only for an animal no list has, by its name, with a speed and a size." },
           speed: { type: "integer", minimum: 0, maximum: 200 },
           size: { type: "string", enum: [...MOUNT_SIZES] },
           controlled: { type: "boolean", description: "Default: true (an enemy rider: false), it moves on its rider's turn. False only for a creature they called up that acts as it wishes: it keeps its own turn, which you play, and its move carries the rider." },

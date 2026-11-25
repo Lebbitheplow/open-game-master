@@ -54,6 +54,7 @@ import { mountOf, mountSizeProblem, partPair, riderOf, unseatLedMounts } from "@
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { enemyTurnEntry, forgetEnemyTurns, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
@@ -98,8 +99,7 @@ function tableNote(campaign: Pick<Campaign, "id">, rider: EncounterEnemy, conten
 // nothing, but is charged only on a turn that is running.
 function turnHasCome(encounter: Encounter, enemy: EncounterEnemy, turn: Turn | undefined): boolean {
   // A creature the pointer rests on is on its turn (enemyFleeTurnRefusal).
-  const resting = encounter.order[encounter.turnIndex];
-  if (encounter.orderReady && resting?.kind === "enemy" && resting.enemyId === (enemy.ledBy ?? enemy.id)) {
+  if (ownTurnOf(encounter, enemy.ledBy ?? enemy.id)) {
     return true;
   }
   return enemyTurnRefusal(encounter, enemy, { id: turn?.id ?? "", actor: "ai" }) === null;
