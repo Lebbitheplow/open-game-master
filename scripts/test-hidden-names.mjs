@@ -48,4 +48,23 @@ test("a name a creature the table sees, or a hero, also answers to is kept, and 
   assert.equal(hideNames({ content: "Bandit Captain shouts." }, namesToHide(["Bandit", "Bandit Captain"], [])).content, "Someone unseen shouts.");
 });
 
+test("outside the stream, a row written before the fight began is left as it reads", () => {
+  const began = "2026-01-02T10:00:00.000Z";
+  const old = { id: "m1", content: "The bandit camp lies north.", createdAt: "2026-01-01T09:00:00.000Z" };
+  const fresh = { id: "m2", content: "Bandit rolls to hit.", createdAt: "2026-01-02T10:00:05.000Z" };
+  const out = hideNames({ messages: [old, fresh], encounter: { createdAt: began, lastHits: [{ attacker: "Bandit" }] } }, ["Bandit"], { since: began });
+  assert.equal(out.messages[0], old, "the older row is the row itself");
+  assert.equal(out.messages[1].content, "Someone unseen rolls to hit.");
+  assert.equal(out.encounter.lastHits[0].attacker, "Someone unseen", "the fight itself began then, and is no older row");
+  assert.deepEqual(hideNames([old, fresh], ["Bandit"], { since: began }), [old, { ...fresh, content: "Someone unseen rolls to hit." }]);
+});
+
+test("outside the stream, a thing with no time of its own takes the replacement, and nothing to hide hands the same payload back", () => {
+  const began = "2026-01-02T10:00:00.000Z";
+  assert.deepEqual(hideNames({ hide: "Mira cannot hide: Bandit sees them clearly." }, ["Bandit"], { since: began }), { hide: "Mira cannot hide: Someone unseen sees them clearly." });
+  const payload = { messages: [{ content: "Goblin swings.", createdAt: began }] };
+  assert.equal(hideNames(payload, ["Bandit"], { since: began }), payload);
+  assert.equal(hideNames(payload, [], { since: began }), payload);
+});
+
 console.log(`hidden-names: ${passed} tests passed`);

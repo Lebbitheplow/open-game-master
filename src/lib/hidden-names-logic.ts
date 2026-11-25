@@ -27,7 +27,14 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // replaced by "someone unseen" ("Someone unseen" where it opens a sentence),
 // and an order entry for a creature so named marked hidden. The same object
 // when nothing in it names one.
-export function hideNames<T>(payload: T, names: readonly string[]): T {
+//
+// `since` is for what a seat reads outside the stream, which comes as rows
+// that each say when they were written (a message, a roll, a sheet change).
+// The stream replaces a name only in what it sends while the creature is
+// hidden in the fight under way, so a row written before that fight began is
+// left as it reads: with a bandit hidden, "the bandit camp" in an older page
+// of the story stays what the table read.
+export function hideNames<T>(payload: T, names: readonly string[], options: { since?: string } = {}): T {
   if (!names.length || payload === null || typeof payload !== "object") {
     return payload;
   }
@@ -47,6 +54,9 @@ export function hideNames<T>(payload: T, names: readonly string[]): T {
     }
     if (value && typeof value === "object") {
       const record = value as Record<string, unknown>;
+      if (options.since && typeof record.createdAt === "string" && record.createdAt < options.since) {
+        return value;
+      }
       const out: Record<string, unknown> = {};
       for (const [key, inner] of Object.entries(record)) {
         out[key] = walk(inner);
