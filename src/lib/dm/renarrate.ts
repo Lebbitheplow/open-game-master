@@ -116,7 +116,7 @@ export async function runRenarrate(input: {
   // The last stands for the take a reroll replaces.
   const names = fightNames(campaign.id, turn.createdAt);
   const language = campaign.gameSettings.tableLanguage;
-  const parts = [...tableNarrationParts(turn.narrationParts.slice(0, -1), names, language), ""];
+  const parts = [...tableNarrationParts(turn.narrationParts.slice(0, -1), names, language, listSheets(campaign.id).map((sheet) => sheet.name)), ""];
   const prompt = buildRenarrateMessages(
     turn.conversation,
     input.guidance,

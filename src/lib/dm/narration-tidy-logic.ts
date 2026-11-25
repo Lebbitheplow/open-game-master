@@ -155,8 +155,31 @@ export function createOrphanCloserFilter() {
 // reroll keeps of the parts before its own take (renarrate.ts). One tidy for
 // both: a reroll that reassembled the raw parts brought back the closer
 // lines, tool talk and fight bookkeeping the table never read.
-export function tableNarrationParts(parts: readonly string[], names: readonly string[], language: TableLanguage): string[] {
-  return withoutRepeatedSentences(parts.map((part) => withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), names, language)))));
+// `party` are the party's characters by name, for the label a reply may open
+// on (withoutLineLabels).
+export function tableNarrationParts(parts: readonly string[], names: readonly string[], language: TableLanguage, party: readonly string[] = []): string[] {
+  return withoutRepeatedSentences(
+    parts.map((part) => withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(withoutLineLabels(part, party)), names, language)))),
+  );
+}
+
+// The label the transcript gives a player's line ("[Avery] ...", "[Bram |
+// attempt] ..."), written by the storyteller at the head of its own reply or
+// of a paragraph: gpt-oss-20b opened four passages of a fourteen-turn play on
+// "[Avery] You grip your shortsword", and another on a line of nothing but
+// "[Bram | turn]" (2026-11-24). Once it had read one of its own back in the
+// transcript it wrote the next the same way. It is a label, like an agent
+// program's "[Game Master]" (tool-text.ts): it goes, and the narration under
+// it stays. Only a party character's own name, as the server writes it, so
+// the story's "[Softly]" and a letter's "[unsigned]" are left alone.
+export function withoutLineLabels(text: string, party: readonly string[]): string {
+  const names = [...new Set(party.map((name) => name.trim()).filter((name) => name.length >= 2))].sort((a, b) => b.length - a.length);
+  if (!names.length || !text.includes("[")) {
+    return text;
+  }
+  const named = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const out = text.replace(new RegExp(`^[ \\t]*\\[[ \\t]*(?:${named})[ \\t]*(?:\\|[^\\]\\n]{0,24})?\\][ \\t]*`, "gmu"), "");
+  return out === text ? text : tidyBlankLines(out);
 }
 
 // Whether a reply is mostly the last turn's narration said again: a player

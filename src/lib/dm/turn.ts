@@ -4526,7 +4526,12 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // says each sentence once (src/lib/dm/narration-tidy-logic.ts). Any
   // marker already in a part is the model's own (the rescue's and the
   // guard's rewrite included), never one of the real ones placed below.
-  const narrationParts = tableNarrationParts(turn.narrationParts, fightNames(campaignId, turn.createdAt), campaignLanguage(campaignId));
+  const narrationParts = tableNarrationParts(
+    turn.narrationParts,
+    fightNames(campaignId, turn.createdAt),
+    campaignLanguage(campaignId),
+    listSheets(campaignId).map((sheet) => sheet.name),
+  );
   let content = narrationParts.join("\n\n").trim();
   if (!content) {
     // A refused player action says why instead of the bare fallback line.
