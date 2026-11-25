@@ -10,7 +10,7 @@
   },
   "sites": {
     "lib/roll-parts.ts#whole": [["identity",1,"a carried line by its whole own name, as the attack roll stored it in its parts"],["key",3,"a skill's or an ability's id, as a roll's parts store it or as the engine wrote it, among the ids a rule asks about"]],
-    "lib/roll-parts.ts#partial": [["parse",7,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: its skill, its ability, what a save was against, the weapon its label opens with and its marks"]],
+    "lib/roll-parts.ts#partial": [["parse",8,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: its skill, its ability, what a save was against, the weapon its label opens with, its marks and the ambush it was rolled for"]],
     "lib/srd/barding.ts#whole": [["key",1,"the one word barding against each word of a carried row, both through textKey, to tell a suit made for a mount; the suit itself is then found by its whole name (armorNamed)"]],
     "lib/dm/party-npcs-fight.ts#whole": [["key",1,"an NPC's stored place against the party's current place, both written by the server, to field only who is where the fight is: no record a person named"]],
     "lib/dm/party-npcs-fight.ts#fallback": [["key",1,"an NPC's last fight row by id, else the row it was carried from: no record a person named"]],
@@ -3541,7 +3541,6 @@
     "lib/embeddings.ts#whole-single": [["key", 1, "the embedding key before and after a language change compared (model id and dtype, never a name)"]],
     "lib/setup/patches.ts#whole-single": [["key", 1, "the picked server language against the saved one (a language id)"]],
     "components/ui/GameIcon.tsx#keyed": [["key",2,"inventory and genre painting ids select measured image scales from the asset metadata"]],
-    "lib/dm/encounter-open.ts#partial": [["key",1,"a stored roll's kind and its detail, the server's own skill id and the name it files an ambush's Stealth under (stealthThisTurn, issue 1109)"],["key",1,"a stored roll's kind and its detail, the server's own skill id and the name it files an ambush's Stealth under (stealthThisTurn, issue 1109)"]],
     "lib/inventory-art-logic.ts#whole": [["key",1,"a normalized illustration slug matched to an authored special painting key; this selects art, never a rules record"]],
     "lib/inventory-art-logic.ts#partial": [["key",3,"illustration slug prefixes and leading or trailing physical-form tokens select decorative categories after canonical equipment matching"],["pattern",6,"fixed focus, wooden-shield, potion, scroll and rope patterns and the head-word test (a leading form word alone or before of, de, a comma or a bracket) select artwork only; unknown names retain their category icon and no equipment rules depend on the painting"]],
     "lib/inventory-art-logic.ts#keyed": [["key",3,"approved painting ids, physical-form slug keys and shared gear paintings select illustrative assets; a miss keeps the category icon and changes no item identity"]],

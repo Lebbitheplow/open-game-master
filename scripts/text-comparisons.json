@@ -23,7 +23,7 @@
     "lib/dm/prompt.ts": [2,"quoted: the recent rolls in GAME STATE"],
     "lib/dm/roll-record.ts": [1,"stored: the door adds its mark for dice rolled at the table to the words it stores"],
     "lib/roll-labels.ts": [4,"shown: the roll card's label, the toast and the chronicle's line, put into the reader's language for display"],
-    "lib/roll-parts.ts": [6,"the one reader: a roll that has no parts is read by the sentence the engine wrote for it"]
+    "lib/roll-parts.ts": [7,"the one reader: a roll that has no parts is read by the sentence the engine wrote for it"]
   },
   "sites": {
     "lib/roll-parts.ts#\\b": [["english-source",3,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],
@@ -3555,8 +3555,6 @@
     "lib/language/server-language.ts#str-key": [["key", 1, "a table language id compared against english (a key)"]],
     "components/ui/LanguageFlag.tsx#str-key": [["key", 1, "a flag drawing by its ISO 3166 country code (a key)"]],
     "components/ui/GameIcon.tsx#re-word": [["key",2,"fixed inventory and item asset paths select the measured circular-image scale"]],
-    "lib/dm/encounter-open.ts#\\b": [["key",1,"a stored roll's kind and its detail, the server's own skill id and the name it files an ambush's Stealth under (stealthThisTurn, issue 1109)"]],
-    "lib/dm/encounter-open.ts#re-word": [["key",1,"a stored roll's kind and its detail, the server's own skill id and the name it files an ambush's Stealth under (stealthThisTurn, issue 1109)"]],
     "lib/inventory-art-logic.ts#re-affix": [["english-source",1,"the plural suffix of a resolved English catalog item's physical form, never an unknown item name"]],
     "lib/inventory-art-logic.ts#re-word": [["english-source",1,"staff, wand and rod prefixes of the resolved English magic-item catalog name select its focus painting"],["english-extra",5,"wooden shield, potion, scroll and rope painting aliases and the of/de/du/des connector after a leading form word, after locale-aware equipment resolution; an unmatched name retains its category icon and no mechanics depend on the painting"]],
     "lib/inventory-art-logic.ts#str-key": [["english-extra",2,"physical-form and gear painting aliases after locale-aware canonical item matching; unidentified loot is excluded, and a name with no painting keeps its category icon without changing rules or identity"]],

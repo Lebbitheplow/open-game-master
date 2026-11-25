@@ -19,7 +19,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { attackParts, checkParts, rollAbility, rollKeepsConcentration, rollPhysical, rollResists, rollSkill, rollWeaponRow, saveParts } = await import("../src/lib/roll-parts.ts");
+const { attackParts, checkParts, rollAbility, rollDecidesSurprise, rollKeepsConcentration, rollPhysical, rollResists, rollSkill, rollWeaponRow, saveParts } = await import("../src/lib/roll-parts.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -78,6 +78,15 @@ test("the save that keeps concentration says so in a field, and an old one in it
   assert.equal(rollKeepsConcentration(before("CON save to keep concentration (Bless)")), true);
   assert.equal(rollKeepsConcentration(before("CON save to keep concentration in Sleet Storm")), true);
   assert.equal(rollKeepsConcentration(before("CON save against Poison Spray")), false);
+});
+
+// The Stealth a fight's opening rolls for its ambush is not the one the GM
+// asked for earlier in the same turn (encounter-open.ts stealthThisTurn).
+test("the Stealth an ambush rolls says so in a field, and an old one in its words", () => {
+  assert.equal(rollDecidesSurprise(stored("Bran keeps to the fog", { ...checkParts({ skill: "stealth" }), purpose: "surprise" })), true);
+  assert.equal(rollDecidesSurprise(stored("stealth, lying in wait", checkParts({ skill: "stealth" }))), false, "a roll with parts was matched by its words");
+  assert.equal(rollDecidesSurprise(before("stealth, lying in wait")), true);
+  assert.equal(rollDecidesSurprise(before("stealth")), false);
 });
 
 test("the weapon of an attack is the carried row its field names, and an old roll's is the one its words open with", () => {

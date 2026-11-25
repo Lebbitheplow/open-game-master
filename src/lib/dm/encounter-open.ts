@@ -16,6 +16,7 @@ import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { getRoll } from "@/lib/db/rolls";
+import { rollDecidesSurprise, rollSkill } from "@/lib/roll-parts";
 
 // What the party's Stealth is filed as when a fight opens on its ambush.
 const AMBUSH_DETAIL = "stealth, lying in wait";
@@ -113,6 +114,9 @@ export function decideAmbush(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
+    // Filed as the ambush's own, so a call run again does not take it for
+    // the GM's earlier ask (stealthThisTurn below).
+    const parts = { ...resolved.parts, purpose: "surprise" as const };
     // The player's own Stealth (src/lib/dm/character-roll.ts): a seat on
     // physical dice rolls it before the surprise is decided, as it then
     // rolls its initiative.
@@ -120,7 +124,7 @@ export function decideAmbush(
       kind: "skill_check",
       expression: resolved.expression,
       detail: AMBUSH_DETAIL,
-      parts: resolved.parts,
+      parts,
       dc: unseen,
       settleHeldDie: waits,
     });
@@ -132,7 +136,7 @@ export function decideAmbush(
       requestedBy: "dm",
       kind: "skill_check",
       detail: AMBUSH_DETAIL,
-      parts: resolved.parts,
+      parts,
       result: outcome,
     });
     stealth.push(outcome.total);
@@ -161,7 +165,7 @@ function stealthThisTurn(characterId: string): number | null {
   const turn = globalThis.__odmHeldCallTurn?.() ?? null;
   for (const id of [...(turn?.rollIds ?? [])].reverse()) {
     const roll = getRoll(id);
-    if (roll && roll.characterId === characterId && roll.kind === "skill_check" && /^stealth\b/i.test(roll.detail) && !roll.detail.includes(AMBUSH_DETAIL)) {
+    if (roll && roll.characterId === characterId && roll.kind === "skill_check" && rollSkill(roll, ["stealth"]) && !rollDecidesSurprise(roll)) {
       return roll.total;
     }
   }

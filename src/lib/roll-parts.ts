@@ -39,8 +39,10 @@ export type RollUsed = {
   name: string;
 };
 
-// What a rule later asks of a roll. A closed list, of one so far.
-export type RollPurpose = "concentration";
+// What a rule later asks of a roll. A closed list: the save that keeps
+// concentration, and the Stealth a fight's opening rolls to decide surprise
+// (src/lib/dm/encounter-open.ts decideAmbush).
+export type RollPurpose = "concentration" | "surprise";
 
 export type RollParts = {
   used?: RollUsed;
@@ -112,6 +114,12 @@ export function rollKeepsConcentration(roll: Recorded): boolean {
   return roll.parts ? roll.parts.purpose === "concentration" : roll.detail.includes(KEEPS_CONCENTRATION);
 }
 
+// Whether a Stealth check was the one a fight's opening rolled for its
+// ambush, not one the GM asked for before it.
+export function rollDecidesSurprise(roll: Recorded): boolean {
+  return roll.parts ? roll.parts.purpose === "surprise" : roll.detail.includes(AMBUSH_STEALTH);
+}
+
 // The carried row an attack roll was made with, when it is still carried. A
 // pack's rows have no ids, so the row is found by the name it is carried
 // under, which the roll stored whole.
@@ -136,6 +144,9 @@ export const PHYSICAL = "(physical)";
 
 // The words every site that rolls this save wrote into it.
 const KEEPS_CONCENTRATION = "to keep concentration";
+
+// The words an ambush's Stealth is filed under (encounter-open.ts).
+const AMBUSH_STEALTH = "lying in wait";
 
 // What follows "vs" to the end of a save's words ("DEX save vs. frightened").
 const VERSUS = /\bvs\.? (.+)$/i;
