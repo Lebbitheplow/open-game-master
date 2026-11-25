@@ -4498,6 +4498,11 @@ const bench2Titles = {};
     const called = (name) => rows.find((enemy) => enemy.displayName === name) ?? (() => { throw new Error(`no ${name} in the fight`); })();
     const [scout, wolf, lancer, horse] = [called("Goblin Scout"), named(rows, "wolf"), called("Goblin Lancer"), named(rows, "warhorse")];
     [[mara.id, -4, 0], [scout.id, 1, -2], [wolf.id, 2, -2], [lancer.id, 1, 2], [horse.id, 2, 1]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    // The scout's turn, with the lancer's and the warhorse's still to come:
+    // the console mounts the lancer off its turn, free and uncharged.
+    const fight = encounterRows.getActiveEncounter(table.id);
+    const seat = (id) => fight.order.find((entry) => (entry.characterId ?? entry.enemyId) === id);
+    encounterRows.saveEncounter({ ...fight, order: [mara.id, scout.id, wolf.id, lancer.id, horse.id].map(seat) });
     turnOf(table, scout.id);
     const pick = (enemy) => ({ id: enemy.id, name: enemy.displayName });
     bench2.saddle[viewport] = { id: table.id, scout: pick(scout), wolf: pick(wolf), lancer: pick(lancer), horse: pick(horse) };
