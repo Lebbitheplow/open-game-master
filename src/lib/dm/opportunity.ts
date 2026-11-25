@@ -201,6 +201,11 @@ export function resolveOpportunityAttacks(
     if (sideOf(encounter, "enemy", enemy.id, enemy) === moverSide) {
       continue;
     }
+    // A controlled mount makes no attack, an opportunity attack included
+    // (issue 1055, ruling 2: enemy-riders.ts). Its rider still strikes.
+    if (enemy.ledBy) {
+      continue;
+    }
     // The reacting side must be able to react (Shocking Grasp and Slow take
     // the reaction away), and to see who is leaving.
     if (

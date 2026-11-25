@@ -365,8 +365,8 @@ export const COMPACT_OMITS: Record<string, string[]> = {
   // list: the 16K core had under ten tokens to spare when it came (a shop
   // turn's group no longer fitted beside it), and a pair fielded at the
   // console or by a larger model is told in GAME STATE all the same.
-  start_encounter: ["enemies[].mount"],
-  add_enemies: ["enemies[].mount"],
+  start_encounter: ["enemies[].mount", "enemies[].controlled"],
+  add_enemies: ["enemies[].mount", "enemies[].controlled"],
 };
 
 // Arguments only a table with a pet can use (ProfileSignals.pets): a compact

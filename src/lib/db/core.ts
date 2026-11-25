@@ -2253,6 +2253,10 @@ function ensureSchema(db: SqliteDatabase) {
     // rows, and the rider's names its mount (issue 1055,
     // src/lib/dm/enemy-riders.ts).
     ["rides_enemy_id", `TEXT NOT NULL DEFAULT ''`],
+    // On a mount's own row: the rider steering it as a controlled mount,
+    // which takes no turn of its own (issue 1055, ruling 2). '+' once that
+    // rider is off it and its place in the order is still to be made.
+    ["led_by_enemy_id", `TEXT NOT NULL DEFAULT ''`],
   ]);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_encounter_enemies_npc ON encounter_enemies(campaign_id, npc_id);

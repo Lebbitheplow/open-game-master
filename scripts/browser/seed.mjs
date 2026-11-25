@@ -4473,6 +4473,19 @@ const bench2Titles = {};
     turnOf(table, mara.id);
     bench2.riders = { id: table.id, tokens: 3 };
   }
+  // controlled-enemy-mount (148): a goblin on a warhorse it steers beside a
+  // goblin on a wolf that acts as it wishes (issue 1055, ruling 2). The
+  // steered warhorse has no place in the order; the wolf keeps its own.
+  {
+    const table = tableFor("Steered Mount Table", world.owner, player);
+    const mara = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Mara Voss", class: "fighter", level: 5, maxHp: 44 }));
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", mount: "warhorse", controlled: true }, { monster: "goblin", mount: "wolf" }]);
+    const on = (slug) => rows.find((enemy) => rows.find((mount) => mount.id === enemy.ridesEnemyId)?.slug === slug) ?? (() => { throw new Error(`no rider on a ${slug}`); })();
+    const steered = rows.find((enemy) => enemy.ledBy) ?? (() => { throw new Error("no mount in the fight is steered by its rider"); })();
+    [[mara.id, -3, 0], [on("warhorse").id, 1, -2], [on("wolf").id, 1, 2]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, mara.id);
+    bench2.steered = { id: table.id, tokens: 3, steered: steered.displayName, free: named(rows, "wolf").displayName, turns: 4 };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a

@@ -84,12 +84,15 @@ export function parseRoster(value: unknown): TemplateEnemy[] {
 // name instead of fielding a "Serpent" told to be of the race "Warrior".
 //
 // A mount rides last on the line ("goblin riding wolf x3", issue 1055):
-// never at its start, so a riding horse keeps its name.
-export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string; mount?: string };
+// never at its start, so a riding horse keeps its name. "controlled" after
+// the mount's name makes it one its rider steers ("knight riding warhorse
+// controlled"): it takes no turn of its own.
+export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string; mount?: string; controlled?: boolean };
 
 const CR_IN_LINE = /(?:^|\s|,|\()cr\s*[:=]?\s*(\d{1,2}\s*\/\s*\d{1,2}|\d{1,2}(?:\.\d+)?)\)?/i;
 const NAMED_AS = /^(.+?)\s+as\s+(.+)$/i;
 const RIDING = /^(.+?)\s+riding\s+(.+)$/i;
+const STEERED = /^(.+?)[\s,]+controlled$/i;
 const RACE_IN_LINE = /(?:\s|,)race\s*[:=]?\s*([a-z][\w'-]*)(\s+[a-z][\w'-]*)?/i;
 const GENDER_IN_LINE = /(?:\s|,)gender\s*[:=]?\s*(female|male|nonbinary)\b/i;
 
@@ -127,7 +130,8 @@ function raceIn(text: string, readsRace: RaceReader): { race: string; rest: stri
 function fightLine(row: TemplateEnemy, readsRace: RaceReader): FightRequest {
   let monster = row.monster;
   const ridden = RIDING.exec(monster);
-  const mount = ridden ? ridden[2].trim() : "";
+  const steered = ridden ? STEERED.exec(ridden[2].trim()) : null;
+  const mount = steered ? steered[1].trim() : ridden ? ridden[2].trim() : "";
   if (ridden) {
     monster = ridden[1].trim();
   }
@@ -166,6 +170,9 @@ function fightLine(row: TemplateEnemy, readsRace: RaceReader): FightRequest {
   if (mount) {
     out.mount = mount;
   }
+  if (steered) {
+    out.controlled = true;
+  }
   return out;
 }
 
@@ -198,6 +205,9 @@ export function parseFightRoster(value: unknown, readsRace: RaceReader = () => f
         }
         if (typeof row.mount === "string" && row.mount.trim()) {
           out.mount = row.mount.trim();
+        }
+        if (row.controlled === true) {
+          out.controlled = true;
         }
         return [out];
       })

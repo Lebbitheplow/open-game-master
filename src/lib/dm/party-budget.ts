@@ -65,11 +65,14 @@ export type RosterBudget = {
 // no more than MAX_COMBATANTS, and no more adjusted XP than the table's
 // difficulty allows. The fight itself, the prep readout and a prepared
 // fight scaled to the party all ask here.
-export function rosterBudget(campaign: Pick<Campaign, "difficulty" | "gameSettings">, partyLevels: number[], resolved: Array<Pick<ResolvedEnemyRequest, "stats" | "sheetFoe">>): RosterBudget {
-  const evaluation = evaluateEncounter(partyLevels, resolved.map((entry) => entry.stats.cr));
+export function rosterBudget(campaign: Pick<Campaign, "difficulty" | "gameSettings">, partyLevels: number[], resolved: Array<Pick<ResolvedEnemyRequest, "stats" | "sheetFoe" | "led">>): RosterBudget {
+  // A controlled mount takes no turn: its XP counts, and it is no combatant
+  // under the cap nor in the multiplier (issue 1055, ruling 3).
+  const crs = (entries: typeof resolved): [number[], number[]] => [entries.filter((entry) => !entry.led).map((entry) => entry.stats.cr), entries.filter((entry) => entry.led).map((entry) => entry.stats.cr)];
+  const evaluation = evaluateEncounter(partyLevels, ...crs(resolved));
   const ceiling = encounterCeiling(campaign.difficulty, evaluation.thresholds.deadly);
   const companionsWhole = !ceilingHoldsCompanion(settingOf(campaign.gameSettings));
   const staged = resolved.filter((entry) => !(entry.sheetFoe?.kind === "turned" || (entry.sheetFoe?.kind === "returning" && companionsWhole)));
-  const stagedXp = staged.length === resolved.length ? evaluation.adjustedXp : evaluateEncounter(partyLevels, staged.map((entry) => entry.stats.cr)).adjustedXp;
-  return { evaluation, ceiling, stagedXp, tooMany: resolved.length > MAX_COMBATANTS, tooDeadly: stagedXp > ceiling };
+  const stagedXp = staged.length === resolved.length ? evaluation.adjustedXp : evaluateEncounter(partyLevels, ...crs(staged)).adjustedXp;
+  return { evaluation, ceiling, stagedXp, tooMany: resolved.filter((entry) => !entry.led).length > MAX_COMBATANTS, tooDeadly: stagedXp > ceiling };
 }
