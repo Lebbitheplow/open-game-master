@@ -62,7 +62,7 @@ import { suggestEnemies } from "@/lib/bestiary";
 import { carriedIndexes, enemyRequestSchema, groupInitiatives, ledIndexes, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
 import { linkPairs, onOwnToken, seatFreedMounts, takingOwnTurn } from "@/lib/dm/enemy-riders";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
-import { fieldPartyNpcs } from "@/lib/dm/party-npcs-fight";
+import { fieldPartyNpcs, partyNpcRows } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/building";
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
@@ -1140,6 +1140,12 @@ function handleDamageEnemy(
 // leave the fight stuck open while the narration declared it over.
 // resolveEncounterOutcome takes a listed value and reads anything else off
 // the roster.
+//
+// An end that leaves foes alive names them in its answer: the narrator
+// called a fight over with its last foe hurt and on its feet, told the party
+// standing over the bodies, and went on to tell that foe glaring at them
+// (issue 1104). Whether a foe yields or runs is the GM's to rule; the story
+// has to say which, and tell no bodies of the living.
 const endArgsSchema = z.object({
   outcome: z.string().max(80).optional(),
   reason: z.string().optional(),
@@ -1188,8 +1194,13 @@ function handleEndEncounter(
   }
   // A foe lying knocked out is beaten, not standing (issue #667: the fight
   // read as a truce, paid half and marked the beaten foe fled).
-  const statuses = listEnemies(encounter.id).map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
+  const fought = listEnemies(encounter.id);
+  const statuses = fought.map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
   const { outcome, inferred } = resolveEncounterOutcome(args.outcome, statuses);
+  // The foes still on their feet: alive, not knocked out, and not one of the
+  // party's own people on the board (party-npcs-fight.ts).
+  const allies = new Set(partyNpcRows(encounter, fought).map((row) => row.id));
+  const standing = fought.filter((enemy) => enemy.status === "alive" && !isKnockedOut(enemy) && !allies.has(enemy.id)).map((enemy) => enemy.displayName);
   // Its creatures let go of whoever they held: none of them is in reach
   // once the fight is over (grapple.ts releaseGrapplesHeldByAny).
   releaseGrapplesHeldByAny(campaign, listEnemies(encounter.id).map((enemy) => enemy.id));
@@ -1199,6 +1210,9 @@ function handleEndEncounter(
       ? { note: `Outcome "${args.outcome ?? ""}" was not recognized; recorded as ${outcome}.` }
       : {}),
     ...finishEncounter(campaign, turn, encounter, outcome, sheets, sheetsById),
+    ...(standing.length
+      ? { survivors: `${standing.join(" and ")} left this fight alive. Tell the table how it ended for them (they ran, they yielded, both sides stopped), as your reason has it: none of them is dead, so tell no bodies of theirs.` }
+      : {}),
   };
 }
 

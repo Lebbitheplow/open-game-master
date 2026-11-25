@@ -13,11 +13,23 @@ import { textKey } from "@/lib/language/text-logic";
 // table is not meant to see. A player action that went through and was then
 // never narrated (the model's last call wrote a tool call instead of prose)
 // says it went through: "try again" there asked for a second attack or a
-// second purchase.
+// second purchase. So does a turn whose other calls changed the table (a
+// fight opened, checks rolled, a thing handed over): "The GM had no answer to
+// that. Try again..." was read under three dice cards and a fight that had
+// just begun (issue 1108).
 
 export const EMPTY_TURN_LINE = "The moment hangs there, waiting on the party's next move.";
 export const RESOLVED_TURN_LINE =
   "Your action went through, and its dice and changes are on the table, but the GM gave no narration for it. Go on with your next move.";
+export const TABLE_CHANGED_LINE =
+  "The GM's dice and changes are on the table, but it gave no narration for them. Go on with your next move.";
+
+// The calls whose going through the whole table sees: a fight opened or
+// closed, a thing or coin changing hands, time passing, the party moving.
+// The GM's own bookkeeping (a roster entry, a note, a lookup) is not here,
+// and neither is a roll: dice the table saw are told by the turn itself
+// (`rolled`), and a roll behind the screen stays there.
+const TABLE_TOOLS = new Set(["start_encounter", "end_encounter", "add_enemies", "grant_item", "remove_item", "modify_gold", "take_rest", "pass_time", "move_party"]);
 
 const PLAYER_ACTION_TOOLS = new Set([
   "cast_at_enemy",
@@ -83,7 +95,7 @@ export type EmptyTurnPlayer = {
 
 type ToolCallLike = { id?: string; name?: string; function?: { name?: string; arguments?: unknown } };
 
-export function emptyTurnLine(conversation: ChatMessage[], player?: EmptyTurnPlayer | null): string {
+export function emptyTurnLine(conversation: ChatMessage[], player?: EmptyTurnPlayer | null, rolled = false): string {
   const outcome = lastActionOutcome(conversation);
   if (outcome?.refusal) {
     return `The GM could not resolve that: ${outcome.refusal} ${CARDS_HINT}`;
@@ -91,10 +103,46 @@ export function emptyTurnLine(conversation: ChatMessage[], player?: EmptyTurnPla
   if (outcome?.resolved) {
     return RESOLVED_TURN_LINE;
   }
+  // `rolled`: the turn put dice in front of the table.
+  if (rolled || tableChanged(conversation)) {
+    return TABLE_CHANGED_LINE;
+  }
   if (player && player.text.trim()) {
     return explainLooseAction(player);
   }
   return EMPTY_TURN_LINE;
+}
+
+// Whether a call of the turn that the table sees went through: a result with
+// no error.
+function tableChanged(conversation: ChatMessage[]): boolean {
+  const names = new Map<string, string>();
+  for (const message of conversation) {
+    if (message.role !== "assistant" || !Array.isArray(message.tool_calls)) {
+      continue;
+    }
+    for (const call of message.tool_calls as ToolCallLike[]) {
+      const name = call.function?.name ?? call.name;
+      if (call.id && name) {
+        names.set(call.id, name);
+      }
+    }
+  }
+  return conversation.some((message) => {
+    if (message.role !== "tool" || !message.tool_call_id || typeof message.content !== "string") {
+      return false;
+    }
+    const name = names.get(message.tool_call_id);
+    if (!name || !TABLE_TOOLS.has(name)) {
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(message.content) as { error?: unknown } | null;
+      return Boolean(parsed) && typeof parsed?.error !== "string";
+    } catch {
+      return false;
+    }
+  });
 }
 
 // The latest player action this turn: refused by the rules (its reason), or

@@ -45,13 +45,25 @@ await test("A turn that answers with a plan is asked once for the narration, and
   assert.equal(message?.content.trim(), story);
 });
 
-await test("The correction is spent once a turn: a model that plans again is not asked a third time, and its plan is not kept.", async () => {
+// A turn that would end with nothing told is asked once for its narration,
+// with its tools closed (issues 1105 and 1108): the plan correction is still
+// sent only once, and a plan given there is not kept either.
+await test("The correction is spent once a turn: a model that plans again is not sent back for its plan a second time, its plan is not kept, and the turn is asked once for its narration.", async () => {
   const plan = "I will set the scene before anyone speaks.";
-  model.script([reply({ text: plan }), reply({ text: plan })]);
-  model.claims([[aside(plan)], [aside(plan)]]);
+  const story = "The river slides past the pilings, brown and slow. What do you do?";
+  model.script([reply({ text: plan }), reply({ text: plan }), reply({ text: story })]);
+  model.claims([[aside(plan)], [aside(plan)], []]);
   const message = await model.turn(world, "I wait by the water.", kara.id);
-  assert.equal(model.served(), 2);
-  assert.doesNotMatch(message?.content ?? "", /I will set the scene/, "the second plan reached the table");
+  assert.equal(model.served(), 3);
+  assert.equal(model.requests.filter((request) => /a note about what you plan to do/.test(lastUser(request))).length, 1, "the plan correction went out more than once");
+  assert.match(lastUser(model.requests[2]), /narrate/i);
+  assert.equal(message?.content.trim(), story);
+  // A third plan is not kept, and nothing more is asked.
+  model.script([reply({ text: plan }), reply({ text: plan }), reply({ text: plan })]);
+  model.claims([[aside(plan)], [aside(plan)], [aside(plan)]]);
+  const silent = await model.turn(world, "I wait by the water a while longer.", kara.id);
+  assert.equal(model.served(), 3);
+  assert.doesNotMatch(silent?.content ?? "", /I will set the scene/, "a plan reached the table");
 });
 
 await test("A plan told in Italian is cut by the same reader claim: the correction goes out and the narration arrives.", async () => {
@@ -153,10 +165,11 @@ await test("A plan returned by the rescue never reaches the table: the turn keep
 
 await test("A plan on the forced final call never reaches the table.", async () => {
   const plan = "I will set the landing and the hour before anyone speaks.";
-  model.script([reply({ calls: [record()] }), reply({ calls: [record()] }), reply({ calls: [record()] }), reply({ text: plan })]);
-  model.claims([[aside(plan)]]);
+  model.script([reply({ calls: [record()] }), reply({ calls: [record()] }), reply({ calls: [record()] }), reply({ text: plan }), reply({ text: plan })]);
+  model.claims([[aside(plan)], [aside(plan)]]);
   const message = await model.turn(world, "I step off the ferry.", kara.id);
-  assert.equal(model.served(), 4);
+  // The four calls of the turn, and the one that asks for its narration.
+  assert.equal(model.served(), 5);
   assert.doesNotMatch(message?.content ?? "", /I will set the landing/, "the plan reached the table");
   assert.match(asked(0), /^Ask: aside$/m, "the final call's reply was read for asides");
 });

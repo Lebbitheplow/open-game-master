@@ -6,7 +6,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { EMPTY_TURN_LINE, RESOLVED_TURN_LINE, emptyTurnLine } = await import("../src/lib/dm/empty-turn.ts");
+const { EMPTY_TURN_LINE, RESOLVED_TURN_LINE, TABLE_CHANGED_LINE, emptyTurnLine } = await import("../src/lib/dm/empty-turn.ts");
 const { notReadyReason } = await import("../src/lib/srd/spell-prep.ts");
 
 let passed = 0;
@@ -189,6 +189,24 @@ test("a spell waiting for the rest or only in the book is named as such", () => 
   assert.equal(notReadyReason(casting, "Fireball"), null);
   // Shield is written in the book AND prepared: it is ready, not blocked.
   assert.equal(notReadyReason(casting, "shield"), null);
+});
+
+// Issue 1108: a fight opened, two checks were rolled, and the turn ended with
+// nothing told. "Try again" was the wrong thing to say under those dice.
+test("a turn that put dice or a change in front of the table says so; the GM's bookkeeping, lookups and refusals do not count", () => {
+  const sneak = mage("I creep up behind him and take him out.");
+  assert.equal(emptyTurnLine([call("a", "request_roll"), result("a", { total: 14 })], sneak, true), TABLE_CHANGED_LINE);
+  for (const seen of ["start_encounter", "end_encounter", "add_enemies", "grant_item", "remove_item", "modify_gold", "take_rest", "pass_time", "move_party"]) {
+    assert.equal(emptyTurnLine([call("a", seen), result("a", { ok: true })], sneak), TABLE_CHANGED_LINE, seen);
+  }
+  // The player's own action that went through keeps its own line.
+  assert.equal(emptyTurnLine([call("a", "start_encounter"), result("a", { ok: true }), call("b", "pc_attack"), result("b", { hit: true })], sneak), RESOLVED_TURN_LINE);
+  // A roll behind the screen, a roster entry, a lookup: nothing the table saw.
+  for (const quiet of ["request_roll", "set_npc", "npc_state", "recall_story", "search_lore", "read_card", "write_campaign_note", "send_whisper", "record_event", "complete_beat"]) {
+    assert.match(emptyTurnLine([call("a", quiet), result("a", { ok: true })], sneak), /^The GM had no answer to that\./, quiet);
+  }
+  assert.match(emptyTurnLine([call("a", "start_encounter"), result("a", { error: "Unknown monster.", retry: true })], sneak), /^The GM had no answer to that\./);
+  assert.equal(emptyTurnLine([call("a", "start_encounter"), result("a", { error: "Unknown monster.", retry: true })], null), EMPTY_TURN_LINE);
 });
 
 console.log(`test-empty-turn: ${passed} tests passed.`);

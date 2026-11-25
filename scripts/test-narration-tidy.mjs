@@ -12,6 +12,7 @@ import {
   tableNarrationParts,
   withoutLineLabels,
   withoutCombatBookkeeping,
+  withoutEarlierPassages,
   withoutOrphanClosers,
   withoutRepeatedSentences,
   withoutToolTalk,
@@ -276,6 +277,28 @@ check("a turn's parts read as the table read them, for finalize and for a reroll
   ];
   assert.deepEqual(tableNarrationParts(parts, [], "english"), ["The hammer hangs from the strap.", "The strap creaks and the door gives way."]);
   assert.deepEqual(tableNarrationParts(["**Round 1:** The goblin snarls."], ["Goblin"], "english"), ["The goblin snarls."]);
+});
+
+// Issues 1104 and 1109: a reply told something new and pasted under it the
+// paragraphs an earlier reply had closed on, once with a name changed.
+check("a paragraph pasted from an earlier passage is cut; what is new, a short line and a turn of nothing else stay", () => {
+  const before = [
+    "The bandit staggers, blood on the snow.\n\nThe silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.\n\nYou stand over the dead sentry, your breath pluming in the cold air. The camp is alert now, but the fog still shrouds the trees.\n\nThe camp is waking up. What do you do?",
+  ];
+  const pasted = "You close the distance in a heartbeat, the snow muffling your steps.\n\nThe silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.\n\nYou stand over the dead bandit, your breath pluming in the cold air. The camp is alert now, but the fog still shrouds the trees.\n\nThe camp is waking up. What do you do?";
+  assert.deepEqual(withoutEarlierPassages([pasted], before), ["You close the distance in a heartbeat, the snow muffling your steps.\n\nThe camp is waking up. What do you do?"]);
+  // One sentence shared with an earlier passage is a callback, not a paste.
+  const callback = "The fog swallows your footsteps again. This time the lookout is facing the fire, his back to you, and the path behind the wagons is clear.";
+  assert.deepEqual(withoutEarlierPassages([callback], ["The fog swallows your footsteps again. A dog barks somewhere in the camp, twice, and is hushed."]), [callback]);
+  // A reply that is nothing but old paragraphs is never emptied: the checks before this send it back.
+  const only = "The silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.\n\nWhat do you do?";
+  assert.deepEqual(withoutEarlierPassages([only], before), [only]);
+  assert.deepEqual(withoutEarlierPassages([pasted], []), [pasted]);
+  // A part cut to nothing goes; the others keep their order.
+  assert.deepEqual(
+    withoutEarlierPassages(["The silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.", "A horn sounds from the stockade, long and low, and every head in the camp turns toward it."], before),
+    ["A horn sounds from the stockade, long and low, and every head in the camp turns toward it."],
+  );
 });
 
 console.log(`narration tidy: ${passed} checks passed`);

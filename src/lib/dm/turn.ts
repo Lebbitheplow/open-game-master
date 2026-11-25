@@ -141,6 +141,7 @@ import {
   REPEAT_LOOKBACK,
   REPEATED_NARRATION_PROMPT,
   repeatsEarlierNarration,
+  withoutEarlierPassages,
   tableNarrationParts,
   withoutOrphanClosers,
 } from "@/lib/dm/narration-tidy-logic";
@@ -1518,6 +1519,36 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     }
   }
 
+  // A fight a held call opened has asked nobody for initiative. The party's
+  // ambush rolls its Stealth as the fight opens, and for a player on their
+  // own dice the call waits on that card: it returns parked, past the ask
+  // that follows a fight's opening (resolveModelCall), and the run that
+  // finishes it once the dice land is not the turn loop's (held-call.ts
+  // runHeldAgain). The fight then stood open with no initiative card, the
+  // narration went out, and the table sat on "Rolling initiative" until the
+  // next turn dealt the card (issue 1109). The seats the server does not roll
+  // for get their cards now, written into the opening's answer as a fight
+  // opened in the loop writes them, and the turn waits on them.
+  const opened = getActiveEncounter(campaignId);
+  if (opened && !opened.orderReady) {
+    const opening = pendings.find((pending) => pending.carry?.call?.name === "start_encounter")?.carry?.call?.toolCallId ?? null;
+    const ask = askForInitiative(campaign, turn, heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaignId)), { toolCallId: opening });
+    const answer = opening ? turn.conversation.findLast((message) => message.role === "tool" && message.tool_call_id === opening) : undefined;
+    if (ask && answer && typeof answer.content === "string") {
+      try {
+        answer.content = JSON.stringify(withInitiativeCards(JSON.parse(answer.content) as ToolResult, ask));
+      } catch {
+        // An answer that is not an object keeps its words; the cards still go out.
+      }
+    }
+    if (ask?.waiting.length) {
+      turn.status = "awaiting_rolls";
+      saveDmTurn(turn);
+      setDmStatus(campaignId, "awaiting_rolls");
+      return;
+    }
+  }
+
   // Positions may have changed while the turn was parked (the mover's own
   // click-to-move never wakes the DM), so the map snapshot baked into the
   // turn's GAME STATE can be stale. Hand the model a fresh one.
@@ -2242,6 +2273,22 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a reply that wrote the story arc's bookkeeping instead of
   // making the calls it stands for (arcBookkeepingPrompt, issue 941).
   let arcNudged = false;
+  // The newest narration a correction held back, with its read. The model
+  // is sent to put right what that reply told with nothing behind it, and
+  // the telling that follows takes its place. When nothing follows (the call
+  // it was sent to make is refused, the calls run out, the last reply is a
+  // note to itself), the held reply is the only story the turn was told, and
+  // it goes to the table after all: a fighter's killing blow was told, taken
+  // back for the fight the same reply announced, and the table read "the GM
+  // gave no narration" (issue 1100). What it claims is still held to the
+  // turn's results by the guard below.
+  let withheld = null as { narration: string; read: PartRead | null } | null;
+  const holdBack = () => {
+    const narration = turn.narrationParts.pop();
+    if (narration) {
+      withheld = { narration, read: partReads.get(narration) ?? null };
+    }
+  };
   // What the current call streamed to the draft, and how many narration
   // parts the turn held before it. Settled once the call's text is kept or
   // withheld for good: before the next call (a correction sends the model
@@ -2920,7 +2967,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // narrate the moment.
       if (!finalCall && !arcNudged && !toolCalls.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration && ARC_MARKER.test(prose)) {
         arcNudged = true;
-        turn.narrationParts.pop();
+        holdBack();
         turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
         turn.conversation.push({ role: "user", content: arcBookkeepingPrompt(prose) });
         saveDmTurn(turn);
@@ -2938,7 +2985,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         fightAnnounced(claims)
       ) {
         encounterNudged = true;
-        turn.narrationParts.pop();
+        holdBack();
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -2960,7 +3007,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           : null;
       if (unrolled) {
         damageNudged = true;
-        turn.narrationParts.pop();
+        holdBack();
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -2981,7 +3028,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           : null;
       if (blow) {
         attackNudged = true;
-        turn.narrationParts.pop();
+        holdBack();
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -3008,7 +3055,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       const owed = unpaid && castDeclared(unpaid.spell, linesOf(context, turn, unpaid.casterId)) ? unpaid : null;
       if (owed) {
         castNudged = true;
-        turn.narrationParts.pop();
+        holdBack();
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -3062,7 +3109,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       if (card) {
         intentNudged = true;
         if (narration && turn.narrationParts[turn.narrationParts.length - 1] === narration) {
-          turn.narrationParts.pop();
+          holdBack();
         }
         turn.conversation.push({
           role: "assistant",
@@ -3090,7 +3137,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       if (stateRead && (stateRead.clashes.length || stateRead.unrecorded.length)) {
         stateNudged = true;
         if (stateRead.clashes.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration) {
-          turn.narrationParts.pop();
+          holdBack();
         }
         turn.conversation.push({
           role: "assistant",
@@ -3277,19 +3324,37 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   }
   settleDraft();
 
+  // A turn that would end with nothing told is asked once more for its
+  // narration, with its tools closed. That was done only for a last call
+  // that leaked a tool call, repeated an earlier passage or came back empty;
+  // a last reply that held words and no story (a note to itself on the final
+  // call, a hand-written roll marker, a bracketed call nothing could run)
+  // ended the turn on "The GM had no answer to that", and did so after a
+  // fight had opened and its checks were rolled (issues 1105 and 1108).
   // A private exchange (whispers only) is allowed to end without narration
-  // (finalize() writes nothing to the table for it), so an empty reply there
-  // gets no call asking for some.
+  // (finalize() writes nothing to the table for it), so a reply with no
+  // story there gets no call asking for some.
   if (
     !failed &&
     !turn.narrationParts.length &&
-    (finalCallLeaked || finalRepeated || (lastReplyEmpty && !turn.playerWhisperIds.length))
+    (finalCallLeaked || finalRepeated || !turn.playerWhisperIds.length)
   ) {
+    if (!finalCallLeaked && !finalRepeated && !lastReplyEmpty) {
+      // Named in the log: turns that ran pass_time or take_rest reached the
+      // table as "The GM had no answer" with nothing to say why (fork PR 1019).
+      console.warn(`[dm-turn] turn ${turn.id}: the loop ended after ${turn.callIndex} call(s) with words and no narration; asking once more for the narration.`);
+    }
     failed = await narrateAfterToolLeak(context, turn, finalRepeated);
-  } else if (!failed && !turn.narrationParts.length && !turn.playerWhisperIds.length) {
-    // Named in the log: turns that ran pass_time or take_rest reached the
-    // table as "The GM had no answer" with nothing to say why (fork PR 1019).
-    console.warn(`[dm-turn] turn ${turn.id}: the loop ended after ${turn.callIndex} call(s) with no narration and no rescue (last reply empty: ${lastReplyEmpty}).`);
+  }
+  // Still nothing: the reply a correction held back is the turn's story.
+  const kept = withheld as { narration: string; read: PartRead | null } | null;
+  if (!failed && !turn.narrationParts.length && kept) {
+    console.warn(`[dm-turn] turn ${turn.id}: nothing was told after the correction; the narration it held back stands.`);
+    turn.narrationParts.push(kept.narration);
+    if (kept.read) {
+      partReads.set(kept.narration, kept.read);
+    }
+    saveDmTurn(turn);
   }
   // A card no call carried out, the correction included, did not happen: it
   // goes back to its player, and the guard keeps the story from telling it
@@ -4611,16 +4676,21 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // says each sentence once (src/lib/dm/narration-tidy-logic.ts). Any
   // marker already in a part is the model's own (the rescue's and the
   // guard's rewrite included), never one of the real ones placed below.
-  const narrationParts = tableNarrationParts(
-    turn.narrationParts,
-    fightNames(campaignId, turn.createdAt),
-    campaignLanguage(campaignId),
-    listSheets(campaignId).map((sheet) => sheet.name),
+  // A paragraph pasted from one of the GM's newest passages is not told
+  // again (issues 1104 and 1109).
+  const narrationParts = withoutEarlierPassages(
+    tableNarrationParts(
+      turn.narrationParts,
+      fightNames(campaignId, turn.createdAt),
+      campaignLanguage(campaignId),
+      listSheets(campaignId).map((sheet) => sheet.name),
+    ),
+    recentGmNarrations(campaignId),
   );
   let content = narrationParts.join("\n\n").trim();
   if (!content) {
     // A refused player action says why instead of the bare fallback line.
-    content = emptyTurnLine(turn.conversation, emptyTurnPlayer(context));
+    content = emptyTurnLine(turn.conversation, emptyTurnPlayer(context), tableRolls);
   }
   if (turn.rollIds.length && narrationParts.length > 1) {
     const lastPart = narrationParts[narrationParts.length - 1];
