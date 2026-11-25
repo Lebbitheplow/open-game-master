@@ -309,12 +309,16 @@ export function redactRoll<
     breakdown: unknown;
     dc: number | null;
   },
->(roll: T): Omit<T, "total" | "success" | "breakdown" | "dc"> & {
+>(roll: T): Omit<T, "total" | "success" | "breakdown" | "dc" | "parts"> & {
   total: null;
   success: null;
   breakdown: null;
   dc: null;
+  parts: null;
   hidden: true;
 } {
-  return { ...roll, total: null, success: null, breakdown: null, dc: null, hidden: true };
+  // A roll's stored fields (src/lib/roll-parts.ts) are the rules' own and
+  // can say more than its label: a blind save's `resists` names what it
+  // was against. A seat not owed the number is not owed them either.
+  return { ...roll, total: null, success: null, breakdown: null, dc: null, parts: null, hidden: true };
 }
