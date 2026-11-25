@@ -3088,7 +3088,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           : [];
       if (itemsOwed.length) {
         itemNudged = true;
-        turn.narrationParts.pop();
+        // Held back as every correction's reply is: the model is asked to
+        // tell it again, so when nothing follows it is still the turn's story.
+        holdBack();
         turn.conversation.push({
           role: "assistant",
           ...carried,

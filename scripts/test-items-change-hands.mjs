@@ -270,6 +270,19 @@ await test("A narrator that answers nothing changed hands keeps its story, nothi
   assert.equal(notes().length, 0, "a note lasts one exchange");
 });
 
+await test("A reply held back for a thing it moved stands when the narrator then tells nothing, and the move is left as a note (issues 1097 and 1100 together).", async () => {
+  fresh();
+  const pressed = `Mira presses a sealed letter into your hands, its wax stamped with a heron.${LONG}`;
+  const gains = { kind: "item", who: jason.id, change: "gains", item: "sealed letter", quote: "presses a sealed letter into your hands" };
+  model.script([reply({ text: pressed }), ...Array.from({ length: 8 }, () => reply({ text: "" }))]);
+  model.items([[gains], [gains], [gains]]);
+  const message = await model.turn(world, "Is there word from the village?", jason.id, jason.userId);
+  assert.ok(asked().some((text) => /no tool moved this turn/.test(text)), "the reply was never sent back for the letter");
+  assert.match(message?.content ?? "", /presses a sealed letter into your hands/, `the story the turn was told is gone: ${message?.content}`);
+  assert.equal(pack("sealed letter"), 0, "nothing the narrator did not grant");
+  assert.equal(notes().length, 1, "the letter nobody granted is a note for the GM");
+});
+
 await test("A thing the world takes in prose alone is the narrator's to record: the engine never takes what no player gave.", async () => {
   fresh();
   const stolen = `A small hand darts from the crowd and your waterskin is gone before you can turn.${LONG}`;
