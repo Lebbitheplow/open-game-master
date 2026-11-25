@@ -180,7 +180,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
             ? `${enemy.displayName} is knocked out, unconscious at 0 hit points and out of the fight; the server already applied this. Narrate it falling senseless, not dying.`
             : dealt === 0
               ? `The blow lands and does no harm: its damage came to 0. Narrate a hit that fails to hurt ${enemy.displayName}.`
-              : `The server already applied this damage to ${enemy.displayName}. Do NOT call apply_damage for this hit; narrate from this state.`,
+              : `The server already applied this damage to ${enemy.displayName}. Do NOT call apply_damage for this hit; narrate from this state, in words: no hit points and no damage figure.`,
   };
 }
 
