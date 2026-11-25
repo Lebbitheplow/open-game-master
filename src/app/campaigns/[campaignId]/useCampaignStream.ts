@@ -32,6 +32,8 @@ import type { CampaignMessage } from "@/lib/db/messages";
 import type { DmBeat } from "@/lib/db/dm-beats";
 import type { Note } from "@/lib/db/notes";
 import type { StoredRoll } from "@/lib/db/rolls";
+import type { RollParts } from "@/lib/roll-parts";
+import type { CardLine } from "@/lib/roll-words";
 import type { DmWhisper, InboxWhisper } from "@/lib/db/dm-whispers";
 import { queuedIntents } from "@/lib/dm/intent-queue";
 import type { CampaignAsk } from "@/lib/db/asks";
@@ -96,11 +98,15 @@ export type PendingRoll = {
   // What the roll carries that its card reads: the before-the-roll features
   // already used on it (src/lib/dm/before-roll-logic.ts).
   // `ask`: the question before an opportunity attack (src/lib/dm/opportunity-ask-logic.ts).
-  carry?: { before?: Array<"cosmic_omen" | "restore_balance">; ask?: OpportunityAsk } | null;
+  // `line`: the card's own line under its title, in fields (src/lib/roll-words.ts cardLine).
+  carry?: { before?: Array<"cosmic_omen" | "restore_balance">; ask?: OpportunityAsk; line?: CardLine } | null;
   userId: string;
   characterId: string | null;
   kind: string;
   detail: string;
+  // The fields that make the card's words, where its site wrote no sentence
+  // (src/lib/roll-words.ts): the card reads in the reader's language.
+  parts?: RollParts | null;
   expression: string;
   advantage: string;
   dc: number | null;

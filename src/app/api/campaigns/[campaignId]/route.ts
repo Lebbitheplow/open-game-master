@@ -35,6 +35,7 @@ import { listLiveClockTurns } from "@/lib/db/clock-moves";
 import { listTurnChangeViews } from "@/lib/db/turn-rows";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import { getSheetForUser, listSheets } from "@/lib/db/sheets";
 import { speciesAtTable } from "@/lib/characters/species-rules";
 import { subclassExtrasAtTable } from "@/lib/db/subclass-extras";
@@ -174,8 +175,10 @@ export async function GET(
     // Blind and DM-only rolls are redacted or dropped here, not in the UI;
     // a player's snapshot must never carry a number they are not meant to
     // have (src/lib/dm/viewer.ts).
-    rolls: listRollsVisibleTo(campaignId, caps, ownedCharacterIds, 20),
-    pendingRolls: listOpenPendingRolls(campaignId).map(publicPendingRoll),
+    // A creature the GM keeps off the board is kept out of both, as the
+    // stream keeps it (src/lib/table-delivery.ts hiddenFromSeat).
+    rolls: hiddenFromSeat(campaignId, caps.fullMap, listRollsVisibleTo(campaignId, caps, ownedCharacterIds, 20)),
+    pendingRolls: hiddenFromSeat(campaignId, caps.fullMap, listOpenPendingRolls(campaignId).map(publicPendingRoll)),
     // A correction of someone's notes is listed without them, as their sheet
     // is (src/lib/dm/sheet-view.ts).
     // The newest fifty changes; the rounds' time-only ticks among them ride

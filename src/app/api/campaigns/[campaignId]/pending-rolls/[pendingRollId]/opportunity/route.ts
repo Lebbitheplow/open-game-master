@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
+import { forSeat, isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
 import { getPendingRoll } from "@/lib/db/dm-turns";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { landedBody } from "@/lib/dm/pending-roll-land";
@@ -62,5 +62,5 @@ export async function POST(
   // Only the player spends their slot: a swing sent on by anyone else is a plain one.
   const smite = isPlayer && parsed.data.smite === true;
   const landed = await answerOpportunityAsk(context.campaign, pending, { strike: parsed.data.strike, ...(smite ? { smite: true } : {}), ...(isPlayer && parsed.data.target ? { target: parsed.data.target } : {}), ...(!isPlayer && due ? { timedOut: true } : {}) });
-  return landed ? Response.json(landedBody(landed)) : Response.json({ error: "That opportunity attack was already decided." }, { status: 409 });
+  return landed ? Response.json(forSeat(context, landedBody(landed))) : Response.json({ error: "That opportunity attack was already decided." }, { status: 409 });
 }

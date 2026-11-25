@@ -22,8 +22,7 @@ import type { HeldMote } from "@/lib/dm/authored-mote";
 import type { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { hasElvenAccuracy, hasHalflingLuck } from "@/lib/srd/feature-effects";
-import { rollAgainst } from "@/lib/roll-labels";
-import { attackParts } from "@/lib/roll-parts";
+import { foeTarget, noted, swingParts, type WordedParts } from "@/lib/roll-parts";
 
 // The roll the attack makes and the damage it carries, built once the
 // attack is paid for and shared by both dice paths.
@@ -60,11 +59,12 @@ export function strikeToHit(plan: AttackPlan) {
     .replace(/^(\d+d20(?:k[hl]\d+)?)/, lucky ? "$1r1" : "$1");
   // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
   const toHitExpression = tranceFloored(sheet, `${toHitD20}${toHitRiderSuffix}`);
-  const detail = rollAgainst(profile.weapon, enemy.displayName);
-  // What the attack is made with, as a field: the weapon a fight's guess at
-  // the hand in use reads back (src/lib/roll-parts.ts rollWeaponRow).
-  const parts = attackParts({ name: profile.weapon, base: profile.base, spell: plan.kind === "spell" });
-  return { toHitExpression, detail, parts };
+  // What the attack is, in fields: what it is made with and whom it is
+  // against. Its words are made from them (src/lib/roll-words.ts), and the
+  // weapon is what a fight's guess at the hand in use reads back
+  // (src/lib/roll-parts.ts rollWeaponRow).
+  const parts = swingParts(profile, foeTarget(enemy), { spell: plan.kind === "spell" });
+  return { toHitExpression, parts };
 }
 
 // The server's throw of the to-hit roll, tagged as the hero's attack.
@@ -119,7 +119,6 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "attack",
-    detail: strike.detail,
     parts: strike.parts,
     advantage: plan.advantage,
     result: hitOutcome,
@@ -150,7 +149,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
   if (!judged.hit) {
     const { graze } = missSwing(scene, record, judged, hitOutcome, hitRoll.visibility, notes);
     // Acid Arrow: a miss still deals half the damage.
-    const grazed = graze ? serverBlow(scene, record, graze, hitOutcome, hitRoll.visibility, rollAgainst(`${plan.profile.weapon} (half on a miss)`, enemy.displayName), notes) : null;
+    const grazed = graze ? serverBlow(scene, record, graze, hitOutcome, hitRoll.visibility, noted(strike.parts, "half_on_miss"), notes) : null;
     return {
       ...base(),
       hit: false,
@@ -165,7 +164,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
   if ("done" in prepared) {
     return { ...base(), hit: true, ...prepared.done };
   }
-  const landed = serverBlow(scene, record, prepared.ask, hitOutcome, hitRoll.visibility, strike.detail, notes);
+  const landed = serverBlow(scene, record, prepared.ask, hitOutcome, hitRoll.visibility, strike.parts, notes);
   const crit = prepared.ask.crit;
   const dealt = Number(landed.damage ?? 0);
   return {
@@ -190,7 +189,8 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
 }
 
 // The server's damage dice for a hit or a graze: thrown, shown, and landed.
-export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
+// `parts` is what the damage roll says of itself, which makes its words.
+export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, parts: WordedParts, notes: string[]): Record<string, unknown> {
   const { campaign, turn, sheet } = scene;
   const outcome = throwDamage(ask, sheet.name, notes);
   const damageRoll = recordRoll({
@@ -198,7 +198,7 @@ export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageA
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "damage",
-    detail,
+    parts,
     result: outcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
     turn,

@@ -2,7 +2,8 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import type { ChatMessage } from "@/lib/model-client";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { RollKind, RollVisibility } from "@/lib/db/rolls";
-import type { RollParts } from "@/lib/roll-parts";
+import type { RollParts, RollSaid } from "@/lib/roll-parts";
+import { cardReason, makesWords, rollSentence, wordParts, type CardLine } from "@/lib/roll-words";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
@@ -514,6 +515,10 @@ export type PendingCarry = {
   // The question a walk's call stopped on before a character's opportunity
   // attack, and its answer once given (src/lib/dm/opportunity-ask.ts).
   ask?: OpportunityAsk;
+  // The card's own line under its title, said in fields where its family's
+  // words are made from them (src/lib/roll-words.ts cardLine): the card
+  // reads it in the player's language, and `reason` keeps its English.
+  line?: CardLine;
 };
 
 // A roll a held call already has, for its next run: the player's, as it
@@ -829,18 +834,25 @@ export function foretoldPromised(turnId: string, characterId: string): number[] 
     .map((entry) => entry.watch?.face as number);
 }
 
-export function createPendingRoll(input: {
+export function createPendingRoll(input: RollSaid<RollParts> & {
   campaignId: string;
   turnId: string;
   toolCallId: string | null;
   userId: string;
   characterId: string | null;
   kind: RollKind;
-  detail: string;
+  // The card's words are `detail`, from a site that writes its own sentence,
+  // or `parts` that make them (src/lib/roll-words.ts): the sentence kept
+  // with the card is then built from the parts, as a roll's is at the door.
   expression: string;
   advantage: Advantage;
   dc: number | null;
-  reason: string;
+  // What the card says under its title: the reason its site wrote, or a
+  // `line` in fields beside parts that make the card's words, from which
+  // the reason kept with the card is built. A card handed neither carries
+  // its words again.
+  reason?: string;
+  line?: CardLine;
   targetEnemyId?: string | null;
   carry?: PendingCarry | null;
   // An AI GM's own request_roll deals this card: written on what the card
@@ -853,11 +865,11 @@ export function createPendingRoll(input: {
   parkedFor?: ParkReason;
   thrown?: ThrownRoll;
   visibility?: RollVisibility;
-  parts?: RollParts;
 }): PendingRoll {
   const id = crypto.randomUUID();
   ensureParkColumn();
-  const carry: PendingCarry | null = input.asked ? { ...(input.carry ?? {}), asked: true } : (input.carry ?? null);
+  const line = input.line && makesWords(input.parts) ? input.line : null;
+  const carry: PendingCarry | null = input.asked || line ? { ...(input.carry ?? {}), ...(input.asked ? { asked: true as const } : {}), ...(line ? { line } : {}) } : (input.carry ?? null);
   const preferences = dicePreferencesOf(input.campaignId, input.userId);
   // A roll parked for somebody with neither preference (a test, a caller
   // that parks by its own rule) is a held roll: the server throws it.
@@ -882,11 +894,11 @@ export function createPendingRoll(input: {
       input.userId,
       input.characterId,
       input.kind,
-      input.detail,
+      rollSentence(input),
       input.expression,
       input.advantage,
       input.dc,
-      input.reason,
+      cardReason(input),
       input.targetEnemyId ?? null,
       carry && Object.keys(carry).length ? JSON.stringify(carry) : null,
       input.attack ? JSON.stringify(input.attack) : null,
@@ -905,12 +917,18 @@ export function createPendingRoll(input: {
 
 // Client-facing projection: the adjudication context (enemy AC) and the
 // model-facing combat note never ride events or snapshots to players.
-export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "attack" | "combatNote" | "parts"> {
+export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "attack" | "combatNote" | "parts"> & { parts?: RollParts } {
   const rest: Partial<PendingRoll> = { ...pending };
   delete rest.attack;
   delete rest.combatNote;
-  // The engine's own reading of the roll: the card says the same in words.
+  // The engine's own reading of the roll stays here: the card says the same
+  // in words. Where the parts make those words, the fields that do ride the
+  // card, so it reads in the player's language (src/lib/roll-words.ts).
   delete rest.parts;
+  const words = wordParts(pending.parts);
+  if (words) {
+    rest.parts = words;
+  }
   // A stop's held calls are the model's own words, and may name what the table
   // has not seen: the card reads its line and its time.
   // The creatures to pick from are ones the table can see (foresight.ts
@@ -924,7 +942,7 @@ export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "atta
       ...(choices?.length ? { choices: choices.map((choice) => ({ name: choice.name, when: shiftWhen(choice) })) } : {}),
     } as unknown as WatchStop;
   }
-  return rest as Omit<PendingRoll, "attack" | "combatNote">;
+  return rest as Omit<PendingRoll, "attack" | "combatNote" | "parts"> & { parts?: RollParts };
 }
 
 export function getPendingRoll(id: string): PendingRoll | null {

@@ -21,6 +21,8 @@ import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import type { BlowSource, WeaponMaterial } from "@/lib/dm/damage-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { foeTarget, swingParts, type RollRow, type WordedParts } from "@/lib/roll-parts";
+import type { RollNoteId } from "@/lib/roll-words";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
@@ -82,6 +84,11 @@ export type AttackRecord = PendingAttack & {
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.
   base?: string;
+  // The content row the attack's name is, where `base` does not say it
+  // (attack-logic.ts AttackProfile.named): what its rolls' words are
+  // translated by. A record parked by a build from before it has none, and
+  // the damage it lands names a spell or an unarmed strike as written.
+  named?: RollRow;
   // The magic ammunition line the shot spent, as the fight's tally names it:
   // a hit is counted there (ammo-tally.ts tallyHit).
   magicAmmo?: string;
@@ -215,6 +222,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(profile.unarmed ? { unarmed: true } : {}),
     ...(profile.improvised ? { improvised: true } : {}),
     ...(profile.base ? { base: profile.base } : {}),
+    ...(profile.named ? { named: profile.named } : {}),
     ...(plan.magicAmmo ? { magicAmmo: plan.magicAmmo } : {}),
     ...(plan.special ? { special: plan.special } : {}),
     ...(profile.gearWeapon ? { gearWeapon: profile.gearWeapon } : {}),
@@ -281,4 +289,11 @@ export function recordTargetAc(campaignId: string, record: Pick<AttackRecord, "t
   const { plainAc } = record;
   const foe = record.targetEnemyId ? getFoe(record.targetEnemyId) : null;
   return plainAc === undefined || !foe ? record.targetAc : record.targetAc - plainAc + enemyAcWithEffects(campaignId, foe);
+}
+
+// What a roll of this attack says of itself, from its record: the damage a
+// hit asks for, or the half a miss still deals. Built from the record and
+// not from the to-hit card, which an older build dealt without these fields.
+export function blowParts(record: Pick<AttackRecord, "weapon" | "base" | "kind" | "named">, enemy: { id: string; displayName: string; slug?: string }, note?: RollNoteId): WordedParts {
+  return swingParts(record, foeTarget(enemy), { spell: record.kind === "spell", note });
 }

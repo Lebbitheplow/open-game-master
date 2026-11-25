@@ -5,7 +5,7 @@ import { useEffect, useId, useState } from "react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
-import { rollKindLabel } from "@/lib/roll-labels";
+import { pendingReason, rollKindLabel } from "@/lib/roll-labels";
 import { AFTER_ROLL_SECONDS } from "@/lib/dm/after-roll-logic";
 import { useT } from "@/lib/locale";
 import { textKey } from "@/lib/language/text-logic";
@@ -102,6 +102,9 @@ export function AfterRollCard({
   steersStory: boolean;
 }) {
   const t = useT();
+  // This card has no title that says what the roll is: its reason does, in
+  // the reader's language where the roll's parts make its words.
+  const reason = pendingReason(t, pending, false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // A card already open when the wait runs long has to notice by itself: the
@@ -190,7 +193,7 @@ export function AfterRollCard({
           {character?.name ?? t("An ally")} {t("rolled")} <strong>{thrown.outcome.total}</strong>
           {thrown.outcome.natural !== undefined ? ` ${t("(the die shows {value})", { value: thrown.outcome.natural })}` : ""} {standing}.
         </p>
-        {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
+        {reason ? <p className="check-dim mt-0.5 text-xs">{reason}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={helpLabel}>
           {myShifts.map((option) => {
             const text = afterRollText(option, t);
@@ -274,7 +277,7 @@ export function AfterRollCard({
                 ? t("Before the game says what happens, you can still change it.")
                 : t("Before the game says what happens, someone may still help.")}
       </p>
-      {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
+      {reason ? <p className="check-dim mt-0.5 text-xs">{reason}</p> : null}
       {waitingOn.length ? (
         <p className="check-dim mt-0.5 text-xs" role="status">
           {onlyShifts

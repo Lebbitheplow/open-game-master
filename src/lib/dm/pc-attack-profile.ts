@@ -162,8 +162,12 @@ export function buildAttackProfile(
     // A ranged one reaches its own range and no farther: a spell attack has
     // no long range (SRD 5.1, Range), so Crown of Stars' 120 feet is all of it.
     const rangeTiles = Math.max(1, Math.round((granted.attack.rangeFeet ?? 60) / 5));
+    // An attack that strikes under its spell's own name (Spiritual Weapon)
+    // is that spell's row; one a feature grants is no row.
+    const grantedRow = spellFactsFor(granted.attack.name, sheetSpellAuthors(sheet))?.name;
     profile = {
       weapon: granted.attack.name,
+      ...(grantedRow ? { named: { kind: "spell" as const, name: grantedRow } } : {}),
       toHit: (grantedSpell ? spellAttackFor(sheet, grantedSpell) : null) ?? derived.spellAttack ?? 0,
       damageExpression:
         abilityMod > 0 ? `${dice}+${abilityMod}` : abilityMod < 0 ? `${dice}${abilityMod}` : dice,
@@ -292,7 +296,7 @@ export function buildAttackProfile(
     // creature beside the caster, and the rules for ranged attacks do not
     // apply to it.
     const melee = isMeleeSpellAttack(spellEngineName(spellName, sheetSpellAuthors(sheet)), spellFactsFor(spellName, sheetSpellAuthors(sheet))?.range.kind);
-    profile = melee ? { ...spellProfile, ranged: false, reachTiles: 1, rangeTiles: 1 } : spellProfile;
+    profile = { ...(melee ? { ...spellProfile, ranged: false, reachTiles: 1, rangeTiles: 1 } : spellProfile), ...(facts ? { named: { kind: "spell" as const, name: facts.name } } : {}) };
     kind = "spell";
     // Option riders on named attack spells (Agonizing Blast: +CHA per
     // Eldritch Blast beam).

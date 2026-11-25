@@ -338,6 +338,11 @@ await test("D17: a seat on real dice with Great Weapon Fighting is told on the o
   world.patch(kara.id, { equipment: own.equipment, features: own.features });
   assert.ok(damage, `the hit asked for no damage dice: ${JSON.stringify(rolled.json)}`);
   assert.match(String(damage.reason), /reroll any die of 2 or less once \(Great Weapon Fighting\)/, `the damage card says: ${damage.reason}`);
+  // The whole line, as the site wrote it by hand before, and the same said
+  // in fields, so the card reads it in the player's language
+  // (src/lib/roll-words.ts cardLine).
+  assert.equal(damage.reason, `Greatsword damage against ${goblin.displayName} (opportunity attack). Before you enter your dice: reroll any die of 2 or less once (Great Weapon Fighting).`);
+  assert.deepEqual(damage.carry?.line, { steps: [{ step: "reroll_low", below: 2 }] });
 });
 
 await test("A screen that knows nothing of the card answers it as a roll: that is a Strike.", async () => {

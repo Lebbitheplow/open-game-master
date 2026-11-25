@@ -11036,7 +11036,20 @@
     "Mental assault: mind flayers, some enchantments, telepathic damage.": "Assaut mental : flagelleurs mentaux, certains enchantements, dégâts télépathiques.",
     "Holy light and searing brilliance: celestials, clerics' spells, the sun.": "Lumière sacrée et éclat brûlant : célestes, sorts de clercs, soleil.",
     "Cutting: swords, axes, claws.": "Tranchant : épées, haches, griffes.",
-    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant."
+    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant.",
+    "opportunity attack": "attaque d’opportunité",
+    "half on a miss": "moitié sur un raté",
+    "someone unseen": "quelqu’un hors de vue",
+    "an object": "un objet",
+    "{used} attack against {target}": "{used} : attaque contre {target}",
+    "{used} damage against {target}": "{used} : dégâts contre {target}",
+    "{used} half damage against {target}": "{used} : demi-dégâts contre {target}",
+    "Before you enter your dice: {steps}.": "Avant de saisir tes dés : {steps}.",
+    "reroll any die of {below} or less once (Great Weapon Fighting)": "relance une fois tout dé de {below} ou moins (Great Weapon Fighting)",
+    "roll the damage a second time and keep the better total (Brutal Attack)": "lance les dégâts une seconde fois et garde le meilleur total (Brutal Attack)",
+    "roll the weapon's dice a second time and keep the better total (Savage Attacker)": "lance les dés de l’arme une seconde fois et garde le meilleur total (Savage Attacker)",
+    "reroll the lowest damage die once and keep the new roll (Piercer)": "relance une fois le dé de dégâts le plus bas et garde le nouveau résultat (Piercer)",
+    "reroll up to {dice} of the damage dice and keep the new rolls (Empowered Spell)": "relance jusqu’à {dice} des dés de dégâts et garde les nouveaux résultats (Empowered Spell)"
   },
   "contexts": {
     "Arcane": {
@@ -11228,7 +11241,17 @@
       "builder.levels.none": "Aucun"
     },
     "on": {
-      "admin.voice.state.on": "allumé"
+      "admin.voice.state.on": "allumé",
+      "roll.aim": "sur"
+    },
+    "vs": {
+      "roll.aim": "c/"
+    },
+    "physical": {
+      "roll.dice": "dés physiques"
+    },
+    "then": {
+      "roll.steps": "puis"
     },
     "Hidden": {
       "quests.status.hidden": "Masquée"

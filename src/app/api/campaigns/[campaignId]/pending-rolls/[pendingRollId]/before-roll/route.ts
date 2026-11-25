@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isErrorResponse, requireMember } from "@/lib/campaign-api";
+import { forSeat, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { getPendingRoll, publicPendingRoll, setPendingAdvantage, setPendingCarry, setPendingCombatNote } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -84,5 +84,5 @@ export async function POST(
   const line = use === "restore_balance" ? `${sheet.name} used Restore Balance: the roll is made with one d20.` : `${sheet.name} used Cosmic Omen (Weal): 1d${OMEN_SIDES} rides the roll.`;
   setPendingCombatNote(pending.id, pending.combatNote ? `${pending.combatNote}; ${line}` : line);
   publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(updated) });
-  return Response.json({ pendingRoll: publicPendingRoll(updated) });
+  return Response.json(forSeat(context, { pendingRoll: publicPendingRoll(updated) }));
 }

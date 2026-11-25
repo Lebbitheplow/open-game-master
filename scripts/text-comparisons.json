@@ -14,18 +14,21 @@
     "lib/db/core.ts"
   ],
   "rollSentences": {
-    "lib/db/rolls.ts": [2,"stored: the sentence is written to its column and read back from it"],
+    "lib/db/rolls.ts": [1,"stored: the sentence is read back from its column; the one written there is the site's own or the one built from the roll's parts (src/lib/roll-words.ts rollSentence), and a roll with neither is refused"],
     "lib/dm/ask.ts": [1,"quoted: a roll among the evidence Ask hands the model"],
     "lib/dm/beats.ts": [1,"quoted: the line a roll leaves among the story's beats"],
     "lib/dm/genre-gh-horror-plays.ts": [2,"quoted: The Final Chapter names the check it rolls again, in the reroll's own words and in its answer"],
     "lib/dm/mt-srd-rogue.ts": [2,"quoted: Stroke of Luck's answer names the check it turns"],
     "lib/dm/persons-record.ts": [1,"copied: onto the line a person's turn posts for its rolls"],
     "lib/dm/prompt.ts": [2,"quoted: the recent rolls in GAME STATE"],
-    "lib/dm/roll-record.ts": [1,"stored: the door adds its mark for dice rolled at the table to the words it stores"],
-    "lib/roll-labels.ts": [4,"shown: the roll card's label, the toast and the chronicle's line, put into the reader's language for display"],
+    "lib/roll-labels.ts": [1,"shown: the sentence of a roll whose site still writes it, or stored before its parts, put into the reader's language for the roll card's label, the toast and the chronicle's line; a roll whose parts make its words is shown by them alone"],
     "lib/roll-parts.ts": [7,"the one reader: a roll that has no parts is read by the sentence the engine wrote for it"]
   },
   "sites": {
+    "lib/hidden-names-logic.ts#str-eq": [["key",3,"the field that lists whom a roll is against and a target's kind (src/lib/roll-parts.ts RollTarget), the engine's own vocabulary: an object's name is a person's words and keeps its place, a creature kept from the table is replaced whole"]],
+    "lib/roll-words.ts#str-eq": [["key",3,"a roll's kind, among the kinds a waiting card's line has a sentence for: the engine's own ids, never words a person wrote"]],
+    "lib/roll-words.ts#str-list": [["key",1,"the names of the fields a roll's words are made from (src/lib/roll-parts.ts RollParts), which a waiting card is sent and no others"]],
+    "lib/roll-words.ts#str-key": [["key",2,"the engine's own roll notes and dice steps by their ids, a card line's sentence by the roll's kind, and the names tables by the kind of thing a roll used: a roll's parts store the id and the kind, never the words"]],
     "lib/roll-parts.ts#\\b": [["english-source",3,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],
     "lib/roll-parts.ts#RegExp i": [["english-source",1,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],
     "lib/roll-parts.ts#toLowerCase": [["english-source",2,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],

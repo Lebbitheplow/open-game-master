@@ -24,6 +24,7 @@ import { rageApplies, type WeaponMaterial } from "@/lib/dm/damage-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import type { SheetDerived } from "@/lib/srd";
 import { textKey } from "@/lib/language/text-logic";
+import type { RollRow } from "@/lib/roll-parts";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { gearWeaponFor, type GearWeapon } from "@/lib/srd/gear-weapons";
 
@@ -31,6 +32,10 @@ import { gearWeaponFor, type GearWeapon } from "@/lib/srd/gear-weapons";
 // what their to-hit and damage bonuses are, and whether a roll beats an AC.
 // Database-free like encounter-logic.ts so scripts/test-attack-logic.mjs can
 // exercise every branch.
+
+// The engine's own name for a strike with no weapon, and the row the names
+// tables carry it under.
+const UNARMED_STRIKE = "Unarmed strike";
 
 export type ResolvedWeapon = {
   // What the players see on the dice card: the carried item's name when one
@@ -64,6 +69,13 @@ export type AttackProfile = {
   // never the name it is carried under. Absent for an unarmed strike or an
   // improvised weapon.
   base?: string;
+  // The content row this attack's name is, where the engine knows one that
+  // `base` does not say: the spell a spell attack is, the unarmed strike, a
+  // carried weapon swung as an improvised one (its `base` goes with the
+  // profile it no longer has). What a roll's words put the name into
+  // another language by (src/lib/roll-parts.ts attackParts). Absent for a
+  // name only a person or the model gave, which is shown as written.
+  named?: RollRow;
   // The wielded item's material, for the resistances that name it
   // (damage-logic.ts weaponMaterial).
   material?: WeaponMaterial;
@@ -161,7 +173,7 @@ export function resolveAttackWeapon(
   const arg = (weaponArg ?? "").trim();
   if (arg) {
     if (textKey(arg) === "unarmed strike") {
-      return { displayName: "Unarmed strike", srd: null, unarmed: true, carried: true };
+      return { displayName: UNARMED_STRIKE, srd: null, unarmed: true, carried: true };
     }
     // Sent with a bonus its weapon lacks ("+3 Longsword" of a plain one),
     // the attack is the weapon carried, at that weapon's own bonus; sent as
@@ -240,7 +252,7 @@ export function resolveAttackWeapon(
       ...(best.gear ? { gear: best.gear } : {}),
     };
   }
-  return { displayName: "Unarmed strike", srd: null, unarmed: true, carried: true };
+  return { displayName: UNARMED_STRIKE, srd: null, unarmed: true, carried: true };
 }
 
 // SRD 5.1 Weapons, Improvised Weapons: "If a character uses a ranged weapon
@@ -513,6 +525,10 @@ export function weaponAttackProfile(
       sneakEligible: false,
       heavy: false,
       ...(resolved.unarmed ? { unarmed: true } : {}),
+      // The row the name is, for the roll's words: the engine's own name for
+      // an unarmed strike, the weapon an improvised one still is. An object
+      // picked up by a name of the model's has none.
+      ...(resolved.unarmed ? { named: { kind: "weapon" as const, name: UNARMED_STRIKE } } : resolved.improvisedFrom && textKey(resolved.displayName) === textKey(resolved.improvisedFrom.name) ? { named: { kind: "weapon" as const, name: resolved.improvisedFrom.name } } : {}),
       ...(martial ? { martialArts: true } : {}),
       // Junkyard Strikes: the improvised weapon "counts as magical".
       ...(fist.attack > 0 || (!resolved.unarmed && strike.improvisedMagical) ? { magicWeapon: true } : {}),
