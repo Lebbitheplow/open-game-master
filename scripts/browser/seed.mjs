@@ -3114,7 +3114,11 @@ const opportunityTables = {};
 // On `ride` it is the wolf's turn: the GM walks the pair away and the lead's
 // card offers the goblin or the wolf. On `aim` it is the fighter's turn: she
 // taps the pair's token to attack and is asked which of the two
-// (scripts/browser/scenarios/147-rider-two-names.mjs).
+// (scripts/browser/scenarios/147-rider-two-names.mjs). On `cast` the lead's
+// hero is a wizard whose War Caster casts Fire Bolt as her opportunity attack,
+// and the card offers the spell at either of the two. `dial` is a table the
+// lead runs herself: her own dial on the pair's token asks the same two names
+// (scripts/browser/scenarios/148-mounted-pair-small-gaps.mjs).
 const RIDEBY_TITLE = "Rideby Table";
 const ridebyTables = {};
 {
@@ -3124,8 +3128,9 @@ const ridebyTables = {};
   const encounterRows = await import("../../src/lib/db/encounters.ts");
   for (const viewport of ["desktop", "phone"]) {
     ridebyTables[viewport] = {};
-    for (const part of ["ride", "aim"]) {
-      const table = campaigns.createCampaign(player.id, {
+    for (const part of ["ride", "aim", "cast", "dial"]) {
+      const runs = part === "dial" ? world.owner : player;
+      const table = campaigns.createCampaign(runs.id, {
         title: `${RIDEBY_TITLE} (${viewport}, ${part})`,
         description: "A goblin on a wolf, close enough to touch.",
         theme: "high-fantasy",
@@ -3134,19 +3139,28 @@ const ridebyTables = {};
         difficulty: "normal",
         gameSettings: { ttsEnabled: false, dmMode: "human" },
       });
-      const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+      const seated = part === "dial" ? {} : campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
       if ("error" in seated) {
         throw new Error(`could not seat the lead at the rideby table: ${seated.error}`);
       }
       campaigns.setCampaignStatus(table.id, "active");
-      const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
+      const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput(part === "cast" ? {
+        name: "Wren Ashby", class: "wizard", level: 5, abilities: { str: 10, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+        feats: ["War Caster"],
+        spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, prepared: ["Magic Missile"], known: [], cantrips: ["Fire Bolt"], spellbook: ["Magic Missile"] },
+        equipment: [{ name: "Quarterstaff", qty: 1, equipped: true }],
+      } : {
         name: "Wren Ashby", class: "fighter", level: 5, abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
         proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
         equipment: [{ name: "Longsword", qty: 1, equipped: true }],
       }));
+      if (part === "cast") {
+        // As use_resource "War Caster" with variant "Fire Bolt" leaves it.
+        sheets.patchSheet(hero.id, { conditions: ["opportunity spell (Fire Bolt)"] });
+      }
       clearDice();
       dice(1, 1, 18);
-      const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: runs.id }, {
         name: "start_encounter",
         args: { enemies: [{ monster: "goblin", mount: "wolf" }] },
       });
@@ -3171,8 +3185,9 @@ const ridebyTables = {};
       }
       // Whose turn it is: the wolf's for the ride past, the fighter's to aim.
       const live = encounterRows.getActiveEncounter(table.id);
-      const turnIndex = live.order.findIndex((slot) => (part === "ride" ? slot.enemyId === mount.id : slot.characterId === hero.id));
-      encounterRows.saveEncounter({ ...live, turnIndex, turnBudget: null, reactionsUsed: [], legendary: { ...live.legendary, due: part === "ride" ? [mount.id] : [], acted: null } });
+      const rides = part === "ride" || part === "cast";
+      const turnIndex = live.order.findIndex((slot) => (rides ? slot.enemyId === mount.id : slot.characterId === hero.id));
+      encounterRows.saveEncounter({ ...live, turnIndex, turnBudget: null, reactionsUsed: [], legendary: { ...live.legendary, due: rides ? [mount.id] : [], acted: null } });
       ridebyTables[viewport][part] = { id: table.id, hero: hero.id, rider: rider.id, riderName: rider.displayName, mount: mount.id, mountName: mount.displayName };
     }
   }

@@ -59,7 +59,7 @@ import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack
 import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, strikeCards, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
+import { opportunitySpellNow, warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
@@ -711,13 +711,34 @@ export function resolvePcOpportunityWalk(
         stopStep = reach.step;
       }
     };
+    const walker = shownName(encounter.id, enemy.id, enemy.displayName);
+    // A mount with a rider on its back: "the attacker can target you or the
+    // mount" (SRD 5.1, Mounted Combat). The card offers both by name (issue
+    // 1055, ruling 5), and a swing nobody is asked about is at the mount, the
+    // creature whose move provoked it.
+    const carried = moverKind === "enemy" ? riderOf(listEnemies(encounter.id), enemyId) : null;
+    const rider = carried && carried.status === "alive" && !hiddenNow(encounter.id).has(carried.id) ? carried : null;
+    const pair = rider ? { rider: { id: rider.id, name: shownName(encounter.id, rider.id, rider.displayName) } } : {};
+    // War Caster's spell at a pair is aimed at one of the two as well, so the
+    // card asks before the cast; at one creature it is cast with nobody
+    // asked, as it was.
+    const spell = rider ? opportunitySpellNow(encounter, sheet) : null;
+    const aimed = spell
+      ? opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", spell, trigger: reach.trigger, ...pair })
+      : null;
+    if (aimed && !aimed.strike) {
+      notes.push(letGoNote(sheet.name, walker));
+      continue;
+    }
+    const castAt = rider && aimed?.targetId === rider.id ? rider : enemy;
     // War Caster: the spell they named is cast in the swing's place, null
     // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
-    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, characterFootprint(sheet.id), moverFootprint), reactionKey });
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy: castAt, at: leavesReachAt(steps, reach.token, reach.reachTiles, characterFootprint(sheet.id), moverFootprint), reactionKey });
     if (cast) {
-      notes.push(cast.note);
+      notes.push(aimed?.timedOut ? timedOutNote(sheet.name, cast.note) : cast.note);
       stops();
-      if (cast.dropped) {
+      // A rider the spell dropped leaves its mount walking on.
+      if (cast.dropped && castAt === enemy) {
         break;
       }
       continue;
@@ -725,23 +746,18 @@ export function resolvePcOpportunityWalk(
     // The swing is theirs to take or let go (opportunity-ask.ts): a player at
     // the table is asked here, after every check that could rule it out, so
     // the card never asks about a swing that could not be made. Let go, it
-    // spends nothing and the walk goes on.
-    const walker = shownName(encounter.id, enemy.id, enemy.displayName);
+    // spends nothing and the walk goes on. A player already asked where the
+    // spell should go, whose spell could not be cast after all, swings at the
+    // one they chose.
     // A paladin's card offers Divine Smite too (opportunity-strike.ts).
     const smiteSlot = natural ? null : opportunitySmiteSlot(sheet);
-    // A mount with a rider on its back: "the attacker can target you or the
-    // mount" (SRD 5.1, Mounted Combat). The card offers both by name (issue
-    // 1055, ruling 5), and a swing nobody is asked about is at the mount, the
-    // creature whose move provoked it.
-    const carried = moverKind === "enemy" ? riderOf(listEnemies(encounter.id), enemyId) : null;
-    const rider = carried && carried.status === "alive" && !hiddenNow(encounter.id).has(carried.id) ? carried : null;
-    const answer = opportunityAnswer(campaign, sheet, {
+    const answer = aimed ?? opportunityAnswer(campaign, sheet, {
       walkerId: enemyId,
       walker,
       weapon: natural?.weapon ?? resolved?.displayName ?? "",
       trigger: reach.trigger,
       ...(smiteSlot ? { smiteSlot } : {}),
-      ...(rider ? { rider: { id: rider.id, name: shownName(encounter.id, rider.id, rider.displayName) } } : {}),
+      ...pair,
     });
     const struck = rider && answer?.targetId === rider.id ? rider : enemy;
     if (answer && !answer.strike) {

@@ -23,7 +23,9 @@ const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-
 //
 // A mount walking out of reach with a rider on its back (issue 1055, ruling
 // 5): "the attacker can target you or the mount". The card then has no plain
-// Strike: it offers the two by face and name, and the player picks one.
+// Strike: it offers the two by face and name, and the player picks one. With
+// War Caster's spell named for their opportunity attacks the two buttons cast
+// it ("Cast at Goblin"), and no smite is offered: no weapon swings.
 export function OpportunityCard({
   campaignId,
   pending,
@@ -123,13 +125,13 @@ export function OpportunityCard({
               disabled={busy}
               aria-describedby={left !== null ? clockId : undefined}
               onClick={() => void answer(true, false, foe.id || undefined)}
-              title={`Swing your ${ask.weapon} at ${foe.name}. Your reaction is spent until your next turn.`}
+              title={ask.spell ? `Cast ${ask.spell} at ${foe.name}. Your reaction is spent until your next turn.` : `Swing your ${ask.weapon} at ${foe.name}. Your reaction is spent until your next turn.`}
               className={`${STRIKE} ${foe.id ? "gap-1.5 pl-1" : ""}`}
             >
               {foe.id ? <TokenFace candidates={faceOf?.(foe.id) ?? []} name={foe.name} enemy className="size-8 rounded-full border border-amber-400/60" /> : null}
-              {foe.id ? `Strike ${foe.name}` : "Strike"}
+              {foe.id ? (ask.spell ? `Cast at ${foe.name}` : `Strike ${foe.name}`) : "Strike"}
             </button>
-            {smiteOffered && ask.smiteSlot ? (
+            {smiteOffered && ask.smiteSlot && !ask.spell ? (
               <button
                 type="button"
                 disabled={busy}

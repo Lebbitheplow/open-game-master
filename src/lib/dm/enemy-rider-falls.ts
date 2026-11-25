@@ -124,6 +124,26 @@ export function shovedFromSaddle(campaign: Pick<Campaign, "id">, rider: Encounte
   return { at: landed };
 }
 
+// A grappler drags the rider it holds (drag-move.ts): out of the saddle as a
+// push that named it takes it, but a drag knocks nobody prone, so it stands
+// where it is set down, still held. The mount stays where the pair stood, on
+// a token of its own, and no save is asked: it was not moved.
+export function draggedFromSaddle(campaign: Pick<Campaign, "id">, rider: EncounterEnemy, at: XY, by: string): { at: XY } | null {
+  const mount = mountOf(listEnemies(rider.encounterId), rider);
+  if (!mount || partPair(campaign, rider, false, at) === null) {
+    return null;
+  }
+  tableNote(campaign, rider, `${by} drags ${rider.displayName} out of the saddle; ${mount.displayName} stays.`);
+  const map = getBattleMapForEncounter(rider.encounterId);
+  const token = map ? listTokens(map.id).find((entry) => entry.refId === rider.id) : null;
+  const landed = token ? { x: token.x, y: token.y } : at;
+  tell(
+    campaign.id,
+    `${by} drags ${rider.displayName} out of the saddle: it stands${token ? ` at (${landed.x},${landed.y})` : ""}, still grappled, no longer mounted, with no save to stay on, as the grapple holds the rider and the mount was not moved. ${mount.displayName} stays where the pair stood, riderless, on a token of its own, and keeps its turn.`,
+  );
+  return { at: landed };
+}
+
 // A push, a pull or a forced move that names one enemy and ends at `at`.
 // The rider goes alone, out of the saddle; a mount goes with its rider on it,
 // who is asked the save as the call finishes; anyone else is only moved.

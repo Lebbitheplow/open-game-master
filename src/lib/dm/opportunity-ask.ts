@@ -37,7 +37,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 export function opportunityAnswer(
   campaign: Campaign,
   sheet: CharacterSheet,
-  walk: { walkerId: string; walker: string; weapon: string; trigger: OpportunityTrigger; smiteSlot?: number; rider?: { id: string; name: string } },
+  walk: { walkerId: string; walker: string; weapon: string; spell?: string; trigger: OpportunityTrigger; smiteSlot?: number; rider?: { id: string; name: string } },
 ): OpportunityChoice | null {
   if (!inHeldCall() || !stopReaches(campaign.id, sheet)) {
     return null;
