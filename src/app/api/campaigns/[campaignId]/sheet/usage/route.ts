@@ -16,7 +16,7 @@ import { recordManualTicks } from "@/lib/dm/manual-ticks";
 import { attunementRefusal, gearChanges, gearPatch, usageLowers, usageSpendsHitDice } from "@/lib/dm/usage-rules";
 import { acBreakdownFor } from "@/lib/srd";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
+import { gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, handSwaps, rehandLine, spendInteraction, type HandsFull } from "@/lib/dm/gear-hands";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { advanceClock } from "@/lib/db/clock";
@@ -192,11 +192,26 @@ export async function POST(
   // guessed weapons in its way away with it, as the Hand and handle_item do
   // (gear-hands.ts guessedRehand).
   const gearAsked = Object.entries(parsed.data.gear ?? {});
-  const guessing = guessStands(sheet.equipment) && gearAsked.length === 1;
+  const guess = guessStands(sheet.equipment);
+  const guessing = guess && gearAsked.length === 1;
   const [asked, askedChange] = gearAsked[0] ?? [];
   const askedRow = guessing ? sheet.equipment.find((item) => item.name === asked) : undefined;
-  const rehand = askedRow && askedChange?.equipped === true ? guessedRehand(sheet.equipment, askedRow) : null;
-  const freeByGuess = Boolean(askedRow && gearKindOf(askedRow) === "weapon" && (rehand || askedChange?.equipped === false));
+  const offered = askedRow && askedChange?.equipped === true ? guessedRehand(sheet.equipment, askedRow) : null;
+  // The sheet puts weapons away unasked only where there was nothing to
+  // choose (issue 1105): an archer's sword for her bow, both blades for a
+  // greatsword. A dagger dragged onto a scimitar and a shortsword put the
+  // shortsword away because it came last in the pack; with more than one
+  // weapon that would do, the hands-full check below asks which instead.
+  const rehand = offered && askedRow && (!offered.putAway.length || handSwaps(sheet.equipment, askedRow).length < 2) ? offered : null;
+  // The answer to that question is the same free first change: one weapon
+  // taken up and the ones named put away for it, in one request.
+  const answered = gearAsked.map(([name, change]) => ({ change, row: sheet.equipment.find((item) => item.name === name) }));
+  const swapByGuess =
+    guess &&
+    answered.length > 1 &&
+    answered.every(({ row, change }) => row && gearKindOf(row) === "weapon" && change.equipped !== undefined && change.attuned === undefined) &&
+    answered.filter(({ change }) => change.equipped === true).length === 1;
+  const freeByGuess = swapByGuess || Boolean(askedRow && gearKindOf(askedRow) === "weapon" && (rehand || askedChange?.equipped === false));
   if (rehand) {
     wornEquipment = rehand.equipment;
   }
@@ -213,7 +228,22 @@ export async function POST(
       }
       const full = handsFullFor(after, row);
       if (full.length) {
-        return refuse(handsFullError(sheet.name, name, full, kind === "shield" ? "strapped on" : "drawn", "player"));
+        const verb = kind === "shield" ? "strapped on" : "drawn";
+        // Where making room costs nothing, the refusal says so and carries
+        // the choices, so the sheet asks which weapon to put away rather
+        // than ending in words about an object interaction no fight is
+        // charging (issue 1105). Out of a fight that is any row; in one,
+        // a weapon while the hands are still the engine's guess (a shield
+        // is an action either way).
+        const free = !encounter ? "atEase" : guess && kind === "weapon" ? "firstChange" : null;
+        const swaps = free ? handSwaps(after, row) : [];
+        // In a fight the weapon's refusal names its parts too, so the sheet
+        // can say it in the reader's language as the Hand's card does.
+        const handsFull: HandsFull | null = swaps.length || (!free && kind === "weapon") ? { item: name, holding: full, swaps } : null;
+        return Response.json(
+          { error: handsFullError(sheet.name, name, full, verb, free ?? "player"), ...(handsFull ? { handsFull } : {}) },
+          { status: 409 },
+        );
       }
     }
   }

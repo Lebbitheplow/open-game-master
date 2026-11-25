@@ -5,7 +5,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
 import { contentName } from "@/lib/content/names";
 import { useLocale, useT } from "@/lib/locale";
-import { SheetGearRows, type PendingWear } from "@/components/sheet/SheetGearRow";
+import { SheetGearRows, type PendingAsk } from "@/components/sheet/SheetGearRow";
 import { DOLL_PLACES, dollPlaceOf, dollTileLabel, dollTileLine, dollTileNames, dollView, type DollPlaceId, type DollTile } from "@/components/sheet/paperdoll-logic";
 import type { DollDrag } from "@/components/sheet/SheetDollDrag";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -44,8 +44,8 @@ export function SheetPaperdoll({
   myTurn: boolean;
   dead: boolean;
   busy: boolean;
-  pending: PendingWear | null;
-  onPending: (pending: PendingWear | null) => void;
+  pending: PendingAsk | null;
+  onPending: (pending: PendingAsk | null) => void;
   onGear: (gear: GearAsk) => void;
   // A chip from the list above is being carried here (SheetDollDrag.tsx):
   // its place is lit and the rest stand back.
@@ -58,8 +58,9 @@ export function SheetPaperdoll({
   const itemLabel = (name: string) => contentName("items", name, locale);
   const view = dollView(sheet.equipment, armor);
   const [picked, setPicked] = useState<DollPlaceId | null>(null);
-  // The swap question is asked on a row, so the place it sits in opens for
-  // it: the server may raise it for a row whose place is shut.
+  // A question (a second cloak, full hands) is asked on a row, so the place
+  // it sits in opens for it: the server may raise it for a row whose place
+  // is shut, as it does for an item dropped onto the doll.
   const asked = pending ? findNamed(sheet.equipment, pending.name, (item) => [item.name]) : null;
   const open = (asked ? dollPlaceOf(asked) : null) ?? picked;
   const panelId = useId();

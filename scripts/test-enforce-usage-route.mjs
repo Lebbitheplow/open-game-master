@@ -21,6 +21,7 @@
 import assert from "node:assert/strict";
 import { casting, openTable, postUsage, stored } from "./lib/enforce-resources.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
+import { TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-enforce-usage-route");
 const world = await openTable();
@@ -360,6 +361,115 @@ await test("out of a fight gear changes freely", async () => {
   const gear = Object.fromEntries(table.sheet(fighter.id).equipment.map((item) => [item.name, item]));
   assert.equal(gear.Plate.equipped, true);
   assert.equal(gear["Ring of Protection"].attuned, true);
+});
+
+// Issue 1105. A two-weapon fighter on the road, a scimitar and a shortsword
+// in hand by the engine's own pick, dragged a dagger onto "In hand": the
+// shortsword was put away unasked, and dragging it back was refused with
+// "putting one away takes your object interaction this turn" in no fight at
+// all. Full hands now ask which weapon goes back in the pack wherever the
+// change costs nothing, and the answer is one request.
+const TWIN_PACK = () => [{ name: "Leather Armor", qty: 1 }, { name: "Scimitar", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }];
+const heldBy = (table, id) => table.sheet(id).equipment.filter((item) => item.equipped === true).map((item) => item.name);
+const guessedOn = (table, id) => table.sheet(id).equipment.filter((item) => item.heldGuess).map((item) => item.name);
+const OLD_WORDS = /object interaction|this turn|Dropping/;
+
+await test("out of a fight a third weapon asks which one to put away: nothing is put away unasked, the answer is taken, and the way back asks again", async () => {
+  const table = await openTable({ heldDefault: true });
+  fighterOf(table);
+  const jason = fighterOf(table, { name: "Jason", proficiencies: TRAINED, equipment: TWIN_PACK() });
+  assert.deepEqual(heldBy(table, jason.id), ["Leather Armor", "Scimitar", "Shortsword"], "the engine's pick: both light blades");
+  assert.deepEqual(guessedOn(table, jason.id), ["Scimitar", "Shortsword", "Dagger"]);
+
+  // The dagger dropped onto In hand: asked, with the sheet as it was.
+  const before = stored(table, jason.id);
+  const dagger = await postUsage(table, jason.id, { gear: { Dagger: { equipped: true } } });
+  assert.equal(dagger.status, 409);
+  assert.deepEqual(dagger.json.handsFull, { item: "Dagger", holding: ["Scimitar", "Shortsword"], swaps: [["Scimitar"], ["Shortsword"]] });
+  assert.equal(dagger.json.error, "Jason's hands are full (Scimitar and Shortsword), so Dagger cannot be drawn yet. Put one of them away first: out of a fight that costs nothing.");
+  assert.deepEqual(stored(table, jason.id), before, "asking put nothing away");
+
+  // "Put away Shortsword, take up Dagger".
+  const chosen = await postUsage(table, jason.id, { gear: { Shortsword: { equipped: false }, Dagger: { equipped: true } } });
+  assert.equal(chosen.status, 200, chosen.json.error);
+  assert.deepEqual(heldBy(table, jason.id), ["Leather Armor", "Scimitar", "Dagger"]);
+  assert.deepEqual(guessedOn(table, jason.id), [], "the player's choice ends the guess");
+
+  // The shortsword dragged back: asked again, and never told of a turn.
+  const back = await postUsage(table, jason.id, { gear: { Shortsword: { equipped: true } } });
+  assert.equal(back.status, 409);
+  assert.deepEqual(back.json.handsFull, { item: "Shortsword", holding: ["Scimitar", "Dagger"], swaps: [["Scimitar"], ["Dagger"]] });
+  assert.doesNotMatch(back.json.error, OLD_WORDS);
+  assert.match(back.json.error, /out of a fight that costs nothing/);
+  const returned = await postUsage(table, jason.id, { gear: { Dagger: { equipped: false }, Shortsword: { equipped: true } } });
+  assert.equal(returned.status, 200, returned.json.error);
+  assert.deepEqual(heldBy(table, jason.id), ["Leather Armor", "Scimitar", "Shortsword"]);
+});
+
+await test("where there is nothing to choose the first change still goes through unasked: both guessed blades for a two-handed weapon, and it says so", async () => {
+  const table = await openTable({ heldDefault: true });
+  fighterOf(table);
+  const bran = fighterOf(table, { name: "Bran", proficiencies: TRAINED, equipment: [...TWIN_PACK(), { name: "Greatsword", qty: 1 }] });
+  assert.deepEqual(heldBy(table, bran.id), ["Leather Armor", "Scimitar", "Shortsword"]);
+  const great = await postUsage(table, bran.id, { gear: { Greatsword: { equipped: true } } });
+  assert.equal(great.status, 200, great.json.error);
+  assert.match(great.json.note, /Bran puts away Scimitar and Shortsword and takes up Greatsword, free/);
+  assert.deepEqual(heldBy(table, bran.id), ["Leather Armor", "Greatsword"]);
+  // The greatsword fills both hands, so a dagger has one thing to take the
+  // place of: still asked, as the guess is over and nothing is automatic.
+  const dagger = await postUsage(table, bran.id, { gear: { Dagger: { equipped: true } } });
+  assert.equal(dagger.status, 409);
+  assert.deepEqual(dagger.json.handsFull, { item: "Dagger", holding: ["Greatsword"], swaps: [["Greatsword"]] });
+});
+
+await test("out of a fight a shield in the way is not offered: the refusal says it costs nothing and carries no choice", async () => {
+  const table = await openTable();
+  fighterOf(table);
+  const kara = fighterOf(table, {
+    name: "Kara",
+    equipment: [{ name: "Shield", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: true }, { name: "Greatsword", qty: 1, equipped: false }],
+  });
+  const great = await postUsage(table, kara.id, { gear: { Greatsword: { equipped: true } } });
+  assert.equal(great.status, 409);
+  assert.equal(great.json.handsFull, undefined);
+  assert.doesNotMatch(great.json.error, OLD_WORDS);
+  assert.match(great.json.error, /hands are full \(Shield and Longsword\), so Greatsword cannot be drawn yet\. Put one of them away first: out of a fight that costs nothing\./);
+});
+
+await test("in a fight the question is asked only while the hands are the engine's guess, its answer is free, and after it the turn's rule holds as before", async () => {
+  const table = await openTable({ heldDefault: true });
+  fighterOf(table);
+  const kara = fighterOf(table, { name: "Kara", proficiencies: TRAINED, equipment: TWIN_PACK() });
+  await table.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [kara.id]: 20 } });
+  assert.deepEqual(heldBy(table, kara.id), ["Leather Armor", "Scimitar", "Shortsword"]);
+  assert.deepEqual(guessedOn(table, kara.id), ["Scimitar", "Shortsword", "Dagger"]);
+
+  const dagger = await postUsage(table, kara.id, { gear: { Dagger: { equipped: true } } });
+  assert.equal(dagger.status, 409);
+  assert.deepEqual(dagger.json.handsFull, { item: "Dagger", holding: ["Scimitar", "Shortsword"], swaps: [["Scimitar"], ["Shortsword"]] });
+  assert.match(dagger.json.error, /Put one of them away first: nobody had said which weapon was out, so this first change costs nothing\./);
+  assert.deepEqual(heldBy(table, kara.id), ["Leather Armor", "Scimitar", "Shortsword"]);
+  assert.equal(table.encounter().turnBudget, null, "asking spent nothing");
+
+  const chosen = await postUsage(table, kara.id, { gear: { Scimitar: { equipped: false }, Dagger: { equipped: true } } });
+  assert.equal(chosen.status, 200, chosen.json.error);
+  assert.deepEqual(heldBy(table, kara.id), ["Leather Armor", "Shortsword", "Dagger"]);
+  assert.deepEqual(guessedOn(table, kara.id), []);
+  assert.equal(table.encounter().turnBudget?.interaction, undefined, "the first change from the game's pick is free");
+  assert.ok(!table.encounter().turnBudget?.actionUsed);
+
+  // The guess is over: full hands are refused in the Hand's words, to the
+  // letter, with nothing offered and nothing changed.
+  const scimitar = await postUsage(table, kara.id, { gear: { Scimitar: { equipped: true } } });
+  assert.equal(scimitar.status, 409);
+  assert.equal(scimitar.json.error, "Kara's hands are full (Shortsword and Dagger), so Scimitar cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.");
+  assert.deepEqual(scimitar.json.handsFull, { item: "Scimitar", holding: ["Shortsword", "Dagger"], swaps: [] });
+  assert.deepEqual(heldBy(table, kara.id), ["Leather Armor", "Shortsword", "Dagger"]);
+  // And a swap sent anyway costs what two changes cost: the interaction and the action.
+  const paid = await postUsage(table, kara.id, { gear: { Dagger: { equipped: false }, Scimitar: { equipped: true } } });
+  assert.equal(paid.status, 200, paid.json.error);
+  assert.ok(table.encounter().turnBudget.interaction, "the interaction went on the first");
+  assert.equal(table.encounter().turnBudget.actionUsed, true, "and the Use an Object action on the second");
 });
 
 world.close();

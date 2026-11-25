@@ -8,6 +8,7 @@
 // tools call (src/lib/dm/gear-hands.ts), so a card never promises a cost the
 // engine would not charge.
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
@@ -21,7 +22,9 @@ const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
 const { defaultHeld, keepHeldGuess, wearGained } = await import("../src/lib/dm/held-default.ts");
-const { guessedRehand, handsFullError, handsFullForPlayer } = await import("../src/lib/dm/gear-hands.ts");
+const { guessedRehand, handsFullError, handsFullForPlayer, handSwaps } = await import("../src/lib/dm/gear-hands.ts");
+const { handsFullOf, handsFullWords } = await import("../src/components/sheet/sheet-state.ts");
+const { installCatalog, translate } = await import("../src/lib/i18n/translate.ts");
 const { cardFullText } = await import("../src/lib/battlemap/hand-full-text-logic.ts");
 
 let passed = 0;
@@ -466,6 +469,86 @@ test("the hands-full reasons a player reads name no tool; the storyteller's stil
   assert.doesNotMatch(handsFullForPlayer(`${told} Something else.`), TOOL_NAME);
   assert.match(handsFullForPlayer(`${told} Something else.`), /takes your object interaction this turn\. Something else\.$/);
   assert.equal(handsFullForPlayer("Out of range."), "Out of range.");
+});
+
+// ---- full hands ask which weapon goes back in the pack (issue 1105) ----
+// A dagger dragged onto a scimitar and a shortsword put the shortsword away
+// unasked, and dragging it back was refused for an object interaction no
+// fight was charging.
+test("full hands name each weapon that could go back in the pack, both for a two-handed weapon, and none past a shield", () => {
+  const twin = [
+    { name: "Scimitar", qty: 1, equipped: true },
+    { name: "Shortsword", qty: 1, equipped: true },
+    { name: "Dagger", qty: 1, equipped: false },
+    { name: "Greatsword", qty: 1, equipped: false },
+    { name: "Shield", qty: 1, equipped: false },
+  ];
+  const named = (rows, name) => rows.find((row) => row.name === name);
+  assert.deepEqual(handSwaps(twin, named(twin, "Dagger")), [["Scimitar"], ["Shortsword"]]);
+  assert.deepEqual(handSwaps(twin, named(twin, "Shield")), [["Scimitar"], ["Shortsword"]]);
+  // A two-handed weapon wants both hands: the one choice is both blades.
+  assert.deepEqual(handSwaps(twin, named(twin, "Greatsword")), [["Scimitar", "Shortsword"]]);
+  // A bow in both hands goes away whole for a dagger.
+  const archer = [{ name: "Longbow", qty: 1, equipped: true }, { name: "Dagger", qty: 1, equipped: false }];
+  assert.deepEqual(handSwaps(archer, archer[1]), [["Longbow"]]);
+  // A shield stays on the arm: beside it the sword is the only choice for a
+  // dagger, and nothing put away makes room for a greatsword.
+  const guard = [
+    { name: "Shield", qty: 1, equipped: true },
+    { name: "Longsword", qty: 1, equipped: true },
+    { name: "Dagger", qty: 1, equipped: false },
+    { name: "Greatsword", qty: 1, equipped: false },
+  ];
+  assert.deepEqual(handSwaps(guard, named(guard, "Dagger")), [["Longsword"]]);
+  assert.deepEqual(handSwaps(guard, named(guard, "Greatsword")), []);
+  // With a hand free there is nothing to ask, and a sheet that never said
+  // what it holds has no full hands at all.
+  const oneFree = [{ name: "Scimitar", qty: 1, equipped: true }, { name: "Dagger", qty: 1, equipped: false }];
+  assert.deepEqual(handSwaps(oneFree, oneFree[1]), []);
+  assert.deepEqual(handSwaps([{ name: "Scimitar", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }], { name: "Dagger", qty: 1 }), []);
+});
+
+test("out of a fight full hands are told what is true there: nothing is charged, and the storyteller the two calls that make the swap", () => {
+  const atEase = handsFullError("Jason", "Shortsword", ["Scimitar", "Dagger"], "drawn", "atEase");
+  assert.equal(atEase, "Jason's hands are full (Scimitar and Dagger), so Shortsword cannot be drawn yet. Put one of them away first: out of a fight that costs nothing.");
+  assert.doesNotMatch(atEase, TOOL_NAME);
+  assert.doesNotMatch(atEase, /object interaction|this turn|Dropping/);
+  const guess = handsFullError("Jason", "Dagger", ["Scimitar", "Shortsword"], "drawn", "firstChange");
+  assert.match(guess, /Put one of them away first: nobody had said which weapon was out, so this first change costs nothing\.$/);
+  assert.doesNotMatch(guess, TOOL_NAME);
+  const told = handsFullError("Jason", "Shortsword", ["Scimitar", "Dagger"], "drawn", "storytellerAtEase");
+  assert.match(told, /Out of a fight putting one away is free: call handle_item unequip for the one the player named, then equip again\. If they named none, ask them which\.$/);
+  assert.doesNotMatch(told, /object interaction/);
+  // A person who reads that refusal (a card the GM's seat played) reads no tool's name.
+  assert.equal(handsFullForPlayer(told), atEase);
+  // In a fight the words a player reads are the ones the Hand translates, to the letter.
+  assert.equal(
+    handsFullError("Jason", "Shortsword", ["Scimitar", "Dagger"], "drawn", "player"),
+    "Jason's hands are full (Scimitar and Dagger), so Shortsword cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.",
+  );
+});
+
+test("the sheet reads the route's full-hands answer, and says a fight's refusal in the reader's language", () => {
+  const asked = { item: "Dagger", holding: ["Scimitar", "Shortsword"], swaps: [["Scimitar"], ["Shortsword"]] };
+  assert.deepEqual(handsFullOf(asked), asked);
+  // An older server sends none, and a shape that is not the route's is not trusted.
+  for (const not of [undefined, null, "Dagger", {}, { item: "Dagger" }, { item: "Dagger", holding: ["Scimitar"], swaps: "Scimitar" }, { item: "Dagger", holding: [1], swaps: [] }, { item: "Dagger", holding: [], swaps: [[1]] }]) {
+    assert.equal(handsFullOf(not), null, JSON.stringify(not));
+  }
+  installCatalog("fr", JSON.parse(fs.readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8")));
+  const fr = (english, vars) => translate("fr", english, vars);
+  const en = (english, vars) => translate("en", english, vars);
+  const said = handsFullError("Jason", "Shortsword", ["Scimitar", "Dagger"], "drawn", "player");
+  const hands = { item: "Shortsword", holding: ["Scimitar", "Dagger"] };
+  assert.equal(handsFullWords(en, said, "Jason", hands), said);
+  assert.match(handsFullWords(fr, said, "Jason", hands), /^Jason a les mains pleines \(Scimitar and Dagger\)/);
+  // A sentence it has not met keeps the engine's words.
+  const other = handsFullError("Jason", "Shield", ["Scimitar", "Dagger"], "strapped on", "player");
+  assert.equal(handsFullWords(fr, other, "Jason", { item: "Shield", holding: ["Scimitar", "Dagger"] }), other);
+  // The question's own words are in the French catalog.
+  for (const key of ["Take up {name}?", "Put away {off}, take up {name}", "{who}'s hands are full ({items}), so something has to be put away before {name} is taken up.", "Nobody has said which weapon is out yet, so this change is free."]) {
+    assert.notEqual(fr(key), key, key);
+  }
 });
 
 // The journey's shop cloak (63-journey-artifact-to-shop): every sheet now

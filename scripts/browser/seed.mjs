@@ -2661,6 +2661,35 @@ const guessTables = {};
   }
 }
 
+// Full hands ask which weapon goes back in the pack (scenario hands-full-ask,
+// issue 1105): a two-weapon fighter on the road, in no fight, made without
+// saying what he holds, so the engine's pick put the scimitar and the
+// shortsword in his hands and left the dagger packed.
+const HANDS_TITLE = "Hands Table";
+const handsTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${HANDS_TITLE} (${viewport})`,
+    description: "A quiet road, and three blades for two hands.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the hands table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 3, {
+    ...heroInput({ name: "Jason Reed", class: "fighter", level: 3, equipment: [{ name: "Leather Armor", qty: 1 }, { name: "Scimitar", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }] }),
+    proficiencies: { saves: ["str", "con"], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+    acOverride: false,
+  });
+  handsTables[viewport] = { id: table.id, hero: hero.id };
+}
+
 // PR 782: the after-the-roll card on a real parked roll. A table the player
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
@@ -4678,6 +4707,7 @@ const ids = {
   noticeTables,
   wieldTables,
   guessTables,
+  handsTables,
   afterRollTables,
   afterAttackTables,
   wrathTables,
@@ -4820,6 +4850,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wieldTables).map(([viewport, table]) => [table.id, `${WIELD_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(guessTables).map(([viewport, table]) => [table.id, `${GUESS_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(handsTables).map(([viewport, table]) => [table.id, `${HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),

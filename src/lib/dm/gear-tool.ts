@@ -230,6 +230,11 @@ function changeWear(
   // A weapon taken in hand needs a hand free for it; putting another away
   // is its own interaction, so it is never folded into the draw.
   let drawn: EquipmentItem[] | null = null;
+  // Out of a fight nothing is charged, and a storyteller told only that
+  // "putting one away takes the object interaction" refused the player's
+  // swap until asked a second time (issue 1105): there it is told the two
+  // calls to send, or to ask which weapon when the player named none.
+  const fullHandsReader = encounter ? "storyteller" : "storytellerAtEase";
   // While the hands are still the engine's guess (held-default.ts), the
   // first draw or stow is free, and a draw puts the guessed weapons in its
   // way away with it (gear-hands.ts guessedRehand).
@@ -243,7 +248,7 @@ function changeWear(
       : implicitlyWorn(sheet.equipment, { armorName: armor.armorName, shieldName: armor.shieldName });
     const swap = drawRow(sheet.equipment, row, wornBefore);
     if (swap.full.length) {
-      return refuse(handsFullError(sheet.name, row.name, swap.full));
+      return refuse(handsFullError(sheet.name, row.name, swap.full, "drawn", fullHandsReader));
     }
     drawn = swap.equipment;
   }
@@ -251,7 +256,7 @@ function changeWear(
   if (on && kind === "shield") {
     const full = handsFullFor(sheet.equipment, row);
     if (full.length) {
-      return refuse(handsFullError(sheet.name, row.name, full, "strapped on"));
+      return refuse(handsFullError(sheet.name, row.name, full, "strapped on", fullHandsReader));
     }
   }
   let budget: TurnBudget | null = null;
