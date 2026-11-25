@@ -101,6 +101,7 @@ import { describeEquipmentItem } from "@/lib/dm/equipment-line";
 import { summonStateLine } from "@/lib/dm/summon-rules";
 import { dmSystemText, encounterRulesText, tracksAmmunition, type RuleContext } from "@/lib/dm/prompt-rules";
 import { healthState } from "@/lib/bestiary/health";
+import { fightRosterLine } from "@/lib/dm/foe-carry-logic";
 import { rollerName } from "@/lib/roll-labels";
 import { tableHazards } from "@/lib/srd/table-hazards";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
@@ -1293,6 +1294,11 @@ export function buildGameStateBlock(state: DmGameState): string {
         parts.push(enemy.pair);
       }
       lines.push(parts.join(" | "));
+    }
+    // The count, and that the list is the whole fight (issue #1094).
+    const roster = fightRosterLine(encounter.enemies);
+    if (roster) {
+      lines.push(roster);
     }
     if (encounter.sides?.length) {
       lines.push(

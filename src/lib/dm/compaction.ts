@@ -73,8 +73,12 @@ export function protectedMoments(
 
 const SUMMARY_MAX_CHARS = 8_000;
 
-const COMPACTION_SYSTEM =
-  "You maintain the canonical campaign memory for an ongoing D&D 5e game. Merge the existing summary with the new passages into one updated summary. Preserve plot threads, NPCs met, promises, injuries, loot, locations, and party decisions. Compact past-tense prose, at most 500 words. Output only the summary.";
+// Headcounts are named among what to keep (issue #1094): a fight's prompt on
+// a 64K window holds some sixteen lines of the story, so the camp the party
+// had scouted, and how many stood in it, reached the storyteller only through
+// this summary, which kept the place and lost the number.
+export const COMPACTION_SYSTEM =
+  "You maintain the canonical campaign memory for an ongoing D&D 5e game. Merge the existing summary with the new passages into one updated summary. Preserve plot threads, NPCs met, promises, injuries, loot, locations, and party decisions, and who and how many were at each place the party found (a camp of five: a captain, two soldiers, two archers) with what became of each of them. Compact past-tense prose, at most 500 words. Output only the summary.";
 const MILESTONE_BLOCK_MAX = 1_500;
 const MILESTONE_HEADING = "Recorded milestones (verbatim from the server's record):";
 

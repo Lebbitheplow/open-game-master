@@ -1,4 +1,5 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { FIGHT_CAST_NOTE } from "@/lib/dm/foe-carry-logic";
 import { layStandingWards } from "@/lib/dm/genre-gh-wards";
 import { hiddenNow } from "@/lib/dm/board-hidden";
 import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
@@ -931,7 +932,7 @@ function placeInitiativeRoll(
     actFirst.length
       ? ` ${actFirst.join(" and ")} act${actFirst.length === 1 ? "s" : ""} first: call enemy_attack for each now, then narrate and stop.`
       : ` It is ${current?.name}'s turn; narrate the scene and stop for their action.`
-  }`;
+  }${FIGHT_CAST_NOTE}`;
 }
 
 // The whole party was surprised: round 1 belongs to the enemies. The order
