@@ -5,7 +5,7 @@ import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { noteToolCallHealth } from "@/lib/tool-call-health";
-import { foesAboutBlock } from "@/lib/dm/foe-return";
+import { foesAboutBlock, lastFightBlock } from "@/lib/dm/foe-return";
 import { legendaryLairLines } from "@/lib/dm/legendary-tools";
 import { defaultSide } from "@/lib/dm/combat-sides-logic";
 import { combatantsOf } from "@/lib/dm/combatant";
@@ -1035,7 +1035,8 @@ async function openTurn(
       ),
       // Who the last fight left about, so the next fight brings them back as
       // they were rather than fresh (issue #667).
-      foesAbout: foesAboutBlock(campaign, Boolean(encounterNow)),
+      // And who fell in it, so the aftermath counts no one twice (issue #1094).
+      foesAbout: [lastFightBlock(campaign, Boolean(encounterNow)), foesAboutBlock(campaign, Boolean(encounterNow))].filter(Boolean).join("\n"),
       // A storyteller-secret roll (a pact's, issue 503) stays out of the
       // part of the prompt the lead of an AI table reads in the Context tab.
       recentRolls: listRecentRolls(campaignId, 8).filter((roll) => roll.visibility !== "secret").slice(-5),

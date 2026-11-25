@@ -1695,7 +1695,7 @@
     "lib/dm/party-split-logic.ts#str-eq": [["key",4,"a transcript row's author type, the engine's own vocabulary (issue 951)"]],
     "lib/dm/party-split-logic.ts#toUpperCase": [["display",1,"the first letter of a place the players named, raised for its name on the record; shown, never compared"]],
     "lib/dm/fight-away-logic.ts#str-case": [["key",2,"DM tool names and typeof checks on a tool's arguments (issue 740)"]],
-    "lib/dm/foe-carry-logic.ts#str-eq": [["key",5,"enemy statuses and fight outcomes (engine vocabulary), issue #667"]],
+    "lib/dm/foe-carry-logic.ts#str-eq": [["key",6,"enemy statuses and fight outcomes (engine vocabulary), issues #667 and #1094"]],
     "lib/dm/foe-carry-logic.ts#str-list": [["key",1,"fight outcomes (engine vocabulary), issue #667"]],
     "lib/dm/enemy-damage.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-damage.ts#toLowerCase": [["key",1,"damage type"]],
