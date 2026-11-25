@@ -483,6 +483,27 @@ await test("GAME STATE tells the GM the mount is steered: no turn, no attacks, m
   assert.equal(state.order.some((entry) => entry.name === mount.displayName), false, "GAME STATE's order names the mount");
 });
 
+await test("The order told as the fight opens names the steered mount beside its rider, where only the creatures in that order are said to be in the fight.", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const hero = world.addHero(HERO());
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  world.clearDice();
+  world.dice(1, 1, 19);
+  const started = await ai(world, turn, "start_encounter", { enemies: [{ monster: "goblin", mount: "wolf", controlled: true }] });
+  world.clearDice();
+  assert.equal(started.ok, true, started.error);
+  let told = JSON.stringify(started.result);
+  if (!world.encounter().order.some((entry) => entry.characterId === hero.id)) {
+    world.dice(19);
+    told += JSON.stringify(await world.invoke("request_roll", { characterId: hero.id, kind: "initiative", reason: "initiative" }));
+    world.clearDice();
+  }
+  const mount = steered(world);
+  const rider = live(world, mount.ledBy);
+  assert.match(told, /Only the creatures in that order are in this fight/, "setup: the opening named no order");
+  assert.match(told, new RegExp(`Initiative order: [^"]*${rider.displayName} \\(riding ${mount.displayName}, the mount it steers\\)`), `the opening's order leaves the steered ${mount.displayName} out of the fight: ${told.slice(told.indexOf("Combat begins"), told.indexOf("Combat begins") + 200)}`);
+});
+
 await test("Reinforcements arrive on mounts they steer: add_enemies takes controlled, and the pair joins the order as one.", async () => {
   const world = await openWorld({ gameSettings: { ttsEnabled: false } });
   world.addHero(HERO());

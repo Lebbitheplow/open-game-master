@@ -766,9 +766,18 @@ export function fightHoldsFloor(campaignId: string): boolean {
   return initiativeFloorFor(campaignId) !== null || (combatOwnsFloor(getFloor(campaignId)) && !staleFightFloor(campaignId));
 }
 
+// A controlled mount has no place of its own (enemy-riders.ts takingOwnTurn),
+// so it is named beside its rider's: the line that opens a fight goes on
+// "Only the creatures in that order are in this fight" (FIGHT_CAST_NOTE), and
+// a steered wolf left out of the order was told out of the fight with it.
 function describeOrder(encounter: Encounter): string {
+  const steered = new Map(listEnemies(encounter.id).flatMap((enemy) => (enemy.ledBy && enemy.status === "alive" ? [[enemy.ledBy, enemy.displayName] as const] : [])));
   return encounter.order
-    .map((entry, index) => (index === encounter.turnIndex ? `${entry.name} (CURRENT)` : entry.name))
+    .map((entry, index) => {
+      const mount = entry.kind === "enemy" ? steered.get(entry.enemyId) : undefined;
+      const name = mount ? `${entry.name} (riding ${mount}, the mount it steers)` : entry.name;
+      return index === encounter.turnIndex ? `${name} (CURRENT)` : name;
+    })
     .join(" > ");
 }
 
