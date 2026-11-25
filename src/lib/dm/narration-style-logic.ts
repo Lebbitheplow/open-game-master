@@ -29,6 +29,10 @@ const LENGTH_TEXT: Record<NarrationLength, string> = {
 // Each is a ceiling, never a range: gpt-oss-20b, terse in a fight already,
 // wrote up to a "50 to 100 words" target (61 words a fight turn without the
 // line, 74 with it), so a range made a short model pad.
+// "What the tools just resolved" alone read to the same model as the result
+// itself, recited: "The attack rolls a 19, a hit against your AC 14" (issue
+// #1092). The line says how it is told, since it is the last rule a fight
+// reply reads.
 const FIGHT_LENGTH_TEXT: Record<NarrationLength, string> = {
   short: "at most about 50 words, one plain sentence for each thing that was resolved",
   standard: "at most about 80 words, and fewer when little happened",
@@ -37,7 +41,7 @@ const FIGHT_LENGTH_TEXT: Record<NarrationLength, string> = {
 
 export function fightNarrationRule(length: NarrationLength | undefined): string {
   const words = FIGHT_LENGTH_TEXT[length ?? "standard"] ?? FIGHT_LENGTH_TEXT.standard;
-  return `- FIGHT NARRATION: while the fight lasts, each reply is ${words}: what the tools just resolved, how the target looks in a word or two, then whose move it is. No scene-setting between blows, and at most one short line from an NPC or monster when it matters. This replaces the reply length given above until the fight ends, unless the table's style notes ask for something else; the reply that opens the fight or ends it may run to the usual length, to set the scene or tell the aftermath. Saving words never skips, merges or invents a tool call: the tools and the dice still decide everything.`;
+  return `- FIGHT NARRATION: while the fight lasts, each reply is ${words}: what the tools just resolved, told as story and never as its figures, how the target looks in a word or two, then whose move it is. No scene-setting between blows, and at most one short line from an NPC or monster when it matters. This replaces the reply length given above until the fight ends, unless the table's style notes ask for something else; the reply that opens the fight or ends it may run to the usual length, to set the scene or tell the aftermath. Saving words never skips, merges or invents a tool call: the tools and the dice still decide everything.`;
 }
 
 export const STYLE_NOTES_MAX = 500;

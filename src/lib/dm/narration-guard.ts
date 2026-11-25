@@ -256,7 +256,7 @@ export async function enforceEngineBoundary(
     if ("refused" in cast) {
       contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster} could not cast ${spell}: ${cast.refused.replace(/\.$/, "")}. The narration must tell that instead of the spell taking effect` });
     } else if (cast.rolled) {
-      contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster}'s ${spell} has now been cast by the server, as their player asked: its result is the last tool result above. Narrate it from that result (the roll, the save, the damage), not from what you wrote` });
+      contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster}'s ${spell} has now been cast by the server, as their player asked: its result is the last tool result above. Narrate what that result decided (whether it struck, the save, how bad the harm) in words, not what you wrote` });
     }
   }
   if (campaign.gameSettings.narrationGuard) {

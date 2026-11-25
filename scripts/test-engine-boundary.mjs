@@ -25,6 +25,7 @@ const {
   unrolledBlow,
   unrolledBlowAt,
   unrolledBlowPrompt,
+  unrolledDamagePrompt,
   unrolledEnemyBlowPrompt,
   unrolledFigure,
 } = await import("../src/lib/dm/engine-boundary.ts");
@@ -381,6 +382,10 @@ test("a damage figure no die produced is caught", () => {
   const found = rule([amount(11)], [attackHit]);
   assert.deepEqual(kinds(found), ["number"]);
   assert.ok(found[0].detail.includes("11 damage"));
+  // The rewrite is asked for words, so the real figure does not take the
+  // wrong one's place (issue #1092).
+  assert.match(found[0].detail, /tell the harm in words, with no figure$/);
+  assert.match(rule([amount(11, "healing")], [attackHit])[0].detail, /tell the healing in words, with no figure$/);
 });
 
 test("a leveled spell cast with nothing spent is caught", () => {
@@ -649,6 +654,10 @@ test("an enemy's blow on the hero with no enemy call this turn is a blow the pro
   assert.match(prompt, /call enemy_attack for the enemy end_turn handed you, then narrate from its result; otherwise leave its turn out/i);
   assert.match(prompt, /The guard's blade catches you for 6 damage\./);
   assert.doesNotMatch(prompt, /\u2014/);
+  // Neither correction leaves room for a figure the server did return
+  // (issue #1092).
+  assert.match(prompt, /Never state a hit or a miss the server did not return, and never a figure\.$/);
+  assert.match(unrolledDamagePrompt("Hit! 8 damage."), /Never state a hit or a miss the server did not return, and never a figure\.$/);
   assert.match(unrolledBlowPrompt("x"), /pc_attack/, "the foe's prompt is unchanged");
 });
 

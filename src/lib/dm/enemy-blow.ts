@@ -339,6 +339,6 @@ export function applyPendingDamageRoll(pending: PendingRoll, roll: StoredRoll): 
   if (applied.encounterOver) {
     parts.push(`The encounter ended: ${String(applied.outcome)}. XP was awarded automatically.`);
   }
-  parts.push("Do NOT call apply_damage for this hit; narrate from this state.");
+  parts.push("Do NOT call apply_damage for this hit; narrate from this state, in words: no hit points and no damage figure.");
   return parts.join(" ");
 }

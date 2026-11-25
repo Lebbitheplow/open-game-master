@@ -281,7 +281,7 @@ function blowSentences(scene: SwingScene, ask: DamageAsk, out: Record<string, un
     parts.push(`The encounter ended: ${String(out.outcome)}. XP was awarded automatically.`);
   }
   parts.push(...notes.map((note) => `${note}.`), ...outcomeLines(out));
-  parts.push(`Do NOT call apply_damage for this ${ask.half ? "miss" : "hit"}; narrate from this state.`);
+  parts.push(`Do NOT call apply_damage for this ${ask.half ? "miss" : "hit"}; narrate from this state, in words: no hit points and no damage figure.`);
   return parts;
 }
 

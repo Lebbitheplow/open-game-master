@@ -7,8 +7,9 @@
 // the table ended on the empty-turn line (and why), whether the tool-leak
 // rescue fired and recovered, and whether the narration carries anything a
 // player should never read (tool JSON, tool names, system notes, template
-// tokens, grid coordinates, degenerate text). Checks are soft: a weak turn is
-// recorded, not fatal, so one run measures the whole campaign.
+// tokens, grid coordinates, degenerate text), and whether it reads the dice
+// back as figures (scripts/lib/narration-figures.mjs). Checks are soft: a
+// weak turn is recorded, not fatal, so one run measures the whole campaign.
 //
 // Not part of `npm test`: it needs a running model and takes minutes per run.
 // Unlike smoke-openai.mjs it spends nothing and checks behaviour, not a bill.
@@ -37,6 +38,7 @@ import path from "node:path";
 import { register } from "node:module";
 import { parseArgs } from "node:util";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
+import { figuresIn } from "./lib/narration-figures.mjs";
 
 const { values: args, positionals } = parseArgs({
   allowPositionals: true,
@@ -65,6 +67,8 @@ const METRICS = [
   ["rescueEmpty", "Tool-leak rescues that came back empty"],
   ["artifacts", "Turns whose narration shows an artifact"],
   ["artifactKinds", "… by kind"],
+  ["figures", "Turns whose story states a game figure"],
+  ["figureKinds", "… by kind"],
   ["softFails", "Scripted expectations missed"],
   ["calls", "Model calls"],
   ["meanSeconds", "Mean seconds per turn"],
@@ -662,6 +666,9 @@ async function playRun(runNumber) {
       cause: empty ? emptyCause(calls, rescues) : null,
       rescues: rescues.map((rescue) => (rescue.ok ? "ok" : "empty")),
       artifacts: empty ? [] : artifactsIn(narration, toolNames),
+      // Every passage the turn wrote, not only its last: an enemy's turn
+      // told after the player's is where the report's "rolls a 19" stood.
+      figures: empty ? [] : figuresIn(dm.map((message) => String(message.content).replace(ROLL_MARKER, "")).join("\n\n")),
       narration,
       callLog: calls.map((call) => ({ index: call.index, content: String(call.content).slice(0, 300), tools: call.tools })),
     };
@@ -678,6 +685,7 @@ async function playRun(runNumber) {
       ...Array(turn.emptyRetries).fill("empty-retry"),
       ...turn.rescues.map((rescue) => `leak-rescue:${rescue}`),
       ...turn.artifacts.map((artifact) => `ARTIFACT:${artifact.kind}`),
+      ...turn.figures.map((figure) => `FIGURE:${figure.kind}`),
       turn.softFail ? `MISSED:${turn.softFail}` : "",
     ].filter(Boolean);
     say(`  run ${runNumber} ${turn.label.padEnd(10)} ${String(seconds).padStart(4)}s ${turn.calls} calls  tools: ${turn.tools.join(", ") || "(none)"}${flags.length ? `  [${flags.join("; ")}]` : ""}`);
@@ -734,6 +742,8 @@ const summary = {
   rescueEmpty: turns.flatMap((turn) => turn.rescues).filter((rescue) => rescue === "empty").length,
   artifacts: turns.filter((turn) => turn.artifacts.length).length,
   artifactKinds: tally(turns.flatMap((turn) => turn.artifacts.map((artifact) => artifact.kind))),
+  figures: turns.filter((turn) => turn.figures.length).length,
+  figureKinds: tally(turns.flatMap((turn) => turn.figures.map((figure) => figure.kind))),
   softFails: turns.filter((turn) => turn.softFail).length,
   calls: turns.reduce((sum, turn) => sum + turn.calls, 0),
   meanSeconds: Math.round(turns.reduce((sum, turn) => sum + turn.seconds, 0) / Math.max(1, turns.length)),
