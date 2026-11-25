@@ -116,7 +116,7 @@ export default {
     const buttons = await rect(".cine-fight-hand .hand-aim-send");
     const numbers = await rect(".cine-fight-hand .hand-aim .hand-rows");
     check(targets && buttons && targets.top >= aiming.top && targets.bottom <= buttons.top + 1, `the target chips are in view over the buttons (${px(targets?.top)} to ${px(targets?.bottom)}, the buttons from ${px(buttons?.top)})`);
-    check(buttons.bottom <= aiming.bottom + 1 && buttons.height >= 40, `the buttons are whole at the Hand's foot (${px(buttons.top)} to ${px(buttons.bottom)} in a Hand that ends at ${px(aiming.bottom)})`);
+    check(buttons.bottom <= aiming.bottom + 1 && Math.round(buttons.height) >= 40, `the buttons are whole at the Hand's foot (${px(buttons.top)} to ${px(buttons.bottom)} in a Hand that ends at ${px(aiming.bottom)})`);
     check(numbers && numbers.top >= buttons.top - 1 && numbers.bottom <= aiming.bottom + 1 && numbers.right <= buttons.left + 1, "the numbers are one block beside the buttons, at the Hand's foot");
     const line = await page.locator(`${root}.cine-fight-hand .hand-aim .hand-rows`).first().evaluate((node) =>
       [...node.querySelectorAll(".hand-row")].filter((row) => row.getClientRects().length).map((row) => row.querySelector(".hand-row-value")?.textContent ?? "").join(" · "),

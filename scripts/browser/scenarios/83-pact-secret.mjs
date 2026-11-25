@@ -40,7 +40,7 @@ export default {
     const scheme = form.getByRole("radio", { name: /quiet scheme/i });
     check(await scheme.count(), "a quiet scheme is offered");
     const option = await scheme.locator("xpath=ancestor::label[1]").boundingBox();
-    check(option && option.height >= 40, `each choice is a 40px target (${option?.height})`);
+    check(option && Math.round(option.height) >= 40, `each choice is a 40px target (${option?.height})`);
     check((await form.getByRole("radio", { name: /strike when it moves/i }).count()) === 0, "no attack at a table set to Leave");
     await axeClean(page, `${root}[data-own-pact]`, "the pact card at night");
     await t.shot("pact-secret-form");

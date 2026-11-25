@@ -103,7 +103,7 @@ export default {
       const figure = await walkTheCorner(frame, "the panel");
       const [plates, field] = [await strip.boundingBox(), await frame.boundingBox()];
       check(plates.y + plates.height <= field.y, `the strip ends above the board (${plates.y + plates.height} against ${field.y})`);
-      check(plates.height >= 40, `the strip is finger sized (${plates.height}px)`);
+      check(Math.round(plates.height) >= 40, `the strip is finger sized (${plates.height}px)`);
       await t.shot("corner");
       await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
       await untilStill(page);

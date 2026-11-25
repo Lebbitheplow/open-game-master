@@ -65,7 +65,7 @@ const scenario = {
     if (viewport === "phone") {
       for (const [name, button] of [["Heal with this roll", send], ["Roll digitally instead", digital]]) {
         const box = await button.first().boundingBox();
-        check(box && box.height >= 40, `${name} is a finger's height on a phone (${box?.height})`);
+        check(box && Math.round(box.height) >= 40, `${name} is a finger's height on a phone (${box?.height})`);
       }
     }
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "the fields do not push the page sideways");

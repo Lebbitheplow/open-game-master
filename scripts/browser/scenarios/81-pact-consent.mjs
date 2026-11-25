@@ -36,7 +36,7 @@ export default {
     check((await toggle.getAttribute("aria-checked")) === "false", "off until the player turns it on");
     if (t.touch) {
       const target = await block.locator("label").first().boundingBox();
-      check(target && target.height >= 40, `the switch's row is a finger's size on a phone (${target?.height})`);
+      check(target && Math.round(target.height) >= 40, `the switch's row is a finger's size on a phone (${target?.height})`);
     }
     await axeClean(page, `${root}[data-pacts-switch="${table.kael}"]`, "the pacts switch at night");
     await t.shot("pacts-switch");

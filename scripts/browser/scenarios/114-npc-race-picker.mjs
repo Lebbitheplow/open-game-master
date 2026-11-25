@@ -33,7 +33,7 @@ export default {
       // A finger-sized target where fingers are: the kit's select, as Gender's.
       if (t.touch) {
         const box = await race.boundingBox();
-        check(box && box.height >= 40, `a finger-sized select on a phone (${box?.height})`);
+        check(box && Math.round(box.height) >= 40, `a finger-sized select on a phone (${box?.height})`);
       }
       await race.evaluate((element) => element.scrollIntoView({ block: "center" }));
       await untilStill(page);

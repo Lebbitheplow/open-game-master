@@ -218,7 +218,7 @@ export default {
       const ally = allies.locator(`[data-test-ally="${allyId}"]`);
       check(await ally.isVisible(), "the library companion is offered as an ally");
       const allyBox = await ally.boundingBox();
-      soft(allyBox && allyBox.height >= 40, `an ally's row is finger-sized (${allyBox?.height})`);
+      soft(allyBox && Math.round(allyBox.height) >= 40, `an ally's row is finger-sized (${allyBox?.height})`);
       await t.tap(ally);
       await eventually(async () => /1 beside the party/.test(await allies.innerText()), { label: "the ally counted" });
       await allies.scrollIntoViewIfNeeded();
@@ -332,7 +332,7 @@ export default {
       const call = trace.locator("button[aria-expanded]").filter({ hasText: "apply_damage" }).first();
       await eventually(() => call.isVisible(), { timeoutMs: 20_000, label: "the damage call in the trace" });
       const callBox = await call.boundingBox();
-      if (phone) soft(callBox && callBox.height >= 40, `a trace row is finger-sized (${callBox?.height})`);
+      if (phone) soft(callBox && Math.round(callBox.height) >= 40, `a trace row is finger-sized (${callBox?.height})`);
       await t.tap(call);
       await eventually(async () => (await call.getAttribute("aria-expanded")) === "true", { label: "the row opened" });
       check(await trace.getByText("Sent with").first().isVisible(), "the opened row shows what was sent");
@@ -365,7 +365,7 @@ export default {
       soft(openBox && openBox.width >= 200, `the open test's sentence has room (${openBox?.width})`);
       const disclosure = setupRow.locator("summary");
       const summaryBox = await disclosure.boundingBox();
-      soft(summaryBox && summaryBox.height >= 40, `the set-up's disclosure is finger-sized (${summaryBox?.height})`);
+      soft(summaryBox && Math.round(summaryBox.height) >= 40, `the set-up's disclosure is finger-sized (${summaryBox?.height})`);
       await t.tap(disclosure);
       await eventually(async () => (await setupRow.getAttribute("open")) !== null, { label: "the set-up opened" });
       check(/Goblin/.test(await setupRow.innerText()), "the opened set-up lists the foes");
@@ -549,7 +549,7 @@ export default {
       await eventually(() => resolveButton.isVisible(), { timeoutMs: 30_000, label: "Resolve as played on the Web card" });
       check(/Iris Vane/.test(await queue.innerText()), "the row names the player's wizard");
       const resolveBox = await resolveButton.boundingBox();
-      soft(resolveBox && resolveBox.height >= 40, `Resolve as played is finger-sized (${resolveBox?.height})`);
+      soft(resolveBox && Math.round(resolveBox.height) >= 40, `Resolve as played is finger-sized (${resolveBox?.height})`);
       await queue.scrollIntoViewIfNeeded();
       await themes("s8-waiting", `${root}[data-tour="dm-queue"]`);
       await t.tap(resolveButton);

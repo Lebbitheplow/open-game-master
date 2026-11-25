@@ -68,7 +68,7 @@ export default {
       // In CSS pixels: the dialog's own scale (and the app's text size) moves
       // the painted box, not the target's layout size.
       const box = await toggle("Longbow").evaluate((node) => ({ width: node.offsetWidth, height: node.offsetHeight }));
-      check(box.height >= 40 && box.width >= 40, `the toggle is finger-sized on a phone (${JSON.stringify(box)})`);
+      check(Math.round(box.height) >= 40 && box.width >= 40, `the toggle is finger-sized on a phone (${JSON.stringify(box)})`);
     }
     await toggle("Longbow").scrollIntoViewIfNeeded().catch(() => undefined);
     await untilStill(page);

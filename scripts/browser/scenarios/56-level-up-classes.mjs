@@ -101,7 +101,7 @@ async function magicalSecrets(t) {
 
   // A finger's width on a phone, as the bard's own tiles are.
   const box = await group.locator('li[data-spell="Fireball"]').first().boundingBox();
-  check(box !== null && box.height >= 40, `the group's tile is a finger's width (${box?.height ?? "no box"}px)`);
+  check(box !== null && Math.round(box.height) >= 40, `the group's tile is a finger's width (${box?.height ?? "no box"}px)`);
 
   // By keyboard: from the group's search, Tab reaches its tiles.
   await find.focus();

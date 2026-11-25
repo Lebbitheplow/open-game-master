@@ -87,7 +87,7 @@ export default {
       await eventually(async () => !(await go.isDisabled()), { timeoutMs: 20_000, label: "Draft pregens on" });
       check((await reason.count()) === 0, "a reason still shows with an AI DM set up");
       const size = await go.boundingBox();
-      check(size && size.height >= 40, `Draft pregens is at least 40px tall (${size?.height})`);
+      check(size && Math.round(size.height) >= 40, `Draft pregens is at least 40px tall (${size?.height})`);
       check(/Draft 4 pregens/i.test(await go.innerText()), `the button says how many it drafts (${await go.innerText()})`);
       check((await card.locator("select, [role='combobox'], [role='listbox']").count()) === 0, "the card still asks how many to draft");
 

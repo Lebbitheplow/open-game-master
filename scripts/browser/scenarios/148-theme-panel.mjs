@@ -33,7 +33,7 @@ export default {
     const button = page.locator(`${root}[data-theme-button]`).locator("visible=true").first();
     await eventually(() => button.count(), { timeoutMs: 30_000, label: "the lobby's Theme button" });
     const buttonBox = await button.boundingBox();
-    check(buttonBox && buttonBox.height >= 40, `the Theme button is a finger-sized target (${buttonBox?.height}px)`);
+    check(buttonBox && Math.round(buttonBox.height) >= 40, `the Theme button is a finger-sized target (${buttonBox?.height}px)`);
 
     await t.tap(button);
     const panel = page.locator(".theme-panel").locator("visible=true");

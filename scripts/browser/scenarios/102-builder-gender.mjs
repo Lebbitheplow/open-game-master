@@ -101,7 +101,7 @@ export default {
     check((await field.innerText()).includes("Not chosen"), "it starts unchosen");
     const trigger = field.getByRole("button", { name: "Gender" });
     const box = await trigger.boundingBox();
-    check(box && box.height >= 40, `a finger-sized select (${box?.height})`);
+    check(box && Math.round(box.height) >= 40, `a finger-sized select (${box?.height})`);
     const found = await axeViolations(page, `${root}section[data-active] [data-builder-target="gender"]`);
     check(!found.length, `axe on the gender field: ${found.map((entry) => `${entry.id}: ${entry.help}`).join("; ").slice(0, 600)}`);
 

@@ -28,7 +28,7 @@ export default {
 
     // Finger-sized on every viewport (AGENTS.md: at least 40px).
     const size = await card.locator("[data-party-backstory-save]").boundingBox();
-    check(size && size.height >= 40 && size.width >= 40, `Save backstory is at least 40px (${size?.width}x${size?.height})`);
+    check(size && Math.round(size.height) >= 40 && size.width >= 40, `Save backstory is at least 40px (${size?.width}x${size?.height})`);
 
     // Saving disables the button that had focus: focus goes back to the box,
     // and the confirmation lands in a live region a screen reader hears.

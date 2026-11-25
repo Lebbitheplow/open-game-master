@@ -48,7 +48,7 @@ export default {
       check(await bring.isDisabled(), "Bring it in waits for a preview");
       await untilStill(page);
       const size = await checkAgain.boundingBox();
-      check(size && size.height >= 40, `Check again is a 40px target (${size?.height}px)`);
+      check(size && Math.round(size.height) >= 40, `Check again is a 40px target (${size?.height}px)`);
       await page.unroute(new RegExp(`/api/campaigns/${tableId}/import\\?`));
       await t.tap(checkAgain);
       await eventually(() => bring.isEnabled(), { timeoutMs: 15_000, label: "Bring it in once the preview answers" });
@@ -102,7 +102,7 @@ export default {
       // carries the transform and came out at 39.9999px on a loaded runner.
       await untilStill(page);
       const openSize = await open.boundingBox();
-      check(openSize && openSize.height >= 40, `Open the campaign as it is is a 40px target (${openSize?.height}px)`);
+      check(openSize && Math.round(openSize.height) >= 40, `Open the campaign as it is is a 40px target (${openSize?.height}px)`);
       await t.shot("creator-follow-up");
 
       // Try again sends only the import, which now goes through.

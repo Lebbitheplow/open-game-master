@@ -59,7 +59,7 @@ export default {
             await eventually(() => home.count(), { label: "App home on a signed-out page in an app" });
             check((await tab.getByRole("link", { name: "Log in" }).count()) === 0, "a signed-out page in an app links to the server's login form");
             const box = await home.boundingBox();
-            check(box && box.height >= 40, `App home is a finger-sized target (${box?.height}px)`);
+            check(box && Math.round(box.height) >= 40, `App home is a finger-sized target (${box?.height}px)`);
             await home.click();
             check(await tab.evaluate(() => window.__odmHome === true), "App home did not open the app's home");
           } else {

@@ -69,7 +69,7 @@ export default {
       } else {
         check(first.left >= text.right - 1 && first.top < text.bottom, `on a wide window the buttons stay beside the words (${theme})`);
       }
-      check(first.height >= 40 && second.height >= 40, `both buttons are at least 40px tall (${Math.round(first.height)} and ${Math.round(second.height)}, ${theme})`);
+      check(Math.round(first.height) >= 40 && Math.round(second.height) >= 40, `both buttons are at least 40px tall (${Math.round(first.height)} and ${Math.round(second.height)}, ${theme})`);
 
       // A night panel in either theme: the painting under it does not turn.
       const surface = await read(card);

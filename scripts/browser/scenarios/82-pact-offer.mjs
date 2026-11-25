@@ -36,7 +36,7 @@ export default {
       const button = group.getByRole("button", { name: new RegExp(label, "i") });
       check(await button.count(), `${label} is offered`);
       const box = await button.boundingBox();
-      check(box && box.height >= 40, `${label} is a 40px target (${box?.height})`);
+      check(box && Math.round(box.height) >= 40, `${label} is a 40px target (${box?.height})`);
       const described = await button.getAttribute("aria-describedby");
       check(Boolean(described), `${label} carries its hint for a screen reader`);
     }
