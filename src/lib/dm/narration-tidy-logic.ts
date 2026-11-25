@@ -215,6 +215,75 @@ export function repeatsEarlierNarration(text: string, earlier: readonly string[]
 // How many of the GM's newest passages a reply is held against.
 export const REPEAT_LOOKBACK = 8;
 
+const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
+
+// The sentences of a passage long enough to count as told again, as their
+// words.
+function longSentences(text: string): string[][] {
+  return (text.match(SENTENCE) ?? [])
+    .filter((piece) => textKey(piece).length >= MIN_REPEAT_CHARS)
+    .map((piece) => textKey(piece).match(WORD) ?? []);
+}
+
+// One sentence said again with a word or two changed: "You stand over the
+// dead bandit, your breath pluming in the cold air." after "You stand over
+// the dead Sentry, ...". Most of the longer one's words, counted with their
+// repeats.
+function sameSentence(now: readonly string[], before: readonly string[]): boolean {
+  const longer = Math.max(now.length, before.length);
+  if (Math.min(now.length, before.length) < 6) {
+    return now.join(" ") === before.join(" ");
+  }
+  const left = new Map<string, number>();
+  for (const word of before) {
+    left.set(word, (left.get(word) ?? 0) + 1);
+  }
+  let shared = 0;
+  for (const word of now) {
+    const count = left.get(word) ?? 0;
+    if (count > 0) {
+      shared += 1;
+      left.set(word, count - 1);
+    }
+  }
+  return shared / longer >= 0.85;
+}
+
+// What the table reads of a turn, with every paragraph the GM already told
+// in one of its newest passages taken out. A reply that is mostly an earlier
+// passage is asked for anew (repeatsEarlierNarration); this is the reply that
+// tells something new and then pastes old paragraphs under it. Qwen3.6-35B
+// closed three replies of one fight on the paragraph it had closed the one
+// before with, and told the kill of a second bandit with the four paragraphs
+// that had told the first one's, "Sentry" changed to "bandit" (issues 1104
+// and 1109). A paragraph goes when it holds two long sentences or more and
+// three in four of them stand, nearly word for word, in one earlier passage.
+// The turn is never emptied: a reply that is nothing but old paragraphs
+// stays as it is, for the checks above to send back.
+export function withoutEarlierPassages(parts: readonly string[], earlier: readonly string[]): string[] {
+  const told = earlier.map(longSentences).filter((sentences) => sentences.length > 0);
+  if (!told.length) {
+    return [...parts];
+  }
+  const kept = parts
+    .map((part) =>
+      part
+        .split(/\n{2,}/)
+        .filter((paragraph) => {
+          const sentences = longSentences(paragraph);
+          if (sentences.length < 2) {
+            return true;
+          }
+          return !told.some((passage) => sentences.filter((sentence) => passage.some((before) => sameSentence(sentence, before))).length / sentences.length >= 0.75);
+        })
+        .join("\n\n")
+        .trim(),
+    )
+    .filter(Boolean);
+  // Only a question or a short line left is no telling of the turn either.
+  return kept.some((part) => longSentences(part).length > 0) ? kept : [...parts];
+}
+
 // Sent once when a reply with no call wrote the story arc's bookkeeping
 // (tool-text.ts ARC_MARKER): Qwen3.6-35B handed the party a journal in words
 // and ticked its step as "[waypoint=3]" (issue 941). The step ticks, and the
