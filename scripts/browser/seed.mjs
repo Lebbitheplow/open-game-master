@@ -4486,6 +4486,22 @@ const bench2Titles = {};
     turnOf(table, mara.id);
     bench2.steered = { id: table.id, tokens: 3, steered: steered.displayName, free: named(rows, "wolf").displayName, turns: 4 };
   }
+  // enemy-midfight-mounting (149): a goblin and a wolf on foot side by side,
+  // and a goblin beside a Large warhorse, on the first goblin's turn (issue
+  // 1091). The scenario's GM puts them in the saddle and takes one down again,
+  // so each viewport has a table of its own.
+  bench2.saddle = {};
+  for (const viewport of ["desktop", "phone"]) {
+    const table = tableFor(`Saddle Table (${viewport})`, world.owner, player);
+    const mara = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Mara Voss", class: "fighter", level: 5, maxHp: 44 }));
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", name: "Goblin Scout" }, { monster: "wolf" }, { monster: "goblin", name: "Goblin Lancer" }, { monster: "warhorse" }]);
+    const called = (name) => rows.find((enemy) => enemy.displayName === name) ?? (() => { throw new Error(`no ${name} in the fight`); })();
+    const [scout, wolf, lancer, horse] = [called("Goblin Scout"), named(rows, "wolf"), called("Goblin Lancer"), named(rows, "warhorse")];
+    [[mara.id, -4, 0], [scout.id, 1, -2], [wolf.id, 2, -2], [lancer.id, 1, 2], [horse.id, 2, 1]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, scout.id);
+    const pick = (enemy) => ({ id: enemy.id, name: enemy.displayName });
+    bench2.saddle[viewport] = { id: table.id, scout: pick(scout), wolf: pick(wolf), lancer: pick(lancer), horse: pick(horse) };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a

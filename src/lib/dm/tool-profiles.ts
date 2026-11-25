@@ -367,6 +367,9 @@ export const COMPACT_OMITS: Record<string, string[]> = {
   // console or by a larger model is told in GAME STATE all the same.
   start_encounter: ["enemies[].mount", "enemies[].controlled"],
   add_enemies: ["enemies[].mount", "enemies[].controlled"],
+  // Where an enemy steps down from its mount (issue 1091): with neither, the
+  // nearest open square beside it.
+  dismount: ["x", "y"],
 };
 
 // Arguments only a table with a pet can use (ProfileSignals.pets): a compact

@@ -54,6 +54,10 @@ export type EnemyTurnEntry = {
   // a Pounce left prone, whose bonus attack is open (enemy-charge.ts).
   chargeUsed?: boolean;
   pouncedOn?: string;
+  // It got on or off a mount during this move: "once during your move, you
+  // can mount a creature that is within 5 feet of you or dismount" (SRD 5.1,
+  // Mounting and Dismounting; enemy-mounting.ts).
+  saddleMove?: boolean;
 };
 
 export type EnemyTurns = { round: number; byId: Record<string, EnemyTurnEntry> };
@@ -82,6 +86,7 @@ function cleanEntry(raw: unknown): EnemyTurnEntry {
     ...(record.routineSwung === true ? { routineSwung: true } : {}),
     ...(record.chargeUsed === true ? { chargeUsed: true } : {}),
     ...(typeof record.pouncedOn === "string" && record.pouncedOn ? { pouncedOn: record.pouncedOn } : {}),
+    ...(record.saddleMove === true ? { saddleMove: true } : {}),
   };
 }
 

@@ -6,6 +6,16 @@ import { footprintDistance, type Footprint } from "@/lib/battlemap/footprint";
 
 type XY = { x: number; y: number };
 
+// The walker's space: one size for the whole walk, or a size for each step of
+// it (the last one holding for the steps after it). A rider getting on or off
+// a mount changes size on the way: its own square at one end, its mount's
+// space at the other (issue 1091).
+export type MoverSpace = Footprint | readonly Footprint[];
+
+function spaceAt(space: MoverSpace, step: number): Footprint {
+  return typeof space === "number" ? space : (space[Math.min(Math.max(step, 0), space.length - 1)] ?? 1);
+}
+
 // The square a walk enters a reactor's reach at, or null when it never
 // does: Polearm Master's opportunity attack on a creature coming in. Reach
 // is measured between the nearest squares of the two, so an ogre's reach
@@ -16,9 +26,9 @@ export function entersReachAt(
   reactor: XY,
   reach: number,
   reactorFootprint: Footprint = 1,
-  moverFootprint: Footprint = 1,
+  moverFootprint: MoverSpace = 1,
 ): XY | null {
-  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, moverFootprint);
+  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, spaceAt(moverFootprint, steps.indexOf(step)));
   for (let index = 0; index + 1 < steps.length; index += 1) {
     const here = steps[index];
     const next = steps[index + 1];
@@ -37,9 +47,9 @@ export function leavesReachAt(
   reactor: XY,
   reach: number,
   reactorFootprint: Footprint = 1,
-  moverFootprint: Footprint = 1,
+  moverFootprint: MoverSpace = 1,
 ): XY | null {
-  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, moverFootprint);
+  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, spaceAt(moverFootprint, steps.indexOf(step)));
   for (let index = 0; index + 1 < steps.length; index += 1) {
     const here = steps[index];
     const next = steps[index + 1];
@@ -58,9 +68,9 @@ export function movesWithinReachAt(
   reactor: XY,
   reach: number,
   reactorFootprint: Footprint = 1,
-  moverFootprint: Footprint = 1,
+  moverFootprint: MoverSpace = 1,
 ): XY | null {
-  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, moverFootprint);
+  const apart = (step: XY) => footprintDistance(reactor, reactorFootprint, step, spaceAt(moverFootprint, steps.indexOf(step)));
   for (let index = 0; index + 1 < steps.length; index += 1) {
     const here = steps[index];
     const next = steps[index + 1];
