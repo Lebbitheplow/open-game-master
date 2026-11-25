@@ -413,7 +413,8 @@ await test("where there is nothing to choose the first change still goes through
   assert.deepEqual(heldBy(table, bran.id), ["Leather Armor", "Scimitar", "Shortsword"]);
   const great = await postUsage(table, bran.id, { gear: { Greatsword: { equipped: true } } });
   assert.equal(great.status, 200, great.json.error);
-  assert.match(great.json.note, /Bran puts away Scimitar and Shortsword and takes up Greatsword, free/);
+  // Out of a fight, plainly: every change there is free (issue 1105).
+  assert.equal(great.json.note, "Bran puts away Scimitar and Shortsword and takes up Greatsword.");
   assert.deepEqual(heldBy(table, bran.id), ["Leather Armor", "Greatsword"]);
   // The greatsword fills both hands, so a dagger has one thing to take the
   // place of: still asked, as the guess is over and nothing is automatic.

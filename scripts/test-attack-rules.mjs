@@ -9,6 +9,8 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const {
   handsRuling,
+  earnedBonusSwing,
+  heldFirst,
   hostileWithinFiveFeet,
   isFlanking,
   isUndeadOrFiend,
@@ -399,5 +401,19 @@ test("a hostile within 5 feet is one on any of the eight squares around", () => 
   assert.equal(hostileWithinFiveFeet(me, [{ x: 2, y: 3, footprint: 2 }]), false);
 });
 
+
+test("the swing still owed names the off-hand weapon in hand, not one in the pack (issue 1105)", () => {
+  const equipment = [
+    { name: "Scimitar", qty: 1, equipped: true },
+    { name: "Shortsword", qty: 1, equipped: false },
+    { name: "Dagger", qty: 1, equipped: true },
+  ];
+  assert.deepEqual(heldFirst(equipment, equipment).map((item) => item.name), ["Scimitar", "Dagger", "Shortsword"]);
+  const unsaid = equipment.map(({ name, qty }) => ({ name, qty }));
+  assert.deepEqual(heldFirst(unsaid, unsaid).map((item) => item.name), ["Scimitar", "Shortsword", "Dagger"], "a sheet that marks nothing keeps its order");
+  const budget = { ...freshBudget({ ownerId: "pc-1", round: 1 }), attacksMade: 1, lightMeleeAttack: true };
+  const owed = earnedBonusSwing({ who: "Jason", budget, equipment, shieldName: null, martialArtsReady: false });
+  assert.match(owed ?? "", /off-hand attack with Dagger/);
+});
 
 console.log(`test-attack-rules: ${passed} passed`);

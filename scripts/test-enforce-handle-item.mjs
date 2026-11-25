@@ -556,7 +556,9 @@ await test("The sheet's weapon row: In hand from the guess is a free change that
   };
   const sword = await toggle({ Shortsword: { equipped: true } });
   assert.equal(sword.status, 200, JSON.stringify(sword.json));
-  assert.match(sword.json.note, /Ayla puts away Longbow and takes up Shortsword, free/);
+  // Out of a fight every change is free, so the note does not call this
+  // one "the first change" that costs nothing (issue 1105).
+  assert.equal(sword.json.note, "Ayla puts away Longbow and takes up Shortsword.");
   assert.deepEqual(heldNames(archer), ["Leather Armor", "Shortsword"]);
   assert.deepEqual(guessFlags(archer), [], "a player's mark ends the guess");
   const bow = await toggle({ Longbow: { equipped: true } });
@@ -613,6 +615,32 @@ await test("Issue 1105: out of a fight the storyteller's full-hands refusal name
   const turn = await handle({ action: "equip", item: "Dagger" });
   assert.equal(turn.ok, false);
   assert.match(turn.error, /Dropping one is free \(handle_item drop\); putting one away takes the object interaction\./);
+});
+
+await test("Issue 1105: while the guess holds two blades, handle_item asks which one goes rather than putting away the last in the pack", async () => {
+  const TWIN_PACK = () => [{ name: "Leather Armor", qty: 1 }, { name: "Scimitar", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }];
+  await kit.endFight();
+  world.patch(archer.id, { equipment: TWIN_PACK() });
+  getDatabase().prepare(`DELETE FROM rolls WHERE character_id = ?`).run(archer.id);
+  await archerFight();
+  assert.deepEqual(heldNames(archer), ["Leather Armor", "Scimitar", "Shortsword"]);
+  assert.deepEqual(guessFlags(archer), ["Scimitar", "Shortsword", "Dagger"]);
+  const asked = await handle({ characterId: archer.id, action: "equip", item: "Dagger" });
+  assert.equal(asked.ok, false);
+  assert.equal(asked.refused, "rules");
+  assert.match(asked.error, /Ayla's hands are full \(Scimitar and Shortsword\), so Dagger cannot be drawn yet\./);
+  assert.match(asked.error, /putting one away costs nothing: call handle_item unequip for the one the player named, then equip again\. If they named none, ask them which\./);
+  assert.deepEqual(heldNames(archer), ["Leather Armor", "Scimitar", "Shortsword"], "asking changed nothing");
+  assert.equal(budget()?.interaction, undefined, "asking spent nothing");
+  // The calls it names make the swap the player chose: the scimitar goes.
+  const stowed = await handle({ characterId: archer.id, action: "unequip", item: "Scimitar" });
+  assert.equal(stowed.ok, true, stowed.error);
+  assert.equal(budget()?.interaction, undefined, "putting a guessed blade away is the free first change");
+  const drawn = await handle({ characterId: archer.id, action: "equip", item: "Dagger" });
+  assert.equal(drawn.ok, true, drawn.error);
+  assert.deepEqual(heldNames(archer), ["Leather Armor", "Shortsword", "Dagger"]);
+  // Where only one weapon could go, there is nothing to ask: the archer's
+  // sword still goes away with the bow, as above.
 });
 
 await test("A companion the storyteller plays is left as it was: no marks, no guess", async () => {

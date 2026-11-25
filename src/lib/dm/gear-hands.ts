@@ -147,10 +147,23 @@ export function guessedRehand(
   return { equipment: next, putAway };
 }
 
-// What the free first change did, in the result's words.
-export function rehandLine(who: string, putAway: readonly string[], taken: string): string {
+// What the free first change did, in the result's words. Out of a fight
+// every change is free, and saying "the first change costs nothing" there
+// told the reader the next one would cost something (issue 1105).
+export function rehandLine(who: string, putAway: readonly string[], taken: string, inFight = true): string {
   const away = putAway.length ? `puts away ${putAway.join(" and ")} and ` : "";
-  return `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`;
+  return inFight
+    ? `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`
+    : `${who} ${away}takes up ${taken}.`;
+}
+
+// Whether the free first change would have to pick which weapon goes back
+// in the pack: more than one held weapon would make room, and nobody said
+// which. The sheet asks (sheet/usage handSwaps); handle_item is told to ask
+// rather than put away the last one in the pack, as it did for a dagger
+// drawn beside a scimitar and a shortsword (issue 1105).
+export function rehandIsAChoice(equipment: readonly EquipmentItem[], row: EquipmentItem, rehand: { putAway: readonly string[] } | null): boolean {
+  return Boolean(rehand?.putAway.length) && handSwaps(equipment, row).length > 1;
 }
 
 // The ways out of full hands, for each reader: the storyteller is told the
@@ -166,11 +179,12 @@ export function rehandLine(who: string, putAway: readonly string[], taken: strin
 // a fight as well (guessedRehand above), which `firstChange` says. None of
 // them opens with "No fight is running": that is how a tool says it needs a
 // fight, and this refusal is about hands.
-const WAYS_OUT: Record<"storyteller" | "player" | "storytellerAtEase" | "atEase" | "firstChange", string> = {
+const WAYS_OUT: Record<"storyteller" | "player" | "storytellerAtEase" | "atEase" | "storytellerFirstChange" | "firstChange", string> = {
   storyteller: "Dropping one is free (handle_item drop); putting one away takes the object interaction.",
   player: "Dropping one is free; putting one away takes your object interaction this turn.",
   storytellerAtEase: "Out of a fight putting one away is free: call handle_item unequip for the one the player named, then equip again. If they named none, ask them which.",
   atEase: "Put one of them away first: out of a fight that costs nothing.",
+  storytellerFirstChange: "Nobody had said which weapon was out, so putting one away costs nothing: call handle_item unequip for the one the player named, then equip again. If they named none, ask them which.",
   firstChange: "Put one of them away first: nobody had said which weapon was out, so this first change costs nothing.",
 };
 
@@ -178,6 +192,7 @@ const WAYS_OUT: Record<"storyteller" | "player" | "storytellerAtEase" | "atEase"
 const FOR_PLAYER: ReadonlyArray<[string, string]> = [
   [WAYS_OUT.storyteller, WAYS_OUT.player],
   [WAYS_OUT.storytellerAtEase, WAYS_OUT.atEase],
+  [WAYS_OUT.storytellerFirstChange, WAYS_OUT.firstChange],
 ];
 
 // The refusal for a draw with no hand free, with the ways out: dropping

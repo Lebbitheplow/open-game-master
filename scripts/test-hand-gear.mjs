@@ -572,4 +572,22 @@ test("gained gear arrives as it did before the marks: a cloak worn while its pla
   assert.equal(wearGained([{ name: "Rope", qty: 1 }], [{ name: "Rope", qty: 1 }, cloak("New Cloak")])[1].equipped, undefined, "a sheet that never said wears everything already");
 });
 
+test("while the guess holds two blades, the Draw card offers no draw that would have to pick which one goes, and says stowing one is free (issue 1105)", () => {
+  const guessed = (name, equipped) => ({ name, qty: 1, equipped, heldGuess: true });
+  const twin = [guessed("Scimitar", true), guessed("Shortsword", true), guessed("Dagger", false)];
+  const draw = byId(deriveHand(sheet({ equipment: twin })), "gear:draw");
+  assert.ok(draw.disabled, "a draw that would put away a blade nobody chose");
+  assert.match(draw.disabled, /hands are full \(Scimitar and Shortsword\).*Put one of them away first: nobody had said which weapon was out, so this first change costs nothing\./);
+  assert.doesNotMatch(draw.disabled, /object interaction/);
+  // The Stow card makes the choice, free while the guess stands.
+  const stow = byId(deriveHand(sheet({ equipment: twin })), "gear:stow");
+  assert.equal(stow.disabled, null);
+  assert.equal(stow.cost, "free");
+  // A guessed archer's bow has one weapon in its way: nothing to choose.
+  const archer = [guessed("Shortsword", true), guessed("Longbow", false)];
+  const bow = byId(deriveHand(sheet({ equipment: archer })), "gear:draw");
+  assert.equal(bow.disabled, null);
+  assert.deepEqual(bow.choice.options.map((option) => option.value), ["Longbow"]);
+});
+
 console.log(`test-hand-gear: ${passed} passed`);

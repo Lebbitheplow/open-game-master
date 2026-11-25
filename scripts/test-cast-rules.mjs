@@ -14,6 +14,7 @@ const {
   focusProblem,
   materialComponents,
   handsBusy,
+  grappleHandsProblem,
   materialPlan,
   openCastOf,
   QUICKENED,
@@ -164,6 +165,17 @@ test("two busy hands refuse a somatic spell; War Caster or a holy symbol on a sh
   assert.equal(componentProblem(priest, facts("Hold Person")), null, "V, S, M: the emblem hand");
   assert.match(componentProblem(priest, facts("Magic Missile"))?.error, /free hand/, "V, S: no material, no emblem");
   assert.equal(handsBusy(caster({ equipment: [{ name: "Longsword", qty: 1 }] })), 0, "carried is not held");
+});
+
+test("a held row of two daggers is one hand, so a warlock the engine armed still casts", () => {
+  // The default warlock kit packs "two daggers" as one row, and the engine's
+  // guess holds it as the caster's one weapon (held-default.ts).
+  const warlock = caster({ class: "warlock", equipment: [{ name: "Dagger", qty: 2, equipped: true, heldGuess: true }] });
+  assert.equal(handsBusy(warlock), 1);
+  assert.equal(componentProblem(warlock, facts("Magic Missile")), null);
+  assert.equal(grappleHandsProblem({ ...warlock, name: "Iris" }), null);
+  const twoRows = caster({ equipment: [{ name: "Dagger", qty: 1, equipped: true }, { name: "Shortsword", qty: 1, equipped: true }] });
+  assert.equal(handsBusy(twoRows), 2, "two weapons held are two hands");
 });
 
 // ---- materials ----

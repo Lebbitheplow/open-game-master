@@ -342,12 +342,13 @@ const MUTE = ["silenced", "gagged", "muted"];
 // the shield the character wears or a weapon marked as equipped on the sheet.
 // A two-handed weapon needs both hands only for the swing, so between swings
 // it is held in one. Nothing else on a sheet says what is in a hand, so
-// nothing else counts.
+// nothing else counts. A row is one weapon in hand whatever its count, as
+// the draw reads it (gear-hands.ts handsFor): a warlock's "Dagger x2" that
+// the engine's guess held (held-default.ts, which leaves a caster a hand
+// free) counted as both hands, and every spell with gestures was refused.
 export function handsBusy(sheet: Pick<Caster, "equipment" | "proficiencies" | "class" | "level" | "features" | "classes" | "abilities" | "conditions">): number {
   const shield = acBreakdownFor(sheet).shieldName ? 1 : 0;
-  const weapons = sheet.equipment
-    .filter((item: EquipmentItem) => item.equipped === true && matchWeapon(item) !== null)
-    .reduce((sum, item) => sum + Math.max(1, item.qty ?? 1), 0);
+  const weapons = sheet.equipment.filter((item: EquipmentItem) => item.equipped === true && matchWeapon(item) !== null).length;
   return Math.min(2, shield + weapons);
 }
 

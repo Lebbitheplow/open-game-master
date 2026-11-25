@@ -26,7 +26,7 @@ import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
+import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandIsAChoice, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed, rowName } from "@/lib/srd/item-row";
 import { isTack, rowIsOn } from "@/lib/srd/tack";
 import { bardingSuit } from "@/lib/srd/barding";
@@ -239,6 +239,11 @@ function changeWear(
   // first draw or stow is free, and a draw puts the guessed weapons in its
   // way away with it (gear-hands.ts guessedRehand).
   const guessed = on && kind === "weapon" ? guessedRehand(sheet.equipment, row) : null;
+  // Only where there is nothing to choose: with two weapons that would each
+  // make room, which one goes is the player's word, not the pack's order.
+  if (guessed && rehandIsAChoice(sheet.equipment, row, guessed)) {
+    return refuse(handsFullError(sheet.name, row.name, handsFullFor(sheet.equipment, row), "drawn", encounter ? "storytellerFirstChange" : "storytellerAtEase"));
+  }
   const freeByGuess = kind === "weapon" && (guessed !== null || (!on && guessStands(sheet.equipment)));
   if (guessed) {
     drawn = guessed.equipment;
@@ -320,8 +325,8 @@ function changeWear(
   return {
     ok: true,
     applied: guessed
-      ? rehandLine(sheet.name, guessed.putAway, row.name)
-      : `${sheet.name} ${on ? (kind === "weapon" ? "draws" : "puts on") : kind === "weapon" ? "puts away" : "takes off"} ${row.name}${freeByGuess ? ", free: nobody had said which weapon was out, so the first change from the game's pick costs nothing" : ""}.`,
+      ? rehandLine(sheet.name, guessed.putAway, row.name, Boolean(encounter))
+      : `${sheet.name} ${on ? (kind === "weapon" ? "draws" : "puts on") : kind === "weapon" ? "puts away" : "takes off"} ${row.name}${freeByGuess && encounter ? ", free: nobody had said which weapon was out, so the first change from the game's pick costs nothing" : ""}.`,
     ...(cost ? { cost } : {}),
     ...(dressing?.minutes ? { timePassed: dressing.lines.join(" ") } : {}),
   };

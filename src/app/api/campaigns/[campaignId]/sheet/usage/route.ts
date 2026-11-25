@@ -16,7 +16,7 @@ import { recordManualTicks } from "@/lib/dm/manual-ticks";
 import { attunementRefusal, gearChanges, gearPatch, usageLowers, usageSpendsHitDice } from "@/lib/dm/usage-rules";
 import { acBreakdownFor } from "@/lib/srd";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, handSwaps, rehandLine, spendInteraction, type HandsFull } from "@/lib/dm/gear-hands";
+import { gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, handSwaps, rehandIsAChoice, rehandLine, spendInteraction, type HandsFull } from "@/lib/dm/gear-hands";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { advanceClock } from "@/lib/db/clock";
@@ -202,7 +202,7 @@ export async function POST(
   // greatsword. A dagger dragged onto a scimitar and a shortsword put the
   // shortsword away because it came last in the pack; with more than one
   // weapon that would do, the hands-full check below asks which instead.
-  const rehand = offered && askedRow && (!offered.putAway.length || handSwaps(sheet.equipment, askedRow).length < 2) ? offered : null;
+  const rehand = offered && askedRow && !rehandIsAChoice(sheet.equipment, askedRow, offered) ? offered : null;
   // The answer to that question is the same free first change: one weapon
   // taken up and the ones named put away for it, in one request.
   const answered = gearAsked.map(([name, change]) => ({ change, row: sheet.equipment.find((item) => item.name === name) }));
@@ -426,6 +426,6 @@ export async function POST(
   publishPersisted(campaignId, "sheet_updated", { sheet: updated });
 
   // What the free first change did, said plainly (gear-hands.ts rehandLine).
-  const note = rehand && askedRow ? rehandLine(sheet.name, rehand.putAway, askedRow.name) : null;
+  const note = rehand && askedRow ? rehandLine(sheet.name, rehand.putAway, askedRow.name, Boolean(encounter)) : null;
   return Response.json({ sheet: updated, ...(dressing?.minutes ? { timePassed: dressing.lines.join(" ") } : {}), ...(note ? { note } : {}) });
 }

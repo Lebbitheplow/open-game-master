@@ -211,6 +211,23 @@ test("one row of two shortswords, equipped, is a blade in each hand, and the off
   assert.equal(byId(deriveHand(pair, turn), "offhand:shortsword").disabled, null);
 });
 
+// Issue 1105: a fighter who swapped the shortsword for a dagger holds the
+// scimitar and the dagger, and the shortsword is in the pack. The off-hand
+// card was read from pack order and named the packed shortsword.
+test("the off-hand card names the second blade in hand, not one in the pack", () => {
+  const swapped = sheet({
+    class: "fighter",
+    equipment: [
+      { name: "Scimitar", qty: 1, equipped: true },
+      { name: "Shortsword", qty: 1, equipped: false },
+      { name: "Dagger", qty: 1, equipped: true },
+    ],
+  });
+  const hand = deriveHand(swapped);
+  assert.ok(byId(hand, "offhand:dagger"), "no off-hand card for the dagger in hand");
+  assert.equal(byId(hand, "offhand:shortsword"), undefined, "an off-hand card for the shortsword in the pack");
+});
+
 // Issue 210: the card opened on ANY first attack, so a rapier swing lit the
 // off-hand dagger the engine then refused. It asks the engine's rule now.
 test("the off-hand card opens only after the Attack action earns it", () => {

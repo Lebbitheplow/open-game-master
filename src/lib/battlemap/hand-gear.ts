@@ -15,7 +15,7 @@ import { translate } from "@/lib/messages-logic";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 const enT: T = (key, vars) => translate("en", key, vars);
-import { guessedRehand, guessStands, handsFullError, handsFullFor, spendInteraction, gearKindOf, inHand } from "@/lib/dm/gear-hands";
+import { guessedRehand, guessStands, handsFullError, handsFullFor, rehandIsAChoice, spendInteraction, gearKindOf, inHand } from "@/lib/dm/gear-hands";
 import type { SpendResult } from "@/lib/dm/action-budget";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
@@ -131,8 +131,13 @@ function interactionCost(sheet: CharacterSheet, turn: HandTurn, t: T = enT): { c
 //   spendInteraction, an attack cannot draw too → table.hand.gear.interactionSpentAttack
 // The "already went on" clause names what the budget spent, which the Hand
 // always builds as "an object" (budgetOf); a different wording falls back.
-function handsFullReason(who: string, what: string, full: readonly string[], t: T): string {
+function handsFullReason(who: string, what: string, full: readonly string[], t: T, firstChange = false): string {
   const items = full.join(" and ");
+  // While the hands are the engine's guess, stowing one is free (the Stow
+  // card says so), so the way out is not the object interaction.
+  if (firstChange) {
+    return t("{name}'s hands are full ({items}), so {what} cannot be drawn yet. Put one of them away first: nobody had said which weapon was out, so this first change costs nothing.", { name: who, items, what });
+  }
   if (
     handsFullError(who, what, full, "drawn", "player") ===
     `${who}'s hands are full (${items}), so ${what} cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.`
@@ -202,8 +207,15 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   if (stowed.length) {
     // Only what a free hand can take; with none free, the card says how to
     // free one (dropping is free, putting one away is the interaction).
-    const fits = stowed.filter((item) => (guess ? guessedRehand(equipment, item) !== null : !handsFullFor(equipment, item).length));
-    const full: Gate = fits.length ? null : { reason: handsFullReason(sheet.name, "another weapon", handsFullFor(equipment, stowed[0]), t), spent: false };
+    // While the guess stands, a draw that would have to choose which held
+    // weapon goes back is not offered: handle_item asks for that choice
+    // (gear-hands.ts rehandIsAChoice), and the free Stow card makes it.
+    const fits = stowed.filter((item) => {
+      if (!guess) return !handsFullFor(equipment, item).length;
+      const rehand = guessedRehand(equipment, item);
+      return rehand !== null && !rehandIsAChoice(equipment, item, rehand);
+    });
+    const full: Gate = fits.length ? null : { reason: handsFullReason(sheet.name, "another weapon", handsFullFor(equipment, stowed[0]), t, guess), spent: false };
     cards.push(
       gated(
         card("draw", t("Draw a weapon"), "equip", handle.cost, `${guess ? guessNote : interaction.note} ${t("A hand holds one weapon; a two-handed one takes both.")}`, { kind: "action", key: "use-object" }, {
