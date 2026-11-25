@@ -101,8 +101,16 @@ function closesOpen(before: string, line: string): boolean {
   return (line.includes(")") && leftOpen(before, "(", ")")) || (line.includes("]") && leftOpen(before, "[", "]"));
 }
 
+// A line of nothing but a pair of emphasis marks: what is left of a bold
+// note once its sentence is cut ("**Beat Complete: ...**" left "**", issue
+// 1095). One mark may be a bullet nobody finished and three are a rule
+// across the page: both stay as they came.
+const STRAY_EMPHASIS = /^[ \t]*(?:\*\*|__)[ \t]*(?:\r?\n|$)/gm;
+
 export function withoutOrphanClosers(text: string): string {
-  const out = text.replace(ORPHAN_CLOSERS, (line: string, at: number) => (closesOpen(text.slice(0, at), line) ? line : ""));
+  const out = text
+    .replace(ORPHAN_CLOSERS, (line: string, at: number) => (closesOpen(text.slice(0, at), line) ? line : ""))
+    .replace(STRAY_EMPHASIS, "");
   return out === text ? text : tidyBlankLines(out);
 }
 
