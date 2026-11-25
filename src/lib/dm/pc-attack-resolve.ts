@@ -23,6 +23,7 @@ import type { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { hasElvenAccuracy, hasHalflingLuck } from "@/lib/srd/feature-effects";
 import { rollAgainst } from "@/lib/roll-labels";
+import { attackParts } from "@/lib/roll-parts";
 
 // The roll the attack makes and the damage it carries, built once the
 // attack is paid for and shared by both dice paths.
@@ -60,7 +61,10 @@ export function strikeToHit(plan: AttackPlan) {
   // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
   const toHitExpression = tranceFloored(sheet, `${toHitD20}${toHitRiderSuffix}`);
   const detail = rollAgainst(profile.weapon, enemy.displayName);
-  return { toHitExpression, detail };
+  // What the attack is made with, as a field: the weapon a fight's guess at
+  // the hand in use reads back (src/lib/roll-parts.ts rollWeaponRow).
+  const parts = attackParts({ name: profile.weapon, base: profile.base, spell: plan.kind === "spell" });
+  return { toHitExpression, detail, parts };
 }
 
 // The server's throw of the to-hit roll, tagged as the hero's attack.
@@ -116,6 +120,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
     requestedBy: "dm",
     kind: "attack",
     detail: strike.detail,
+    parts: strike.parts,
     advantage: plan.advantage,
     result: hitOutcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },

@@ -77,7 +77,7 @@ export function hourlyConSaves(input: {
       spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
       // The player's own save (src/lib/dm/character-roll.ts; WAVE1 R5): on
       // physical dice they roll it, hour by hour.
-      const rolled = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail(hour), dc, settleHeldDie: waits });
+      const rolled = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail(hour), parts: resolved.parts, dc, settleHeldDie: waits });
       save = rolled.total;
       recordRoll({
         campaignId: campaign.id,
@@ -85,6 +85,7 @@ export function hourlyConSaves(input: {
         requestedBy: "dm",
         kind: "saving_throw",
         detail: input.detail(hour),
+        parts: resolved.parts,
         dc,
         result: rolled,
         turn,

@@ -178,6 +178,8 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
           cardRoller(pending.characterId ? getSheetById(pending.characterId) : null),
         ),
         detail: pending.detail,
+        // As the card kept them; a card dealt before cards did has none.
+        parts: pending.parts,
         advantage: pending.advantage,
         dc: pending.dc,
         result: outcome,

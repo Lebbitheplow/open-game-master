@@ -669,7 +669,7 @@ export function applyEnemyDamage(
       const slain = options?.concentrationDisadvantage === true;
       const outcome = rollEnemySave(campaign.id, enemy, "con", dc, {
         ...(slain ? { disadvantage: true } : {}),
-        record: { turn, detail: `${enemy.displayName}: concentration on ${spell} (CON save${slain ? ", Mage Slayer: disadvantage" : ""})` },
+        record: { turn, detail: `${enemy.displayName}: concentration on ${spell} (CON save${slain ? ", Mage Slayer: disadvantage" : ""})`, purpose: "concentration" },
       });
       const held = outcome.success;
       if (slain) {

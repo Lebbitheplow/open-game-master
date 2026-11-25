@@ -86,7 +86,7 @@ export function quakeShake(campaign: Campaign, map: BattleMap, zone: SpellZone, 
         }
         const standing = getEnemy(enemy.id);
         if (standing?.concentration) {
-          const kept = rollEnemySave(campaign.id, standing, "con", dc, { magical: true, record: { turn, detail: `${standing.displayName}: CON save to keep concentration in ${zone.spell}` } });
+          const kept = rollEnemySave(campaign.id, standing, "con", dc, { magical: true, record: { turn, detail: `${standing.displayName}: CON save to keep concentration in ${zone.spell}`, purpose: "concentration" } });
           if (!kept.success) {
             const spell = standing.concentration;
             setEnemyConcentration(standing.id, null);
@@ -123,7 +123,7 @@ export function quakeShake(campaign: Campaign, map: BattleMap, zone: SpellZone, 
       }
       const standing = getSheetById(sheet.id);
       if (standing?.concentratingOn) {
-        const kept = rollCharacterSave(campaign, turn, standing, "con", dc, `CON save to keep concentration in ${zone.spell}`);
+        const kept = rollCharacterSave(campaign, turn, standing, "con", dc, `CON save to keep concentration in ${zone.spell}`, undefined, null, null, false, { purpose: "concentration" });
         if (!kept.success) {
           const spell = breakConcentration(campaign, turn.id, standing.id, `lost in ${zone.spell}`);
           if (spell) {

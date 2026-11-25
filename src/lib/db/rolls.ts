@@ -1,6 +1,7 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { redactRoll, rollAccessFor, type ViewerCaps } from "@/lib/dm/viewer";
 import type { Advantage, RollResult } from "@/lib/dice";
+import type { RollParts } from "@/lib/roll-parts";
 
 export type RollKind =
   | "skill_check"
@@ -77,6 +78,10 @@ export type StoredRoll = {
   // (a fall). Null for other kinds of roll, and for rolls stored before it
   // was recorded.
   attacker: RollAttacker | null;
+  // What a rule reads back from this roll (src/lib/roll-parts.ts, the only
+  // module that reads it or the sentence). Null for a roll stored before its
+  // parts were: that one is read by its words.
+  parts: RollParts | null;
   createdAt: string;
 };
 
@@ -98,6 +103,7 @@ type RollRow = {
   target_enemy_id: string | null;
   applied: number;
   attacker_json: string | null;
+  parts_json: string | null;
   created_at: string;
 };
 
@@ -124,6 +130,7 @@ function mapRoll(row: RollRow): StoredRoll {
     targetEnemyId: row.target_enemy_id ?? null,
     applied: Boolean(row.applied),
     attacker: parseJson<RollAttacker | null>(row.attacker_json ?? "null", null),
+    parts: row.parts_json === null ? null : parseJson<RollParts>(row.parts_json, {}),
     createdAt: row.created_at,
   };
 }
@@ -164,6 +171,11 @@ export type RollInsert = {
   result: RollResult;
   visibility?: RollVisibility;
   messageId?: string | null;
+  // What a rule may read back from this roll: said here, as a field, and
+  // never left for a reader to find in `detail` (src/lib/roll-parts.ts).
+  // Null only for the dice of a roll card dealt before cards kept their
+  // parts (dm-turns.ts PendingRoll): that roll is stored without them.
+  parts?: RollParts | null;
 } & (
   | { kind: "attack" | "damage"; attacker: RollAttacker }
   | { kind: Exclude<RollKind, "attack" | "damage">; attacker?: RollAttacker | null }
@@ -180,9 +192,9 @@ export function insertRoll(input: RollInsert): StoredRoll {
         INSERT INTO rolls (
           id, campaign_id, character_id, requested_by, roll_kind, detail,
           expression, advantage, dc, total, success, breakdown_json,
-          visibility, message_id, attacker_json, created_at
+          visibility, message_id, attacker_json, parts_json, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     )
     .run(
@@ -201,6 +213,9 @@ export function insertRoll(input: RollInsert): StoredRoll {
       input.visibility ?? "public",
       input.messageId ?? null,
       input.attacker ? JSON.stringify(input.attacker) : null,
+      // A roll stored from now on has its parts, '{}' where it names none,
+      // so it is read by its fields and never by its words.
+      input.parts === null ? null : JSON.stringify(input.parts ?? {}),
       nowIso(),
     );
   // A held call keeps which roll its decided dice became (held-call.ts).
@@ -233,14 +248,22 @@ export function firstStoredAfter(rollId: string, among: readonly string[]): stri
   return among.find((id) => later.has(id)) ?? null;
 }
 
-// The label of a character's own latest attack roll ("Longbow vs Goblin",
-// src/lib/roll-labels.ts rollAgainst), or null: what a fight's guess at the
-// weapon in hand reads (src/lib/dm/held-default.ts).
-export function lastAttackDetail(campaignId: string, characterId: string): string | null {
+// A character's own latest attack roll, or null: what a fight's guess at the
+// weapon in hand reads (src/lib/dm/held-default.ts), through the roll's
+// parts (src/lib/roll-parts.ts rollWeaponRow). Their own by who made it:
+// `character_id` is also the target of a creature's attack and the owner of
+// a pet's, and the latest of those named no weapon of theirs, so the guess
+// forgot the one they had swung. A roll stored before rolls said who made
+// them is taken as theirs, as it was.
+export function lastAttackRoll(campaignId: string, characterId: string): StoredRoll | null {
   const row = getDatabase()
-    .prepare(`SELECT detail FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack' ORDER BY created_at DESC, rowid DESC LIMIT 1`)
-    .get(campaignId, characterId) as { detail: string } | undefined;
-  return row?.detail || null;
+    .prepare(
+      `SELECT * FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack'
+         AND (attacker_json IS NULL OR (json_extract(attacker_json, '$.kind') = 'sheet' AND json_extract(attacker_json, '$.id') = character_id))
+       ORDER BY created_at DESC, rowid DESC LIMIT 1`,
+    )
+    .get(campaignId, characterId) as RollRow | undefined;
+  return row ? mapRoll(row) : null;
 }
 
 // Whether a creature has made an attack roll at this character. An enemy's

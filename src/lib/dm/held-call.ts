@@ -40,6 +40,7 @@ import {
   type WatchPower,
   type WatchStop,
 } from "@/lib/db/dm-turns";
+import type { RollParts } from "@/lib/roll-parts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
@@ -74,6 +75,8 @@ export type HeldPark = {
   ask?: OpportunityAsk;
   // What the call answers while it waits.
   note: string;
+  // What the roll says of itself as fields (character-roll.ts CharacterRoll).
+  parts?: RollParts;
 };
 
 type Trial = {
@@ -463,6 +466,7 @@ function parkCard(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: T
     reason: park.reason.slice(0, 200),
     visibility: park.visibility,
     parkedFor: park.parkedFor,
+    ...(park.parts ? { parts: park.parts } : {}),
     ...(park.thrown ? { thrown: park.thrown } : {}),
     carry: { call: held, ...(park.ask ? { ask: park.ask } : {}) },
   });
@@ -588,6 +592,7 @@ export function runHeldAgain(
       // A card's own attack or damage dice are its character's.
       ...kindAndRoller(pending.kind, null, cardRoller(getSheetById(pending.characterId))),
       detail: pending.detail,
+      parts: pending.parts,
       advantage: pending.advantage,
       dc: pending.dc,
       result: outcome,

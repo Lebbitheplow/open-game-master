@@ -42,7 +42,7 @@ export function rollScrollCopy(
     return { error: `${copier.name} cannot make the Arcana check a copy needs: ${resolved.notes.join("; ")}. Nothing was spent.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, copier.id, resolved.spendInspiration);
-  const outcome = rollCharacterD20(campaign, copier, { kind: "skill_check", expression: resolved.expression, detail, dc, settleHeldDie: heldDieWaits(copier, dc) });
-  recordRoll({ campaignId: campaign.id, characterId: copier.id, requestedBy: "dm", kind: "skill_check", detail, dc, result: outcome, turn });
+  const outcome = rollCharacterD20(campaign, copier, { kind: "skill_check", expression: resolved.expression, detail, parts: resolved.parts, dc, settleHeldDie: heldDieWaits(copier, dc) });
+  recordRoll({ campaignId: campaign.id, characterId: copier.id, requestedBy: "dm", kind: "skill_check", detail, parts: resolved.parts, dc, result: outcome, turn });
   return { passed: outcome.total >= dc, rolled: outcome.total, dc };
 }

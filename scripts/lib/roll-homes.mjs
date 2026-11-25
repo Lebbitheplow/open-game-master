@@ -22,9 +22,9 @@ export function rollMark() {
 // The rolls of a table stored after a mark, oldest first.
 export function rollsAfter(campaignId, mark) {
   return getDatabase()
-    .prepare(`SELECT rowid AS at, id, character_id AS characterId, requested_by AS requestedBy, roll_kind AS kind, detail, visibility, attacker_json AS attackerJson FROM rolls WHERE campaign_id = ? AND rowid > ? ORDER BY rowid ASC`)
+    .prepare(`SELECT rowid AS at, id, character_id AS characterId, requested_by AS requestedBy, roll_kind AS kind, detail, visibility, attacker_json AS attackerJson, parts_json AS partsJson FROM rolls WHERE campaign_id = ? AND rowid > ? ORDER BY rowid ASC`)
     .all(campaignId, mark)
-    .map((row) => ({ ...row, attacker: row.attackerJson ? JSON.parse(row.attackerJson) : null }));
+    .map((row) => ({ ...row, attacker: row.attackerJson ? JSON.parse(row.attackerJson) : null, parts: row.partsJson === null ? null : JSON.parse(row.partsJson) }));
 }
 
 // Every place a roll is listed: a turn once for each time it lists it.

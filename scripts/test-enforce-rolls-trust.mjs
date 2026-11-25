@@ -28,6 +28,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-enforce-rolls-trust");
 const { listOpenPendingRolls, getPendingRoll } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { rollPhysical } = await import("../src/lib/roll-parts.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 
 const first = await openWorld();
@@ -114,7 +115,7 @@ await test("typed faces are believed at a real-dice table, labelled as physical"
   assert.equal(answered.json.roll.total, 17);
   assert.equal(answered.json.roll.dc, 15);
   assert.equal(answered.json.roll.success, true);
-  assert.match(answered.json.roll.detail, /physical/);
+  assert.ok(rollPhysical(answered.json.roll));
   assert.equal(getPendingRoll(pending.id).status, "submitted");
 });
 
@@ -164,7 +165,7 @@ await test("a parked roll is answered once, by the player it waits on", async ()
   const forced = await real.answer(pending.id, { fallback: "digital" }, real.who.assistant);
   assert.equal(forced.status, 200, JSON.stringify(forced.json));
   assert.equal(forced.json.roll.total, 6);
-  assert.doesNotMatch(forced.json.roll.detail, /physical/);
+  assert.ok(!rollPhysical(forced.json.roll));
 
   const late = await real.answer(pending.id, { dice: [20] });
   assert.equal(late.status, 409);
@@ -397,7 +398,7 @@ await test("a roll records why it was parked, and only a real-dice park takes ty
   const released = await held.answer(pending.id, { dice: ["digital", "digital"] });
   assert.equal(released.status, 200, JSON.stringify(released.json));
   assert.equal(released.json.roll.total, 7);
-  assert.doesNotMatch(released.json.roll.detail, /physical/);
+  assert.ok(!rollPhysical(released.json.roll));
 });
 
 await test("a policy closed while a real-dice roll waits closes the typing too", async () => {
@@ -443,7 +444,7 @@ await test("a held roll released digitally is drawn by the server", async () => 
   assert.equal(released.status, 200, JSON.stringify(released.json));
   assert.equal(released.json.roll.total, 4);
   assert.equal(released.json.roll.success, false);
-  assert.doesNotMatch(released.json.roll.detail, /physical/);
+  assert.ok(!rollPhysical(released.json.roll));
 });
 
 // ---- the dice tray ----

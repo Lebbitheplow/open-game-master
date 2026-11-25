@@ -344,8 +344,8 @@ function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail:
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   // The drinker's own save (src/lib/dm/character-roll.ts).
-  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail, dc, settleHeldDie: heldDieWaits(sheet, dc) });
-  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, dc, result: outcome });
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail, parts: resolved.parts, dc, settleHeldDie: heldDieWaits(sheet, dc) });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "saving_throw", detail, parts: resolved.parts, dc, result: outcome });
   return { success: outcome.total >= dc };
 }
 
@@ -370,9 +370,9 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
     if (!("error" in resolved) && !("autoFail" in resolved)) {
       spendRollCarriers(campaign.id, reader.id, resolved.spendInspiration);
       // The reader's own check (src/lib/dm/character-roll.ts).
-      const outcome = rollCharacterD20(campaign, reader, { kind: "ability_check", expression: resolved.expression, detail: `${reader.name}: reading a scroll of ${name}`, dc, settleHeldDie: heldDieWaits(reader, dc) });
+      const outcome = rollCharacterD20(campaign, reader, { kind: "ability_check", expression: resolved.expression, detail: `${reader.name}: reading a scroll of ${name}`, parts: resolved.parts, dc, settleHeldDie: heldDieWaits(reader, dc) });
       total = outcome.total;
-      recordRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, dc, result: outcome });
+      recordRoll({ campaignId: campaign.id, characterId: reader.id, requestedBy: "dm", kind: "ability_check", detail: `${reader.name}: reading a scroll of ${name}`, parts: resolved.parts, dc, result: outcome });
     }
     if (total < dc) {
       return {

@@ -13,8 +13,8 @@ import { itemProficiencyBonus, proficiencyBonusOf } from "@/lib/srd/proficiency"
 import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
 import { defaultHeld, keepHeldGuess, unguessed, wearGained } from "@/lib/dm/held-default";
 import { guessStands } from "@/lib/dm/gear-hands";
-import { lastAttackDetail } from "@/lib/db/rolls";
-import { rollAgainst } from "@/lib/roll-labels";
+import { lastAttackRoll } from "@/lib/db/rolls";
+import { rollWeaponRow } from "@/lib/roll-parts";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { endedByDonning } from "@/lib/dm/armor-donned-logic";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
@@ -450,11 +450,8 @@ function withDefaultHeld(
 // The weapon row a character's own latest attack roll was made with, when
 // one is stored and they still carry it (src/lib/db/rolls.ts).
 function lastAttackedWith(sheet: CharacterSheet): string | null {
-  const detail = lastAttackDetail(sheet.campaignId, sheet.id);
-  if (!detail) {
-    return null;
-  }
-  return sheet.equipment.find((item) => detail.startsWith(rollAgainst(item.name, "")))?.name ?? null;
+  const roll = lastAttackRoll(sheet.campaignId, sheet.id);
+  return roll ? (rollWeaponRow(roll, sheet.equipment)?.name ?? null) : null;
 }
 
 // Every sheet in a campaign that never said what it holds, or whose marks

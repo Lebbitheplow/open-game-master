@@ -325,6 +325,7 @@ export function handleRequestRoll(
       characterId: sheet.id,
       kind: args.kind,
       detail: resolved.detail,
+      parts: resolved.parts,
       expression: resolved.expression,
       advantage: args.advantage ?? "none",
       dc: args.dc ?? null,
@@ -390,6 +391,7 @@ export function handleRequestRoll(
         characterId: sheet.id,
         kind: args.kind,
         detail: resolved.detail,
+        parts: resolved.parts,
         expression: resolved.expression,
         advantage: args.advantage ?? "none",
         dc: args.dc ?? null,
@@ -431,6 +433,7 @@ export function handleRequestRoll(
       // and an attack or damage roll says so. With no sheet it is the GM's.
       ...kindAndRoller(args.kind, null, cardRoller(sheet)),
       detail: resolved.detail,
+      parts: resolved.parts,
       advantage: args.advantage ?? "none",
       dc: args.dc ?? null,
       result: outcome,
