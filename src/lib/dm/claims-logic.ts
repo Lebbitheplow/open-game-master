@@ -228,6 +228,25 @@ export function englishKeepsTurn(text: string): boolean {
   return [...text.matchAll(ENGLISH_ENDS_TURN)].length > 0 && !englishEndsTurn(text);
 }
 
+// English words that tell the acting character the turn is theirs: "It is
+// your turn.", "Jason, you're up.", "It's Jason's turn now." A reader's
+// turn_over claim on such a quote hands nothing on: read as the end of the
+// turn, the line that opens a fight ("Jason (12) > The Sentry (12). It is
+// your turn.") ended the player's turn before they had taken it, twice in
+// one session (issues 1099 and 1101). A clause that ends that turn ("Your
+// turn ends.", "Your turn is over.") is still the hand-off it says. Read
+// clause by clause, so "The sentry's turn is done; it is your turn." is the
+// turn coming to them. Words in another language stay the reader's.
+const OWN_TURN_ENDS = /\b(?:end(?:s|ed|ing)?|over|done|finish(?:ed|es)?|pass(?:es|ed)?|spent|up next)\b/i;
+
+export function englishOwnTurn(quote: string, name: string): boolean {
+  const who = name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const named = who ? `|${who}(?:['’]s)?` : "";
+  const own = new RegExp(`\\b(?:your${who ? `|${who}['’]s` : ""})\\s+(?:\\w+\\s+)?turn\\b|\\b(?:you['’]re|you are${who ? `|${who} is` : ""})\\s+up\\b|\\b(?:you${named})\\s+(?:go|act)\\s+first\\b`, "i");
+  const clauses = quote.split(/[.!?;\n]+/).filter((clause) => own.test(clause));
+  return clauses.length > 0 && clauses.every((clause) => !OWN_TURN_ENDS.test(clause));
+}
+
 // A passage's sentences, each with the marks that close it and any closing
 // quotation mark after them.
 const SENTENCE = /[^.!?;…？\n]+[.!?;…？]*["'”’»)\]]*/g;
