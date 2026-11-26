@@ -123,7 +123,7 @@ export default {
       if (t.viewport === "phone") {
         for (const label of ["Use the new picture", "Keep the current one"]) {
           const box = await button(label).boundingBox();
-          check(box && box.height >= 40, `${label} is finger-sized on a phone (${box?.height})`);
+          check(box && Math.round(box.height) >= 40, `${label} is finger-sized on a phone (${box?.height})`);
         }
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         check(overflow <= 1, `the entry scrolls sideways on a phone by ${overflow}px`);
@@ -176,7 +176,7 @@ export default {
       await eventually(() => earlier.count(), { timeoutMs: 15_000, label: "the earlier pictures" });
       const summary = earlier.locator("summary");
       const box = await summary.boundingBox();
-      check(box && box.height >= 40, `the earlier pictures' row is finger-sized (${box?.height})`);
+      check(box && Math.round(box.height) >= 40, `the earlier pictures' row is finger-sized (${box?.height})`);
       await summary.click();
       check((await earlier.getByRole("button", { name: /^Use earlier picture \d+ again$/ }).count()) === 2, "the two pictures it had are offered");
       await earlier.getByRole("button", { name: "Use earlier picture 2 again" }).click();

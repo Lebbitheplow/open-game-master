@@ -1,0 +1,159 @@
+/* wasteland: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   The road war. Day is the road at noon; night is the convoy camped after
+   dark: a deep blue desert night with fire at its edges. The blue is the
+   ground and the fire is decoration: ember sits on borders, rails and the
+   foot of the page, never under text and never in a key. The accent is teal
+   paint, the deep sky by day. It was chosen against the app's own signals:
+   warnings are amber (#f59e0b), the low-health bar is orange (#c65a24 to
+   #ff9d5c) and danger is red, so an orange, ochre or yellow accent would
+   each sit beside one of them. */
+[data-appearance="wasteland"][data-theme="dark"] {
+  --background: #0a0f1a;
+  --foreground: #ece6da;
+  --color-stone-950: #0d1320;
+  --color-stone-900: #141c2c;
+  --color-stone-800: #1e283a;
+  --color-stone-700: #313d52;
+  --color-stone-600: #5d6a80;
+  --color-stone-500: #a3adbd;
+  --color-stone-400: #b3bcc9;
+  --color-stone-300: #ccd2db;
+  --color-stone-200: #dfe2e6;
+  --color-stone-100: #ecedee;
+  --color-stone-50: #f6f6f4;
+  --color-amber-950: #0a2126;
+  --color-amber-900: #10343b;
+  --color-amber-800: #184d57;
+  --color-amber-700: #256a76;
+  --color-amber-600: #3a8794;
+  --color-amber-500: #5ea5b1;
+  --color-amber-400: #86bfc9;
+  --color-amber-300: #aad5dc;
+  --color-amber-200: #cae6ea;
+  --color-amber-100: #e2f2f4;
+  --color-amber-50: #f2f9fa;
+  /* Reading surfaces are flat and opaque: no rust, scratch, grime or fire
+     glow reaches them. The steel plate under panels shows through a nearly
+     opaque wash. */
+  --material-inset: #0c111c;
+  --material-paper: #121a28;
+  --material-metal: #e6cfa6;
+  --material-edge: #b8582c;
+  --material-panel-wash: linear-gradient(#111928e6, #0c121df0);
+  --material-control-wash: linear-gradient(#232e42e0, #171f2ef0);
+  --material-body-wash: linear-gradient(#0a0f1af2, #0c1220f2 68%, #1c1310f2);
+  /* The band under the roll-cage tube is lit from below: night steel at the
+     top, ember at the foot. The glow lives in the wash, so the mirrored
+     corners keep one drawing. */
+  --material-rail-wash: linear-gradient(#1b2740d9, #3a2018d9 55%, #a6451ad9);
+  --material-send-edge: var(--color-amber-400);
+  --material-scrim: linear-gradient(#0a0f1a99, #0a0f1a33 45%, #0a0f1acc);
+}
+/* Day is the road at noon: hot sand under a hard sun. The ground is warm
+   ochre sand, not bleached bone, the edges are burnt primer, and the teal
+   is the deep sky, the one cool note. Reading surfaces stay pale and flat. */
+[data-appearance="wasteland"][data-theme="light"] {
+  --background: #ead8b8;
+  --foreground: #2a2118;
+  --color-stone-950: #f9f0de;
+  --color-stone-900: #f1e4cb;
+  --color-stone-800: #e5d2b1;
+  --color-stone-700: #cdb38c;
+  --color-stone-600: #94795a;
+  --color-stone-500: #5c4a35;
+  --color-stone-400: #51402d;
+  --color-stone-300: #403223;
+  --color-stone-200: #2f2519;
+  --color-stone-100: #221a11;
+  --color-stone-50: #16110b;
+  --color-amber-950: #e4f1f2;
+  --color-amber-900: #c9e3e6;
+  --color-amber-800: #9ac9d1;
+  --color-amber-700: #559aa7;
+  --color-amber-600: #1f6f7e;
+  --color-amber-500: #185b68;
+  --color-amber-400: #134b56;
+  --color-amber-300: #0f3c45;
+  --color-amber-200: #0c3037;
+  --color-amber-100: #09252b;
+  --color-amber-50: #06191e;
+  --material-inset: #f8f0df;
+  --material-paper: #f0e3ca;
+  --material-metal: #4a3020;
+  --material-edge: #a3502c;
+  --material-panel-wash: linear-gradient(#f9f0deeb, #eedfc4eb);
+  --material-control-wash: linear-gradient(#f4e7cfe0, #dfc9a6e0);
+  --material-body-wash: linear-gradient(#ead8b8eb, #dfc49eeb);
+  /* The tube is the rail. What shows beside it is its shadow on the sand,
+     not a second band of colour. */
+  --material-rail-wash: linear-gradient(#6a4a3038, #6a4a3038);
+  --material-send-edge: var(--material-edge);
+  --material-scrim: linear-gradient(#f0e2c880, #f0e2c826 45%, #ecdcc0b3);
+}
+/* Materials that hold in both brightness modes: lamplit worn-steel
+   fittings, teal-paint keys, and sheet cut by hand, so no shape is quite
+   square and none is rounded. */
+[data-appearance="wasteland"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #0a0f1a;
+  --theme-night-foreground: #ece6da;
+  --theme-night-stone-950: #0d1320;
+  --theme-night-stone-900: #141c2c;
+  --theme-night-stone-800: #1e283a;
+  --theme-night-stone-700: #313d52;
+  --theme-night-stone-600: #5d6a80;
+  --theme-night-stone-500: #a3adbd;
+  --theme-night-stone-400: #b3bcc9;
+  --theme-night-stone-300: #ccd2db;
+  --theme-night-stone-200: #dfe2e6;
+  --theme-night-stone-100: #ecedee;
+  --theme-night-stone-50: #f6f6f4;
+  --theme-night-amber-950: #0a2126;
+  --theme-night-amber-900: #10343b;
+  --theme-night-amber-800: #184d57;
+  --theme-night-amber-700: #256a76;
+  --theme-night-amber-600: #3a8794;
+  --theme-night-amber-500: #5ea5b1;
+  --theme-night-amber-400: #86bfc9;
+  --theme-night-amber-300: #aad5dc;
+  --theme-night-amber-200: #cae6ea;
+  --theme-night-amber-100: #e2f2f4;
+  --theme-night-amber-50: #f2f9fa;
+  --material-metal-finish: linear-gradient(135deg, #d9cdb8, #9a8a78 44%, #c7b79e 52%, #7a4e30);
+  --material-metal-ink: #1d1a15;
+  /* Deep teal paint under light labels, the same in day and night. The
+     health bar keeps the shared green; orange there is the low-health mark. */
+  --material-primary-wash: linear-gradient(#246773f0, #174a54f5);
+  --material-send-wash: linear-gradient(#246773, #174a54);
+  --material-chosen-wash: linear-gradient(#1e5964, #123c45);
+  --material-fitting-radius: 3px 6px 3px 5px;
+  --material-fitting-wide-radius: 3px 6px 3px 5px;
+  --material-control-radius: 2px 5px 2px 4px;
+  --material-panel-radius: 3px 7px 3px 5px;
+  --material-bubble-radius: 2px 6px 2px 4px;
+  --material-tab-radius: 2px 5px 2px 2px;
+  --material-chip-radius: 2px 4px 2px 3px;
+  --material-sigil-radius: 2px 5px 2px 3px;
+  --material-crest-tilt: -3deg;
+  /* Four bolt heads a long way apart and nothing between them. */
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%239a623c' stroke-width='1'%3E%3Ccircle cx='14' cy='14' r='3'/%3E%3Ccircle cx='166' cy='18' r='2'/%3E%3Ccircle cx='12' cy='168' r='2'/%3E%3Ccircle cx='168' cy='164' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 180px 180px;
+  --appearance-corner: 0.15rem;
+}
+/* Cut-plate corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+html[data-appearance="wasteland"] .ornate::before,
+html[data-appearance="wasteland"] .ornate::after { width: 18px; height: 18px; }
+html[data-appearance="wasteland"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="wasteland"] .ornate::after { border-width: 0 2px 2px 0; }
+/* The scrap is the theme, so the table carries more of it than the shared
+   sizes give: a wider rail and a heavier corner. The shared renderer already puts a
+   shadow under both. The table pads its text from the rail width.
+   96px keeps the plate short of the session title and the account button;
+   the phone keeps the shared small sizes, which clear the bottom bar. */
+[data-appearance="wasteland"] {
+  --theme-table-frame-width: 30px;
+  --theme-table-corner-size: 96px;
+}

@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
+import { TokenFace } from "@/app/campaigns/[campaignId]/BoardChrome";
 import { askLine, smiteChoiceLine, waitLine } from "@/lib/dm/opportunity-ask-logic";
 
 // A finger-sized target (40px, the kit's own) with a ring for the keyboard.
@@ -19,6 +20,12 @@ const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-
 // and so may anyone once its time is up, as the clock would: the swing is
 // taken. A paladin's card also offers Divine Smite on the swing, at the slot
 // the Hand's smite card would spend, paid only if it hits.
+//
+// A mount walking out of reach with a rider on its back (issue 1055, ruling
+// 5): "the attacker can target you or the mount". The card then has no plain
+// Strike: it offers the two by face and name, and the player picks one. With
+// War Caster's spell named for their opportunity attacks the two buttons cast
+// it ("Cast at Goblin"), and no smite is offered: no weapon swings.
 export function OpportunityCard({
   campaignId,
   pending,
@@ -26,6 +33,7 @@ export function OpportunityCard({
   meUserId,
   steersStory,
   smiteOffered = false,
+  faceOf,
 }: {
   campaignId: string;
   pending: PendingRoll;
@@ -34,6 +42,8 @@ export function OpportunityCard({
   steersStory: boolean;
   // The host takes `smite` on the answer (capabilities.ts opportunitySmite).
   smiteOffered?: boolean;
+  // An enemy's face by its id, for the two of a mounted pair.
+  faceOf?: (enemyId: string) => Array<string | null | undefined>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -50,14 +60,14 @@ export function OpportunityCard({
   const clockId = useId();
   const lineId = useId();
 
-  async function answer(strike: boolean, smite = false) {
+  async function answer(strike: boolean, smite = false, target?: string) {
     setBusy(true);
     setError("");
     try {
       const response = await fetch(`/api/campaigns/${campaignId}/pending-rolls/${pending.id}/opportunity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(smite ? { strike, smite } : { strike }),
+        body: JSON.stringify({ strike, ...(smite ? { smite } : {}), ...(target ? { target } : {}) }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -108,28 +118,33 @@ export function OpportunityCard({
     <CheckFrame className="opportunity-ask mb-2 animate-fade-up px-3 py-2.5">
       <p id={lineId} className="text-sm">{askLine(ask)}</p>
       <div role="group" aria-labelledby={lineId} className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          aria-describedby={left !== null ? clockId : undefined}
-          onClick={() => void answer(true)}
-          title={`Swing your ${ask.weapon} at ${ask.walker}. Your reaction is spent until your next turn.`}
-          className={STRIKE}
-        >
-          Strike
-        </button>
-        {smiteOffered && ask.smiteSlot ? (
-          <button
-            type="button"
-            disabled={busy}
-            aria-describedby={left !== null ? clockId : undefined}
-            onClick={() => void answer(true, true)}
-            title={`Swing your ${ask.weapon} at ${ask.walker} and, if it hits, spend a level ${ask.smiteSlot} spell slot on Divine Smite for extra radiant damage. A miss keeps the slot.`}
-            className={STRIKE}
-          >
-            {smiteChoiceLine(ask.smiteSlot)}
-          </button>
-        ) : null}
+        {(ask.rider ? [ask.rider, { id: ask.walkerId, name: ask.walker }] : [{ id: "", name: ask.walker }]).map((foe) => (
+          <span key={foe.id} className="contents">
+            <button
+              type="button"
+              disabled={busy}
+              aria-describedby={left !== null ? clockId : undefined}
+              onClick={() => void answer(true, false, foe.id || undefined)}
+              title={ask.spell ? `Cast ${ask.spell} at ${foe.name}. Your reaction is spent until your next turn.` : `Swing your ${ask.weapon} at ${foe.name}. Your reaction is spent until your next turn.`}
+              className={`${STRIKE} ${foe.id ? "gap-1.5 pl-1" : ""}`}
+            >
+              {foe.id ? <TokenFace candidates={faceOf?.(foe.id) ?? []} name={foe.name} enemy className="size-8 rounded-full border border-amber-400/60" /> : null}
+              {foe.id ? (ask.spell ? `Cast at ${foe.name}` : `Strike ${foe.name}`) : "Strike"}
+            </button>
+            {smiteOffered && ask.smiteSlot && !ask.spell ? (
+              <button
+                type="button"
+                disabled={busy}
+                aria-describedby={left !== null ? clockId : undefined}
+                onClick={() => void answer(true, true, foe.id || undefined)}
+                title={`Swing your ${ask.weapon} at ${foe.name} and, if it hits, spend a level ${ask.smiteSlot} spell slot on Divine Smite for extra radiant damage. A miss keeps the slot.`}
+                className={STRIKE}
+              >
+                {smiteChoiceLine(ask.smiteSlot, foe.id ? foe.name : undefined)}
+              </button>
+            ) : null}
+          </span>
+        ))}
         <button
           type="button"
           disabled={busy}

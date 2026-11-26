@@ -62,7 +62,8 @@ Next must see each CSS import when building the app.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
-   `church`, `flame`, `shield`, `waves`, `anvil` and `eye`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   `church`, `flame`, `shield`, `waves`, `anvil`, `eye`, `snowflake`, `chain`,
+   `flower`, `cog`, `circuit`, `wrench` and `lamp`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 
@@ -187,6 +188,7 @@ Defaults use the theme's palette, and overrides also apply inside picker preview
 | `--material-send-wash`, `--material-send-edge`, `--material-chosen-wash` | The table's send key and its border, and the chosen say/do key; opaque, under light text |
 | `--material-vital-fill` | Party health bar above the low-health mark |
 | `--material-fitting-radius`, `--material-control-radius`, `--material-panel-radius` | Circular Arcane, pointed Gothic or asymmetric Woodland shapes |
+| `--material-fitting-wide-radius` | The fitting shape for a header control that carries its name (Voice): the same corners in lengths, since percentages make a wide button an oval. A pill unless set |
 | `--material-body-wash`, `--material-rail-wash`, `--material-scrim` | Page, rail and scenery shading |
 | `--material-crest-tilt` | Rotation of the decorative lobby emblem |
 | `--material-bubble-radius`, `--material-tab-radius`, `--material-chip-radius`, `--material-sigil-radius` | Chat bubbles, the current rail tab, lobby seat and hero chips, and the join-code tiles; leaf cuts unless a theme sets them |

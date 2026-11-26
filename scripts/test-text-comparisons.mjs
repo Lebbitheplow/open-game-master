@@ -8,6 +8,14 @@
 // code (comments do not count) and holds each file to its counts per pattern,
 // so a new toLowerCase(), \b, LIKE or /potion|vial/ has to be put on a side
 // before it ships, and a removed one is struck off.
+//
+// One reader has its field and is held shut: a stored roll's sentence
+// (`detail`, src/lib/db/rolls.ts). What a rule reads back from a roll is
+// stored as its parts (src/lib/roll-parts.ts, issue #1064), and that module
+// alone still reads the words, for a roll that has none. Every file that
+// reads a roll's `detail` at all is listed under "rollSentences" with what
+// it does with it, so a new read is looked at before it ships, and a read
+// this scan can see being tested for words fails outright anywhere else.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -277,6 +285,87 @@ export function wordSites(program, under) {
   return found;
 }
 
+// ---- A stored roll's sentence ----
+//
+// file#read: every read of a roll's `detail`, as a property or pulled out
+// of the roll by name. file#tested: the reads this scan can see searched,
+// matched or compared, as they are or trimmed, folded or keyed, there or
+// through the one variable they were put in. A test can hide from that (a
+// sentence cut first, put through a condition, or read inside a function it
+// was handed to), which is why every read is counted and listed.
+// `declaredIn` is the file whose types say what a stored roll is. Two reads
+// are out of its sight: a whole roll handed to a function whose own type
+// names a `detail`, and SQL that selects the column.
+const SENTENCE_TESTS = new Set(["includes", "startsWith", "endsWith", "indexOf", "lastIndexOf", "match", "matchAll", "search", "split", "localeCompare"]);
+const SENTENCE_KEEPS = new Set(["trim", "trimStart", "trimEnd", "toLowerCase", "toUpperCase", "toLocaleLowerCase", "toLocaleUpperCase", "normalize", "toString"]);
+const SENTENCE_KEYS = new Set(["textKey", "String"]);
+const EQUALITY = [k.EqualsEqualsEqualsToken, k.ExclamationEqualsEqualsToken, k.EqualsEqualsToken, k.ExclamationEqualsToken];
+
+export function rollSentenceSites(program, under, declaredIn) {
+  const base = under.split(path.sep).join("/").replace(/\/$/, "");
+  const checker = program.getTypeChecker();
+  const inScope = (sf) => sf.fileName.startsWith(`${base}/`) && !sf.isDeclarationFile && /\.tsx?$/.test(sf.fileName);
+  const found = new Map();
+  const add = (sf, how) => {
+    const key = `${sf.fileName.slice(base.length + 1)}#${how}`;
+    found.set(key, (found.get(key) ?? 0) + 1);
+  };
+  const isRollDetail = (node) => {
+    if (node.kind !== k.PropertyAccessExpression || node.name.text !== "detail") return false;
+    const symbol = checker.getSymbolAtLocation(node.name);
+    return (symbol?.declarations ?? []).some((decl) => decl.getSourceFile().fileName.endsWith(declaredIn));
+  };
+  // What the read ends up as, through what only trims, folds or keys it.
+  const carried = (node) => {
+    for (;;) {
+      const parent = node.parent;
+      if ([k.ParenthesizedExpression, k.NonNullExpression, k.AsExpression].includes(parent.kind)) node = parent;
+      else if (parent.kind === k.BinaryExpression && parent.left === node && [k.QuestionQuestionToken, k.BarBarToken].includes(parent.operatorToken.kind)) node = parent;
+      else if (parent.kind === k.PropertyAccessExpression && parent.expression === node && SENTENCE_KEEPS.has(parent.name.text) && parent.parent.kind === k.CallExpression && parent.parent.expression === parent) node = parent.parent;
+      else if (parent.kind === k.CallExpression && parent.arguments.includes(node) && parent.expression.kind === k.Identifier && SENTENCE_KEYS.has(parent.expression.text)) node = parent;
+      else return node;
+    }
+  };
+  const tested = (node) => {
+    const parent = node.parent;
+    if (parent.kind === k.PropertyAccessExpression && parent.expression === node && SENTENCE_TESTS.has(parent.name.text)) return true;
+    if (parent.kind === k.BinaryExpression && EQUALITY.includes(parent.operatorToken.kind)) return true;
+    return parent.kind === k.CallExpression && parent.arguments.includes(node) && parent.expression.kind === k.PropertyAccessExpression && ["test", "exec"].includes(parent.expression.name.text);
+  };
+  // `const { detail } = roll`: the roll's sentence, pulled out by name.
+  const isRollDetailPulled = (node) => {
+    if (node.kind !== k.BindingElement || node.parent.kind !== k.ObjectBindingPattern || (node.propertyName ?? node.name).getText() !== "detail") return false;
+    const from = checker.getTypeAtLocation(node.parent).getProperty("detail");
+    return (from?.declarations ?? []).some((decl) => decl.getSourceFile().fileName.endsWith(declaredIn));
+  };
+  for (const sf of program.getSourceFiles().filter(inScope)) {
+    const kept = new Set();
+    const read = (node) => {
+      add(sf, "read");
+      const top = carried(node);
+      if (tested(top)) add(sf, "tested");
+      else if (top.parent.kind === k.VariableDeclaration && top.parent.initializer === top && top.parent.name.kind === k.Identifier) kept.add(checker.getSymbolAtLocation(top.parent.name));
+    };
+    const first = (node) => {
+      if (isRollDetail(node)) read(node);
+      if (isRollDetailPulled(node)) {
+        add(sf, "read");
+        if (node.name.kind === k.Identifier) kept.add(checker.getSymbolAtLocation(node.name));
+      }
+      ts.forEachChild(node, first);
+    };
+    first(sf);
+    const second = (node) => {
+      if (node.kind === k.Identifier && node.parent.kind !== k.VariableDeclaration && node.parent.kind !== k.BindingElement && kept.has(checker.getSymbolAtLocation(node)) && tested(carried(node))) {
+        add(sf, "tested");
+      }
+      ts.forEachChild(node, second);
+    };
+    if (kept.size) second(sf);
+  }
+  return found;
+}
+
 function* sourceFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
@@ -352,6 +441,42 @@ test("the word scan finds English words matched against text, and leaves a fixed
   });
 });
 
+test("the roll scan counts every read of a stored roll's sentence, and finds the ones tested there or through a variable", () => {
+  const dir = "/rolls";
+  const file = "/rolls/module.ts";
+  // What a stored roll is, declared in a file of its own (a script, so its
+  // types are global here): a card's `detail` is not a roll's.
+  const types = "/rolls/db/rolls.ts";
+  const source = `
+    type Card = { detail: string };
+    declare const roll: StoredRoll;
+    declare const failed: StoredRoll | undefined;
+    declare const card: Card;
+    declare function textKey(text: string): string;
+    declare function label(text: string): string;
+    const words = textKey(roll.detail);
+    export const read = [
+      /concentration/i.test(roll.detail), /\\b(str|dex)\\b/.exec(failed?.detail ?? "")?.[1],
+      roll.detail.trim().toLowerCase().startsWith("con save"), roll.detail === "death",
+      words.includes("athletics"),
+      label(roll.detail),
+    ];
+    export const shown = [\`rolled \${roll.detail}\`, { detail: roll.detail }, roll.detail.slice(0, 60), card.detail.includes("athletics")];
+    // Pulled out by name, and tested.
+    const { detail } = roll;
+    export const pulled = detail.includes("athletics");
+    // A test the scan cannot follow, through a condition: counted as a read all the same.
+    const maybe = failed ? textKey(failed.detail) : "";
+    export const hidden = maybe.includes("athletics");
+  `;
+  const files = { [file]: source, [types]: "type StoredRoll = { detail: string; total: number };" };
+  const host = ts.createCompilerHost({});
+  const fallback = host.getSourceFile;
+  host.getSourceFile = (name, version) => (name in files ? ts.createSourceFile(name, files[name], version, true) : fallback.call(host, name, version));
+  const program = ts.createProgram([file, types], { strict: true, noEmit: true, noLib: true, types: [] }, host);
+  assert.deepEqual(Object.fromEntries(rollSentenceSites(program, dir, "/db/rolls.ts")), { "module.ts#read": 11, "module.ts#tested": 6 });
+});
+
 const scanned = new Map();
 const paths = [...sourceFiles(root)];
 for (const full of paths) {
@@ -401,6 +526,29 @@ test("text a person writes is compared only inside the shared helpers", () => {
     if (entries.some(([cls]) => cls === "human")) {
       assert.ok(classified.humanTextIn.includes(file), `${file} compares text a person writes itself; use the helpers in src/lib/language/text-logic.ts`);
     }
+  }
+});
+
+// ---- A stored roll's sentence is read in one place ----
+const ROLL_PARTS = "lib/roll-parts.ts";
+const sentences = rollSentenceSites(program, root, "/lib/db/rolls.ts");
+
+test("no code but the roll-parts module tests a stored roll's sentence for words", () => {
+  const elsewhere = [...sentences].filter(([key]) => key.endsWith("#tested") && !key.startsWith(`${ROLL_PARTS}#`));
+  assert.deepEqual(
+    elsewhere.map(([key, count]) => `${key.split("#")[0]} (${count})`),
+    [],
+    "a roll's detail is a sentence for people. What a rule reads back from a roll is a field of its parts: say it as the roll is recorded and read it with src/lib/roll-parts.ts",
+  );
+  assert.ok(sentences.get(`${ROLL_PARTS}#tested`) > 0, "the roll-parts module no longer reads a roll stored before its parts; this scan has lost sight of it");
+});
+
+test("every file that reads a stored roll's sentence is listed, read by read, with what it does with it", () => {
+  const reads = Object.fromEntries([...sentences].filter(([key]) => key.endsWith("#read")).map(([key, count]) => [key.split("#")[0], count]));
+  const listed = Object.fromEntries(Object.entries(classified.rollSentences).map(([file, [count]]) => [file, count]));
+  assert.deepEqual(reads, listed, 'a roll\'s detail is read somewhere new, or no longer where it was. A fact a rule needs is a field: say it as the roll is recorded and read it with src/lib/roll-parts.ts. A sentence that is only stored, shown or put into other words is listed under "rollSentences" in scripts/text-comparisons.json with its count and what is done with it');
+  for (const [file, [, reason]] of Object.entries(classified.rollSentences)) {
+    assert.ok(typeof reason === "string" && reason.trim(), `${file}: a rollSentences entry says what is done with the sentence`);
   }
 });
 

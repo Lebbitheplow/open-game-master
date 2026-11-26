@@ -32,7 +32,7 @@
 //
 // Then the row's record (issue #915). The seat enters its own dice for every
 // card the row parked, so the call runs to its end, and every roll the call
-// stored is held to three things:
+// stored is held to six things:
 //
 //   home    it is on one turn once, or on the one line its site posted for
 //           it: a roll on neither is thrown on the dice stage and never shown
@@ -45,9 +45,35 @@
 //           A roll nobody made names its source (src/lib/roll-sources.ts),
 //           which goes in front of its card: its words do not say the source
 //           a second time, and they name the character it lands on.
+//   asked   it is marked as a roll an AI GM asked for only where that GM's
+//           own request_roll made it (issue #1073). The gate that holds an
+//           AI GM's damage and healing numbers takes a total from the turn's
+//           asked list and from nowhere else (src/lib/dm/ai-gate.ts), so a
+//           site that marked its own dice would let the model send their
+//           total as a number of its own. Every other row, at either door,
+//           leaves the list empty: that holds for every site here at once,
+//           and for a site added later. An AI GM's request_roll marks the
+//           one roll it asked for, whether the server threw it or the seat
+//           entered it for the card.
+//   parts   it says in its fields what a rule reads back from it (issue
+//           #1064, src/lib/roll-parts.ts): a rule no longer reads a roll's
+//           words, so a check, save or attack whose words name a skill, an
+//           ability, the save that keeps concentration or a carried weapon,
+//           and whose fields do not, is one the rule has stopped seeing.
+//   words   it says its words in its fields where its family has moved
+//           (issue #1064, step 2, src/lib/roll-words.ts). A roll whose
+//           parts make its words stores the sentence they make and no
+//           other, names every target in it, carries only notes that are
+//           the engine's own, and a key that is a real row. No site of a
+//           moved family writes a typed note, so one stored here is an
+//           engine's words in a person's field. And the rows of a family that has moved (WORDED_ROWS)
+//           store no attack or damage roll of the seat's whose site wrote
+//           its own sentence, nor deal a card for one: a site there that
+//           goes back to writing its sentence fails its row. A missing
+//           French line fails nothing: the words read in English.
 //
 // One function does all of these (src/lib/dm/roll-record.ts recordRoll), and
-// every row passes all three. `rows` in scripts/roll-record-sites.json held
+// every row passes all six. `rows` in scripts/roll-record-sites.json held
 // the rows whose site recorded its roll by hand and missed one, with the
 // checks each failed; it is empty now. A row that fails a check it is not
 // listed there for fails this suite, and so does a row listed for a check
@@ -63,7 +89,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { aiEngine } from "./lib/enforce-narrator.mjs";
 import { d20sOf, formArgs, installDiceSpy, staticRollSites, taggedFor } from "./lib/sweep-dice.mjs";
-import { announced, homeProblem, lastSeq, rollMark, rollsAfter } from "./lib/roll-homes.mjs";
+import { announced, askedOn, homeProblem, lastSeq, rollHomes, rollMark, rollsAfter } from "./lib/roll-homes.mjs";
 
 const { test, gap, finish } = suite("test-enforce-sweep-dice-sites");
 const spy = installDiceSpy();
@@ -75,6 +101,11 @@ const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { ABILITIES, rollAbility, rollKeepsConcentration, rollPhysical, rollSkill, rollWeaponRow } = await import("../src/lib/roll-parts.ts");
+const { makesWords, ROLL_NOTES, rollSentence } = await import("../src/lib/roll-words.ts");
+const { UNARMED_STRIKE_KEY, weaponNamed } = await import("../src/lib/srd/weapons.ts");
+const { spellFactsFor } = await import("../src/lib/content/index.ts");
+const { SRD_SKILLS } = await import("../src/lib/srd/index.ts");
 const { REAL_DICE_SCOPE } = await import("../src/lib/dice/held-rolls.ts");
 const { entryDice } = await import("../src/lib/dice.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
@@ -403,9 +434,104 @@ async function enterParked() {
 // What a source can say it is (src/lib/db/rolls.ts HazardKind).
 const HAZARDS = new Set(["fall", "gm", "trap", "item", "effect", "named"]);
 
-function recordProblems(mark, seq, cards, hazardRow = false) {
+// What a rule read from a roll's words before its parts were stored, and its
+// fields do not say: the same roll read both ways, as stored and as a roll
+// from before the column would be.
+const SKILL_IDS = SRD_SKILLS.map((skill) => skill.id);
+function partsGaps(roll) {
+  if (roll.parts === null) {
+    return ["stored without its parts, so it is read by its words"];
+  }
+  const sheet = roll.characterId ? world.sheet(roll.characterId) : null;
+  if (!sheet) {
+    return [];
+  }
+  const worded = { ...roll, parts: null };
+  const gaps = [];
+  const differs = (what, read) => {
+    const [said, held] = [read(worded), read(roll)];
+    if (said && said !== held) {
+      gaps.push(`its words say ${what} "${said}", and its fields ${held ? `"${held}"` : "nothing"}`);
+    }
+  };
+  if (roll.kind === "skill_check" || roll.kind === "ability_check") {
+    differs("the skill", (read) => rollSkill(read, SKILL_IDS));
+  }
+  if (roll.kind === "saving_throw" || roll.kind === "ability_check") {
+    differs("the ability", (read) => rollAbility(read, ABILITIES));
+  }
+  if (roll.kind === "saving_throw") {
+    differs("it keeps concentration:", (read) => (rollKeepsConcentration(read) ? "yes" : null));
+  }
+  if (roll.kind === "attack" && roll.attacker?.kind === "sheet" && roll.attacker.id === roll.characterId) {
+    differs("the weapon", (read) => rollWeaponRow(read, sheet.equipment)?.name ?? null);
+  }
+  return gaps;
+}
+
+// The rows whose call makes a character's own attack, by the family that
+// moved them (scripts/roll-parts-sites.json `moved`): the seat's own attack
+// and damage rolls there say their words in fields.
+const WORDED_ROWS = {
+  "pc_attack.weapon": "a character's attacks and their damage",
+  "pc_attack.spell": "a character's attacks and their damage",
+  "damage_object.weapon": "a character's attacks and their damage",
+  "opportunity.enemy_walks_off": "a character's attacks and their damage",
+  "opportunity.enemy_flees": "a character's attacks and their damage",
+};
+// The tables a part's key is checked against, by what it names. A skill's
+// or an ability's key is held by `parts` above.
+// An unarmed strike is the engine's own row (src/lib/srd/weapons.ts).
+const REAL_KEY = { weapon: (key) => key === UNARMED_STRIKE_KEY || Boolean(weaponNamed(key)), spell: (key) => Boolean(spellFactsFor(key)), skill: () => true, ability: () => true };
+
+// What is wrong with the words of a roll, or of a card dealt for one: for
+// parts that make the words, their structure; for a row of a family that
+// has moved, that they do.
+function wordsGaps(said, family) {
+  const parts = said.parts;
+  const own = (said.kind === "attack" || said.kind === "damage") && (said.attacker ? said.attacker.kind === "sheet" && said.attacker.id === hero.id : said.characterId === hero.id);
+  if (!makesWords(parts)) {
+    return family && own ? [`its site wrote its own sentence, and its family ("${family}") says its words in fields (src/lib/roll-parts.ts)`] : [];
+  }
+  const gaps = [];
+  if (said.detail !== rollSentence(said)) {
+    gaps.push(`its stored sentence is not the one its parts make, "${rollSentence(said)}"`);
+  }
+  const used = parts.used;
+  if (used?.key && !(REAL_KEY[used.kind] ?? (() => false))(used.key)) {
+    gaps.push(`its key "${used.key}" is no row of what it says it is (${used.kind})`);
+  }
+  for (const note of parts.notes ?? []) {
+    if (!(note.engine in ROLL_NOTES)) {
+      gaps.push(`its note ${JSON.stringify(note)} is not one of the engine's own (src/lib/roll-words.ts ROLL_NOTES): nothing here is typed by a person`);
+    }
+  }
+  if (parts.note !== undefined) {
+    gaps.push("it carries a single `note`, which nothing reads: a roll's notes are a list");
+  }
+  for (const target of parts.targets ?? []) {
+    if (target.kind !== "object" && !target.name) {
+      gaps.push(`a target of kind ${target.kind} has no name`);
+    } else if (target.name && !said.detail.includes(target.name)) {
+      gaps.push(`its words do not name ${target.name}, whom it is against`);
+    }
+  }
+  return gaps;
+}
+
+function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false, family = null) {
   const rolls = rollsAfter(world.campaignId, mark);
-  const problems = { home: [], sent: [], roller: [] };
+  const problems = { home: [], sent: [], roller: [], asked: [], parts: [], words: [] };
+  // The cards the seat was dealt, as they were kept.
+  for (const card of cards) {
+    const kept = getDatabase().prepare("SELECT detail, parts_json FROM pending_rolls WHERE id = ?").get(card.id);
+    const dealt = { kind: card.kind, characterId: hero.id, detail: kept?.detail ?? "", parts: typeof kept?.parts_json === "string" ? JSON.parse(kept.parts_json) : null };
+    problems.words.push(...wordsGaps(dealt, family).map((gap) => `the ${card.kind} card "${dealt.detail}": ${gap}`));
+  }
+  if (family && !rolls.some((roll) => roll.kind === "attack" && roll.attacker?.id === hero.id)) {
+    problems.words.push(`the row is listed as one of "${family}" and stored no attack roll of the seat's`);
+  }
+  const marked = [];
   const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;
   // The roll each entered card became: the one its card names, else the
   // seat's next roll of that kind.
@@ -421,6 +547,8 @@ function recordProblems(mark, seq, cards, hazardRow = false) {
   }
   for (const roll of rolls) {
     const what = `${roll.kind} "${roll.detail}"`;
+    problems.parts.push(...partsGaps(roll).map((gap) => `${what}: ${gap}`));
+    problems.words.push(...wordsGaps(roll, family).map((gap) => `${what}: ${gap}`));
     // A roll card's roll (request_roll, an attack's parts) is on its turn
     // from the moment it lands, at either door: this row does not wait for
     // an AI's turn to resume, and no longer has to.
@@ -428,17 +556,29 @@ function recordProblems(mark, seq, cards, hazardRow = false) {
     if (home) {
       problems.home.push(`${what}: ${home}`);
     }
+    // The mark is the turn's own: on the turn the roll is on, or on none.
+    const askedTurns = askedOn(roll.id);
+    if (askedTurns.length) {
+      marked.push(roll);
+      if (!askedRow) {
+        problems.asked.push(`${what}: marked as a roll an AI GM asked for, and no GM's request_roll made it, so its total would pay for a number the GM sends`);
+      } else if (askedTurns.length > 1 || !rollHomes(roll.id).turns.includes(askedTurns[0])) {
+        problems.asked.push(`${what}: marked as asked for on a turn it is not on`);
+      } else if (!mine(roll)) {
+        problems.asked.push(`${what}: marked as asked for, and it is not the roll the GM asked for`);
+      }
+    }
     // A roll behind the screen is sent seat by seat and is not in the log
     // every seat may replay; what the log holds is read.
     const told = announced(world.campaignId, seq, roll.id).map((payload) => payload.source);
     if (entered.has(roll.id)) {
-      if (!/\(physical\)$/.test(roll.detail)) {
+      if (!rollPhysical(roll)) {
         problems.sent.push(`${what}: the seat's own dice, and the record does not say so`);
       }
       if (told.some((source) => source !== "physical") || (roll.visibility === "public" && !told.length)) {
         problems.sent.push(`${what}: the seat's own dice, sent as [${told.join(", ")}]`);
       }
-    } else if (told.some((source) => source !== "digital") || /\(physical\)$/.test(roll.detail)) {
+    } else if (told.some((source) => source !== "digital") || rollPhysical(roll)) {
       problems.sent.push(`${what}: the server's dice, sent as [${told.join(", ")}]`);
     } else if (roll.visibility === "public" && !told.length) {
       problems.sent.push(`${what}: the server's dice, for every seat, sent to none`);
@@ -468,9 +608,15 @@ function recordProblems(mark, seq, cards, hazardRow = false) {
       problems.roller.push(`${what}: a hazard's roll names ${lands}, whom it lands on, as its roller`);
     }
   }
+  // An AI GM's own request_roll: the one roll it asked for is marked, so its
+  // total can pay. With none marked the gate would refuse every total the GM
+  // rolled, and with two a second one would pay.
+  if (askedRow && rolls.some(mine) && marked.length !== 1) {
+    problems.asked.push(`the AI GM's request_roll stored ${rolls.filter(mine).length} roll(s) of the seat's and ${marked.length} are marked as asked for, where one is`);
+  }
   return { problems, rolls: rolls.length };
 }
-const CHECKS = ["home", "sent", "roller"];
+const CHECKS = ["home", "sent", "roller", "asked", "parts", "words"];
 const recordNow = {};
 
 async function run(entry, door, seed) {
@@ -518,7 +664,7 @@ async function run(entry, door, seed) {
   }
   // The verdict is read before the seat answers: the dice it enters now are
   // its own, and the call runs on with them.
-  const record = recordProblems(mark, seq, await enterParked(), /^(apply_hazard|cast_at_player\.hazard|concentration\.damage)/.test(entry.id));
+  const record = recordProblems(mark, seq, await enterParked(), /^(apply_hazard|cast_at_player\.hazard|concentration\.damage)/.test(entry.id), door === "ai" && entry.tool === "request_roll", WORDED_ROWS[entry.id] ?? null);
   spy.take();
   return { verdict, where: where.filter((id) => !RULED_SITES[id]), out, parked, dice, record };
 }
@@ -565,14 +711,14 @@ for (const [index, entry] of rows.entries()) {
       });
     }
     const listed = RECORD_ROWS[id] ?? [];
-    await test(`${id}: every roll the call stored has one home, is sent as it was made and names its roller${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
+    await test(`${id}: every roll the call stored has one home, is sent as it was made, names its roller, is marked as asked for only by an AI GM's own request_roll, says in its fields what a rule reads back and says its words in them where its family has moved${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
       assert.ok(record, `${id} did not run to its record`);
       const failing = CHECKS.filter((check) => record.problems[check].length);
       if (failing.length) {
         recordNow[id] = failing;
       }
       const fresh = failing.filter((check) => !listed.includes(check));
-      assert.deepEqual(fresh, [], `${id} fails a check of its record it is not listed for. Record the roll through recordRoll (src/lib/dm/roll-record.ts).\n  ${fresh.flatMap((check) => record.problems[check].map((problem) => `${check}: ${problem}`)).join("\n  ")}`);
+      assert.deepEqual(fresh, [], `${id} fails a check of its record it is not listed for. Record the roll through recordRoll (src/lib/dm/roll-record.ts), with its parts (src/lib/roll-parts.ts).\n  ${fresh.flatMap((check) => record.problems[check].map((problem) => `${check}: ${problem}`)).join("\n  ")}`);
       const closed = listed.filter((check) => !failing.includes(check));
       assert.deepEqual(closed, [], `${id} now passes ${closed.join(", ")}: strike it from "rows" in scripts/roll-record-sites.json.`);
     });
@@ -582,6 +728,10 @@ seedDice(null);
 if (process.env.ODM_SWEEP_ROWS === "print") {
   console.log(`ROWS ${JSON.stringify(recordNow)}`);
 }
+await test("every row listed as one of a family that says its words in fields is a row of this suite", () => {
+  const stale = Object.keys(WORDED_ROWS).filter((id) => !rows.some((entry) => entry.id === id));
+  assert.deepEqual(stale, [], `listed in WORDED_ROWS and not a row here: ${stale.join(", ")}`);
+});
 await test("every row listed as failing a check of its record is a row of this suite", () => {
   const stale = Object.keys(RECORD_ROWS).filter((id) => !rows.some((entry) => id === `${entry.id}@console` || id === `${entry.id}@ai`));
   assert.deepEqual(stale, [], `listed in scripts/roll-record-sites.json and not a row here: ${stale.join(", ")}`);

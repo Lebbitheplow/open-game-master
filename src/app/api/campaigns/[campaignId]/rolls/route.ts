@@ -3,6 +3,7 @@ import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { listSheets } from "@/lib/db/sheets";
 import { actingSheetFor } from "@/lib/character-seat";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import { rollExpression, type Advantage } from "@/lib/dice";
 import { trayExpressionProblem } from "@/lib/dice/tray-rules";
 import { findSkill } from "@/lib/srd";
@@ -10,6 +11,7 @@ import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { moteAfterRoll, moteOf, type HeldMote } from "@/lib/dm/authored-mote";
 import { recordRoll } from "@/lib/dm/roll-record";
+import type { RollParts } from "@/lib/roll-parts";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { ABILITIES } from "@/lib/schemas/sheet";
 
@@ -52,11 +54,12 @@ export async function GET(
   if (isErrorResponse(context)) {
     return context;
   }
+  const caps = capsFor(context);
   const ownedCharacterIds = listSheets(campaignId)
     .filter((sheet) => sheet.userId === context.user.id)
     .map((sheet) => sheet.id);
   return Response.json({
-    rolls: listRollsVisibleTo(campaignId, capsFor(context), ownedCharacterIds, 20),
+    rolls: hiddenFromSeat(campaignId, caps.fullMap, listRollsVisibleTo(campaignId, caps, ownedCharacterIds, 20)),
   });
 }
 
@@ -85,6 +88,7 @@ export async function POST(
   let expression: string;
   let kind: "skill_check" | "saving_throw" | "ability_check" | "custom" = "custom";
   let detail = "";
+  let parts: RollParts | undefined;
   let advantage: Advantage = "none";
   // What a named roll spends (a held Bardic Inspiration die, Guidance, a
   // Help), and a Creation bard's mote riding that die: settled once the dice
@@ -157,6 +161,7 @@ export async function POST(
     }
     expression = resolved.expression;
     detail = resolved.detail;
+    parts = resolved.parts;
     spent = resolved.spendInspiration;
     mote = moteOf(sheet, spent);
   }
@@ -187,6 +192,7 @@ export async function POST(
     requestedBy: dmSeat ? "dm" : "player",
     kind,
     detail,
+    ...(parts ? { parts } : {}),
     advantage,
     result,
     visibility: input.secret ? (dmSeat ? "dm" : "self") : "public",

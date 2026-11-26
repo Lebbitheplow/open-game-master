@@ -12,12 +12,12 @@
 import { classSaveDc } from "@/lib/dm/command-undead";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll, listRecentRolls } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { swarmKnocksProne } from "@/lib/srd/authored-effects-more";
 import { resolveFormula } from "@/lib/srd/authored-effects";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
-import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
+import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -29,6 +29,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { swarmCarry } from "@/lib/dm/authored-spend-divine-rng";
 import { textKey } from "@/lib/language/text-logic";
+import { rollAbility, rollResists } from "@/lib/roll-parts";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -140,15 +141,13 @@ export function giveBack(enemyId: string, amount: number): string[] {
 // that failure laid on them (Fanatical Focus, as Indomitable does).
 export function rerollLastSave(ctx: SpendContext): ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> } {
   const { campaign, sheet } = ctx;
-  const failed = listRecentRolls(campaign.id, 60).find(
-    (roll) => roll.characterId === sheet.id && roll.kind === "saving_throw" && roll.dc !== null && roll.total < roll.dc,
-  );
-  const ability = failed ? ((/\b(str|dex|con|int|wis|cha)\b/i.exec(failed.detail)?.[1] ?? "").toLowerCase() as Ability | "") : "";
+  const failed = latestRoll(campaign.id, 60, (roll) => roll.characterId === sheet.id && roll.kind === "saving_throw" && roll.dc !== null && roll.total < roll.dc);
+  const ability = failed ? (rollAbility(failed) ?? "") : "";
   if (!failed || !ability) {
     return { error: `${sheet.name} has no failed saving throw to reroll; ${ctx.spend.name} was not spent.`, refused: "rules" };
   }
   const dc = failed.dc!;
-  const against = /\bvs\.? (.+)$/i.exec(failed.detail)?.[1];
+  const against = rollResists(failed);
   const save = rollFeatureSave(campaign, sheet, ability, dc, `${ctx.spend.name} reroll`, against);
   if (!save.success) {
     return { result: { reroll: `The reroll fails too (${ability.toUpperCase()} ${save.total ?? "failed"} vs DC ${dc}); the failure stands.` } };

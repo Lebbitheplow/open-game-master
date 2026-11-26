@@ -1,4 +1,5 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { FIGHT_CAST_NOTE } from "@/lib/dm/foe-carry-logic";
 import { layStandingWards } from "@/lib/dm/genre-gh-wards";
 import { hiddenNow } from "@/lib/dm/board-hidden";
 import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
@@ -58,10 +59,10 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budget";
 import { suggestEnemies } from "@/lib/bestiary";
-import { carriedIndexes, enemyRequestSchema, groupInitiatives, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
-import { linkPairs, onOwnToken } from "@/lib/dm/enemy-riders";
+import { carriedIndexes, enemyRequestSchema, groupInitiatives, ledIndexes, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { linkPairs, onOwnToken, seatFreedMounts, takingOwnTurn, unseatLedMounts } from "@/lib/dm/enemy-riders";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
-import { fieldPartyNpcs } from "@/lib/dm/party-npcs-fight";
+import { fieldPartyNpcs, partyNpcRows } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/building";
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
@@ -127,7 +128,7 @@ import { companionShot, endTurnAsked } from "@/lib/dm/pc-attack-approach";
 import { backstopAttack, handleEnemyAttack } from "@/lib/dm/enemy-attack";
 import { landWaits } from "@/lib/dm/retort-wait";
 import { isCompanionUserId } from "@/lib/db/users";
-import { commanderOf, dmPlaysTurn, dominatedRefusal, turnUserId, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { aiPlaysSheet, commanderOf, dmPlaysTurn, dominatedRefusal, turnUserId, gmCompanionTurn } from "@/lib/dm/companion-command";
 import { setInitiativeFloor } from "@/lib/dm/initiative-floor";
 import { wakeDm } from "@/lib/dm/wake";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -389,7 +390,9 @@ function handleStartEncounter(
   if (!standingRoster.length) {
     return { error: "Every foe named is still lying knocked out from the last fight: there is nobody standing to fight.", refused: "rules" };
   }
-  if (standingRoster.length > MAX_COMBATANTS) {
+  // A controlled mount takes no turn, so it is no combatant under the cap
+  // (issue 1055, ruling 3).
+  if (standingRoster.filter((entry) => !entry.led).length > MAX_COMBATANTS) {
     return { error: `Too many enemies; keep encounters to ${MAX_COMBATANTS} combatants or fewer.`, retry: true };
   }
   const named = resolved.flatMap((entry) => (entry.sheetFoe ? [entry.sheetFoe] : []));
@@ -459,6 +462,7 @@ function handleStartEncounter(
     campaign.id,
     rows.map((entry, index) => (arrivals.carries[index] ? { ...entry, group: undefined } : entry)),
     names,
+    ledIndexes(rows),
   );
   const made = rows.map((entry, index) => {
     const carry = arrivals.carries[index];
@@ -476,7 +480,7 @@ function handleStartEncounter(
     });
   });
   // Each rider on its mount (issue 1055, enemy-riders.ts).
-  const enemies = linkPairs(made, carriedIndexes(rows));
+  const enemies = linkPairs(made, carriedIndexes(rows), rows.map((entry) => entry.led));
   // Surprise: the ambushed side loses its first turn. Stored as ids the
   // initiative pointer skips through round 1 and then forgets. An ambush is
   // decided per creature, Stealth against passive Perception; a side named
@@ -762,9 +766,18 @@ export function fightHoldsFloor(campaignId: string): boolean {
   return initiativeFloorFor(campaignId) !== null || (combatOwnsFloor(getFloor(campaignId)) && !staleFightFloor(campaignId));
 }
 
+// A controlled mount has no place of its own (enemy-riders.ts takingOwnTurn),
+// so it is named beside its rider's: the line that opens a fight goes on
+// "Only the creatures in that order are in this fight" (FIGHT_CAST_NOTE), and
+// a steered wolf left out of the order was told out of the fight with it.
 function describeOrder(encounter: Encounter): string {
+  const steered = new Map(listEnemies(encounter.id).flatMap((enemy) => (enemy.ledBy && enemy.status === "alive" ? [[enemy.ledBy, enemy.displayName] as const] : [])));
   return encounter.order
-    .map((entry, index) => (index === encounter.turnIndex ? `${entry.name} (CURRENT)` : entry.name))
+    .map((entry, index) => {
+      const mount = entry.kind === "enemy" ? steered.get(entry.enemyId) : undefined;
+      const name = mount ? `${entry.name} (riding ${mount}, the mount it steers)` : entry.name;
+      return index === encounter.turnIndex ? `${name} (CURRENT)` : name;
+    })
     .join(" > ");
 }
 
@@ -873,7 +886,9 @@ function placeInitiativeRoll(
   };
   encounter.order = buildOrder(
     withReflexTurns(staged, reflexes, encounter.surprisedIds),
-    enemies.map((enemy) => ({
+    // A controlled mount acts on its rider's turn and takes no place of its
+    // own (enemy-riders.ts takingOwnTurn).
+    takingOwnTurn(enemies).map((enemy) => ({
       enemyId: enemy.id,
       name: enemy.displayName,
       initiative: enemy.initiative ?? 0,
@@ -926,7 +941,7 @@ function placeInitiativeRoll(
     actFirst.length
       ? ` ${actFirst.join(" and ")} act${actFirst.length === 1 ? "s" : ""} first: call enemy_attack for each now, then narrate and stop.`
       : ` It is ${current?.name}'s turn; narrate the scene and stop for their action.`
-  }`;
+  }${FIGHT_CAST_NOTE}`;
 }
 
 // The whole party was surprised: round 1 belongs to the enemies. The order
@@ -950,7 +965,7 @@ function openAfterAmbush(
   encounter.turnIndex = first.turnIndex;
   encounter.turnBudget = null;
   encounter.waitingSeq = latestSeq(campaignId);
-  const ambushers = enemies.filter((enemy) => enemy.status === "alive");
+  const ambushers = takingOwnTurn(enemies).filter((enemy) => enemy.status === "alive");
   oweEnemiesAnAction(
     encounter,
     ambushers.map((enemy) => enemy.id),
@@ -1134,6 +1149,12 @@ function handleDamageEnemy(
 // leave the fight stuck open while the narration declared it over.
 // resolveEncounterOutcome takes a listed value and reads anything else off
 // the roster.
+//
+// An end that leaves foes alive names them in its answer: the narrator
+// called a fight over with its last foe hurt and on its feet, told the party
+// standing over the bodies, and went on to tell that foe glaring at them
+// (issue 1104). Whether a foe yields or runs is the GM's to rule; the story
+// has to say which, and tell no bodies of the living.
 const endArgsSchema = z.object({
   outcome: z.string().max(80).optional(),
   reason: z.string().optional(),
@@ -1182,8 +1203,13 @@ function handleEndEncounter(
   }
   // A foe lying knocked out is beaten, not standing (issue #667: the fight
   // read as a truce, paid half and marked the beaten foe fled).
-  const statuses = listEnemies(encounter.id).map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
+  const fought = listEnemies(encounter.id);
+  const statuses = fought.map((enemy) => (isKnockedOut(enemy) ? "down" : enemy.status));
   const { outcome, inferred } = resolveEncounterOutcome(args.outcome, statuses);
+  // The foes still on their feet: alive, not knocked out, and not one of the
+  // party's own people on the board (party-npcs-fight.ts).
+  const allies = new Set(partyNpcRows(encounter, fought).map((row) => row.id));
+  const standing = fought.filter((enemy) => enemy.status === "alive" && !isKnockedOut(enemy) && !allies.has(enemy.id)).map((enemy) => enemy.displayName);
   // Its creatures let go of whoever they held: none of them is in reach
   // once the fight is over (grapple.ts releaseGrapplesHeldByAny).
   releaseGrapplesHeldByAny(campaign, listEnemies(encounter.id).map((enemy) => enemy.id));
@@ -1193,6 +1219,9 @@ function handleEndEncounter(
       ? { note: `Outcome "${args.outcome ?? ""}" was not recognized; recorded as ${outcome}.` }
       : {}),
     ...finishEncounter(campaign, turn, encounter, outcome, sheets, sheetsById),
+    ...(standing.length
+      ? { survivors: `${standing.join(" and ")} left this fight alive. Tell the table how it ended for them (they ran, they yielded, both sides stopped), as your reason has it: none of them is dead, so tell no bodies of theirs.` }
+      : {}),
   };
 }
 
@@ -1296,6 +1325,27 @@ function handleEndTurn(
   const ending = heldMoveLine(encounter, sheet.id);
   if (ending) {
     return { error: `${ending} Nothing was changed.`, refused: "rules" };
+  }
+  // The AI's own end_turn takes nothing the turn still owes its player: the
+  // swings of Extra Attack the Attack action paid for, and the bonus swing it
+  // earned. pc_attack's endTurn and a narration that hands the turn on were
+  // already held to this (endTurnAfterAttack, narration-guard.ts); the plain
+  // call was not, so a two-weapon fighter's scimitar card was answered with
+  // end_turn, the enemy went, and the Second Wind and off-hand swing they
+  // were about to play came back as "the fight moved on" (issue 1104). Their
+  // player ends it: the End Turn button, or their own words. A character the
+  // AI plays is its to end.
+  if (turn.actor === "ai" && !aiPlaysSheet(campaign, sheet)) {
+    const owed = turnStillOwes(campaign.id, sheet.id);
+    const endsInWords = campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(wordsThisTurn(campaign.id, sheet.id));
+    if (!endsInWords && (owed.swings > 0 || owed.bonusSwing)) {
+      const left = owed.swings;
+      const what = left > 0 ? `${left === 1 ? "1 attack" : `${left} attacks`} of this turn's Attack action to make` : `${owed.bonusSwing} to make, earned with this turn's Attack action`;
+      return {
+        error: `${sheet.name} still has ${what}, and their player has not ended the turn, so it stays open and nothing was changed. Narrate what has resolved, ask what else ${sheet.name} does, and stop: their player makes it or ends the turn.`,
+        retry: true,
+      };
+    }
   }
   markTurnResolved(turn, sheet.id);
   finishPassBeforeMove(campaign);
@@ -1830,6 +1880,15 @@ function advancePointer(
   if (leaving && !options?.rest && !options?.chained) {
     landWaits(campaign, null, { holdVictory: true, tell: true });
   }
+  // A controlled mount whose rider came off it has its own place in the
+  // order from here on (enemy-riders.ts): made sure of on this copy of the
+  // fight, the one this walk saves.
+  // One steered from the middle of the fight has given its place up (issue
+  // 1091), made sure of here for the same reason.
+  const unseated = unseatLedMounts(encounter);
+  if (seatFreedMounts(encounter, { settle: true }) || unseated) {
+    saveEncounter(encounter);
+  }
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   // A turn held for the enemies before it has begun by the time the pointer
   // moves again (src/lib/dm/held-turn.ts).
@@ -1893,6 +1952,14 @@ function advancePointer(
     }
     if (index === walkTo || starting.length >= encounter.order.length) {
       break;
+    }
+  }
+  // A controlled mount's turn is its rider's (enemy-riders.ts): what starts
+  // with a turn (its Dodge ending, its Dash forgotten, its reaction back)
+  // starts for it as its rider's turn does.
+  for (const enemy of enemiesById.values()) {
+    if (enemy.ledBy && enemy.status === "alive" && starting.includes(enemy.ledBy)) {
+      starting.push(enemy.id);
     }
   }
   // The enemies whose turns this walk hands out. A walk that turns the

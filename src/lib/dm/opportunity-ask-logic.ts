@@ -19,21 +19,38 @@ export type OpportunityTrigger = "leaves" | "enters" | "within" | "echo";
 // answer, written as the card lands. `smiteSlot` is the slot a paladin's
 // Divine Smite would spend on this swing (smiteSlotOf), offered only when
 // the swing is a melee weapon attack and a slot is open; `smite` is the
-// answer that takes it.
+// answer that takes it. `rider` is the enemy on the walker's back (issue 1055,
+// ruling 5: enemy-riders.ts): "If the mount provokes an opportunity attack
+// while you're on it, the attacker can target you or the mount" (SRD 5.1,
+// Mounted Combat), so the card offers both by name and `target` is the id of
+// the one the player chose. `spell` is the spell War Caster casts in the
+// swing's place (ar-wbf-feat-warcaster.ts), on a pair's card only: a spell at
+// one creature is cast with nobody asked, as the player named it beforehand.
 export type OpportunityAsk = {
   walkerId: string;
   walker: string;
   weapon: string;
+  spell?: string;
   trigger: OpportunityTrigger;
+  rider?: { id: string; name: string };
   deadline?: string;
   smiteSlot?: number;
   strike?: boolean;
   smite?: boolean;
+  target?: string;
   timedOut?: boolean;
 };
 
 // The answer, as the walk's call reads it when it runs again (held-call.ts).
-export type OpportunityChoice = { walkerId: string; strike: boolean; smite?: boolean; timedOut?: boolean };
+// `targetId` only when the player named one of a mounted pair.
+export type OpportunityChoice = { walkerId: string; strike: boolean; smite?: boolean; targetId?: string; timedOut?: boolean };
+
+// Which of a mounted pair an answer names: the rider's id when the card
+// offered a rider and the answer chose it, else nothing, and the swing is at
+// the walker as it always was.
+export function chosenOfPair(ask: Pick<OpportunityAsk, "rider">, target: string | undefined): string | undefined {
+  return ask.rider && target === ask.rider.id ? ask.rider.id : undefined;
+}
 
 // The slot a smite on the opportunity attack spends: the lowest one open,
 // a pact slot among them, as the Hand's Divine Smite card picks it
@@ -52,10 +69,12 @@ export function smiteSlotOf(casting: { slots?: Record<string, { max: number; use
   return levels.length ? Math.min(...levels) : null;
 }
 
-// The card's smite choice in words: "Strike and smite (1st-level slot)".
-export function smiteChoiceLine(slot: number): string {
+// The card's smite choice in words: "Strike and smite (1st-level slot)", or
+// on a mounted pair's card, where each of the two has its own pair of
+// buttons, "Strike Goblin and smite (1st-level slot)", beside "Strike Goblin".
+export function smiteChoiceLine(slot: number, at?: string): string {
   const suffix = slot === 1 ? "st" : slot === 2 ? "nd" : slot === 3 ? "rd" : "th";
-  return `Strike and smite (${slot}${suffix}-level slot)`;
+  return `Strike ${at ? `${at} ` : ""}and smite (${slot}${suffix}-level slot)`;
 }
 
 const MOVES: Record<OpportunityTrigger, (whose: string) => string> = {
@@ -67,7 +86,18 @@ const MOVES: Record<OpportunityTrigger, (whose: string) => string> = {
 
 // The player's own card: "The Goblin is moving out of your reach. Take your
 // opportunity attack with your Longsword? It uses your reaction."
-export function askLine(ask: Pick<OpportunityAsk, "walker" | "weapon" | "trigger">): string {
+// With a rider on the walker's back: "The Wolf is moving out of your reach
+// with Goblin on its back. Take your opportunity attack with your Longsword,
+// and at which of them? It uses your reaction."
+// With War Caster's spell named: "... Cast Fire Bolt as your opportunity
+// attack (War Caster), and at which of them? It uses your reaction."
+export function askLine(ask: Pick<OpportunityAsk, "walker" | "weapon" | "trigger" | "rider" | "spell">): string {
+  if (ask.rider && ask.spell) {
+    return `${ask.walker} ${MOVES[ask.trigger]("your")} with ${ask.rider.name} on its back. Cast ${ask.spell} as your opportunity attack (War Caster), and at which of them? It uses your reaction.`;
+  }
+  if (ask.rider) {
+    return `${ask.walker} ${MOVES[ask.trigger]("your")} with ${ask.rider.name} on its back. Take your opportunity attack with your ${ask.weapon}, and at which of them? It uses your reaction.`;
+  }
   return `${ask.walker} ${MOVES[ask.trigger]("your")}. Take your opportunity attack with your ${ask.weapon}? It uses your reaction.`;
 }
 

@@ -269,3 +269,40 @@ export function foesAboutLine(survivors: SurvivorLine[], inFight: boolean): stri
   const tools = inFight ? "add_enemies" : "start_encounter or add_enemies";
   return `Still about after the last fight (GM only): ${parts.join("; ")}. To bring one back as they are, pass returning=<enemyId> to ${tools}; anyone not listed comes in fresh.`;
 }
+
+// GAME STATE's count of a running fight, under its Enemies list (issue
+// #1094). A camp the story had shown with a captain and four more was fought
+// as two soldiers, and gpt-oss-20b told the rest into the fight: "the lone
+// bandit captain, and a single bandit soldier" stood by the hero though the
+// order held no captain, and "the other two bandits" watched the first fall
+// when one was left. The rows above are no count to a small model, and
+// nothing said they were the whole fight.
+export function fightRosterLine(enemies: readonly { name: string; status: string }[]): string {
+  if (!enemies.length) {
+    return "";
+  }
+  const standing = enemies.filter((enemy) => enemy.status === "alive");
+  const out = enemies.length - standing.length;
+  const who = standing.length ? `${standing.length} (${standing.map((enemy) => enemy.name).join(", ")})` : "none";
+  return `Foes still in this fight: ${who}${out ? `; ${out} out of it` : ""}. Nobody else is in it: anyone else the story showed nearby is not here to act, watch or be counted until add_enemies brings them in.`;
+}
+
+// What the storyteller reads as a fight's order locks, after whose turn it
+// is (issue #1094): the fight is the creatures in that order, and the scene's
+// other people are told out of it once, in the opening, where a small model
+// otherwise kept them standing at the fight's edge for the rest of it.
+export const FIGHT_CAST_NOTE =
+  " Only the creatures in that order are in this fight: if the scene held others, say in the opening where they are, and give none of them a part in it.";
+
+// GAME STATE's line on who fell in the fight just over, for the GM alone
+// (issue #1094): asked afterwards where the others had gone, the storyteller
+// had no record of whom it had fought, and counted the fallen back in among
+// the missing. A long rout is named by its first few and a count.
+export function lastFightLine(fallen: readonly string[], shown = 8): string {
+  if (!fallen.length) {
+    return "";
+  }
+  const named = fallen.slice(0, shown).join(", ");
+  const more = fallen.length > shown ? ` and ${fallen.length - shown} more` : "";
+  return `Fell in the last fight (GM only): ${named}${more}. Whoever else the story showed there was never in that fight: where they are now is yours to tell, once, and to keep to.`;
+}

@@ -35,6 +35,7 @@ import { publicItemProposal } from "@/lib/dm/proposal-view";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-subject";
 import { secretRoll } from "@/lib/dm/roll-card";
 import { revealRolls } from "@/lib/dm/roll-record";
+import { checkParts } from "@/lib/roll-parts";
 import { isDmSeat } from "@/lib/dm/viewer";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -162,7 +163,7 @@ export function declareSecretAction(campaign: Campaign, sheet: CharacterSheet, i
   }
   const skill = secretSkillFor(input.kind, input.skill);
   // The roll card names its character already; the detail says what it was.
-  const roll = secretRoll(campaign.id, null, sheet.id, "skill_check", `${SKILL_WORD[skill]}, in secret`, d20Expression(skillMod(sheet, skill)));
+  const roll = secretRoll(campaign.id, null, sheet.id, "skill_check", `${SKILL_WORD[skill]}, in secret`, d20Expression(skillMod(sheet, skill)), null, checkParts({ skill }));
   // The one robbed watches their own pack; anything else, the best of the
   // party's eyes (or, for a lie, its best sense of one).
   const sense = watchSenseFor(skill);

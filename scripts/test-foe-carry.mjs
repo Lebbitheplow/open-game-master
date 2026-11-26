@@ -14,7 +14,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { carriedState, carryConditions, foesAboutLine, longRestsIn, namesSurvivor, outcomeShare, owedXp, wakeHoursOf } = await import(
+const { carriedState, carryConditions, fightRosterLine, foesAboutLine, lastFightLine, longRestsIn, namesSurvivor, outcomeShare, owedXp, wakeHoursOf } = await import(
   "../src/lib/dm/foe-carry-logic.ts"
 );
 const { textKey } = await import("../src/lib/language/text-logic.ts");
@@ -161,6 +161,27 @@ test("GAME STATE names who is still about with the id that brings them back", ()
   assert.match(line, /Raider 3 \[enemyId=e2\] fled, bloodied/);
   assert.match(line, /returning=<enemyId>/);
   assert.equal(foesAboutLine([], false), "");
+});
+
+// Issue #1094: the report's fight, two soldiers of a camp of five.
+test("a fight's state counts who is still in it and says the list is the whole fight", () => {
+  const both = fightRosterLine([{ name: "Bandit Soldier 1", status: "alive" }, { name: "Bandit Soldier 2", status: "alive" }]);
+  assert.match(both, /^Foes still in this fight: 2 \(Bandit Soldier 1, Bandit Soldier 2\)\. Nobody else is in it: /);
+  assert.match(both, /not here to act, watch or be counted until add_enemies brings them in\.$/);
+  const one = fightRosterLine([{ name: "Bandit Soldier 1", status: "dead" }, { name: "Bandit Soldier 2", status: "alive" }]);
+  assert.match(one, /^Foes still in this fight: 1 \(Bandit Soldier 2\); 1 out of it\. /, "one fallen is one fewer, and no \"other two\"");
+  assert.match(fightRosterLine([{ name: "Raider", status: "fled" }]), /^Foes still in this fight: none; 1 out of it\. /);
+  assert.equal(fightRosterLine([]), "");
+  // A line of state in every fight prompt: kept short, where a 64K window
+  // has some 1,500 tokens for the story's own lines.
+  assert.ok(Math.ceil(both.length / 4) <= 60, `${Math.ceil(both.length / 4)} tokens`);
+});
+
+test("once a fight is over, GAME STATE names who fell in it, a rout by its first few", () => {
+  const line = lastFightLine(["Bandit Soldier 1", "Bandit Soldier 2"]);
+  assert.match(line, /^Fell in the last fight \(GM only\): Bandit Soldier 1, Bandit Soldier 2\. Whoever else the story showed there was never in that fight/);
+  assert.match(lastFightLine(["A", "B", "C"], 2), /: A, B and 1 more\. /);
+  assert.equal(lastFightLine([]), "");
 });
 
 console.log(`test-foe-carry: ${passed} passed`);

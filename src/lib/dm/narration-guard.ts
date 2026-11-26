@@ -14,7 +14,7 @@ import {
   type Contradiction,
   type ResolvedOutcomes,
 } from "@/lib/dm/engine-boundary";
-import { claimKindsFor, withoutSentences, type ClaimKind, type NarrationClaim, type PartRead } from "@/lib/dm/claims-logic";
+import { claimKindsFor, englishOwnTurn, withoutSentences, type ClaimKind, type NarrationClaim, type PartRead } from "@/lib/dm/claims-logic";
 import { hasQuotedLine, type SpokenLine } from "@/lib/dm/speech";
 import { askedThisTurn, guardGate, liveStateFor, readClaims, turnOverFor } from "@/lib/dm/claims";
 import { turnStillOwes } from "@/lib/dm/turn-budget";
@@ -96,7 +96,12 @@ async function readNarration(
     },
     words: exchangeWords(campaign.id, sheets, turn.createdAt),
   });
-  const claims = [...known, ...read];
+  // Words that tell the waiting character the turn is theirs ("It is your
+  // turn.") hand nothing on and stay in the story (claims-logic.ts
+  // englishOwnTurn).
+  const waitingName = waiting ? (sheets.find((sheet) => sheet.id === waiting)?.name ?? "") : "";
+  const english = campaign.gameSettings.tableLanguage === "english";
+  const claims = [...known, ...read].filter((claim) => !(claim.kind === "turn_over" && english && englishOwnTurn(claim.quote, waitingName)));
   // A turn this DM turn asked its player about stays theirs, whatever the
   // narration reads as (claims.ts askedThisTurn).
   const handedOn = waiting && claims.some((claim) => claim.kind === "turn_over") ? waiting : null;
@@ -256,7 +261,7 @@ export async function enforceEngineBoundary(
     if ("refused" in cast) {
       contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster} could not cast ${spell}: ${cast.refused.replace(/\.$/, "")}. The narration must tell that instead of the spell taking effect` });
     } else if (cast.rolled) {
-      contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster}'s ${spell} has now been cast by the server, as their player asked: its result is the last tool result above. Narrate it from that result (the roll, the save, the damage), not from what you wrote` });
+      contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster}'s ${spell} has now been cast by the server, as their player asked: its result is the last tool result above. Narrate what that result decided (whether it struck, the save, how bad the harm) in words, not what you wrote` });
     }
   }
   if (campaign.gameSettings.narrationGuard) {

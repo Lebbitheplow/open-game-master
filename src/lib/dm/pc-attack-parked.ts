@@ -12,9 +12,9 @@ import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getRoll, type StoredRoll } from "@/lib/db/rolls";
 import { publishPersisted } from "@/lib/events";
-import { attackRecord, attackTurnOver, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
+import { attackRecord, attackTurnOver, blowParts, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
 import { landSwingBlow } from "@/lib/dm/attack-blow";
-import { damageDiceNote, damageDiceSteps } from "@/lib/dm/attack-damage-dice";
+import { damageDiceNote, diceSteps } from "@/lib/dm/attack-damage-dice";
 import { hitSwing, judgeSwing, missSwing, type SwingScene } from "@/lib/dm/attack-swing";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
@@ -28,7 +28,6 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { entryDice, type RollResult } from "@/lib/dice";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { isKnockedOut } from "@/lib/dm/knockout";
-import { rollAgainst } from "@/lib/roll-labels";
 
 // A blow with no dice to roll (a Blowgun's 1 piercing, Contagion's 0) lands
 // at once: parked, it asked for no faces, the route refuses an empty entry,
@@ -49,7 +48,7 @@ export function parkedTargetAc(campaignId: string, attack: PendingAttack): numbe
 
 // Physical dice: park the to-hit roll for the player, with the attack's record.
 export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null = null): PendingRoll {
-  const { campaign, turn, sheet, enemy, profile } = plan;
+  const { campaign, turn, sheet } = plan;
   const pending = createPendingRoll({
     campaignId: campaign.id,
     turnId: turn.id,
@@ -57,11 +56,11 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
     userId: sheet.userId,
     characterId: sheet.id,
     kind: "attack",
-    detail: strike.detail,
+    parts: strike.parts,
     expression: strike.toHitExpression,
     advantage: plan.advantage,
     dc: null,
-    reason: `${profile.weapon} attack against ${enemy.displayName}`,
+    line: { steps: [] },
     attack: attackRecord(plan, strike, mote),
   });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
@@ -77,7 +76,7 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
 // server throws its damage. `thrown` when there is nothing to decide: the
 // caller resolves the attack with that throw at once.
 export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null): { parked: PendingRoll } | { thrown: RollResult } | null {
-  const { campaign, turn, sheet, enemy, profile } = plan;
+  const { campaign, turn, sheet } = plan;
   const fresh = getSheetById(sheet.id) ?? sheet;
   if (!rollsCanWait(fresh)) {
     return null;
@@ -102,11 +101,11 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
     userId: sheet.userId,
     characterId: sheet.id,
     kind: "attack",
-    detail: strike.detail,
+    parts: strike.parts,
     expression: strike.toHitExpression,
     advantage: plan.advantage,
     dc: null,
-    reason: `${profile.weapon} attack against ${enemy.displayName}`,
+    line: { steps: [] },
     attack: { ...record, serverDice: true } as AttackRecord,
     parkedFor: "after_roll",
     thrown: { outcome: thrown, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline(campaign.id, sheet.userId) },
@@ -142,12 +141,11 @@ function sceneOf(pending: PendingRoll): { scene: SwingScene; record: AttackRecor
 // Parks the damage roll a hit or a graze asks for, with the record it lands by.
 function parkDamage(pending: PendingRoll, scene: SwingScene, record: AttackRecord, ask: DamageAsk, toHit: StoredRoll) {
   const attack: AttackRecord = { ...record, damage: ask, toHitRollId: toHit.id, riders: ask.riders, crit: ask.crit, ...(ask.half ? { halfOnMiss: true } : {}) };
-  // The card shows the roll's reason under its title, so the feats' steps go
+  // The card shows its own line under its title, so the feats' steps go
   // there for a player with dice in hand. A held roll is thrown by the server
   // and has no dice to reroll.
   const { dicePolicy, member } = dicePreferencesOf(pending.campaignId, pending.userId);
-  const steps = parkReasonFor(dicePolicy, member) === "real_dice" ? damageDiceSteps(ask) : "";
-  const reason = `${record.weapon} ${ask.half ? "half damage" : "damage"} against ${scene.enemy.displayName}`;
+  const steps = parkReasonFor(dicePolicy, member) === "real_dice" ? diceSteps(ask) : [];
   const damagePending = createPendingRoll({
     campaignId: pending.campaignId,
     turnId: pending.turnId,
@@ -158,11 +156,11 @@ function parkDamage(pending: PendingRoll, scene: SwingScene, record: AttackRecor
     userId: pending.userId,
     characterId: pending.characterId,
     kind: "damage",
-    detail: rollAgainst(ask.half ? `${record.weapon} (half on a miss)` : record.weapon, scene.enemy.displayName),
+    parts: blowParts(record, scene.enemy, ask.half ? "half_on_miss" : undefined),
     expression: ask.expression,
     advantage: "none",
     dc: null,
-    reason: steps ? `${reason}. ${steps}` : reason,
+    line: { steps },
     targetEnemyId: scene.enemy.id,
     attack,
   });
@@ -204,7 +202,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
     const { graze } = missSwing(scene, record, judged, roll.breakdown, roll.visibility, notes);
     const said = notes.length ? ` ${notes.join("; ")}.` : "";
     if (graze && (record.serverDice || graze.noDice || noDiceIn(graze.expression))) {
-      const out = serverBlow(scene, record, graze, roll.breakdown, roll.visibility, rollAgainst(`${record.weapon} (half on a miss)`, scene.enemy.displayName), []);
+      const out = serverBlow(scene, record, graze, roll.breakdown, roll.visibility, blowParts(record, scene.enemy, "half_on_miss"), []);
       return `${rolled}: MISS.${said} The spell still deals half its damage. ${blowSentences(scene, graze, out, []).join(" ")}`;
     }
     if (graze) {
@@ -227,7 +225,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
     // The server threw the d20, so it throws the damage too, as its own
     // answer would have: the player decided only what to do with the d20.
     const blowNotes: string[] = [];
-    const out = serverBlow(scene, record, ask, roll.breakdown, roll.visibility, pending.detail, blowNotes);
+    const out = serverBlow(scene, record, ask, roll.breakdown, roll.visibility, blowParts(record, scene.enemy), blowNotes);
     return `${rolled}: HIT${critical}.${said} ${blowSentences(scene, ask, out, blowNotes).join(" ")}`.trim();
   }
   parkDamage(pending, scene, record, ask, roll);
@@ -279,7 +277,7 @@ function blowSentences(scene: SwingScene, ask: DamageAsk, out: Record<string, un
     parts.push(`The encounter ended: ${String(out.outcome)}. XP was awarded automatically.`);
   }
   parts.push(...notes.map((note) => `${note}.`), ...outcomeLines(out));
-  parts.push(`Do NOT call apply_damage for this ${ask.half ? "miss" : "hit"}; narrate from this state.`);
+  parts.push(`Do NOT call apply_damage for this ${ask.half ? "miss" : "hit"}; narrate from this state, in words: no hit points and no damage figure.`);
   return parts;
 }
 

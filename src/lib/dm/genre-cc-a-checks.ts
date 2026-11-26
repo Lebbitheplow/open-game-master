@@ -14,30 +14,26 @@
 //     (request_roll's againstEnemyId or againstMonster, src/lib/dm/roll-gates.ts
 //     rollContest) rolls its side at disadvantage.
 import type { Campaign } from "@/lib/db/campaigns";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll } from "@/lib/db/rolls";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { rollSkill } from "@/lib/roll-parts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { findSkill } from "@/lib/srd";
 
 export function rerollFailedCheck(campaign: Campaign, sheet: CharacterSheet, label: string, skills: readonly string[]): ToolError | { result: Record<string, unknown> } {
-  // The skill a check card names, by the skill table's own ids and names.
-  const named = skills.map((id) => ({ id, name: textKey(findSkill(id)?.name ?? id) }));
-  const failed = listRecentRolls(campaign.id, 60)
-    .reverse()
-    .find((roll) => roll.characterId === sheet.id && (roll.kind === "skill_check" || roll.kind === "ability_check") && roll.dc !== null && roll.total < roll.dc);
-  const detail = failed ? textKey(failed.detail) : "";
-  const skill = failed ? named.find((entry) => detail.includes(entry.name) || detail.includes(entry.id)) : undefined;
+  const failed = latestRoll(campaign.id, 60, (roll) => roll.characterId === sheet.id && (roll.kind === "skill_check" || roll.kind === "ability_check") && roll.dc !== null && roll.total < roll.dc);
+  // The skill the check was made with, off its fields (src/lib/roll-parts.ts).
+  const skill = failed ? rollSkill(failed, skills) : null;
   if (!failed || !skill) {
-    const list = named.map((entry) => findSkill(entry.id)?.name ?? entry.id).join(" or ");
+    const list = skills.map((id) => findSkill(id)?.name ?? id).join(" or ");
     return { error: `${sheet.name}'s last check that failed was no ${list} check, so ${label} has nothing to reroll. Nothing was spent.`, refused: "rules" };
   }
   const dc = failed.dc!;
-  const again = rollCharacterCheck(campaign, sheet, { skill: skill.id, dc }, `${label} reroll`);
+  const again = rollCharacterCheck(campaign, sheet, { skill, dc }, `${label} reroll`);
   const made = again.total >= dc;
-  return { result: { reroll: `${label}: the ${findSkill(skill.id)?.name ?? skill.id} check is rolled again, ${again.total} against DC ${dc}: ${made ? "it succeeds" : "it fails again"}.` } };
+  return { result: { reroll: `${label}: the ${findSkill(skill)?.name ?? skill} check is rolled again, ${again.total} against DC ${dc}: ${made ? "it succeeds" : "it fails again"}.` } };
 }
 
 type Roller = { class?: string; classes?: CharacterSheet["classes"]; features?: CharacterSheet["features"] } | null | undefined;

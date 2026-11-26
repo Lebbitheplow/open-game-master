@@ -2,6 +2,8 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import type { ChatMessage } from "@/lib/model-client";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { RollKind, RollVisibility } from "@/lib/db/rolls";
+import type { RollParts, RollSaid } from "@/lib/roll-parts";
+import { cardReason, makesWords, rollSentence, wordParts, type CardLine } from "@/lib/roll-words";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
@@ -43,15 +45,31 @@ export type DmTurn = {
   // PCs whose combat turn was adjudicated this DM turn; the initiative
   // pointer only advances past a PC on this list (or with a landed roll).
   resolvedCharacterIds: string[];
-  // The roll cards whose roll this turn's conversation has been handed, by
-  // card (src/lib/dm/turn.ts resumeDmTurn, retry-turn.ts): a turn that waits
-  // on dice more than once answers each card once. A card's roll joins the
-  // turn's cards as it lands (src/lib/dm/pending-roll-land.ts), so being on
-  // `rollIds` does not say it was answered. Saved with the conversation it
-  // speaks of. A card that held its whole call is answered with the call's
-  // own stored answer, by reading the conversation, whether or not it is
-  // listed here.
+  // The roll cards whose answer this turn's conversation has been handed, by
+  // card (src/lib/dm/turn.ts answerLandedCards, which a resume and a retry
+  // both run): a turn that waits on dice more than once answers each card
+  // once. A card's roll joins the turn's cards as it lands
+  // (src/lib/dm/pending-roll-land.ts), so being on `rollIds` does not say it
+  // was answered. Saved with the conversation it speaks of. A card that held
+  // its whole call (src/lib/dm/held-call.ts) is listed like any other, as its
+  // call's stored answer is handed on (issue #1073).
   answeredPendingIds: string[];
+  // The rolls an AI GM asked for with request_roll on this turn, and the
+  // ones among them that have paid for something it sent since: a bare
+  // damage or healing number, a trap's hold lifted (src/lib/dm/ai-gate.ts).
+  // The gate takes a roll that is on the first list and not on the second,
+  // and no other, so a roll no site marked pays for nothing. The door a roll
+  // goes on record through writes the first as it joins the roll to the turn
+  // (src/lib/dm/roll-record.ts `asked`), and the gate the second (payOnTurn
+  // below). Two lists and not one that shrinks, so a call that parks cuts
+  // both back to where they stood as it began (src/lib/dm/held-call.ts). The
+  // gate pays before the call begins, so the payment for a call that parks
+  // stands. A call held on a roll card runs again past the gate, and the
+  // roll has paid once. One an AI's turn stopped for a watcher is sent
+  // through the gate again (src/lib/dm/turn.ts runHeldCalls) and finds its
+  // roll spent, as it did when the roll's own row was stamped.
+  askedRollIds: string[];
+  paidRollIds: string[];
   imageArgs: { prompt: string; reason?: string } | null;
   locationId: string | null;
   mutationCount: number;
@@ -83,6 +101,8 @@ type TurnRow = {
   answered_whisper_character_ids_json: string | null;
   resolved_character_ids_json: string | null;
   answered_pending_ids_json: string | null;
+  asked_roll_ids_json: string | null;
+  paid_roll_ids_json: string | null;
   image_args_json: string | null;
   location_id: string | null;
   mutation_count: number;
@@ -110,6 +130,8 @@ function mapTurn(row: TurnRow): DmTurn {
     ),
     resolvedCharacterIds: parseJson<string[]>(row.resolved_character_ids_json, []),
     answeredPendingIds: parseJson<string[]>(row.answered_pending_ids_json, []),
+    askedRollIds: parseJson<string[]>(row.asked_roll_ids_json, []),
+    paidRollIds: parseJson<string[]>(row.paid_roll_ids_json, []),
     imageArgs: parseJson<DmTurn["imageArgs"]>(row.image_args_json, null),
     locationId: row.location_id ?? null,
     mutationCount: row.mutation_count,
@@ -183,42 +205,79 @@ export function getDmTurn(turnId: string): DmTurn | null {
 
 // A roll made on this turn where no call held it in hand (a player's own
 // request, the clock) is written straight to the stored row
-// (src/lib/dm/roll-record.ts). Returns false when the turn is gone or
-// already lists the roll.
-export function joinStoredTurn(turnId: string, rollId: string): boolean {
+// (src/lib/dm/roll-record.ts). `asked`: the roll is one an AI GM asked for,
+// and goes on the row's asked list in the same statement, so a roll is never
+// on the turn with its mark still to come. Returns false when the turn is
+// gone or already lists the roll.
+export function joinStoredTurn(turnId: string, rollId: string, asked = false): boolean {
   const joined = getDatabase()
     .prepare(
       `
-        UPDATE dm_turns SET roll_ids_json = json_insert(roll_ids_json, '$[#]', ?)
+        UPDATE dm_turns SET
+          roll_ids_json = json_insert(roll_ids_json, '$[#]', ?),
+          asked_roll_ids_json = CASE WHEN ? THEN json_insert(asked_roll_ids_json, '$[#]', ?) ELSE asked_roll_ids_json END
         WHERE id = ? AND NOT EXISTS (SELECT 1 FROM json_each(dm_turns.roll_ids_json) WHERE json_each.value = ?)
       `,
     )
-    .run(rollId, turnId, rollId);
+    .run(rollId, asked ? 1 : 0, rollId, turnId, rollId);
   return joined.changes > 0;
 }
 
-// The rolls the stored row lists that this copy does not: joined to the row
-// after the copy was read (joinStoredTurn). Saved as it stood, an older copy
-// wrote them away, and the chronicle lost their cards (issue #915). A call
-// that parks is rolled back row and all (held-call.ts), so a roll it took
-// back is not on the row to be kept.
-function keepStoredRolls(turn: DmTurn) {
-  const row = getDatabase().prepare(`SELECT roll_ids_json FROM dm_turns WHERE id = ?`).get(turn.id) as { roll_ids_json: string } | undefined;
-  for (const id of parseJson<string[]>(row?.roll_ids_json ?? "[]", [])) {
-    if (!turn.rollIds.includes(id)) {
-      turn.rollIds.push(id);
-    }
+// A roll an AI GM asked for pays for something it sent (ai-gate.ts). Whether
+// it may is settled on the turn's stored row, in one statement: true when
+// the row took the payment, false when the roll had paid already or the turn
+// is gone. So two copies of one turn in hand at once (a connected agent
+// program's calls are not queued) cannot both spend the roll, as they could
+// not when a stamp on the roll's own row was read. Written at once, as that
+// stamp was: a turn that halts before its next save still holds the payment,
+// and a Retry cannot spend the roll a second time.
+export function payOnTurn(turn: DmTurn, rollId: string): boolean {
+  const paid = getDatabase()
+    .prepare(
+      `
+        UPDATE dm_turns SET paid_roll_ids_json = json_insert(paid_roll_ids_json, '$[#]', ?)
+        WHERE id = ? AND NOT EXISTS (SELECT 1 FROM json_each(dm_turns.paid_roll_ids_json) WHERE json_each.value = ?)
+      `,
+    )
+    .run(rollId, turn.id, rollId);
+  // The copy in hand learns of a payment either way.
+  if (!turn.paidRollIds.includes(rollId)) {
+    turn.paidRollIds.push(rollId);
   }
+  return paid.changes > 0;
+}
+
+// What the stored row lists that this copy does not: a roll joined to the
+// row after the copy was read (joinStoredTurn), with its mark when it was
+// asked for, and a payment written since (payOnTurn). Saved as it stood, an
+// older copy wrote the rolls away, and the chronicle lost their cards (issue
+// #915); it would write the marks away too, and a paid roll could pay again.
+// A call that parks is rolled back row and all (held-call.ts), so what it
+// took back is not on the row to be kept.
+function keepStoredLists(turn: DmTurn) {
+  const row = getDatabase().prepare(`SELECT roll_ids_json, asked_roll_ids_json, paid_roll_ids_json FROM dm_turns WHERE id = ?`).get(turn.id) as
+    | { roll_ids_json: string; asked_roll_ids_json: string | null; paid_roll_ids_json: string | null }
+    | undefined;
+  const keep = (stored: string | null | undefined, list: string[]) => {
+    for (const id of parseJson<string[]>(stored ?? "[]", [])) {
+      if (!list.includes(id)) {
+        list.push(id);
+      }
+    }
+  };
+  keep(row?.roll_ids_json, turn.rollIds);
+  keep(row?.asked_roll_ids_json, turn.askedRollIds);
+  keep(row?.paid_roll_ids_json, turn.paidRollIds);
 }
 
 export function saveDmTurn(turn: DmTurn) {
-  keepStoredRolls(turn);
+  keepStoredLists(turn);
   const saved = getDatabase()
     .prepare(
       `
         UPDATE dm_turns SET
           status = ?, call_index = ?, conversation_json = ?,
-          narration_parts_json = ?, roll_ids_json = ?, player_whisper_ids_json = ?, answered_whisper_character_ids_json = ?, resolved_character_ids_json = ?, answered_pending_ids_json = ?, image_args_json = ?,
+          narration_parts_json = ?, roll_ids_json = ?, player_whisper_ids_json = ?, answered_whisper_character_ids_json = ?, resolved_character_ids_json = ?, answered_pending_ids_json = ?, asked_roll_ids_json = ?, paid_roll_ids_json = ?, image_args_json = ?,
           location_id = ?, mutation_count = ?, encounter_count = ?, context_trace_json = ?, updated_at = ?
         WHERE id = ?
       `,
@@ -233,6 +292,8 @@ export function saveDmTurn(turn: DmTurn) {
       JSON.stringify(turn.answeredWhisperCharacterIds),
       JSON.stringify(turn.resolvedCharacterIds),
       JSON.stringify(turn.answeredPendingIds),
+      JSON.stringify(turn.askedRollIds),
+      JSON.stringify(turn.paidRollIds),
       turn.imageArgs ? JSON.stringify(turn.imageArgs) : null,
       turn.locationId,
       turn.mutationCount,
@@ -440,6 +501,13 @@ export type PendingCarry = {
   // The tool an ability check is made with (request_roll's `tool`), which
   // the roll's kind and detail do not say.
   tool?: string;
+  // An AI GM's own request_roll dealt this card (src/lib/dm/invoke-roll.ts):
+  // the roll it lands is marked as asked for (roll-record.ts `asked`), so
+  // its total may pay for a number the GM sends. Said as the card is dealt
+  // (createPendingRoll's `asked`), never worked out from the card later. A
+  // card with no word of it, one dealt before the field was written among
+  // them, is not asked for.
+  asked?: true;
   // The call this roll stopped (src/lib/dm/held-call.ts), run again from the
   // start when the roll lands, and what that run answered.
   call?: HeldRollCall;
@@ -447,6 +515,10 @@ export type PendingCarry = {
   // The question a walk's call stopped on before a character's opportunity
   // attack, and its answer once given (src/lib/dm/opportunity-ask.ts).
   ask?: OpportunityAsk;
+  // The card's own line under its title, said in fields where its family's
+  // words are made from them (src/lib/roll-words.ts cardLine): the card
+  // reads it in the player's language, and `reason` keeps its English.
+  line?: CardLine;
 };
 
 // A roll a held call already has, for its next run: the player's, as it
@@ -519,6 +591,9 @@ export type PendingRoll = {
   // Who may read the roll once it lands; the DM's screen, kept while the
   // roll waits.
   visibility: RollVisibility;
+  // What the roll says of itself as fields, handed to the door as the dice
+  // land (src/lib/roll-parts.ts). Null on a card dealt before they were kept.
+  parts: RollParts | null;
   status: PendingRollStatus;
   rollId: string | null;
   createdAt: string;
@@ -529,6 +604,7 @@ type PendingRow = {
   thrown_json?: string | null;
   carry_json?: string | null;
   watch_json?: string | null;
+  parts_json?: string | null;
   id: string;
   campaign_id: string;
   turn_id: string;
@@ -573,6 +649,7 @@ function mapPending(row: PendingRow): PendingRoll {
     thrown: parseJson<ThrownRoll | null>(row.thrown_json ?? null, null),
     watch: parseJson<WatchStop | null>(row.watch_json ?? null, null),
     visibility: row.visibility ?? "public",
+    parts: typeof row.parts_json === "string" ? parseJson<RollParts>(row.parts_json, {}) : null,
     status: row.status,
     rollId: row.roll_id,
     createdAt: row.created_at,
@@ -757,20 +834,31 @@ export function foretoldPromised(turnId: string, characterId: string): number[] 
     .map((entry) => entry.watch?.face as number);
 }
 
-export function createPendingRoll(input: {
+export function createPendingRoll(input: RollSaid<RollParts> & {
   campaignId: string;
   turnId: string;
   toolCallId: string | null;
   userId: string;
   characterId: string | null;
   kind: RollKind;
-  detail: string;
+  // The card's words are `detail`, from a site that writes its own sentence,
+  // or `parts` that make them (src/lib/roll-words.ts): the sentence kept
+  // with the card is then built from the parts, as a roll's is at the door.
   expression: string;
   advantage: Advantage;
   dc: number | null;
-  reason: string;
+  // What the card says under its title: the reason its site wrote, or a
+  // `line` in fields beside parts that make the card's words, from which
+  // the reason kept with the card is built. A card handed neither carries
+  // its words again.
+  reason?: string;
+  line?: CardLine;
   targetEnemyId?: string | null;
   carry?: PendingCarry | null;
+  // An AI GM's own request_roll deals this card: written on what the card
+  // carries (PendingCarry `asked`). Which files may say it is on a ledger
+  // (scripts/test-roll-record-sites.mjs).
+  asked?: boolean;
   attack?: PendingAttack | null;
   // Left out by every caller today: the reason is read from the table's dice
   // policy and the player's preferences as the roll is parked.
@@ -780,6 +868,8 @@ export function createPendingRoll(input: {
 }): PendingRoll {
   const id = crypto.randomUUID();
   ensureParkColumn();
+  const line = input.line && makesWords(input.parts) ? input.line : null;
+  const carry: PendingCarry | null = input.asked || line ? { ...(input.carry ?? {}), ...(input.asked ? { asked: true as const } : {}), ...(line ? { line } : {}) } : (input.carry ?? null);
   const preferences = dicePreferencesOf(input.campaignId, input.userId);
   // A roll parked for somebody with neither preference (a test, a caller
   // that parks by its own rule) is a held roll: the server throws it.
@@ -791,9 +881,9 @@ export function createPendingRoll(input: {
         INSERT INTO pending_rolls (
           id, campaign_id, turn_id, tool_call_id, user_id, character_id, kind,
           detail, expression, advantage, dc, reason, target_enemy_id, carry_json, attack_json, parked_for,
-          thrown_json, visibility, status, created_at
+          thrown_json, visibility, parts_json, status, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `,
     )
     .run(
@@ -804,17 +894,18 @@ export function createPendingRoll(input: {
       input.userId,
       input.characterId,
       input.kind,
-      input.detail,
+      rollSentence(input),
       input.expression,
       input.advantage,
       input.dc,
-      input.reason,
+      cardReason(input),
       input.targetEnemyId ?? null,
-      input.carry && Object.keys(input.carry).length ? JSON.stringify(input.carry) : null,
+      carry && Object.keys(carry).length ? JSON.stringify(carry) : null,
       input.attack ? JSON.stringify(input.attack) : null,
       parkedFor,
       input.thrown ? JSON.stringify(input.thrown) : null,
       input.visibility ?? "public",
+      JSON.stringify(input.parts ?? {}),
       nowIso(),
     );
   const pending = getPendingRoll(id);
@@ -826,10 +917,18 @@ export function createPendingRoll(input: {
 
 // Client-facing projection: the adjudication context (enemy AC) and the
 // model-facing combat note never ride events or snapshots to players.
-export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "attack" | "combatNote"> {
+export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "attack" | "combatNote" | "parts"> & { parts?: RollParts } {
   const rest: Partial<PendingRoll> = { ...pending };
   delete rest.attack;
   delete rest.combatNote;
+  // The engine's own reading of the roll stays here: the card says the same
+  // in words. Where the parts make those words, the fields that do ride the
+  // card, so it reads in the player's language (src/lib/roll-words.ts).
+  delete rest.parts;
+  const words = wordParts(pending.parts);
+  if (words) {
+    rest.parts = words;
+  }
   // A stop's held calls are the model's own words, and may name what the table
   // has not seen: the card reads its line and its time.
   // The creatures to pick from are ones the table can see (foresight.ts
@@ -843,7 +942,7 @@ export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "atta
       ...(choices?.length ? { choices: choices.map((choice) => ({ name: choice.name, when: shiftWhen(choice) })) } : {}),
     } as unknown as WatchStop;
   }
-  return rest as Omit<PendingRoll, "attack" | "combatNote">;
+  return rest as Omit<PendingRoll, "attack" | "combatNote" | "parts"> & { parts?: RollParts };
 }
 
 export function getPendingRoll(id: string): PendingRoll | null {

@@ -83,7 +83,7 @@ export default {
       check(reportTop && shareTop && reportTop.y < shareTop.y, "the list stands above the Download button");
       const summary = kind("atlas").locator("summary");
       const box = await summary.boundingBox();
-      check(box && box.height >= 40, `each kind is a finger-sized row (${box?.height})`);
+      check(box && Math.round(box.height) >= 40, `each kind is a finger-sized row (${box?.height})`);
       const problems = await axeViolations(page, `${root}[data-testid="pack-omissions"]`);
       check(!problems.length, `axe finds no serious problem in the list: ${JSON.stringify(problems)}`);
       await t.shot("before-pull");

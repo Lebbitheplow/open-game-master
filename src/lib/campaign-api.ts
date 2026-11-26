@@ -1,6 +1,7 @@
 import { currentUser, unauthorized } from "@/lib/auth";
 import { capsFor as capsForCampaign, getCampaignForUser, type Campaign } from "@/lib/db/campaigns";
 import { storytellerSees, type ViewerCaps } from "@/lib/dm/viewer";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import type { User } from "@/lib/db/users";
 import { isMemberMuted } from "@/lib/db/moderation";
 import { fillUsageScope, openUsageScope } from "@/lib/usage/scope";
@@ -57,6 +58,16 @@ export function isLead(context: MemberContext): boolean {
 }
 
 // What this member may see and do, decided once in src/lib/dm/viewer.ts.
+// What a member's own request is answered with, as their seat is sent the
+// table: a creature the GM keeps off the board is "someone unseen" in the
+// answer too, for a seat that does not see the whole map
+// (src/lib/table-delivery.ts hiddenFromSeat). The stream alone used to make
+// that replacement, so the answer to a roller's own dice named the creature
+// the card on their screen had kept from them.
+export function forSeat<T>(context: MemberContext, value: T): T {
+  return hiddenFromSeat(context.campaign.id, capsFor(context).fullMap, value);
+}
+
 export function capsFor(context: MemberContext): ViewerCaps {
   return capsForCampaign(context.campaign, context.user.id);
 }

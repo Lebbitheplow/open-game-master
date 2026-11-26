@@ -219,8 +219,10 @@ test("redaction drops the number and keeps the fact of the roll", () => {
     success: true,
     breakdown: { terms: [] },
     dc: 15,
+    parts: { used: { kind: "skill", key: "stealth", name: "Stealth" }, resists: "frightened" },
   });
   assert.equal(redacted.total, null);
+  assert.equal(redacted.parts, null, "a hidden roll's stored fields stay off the seat");
   assert.equal(redacted.success, null);
   assert.equal(redacted.breakdown, null);
   assert.equal(redacted.dc, null);

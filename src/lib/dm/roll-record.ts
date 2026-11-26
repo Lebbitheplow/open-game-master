@@ -38,6 +38,15 @@
 // No other file sends "roll_result": a roll sent a second time (a secret
 // that comes out, revealRolls below) leaves here too.
 //
+// The door also keeps one mark (issue #1073): the rolls an AI GM asked for
+// with request_roll (`asked`). It goes on the turn's own list in the step
+// that joins the roll to the turn, and the gate that holds the model's
+// numbers takes a total from that list and from nowhere else
+// (src/lib/dm/ai-gate.ts). A roll no site marked pays for nothing, so a new
+// site that throws dice on an AI's turn needs to do nothing to stay out of
+// the gate's way. Before, every site's dice had to be stamped spent after
+// the fact, and a site that was missed paid for a number the model made up.
+//
 // It imports the roll store, the turn store and the event stream, and reaches
 // the held call through globalThis as the roll store does: the clock's paths
 // card their dice through roll-card.ts, which must stay free of the engine's
@@ -48,6 +57,7 @@ import { getDatabase } from "@/lib/db/core";
 import { joinStoredTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { insertRoll, revealRollRow, type RollInsert, type RollKind, type StoredRoll } from "@/lib/db/rolls";
 import { publishWithSeq } from "@/lib/events";
+import { makesWords, PHYSICAL, rollSentence } from "@/lib/roll-words";
 
 // How the dice came in: thrown by the server, or rolled by the player on
 // their own dice and entered (src/lib/dm/pending-roll-land.ts RollLanding).
@@ -80,25 +90,40 @@ export type RollRecord = RollInsert & {
   // The roll card these dice answer (pending-roll-land.ts): each screen takes
   // the card down as it is told of the roll.
   answers?: string | null;
+  // An AI GM asked for this roll with request_roll. Said by two sites and no
+  // other (scripts/test-roll-record-sites.mjs): src/lib/dm/invoke-roll.ts,
+  // where the call is thrown on the server's dice, and
+  // src/lib/dm/pending-roll-land.ts, where the card it dealt lands. A roll
+  // with no turn to join carries no mark.
+  asked?: boolean;
 };
 
 export function recordRoll(record: RollRecord): StoredRoll {
-  const { turn, turnId, home, landing: said, send, answers, ...insert } = record;
+  const { turn, turnId, home, landing: said, send, answers, asked, ...insert } = record;
   const landing = said === undefined ? (globalThis.__odmTakenLanding?.(insert.characterId ?? null, insert.kind) ?? null) : said;
   // Dice rolled at the table are on record as the player's own, as a roll
-  // card's are (pending-roll-land.ts).
-  const stored = { ...insert, ...(landing?.physical ? { detail: `${insert.detail || insert.kind} (physical)` } : {}) } as RollInsert;
+  // card's are (pending-roll-land.ts): a field says so (roll-parts.ts
+  // rollPhysical), and the words say it to whoever reads the card.
+  const parts = landing?.physical && insert.parts ? { ...insert.parts, physical: true as const } : landing?.physical && insert.parts === undefined ? { physical: true as const } : insert.parts;
+  // A roll whose parts make its words (issue #1064, src/lib/roll-words.ts)
+  // is handed no sentence: the one stored is built here from the parts, in
+  // English, so the two cannot disagree. Any other roll keeps the sentence
+  // its site wrote, with the mark for the player's own dice after it.
+  // A roll handed neither is refused (roll-words.ts rollSentence).
+  const words = rollSentence({ detail: insert.detail, parts });
+  const detail = landing?.physical && !makesWords(parts) ? `${words || insert.kind} ${PHYSICAL}` : words;
+  const stored = { ...insert, detail, ...(parts === undefined ? {} : { parts }) } as RollInsert;
   // An id handed with a turn that is not that turn's own wins: the roll joins
   // one turn, never the two.
   const id = turnId ?? turn?.id ?? null;
   const target = home === "line" || home === "apart" ? null : turnFor(turn && turn.id === id ? turn : null, id);
   let roll: StoredRoll;
   if (target?.storedId) {
-    // The roll and its place on the turn stand or fall together.
+    // The roll, its place on the turn and its mark stand or fall together.
     const storedId = target.storedId;
     roll = getDatabase().transaction(() => {
       const made = insertRoll(stored);
-      joinStoredTurn(storedId, made.id);
+      joinStoredTurn(storedId, made.id, asked === true);
       return made;
     })();
   } else {
@@ -106,6 +131,9 @@ export function recordRoll(record: RollRecord): StoredRoll {
   }
   if (target?.live && !target.live.rollIds.includes(roll.id)) {
     target.live.rollIds.push(roll.id);
+  }
+  if (asked === true && target?.live && !target.live.askedRollIds.includes(roll.id)) {
+    target.live.askedRollIds.push(roll.id);
   }
   if (send !== false) {
     // Sent as it was made: told "digital", the stage threw a die on screen

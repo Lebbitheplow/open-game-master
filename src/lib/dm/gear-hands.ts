@@ -70,9 +70,42 @@ export function inHand(item: EquipmentItem, equipment: readonly EquipmentItem[])
 // it: the shield on the arm and the weapons held. Empty when it fits. A
 // two-handed weapon needs both hands; anything else one.
 export function handsFullFor(equipment: readonly EquipmentItem[], row: EquipmentItem): string[] {
-  const others = heldRows(equipment).filter((item) => item !== row && textKey(item.name) !== textKey(row.name));
+  const others = heldBeside(equipment, row);
   const used = others.reduce((sum, item) => sum + handsFor(item), 0);
   return used + handsFor(row) > 2 ? others.map((item) => item.name) : [];
+}
+
+// What the hands hold apart from this row, whichever copy of it was asked.
+function heldBeside(equipment: readonly EquipmentItem[], row: EquipmentItem): EquipmentItem[] {
+  return heldRows(equipment).filter((item) => item !== row && textKey(item.name) !== textKey(row.name));
+}
+
+// What the sheet is told when full hands stop a row it could take up for
+// nothing: the row, what fills the hands, and the choices in `swaps`.
+export type HandsFull = { item: string; holding: string[]; swaps: string[][] };
+
+// The ways to make room for a row the full hands cannot take (issue 1105):
+// each entry names the held weapons to put away. A dagger dragged onto two
+// blades put the last one away unasked, and the drag back was refused with
+// no way on; the sheet now offers these instead. Every single weapon that
+// frees enough is its own choice; when none does (a two-handed weapon wants
+// both hands) the one choice is all of them together. Empty when the row
+// already fits, and when putting every weapon away would still leave no
+// room: a shield comes off the arm by its own rule (an action in a fight),
+// so it is never offered here.
+export function handSwaps(equipment: readonly EquipmentItem[], row: EquipmentItem): string[][] {
+  const others = heldBeside(equipment, row);
+  const over = others.reduce((sum, item) => sum + handsFor(item), 0) + handsFor(row) - 2;
+  if (over <= 0) {
+    return [];
+  }
+  const weapons = others.filter((item) => gearKindOf(item) === "weapon");
+  const singles = [...new Set(weapons.filter((item) => handsFor(item) >= over).map((item) => item.name))];
+  if (singles.length) {
+    return singles.map((name) => [name]);
+  }
+  const freed = weapons.reduce((sum, item) => sum + handsFor(item), 0);
+  return freed >= over ? [[...new Set(weapons.map((item) => item.name))]] : [];
 }
 
 // Whether the engine's guess at what is in hand still stands (armor.ts).
@@ -114,19 +147,53 @@ export function guessedRehand(
   return { equipment: next, putAway };
 }
 
-// What the free first change did, in the result's words.
-export function rehandLine(who: string, putAway: readonly string[], taken: string): string {
+// What the free first change did, in the result's words. Out of a fight
+// every change is free, and saying "the first change costs nothing" there
+// told the reader the next one would cost something (issue 1105).
+export function rehandLine(who: string, putAway: readonly string[], taken: string, inFight = true): string {
   const away = putAway.length ? `puts away ${putAway.join(" and ")} and ` : "";
-  return `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`;
+  return inFight
+    ? `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`
+    : `${who} ${away}takes up ${taken}.`;
+}
+
+// Whether the free first change would have to pick which weapon goes back
+// in the pack: more than one held weapon would make room, and nobody said
+// which. The sheet asks (sheet/usage handSwaps); handle_item is told to ask
+// rather than put away the last one in the pack, as it did for a dagger
+// drawn beside a scimitar and a shortsword (issue 1105).
+export function rehandIsAChoice(equipment: readonly EquipmentItem[], row: EquipmentItem, rehand: { putAway: readonly string[] } | null): boolean {
+  return Boolean(rehand?.putAway.length) && handSwaps(equipment, row).length > 1;
 }
 
 // The ways out of full hands, for each reader: the storyteller is told the
 // tool that drops, a player never sees a tool's name (the Hand's card, the
 // sheet's refusal, a card the GM's seat played).
-const WAYS_OUT: Record<"storyteller" | "player", string> = {
+//
+// Out of a fight there is no turn and no object interaction to spend (issue
+// 1105): a player was told that putting a weapon away "takes your object
+// interaction this turn" while walking down a road, and had to ask the
+// storyteller twice to swap one blade for another. So the readers at ease
+// are told it costs nothing, and the storyteller the two calls that do it.
+// While the hands are still the engine's guess the first change is free in
+// a fight as well (guessedRehand above), which `firstChange` says. None of
+// them opens with "No fight is running": that is how a tool says it needs a
+// fight, and this refusal is about hands.
+const WAYS_OUT: Record<"storyteller" | "player" | "storytellerAtEase" | "atEase" | "storytellerFirstChange" | "firstChange", string> = {
   storyteller: "Dropping one is free (handle_item drop); putting one away takes the object interaction.",
   player: "Dropping one is free; putting one away takes your object interaction this turn.",
+  storytellerAtEase: "Out of a fight putting one away is free: call handle_item unequip for the one the player named, then equip again. If they named none, ask them which.",
+  atEase: "Put one of them away first: out of a fight that costs nothing.",
+  storytellerFirstChange: "Nobody had said which weapon was out, so putting one away costs nothing: call handle_item unequip for the one the player named, then equip again. If they named none, ask them which.",
+  firstChange: "Put one of them away first: nobody had said which weapon was out, so this first change costs nothing.",
 };
+
+// Each storyteller's sentence beside the one a person reads in its place.
+const FOR_PLAYER: ReadonlyArray<[string, string]> = [
+  [WAYS_OUT.storyteller, WAYS_OUT.player],
+  [WAYS_OUT.storytellerAtEase, WAYS_OUT.atEase],
+  [WAYS_OUT.storytellerFirstChange, WAYS_OUT.firstChange],
+];
 
 // The refusal for a draw with no hand free, with the ways out: dropping
 // costs nothing, putting one away is the object interaction.
@@ -144,7 +211,7 @@ export function handsFullError(
 // GM's seat played resolves through the tools): the hands-full ways out in
 // a player's words.
 export function handsFullForPlayer(text: string): string {
-  return text.split(WAYS_OUT.storyteller).join(WAYS_OUT.player);
+  return FOR_PLAYER.reduce((words, [told, read]) => words.split(told).join(read), text);
 }
 
 // Takes a weapon in hand: the row marked equipped. A hand must be free for

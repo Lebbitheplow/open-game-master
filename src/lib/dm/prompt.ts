@@ -51,7 +51,7 @@ import type { LoreTrace } from "@/lib/dm/world-lore-logic";
 import { renderWorldArcsForPrompt } from "@/lib/dm/world-arc-logic";
 import { renderFactsForPrompt, type FactLike } from "@/lib/dm/fact-logic";
 import { MOMENT_INSTRUCTION, splitAtMoment, THIS_MOMENT_HEADING, THIS_TURN_HEADING } from "@/lib/prompt-boundary";
-import { closingVarietyNote, repeatedClosing } from "@/lib/dm/narration-tidy-logic";
+import { closingVarietyNote, repeatedClosing, withoutLineLabels } from "@/lib/dm/narration-tidy-logic";
 import { companionMode } from "@/lib/dm/companion-tools";
 import { conscienceSetting, consciousCompanions, souredLeaving } from "@/lib/dm/conscience";
 import type { SouredLeaving } from "@/lib/dm/relationship-logic";
@@ -101,6 +101,7 @@ import { describeEquipmentItem } from "@/lib/dm/equipment-line";
 import { summonStateLine } from "@/lib/dm/summon-rules";
 import { dmSystemText, encounterRulesText, tracksAmmunition, type RuleContext } from "@/lib/dm/prompt-rules";
 import { healthState } from "@/lib/bestiary/health";
+import { fightRosterLine } from "@/lib/dm/foe-carry-logic";
 import { rollerName } from "@/lib/roll-labels";
 import { tableHazards } from "@/lib/srd/table-hazards";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
@@ -206,6 +207,9 @@ export type DmEncounterState = {
   // The current combatant's name while their turn waits on their player
   // (src/lib/dm/player-word.ts characterAwaitingPlayer).
   awaitingPlayer: string | null;
+  // Their player only spoke in character since the DM last spoke (issue
+  // 1108); optional for a state built before it existed.
+  awaitingSpoke?: boolean;
   // The current character's name while their player keeps them where they
   // stand (src/lib/dm/player-word.ts characterHeld); optional for a state
   // built before it existed.
@@ -1217,7 +1221,9 @@ export function buildGameStateBlock(state: DmGameState): string {
       } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
         lines.push(
-          `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
+          encounter.awaitingSpoke
+            ? `Waiting on ${name}'s player: they only spoke in character, and talking costs no action. Let whoever they spoke to answer in the story, then ask what ${name} does; the server refuses any action or end_turn for ${name} until they say.`
+            : `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
         );
       }
       if (encounter.holding) {
@@ -1293,6 +1299,11 @@ export function buildGameStateBlock(state: DmGameState): string {
         parts.push(enemy.pair);
       }
       lines.push(parts.join(" | "));
+    }
+    // The count, and that the list is the whole fight (issue #1094).
+    const roster = fightRosterLine(encounter.enemies);
+    if (roster) {
+      lines.push(roster);
     }
     if (encounter.sides?.length) {
       lines.push(
@@ -2061,8 +2072,11 @@ export function buildDmMessages(
   // A passage stored before issue 900's fix may hold the card line the model
   // copied then: read back as the model's own words, it would be copied again.
   // So would a call it wrote out as argument lines before issue 1025's fix.
+  const partyNames = state.sheets.map((sheet) => sheet.name);
   const dmText = (text: string) => {
-    const said = withoutWrittenCalls(withoutServerLines(text));
+    // Nor a passage that opens on a player's line label ("[Avery] ..."),
+    // stored before the turn's tidy cut it (narration-tidy-logic.ts).
+    const said = withoutLineLabels(withoutWrittenCalls(withoutServerLines(text)), partyNames);
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 

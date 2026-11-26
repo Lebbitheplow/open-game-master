@@ -40,9 +40,11 @@ import { takeFate } from "@/lib/dm/fate-turn";
 import { takeLineage } from "@/lib/dm/lineage-watch";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { recordRoll } from "@/lib/dm/roll-record";
+import type { RollParts, RollSaid } from "@/lib/roll-parts";
+import { rollSentence, type CardLine } from "@/lib/roll-words";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export type CharacterRoll = {
+export type CharacterRoll = RollSaid<RollParts> & {
   // As the roll is stored: a death save is a saving throw.
   // Damage is theirs to roll on physical dice too ("You roll your attacks
   // and their damage"), and never waits on a choice. Nor do the other dice
@@ -54,13 +56,22 @@ export type CharacterRoll = {
   tag?: RollTag;
   // The whole roll, as a player would roll it at the table.
   expression: string;
-  // What the card and the roll's record say it is.
-  detail: string;
+  // What the card and the roll's record say it is: `detail`, from a site
+  // that writes its own sentence, or `parts` that make the words
+  // (src/lib/roll-words.ts), from which the card's sentence is built.
+  // `parts` is also what the roll says of itself as fields
+  // (src/lib/roll-parts.ts), the same the site hands the door: a card this
+  // roll parks keeps them, for a landing that records the roll from the
+  // card.
   dc?: number | null;
   // An attack roll: what it must reach, for the after-the-roll card.
   attack?: { ac: number; critRange?: number; melee?: boolean };
   advantage?: Advantage;
+  // What a card this roll parks says under its title: a reason the site
+  // wrote, or its own line in fields beside parts that make its words
+  // (src/lib/roll-words.ts cardLine). With neither, its words again.
   reason?: string;
+  line?: CardLine;
   visibility?: RollVisibility;
   // The site's own throw, when it does more than roll the expression.
   throwIt?: () => RollResult;
@@ -87,7 +98,10 @@ function seatParks(campaign: Campaign, sheet: CharacterSheet): "real_dice" | "he
   return reason === "real_dice" || reason === "held" ? reason : null;
 }
 
-function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRoll, outcome: RollResult): AfterRollOption[] {
+// A roll with its sentence in hand, whoever wrote it.
+type SaidRoll = Omit<CharacterRoll, "detail" | "parts"> & { detail: string; parts?: RollParts };
+
+function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: SaidRoll, outcome: RollResult): AfterRollOption[] {
   const reactionFree = reactionFreeFor(campaign.id, sheet.id);
   if (roll.attack) {
     const critRange = roll.attack.critRange ?? 20;
@@ -149,7 +163,8 @@ function rollAtDoor(campaign: Campaign, stale: CharacterSheet, asked: CharacterR
   // Trance of Order: a d20 of 9 or lower counts as 10 (ar-ws-trance-floor.ts).
   // Never on damage or the other dice of their own (a heal), as
   // tranceResolved leaves those kinds alone.
-  const roll = asked.kind === "damage" || asked.kind === "custom" ? asked : { ...asked, expression: tranceFloored(sheet, asked.expression) };
+  const said: SaidRoll = { ...asked, detail: rollSentence(asked) };
+  const roll = said.kind === "damage" || said.kind === "custom" ? said : { ...said, expression: tranceFloored(sheet, said.expression) };
   const decided = takeDecided(sheet.id, roll.kind);
   if (decided) {
     return { outcome: decided.raw && roll.adjust ? roll.adjust(decided.outcome) : decided.outcome, landing: decided.landing ?? null };
@@ -166,7 +181,9 @@ function rollAtDoor(campaign: Campaign, stale: CharacterSheet, asked: CharacterR
     // An attack's card names the number it must reach, as a check's does.
     dc: roll.attack ? roll.attack.ac : typeof roll.dc === "number" ? roll.dc : null,
     reason: roll.reason ?? roll.detail,
+    ...(roll.line ? { line: roll.line } : {}),
     visibility: roll.visibility ?? "public",
+    ...(roll.parts ? { parts: roll.parts } : {}),
   };
   const mayWait = held && visible && roll.mayWait !== false && hasDice(roll.expression);
   const parks = mayWait ? seatParks(campaign, sheet) : null;

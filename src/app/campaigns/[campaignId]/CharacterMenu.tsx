@@ -97,7 +97,7 @@ export function CharacterMenu({
           <button
             type="button"
             aria-label={t("Options for {name}", { name: sheet.name })}
-            className="rounded p-1 text-stone-500 hover:bg-stone-900 hover:text-stone-300"
+            className="tap-reach rounded p-1 text-stone-500 hover:bg-stone-900 hover:text-stone-300"
           >
             <MoreVertical className="size-3.5" />
           </button>

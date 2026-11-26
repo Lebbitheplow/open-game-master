@@ -83,8 +83,8 @@ function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNull
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   // The player's own check (src/lib/dm/character-roll.ts).
-  const outcome = rollCharacterD20(campaign, sheet, { kind: "ability_check", expression: resolved.expression, detail, dc: check.dc, settleHeldDie: waits });
-  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, dc: check.dc, result: outcome });
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "ability_check", expression: resolved.expression, detail, parts: resolved.parts, dc: check.dc, settleHeldDie: waits });
+  recordRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, parts: resolved.parts, dc: check.dc, result: outcome });
   return { total: outcome.total, success: outcome.total >= check.dc };
 }
 

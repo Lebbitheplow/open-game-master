@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isErrorResponse, requireMember } from "@/lib/campaign-api";
+import { forSeat, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { foretoldPromised, getPendingRoll, publicPendingRoll, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
@@ -95,8 +95,8 @@ export async function POST(
     }
     armAfterRollKeep(waiting.id, waiting.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(waiting) });
-    return Response.json({ pendingRoll: publicPendingRoll(waiting) });
+    return Response.json(forSeat(context, { pendingRoll: publicPendingRoll(waiting) }));
   }
   const roll = landPendingRoll(context.campaign, pending, outcome, landing);
-  return roll ? Response.json(landedBody(roll)) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
+  return roll ? Response.json(forSeat(context, landedBody(roll))) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
 }

@@ -22,9 +22,9 @@ export function rollMark() {
 // The rolls of a table stored after a mark, oldest first.
 export function rollsAfter(campaignId, mark) {
   return getDatabase()
-    .prepare(`SELECT rowid AS at, id, character_id AS characterId, requested_by AS requestedBy, roll_kind AS kind, detail, visibility, attacker_json AS attackerJson FROM rolls WHERE campaign_id = ? AND rowid > ? ORDER BY rowid ASC`)
+    .prepare(`SELECT rowid AS at, id, character_id AS characterId, requested_by AS requestedBy, roll_kind AS kind, detail, visibility, attacker_json AS attackerJson, parts_json AS partsJson FROM rolls WHERE campaign_id = ? AND rowid > ? ORDER BY rowid ASC`)
     .all(campaignId, mark)
-    .map((row) => ({ ...row, attacker: row.attackerJson ? JSON.parse(row.attackerJson) : null }));
+    .map((row) => ({ ...row, attacker: row.attackerJson ? JSON.parse(row.attackerJson) : null, parts: row.partsJson === null ? null : JSON.parse(row.partsJson) }));
 }
 
 // Every place a roll is listed: a turn once for each time it lists it.
@@ -49,6 +49,16 @@ export function homeProblem(rollId) {
     return `listed ${turns.length} times on a turn`;
   }
   return lines.length ? `on ${lines.length} lines and no turn` : "on no turn and no line";
+}
+
+// The turns whose asked list holds a roll: the mark for a roll an AI GM asked
+// for with request_roll (src/lib/db/dm-turns.ts askedRollIds, issue #1073),
+// which is what lets its total pay for a number that GM sends.
+export function askedOn(rollId) {
+  return getDatabase()
+    .prepare(`SELECT dm_turns.id AS id FROM dm_turns, json_each(dm_turns.asked_roll_ids_json) AS listed WHERE listed.value = ?`)
+    .all(rollId)
+    .map((row) => row.id);
 }
 
 export const lastSeq = (campaignId) => listEventsSince(campaignId, 0, 100000).at(-1)?.seq ?? 0;

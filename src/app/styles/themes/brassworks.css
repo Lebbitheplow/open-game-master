@@ -1,0 +1,162 @@
+/* brassworks: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   An engine works, machined and polished. Night is the engine hall: oxblood
+   leather under yellow brass pipe, lit by bottle-green gauge glass. Day is the
+   drawing office upstairs: cream draughtsman's linen, oxblood ink and
+   blueprint-blue keys, with the same brass pipework round the page (the
+   texture and the scenery change by day; the frame and corner do not).
+   Kept apart from Deep Forge: wine-red surfaces and yellow brass, no orange,
+   no ember, round pipe-end keys where Forge is square. Kept apart from Arcane:
+   no indigo and no stars; the brass sits a little greener than Arcane's gold.
+   Kept apart from Inferno: the red is in the surfaces, browner and darker
+   than crimson, and it never fills a key. */
+[data-appearance="brassworks"][data-theme="dark"] {
+  --background: #150809;
+  --foreground: #f3e9d6;
+  --color-stone-950: #1a0a0c;
+  --color-stone-900: #261012;
+  --color-stone-800: #36181a;
+  --color-stone-700: #4f2628;
+  --color-stone-600: #7d5552;
+  --color-stone-500: #b89f93;
+  --color-stone-400: #c6b0a3;
+  --color-stone-300: #d9c8ba;
+  --color-stone-200: #e8dccf;
+  --color-stone-100: #f2e9de;
+  --color-stone-50: #f9f4ec;
+  --color-amber-950: #2a2206;
+  --color-amber-900: #473a0c;
+  --color-amber-800: #6b5813;
+  --color-amber-700: #93791c;
+  --color-amber-600: #b89a28;
+  --color-amber-500: #d6b53a;
+  --color-amber-400: #e6c95a;
+  --color-amber-300: #eed983;
+  --color-amber-200: #f5e6a8;
+  --color-amber-100: #faf0cb;
+  --color-amber-50: #fdf8e8;
+  --material-inset: #1c0b0d;
+  --material-paper: #241012;
+  --material-metal: #eed983;
+  --material-edge: #9a7d2e;
+  --material-panel-wash: linear-gradient(#210d10bd, #170a0bd6);
+  --material-control-wash: linear-gradient(#421d20c2, #2b1315de);
+  --material-body-wash: linear-gradient(#130708ed, #180a0bed);
+  --material-rail-wash: linear-gradient(#1c0b0d8c, #1c0b0d8c);
+  /* Dark lacquered brass under cream text. */
+  --material-primary-wash: linear-gradient(#7a5c16eb, #4b370cf2);
+  --material-scrim: linear-gradient(#150809a6, #15080959 45%, #150809cc);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%237a5c22'%3E%3Ccircle cx='70' cy='70' r='24'/%3E%3Ccircle cx='70' cy='70' r='15'/%3E%3Cpath d='M0 70H46M94 70H140M70 0V46M70 94V140'/%3E%3C/g%3E%3Cg fill='%237a5c22'%3E%3Ccircle cx='70' cy='50.500' r='1.500'/%3E%3Ccircle cx='70' cy='89.500' r='1.500'/%3E%3Ccircle cx='50.500' cy='70' r='1.500'/%3E%3Ccircle cx='89.500' cy='70' r='1.500'/%3E%3C/g%3E%3C/svg%3E");
+}
+[data-appearance="brassworks"][data-theme="light"] {
+  --background: #efe9d8;
+  --foreground: #2a1114;
+  --color-stone-950: #f8f4e8;
+  --color-stone-900: #efe9d9;
+  --color-stone-800: #e2dac6;
+  --color-stone-700: #c6bba3;
+  --color-stone-600: #8c7f6c;
+  --color-stone-500: #5c4a44;
+  --color-stone-400: #523f3b;
+  --color-stone-300: #41302e;
+  --color-stone-200: #322223;
+  --color-stone-100: #251618;
+  --color-stone-50: #180d0f;
+  --color-amber-950: #f8e9e6;
+  --color-amber-900: #f0d4d0;
+  --color-amber-800: #dfaaa6;
+  --color-amber-700: #c07a78;
+  --color-amber-600: #96383c;
+  --color-amber-500: #7c262b;
+  --color-amber-400: #681d22;
+  --color-amber-300: #55171c;
+  --color-amber-200: #431216;
+  --color-amber-100: #320d10;
+  --color-amber-50: #23080b;
+  --material-inset: #f7f2e5;
+  --material-paper: #eee7d6;
+  --material-metal: #55171c;
+  --material-edge: #a88a3c;
+  --material-panel-wash: linear-gradient(#f8f3e7e0, #ede6d4e0);
+  --material-control-wash: linear-gradient(#f3eddcd9, #ded5bfde);
+  --material-body-wash: linear-gradient(#ede6d5e6, #e1d9c5e6);
+  --material-rail-wash: linear-gradient(#8a743a33, #8a743a33);
+  /* Blueprint blue, not oxblood: by day the app's own danger key is a dark
+     red slab under light text, and an ordinary key must not pass for it. */
+  --material-primary-wash: linear-gradient(#2a557ff0, #18344ff5);
+  --material-scrim: linear-gradient(#efe9d899, #efe9d840 45%, #efe9d8bb);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%236f8fb0'%3E%3Ccircle cx='70' cy='70' r='24'/%3E%3Ccircle cx='70' cy='70' r='15'/%3E%3Cpath d='M0 70H46M94 70H140M70 0V46M70 94V140'/%3E%3C/g%3E%3Cg fill='%236f8fb0'%3E%3Ccircle cx='70' cy='50.500' r='1.500'/%3E%3Ccircle cx='70' cy='89.500' r='1.500'/%3E%3Ccircle cx='50.500' cy='70' r='1.500'/%3E%3Ccircle cx='89.500' cy='70' r='1.500'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Materials that hold in both brightness modes: polished yellow brass
+   fittings, round pipe-end keys, and gauge-glass green for what goes. */
+[data-appearance="brassworks"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #150809;
+  --theme-night-foreground: #f3e9d6;
+  --theme-night-stone-950: #1a0a0c;
+  --theme-night-stone-900: #261012;
+  --theme-night-stone-800: #36181a;
+  --theme-night-stone-700: #4f2628;
+  --theme-night-stone-600: #7d5552;
+  --theme-night-stone-500: #b89f93;
+  --theme-night-stone-400: #c6b0a3;
+  --theme-night-stone-300: #d9c8ba;
+  --theme-night-stone-200: #e8dccf;
+  --theme-night-stone-100: #f2e9de;
+  --theme-night-stone-50: #f9f4ec;
+  --theme-night-amber-950: #2a2206;
+  --theme-night-amber-900: #473a0c;
+  --theme-night-amber-800: #6b5813;
+  --theme-night-amber-700: #93791c;
+  --theme-night-amber-600: #b89a28;
+  --theme-night-amber-500: #d6b53a;
+  --theme-night-amber-400: #e6c95a;
+  --theme-night-amber-300: #eed983;
+  --theme-night-amber-200: #f5e6a8;
+  --theme-night-amber-100: #faf0cb;
+  --theme-night-amber-50: #fdf8e8;
+  --material-metal-finish: linear-gradient(135deg, #f8e9a8, #b8922e 47%, #efd67e 52%, #7d6118);
+  --material-metal-ink: #2a1c08;
+  /* Turned parts: round fittings, pipe-end keys and chips, and plates with
+     a small machined radius. Deep Forge's are square-cut. */
+  --material-fitting-radius: 50%;
+  --material-control-radius: 999px;
+  --material-panel-radius: 5px;
+  --material-bubble-radius: 9px;
+  --material-tab-radius: 999px;
+  --material-chip-radius: 999px;
+  --material-sigil-radius: 5px;
+  --material-crest-tilt: 0deg;
+  /* Gauge-glass green sends and marks the chosen key in both modes, and
+     fills the health bar: the shared leaf green, moved toward bottle glass. */
+  --material-send-wash: linear-gradient(#1f6040, #113a27);
+  --material-send-edge: #8fd0a4;
+  --material-chosen-wash: linear-gradient(#1a4f36, #0e3021);
+  --material-vital-fill: linear-gradient(90deg, #2f8a5a, #a5e2b8);
+  --appearance-motif-size: 140px 140px;
+  --appearance-corner: 0.3rem;
+}
+/* The porthole's two pipes are fatter than the rail, and the rail runs into
+   the middle of their end collars on every surface. The rail's centre line
+   lies 41.3% across the frame's band, and the pipes' centre line 14.6%
+   across the corner piece, so each piece's size follows from where its
+   rail sits: 9.9px inside the piece at the table (a 24px band), 5px on a
+   phone (12px), and 26.7px and 13px in the lobby, where the pieces sit
+   16px and 8px outside the card (3px more scrolled the page sideways at
+   541px wide). Change a size and the rail leaves the middle. */
+[data-appearance="brassworks"] {
+  --theme-table-corner-size: 68px;
+  --theme-table-corner-size-small: 34px;
+  --theme-lobby-ornament-inset: -42px;
+  --theme-lobby-corner-size: 182px;
+  --theme-lobby-ornament-inset-small: -20px;
+  --theme-lobby-corner-size-small: 88px;
+}
+/* Machined corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+html[data-appearance="brassworks"] .ornate::before,
+html[data-appearance="brassworks"] .ornate::after { width: 16px; height: 16px; }
+html[data-appearance="brassworks"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="brassworks"] .ornate::after { border-width: 0 2px 2px 0; }

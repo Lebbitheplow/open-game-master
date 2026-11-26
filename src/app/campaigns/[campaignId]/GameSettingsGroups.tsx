@@ -421,7 +421,7 @@ export function AiGroup({ settings, patch }: Base) {
       {aiNarrates ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">{t("Prose")}</span>
-          <Tooltip content={t("After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, and a kindness or flirt a player declared is recorded on their bonds.")}>
+          <Tooltip content={t("After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, a kindness or flirt a player declared is recorded on their bonds, and a thing a player handed over or used that the story took leaves their pack.")}>
             <SettingToggle on={settings.narrationGuard} onToggle={() => patch({ narrationGuard: !settings.narrationGuard })}>
               {settings.narrationGuard ? t("Outcome check on") : t("Outcome check off")}
             </SettingToggle>

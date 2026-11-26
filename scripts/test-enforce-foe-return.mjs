@@ -30,7 +30,7 @@ const encounters = await import("../src/lib/db/encounters.ts");
 const clock = await import("../src/lib/db/clock.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const { isKnockedOut } = await import("../src/lib/dm/knockout.ts");
-const { foesAboutBlock } = await import("../src/lib/dm/foe-return.ts");
+const { foesAboutBlock, lastFightBlock } = await import("../src/lib/dm/foe-return.ts");
 const { createNpcFromDraft } = await import("../src/lib/db/npcs.ts");
 const { normalizeNpcDraft } = await import("../src/lib/npcs/forge.ts");
 const { createHomebrewMonster } = await import("../src/lib/bestiary/homebrew-monsters.ts");
@@ -331,6 +331,65 @@ await test("From the console a GM fields an invented foe by its challenge rating
   assert.equal(wraith.displayName, "Sludge Wraith");
   assert.equal(wraith.cr, 0.5);
   assert.equal(snik.displayName, "Snik");
+});
+
+// Issue #1094: a camp the story had shown as a captain and four more was
+// fought as two soldiers, and the storyteller (gpt-oss-20b) told the captain
+// into the fight, counted "the other two bandits" when one was left, and
+// afterwards could not say whom it had fought. Last: a DM turn runs here.
+await test("Issue #1094: a fight's start says to place the scene's others, its state counts who is still in it and says nobody else is, and once it is over GAME STATE names who fell", async () => {
+  const { fakeModel, reply } = await import("./lib/enforce-narrator.mjs");
+  const model = await fakeModel();
+  model.pointAt(world);
+  const gameState = async () => {
+    model.script([reply({ text: "Steel rings across the camp." }), reply({ text: "Steel rings across the camp." })]);
+    await model.turn(world, "I hold my ground.", fighter.id, fighter.userId);
+    return JSON.stringify(model.requests[0]?.messages ?? []);
+  };
+
+  await kit.endFight();
+  world.clearDice();
+  world.dice(1, 1, 19);
+  const started = await ai("start_encounter", { enemies: [{ monster: "goblin", name: "Raider", count: 2 }] });
+  world.clearDice();
+  assert.equal(started.ok, true, started.error);
+  let told = JSON.stringify(started.result);
+  if (!world.encounter().order.some((entry) => entry.characterId === fighter.id)) {
+    world.dice(19);
+    told += JSON.stringify(await world.invoke("request_roll", { characterId: fighter.id, kind: "initiative", reason: "initiative" }));
+    world.clearDice();
+  }
+  assert.match(told, /Combat begins\. Initiative order: [^"]*Only the creatures in that order are in this fight: if the scene held others, say in the opening where they are, and give none of them a part in it\./);
+
+  const [one, two] = world.enemies();
+  assert.deepEqual([one.displayName, two.displayName], ["Raider 1", "Raider 2"]);
+  assert.equal(lastFightBlock(world.campaign(), true), "", "a running fight's own list says who is in it");
+  assert.match(await gameState(), /Foes still in this fight: 2 \(Raider 1, Raider 2\)\. Nobody else is in it: anyone else the story showed nearby is not here to act, watch or be counted until add_enemies brings them in\./);
+
+  const fell = async (enemy) => {
+    kit.giveTurn(fighter.id);
+    kit.place(fighter.id, 5, 5);
+    kit.place(enemy.id, 5, 6);
+    kit.setEnemy(enemy.id, { currentHp: 1 });
+    const swing = await kit.swing(fighter.id, enemy.id, [15, 6], { weapon: "Longsword" });
+    assert.equal(swing.ok, true, swing.error);
+    assert.equal(encounters.getEnemy(enemy.id).status, "dead");
+  };
+  await fell(one);
+  assert.match(await gameState(), /Foes still in this fight: 1 \(Raider 2\); 1 out of it\. Nobody else is in it/);
+  await fell(two);
+  assert.equal(world.encounter(), null, "the last foe down ends the fight");
+
+  const after = lastFightBlock(world.campaign(), false);
+  assert.match(after, /^Fell in the last fight \(GM only\): Raider 1, Raider 2\. Whoever else the story showed there was never in that fight: where they are now is yours to tell, once, and to keep to\.$/);
+  assert.ok((await gameState()).includes("Fell in the last fight (GM only): Raider 1, Raider 2."), "the storyteller reads it once the fight is over");
+  later(25);
+  assert.equal(lastFightBlock(world.campaign(), false), "", "a day later it is the story's own past");
+  // The running summary is told to keep who was where, and how many: at a
+  // 64K window it is all a fight's prompt holds of the scene before it.
+  const { COMPACTION_SYSTEM } = await import("../src/lib/dm/compaction.ts");
+  assert.match(COMPACTION_SYSTEM, /who and how many were at each place the party found \(a camp of five: a captain, two soldiers, two archers\) with what became of each of them/);
+  model.close();
 });
 
 finish();

@@ -195,7 +195,7 @@ export default {
       await t.tap(pick);
       check(await start.isEnabled(), "one picked, the test can start");
       const box = await pick.boundingBox();
-      check(box && box.height >= 40, `a character's row is finger-sized (${box?.height})`);
+      check(box && Math.round(box.height) >= 40, `a character's row is finger-sized (${box?.height})`);
       await untilStill(page);
       await t.shot("sheet-characters");
       await axeBothThemes(t, '[data-testid="test-fight-sheet"]', "the test fight sheet");

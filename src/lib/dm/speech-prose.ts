@@ -137,6 +137,13 @@ export function nameAt(text: string, reading: Reading, atStart: boolean): Found 
 // English words that carry on about someone already named: "She smiles",
 // "His voice drops". "It" is left out: "It is cold" is about nobody.
 const ENGLISH_PRONOUN = /^(she|he|they|her|his|their|hers|him|them)\b/i;
+// An English sentence that says what a thing is like: "It's charred at the
+// edges but legible.", "It is cold.", "It was sealed with wax." Nobody does
+// anything in it, so who the passage is about is whoever it was about
+// before. Only the verb "to be", and not before a word in -ing: "It lunges"
+// and "It's grinning" may be a creature the table has no name for, and that
+// one is still somebody.
+const ENGLISH_THING_IS = /^it(?:['’]s|\s+(?:is|was))(?!\p{L})(?!\s+\p{L}+ing(?!\p{L}))/iu;
 // What a stretch about one person calls them: "she" or "he" where a
 // clause opens ("She sighs, and he shrugs" is two people), and the "her"
 // and "his" that are theirs. "Him" after a verb is somebody else.
@@ -218,6 +225,14 @@ export type Named = Extract<Subject, { kind: "name" }>;
 export function subjectOf(sentence: string, reading: Reading, atStart = true): Subject {
   const text = sentence.replace(LEAD, "").trimEnd();
   if (!text) {
+    return { kind: "none" };
+  }
+  // A sentence about a thing between a person's action and their line is
+  // read past (issue 1095): "She steps forward and presses a ledger into your
+  // hands. It's charred at the edges but legible. "It lists who they sold
+  // to."" left Captain Mira's second line in the scene to nobody, though her
+  // first, a paragraph up, was hers.
+  if (reading.englishPronouns && ENGLISH_THING_IS.test(text)) {
     return { kind: "none" };
   }
   const at = (body: string, start: boolean): Pointer | null => {

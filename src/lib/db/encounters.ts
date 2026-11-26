@@ -181,6 +181,15 @@ export type EncounterEnemy = {
   // on this rider's token and the mount's own turn moves it
   // (src/lib/dm/enemy-riders.ts). Empty on foot.
   ridesEnemyId?: string;
+  // On a mount's row: the rider steering it (a controlled mount, ruling 2).
+  // It has no turn and no place in the order, moves on that rider's turn
+  // and takes only the Dash, Disengage and Dodge actions. Absent for a mount
+  // that acts as it wishes, the default.
+  ledBy?: string;
+  // That rider is off it: it takes a turn of its own from now on, and the
+  // next walk of the order makes sure of its place there
+  // (src/lib/dm/enemy-riders.ts seatFreedMounts).
+  slotOwed?: true;
   // That mount's size, which is the space the pair's one token fills (ruling
   // 1): read with the row, so every measure from the token finds it.
   pairSize?: string;
@@ -238,6 +247,7 @@ type EnemyRow = {
   race?: string | null;
   gender?: string | null;
   rides_enemy_id?: string | null;
+  led_by_enemy_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -358,6 +368,7 @@ function mapEnemy(row: EnemyRow): EncounterEnemy {
     ...(row.race ? { race: row.race } : {}),
     ...(storedGender(row.gender) ? { gender: storedGender(row.gender) } : {}),
     ...(row.rides_enemy_id ? { ridesEnemyId: row.rides_enemy_id, ...pairSizeOf(row.rides_enemy_id) } : {}),
+    ...(row.led_by_enemy_id === SLOT_OWED ? { slotOwed: true as const } : row.led_by_enemy_id ? { ledBy: row.led_by_enemy_id } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -827,12 +838,31 @@ export function setEnemyLook(enemyId: string, look: { gender?: Gender; race?: st
 }
 
 // Puts this enemy on a mount, another row of its fight, or takes it off
-// (null): issue 1055, src/lib/dm/enemy-riders.ts.
-export function setEnemyMount(riderId: string, mountId: string | null) {
+// (null): issue 1055, src/lib/dm/enemy-riders.ts. `controlled`: the rider
+// steers it (ruling 2), marked on the mount's row; whatever this rider
+// steered before is steered by nobody.
+export function setEnemyMount(riderId: string, mountId: string | null, controlled = false) {
+  const db = getDatabase();
   keepRow("encounter_enemies", riderId);
+  db.prepare(`UPDATE encounter_enemies SET rides_enemy_id = ?, updated_at = ? WHERE id = ?`).run(mountId ?? "", nowIso(), riderId);
+  for (const led of db.prepare(`SELECT id FROM encounter_enemies WHERE led_by_enemy_id = ?`).all(riderId) as Array<{ id: string }>) {
+    keepRow("encounter_enemies", led.id);
+    db.prepare(`UPDATE encounter_enemies SET led_by_enemy_id = '', updated_at = ? WHERE id = ?`).run(nowIso(), led.id);
+  }
+  if (mountId && controlled) {
+    keepRow("encounter_enemies", mountId);
+    db.prepare(`UPDATE encounter_enemies SET led_by_enemy_id = ?, updated_at = ? WHERE id = ?`).run(riderId, nowIso(), mountId);
+  }
+}
+
+// A controlled mount whose rider is off it is owed a place in the order,
+// or has been given it.
+const SLOT_OWED = "+";
+export function setEnemySlotOwed(enemyId: string, owed: boolean) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
-    .prepare(`UPDATE encounter_enemies SET rides_enemy_id = ?, updated_at = ? WHERE id = ?`)
-    .run(mountId ?? "", nowIso(), riderId);
+    .prepare(`UPDATE encounter_enemies SET led_by_enemy_id = ?, updated_at = ? WHERE id = ?`)
+    .run(owed ? SLOT_OWED : "", nowIso(), enemyId);
 }
 
 export function setEnemyInitiative(enemyId: string, initiative: number) {

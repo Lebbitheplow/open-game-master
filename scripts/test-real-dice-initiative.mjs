@@ -23,6 +23,7 @@ const { test, finish } = suite("test-real-dice-initiative");
 const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { listOpenPendingRolls, getDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { rollPhysical } = await import("../src/lib/roll-parts.ts");
 const { fillInitiativeCard, holdsInitiativeCard, withInitiativeCards } = await import("../src/lib/dm/initiative-cards-logic.ts");
 const { startFightAgainst } = await import("../src/lib/dm/encounter-tools.ts");
 const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
@@ -81,7 +82,7 @@ await test("a fight the AI opens without request_roll sends the real-dice player
   const rolls = initiativeRollsOf(world, kara.id);
   assert.equal(rolls.length, 1, `Kara has ${rolls.length} initiative rolls`);
   assert.equal(rolls[0].requestedBy, "player");
-  assert.match(rolls[0].detail, /physical/);
+  assert.ok(rollPhysical(rolls[0]));
   const entry = fight.order.find((candidate) => candidate.kind === "pc" && candidate.characterId === kara.id);
   assert.equal(entry?.initiative, rolls[0].total);
 

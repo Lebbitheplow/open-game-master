@@ -8,9 +8,9 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
-import { getEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
+import { getEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
 import { latestAppearance, survivorsOfLastFight } from "@/lib/db/foe-history";
-import { carriedState, foesAboutLine, namesSurvivor, owedXp } from "@/lib/dm/foe-carry-logic";
+import { carriedState, foesAboutLine, lastFightLine, namesSurvivor, owedXp } from "@/lib/dm/foe-carry-logic";
 import type { AbilityLedger } from "@/lib/dm/monster-abilities";
 import { unknownRef, type ToolError } from "@/lib/dm/tool-errors";
 import { resolveMonster } from "@/lib/bestiary";
@@ -163,5 +163,26 @@ export function foesAboutBlock(campaign: Campaign, inFight: boolean): string {
         conditionMeta: enemy.conditionMeta,
       })),
     inFight,
+  );
+}
+
+// GAME STATE's line on who fell in the last fight, for the same day of world
+// time its survivors are listed (issue #1094). Not while another fight runs:
+// that one's own list says who is in it.
+export function lastFightBlock(campaign: Campaign, inFight: boolean): string {
+  if (inFight) {
+    return "";
+  }
+  const last = survivorsOfLastFight(campaign.id);
+  if (!last || last.encounter.endedInstant === null) {
+    return "";
+  }
+  if (minutesSince(last.encounter.endedInstant, getClock(campaign.id).instant) > STILL_ABOUT_MINUTES) {
+    return "";
+  }
+  return lastFightLine(
+    listEnemies(last.encounter.id)
+      .filter((enemy) => enemy.status === "dead")
+      .map((enemy) => enemy.displayName),
   );
 }

@@ -23,6 +23,7 @@ import { spendEnemyAction } from "@/lib/dm/enemy-approach";
 import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
+import { controlledMountRefusal } from "@/lib/dm/enemy-riders";
 import {
   dashesOf,
   enemyTurnEntry,
@@ -356,6 +357,12 @@ export function handleEnemyTakeAction(
   const early = enemyTurnRefusal(encounter, enemy, turn);
   if (early) {
     return early;
+  }
+  // "It has only three action options: Dash, Disengage, and Dodge" (SRD 5.1,
+  // Controlling a Mount): a controlled mount takes nothing else.
+  const steered = enemy.status === "alive" && !["dash", "disengage", "dodge"].includes(args.action) ? controlledMountRefusal(enemy, `${args.action.replace(/_/g, " ")} action`) : null;
+  if (steered) {
+    return { error: steered, refused: "rules" };
   }
   const bonus = args.bonus === true;
   if (args.action === "use_object" && callsManacles(args.item)) {

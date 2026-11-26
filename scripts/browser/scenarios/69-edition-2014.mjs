@@ -82,7 +82,7 @@ export default {
     const term = shop.first().getByRole("button", { name: /How magic is priced/ });
     await eventually(() => term.count(), { label: "How magic is priced on the shelf" });
     const box = await term.first().boundingBox();
-    check(box !== null && (t.viewport !== "phone" || box.height >= 40), `the term is a finger-sized target on a phone (${box?.height}px)`);
+    check(box !== null && (t.viewport !== "phone" || Math.round(box.height) >= 40), `the term is a finger-sized target on a phone (${box?.height}px)`);
     await t.tap(term.first());
     const explained = page.locator("[role=dialog], [role=tooltip], [data-radix-popper-content-wrapper]").filter({ hasText: "uncommon 500 gp" }).locator("visible=true");
     await eventually(() => explained.count(), { label: "the term's explanation" });

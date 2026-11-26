@@ -93,6 +93,17 @@ await test("a standalone build carries the LICENSE", async () => {
   assert.ok(fs.existsSync(path.join(repo, "LICENSE")));
 });
 
+// The config asks git what is being built each time a dev server or a build
+// starts. Started from a process with no console (a background task), each
+// call opened a console window on Windows, and one whose parent was stopped
+// stayed open on "error 0x800700e8 when launching git describe".
+await test("the build config starts no visible console on Windows", () => {
+  const config = fs.readFileSync(path.join(repo, "next.config.ts"), "utf8").replace(/\r\n/g, "\n");
+  const calls = [...config.matchAll(/\b(?:execFileSync|execSync|spawnSync|spawn|execFile|exec)\(([^\n]*)/g)];
+  assert.ok(calls.length > 0, "next.config.ts no longer starts a process; drop this test");
+  for (const [call] of calls) assert.ok(call.includes("windowsHide: true"), `starts a process without windowsHide: ${call}`);
+});
+
 if (failed) {
   process.exit(1);
 }

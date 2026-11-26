@@ -37,7 +37,7 @@ export function catalogInstalled(locale: Locale): boolean {
   return locale === "en" || Boolean(catalogs()[locale]);
 }
 
-function interpolate(template: string, vars?: TranslateVars): string {
+export function interpolate(template: string, vars?: TranslateVars): string {
   if (!vars) return template;
   return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, name) => {
     if (name === "context") return match;

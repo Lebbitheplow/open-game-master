@@ -35,16 +35,22 @@ import { keptWordReading, readWords } from "@/lib/dm/player-word-read";
 // a turn of their own. Counted, the hero up next who answered a hit in the
 // enemies' pass had "declared", so the AI was let play that turn for them and
 // the narration's hand-off moved it on unplayed (issue 685).
-function ownWordsSinceDm(campaignId: string, characterId: string) {
+//
+// `until` is when the DM turn asking began: a line posted after it was not
+// in the prompt that turn answers. It is the next turn's, as a card played
+// while a turn narrates is (turn.ts cardsToSettle).
+function ownWordsSinceDm(campaignId: string, characterId: string, until?: string) {
   const messages = listRecentMessages(campaignId, 50);
   // An out-of-character answer in between leaves the move standing.
   const since = messages.slice(messages.findLastIndex(isNarration) + 1);
+  const began = until ? Date.parse(until) : Number.NaN;
   return since.filter(
     (message) =>
       message.authorType === "player" &&
       message.characterId === characterId &&
       !message.content.startsWith("(ooc)") &&
-      message.intent?.card !== "reaction",
+      message.intent?.card !== "reaction" &&
+      !(Date.parse(message.createdAt) > began),
   );
 }
 
@@ -55,8 +61,8 @@ function ownWordsSinceDm(campaignId: string, characterId: string) {
 // something done in it; a line that only asks counts for nothing; at a table
 // in another language the words are read by the utility model first
 // (prepareWordFor).
-export function playerWord(campaignId: string, characterId: string): PlayerWord {
-  const lines = ownWordsSinceDm(campaignId, characterId);
+export function playerWord(campaignId: string, characterId: string, until?: string): PlayerWord {
+  const lines = ownWordsSinceDm(campaignId, characterId, until);
   if (!lines.length) {
     return readPlayerWord([], { fightStartedAt: null, english: true, names: [], read: null });
   }
@@ -184,6 +190,17 @@ export function characterAwaitingPlayer(campaignId: string): CharacterSheet | nu
     return null;
   }
   return sheet;
+}
+
+// What GAME STATE says of a turn that waits on its player: the character's
+// name, and whether their player only spoke in character (issue 1108), which
+// the model is told apart from a player who has said nothing.
+export function awaitingPlayerState(campaignId: string): { awaitingPlayer: string | null; awaitingSpoke?: true } {
+  const sheet = characterAwaitingPlayer(campaignId);
+  if (!sheet) {
+    return { awaitingPlayer: null };
+  }
+  return { awaitingPlayer: sheet.name, ...(playerWord(campaignId, sheet.id).why === "spoke" ? { awaitingSpoke: true as const } : {}) };
 }
 
 // The character on their own turn whose player keeps them where they stand:

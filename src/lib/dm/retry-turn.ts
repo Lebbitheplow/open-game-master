@@ -8,16 +8,13 @@ import {
   getLatestDmTurnId,
   listPendingForTurn,
   saveDmTurn,
-  type DmTurn,
-  type PendingRoll,
 } from "@/lib/db/dm-turns";
 import { clearMessageDmTurn, findMessageForDmTurn } from "@/lib/db/messages";
-import { getRoll } from "@/lib/db/rolls";
 import { publishPersisted } from "@/lib/events";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { setDmStatus } from "@/lib/dm/status";
 import { withoutRollMarkers } from "@/lib/dm/tool-text";
-import { MAX_MODEL_CALLS, ROLL_RESULT_NOTE, reenterDmTurn, startDmTurn } from "@/lib/dm/turn";
+import { MAX_MODEL_CALLS, answerLandedCards, reenterDmTurn, startDmTurn } from "@/lib/dm/turn";
 import { probeStoryWindow } from "@/lib/dm/context-retrieval";
 import { storyContextTokens, storyWindowAssumed } from "@/lib/model-client";
 import { isUnbuiltTurn } from "@/lib/dm/turn-halt";
@@ -57,38 +54,6 @@ const RETRY_NOTE =
 // nothing is recorded.
 export type RetryRequest = { campaignId: string; turnId: string; userId?: string };
 export type RetryResult = { ok: true; turnId: string; correctionId?: string | null } | { ok: false; status: number; error: string };
-
-// A tool call the halted turn never answered, where the answer is a physical
-// roll the player already submitted (the crash landed between the roll
-// resolving and resumeDmTurn answering it). Mirrors the payload shape
-// resumeDmTurn uses so the model reads it exactly the same way, and marks
-// the card answered as it does, so a later resume of this turn does not
-// answer it again. The roll itself joined the turn's cards as it landed.
-function resolvedRollResult(
-  turn: DmTurn,
-  pendings: PendingRoll[],
-  toolCallId: string,
-): string | null {
-  const pending = pendings.find(
-    (entry) => entry.toolCallId === toolCallId && entry.status !== "pending" && entry.rollId,
-  );
-  const roll = pending?.rollId ? getRoll(pending.rollId) : null;
-  if (!pending || !roll) {
-    return null;
-  }
-  if (!turn.answeredPendingIds.includes(pending.id)) {
-    turn.answeredPendingIds.push(pending.id);
-  }
-  return JSON.stringify({
-    total: roll.total,
-    dice: roll.breakdown.terms,
-    ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
-    ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
-    rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
-    note: ROLL_RESULT_NOTE,
-    ...(pending.combatNote ? { combat: pending.combatNote } : {}),
-  });
-}
 
 export function requestTurnRetry(request: RetryRequest): RetryResult {
   const { campaignId, turnId } = request;
@@ -170,20 +135,27 @@ export function requestTurnRetry(request: RetryRequest): RetryResult {
   // A turn that burned its whole call budget resumes at the forced-narration
   // call so the retry always produces prose instead of another tool loop.
   claimed.callIndex = retryCallIndex(rewind.callIndex, MAX_MODEL_CALLS);
-  // Repair the conversation before it goes back to the model: a throw partway
-  // through the tool loop can persist an assistant message whose tool_calls
-  // were only partly answered, and strict OpenAI-compatible backends reject
-  // that shape outright.
+  // A roll card whose dice landed on the halted turn was never handed on,
+  // since nothing resumes a turn that failed. It is answered as a turn that
+  // resumes answers it, by the same function: a plain card with its roll, a
+  // card that held its whole call with what the call did. Each is listed as
+  // answered, so a later resume of this turn does not answer it again. The
+  // retry used to answer such a call itself, by its id and with the die
+  // alone, which told the model the d20 of a held call and not its outcome
+  // (issue #1073).
+  answerLandedCards(claimed, pendings);
+  // Repair what is left before the conversation goes back to the model: a
+  // throw partway through the tool loop can persist an assistant message
+  // whose tool_calls were only partly answered, and strict OpenAI-compatible
+  // backends reject that shape outright.
   for (const toolCallId of danglingToolCallIds(claimed.conversation)) {
     claimed.conversation.push({
       role: "tool",
       tool_call_id: toolCallId,
-      content:
-        resolvedRollResult(claimed, pendings, toolCallId) ??
-        JSON.stringify({
-          error:
-            "The GM hit an internal error before this call finished. Do not call it again; continue from what you already have.",
-        }),
+      content: JSON.stringify({
+        error:
+          "The GM hit an internal error before this call finished. Do not call it again; continue from what you already have.",
+      }),
     });
   }
 

@@ -337,7 +337,7 @@ export const mutationTools: ToolDef[] = [
       },
     },
   }, ["items"]),
-  tool("remove_item", "Take an item from a character for good (stolen, destroyed, burned up). Something dropped, set down or knocked away is NOT removed: use handle_item drop, which leaves it where it fell. For consumables being USED, use use_item; for sales, use purchase.", {
+  tool("remove_item", "Take an item from a character for good (given away, stolen, destroyed). Something dropped, set down or knocked away is NOT removed: use handle_item drop, which leaves it where it fell. For consumables being USED, use use_item; sales use purchase.", {
     item: { type: "string", description: "The item as named on the character's sheet." },
     qty: { type: "integer", minimum: 1, maximum: 99 },
   }, ["item"]),

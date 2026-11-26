@@ -698,7 +698,9 @@ export function resetRoundBudgets(mapId: string, round: number) {
 // Whose token's movement starts again as these turns start. An enemy's mount
 // stands on its rider's token (issue 1055, ruling 1) and is the one that
 // moves it, so the mount's turn refills that token and its rider's does not:
-// a rider's turn after its mount's gave the mount its speed back.
+// a rider's turn after its mount's gave the mount its speed back. A
+// controlled mount has no turn (ruling 2): it moves on its rider's, so that
+// rider's turn refills the token.
 function pairTokenRefs(starting: string[]): string[] {
   if (!starting.length) {
     return [];
@@ -706,7 +708,7 @@ function pairTokenRefs(starting: string[]): string[] {
   const marks = starting.map(() => "?").join(", ");
   const db = getDatabase();
   const riders = new Set(
-    (db.prepare(`SELECT id FROM encounter_enemies WHERE id IN (${marks}) AND rides_enemy_id != ''`).all(...starting) as Array<{ id: string }>).map((row) => row.id),
+    (db.prepare(`SELECT id FROM encounter_enemies WHERE id IN (${marks}) AND rides_enemy_id != '' AND NOT EXISTS (SELECT 1 FROM encounter_enemies mount WHERE mount.id = encounter_enemies.rides_enemy_id AND mount.led_by_enemy_id = encounter_enemies.id)`).all(...starting) as Array<{ id: string }>).map((row) => row.id),
   );
   const carried = (db.prepare(`SELECT id FROM encounter_enemies WHERE rides_enemy_id IN (${marks})`).all(...starting) as Array<{ id: string }>).map((row) => row.id);
   return [...starting.filter((id) => !riders.has(id)), ...carried];

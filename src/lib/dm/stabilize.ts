@@ -259,6 +259,7 @@ export function handleStabilize(
       kind: "skill_check",
       expression: resolved.expression,
       detail: `medicine, to stabilize ${sheet.name}`,
+      parts: resolved.parts,
       dc: STABILIZE_DC,
       settleHeldDie: heldDieWaits(healer, STABILIZE_DC),
     });
@@ -268,6 +269,7 @@ export function handleStabilize(
       requestedBy: "dm",
       kind: "skill_check",
       detail: `medicine, to stabilize ${sheet.name}`,
+      parts: resolved.parts,
       dc: STABILIZE_DC,
       result: outcome,
       turn,

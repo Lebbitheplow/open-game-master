@@ -3,6 +3,7 @@ import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { strikesTheDisengaged } from "@/lib/srd/feat-moves";
 import { budgetFor } from "@/lib/dm/turn-budget";
 import { hiddenNow, shownName } from "@/lib/dm/board-hidden";
+import { riderOf } from "@/lib/dm/enemy-riders";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { getActiveEncounter, getEnemy, listEnemies, saveEncounter } from "@/lib/db/encounters";
@@ -11,13 +12,13 @@ import { sideOf } from "@/lib/dm/combatant";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { enemiesStrikeWalker } from "@/lib/dm/opportunity-sides";
 import { echoTokens } from "@/lib/dm/mt-fb-echo";
-import { entersReachAt, leavesReachAt, movesWithinReachAt } from "@/lib/dm/opportunity-reach-logic";
+import { entersReachAt, leavesReachAt, movesWithinReachAt, type MoverSpace } from "@/lib/dm/opportunity-reach-logic";
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
-import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { enemyFootprint, type Footprint } from "@/lib/battlemap/footprint";
 import { characterFootprint } from "@/lib/dm/board-reach";
 
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
@@ -58,7 +59,7 @@ import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack
 import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, strikeCards, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
+import { opportunitySpellNow, warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
@@ -198,6 +199,11 @@ export function resolveOpportunityAttacks(
 
   for (const enemy of listEnemies(encounter.id)) {
     if (sideOf(encounter, "enemy", enemy.id, enemy) === moverSide) {
+      continue;
+    }
+    // A controlled mount makes no attack, an opportunity attack included
+    // (issue 1055, ruling 2: enemy-riders.ts). Its rider still strikes.
+    if (enemy.ledBy) {
       continue;
     }
     // The reacting side must be able to react (Shocking Grasp and Slow take
@@ -568,6 +574,9 @@ export function resolvePcOpportunityWalk(
   path?: XY[],
   disengaged = false,
   alsoStrikesDisengaged?: (sheet: CharacterSheet) => boolean,
+  // The walker's space at each step, for a walk it changes size on: a rider
+  // getting on or off its mount (enemy-mounting.ts).
+  spaces?: readonly Footprint[],
 ): { notes: string[]; stoppedAt?: XY } {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -588,7 +597,7 @@ export function resolvePcOpportunityWalk(
   // The cards of each swing's line, by the line's place in `notes`.
   const cards = new Map<number, string[]>();
   // The walker's size: an ogre leaves a reach when its last square does.
-  const moverFootprint = enemyFootprint(getFoe(enemyId));
+  const moverFootprint: MoverSpace = spaces ?? enemyFootprint(getFoe(enemyId));
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
   // Whether the walk can go no further: dropped, or its speed at 0.
@@ -705,13 +714,34 @@ export function resolvePcOpportunityWalk(
         stopStep = reach.step;
       }
     };
+    const walker = shownName(encounter.id, enemy.id, enemy.displayName);
+    // A mount with a rider on its back: "the attacker can target you or the
+    // mount" (SRD 5.1, Mounted Combat). The card offers both by name (issue
+    // 1055, ruling 5), and a swing nobody is asked about is at the mount, the
+    // creature whose move provoked it.
+    const carried = moverKind === "enemy" ? riderOf(listEnemies(encounter.id), enemyId) : null;
+    const rider = carried && carried.status === "alive" && !hiddenNow(encounter.id).has(carried.id) ? carried : null;
+    const pair = rider ? { rider: { id: rider.id, name: shownName(encounter.id, rider.id, rider.displayName) } } : {};
+    // War Caster's spell at a pair is aimed at one of the two as well, so the
+    // card asks before the cast; at one creature it is cast with nobody
+    // asked, as it was.
+    const spell = rider ? opportunitySpellNow(encounter, sheet) : null;
+    const aimed = spell
+      ? opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", spell, trigger: reach.trigger, ...pair })
+      : null;
+    if (aimed && !aimed.strike) {
+      notes.push(letGoNote(sheet.name, walker));
+      continue;
+    }
+    const castAt = rider && aimed?.targetId === rider.id ? rider : enemy;
     // War Caster: the spell they named is cast in the swing's place, null
     // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
-    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, characterFootprint(sheet.id), moverFootprint), reactionKey });
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy: castAt, at: leavesReachAt(steps, reach.token, reach.reachTiles, characterFootprint(sheet.id), moverFootprint), reactionKey });
     if (cast) {
-      notes.push(cast.note);
+      notes.push(aimed?.timedOut ? timedOutNote(sheet.name, cast.note) : cast.note);
       stops();
-      if (cast.dropped) {
+      // A rider the spell dropped leaves its mount walking on.
+      if (cast.dropped && castAt === enemy) {
         break;
       }
       continue;
@@ -719,11 +749,20 @@ export function resolvePcOpportunityWalk(
     // The swing is theirs to take or let go (opportunity-ask.ts): a player at
     // the table is asked here, after every check that could rule it out, so
     // the card never asks about a swing that could not be made. Let go, it
-    // spends nothing and the walk goes on.
-    const walker = shownName(encounter.id, enemy.id, enemy.displayName);
+    // spends nothing and the walk goes on. A player already asked where the
+    // spell should go, whose spell could not be cast after all, swings at the
+    // one they chose.
     // A paladin's card offers Divine Smite too (opportunity-strike.ts).
     const smiteSlot = natural ? null : opportunitySmiteSlot(sheet);
-    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger, ...(smiteSlot ? { smiteSlot } : {}) });
+    const answer = aimed ?? opportunityAnswer(campaign, sheet, {
+      walkerId: enemyId,
+      walker,
+      weapon: natural?.weapon ?? resolved?.displayName ?? "",
+      trigger: reach.trigger,
+      ...(smiteSlot ? { smiteSlot } : {}),
+      ...pair,
+    });
+    const struck = rider && answer?.targetId === rider.id ? rider : enemy;
     if (answer && !answer.strike) {
       notes.push(letGoNote(sheet.name, walker));
       continue;
@@ -743,18 +782,20 @@ export function resolvePcOpportunityWalk(
       campaign,
       encounter,
       sheet,
-      enemy,
+      enemy: struck,
       resolved,
       natural,
       adjacent: reach.reachTiles <= 1,
-      targetConditions: withLiveDodge(enemy.conditions),
+      targetConditions: withLiveDodge(struck.conditions),
       moverAt,
       ...(answer?.smite && smiteSlot ? { smiteSlot } : {}),
     });
     cards.set(notes.length, rollIds);
     notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();
-    if (dropped) {
+    // A rider struck down leaves its mount walking, and the next reach on
+    // the walk still has the mount to swing at.
+    if (dropped && struck === enemy) {
       break;
     }
   }

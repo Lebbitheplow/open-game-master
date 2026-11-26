@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil", "eye", "snowflake", "chain", "flower", "cog", "circuit", "wrench", "lamp"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -142,6 +142,75 @@ export const APPEARANCE_THEMES = [
       frame: "/assets/themes/fey/silver-stem-blossom-frame-v1.webp",
       corner: "/assets/themes/fey/bloom-rosette-corner-v1.webp",
       backdrop: "/assets/themes/fey/dusk-glade-v1.webp",
+    },
+  },
+  {
+    id: "brassworks", name: "Brassworks", description: "Brass pipework and meshed gears, oxblood leather, and green gauge glass.", icon: "cog", suits: ["steampunk"],
+    // The brass pipework is the same by day; the page under it changes from
+    // the engine hall's leather to the drawing office's linen.
+    art: {
+      texture: "/assets/themes/brassworks/oxblood-leather-v1.webp",
+      frame: "/assets/themes/brassworks/brass-pipe-frame-v1.webp",
+      corner: "/assets/themes/brassworks/porthole-gears-corner-v3.webp",
+      backdrop: "/assets/themes/brassworks/engine-hall-gears-v2.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/brassworks/drawing-linen-v1.webp",
+      backdrop: "/assets/themes/brassworks/drawing-office-gears-v2.webp",
+    },
+  },
+  {
+    id: "neon", name: "Neon District", description: "Black glass, magenta and cyan tube signs, and brushed steel.", icon: "circuit", suits: ["cyberpunk"],
+    art: {
+      texture: "/assets/themes/neon/black-glass-v1.webp",
+      frame: "/assets/themes/neon/tube-channel-frame-v1.svg",
+      corner: "/assets/themes/neon/junction-box-corner-v1.webp",
+      backdrop: "/assets/themes/neon/rain-street-v1.webp",
+    },
+    artDay: {
+      frame: "/assets/themes/neon/tube-channel-frame-day-v1.svg",
+      corner: "/assets/themes/neon/junction-box-corner-day-v1.webp",
+      backdrop: "/assets/themes/neon/overcast-street-v1.webp",
+    },
+  },
+  {
+    id: "wasteland", name: "Wasteland", description: "Roll-cage tube, tyre tread and chain: the desert road by day, the convoy's fires by night.", icon: "wrench", suits: ["post_apocalyptic"],
+    // The machine-built frame and corner serve both modes: the same rig at
+    // noon and by firelight. The ground under the panels and the view change:
+    // canvas and the storm road by day, steel and the convoy camp by night.
+    // The slice is cut at the tube's elbow, so the tube fills the rail. The
+    // corner piece covers the elbow everywhere but the picker.
+    frameSlice: 13,
+    art: {
+      texture: "/assets/themes/wasteland/cooled-steel-v1.webp",
+      frame: "/assets/themes/wasteland/roll-cage-frame-v2.webp",
+      corner: "/assets/themes/wasteland/salvage-wheel-corner-v1.webp",
+      backdrop: "/assets/themes/wasteland/convoy-fires-v1.webp",
+    },
+    artDay: {
+      texture: "/assets/themes/wasteland/bleached-canvas-v1.webp",
+      backdrop: "/assets/themes/wasteland/dust-storm-road-v1.webp",
+    },
+  },
+  {
+    id: "gaslight", name: "Gaslight", description: "Dark walnut, polished brass, and green baize by gaslight.", icon: "lamp", suits: ["mystery"],
+    // The rail is one plain walnut bead with a brass line, painted in the
+    // outer 8% of the frame; a wider slice would leave it a thread.
+    frameSlice: 8,
+    // Night is the room itself: walnut for the page, with baize kept for the
+    // panels by the palette.
+    art: {
+      texture: "/assets/themes/gaslight/walnut-panel-v1.webp",
+      frame: "/assets/themes/gaslight/walnut-brass-frame-v1.webp",
+      corner: "/assets/themes/gaslight/gas-bracket-lamp-lit-v1.webp",
+      backdrop: "/assets/themes/gaslight/reading-room-walnut-v1.webp",
+    },
+    // The same room on a grey morning with the gas turned off: the green
+    // cloth under pale paper, the bracket lamp unlit, cream walls behind.
+    artDay: {
+      texture: "/assets/themes/gaslight/green-baize-v1.webp",
+      corner: "/assets/themes/gaslight/gas-bracket-lamp-unlit-v1.webp",
+      backdrop: "/assets/themes/gaslight/reading-room-morning-v1.webp",
     },
   },
 ] as const satisfies readonly AppearanceDefinition[];

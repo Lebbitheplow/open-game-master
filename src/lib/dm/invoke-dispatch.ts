@@ -108,6 +108,10 @@ export type DispatchContext = {
   // The model's tool call this answers, for a roll that holds it: the
   // resumed turn answers that call (turn.ts).
   toolCallId?: string | null;
+  // An AI GM sent the call (src/lib/dm/invoke.ts: a connected agent program,
+  // a delegated turn). Its request_roll is marked as asked for, as the turn
+  // loop's is (invoke-roll.ts aiAsked).
+  aiCall?: boolean;
 };
 
 export async function dispatchAdjudication(
@@ -240,6 +244,9 @@ function engineCall(
         sheets,
         sheetsById,
         context.realDiceUserIds,
+        undefined,
+        // Not a call the server built or runs again itself.
+        context.aiCall === true && !context.serverBuilt,
       );
     case "cast_buff": {
       const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");

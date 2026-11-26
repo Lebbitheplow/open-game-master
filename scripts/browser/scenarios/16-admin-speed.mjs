@@ -31,6 +31,15 @@ export default {
 
     // OpenAI's API with a model that has Fast: the choice is offered, and
     // its price is said once it is picked.
+    // The model field lists what the typed address offers a moment after
+    // typing stops (ModelChoice.tsx), and the answer adds a line under it
+    // ("wants an API key"). On a phone's single column that moves every
+    // field below by a line, the speed menu among them, so the menu is not
+    // driven until the listing is in.
+    const listed = page.waitForResponse(
+      (response) => response.url().endsWith("/api/admin/models") && (response.request().postData() ?? "").includes("api.openai.com"),
+      { timeout: 30_000 },
+    );
     await baseUrl.fill("https://api.openai.com/v1");
     // The model field is the registry's picker (PR 273): a text field while
     // the backend lists nothing (OpenAI without a key here), a menu with
@@ -47,13 +56,21 @@ export default {
     const offered = storyBlock.locator(OFFERED).first();
     await eventually(() => offered.count(), { label: "Fast offered for gpt-6-sol on OpenAI" });
     check(/premium price; the default keeps today's speed and cost/.test(await offered.innerText()), "the default's hint says what Fast costs");
+    await listed;
+    await eventually(async () => (await storyBlock.locator('[aria-busy="true"]').count()) === 0, { label: "the model field's listing settled" });
     await offered.scrollIntoViewIfNeeded();
     await t.tap(offered.locator('button[aria-label="Processing speed"]'));
     const fast = page.getByRole("menuitemradio", { name: /Fast \(premium price\)/ }).or(page.getByRole("option", { name: /Fast \(premium price\)/ })).locator("visible=true").first();
     await eventually(() => fast.count(), { label: "the Fast row in the menu" });
     await t.tap(fast);
-    await eventually(async () => /No call has run at this setting since the server started/.test(await offered.innerText()), {
-      label: "Fast chosen, with what the last call ran at",
+    // What the field says goes with a failure: a choice that did not take
+    // and a note from an earlier call read differently.
+    let said = "";
+    await eventually(async () => {
+      said = (await offered.innerText()).replace(/\s+/g, " ");
+      return /No call has run at this setting since the server started/.test(said);
+    }, { label: "Fast chosen, with what the last call ran at" }).catch((error) => {
+      throw new Error(`${error.message} (the field says: ${said.slice(0, 240)})`);
     });
     await t.shot("fast");
 

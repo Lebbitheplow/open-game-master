@@ -158,6 +158,46 @@ await test("The net's hold lifts after a server-rolled Athletics check that reac
   assert.ok(!conditions().includes("restrained"));
 });
 
+// The mark for a roll the model asked for (issue #1073), at the turn loop's
+// own door: the check above is one it asked for with request_roll. A check
+// another tool rolled is on the turn too, and used to lift the net as well.
+await test("A check another tool rolled lifts no net, though it is Athletics and reaches DC 10: only a check the model asked for with request_roll does.", async () => {
+  const conditions = () => world.sheet(kara.id).conditions.map((entry) => entry.toLowerCase());
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  world.dice(15);
+  await turnWith(call("apply_hazard", { type: "trap", trap: "Falling Net", characterIds: [kara.id], reason: "the crypt stair" }));
+  assert.ok(conditions().includes("restrained"));
+  const before = listRecentRolls(world.campaignId, 500).length;
+  world.dice(18);
+  const [checked, lifted] = await turnWithAll(
+    [
+      call("group_check", { characterIds: [kara.id], skill: "athletics", dc: 10, reason: "everyone heaves at the net" }),
+      call("clear_condition", { characterId: kara.id, condition: "restrained", reason: "the net comes off" }),
+    ],
+    "We all heave at it.",
+  );
+  assert.ok(!checked.error, `the group check was refused: ${checked.error}`);
+  const [check] = listRecentRolls(world.campaignId, 500).slice(before);
+  assert.ok(check && check.kind === "skill_check" && check.characterId === kara.id && check.total >= 10 && /athletics/i.test(check.detail), `the group check is not one the old gate would have taken: ${JSON.stringify(check)}`);
+  assert.match(lifted.error ?? "", /take_action escape/, "a check the model did not ask for with request_roll lifted the net");
+  assert.ok(conditions().includes("restrained"));
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+});
+
+await test("A damage total the model asked for on its own turn pays for the bare number it sends next, once.", async () => {
+  world.patch(kara.id, { currentHp: maxHp, conditions: [], conditionMeta: {} });
+  world.dice(5);
+  const acid = { characterId: kara.id, amount: 5, type: "acid", reason: "a splash of acid" };
+  const [rolled, first, again] = await turnWithAll(
+    [call("request_roll", { characterId: kara.id, kind: "damage", expression: "1d8", reason: "a splash of acid" }), call("apply_damage", acid), call("apply_damage", acid)],
+    "I pull the lever.",
+  );
+  assert.equal(rolled.total, 5, JSON.stringify(rolled));
+  assert.ok(!first.error, `the total the model asked for did not pay: ${first.error}`);
+  assert.match(again.error ?? "", /Damage is rolled by the server/, "one roll paid for two hits");
+  assert.equal(world.sheet(kara.id).currentHp, maxHp - 5);
+});
+
 await test("Damage to an enemy the model writes as its own number is refused, and the enemy is untouched.", async () => {
   world.patch(kara.id, { conditions: [], conditionMeta: {} });
   await world.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [kara.id]: 19 }, enemyFace: 1 });

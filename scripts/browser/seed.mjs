@@ -2661,6 +2661,35 @@ const guessTables = {};
   }
 }
 
+// Full hands ask which weapon goes back in the pack (scenario hands-full-ask,
+// issue 1105): a two-weapon fighter on the road, in no fight, made without
+// saying what he holds, so the engine's pick put the scimitar and the
+// shortsword in his hands and left the dagger packed.
+const HANDS_TITLE = "Hands Table";
+const handsTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${HANDS_TITLE} (${viewport})`,
+    description: "A quiet road, and three blades for two hands.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the hands table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 3, {
+    ...heroInput({ name: "Jason Reed", class: "fighter", level: 3, equipment: [{ name: "Leather Armor", qty: 1 }, { name: "Scimitar", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }] }),
+    proficiencies: { saves: ["str", "con"], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+    acOverride: false,
+  });
+  handsTables[viewport] = { id: table.id, hero: hero.id };
+}
+
 // PR 782: the after-the-roll card on a real parked roll. A table the player
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
@@ -3106,6 +3135,90 @@ const opportunityTables = {};
       maps.moveToken(token.id, token.refId === hero.id ? 2 : 3, 6, 0);
     }
     opportunityTables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id, goblinName: goblin.displayName };
+  }
+}
+
+// Two names on a mounted pair's token (issue 1055, ruling 5): tables the
+// player runs, a goblin on a wolf beside the lead's fighter on an open board.
+// On `ride` it is the wolf's turn: the GM walks the pair away and the lead's
+// card offers the goblin or the wolf. On `aim` it is the fighter's turn: she
+// taps the pair's token to attack and is asked which of the two
+// (scripts/browser/scenarios/147-rider-two-names.mjs). On `cast` the lead's
+// hero is a wizard whose War Caster casts Fire Bolt as her opportunity attack,
+// and the card offers the spell at either of the two. `dial` is a table the
+// lead runs herself: her own dial on the pair's token asks the same two names
+// (scripts/browser/scenarios/148-mounted-pair-small-gaps.mjs).
+const RIDEBY_TITLE = "Rideby Table";
+const ridebyTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    ridebyTables[viewport] = {};
+    for (const part of ["ride", "aim", "cast", "dial"]) {
+      const runs = part === "dial" ? world.owner : player;
+      const table = campaigns.createCampaign(runs.id, {
+        title: `${RIDEBY_TITLE} (${viewport}, ${part})`,
+        description: "A goblin on a wolf, close enough to touch.",
+        theme: "high-fantasy",
+        maxPlayers: 6,
+        startingLevel: 5,
+        difficulty: "normal",
+        gameSettings: { ttsEnabled: false, dmMode: "human" },
+      });
+      const seated = part === "dial" ? {} : campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+      if ("error" in seated) {
+        throw new Error(`could not seat the lead at the rideby table: ${seated.error}`);
+      }
+      campaigns.setCampaignStatus(table.id, "active");
+      const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput(part === "cast" ? {
+        name: "Wren Ashby", class: "wizard", level: 5, abilities: { str: 10, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+        feats: ["War Caster"],
+        spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, prepared: ["Magic Missile"], known: [], cantrips: ["Fire Bolt"], spellbook: ["Magic Missile"] },
+        equipment: [{ name: "Quarterstaff", qty: 1, equipped: true }],
+      } : {
+        name: "Wren Ashby", class: "fighter", level: 5, abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+        proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+        equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+      }));
+      if (part === "cast") {
+        // As use_resource "War Caster" with variant "Fire Bolt" leaves it.
+        sheets.patchSheet(hero.id, { conditions: ["opportunity spell (Fire Bolt)"] });
+      }
+      clearDice();
+      dice(1, 1, 18);
+      const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: runs.id }, {
+        name: "start_encounter",
+        args: { enemies: [{ monster: "goblin", mount: "wolf" }] },
+      });
+      clearDice();
+      if (!started.ok) {
+        throw new Error(`the rideby table's fight did not start: ${started.error}`);
+      }
+      const encounter = encounterRows.getActiveEncounter(table.id);
+      const board = maps.getBattleMapForEncounter(encounter.id);
+      maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+      getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+      const rows = encounterRows.listEnemies(encounter.id);
+      const rider = rows.find((enemy) => enemy.ridesEnemyId);
+      const mount = rows.find((enemy) => enemy.id === rider?.ridesEnemyId);
+      if (!rider || !mount) {
+        throw new Error("the rideby table has no goblin on a wolf");
+      }
+      // Hardy enough that a Strike never ends the fight under the scenario.
+      getDatabase().prepare("UPDATE encounter_enemies SET max_hp = 200, current_hp = 200 WHERE encounter_id = ?").run(encounter.id);
+      for (const token of maps.listTokens(board.id)) {
+        maps.moveToken(token.id, token.refId === hero.id ? 2 : 3, 6, 0);
+      }
+      // Whose turn it is: the wolf's for the ride past, the fighter's to aim.
+      const live = encounterRows.getActiveEncounter(table.id);
+      const rides = part === "ride" || part === "cast";
+      const turnIndex = live.order.findIndex((slot) => (rides ? slot.enemyId === mount.id : slot.characterId === hero.id));
+      encounterRows.saveEncounter({ ...live, turnIndex, turnBudget: null, reactionsUsed: [], legendary: { ...live.legendary, due: rides ? [mount.id] : [], acted: null } });
+      ridebyTables[viewport][part] = { id: table.id, hero: hero.id, rider: rider.id, riderName: rider.displayName, mount: mount.id, mountName: mount.displayName };
+    }
   }
 }
 
@@ -4404,6 +4517,40 @@ const bench2Titles = {};
     turnOf(table, mara.id);
     bench2.riders = { id: table.id, tokens: 3 };
   }
+  // controlled-enemy-mount (148): a goblin on a warhorse it steers beside a
+  // goblin on a wolf that acts as it wishes (issue 1055, ruling 2). The
+  // steered warhorse has no place in the order; the wolf keeps its own.
+  {
+    const table = tableFor("Steered Mount Table", world.owner, player);
+    const mara = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Mara Voss", class: "fighter", level: 5, maxHp: 44 }));
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", mount: "warhorse", controlled: true }, { monster: "goblin", mount: "wolf" }]);
+    const on = (slug) => rows.find((enemy) => rows.find((mount) => mount.id === enemy.ridesEnemyId)?.slug === slug) ?? (() => { throw new Error(`no rider on a ${slug}`); })();
+    const steered = rows.find((enemy) => enemy.ledBy) ?? (() => { throw new Error("no mount in the fight is steered by its rider"); })();
+    [[mara.id, -3, 0], [on("warhorse").id, 1, -2], [on("wolf").id, 1, 2]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    turnOf(table, mara.id);
+    bench2.steered = { id: table.id, tokens: 3, steered: steered.displayName, free: named(rows, "wolf").displayName, turns: 4 };
+  }
+  // enemy-midfight-mounting (149): a goblin and a wolf on foot side by side,
+  // and a goblin beside a Large warhorse, on the first goblin's turn (issue
+  // 1091). The scenario's GM puts them in the saddle and takes one down again,
+  // so each viewport has a table of its own.
+  bench2.saddle = {};
+  for (const viewport of ["desktop", "phone"]) {
+    const table = tableFor(`Saddle Table (${viewport})`, world.owner, player);
+    const mara = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Mara Voss", class: "fighter", level: 5, maxHp: 44 }));
+    const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", name: "Goblin Scout" }, { monster: "wolf" }, { monster: "goblin", name: "Goblin Lancer" }, { monster: "warhorse" }]);
+    const called = (name) => rows.find((enemy) => enemy.displayName === name) ?? (() => { throw new Error(`no ${name} in the fight`); })();
+    const [scout, wolf, lancer, horse] = [called("Goblin Scout"), named(rows, "wolf"), called("Goblin Lancer"), named(rows, "warhorse")];
+    [[mara.id, -4, 0], [scout.id, 1, -2], [wolf.id, 2, -2], [lancer.id, 1, 2], [horse.id, 2, 1]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    // The scout's turn, with the lancer's and the warhorse's still to come:
+    // the console mounts the lancer off its turn, free and uncharged.
+    const fight = encounterRows.getActiveEncounter(table.id);
+    const seat = (id) => fight.order.find((entry) => (entry.characterId ?? entry.enemyId) === id);
+    encounterRows.saveEncounter({ ...fight, order: [mara.id, scout.id, wolf.id, lancer.id, horse.id].map(seat) });
+    turnOf(table, scout.id);
+    const pick = (enemy) => ({ id: enemy.id, name: enemy.displayName });
+    bench2.saddle[viewport] = { id: table.id, scout: pick(scout), wolf: pick(wolf), lancer: pick(lancer), horse: pick(horse) };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a
@@ -4596,6 +4743,7 @@ const ids = {
   noticeTables,
   wieldTables,
   guessTables,
+  handsTables,
   afterRollTables,
   afterAttackTables,
   wrathTables,
@@ -4613,6 +4761,7 @@ const ids = {
   chronalWatchTables,
   twoHandsTables,
   opportunityTables,
+  ridebyTables,
   damageStepTables,
   healingDiceTables,
   hitDiceTables,
@@ -4737,6 +4886,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wieldTables).map(([viewport, table]) => [table.id, `${WIELD_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(guessTables).map(([viewport, table]) => [table.id, `${GUESS_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(handsTables).map(([viewport, table]) => [table.id, `${HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),
@@ -4754,6 +4904,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(opportunityTables).map(([viewport, table]) => [table.id, `${OPPORTUNITY_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(ridebyTables).flatMap(([viewport, parts]) => Object.entries(parts).map(([part, table]) => [table.id, `${RIDEBY_TITLE} (${viewport}, ${part})`]))),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(healingDiceTables).map(([viewport, table]) => [table.id, `${HEALING_DICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(hitDiceTables).map(([viewport, table]) => [table.id, `${HIT_DICE_TITLE} (${viewport})`])),

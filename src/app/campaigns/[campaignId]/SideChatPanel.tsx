@@ -118,6 +118,7 @@ export function SideChatPanel({
               onClick={() => setChimeMuted(!chimeMuted)}
               aria-pressed={!chimeMuted}
               aria-label={chimeMuted ? t("Chime muted") : t("Chime on")}
+              className="justify-center"
               title={
                 chimeMuted
                   ? t("Chime muted. Click to play a chime when a private message arrives.")

@@ -176,6 +176,7 @@ await test("The AI's request_roll for a hit die is refused before anything is ro
     new Map(sheets.map((entry) => [entry.id, entry])),
     new Set(),
     { toolCallId: "call-1" },
+    true,
   );
   assert.equal(refused.retry, true, JSON.stringify(refused));
   assert.match(refused.error, /through take_rest, never request_roll/);

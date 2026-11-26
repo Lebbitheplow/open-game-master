@@ -29,7 +29,7 @@ import { removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourcesAt } from "@/lib/dm/enemy-approach";
 import { abilityNames } from "@/lib/dm/monster-abilities";
 import { applyDmMutation } from "@/lib/dm/mutations";
-import { characterDrag, dragLandings } from "@/lib/dm/drag-move";
+import { characterDrag, dragLandings, draggedWords, setDownDragged } from "@/lib/dm/drag-move";
 import { walkCostFactor } from "@/lib/dm/drag";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
@@ -319,9 +319,8 @@ export function walkCharacter(
   // Moving ends One with Shadows' invisibility (one-with-shadows.ts).
   endShadowInvisibility(campaign.id, sheet.id, "moves");
   cloakIntoLight(campaign.id, sheet.id);
-  for (const entry of carried) {
-    moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
-  }
+  // An enemy rider leaves the saddle, and its mount stays (drag-move.ts).
+  const setDown = setDownDragged(campaign, map, carried, sheet.name);
   // Walking away from a grapple ends it (grapple.ts), and away from a
   // creature it leashes ends the leash (condition-leash.ts); the board shows
   // the walk at once rather than at the end of the DM turn.
@@ -357,7 +356,7 @@ export function walkCharacter(
     ...released,
     ...distancesFrom(listTokens(map.id), token, landed),
     ...(prone ? { stood: `stood up for ${standCost * 5} ft of movement` } : {}),
-    ...(carried.length ? { dragged: carried.map((entry) => `${entry.token.name} to (${entry.at.x},${entry.at.y})`).join("; ") } : {}),
+    ...(setDown.length ? { dragged: draggedWords(setDown) } : {}),
     ...(opportunity.notes.length
       ? {
           opportunityAttacks: opportunity.notes,

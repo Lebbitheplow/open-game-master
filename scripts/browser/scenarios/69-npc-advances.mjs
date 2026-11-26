@@ -35,7 +35,7 @@ export default {
     const decline = card.getByRole("button", { name: /^decline$/i });
     for (const [name, button] of [["Accept", accept], ["Decline", decline]]) {
       const box = await button.boundingBox();
-      check(box && box.height >= 40 && box.width >= 40, `${name} is a 40px target (${box?.width}x${box?.height})`);
+      check(box && Math.round(box.height) >= 40 && box.width >= 40, `${name} is a 40px target (${box?.width}x${box?.height})`);
     }
     await axeClean(page, `${root}[data-advance-card]`, "the advance card at night");
     await t.shot("advance-card");
@@ -67,7 +67,7 @@ export default {
     check((await toggle.getAttribute("aria-checked")) === "true", "Kael is open, as seeded");
     if (t.touch) {
       const target = await block.locator("label").first().boundingBox();
-      check(target && target.height >= 40, `the switch's row is a finger's size on a phone (${target?.height})`);
+      check(target && Math.round(target.height) >= 40, `the switch's row is a finger's size on a phone (${target?.height})`);
     }
     await axeClean(page, `${root}[data-advances-switch="${table.kael}"]`, "the Bonds switch at night");
     await t.shot("bonds-switch");

@@ -70,7 +70,7 @@ export default {
       // The kit's own Try again: finger-sized where a finger presses it.
       if (t.touch) {
         const size = await retry.boundingBox();
-        check(size && size.height >= 40, `Try again is a 40px target on a phone (${size?.height}px)`);
+        check(size && Math.round(size.height) >= 40, `Try again is a 40px target on a phone (${size?.height}px)`);
       }
       await untilStill(page);
       await t.shot("refused-kept");

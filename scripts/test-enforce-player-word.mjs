@@ -230,6 +230,56 @@ await test("A move after the declined attack is still her word: \"I won't attack
   assert.equal(ended.ok, true, ended.error);
 });
 
+// Issue 1108: a taunt answered in character ('"He won't get the chance."',
+// the Say box's line) was read as the player's word for the turn, so the AI
+// swung the fighter's scimitar for them and the enemy went. Talking is free:
+// a line that is only speech declares nothing, and the turn waits on them.
+const SPOKE = (name) =>
+  `${name} has not acted: their player only spoke in character this turn, and talking costs no action. Nothing was spent. Let whoever they spoke to answer in the story, with no attack or other action made for ${name}, then wait for them to say what ${name} does.`;
+const { onlySpeaks, readPlayerWord } = await import("../src/lib/dm/player-word-logic.ts");
+const { awaitingPlayerState } = await import("../src/lib/dm/player-word.ts");
+
+await test("A line that is only speech is told apart from one that says what the character does", () => {
+  for (const line of ['"He won\'t get the chance."', "“Kethan will answer for this.”", '"Dammit." I whisper to myself.', 'Kara growls back at him, "Not today."', '«No pasarán.»']) {
+    assert.equal(onlySpeaks(line), true, line);
+  }
+  for (const line of ['"Dammit." I whisper to myself as I charge at the sentry.', "I attack the goblin.", '"I attack him!"', '"Hold the line!" I shout, and I swing at the goblin.', "He won't get the chance.", '"That\'s my turn."']) {
+    assert.equal(onlySpeaks(line), false, line);
+  }
+  // At a table in another language only words wholly between quotation marks are speech.
+  assert.equal(onlySpeaks('"Maledizione." sussurro tra me.', false), false);
+  assert.equal(onlySpeaks('"Non ne avrà la possibilità."', false), true);
+  const word = (lines, read = null) =>
+    readPlayerWord(lines.map((content) => ({ content, createdAt: "2026-01-01T00:00:01.000Z", card: null })), { fightStartedAt: "2026-01-01T00:00:00.000Z", english: read === null, names: ["Goblin"], read });
+  assert.deepEqual(word(['"He won\'t get the chance."']), { spoke: true, declares: false, holds: false, holdQuote: null, why: "spoke" });
+  assert.equal(word(['"He won\'t get the chance."', "I swing at the goblin."]).declares, true, "an act written beside the speech");
+  assert.equal(word(['"Hold still, goblin!"']).holds, false, "words shouted at someone else are no hold");
+  assert.equal(word(['"Non ne avrà la possibilità."'], { acts: false, holds: false }).why, "spoke");
+  assert.equal(word(['"Lo attacco!"'], { acts: true, holds: false }).declares, true, "a reading that found an act keeps it");
+});
+
+for (const line of ['"He won\'t get the chance."', '“You shouldn\'t have come here either.”']) {
+  await test(`${line}: an attack and an end_turn for Kara are refused, nothing is spent, and GAME STATE says she only spoke.`, async () => {
+    const enemy = await stage(kara);
+    world.say("player", line, kara);
+    assert.deepEqual(awaitingPlayerState(world.campaignId), { awaitingPlayer: "Kara", awaitingSpoke: true });
+    const before = spendable();
+    const swing = await ai.invoke("pc_attack", { characterId: kara.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+    assert.equal(swing.error, SPOKE("Kara"));
+    const ended = await ai.invoke("end_turn", { characterId: kara.id });
+    assert.equal(ended.error, SPOKE("Kara"));
+    assert.equal(spendable(), before, "nothing was spent and the turn did not pass");
+    assert.equal(kit.current().characterId, kara.id);
+    // What she then says she does is hers to do.
+    world.say("player", "I swing at the goblin.", kara);
+    assert.deepEqual(awaitingPlayerState(world.campaignId), { awaitingPlayer: null });
+    world.dice(15, 4);
+    const asked = await ai.invoke("pc_attack", { characterId: kara.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+    world.clearDice();
+    assert.equal(asked.ok, true, asked.error);
+  });
+}
+
 await test("A companion a player commands is held to the same words: \"Pip won't attack again this turn.\" ends nothing.", async () => {
   setCompanionCommander(pip.id, kara.userId);
   try {

@@ -14,7 +14,7 @@ const enT: T = (key, vars) => translate("en", key, vars);
 import { optionCards } from "@/lib/battlemap/hand-options";
 import { maneuverDieFor, maneuverUse, type ManeuverUse } from "@/lib/dm/maneuver-rules";
 import { weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
-import { dualWields, handsRuling, offHandProblem } from "@/lib/dm/attack-rules";
+import { dualWields, handsRuling, heldFirst, offHandProblem } from "@/lib/dm/attack-rules";
 import { shillelaghSwing } from "@/lib/dm/attack-features";
 import { magicWeaponOfRow, type WeaponGear } from "@/lib/dm/gear-attack";
 import { bonusRouteFor, kiLeft, usesLeft, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-routes";
@@ -326,10 +326,14 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
 
   // Two-weapon fighting: two light melee weapons in hand buy a bonus swing,
   // and with Dual Wielder any two melee weapons held in one hand do.
-  const paired = carried.filter(
-    (weapon) =>
-      weapon.srd.kind === "melee" &&
-      (dualWielder ? !weapon.srd.properties?.includes("two-handed") : weapon.srd.properties?.includes("light")),
+  // The card names a weapon in hand before one in the pack (heldFirst).
+  const paired = heldFirst(
+    carried.filter(
+      (weapon) =>
+        weapon.srd.kind === "melee" &&
+        (dualWielder ? !weapon.srd.properties?.includes("two-handed") : weapon.srd.properties?.includes("light")),
+    ),
+    sheet.equipment,
   );
   const pairedCount = paired.reduce((sum, weapon) => sum + weapon.qty, 0);
   if (pairedCount >= 2) {

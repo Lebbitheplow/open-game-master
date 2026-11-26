@@ -1,7 +1,7 @@
 import { mrSpendAfterRoll } from "@/lib/dm/mt-mr-offers";
 import { isMrAfterRoll } from "@/lib/dm/mt-mr-offers-logic";
 import { z } from "zod";
-import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
+import { forSeat, isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
 import { getPendingRoll, publicPendingRoll, setPendingAttack, setPendingCombatNote, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
@@ -80,7 +80,7 @@ export async function POST(
   // rides the attack's stored record.
   const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = getPendingRoll(pending.id) ?? pending) => {
     const roll = landPendingRoll(context.campaign, landed, outcome, landing);
-    return roll ? Response.json(landedBody(roll)) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
+    return roll ? Response.json(forSeat(context, landedBody(roll))) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   };
   // A new decision gets its own time; with nothing left to decide it lands.
   const next = (fields: Partial<ThrownRoll>) => {
@@ -95,7 +95,7 @@ export async function POST(
     }
     armAfterRollKeep(updated.id, updated.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(updated) });
-    return Response.json({ pendingRoll: publicPendingRoll(updated) });
+    return Response.json(forSeat(context, { pendingRoll: publicPendingRoll(updated) }));
   };
   if ("keep" in choice) {
     // The roller keeps it, but a wizard who may still answer it decides

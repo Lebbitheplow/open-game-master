@@ -640,46 +640,55 @@ export function TokenPlate({
 // The phone's way to pick a target: every legal one as a chip with its face,
 // its health word and how far it stands. A finger covers a 32 px figure; it
 // does not cover a chip.
+//
+// A mount with a rider on it has no token of its own (issue 1055): its chip
+// carries the pair's token with the mount's own `refId` and `name`, so the
+// two are two chips. `label` names the group when it is the choice between
+// the two of one pair.
 export function TargetChips({
   targets,
   onPick,
   onHover,
+  label,
 }: {
   targets: Array<{
     token: StageToken;
     face: Array<string | null | undefined>;
     health?: HealthWord;
     feet: number | null;
+    refId?: string;
+    name?: string;
   }>;
-  onPick: (tokenId: string) => void;
+  onPick: (tokenId: string, refId?: string) => void;
   onHover?: (tokenId: string | null) => void;
+  label?: string;
 }) {
   const t = useT();
   if (!targets.length) {
     return <p className="text-[11px] text-stone-500">{t("Nobody here to aim at.")}</p>;
   }
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label={t("Targets")}>
-      {targets.map(({ token, face, health, feet }, index) => (
+    <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label={label ?? t("Targets")}>
+      {targets.map(({ token, face, health, feet, refId, name = token.name }, index) => (
         <button
-          key={token.id}
+          key={refId ?? token.id}
           type="button"
-          onClick={() => onPick(token.id)}
+          onClick={() => onPick(token.id, refId)}
           onPointerEnter={() => onHover?.(token.id)}
           onPointerLeave={() => onHover?.(null)}
           onFocus={() => onHover?.(token.id)}
           onBlur={() => onHover?.(null)}
-          className="motion-press flex shrink-0 animate-fade-up items-center gap-1.5 rounded-full border border-ember-500/50 bg-stone-950/80 py-0.5 pl-0.5 pr-2.5 text-left hover:border-ember-500 hover:bg-red-950/30"
+          className="motion-press flex min-h-10 shrink-0 animate-fade-up items-center gap-1.5 rounded-full border border-ember-500/50 bg-stone-950/80 py-0.5 pl-0.5 pr-2.5 text-left hover:border-ember-500 hover:bg-red-950/30"
           style={{ animationDelay: `${index * 40}ms` }}
         >
           <TokenFace
             candidates={face}
-            name={token.name}
+            name={name}
             enemy={token.kind === "enemy"}
             className="size-8 rounded-full border border-ember-500/60"
           />
           <span className="min-w-0">
-            <span className="block max-w-[9rem] truncate text-xs font-medium text-stone-100">{token.name}</span>
+            <span className="block max-w-[9rem] truncate text-xs font-medium text-stone-100">{name}</span>
             <span className="block font-mono text-[10px] text-stone-400">
               {[health ? healthLabel(t, health) : null, feet !== null ? t("{feet} ft", { feet }) : null].filter(Boolean).join(" · ")}
             </span>

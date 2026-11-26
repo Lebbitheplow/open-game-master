@@ -28,6 +28,7 @@
   --theme-night-amber-100: #f9edf2;
   --theme-night-amber-50: #fff7fa;
   --material-fitting-radius: 50% 50% 3px 3px;
+  --material-fitting-wide-radius: 1.25rem 1.25rem 3px 3px;
   --material-control-radius: 12px 12px 2px 2px;
   --material-panel-radius: 18px 18px 3px 3px;
   --material-primary-wash: linear-gradient(#782c48e8, #3c1428eb);

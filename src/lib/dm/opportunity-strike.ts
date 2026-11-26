@@ -34,10 +34,11 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { XY } from "@/lib/battlemap/types";
 import { closeStandInTurn, dicePreferencesOf, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { parkReasonFor } from "@/lib/dice/held-rolls";
-import { damageDiceSteps } from "@/lib/dm/attack-damage-dice";
+import { diceSteps } from "@/lib/dm/attack-damage-dice";
 import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getRoll, markRollApplied } from "@/lib/db/rolls";
-import { rollAgainst } from "@/lib/roll-labels";
+import { foeTarget, swingParts } from "@/lib/roll-parts";
+import type { CardLine } from "@/lib/roll-words";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -289,6 +290,10 @@ export function pcOpportunitySwing(input: {
   const targetAc = enemyAcWithEffects(campaign.id, enemy) + cover;
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () => hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: `${profile.weapon} (opportunity attack)`, type: profile.damageType, ranged: false });
+  // What the attack roll and its damage say of themselves, which makes their
+  // words (src/lib/roll-words.ts): the weapon, the walker it is swung at,
+  // and the engine's note that it is an opportunity attack.
+  const swung = swingParts(profile, foeTarget(enemy), { note: "opportunity" });
   // The character's own attack roll (src/lib/dm/character-roll.ts): on
   // physical dice their player rolls it, and a miss waits on what they hold,
   // as a pc_attack's does.
@@ -297,7 +302,7 @@ export function pcOpportunitySwing(input: {
     // A halfling's Lucky rerolls a natural 1 on any attack roll (SRD 5.1,
     // Halfling), this one too.
     expression: `${d20Expression(profile.toHit, advantage).replace(/^(\d+d20(?:k[hl]\d+)?)/, hasHalflingLuck(sheet) ? "$1r1" : "$1")}${attackRiders.diceSuffix}`,
-    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    parts: swung,
     advantage,
     attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },
   });
@@ -308,7 +313,7 @@ export function pcOpportunitySwing(input: {
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "attack",
-    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    parts: swung,
     advantage,
     result: hitOutcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
@@ -397,11 +402,11 @@ export function pcOpportunitySwing(input: {
       })
     : profile.damageExpression;
   const damageOutcome = rollCharacterD20(campaign, sheet, {
-    reason: opportunityDamageReason(campaign.id, sheet, profile, riders, enemy.displayName),
+    line: opportunityDamageLine(campaign.id, sheet, profile, riders),
     kind: "damage",
     tag: damageTag,
     expression: damageExpression,
-    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    parts: swung,
     ...(rerollBelow ? { throwIt: () => rollExpression(damageExpression, undefined, { rerollBelow, purpose: damageTag }) } : {}),
   });
   const dealt = Math.max(0, damageOutcome.total);
@@ -410,7 +415,7 @@ export function pcOpportunitySwing(input: {
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "damage",
-    detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    parts: swung,
     result: damageOutcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
     home: "line",
@@ -532,21 +537,20 @@ export function enemyOpportunityRiders(campaignId: string, enemy: EncounterEnemy
   };
 }
 
-// The damage card's words for a player rolling real dice: the weapon, the
-// target and what Great Weapon Fighting asks of their dice (SRD 5.1: "When
-// you roll a 1 or 2 on a damage die for an attack you make with a melee
-// weapon that you are wielding with two hands, you can reroll the die"), in
-// the words the turn's own attack card uses (attack-blow.ts
-// damageDiceSteps). The card named the weapon and the target only, so the
-// player entered their 1s and 2s as they lay. Undefined, so the card reads
-// its detail, when nothing changes the dice or the server throws them.
-function opportunityDamageReason(
+// The damage card's own line for a player rolling real dice: the weapon,
+// the target and what Great Weapon Fighting asks of their dice (SRD 5.1:
+// "When you roll a 1 or 2 on a damage die for an attack you make with a
+// melee weapon that you are wielding with two hands, you can reroll the
+// die"), as the turn's own attack card says it (attack-damage-dice.ts
+// diceSteps). The card named the weapon and the target only, so the player
+// entered their 1s and 2s as they lay. Undefined, so the card says its
+// words alone, when nothing changes the dice or the server throws them.
+function opportunityDamageLine(
   campaignId: string,
   sheet: CharacterSheet,
   profile: { weapon: string; twoHanded?: boolean; ranged?: boolean },
   riders: { greatWeaponRerollBelow?: number },
-  target: string,
-): string | undefined {
+): CardLine | undefined {
   const rerollBelow = riders.greatWeaponRerollBelow && profile.twoHanded && !profile.ranged ? riders.greatWeaponRerollBelow : 0;
   if (!rerollBelow) {
     return undefined;
@@ -555,5 +559,5 @@ function opportunityDamageReason(
   if (parkReasonFor(dicePolicy, member) !== "real_dice") {
     return undefined;
   }
-  return `${profile.weapon} damage against ${target} (opportunity attack). ${damageDiceSteps({ rerollBelow })}`;
+  return { steps: diceSteps({ rerollBelow }) };
 }

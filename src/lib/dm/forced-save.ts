@@ -9,6 +9,7 @@
 // in here; cast_at_player and cast_at_enemy are meant to.
 
 import { recordRoll } from "@/lib/dm/roll-record";
+import { saveParts, type RollParts, type RollPurpose } from "@/lib/roll-parts";
 import { magnumOpusBinds } from "@/lib/dm/genre-gb-alchemy";
 import { ruinsInitiative } from "@/lib/dm/genre-gb-ruins";
 import { ashenHymnSources, explodedDie } from "@/lib/dm/genre-cc-a-saves";
@@ -339,6 +340,9 @@ export type SaveExtra = {
   // caller has not: the creature it comes from (an attack's rider, a
   // cone's caster), or a square (a trap's dart wall).
   origin?: SaveOrigin;
+  // What a rule later asks of this save (src/lib/roll-parts.ts): the save
+  // to keep concentration says so here, as a field, not in its words.
+  purpose?: RollPurpose;
 };
 
 export type SaveOrigin = { ref: string } | { at: { x: number; y: number } };
@@ -443,7 +447,8 @@ export function rollCharacterSave(
   // number may use it, and a failure waits on what they hold (Lucky, Bardic
   // Inspiration), all before the damage or the condition lands
   // (src/lib/dm/character-roll.ts).
-  let outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", tag: purpose, expression, detail: detail.slice(0, 200), dc, throwIt: throwSave, adjust: floored, settle: settled });
+  const parts: RollParts = { ...resolved.parts, ...(extra?.purpose ? { purpose: extra.purpose } : {}) };
+  let outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", tag: purpose, expression, detail: detail.slice(0, 200), parts, dc, throwIt: throwSave, adjust: floored, settle: settled });
   // A Chronal Shift a watching wizard set on this save (chronal-shift.ts).
   const shiftedBy = takeShift(campaign.id, purpose, outcome.total >= dc);
   const shiftLine = shiftedBy ? `${shiftedBy}'s Chronal Shift: rolled again (${outcome.total} became ` : null;
@@ -472,6 +477,7 @@ export function rollCharacterSave(
     requestedBy: "dm",
     kind: "saving_throw",
     detail: detail.slice(0, 200),
+    parts,
     dc,
     result: outcome,
     turn,
@@ -546,7 +552,7 @@ export function rollEnemySave(
     channel?: boolean;
     advantage?: boolean;
     disadvantage?: boolean;
-    record?: { turn?: DmTurn; detail: string };
+    record?: { turn?: DmTurn; detail: string; purpose?: RollPurpose };
     // The failed save would bind the creature (a condition that takes its
     // turn, its movement or its mind): a creature with Legendary Resistance
     // spends one and succeeds instead, as a DM running it would
@@ -592,7 +598,7 @@ export function rollEnemySave(
       null,
       options.advantage ? { advantage: "advantage", reason: "the effect's own advantage" } : options.disadvantage ? { advantage: "disadvantage", reason: "the effect's own disadvantage" } : null,
       undefined,
-      { ...(options.cover !== undefined ? { cover: options.cover } : {}), ...(options.origin ? { origin: options.origin } : {}) },
+      { ...(options.cover !== undefined ? { cover: options.cover } : {}), ...(options.origin ? { origin: options.origin } : {}), ...(options.record?.purpose ? { purpose: options.record.purpose } : {}) },
     );
   }
   const covered = saveCoverBonus(campaignId, enemy.id, ability, options);
@@ -669,6 +675,7 @@ export function rollEnemySave(
       requestedBy: "dm",
       kind: "saving_throw",
       detail: options.record.detail.slice(0, 200),
+      parts: saveParts(ability, options.record.purpose),
       dc,
       ...(advantage === "none" ? {} : { advantage }),
       result: outcome,

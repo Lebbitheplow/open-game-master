@@ -819,5 +819,34 @@ await test("The actions route stamps a card with where the fight stands, over an
   }
 });
 
+// Issue 1099: a scimitar card aimed at a sentry ten feet away was taken and
+// greyed out, and came back later as a card that "did not happen". The swing's
+// own reach is asked before the card is posted, and the player reads why.
+await test("A weapon card at a foe out of the weapon's reach is refused as it is played, in the engine's words, and is taken once they stand beside it.", async () => {
+  const enemy = await stage();
+  floorOnTurn();
+  kit.place(enemy.id, 5, 8);
+  const before = playerLines().length;
+  const intent = { card: "attack", targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName };
+  const refused = await postCard(kara, "I attack the dummy with my longsword.", intent);
+  assert.equal(refused.status, 409, JSON.stringify(refused.json));
+  assert.match(String(refused.json?.error ?? ""), /Kara is 15 ft from .*out of melee reach \(5 ft\)/, JSON.stringify(refused.json));
+  assert.equal(playerLines().length, before, "the refused card was posted all the same");
+  assert.equal(world.encounter().turnBudget?.actionUsed ?? false, false, "the refused card spent the action");
+  // Beside it, the same card is the swing it always was.
+  kit.place(enemy.id, 5, 6);
+  model.script([reply({ text: "Kara's blade finds the dummy's shoulder." })]);
+  world.dice(15, 4);
+  const played = await postCard(kara, "I attack the dummy with my longsword.", intent);
+  assert.equal(played.status, 202, JSON.stringify(played.json));
+  const { dmQueueDepth } = await import("../src/lib/dm/queue.ts");
+  const until = Date.now() + 30_000;
+  while (dmQueueDepth(world.campaignId) > 0 && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  world.clearDice();
+  assert.equal(world.encounter().turnBudget?.actionUsed, true, "the card in reach was not played");
+});
+
 model.close();
 await finish();

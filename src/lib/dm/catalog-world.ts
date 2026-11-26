@@ -204,8 +204,8 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     category: "world",
     summary: "Puts a character on a mount, at the mount's speed and half their movement.",
     fields: [
-      { name: "characterId", label: "Character", kind: "character", required: true },
-      { name: "mount", label: "Mount", kind: "text", placeholder: "warhorse" },
+      { name: "characterId", label: "Rider", kind: "combatant", required: true, help: "A character, or in a fight an enemy that mounts another enemy beside it." },
+      { name: "mount", label: "Mount", kind: "text", placeholder: "warhorse", help: "For an enemy rider: the enemy it gets on, by its name on the tracker." },
       { name: "customName", label: "Or write one", kind: "text" },
       { name: "speed", label: "Its speed", kind: "number", min: 0, max: 200 },
       {
@@ -228,7 +228,9 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     category: "world",
     summary: "Deliberately, or because the mount was moved: then the DC 10 Dexterity save decides whether they come off. A rider knocked prone makes that save by itself.",
     fields: [
-      { name: "characterId", label: "Character", kind: "character", required: true },
+      { name: "characterId", label: "Rider", kind: "combatant", required: true },
+      { name: "x", label: "Column", kind: "number", help: "For an enemy, with the row: the square it steps down toward. Empty takes the nearest open one beside its mount." },
+      { name: "y", label: "Row", kind: "number" },
       {
         name: "cause",
         label: "How",

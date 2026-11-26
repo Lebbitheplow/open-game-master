@@ -62,11 +62,15 @@ jobs:
         run: node scripts/check-built-platform.mjs
 
   # Each runner takes a share of the files and runs them a few at a time
-  # (vitest.config.mts), each file in its own process.
+  # (vitest.config.mts), each file in its own process. The first share is the
+  # heaviest: by 0.40 it ran 27 to 29.5 minutes on usual runners (the other
+  # two 16 to 21), and on the 0.40.0 release commit one ran out its 30 with
+  # 425 files passed and none failed, so the limit is 45. That still stops a
+  # hung test well short of GitHub's own six hours.
   tests:
     name: tests (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

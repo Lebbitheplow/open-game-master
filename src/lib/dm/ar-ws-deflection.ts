@@ -60,9 +60,7 @@ import { reactionPatch } from "@/lib/dm/reaction-refund";
 import type { Ctx } from "@/lib/dm/reaction-tools";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
-
-const SAVE_ABILITY = /\b(str|dex|con|int|wis|cha)\b/i;
-const KEEPS_CONCENTRATION = /concentration/i;
+import { rollAbility, rollKeepsConcentration } from "@/lib/roll-parts";
 
 const failedSave = (roll: StoredRoll) => roll.kind === "saving_throw" && roll.dc !== null && roll.total < roll.dc;
 
@@ -82,7 +80,7 @@ export function failedSaveRollOf(campaignId: string, sheetId: string, encounter:
   return own.filter((roll) => failedSave(roll) && !(Date.parse(roll.createdAt) < since)).at(-1) ?? null;
 }
 
-const abilityOf = (roll: StoredRoll) => (SAVE_ABILITY.exec(roll.detail)?.[1] ?? "").toLowerCase();
+const abilityOf = (roll: StoredRoll) => rollAbility(roll) ?? "";
 
 // Whether a call means the save's half, and the failed save it would answer.
 function saveAsked(campaignId: string, sheet: CharacterSheet, encounter: Encounter, wanted: string, label: string): { asked: boolean; failed: StoredRoll | null } {
@@ -122,7 +120,7 @@ function deflectSaveHalf(ctx: Ctx, variant: string, name: string, bonus: number,
   if (!failed) {
     return { error: `${name} answers a saving throw ${ctx.sheet.name} has just failed, and the server has none on record this turn. Nothing was spent.`, refused: "rules" };
   }
-  if (KEEPS_CONCENTRATION.test(failed.detail)) {
+  if (rollKeepsConcentration(failed)) {
     return { error: `${name} cannot turn the save to keep concentration: the spell ended with the failed roll, and its effects with it. Nothing was spent.`, refused: "rules" };
   }
   const ability = abilityOf(failed);

@@ -202,12 +202,27 @@ export function earnedBonusSwing(input: {
     });
   });
   // The second of a pair is the one in the other hand, as the Hand's card
-  // draws it (hand.ts).
-  const offHand = offHands[1] ?? offHands[0];
+  // draws it (hand.ts), read from the weapons held before the packed ones.
+  const held = heldFirst(offHands, input.equipment);
+  const offHand = held[1] ?? held[0];
   if (offHand) {
     return `an off-hand attack with ${offHand.name} (two-weapon fighting, a bonus action)`;
   }
   return input.martialArtsReady ? "a Martial Arts unarmed strike (a bonus action)" : null;
+}
+
+// The weapons in hand ahead of the packed ones, each side in pack order. The
+// off-hand swing was read from pack order alone (issue 1105): a fighter who
+// swapped a shortsword for a dagger, holding a scimitar and the dagger, was
+// dealt "Off-hand Shortsword", shut for full hands, and told the turn still
+// owed a swing with the blade in the pack. A sheet that marks nothing holds
+// everything, so its order stands.
+export function heldFirst<T extends { name: string }>(list: readonly T[], equipment: readonly Carried[]): T[] {
+  if (!equipment.some((item) => item.equipped !== undefined)) {
+    return [...list];
+  }
+  const inHand = (entry: T) => equipment.some((item) => item.equipped === true && textKey(item.name) === textKey(entry.name));
+  return [...list.filter(inHand), ...list.filter((entry) => !inHand(entry))];
 }
 
 // Whether the other hand holds a weapon, which is what the Dueling style

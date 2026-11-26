@@ -215,6 +215,15 @@ export function useSessionTabs({
 // (phoneBarSplit in src/lib/dm/table-tabs.ts decides which go where). Every
 // destination stays one or two taps away and none hides past the edge of a
 // sideways-scrolling bar. Hidden at lg and up.
+// Seven cells share a phone's width, about 44px each at 360. The rail's own
+// side padding and the eyebrow's wide letter spacing left a label some 28px,
+// so "Table", "Party" and "Story" were cut to "TAB..." on every common phone.
+// A bar cell keeps its height and tap size and gives the label its width:
+// 1px sides and 0.06em tracking leave "Battle", the widest, whole on a 320px
+// phone. This is the bar's one rule for it (session.css sets none).
+const BAR_CELL = "min-w-0 shrink-0 grow basis-0 px-px";
+const BAR_LABEL = "eyebrow w-full truncate text-center text-[9px] leading-tight tracking-[0.06em]";
+
 function BottomTabBarInner({
   tabs,
   mobileView,
@@ -263,10 +272,10 @@ function BottomTabBarInner({
           type="button"
           onClick={onSelectChat}
           aria-current={mobileView === "chat" ? "page" : undefined}
-          className={cn(ui.railCell, "min-w-0 shrink-0 grow basis-0", mobileView === "chat" && ui.railCellActive)}
+          className={cn(ui.railCell, BAR_CELL, mobileView === "chat" && ui.railCellActive)}
         >
           <TableIcon />
-          <span className="eyebrow w-full truncate text-center text-[9px] leading-tight">{t("Table")}</span>
+          <span className={BAR_LABEL}>{t("Table")}</span>
         </button>
         {bar.map((value) => {
           const def = byId.get(value);
@@ -280,10 +289,10 @@ function BottomTabBarInner({
               onClick={() => onSelectPanel(value)}
               data-tour={`tab-${value}`}
               aria-current={active ? "page" : undefined}
-              className={cn(ui.railCell, "min-w-0 shrink-0 grow basis-0", tabAccentClass(value, active))}
+              className={cn(ui.railCell, BAR_CELL, tabAccentClass(value, active))}
             >
               <Icon className={cn("size-5", value === "chat" && chatUnread > 0 && "animate-wiggle")} />
-              <span className="eyebrow w-full truncate text-center text-[9px] leading-tight">{label}</span>
+              <span className={BAR_LABEL}>{label}</span>
               {value === "chat" && chatUnread > 0 ? (
                 <span className="absolute left-1.5 top-1 size-1.5 rounded-full bg-red-500" />
               ) : null}
@@ -300,7 +309,7 @@ function BottomTabBarInner({
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
             aria-current={overflowActive ? "page" : undefined}
-            className={cn(ui.railCell, "min-w-0 shrink-0 grow basis-0", overflowActive && ui.railCellActive)}
+            className={cn(ui.railCell, BAR_CELL, overflowActive && ui.railCellActive)}
           >
             {ActiveIcon ? (
               <ActiveIcon className="size-5" />
@@ -311,7 +320,7 @@ function BottomTabBarInner({
                 <i />
               </span>
             )}
-            <span className="eyebrow w-full truncate text-center text-[9px] leading-tight">{shownActive ? shownActive[1] : t("More")}</span>
+            <span className={BAR_LABEL}>{shownActive ? shownActive[1] : t("More")}</span>
             {moreWaiting ? <span className="absolute right-1.5 top-1 size-1.5 rounded-full bg-amber-400" /> : null}
           </button>
         ) : null}

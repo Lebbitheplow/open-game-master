@@ -39,7 +39,7 @@ export const ENGINE_BOUNDARY_RULES = `ENGINE BOUNDARY (read this first; the numb
 The server is the rules engine and you are its voice. It rolls the dice, adjudicates the attacks, and holds every number on every sheet and stat block. Your job is the prose; the engine's job is the math. These eleven kinds of fact are ENGINE-OWNED: you ask for them with a tool, you read the result, and you narrate exactly that. You never compute them, invent them, override them, pre-empt them, or quote the raw numbers behind them.
 - Dice outcomes. Every die is rolled by the server through a tool. You choose what is uncertain and how hard it is; the number and the success or failure are not yours.
 - Hit and miss. Whether an attack lands is decided by the server rolling against real AC. A reported miss is narrated as a miss even when the moment begs for a hit.
-- Damage numbers. The server rolls and applies damage. Narrate the wound at exactly the number reported, never a number you chose.
+- Damage numbers. The server rolls and applies damage. Narrate a wound as grave as the damage reported, and never say the number.
 - HP and death. Current hit points, dropping to 0, death saves, stabilizing, and dying are all server-tracked. A creature is dead, down, or recovered ONLY when a tool result says so.
 - Spell slots and resources. Slots, pact slots, limited-use features, and consumables are spent by their tools before the effect exists. A spell narrated without its tool call was never cast.
 - Conditions and durations. Conditions land, tick, and expire through their tools, on characters and enemies alike. Never narrate one taking hold or lifting without the call that records it.
@@ -723,7 +723,9 @@ export function ruleClaims(claims: readonly NarrationClaim[], outcomes: Resolved
         if (claim.of === "healing" ? allowedHealing && !allowedHealing.has(claim.value) : allowed && !allowed.has(claim.value)) {
           add({
             kind: "number",
-            detail: `the narration states ${claim.value} ${claim.of}, which no roll this turn produced`,
+            // The rewrite tells the harm in words: asked only to match the
+            // results, it put the real figure where the wrong one stood.
+            detail: `the narration states ${claim.value} ${claim.of}, which no roll this turn produced; tell the ${claim.of === "healing" ? "healing" : "harm"} in words, with no figure`,
             clause: claim.quote,
           });
         }
@@ -922,9 +924,9 @@ export function unrolledBlowPrompt(clause: string): string {
 // last round's 6 with no call at all. The hand-off lets enemy_attack through
 // (enemy-turn-order.ts), so the way out is that call, or no word of the turn.
 export function unrolledEnemyBlowPrompt(clause: string): string {
-  return `[System] Your narration resolves an enemy's attack on the party that no tool rolled this turn ("${clause}"), so it has not happened: no dice were rolled and no hit points changed, and a blow from an earlier round is not new. Call enemy_attack for the enemy end_turn handed you, then narrate from its result; otherwise leave its turn out. Never state a hit, a miss or a figure the server did not return.`;
+  return `[System] Your narration resolves an enemy's attack on the party that no tool rolled this turn ("${clause}"), so it has not happened: no dice were rolled and no hit points changed, and a blow from an earlier round is not new. Call enemy_attack for the enemy end_turn handed you, then narrate from its result; otherwise leave its turn out. Never state a hit or a miss the server did not return, and never a figure.`;
 }
 
 export function unrolledDamagePrompt(clause: string): string {
-  return `[System] Your narration states a damage or healing figure that no tool rolled this turn ("${clause}"), so it has not happened: no hit points changed, and the sheets the table reads do not show it. If that blow belongs in the story, resolve it now with its tool and narrate from the result: start_encounter first when no fight is running, then the attack or spell tool on the turn of whoever acts; apply_hazard or apply_damage for a trap, a fall or anything outside a fight. Otherwise write the moment again without it. Never state a hit, a miss or a figure the server did not return.`;
+  return `[System] Your narration states a damage or healing figure that no tool rolled this turn ("${clause}"), so it has not happened: no hit points changed, and the sheets the table reads do not show it. If that blow belongs in the story, resolve it now with its tool and narrate from the result: start_encounter first when no fight is running, then the attack or spell tool on the turn of whoever acts; apply_hazard or apply_damage for a trap, a fall or anything outside a fight. Otherwise write the moment again without it. Never state a hit or a miss the server did not return, and never a figure.`;
 }

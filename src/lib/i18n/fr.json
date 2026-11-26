@@ -2826,6 +2826,10 @@
     "Wear both (GM's call)": "Porter les deux (au bon vouloir du MJ)",
     "The SRD's exception, the GM's call: a circlet under a helmet, two cloaks layered.": "L’exception du SRD, au bon vouloir du MJ : un diadème sous un casque, deux capes superposées.",
     "Keep as is": "Garder en l’état",
+    "Take up {name}?": "Prendre {name} en main ?",
+    "{who}'s hands are full ({items}), so something has to be put away before {name} is taken up.": "{who} a les mains pleines ({items}) : il faut ranger quelque chose avant de prendre {name}.",
+    "Nobody has said which weapon is out yet, so this change is free.": "Personne n’a encore dit quelle arme est sortie : ce changement est donc gratuit.",
+    "Put away {off}, take up {name}": "Ranger {off}, prendre {name}",
     "Combat state": "État au combat",
     "Hit point maximum halved by exhaustion {level} ({stored} without it).": "Maximum de points de vie réduit de moitié par l’épuisement {level} ({stored} en temps normal).",
     "Raised by worn, attuned gear that sets Constitution ({stored} without it).": "Augmenté par un équipement porté et harmonisé qui fixe la Constitution ({stored} sans lui).",
@@ -3877,6 +3881,7 @@
     "Your free object interaction is spent: Fast Hands makes this one your bonus action.": "Ton interaction gratuite avec un objet est dépensée : Mains lestes permet de l’utiliser en action bonus.",
     "Your free object interaction is spent: this one takes the Use an Object action.": "Ton interaction gratuite avec un objet est dépensée : celle-ci prend l’action Utiliser un objet.",
     "{name}'s hands are full ({items}), so {what} cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.": "{name} a les mains pleines ({items}) : impossible de dégainer {what} pour l’instant. Lâcher un objet est gratuit ; en ranger un consomme ton interaction avec un objet de ce tour.",
+    "{name}'s hands are full ({items}), so {what} cannot be drawn yet. Put one of them away first: nobody had said which weapon was out, so this first change costs nothing.": "{name} a les mains pleines ({items}) : impossible de dégainer {what} pour l’instant. Range d’abord l’une d’elles : personne n’avait dit quelle arme était sortie, ce premier changement est donc gratuit.",
     "{name}'s free object interaction this turn already went on an object, and {what} would be a second: that takes the Use an Object action, which {name} has already spent. It can wait for their next turn.": "{name} a déjà utilisé son interaction gratuite avec un objet ce tour-ci, et {what} en constituerait une seconde : cela nécessite l’action Utiliser un objet, déjà dépensée par {name}. Cela devra attendre son prochain tour.",
     "{name}'s free object interaction this turn already went on an object, and {what} would be a second, which takes the Use an Object action: an attack cannot draw it as well. {name} attacks with what they hold, or draws it on their next turn.": "{name} a déjà utilisé son interaction gratuite avec un objet ce tour-ci, et {what} en constituerait une seconde nécessitant l’action Utiliser un objet : une attaque ne permet pas de le dégainer en plus. {name} doit attaquer avec ce qu’il tient ou attendre son prochain tour pour le dégainer.",
     "Take off {name}": "Retirer {name}",
@@ -6316,7 +6321,7 @@
     "Guests at once": "Invités à la fois",
     "Two choices decide who reads a line aloud.\n\n**The narrator's voice and pace** read the story, and every speaker who has no voice of their own.\n\n**Character voices** belong to one speaker each. With *Each speaker gets a voice*, everyone who speaks (an innkeeper, a monster, a companion) is given one of this server's voices the first time they talk and keeps it from then on. With *The narrator reads them*, nobody is given one automatically, and any voice you do give a character still plays.\n\nEither way, a voice can be given or changed per character once the campaign has people in it: the Character voices list in Table settings (Narration and character voices), in the lobby or the table's Settings tab. Each player can also choose the voice their own character speaks in there.\n\nThis is the table's spoken narration. Live voice chat between players is a separate setting.": "Deux options déterminent qui lit une réplique à voix haute.\n\n**La voix et la cadence du narrateur** lisent le récit ainsi que chaque personnage sans voix propre.\n\n**Les voix des personnages** sont attribuées individuellement. Avec l’option *Chaque intervenant a sa voix*, quiconque prend la parole (un aubergiste, un monstre, un compagnon) se voit attribuer une des voix de ce serveur lors de sa première réplique et la conserve ensuite. Avec *Le narrateur les lit*, personne n’en reçoit automatiquement, mais les voix personnalisées assignées aux personnages restent utilisées.\n\nDans les deux cas, une voix peut être attribuée ou modifiée par personnage dès que la campagne accueille des participants : via la liste Voix des personnages dans les paramètres de la table (Narration et voix des personnages), dans le salon ou dans l’onglet Paramètres. Chaque joueur peut également y choisir la voix de son propre personnage.\n\nCeci concerne la narration parlée de la table. Le chat vocal en direct entre joueurs fait l’objet d’un réglage séparé.",
     "The romance ladder on top of the bond meter: interested, courting, together, betrothed, married.\n\nNobody can be romanced who does not already like the character, nobody is courted who did not ask to be, partners keep to each other unless everyone involved is open to more than one partner, and intimate scenes always fade to black.\n\nEach step needs a little story time after the last, the other side starts scenes of their own, and every step is told to the table.\n\nRequires Bonds to be on.": "L’échelle de romance par-dessus la jauge de liens : intérêt, cour, couple, fiançailles, mariage.\n\nAucune romance n’est possible sans affinité préalable, personne n’est courtisé sans son consentement, les partenaires restent exclusifs à moins que chacun ne soit ouvert au polyamour, et les scènes intimes se concluent toujours par un fondu au noir.\n\nChaque étape nécessite un temps de jeu après la précédente, l’autre personnage initie ses propres scènes, et chaque progression est annoncée à la table.\n\nNécessite l’activation des liens.",
-    "After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled.\n\nA contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, and a kindness or flirt a player declared is recorded on their bonds.\n\nOff costs nothing but the check, and the narration is persisted exactly as written.": "Après chaque tour, le serveur compare la narration du MJ à ce que les dés et les outils ont réellement résolu : un coup au but décrit sur un raté, une mort que les points de vie démentent, un nombre de dégâts qu’aucun dé n’a donné.\n\nUne contradiction est renvoyée une fois au MJ pour réécriture. Le serveur exécute aussi ce que le MJ a omis : un sort demandé par un joueur et décrit dans le récit est réellement lancé, et un acte de bienveillance ou de séduction est consigné dans ses liens relationnels.\n\nDésactiver cette option ne fait rien perdre d’autre que la vérification elle-même, et la narration est conservée exactement telle qu’écrite.",
+    "After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled.\n\nA contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, a kindness or flirt a player declared is recorded on their bonds, and a thing a player handed over or used that the story took leaves their pack.\n\nOff costs nothing but the check, and the narration is persisted exactly as written.": "Après chaque tour, le serveur compare la narration du MJ à ce que les dés et les outils ont réellement résolu : un coup au but décrit sur un raté, une mort que les points de vie démentent, un nombre de dégâts qu’aucun dé n’a donné.\n\nUne contradiction est renvoyée une fois au MJ pour réécriture. Le serveur exécute aussi ce que le MJ a omis : un sort demandé par un joueur et décrit dans le récit est réellement lancé, un acte de bienveillance ou de séduction est consigné dans ses liens relationnels, et un objet qu’un joueur a donné ou utilisé, et que le récit a pris, quitte son sac.\n\nDésactiver cette option ne fait rien perdre d’autre que la vérification elle-même, et la narration est conservée exactement telle qu’écrite.",
     "the Character voices list in Table settings (Narration and character voices), in the lobby or the table's Settings tab": "la liste Voix des personnages dans les Paramètres de la table (Narration et voix des personnages), dans le salon ou l’onglet Paramètres de la table",
     "The narrator": "Le narrateur",
     "only with an AI narrator": "seulement avec un narrateur IA",
@@ -7029,7 +7034,7 @@
     "The GM invents the plot before the first scene.": "Le MJ invente l’intrigue avant la première scène.",
     "The story starts from your premise and prep alone.": "L’histoire part de ta prémisse et de ta préparation seules.",
     "After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. Nothing on any sheet changes either way.": "Après chaque tour, le serveur compare la narration du MJ à ce que les dés et les outils ont réellement résolu : un coup au but décrit sur un raté, une mort que les points de vie démentent, un nombre de dégâts qu’aucun dé n’a donné. Une contradiction est renvoyée une fois au MJ pour réécriture. Rien ne change sur une fiche, dans un cas comme dans l’autre.",
-    "After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, and a kindness or flirt a player declared is recorded on their bonds.": "Après chaque tour, le serveur confronte la narration du MJ aux résultats réels des dés et des règles : un coup au but décrit sur un raté, une mort contredite par les points de vie restants, ou des dégâts non tirés aux dés. Toute contradiction est renvoyée une fois au MJ pour réécriture. Le système applique également les actions omises par le MJ : un sort demandé par un joueur et mentionné dans le récit est réellement dépensé, et un acte de bienveillance ou de séduction est consigné dans ses liens relationnels.",
+    "After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, a kindness or flirt a player declared is recorded on their bonds, and a thing a player handed over or used that the story took leaves their pack.": "Après chaque tour, le serveur confronte la narration du MJ aux résultats réels des dés et des règles : un coup au but décrit sur un raté, une mort contredite par les points de vie restants, ou des dégâts non tirés aux dés. Toute contradiction est renvoyée une fois au MJ pour réécriture. Le système applique également les actions omises par le MJ : un sort demandé par un joueur et mentionné dans le récit est réellement dépensé, un acte de bienveillance ou de séduction est consigné dans ses liens relationnels, et un objet qu’un joueur a donné ou utilisé, et que le récit a pris, quitte son sac.",
     "Outcome check on": "Vérification des issues activée",
     "Outcome check off": "Vérification des issues désactivée",
     "Narration that contradicts the dice goes back for one rewrite.": "La narration qui contredit les dés repart pour une réécriture.",
@@ -7777,6 +7782,7 @@
     "Half cover (+{ac} AC)": "Demi-abri (+{ac} CA)",
     "Enemy beside you: ranged at disadvantage": "Un ennemi à ton contact : attaque à distance avec désavantage",
     "Nobody here to aim at.": "Personne à viser ici.",
+    "{rider} or {mount}?": "{rider} ou {mount} ?",
     "against the party": "contre le groupe",
     "with the party": "avec le groupe",
     "Against the party": "Contre le groupe",
@@ -10669,6 +10675,10 @@
     "Blue-white ice, pale steel, and aurora light.": "Glace bleu-blanc, acier pâle et lueur d’aurore.",
     "Obsidian, black iron chain, and a crimson glow.": "Obsidienne, chaînes de fer noir et lueur cramoisie.",
     "Dusk rose, gossamer thread, and pearl silverwork.": "Rose du crépuscule, fil arachnéen et orfèvrerie nacrée.",
+    "Brass pipework and meshed gears, oxblood leather, and green gauge glass.": "Tuyauterie de laiton et engrenages en prise, cuir sang-de-bœuf et verre de jauge vert.",
+    "Black glass, magenta and cyan tube signs, and brushed steel.": "Verre noir, enseignes au néon magenta et cyan, et acier brossé.",
+    "Roll-cage tube, tyre tread and chain: the desert road by day, the convoy's fires by night.": "Arceau d’acier, pneus crantés et chaînes : la route du désert le jour, les feux du convoi la nuit.",
+    "Dark walnut, polished brass, and green baize by gaslight.": "Noyer sombre, laiton poli et feutre vert à la lueur du gaz.",
     "Rolls {expression}": "Jet de {expression}",
     "{duration} passes:": "{duration} s’écoule :",
     "{duration} passes.": "{duration} s’écoule.",
@@ -11031,7 +11041,20 @@
     "Mental assault: mind flayers, some enchantments, telepathic damage.": "Assaut mental : flagelleurs mentaux, certains enchantements, dégâts télépathiques.",
     "Holy light and searing brilliance: celestials, clerics' spells, the sun.": "Lumière sacrée et éclat brûlant : célestes, sorts de clercs, soleil.",
     "Cutting: swords, axes, claws.": "Tranchant : épées, haches, griffes.",
-    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant."
+    "Concussive sound: thunderwave, shatter, a giant's shout.": "Onde sonore : vague tonnante, fracassement, cri de géant.",
+    "opportunity attack": "attaque d’opportunité",
+    "half on a miss": "moitié sur un raté",
+    "someone unseen": "quelqu’un hors de vue",
+    "an object": "un objet",
+    "{used} attack against {target}": "{used} : attaque contre {target}",
+    "{used} damage against {target}": "{used} : dégâts contre {target}",
+    "{used} half damage against {target}": "{used} : demi-dégâts contre {target}",
+    "Before you enter your dice: {steps}.": "Avant de saisir tes dés : {steps}.",
+    "reroll any die of {below} or less once (Great Weapon Fighting)": "relance une fois tout dé de {below} ou moins (Great Weapon Fighting)",
+    "roll the damage a second time and keep the better total (Brutal Attack)": "lance les dégâts une seconde fois et garde le meilleur total (Brutal Attack)",
+    "roll the weapon's dice a second time and keep the better total (Savage Attacker)": "lance les dés de l’arme une seconde fois et garde le meilleur total (Savage Attacker)",
+    "reroll the lowest damage die once and keep the new roll (Piercer)": "relance une fois le dé de dégâts le plus bas et garde le nouveau résultat (Piercer)",
+    "reroll up to {dice} of the damage dice and keep the new rolls (Empowered Spell)": "relance jusqu’à {dice} des dés de dégâts et garde les nouveaux résultats (Empowered Spell)"
   },
   "contexts": {
     "Arcane": {
@@ -11066,6 +11089,18 @@
     },
     "Twilight Court": {
       "appearance.theme.fey": "Cour du crépuscule"
+    },
+    "Brassworks": {
+      "appearance.theme.brassworks": "Atelier de laiton"
+    },
+    "Neon District": {
+      "appearance.theme.neon": "Quartier néon"
+    },
+    "Wasteland": {
+      "appearance.theme.wasteland": "Terres dévastées"
+    },
+    "Gaslight": {
+      "appearance.theme.gaslight": "Bec de gaz"
     },
     "Light": {
       "appearance.brightness.light": "Clair"
@@ -11211,7 +11246,17 @@
       "builder.levels.none": "Aucun"
     },
     "on": {
-      "admin.voice.state.on": "allumé"
+      "admin.voice.state.on": "allumé",
+      "roll.aim": "sur"
+    },
+    "vs": {
+      "roll.aim": "c/"
+    },
+    "physical": {
+      "roll.dice": "dés physiques"
+    },
+    "then": {
+      "roll.steps": "puis"
     },
     "Hidden": {
       "quests.status.hidden": "Masquée"

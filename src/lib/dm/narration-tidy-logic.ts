@@ -101,8 +101,16 @@ function closesOpen(before: string, line: string): boolean {
   return (line.includes(")") && leftOpen(before, "(", ")")) || (line.includes("]") && leftOpen(before, "[", "]"));
 }
 
+// A line of nothing but a pair of emphasis marks: what is left of a bold
+// note once its sentence is cut ("**Beat Complete: ...**" left "**", issue
+// 1095). One mark may be a bullet nobody finished and three are a rule
+// across the page: both stay as they came.
+const STRAY_EMPHASIS = /^[ \t]*(?:\*\*|__)[ \t]*(?:\r?\n|$)/gm;
+
 export function withoutOrphanClosers(text: string): string {
-  const out = text.replace(ORPHAN_CLOSERS, (line: string, at: number) => (closesOpen(text.slice(0, at), line) ? line : ""));
+  const out = text
+    .replace(ORPHAN_CLOSERS, (line: string, at: number) => (closesOpen(text.slice(0, at), line) ? line : ""))
+    .replace(STRAY_EMPHASIS, "");
   return out === text ? text : tidyBlankLines(out);
 }
 
@@ -155,8 +163,31 @@ export function createOrphanCloserFilter() {
 // reroll keeps of the parts before its own take (renarrate.ts). One tidy for
 // both: a reroll that reassembled the raw parts brought back the closer
 // lines, tool talk and fight bookkeeping the table never read.
-export function tableNarrationParts(parts: readonly string[], names: readonly string[], language: TableLanguage): string[] {
-  return withoutRepeatedSentences(parts.map((part) => withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), names, language)))));
+// `party` are the party's characters by name, for the label a reply may open
+// on (withoutLineLabels).
+export function tableNarrationParts(parts: readonly string[], names: readonly string[], language: TableLanguage, party: readonly string[] = []): string[] {
+  return withoutRepeatedSentences(
+    parts.map((part) => withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(withoutLineLabels(part, party)), names, language)))),
+  );
+}
+
+// The label the transcript gives a player's line ("[Avery] ...", "[Bram |
+// attempt] ..."), written by the storyteller at the head of its own reply or
+// of a paragraph: gpt-oss-20b opened four passages of a fourteen-turn play on
+// "[Avery] You grip your shortsword", and another on a line of nothing but
+// "[Bram | turn]" (2026-11-24). Once it had read one of its own back in the
+// transcript it wrote the next the same way. It is a label, like an agent
+// program's "[Game Master]" (tool-text.ts): it goes, and the narration under
+// it stays. Only a party character's own name, as the server writes it, so
+// the story's "[Softly]" and a letter's "[unsigned]" are left alone.
+export function withoutLineLabels(text: string, party: readonly string[]): string {
+  const names = [...new Set(party.map((name) => name.trim()).filter((name) => name.length >= 2))].sort((a, b) => b.length - a.length);
+  if (!names.length || !text.includes("[")) {
+    return text;
+  }
+  const named = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const out = text.replace(new RegExp(`^[ \\t]*\\[[ \\t]*(?:${named})[ \\t]*(?:\\|[^\\]\\n]{0,24})?\\][ \\t]*`, "gmu"), "");
+  return out === text ? text : tidyBlankLines(out);
 }
 
 // Whether a reply is mostly the last turn's narration said again: a player
@@ -214,6 +245,75 @@ export function repeatsEarlierNarration(text: string, earlier: readonly string[]
 
 // How many of the GM's newest passages a reply is held against.
 export const REPEAT_LOOKBACK = 8;
+
+const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
+
+// The sentences of a passage long enough to count as told again, as their
+// words.
+function longSentences(text: string): string[][] {
+  return (text.match(SENTENCE) ?? [])
+    .filter((piece) => textKey(piece).length >= MIN_REPEAT_CHARS)
+    .map((piece) => textKey(piece).match(WORD) ?? []);
+}
+
+// One sentence said again with a word or two changed: "You stand over the
+// dead bandit, your breath pluming in the cold air." after "You stand over
+// the dead Sentry, ...". Most of the longer one's words, counted with their
+// repeats.
+function sameSentence(now: readonly string[], before: readonly string[]): boolean {
+  const longer = Math.max(now.length, before.length);
+  if (Math.min(now.length, before.length) < 6) {
+    return now.join(" ") === before.join(" ");
+  }
+  const left = new Map<string, number>();
+  for (const word of before) {
+    left.set(word, (left.get(word) ?? 0) + 1);
+  }
+  let shared = 0;
+  for (const word of now) {
+    const count = left.get(word) ?? 0;
+    if (count > 0) {
+      shared += 1;
+      left.set(word, count - 1);
+    }
+  }
+  return shared / longer >= 0.85;
+}
+
+// What the table reads of a turn, with every paragraph the GM already told
+// in one of its newest passages taken out. A reply that is mostly an earlier
+// passage is asked for anew (repeatsEarlierNarration); this is the reply that
+// tells something new and then pastes old paragraphs under it. Qwen3.6-35B
+// closed three replies of one fight on the paragraph it had closed the one
+// before with, and told the kill of a second bandit with the four paragraphs
+// that had told the first one's, "Sentry" changed to "bandit" (issues 1104
+// and 1109). A paragraph goes when it holds two long sentences or more and
+// three in four of them stand, nearly word for word, in one earlier passage.
+// The turn is never emptied: a reply that is nothing but old paragraphs
+// stays as it is, for the checks above to send back.
+export function withoutEarlierPassages(parts: readonly string[], earlier: readonly string[]): string[] {
+  const told = earlier.map(longSentences).filter((sentences) => sentences.length > 0);
+  if (!told.length) {
+    return [...parts];
+  }
+  const kept = parts
+    .map((part) =>
+      part
+        .split(/\n{2,}/)
+        .filter((paragraph) => {
+          const sentences = longSentences(paragraph);
+          if (sentences.length < 2) {
+            return true;
+          }
+          return !told.some((passage) => sentences.filter((sentence) => passage.some((before) => sameSentence(sentence, before))).length / sentences.length >= 0.75);
+        })
+        .join("\n\n")
+        .trim(),
+    )
+    .filter(Boolean);
+  // Only a question or a short line left is no telling of the turn either.
+  return kept.some((part) => longSentences(part).length > 0) ? kept : [...parts];
+}
 
 // Sent once when a reply with no call wrote the story arc's bookkeeping
 // (tool-text.ts ARC_MARKER): Qwen3.6-35B handed the party a journal in words

@@ -103,6 +103,22 @@ await test("the table's state and the players' words open groups without being a
   assert.ok(offered({ englishPlayerText: "We travel north along the road for two days." }).has("travel"));
   assert.ok(offered({ englishPlayerText: "I try to jump the chasm." }).has("apply_hazard"));
   assert.ok(!offered({ englishPlayerText: "I ask the innkeeper about the missing girl." }).has("travel"), "ordinary talk opens nothing");
+  // Issue 1105: a player changing weapons says swap, switch or equip, and
+  // none of those opened handle_item, so the change was narrated and not made.
+  for (const said of [
+    "Swap my dagger for the shortsword.",
+    "I switch back to my shortsword in my off hand.",
+    "I equip the shortsword.",
+    "Unequip the dagger first.",
+    "I want to wield the shortsword again.",
+    "I unsheathe my scimitar.",
+    "I put away the dagger.",
+    "I take out my shortsword.",
+  ]) {
+    assert.ok(profiles.autoGroups({ inEncounter: false, englishPlayerText: said }).has("gear"), said);
+  }
+  assert.ok(profiles.TOOL_GROUPS.gear.tools.includes("handle_item"));
+  assert.ok(!profiles.autoGroups({ inEncounter: false, englishPlayerText: "I ask the innkeeper about the missing girl." }).has("gear"));
   assert.deepEqual([...profiles.autoGroups({ inEncounter: true, legendary: true })], ["legendary"]);
   // Someone tracked out of a fight: npc_state rides, and its rule with it.
   assert.deepEqual([...profiles.autoGroups({ inEncounter: false, trackedNpcs: true })], ["custody"]);

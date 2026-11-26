@@ -669,7 +669,7 @@ export function applyEnemyDamage(
       const slain = options?.concentrationDisadvantage === true;
       const outcome = rollEnemySave(campaign.id, enemy, "con", dc, {
         ...(slain ? { disadvantage: true } : {}),
-        record: { turn, detail: `${enemy.displayName}: concentration on ${spell} (CON save${slain ? ", Mage Slayer: disadvantage" : ""})` },
+        record: { turn, detail: `${enemy.displayName}: concentration on ${spell} (CON save${slain ? ", Mage Slayer: disadvantage" : ""})`, purpose: "concentration" },
       });
       const held = outcome.success;
       if (slain) {
@@ -743,4 +743,4 @@ export function applyEnemyDamage(
 
 // The blow of a parked (physical dice) attack and a targeted damage roll:
 // src/lib/dm/enemy-blow.ts, re-exported for the callers that find them here.
-export { applyPendingDamageRoll, autoApplyDamageRoll } from "@/lib/dm/enemy-blow";
+export { applyPendingDamageRoll, autoApplyDamageRoll, serverLandsDamageRoll } from "@/lib/dm/enemy-blow";

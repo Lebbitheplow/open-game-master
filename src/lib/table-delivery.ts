@@ -50,6 +50,7 @@ import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds } from "@/lib
 import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
 import { hideNames, namesToHide } from "@/lib/hidden-names-logic";
+import { seatSentences } from "@/lib/roll-words";
 
 type Payload = Record<string, unknown>;
 type SheetLike = { id: string; userId: string; notes?: string; hopes?: string; openToAdvances?: boolean; openToPacts?: boolean };
@@ -201,7 +202,9 @@ export function tablePayload(type: string, payload: unknown): unknown {
 // The events whose words or entries can name a creature in a fight. The
 // narration's own words are the model's, told "someone unseen" in its game
 // state; its stream (dm_delta, a token at a time) is left out of this.
-const NAMING_TYPES: ReadonlySet<string> = new Set(["roll_result", "sheet_audit", "message_added", "encounter_updated", "fx"]);
+// A roll card waiting on its dice says whom its roll is against, as the
+// roll will (issue #1064): its words, its reason and its targets.
+const NAMING_TYPES: ReadonlySet<string> = new Set(["roll_result", "roll_pending", "sheet_audit", "message_added", "encounter_updated", "fx"]);
 
 // The creatures of a campaign's fight its table has not seen, by encounter:
 // one whose token the GM hides, kept as it leaves the board (a creature that
@@ -209,11 +212,15 @@ const NAMING_TYPES: ReadonlySet<string> = new Set(["roll_result", "sheet_audit",
 // entry named it), and given up once its token is shown.
 const unseenByCampaign = new Map<string, { encounterId: string; names: Map<string, string> }>();
 
-function unseenNames(campaignId: string): string[] {
+const NOTHING_UNSEEN: { names: string[]; ids: ReadonlySet<string> } = { names: [], ids: new Set() };
+
+// The names to keep from the table, and the creatures themselves by id: a
+// roll's target is matched by its id, since a name can sit inside another's.
+function unseenOf(campaignId: string): { names: string[]; ids: ReadonlySet<string> } {
   const encounter = getActiveEncounter(campaignId);
   if (!encounter) {
     unseenByCampaign.delete(campaignId);
-    return [];
+    return NOTHING_UNSEEN;
   }
   const known = unseenByCampaign.get(campaignId);
   const names = known && known.encounterId === encounter.id ? known.names : new Map<string, string>();
@@ -230,13 +237,33 @@ function unseenNames(campaignId: string): string[] {
   }
   unseenByCampaign.set(campaignId, { encounterId: encounter.id, names });
   if (!names.size) {
-    return [];
+    return NOTHING_UNSEEN;
   }
   const shown = [
     ...enemies.filter((enemy) => !names.has(enemy.id)).map((enemy) => enemy.displayName),
     ...listSheets(campaignId).map((sheet) => sheet.name),
   ];
-  return namesToHide([...names.values()], shown);
+  return { names: namesToHide([...names.values()], shown), ids: new Set(names.keys()) };
+}
+
+// What a seat reads outside the event stream (a page's first load, the
+// routes that read its lists one by one, the board's words for the viewer's
+// own square): the stream's own replacement, for a seat that does not see
+// the whole map. The stream alone used to make it, so a reload showed a
+// player the creature the live table had kept from them. Hand it only what
+// the table reads and never sends back: a text a seat edits (a sheet, a
+// note) would be saved with the replacement in it.
+export function hiddenFromSeat<T>(campaignId: string, fullMap: boolean, value: T): T {
+  if (fullMap) {
+    return value;
+  }
+  const unseen = unseenOf(campaignId);
+  // Nobody is unseen outside a fight; in one, a row from before it began is
+  // left as written (hidden-names-logic.ts hideNames).
+  const fight = unseen.names.length || unseen.ids.size ? getActiveEncounter(campaignId) : null;
+  return fight
+    ? hideNames(value, unseen.names, { ids: unseen.ids, reword: seatSentences, since: fight.createdAt })
+    : value;
 }
 
 // The payload as the whole table may hold it, for a campaign: tablePayload,
@@ -248,8 +275,8 @@ export function tablePayloadFor(campaignId: string, type: string, payload: unkno
   if (!NAMING_TYPES.has(type) || !stored || typeof stored !== "object") {
     return stored;
   }
-  const names = unseenNames(campaignId);
-  const hiddenFrom = hideNames(stored, names);
+  const unseen = unseenOf(campaignId);
+  const hiddenFrom = hideNames(stored, unseen.names, { ids: unseen.ids, reword: seatSentences });
   if (hiddenFrom !== stored && hiddenFrom && typeof hiddenFrom === "object") {
     NAMES_HIDDEN.add(hiddenFrom);
   }

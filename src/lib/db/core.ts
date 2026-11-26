@@ -1,6 +1,6 @@
 import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
-import { fileAnsweredRollCards } from "./answered-cards-backfill.ts";
+import { fileAnsweredHeldCards, fileAnsweredRollCards } from "./answered-cards-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
 import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
 import { repairFeatSpellMisreadings } from "./feat-spell-repair.ts";
@@ -1850,6 +1850,15 @@ function ensureSchema(db: SqliteDatabase) {
     // openStandInTurn): its rolls are that turn's, and that turn's revert
     // marks it too. Null on every other turn.
     ["owner_turn_id", `TEXT`],
+    // The rolls an AI GM asked for with request_roll on this turn, and the
+    // ones among them that have paid for something it sent (JSON lists of
+    // roll ids; dm-turns.ts askedRollIds, paidRollIds). The gate that holds
+    // the model's numbers reads these two and nothing else
+    // (src/lib/dm/ai-gate.ts). Nothing is filed for the turns already open:
+    // a turn with no marks is refused a bare number, and the model sends
+    // dice or rolls again.
+    ["asked_roll_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
+    ["paid_roll_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
   ]);
   // The roll cards whose roll the turn's conversation has been handed (a
   // JSON list of pending_rolls ids; dm-turns.ts answeredPendingIds), so a
@@ -2244,6 +2253,10 @@ function ensureSchema(db: SqliteDatabase) {
     // rows, and the rider's names its mount (issue 1055,
     // src/lib/dm/enemy-riders.ts).
     ["rides_enemy_id", `TEXT NOT NULL DEFAULT ''`],
+    // On a mount's own row: the rider steering it as a controlled mount,
+    // which takes no turn of its own (issue 1055, ruling 2). '+' once that
+    // rider is off it and its place in the order is still to be made.
+    ["led_by_enemy_id", `TEXT NOT NULL DEFAULT ''`],
   ]);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_encounter_enemies_npc ON encounter_enemies(campaign_id, npc_id);
@@ -2264,6 +2277,10 @@ function ensureSchema(db: SqliteDatabase) {
     // Who may read the roll once it lands (rolls.visibility): a person's
     // screen survives the roll being parked for real dice or a held roll.
     ["visibility", `TEXT NOT NULL DEFAULT 'public'`],
+    // What the roll this card becomes says of itself as fields (rolls.parts_json
+    // below), kept while the card waits. NULL: a card dealt before the column,
+    // whose roll is stored without parts and read by its words.
+    ["parts_json", `TEXT`],
   ]);
 
   addColumns("rolls", [
@@ -2286,6 +2303,13 @@ function ensureSchema(db: SqliteDatabase) {
     // here. NULL: a roll that is neither an attack nor damage, or one stored
     // before the column.
     ["attacker_json", `TEXT`],
+    // What a rule reads back from a roll, as fields beside its sentence
+    // (src/lib/roll-parts.ts, issue #1064): the weapon, the skill or ability,
+    // what a save was for, whether the dice were the player's own. NULL: a
+    // roll stored before the column, or landed from a card dealt before it
+    // (pending_rolls.parts_json above), read by its words. Every other roll
+    // has its parts, '{}' where it has none to name.
+    ["parts_json", `TEXT`],
   ]);
 
   addColumns("campaign_notes", [
@@ -2671,6 +2695,21 @@ function ensureSchema(db: SqliteDatabase) {
     db.transaction(() => {
       backfillLegacyItemRows(db);
       db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("item_row_backfill_done", "true", new Date().toISOString());
+    })();
+  }
+
+  // A turn lists the held roll cards it has answered with the plain ones
+  // (dm-turns.ts answeredPendingIds, issue #1073), where it used to find a
+  // held card's answer by reading its conversation. The turns open across
+  // the upgrade are read that way one last time
+  // (src/lib/db/answered-cards-backfill.ts). One pass, guarded by an
+  // app_settings marker: read again later, a held card that has landed and
+  // not been answered could be marked, and its call left unanswered.
+  const heldCardMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'held_cards_answered_backfill_done'`).get();
+  if (!heldCardMarker) {
+    db.transaction(() => {
+      fileAnsweredHeldCards(db);
+      db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("held_cards_answered_backfill_done", "true", new Date().toISOString());
     })();
   }
 

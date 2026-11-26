@@ -26,7 +26,7 @@ import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
+import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandIsAChoice, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed, rowName } from "@/lib/srd/item-row";
 import { isTack, rowIsOn } from "@/lib/srd/tack";
 import { bardingSuit } from "@/lib/srd/barding";
@@ -193,7 +193,9 @@ export function handleItemCall(
     case "hand": {
       const to = resolveSheetRef(args.toCharacterId, sheets, sheetsById);
       if (!to || to.id === sheet.id) {
-        return retry("hand needs toCharacterId: the ally who receives it.");
+        // A gift to someone with no sheet had no road here and none named:
+        // the ration handed to an NPC stayed in the pack (issue 1097).
+        return retry("hand needs toCharacterId: the party member who receives it. A thing given to anyone else leaves the giver with remove_item.");
       }
       // Nothing passes a swallower's wall, either way (swallow.ts).
       const inside = swallowCoverError(sheet.id, to.id);
@@ -228,10 +230,20 @@ function changeWear(
   // A weapon taken in hand needs a hand free for it; putting another away
   // is its own interaction, so it is never folded into the draw.
   let drawn: EquipmentItem[] | null = null;
+  // Out of a fight nothing is charged, and a storyteller told only that
+  // "putting one away takes the object interaction" refused the player's
+  // swap until asked a second time (issue 1105): there it is told the two
+  // calls to send, or to ask which weapon when the player named none.
+  const fullHandsReader = encounter ? "storyteller" : "storytellerAtEase";
   // While the hands are still the engine's guess (held-default.ts), the
   // first draw or stow is free, and a draw puts the guessed weapons in its
   // way away with it (gear-hands.ts guessedRehand).
   const guessed = on && kind === "weapon" ? guessedRehand(sheet.equipment, row) : null;
+  // Only where there is nothing to choose: with two weapons that would each
+  // make room, which one goes is the player's word, not the pack's order.
+  if (guessed && rehandIsAChoice(sheet.equipment, row, guessed)) {
+    return refuse(handsFullError(sheet.name, row.name, handsFullFor(sheet.equipment, row), "drawn", encounter ? "storytellerFirstChange" : "storytellerAtEase"));
+  }
   const freeByGuess = kind === "weapon" && (guessed !== null || (!on && guessStands(sheet.equipment)));
   if (guessed) {
     drawn = guessed.equipment;
@@ -241,7 +253,7 @@ function changeWear(
       : implicitlyWorn(sheet.equipment, { armorName: armor.armorName, shieldName: armor.shieldName });
     const swap = drawRow(sheet.equipment, row, wornBefore);
     if (swap.full.length) {
-      return refuse(handsFullError(sheet.name, row.name, swap.full));
+      return refuse(handsFullError(sheet.name, row.name, swap.full, "drawn", fullHandsReader));
     }
     drawn = swap.equipment;
   }
@@ -249,7 +261,7 @@ function changeWear(
   if (on && kind === "shield") {
     const full = handsFullFor(sheet.equipment, row);
     if (full.length) {
-      return refuse(handsFullError(sheet.name, row.name, full, "strapped on"));
+      return refuse(handsFullError(sheet.name, row.name, full, "strapped on", fullHandsReader));
     }
   }
   let budget: TurnBudget | null = null;
@@ -313,8 +325,8 @@ function changeWear(
   return {
     ok: true,
     applied: guessed
-      ? rehandLine(sheet.name, guessed.putAway, row.name)
-      : `${sheet.name} ${on ? (kind === "weapon" ? "draws" : "puts on") : kind === "weapon" ? "puts away" : "takes off"} ${row.name}${freeByGuess ? ", free: nobody had said which weapon was out, so the first change from the game's pick costs nothing" : ""}.`,
+      ? rehandLine(sheet.name, guessed.putAway, row.name, Boolean(encounter))
+      : `${sheet.name} ${on ? (kind === "weapon" ? "draws" : "puts on") : kind === "weapon" ? "puts away" : "takes off"} ${row.name}${freeByGuess && encounter ? ", free: nobody had said which weapon was out, so the first change from the game's pick costs nothing" : ""}.`,
     ...(cost ? { cost } : {}),
     ...(dressing?.minutes ? { timePassed: dressing.lines.join(" ") } : {}),
   };

@@ -1,0 +1,196 @@
+/* neon: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   Night is the home of this theme: the street after dark. Surfaces are black
+   glass with the violet of a lit street in them (hue about 255). The accent
+   ramp is sign magenta (about 318), kept well away from the app's danger red. Cyan is the second tube colour. It never joins the ramp: it
+   edges panels and fills the ordinary keys, so a key and a destructive button
+   differ by hue as well as by shape, and what is chosen is the one magenta
+   thing on a cyan page.
+   Glow is thrown outward from the ornament and from key rims. Nothing here
+   puts a shadow or a glow under text. */
+[data-appearance="neon"][data-theme="dark"] {
+  --background: #08060f;
+  --foreground: #e8e6f3;
+  --color-stone-950: #0b0914;
+  --color-stone-900: #13101f;
+  --color-stone-800: #1d1930;
+  --color-stone-700: #2e2947;
+  --color-stone-600: #5c5680;
+  --color-stone-500: #a09bbd;
+  --color-stone-400: #b2aecb;
+  --color-stone-300: #c9c6dc;
+  --color-stone-200: #dcdaea;
+  --color-stone-100: #ebe9f4;
+  --color-stone-50: #f5f4fa;
+  --color-amber-950: #2b0420;
+  --color-amber-900: #470a36;
+  --color-amber-800: #6c1053;
+  --color-amber-700: #961a75;
+  --color-amber-600: #c2259a;
+  --color-amber-500: #e040b6;
+  --color-amber-400: #f266c9;
+  --color-amber-300: #f891d9;
+  --color-amber-200: #fbbbe7;
+  --color-amber-100: #fddff3;
+  --color-amber-50: #fef1fa;
+  --material-inset: #0a0812;
+  --material-paper: #100d1b;
+  --material-metal: #a8ecf7;
+  --material-edge: #1fa5c2;
+  --material-panel-wash: linear-gradient(#100d1ce0, #0a0813eb);
+  --material-control-wash: linear-gradient(#272140db, #161226eb);
+  --material-body-wash: linear-gradient(#08060ff0, #0b0815f0);
+  --material-rail-wash: linear-gradient(#0e0b18a0, #0e0b18a0);
+  /* Deep cyan under light labels; the rim the shared key rule adds is magenta. */
+  --material-primary-wash: linear-gradient(#0c6f8aeb, #084a61f2);
+  --material-send-wash: linear-gradient(#0d7694, #084a61);
+  --material-send-edge: #7fe9fb;
+  --material-chosen-wash: linear-gradient(#a01c7e, #5f0f4b);
+  /* Still green, so a full bar reads as healthy; only brighter than the
+     shared leaf green. The low-health colours are the app's own. */
+  --material-vital-fill: linear-gradient(90deg, #17a673, #5cf2b8);
+  --material-metal-finish: linear-gradient(135deg, #c9d2e0, #5d677a 46%, #aab4c6 52%, #343b49);
+  --material-metal-ink: #10131b;
+  --material-scrim: linear-gradient(#08060f99, #08060f40 45%, #08060fc4);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%232e2947' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='40' cy='42' r='15'/%3E%3Ccircle cx='40' cy='42' r='8'/%3E%3Cpath d='M112 26h36M112 34h36M112 42h36M22 128l12-12 12 12M22 140l12-12 12 12M118 142l16-28 16 28z'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* Day: the same street on a wet overcast day, the cheap signs left on.
+   Lilac-grey wet concrete with the night's own roles: magenta is the accent
+   and what is chosen, cyan edges panels and fills the ordinary keys. The
+   tower above the street is another district and is left for its own theme. */
+[data-appearance="neon"][data-theme="light"] {
+  --background: #e9e7f0;
+  --foreground: #1a1724;
+  --color-stone-950: #f8f7fb;
+  --color-stone-900: #efedf5;
+  --color-stone-800: #e1deeb;
+  --color-stone-700: #c1bcd2;
+  --color-stone-600: #7f7896;
+  --color-stone-500: #4b4560;
+  --color-stone-400: #403a54;
+  --color-stone-300: #312c42;
+  --color-stone-200: #241f33;
+  --color-stone-100: #181424;
+  --color-stone-50: #0e0b17;
+  /* Sign magenta, taken dark enough to carry text on a pale page. */
+  --color-amber-950: #fdeaf7;
+  --color-amber-900: #f9d2ee;
+  --color-amber-800: #f0a3dc;
+  --color-amber-700: #dc63bf;
+  --color-amber-600: #b82a96;
+  --color-amber-500: #981c7b;
+  --color-amber-400: #7c1464;
+  --color-amber-300: #630f50;
+  --color-amber-200: #4d0b3e;
+  --color-amber-100: #38072d;
+  --color-amber-50: #25041d;
+  --material-inset: #faf9fc;
+  --material-paper: #f0eef6;
+  --material-metal: #0a5f73;
+  --material-edge: #4f9fb3;
+  --material-panel-wash: linear-gradient(#fbfafdeb, #eeecf5eb);
+  --material-control-wash: linear-gradient(#f6f4fae0, #dcd8e8e0);
+  --material-body-wash: linear-gradient(#e9e7f0eb, #dedbe8eb);
+  --material-rail-wash: linear-gradient(#7f789640, #7f789640);
+  --material-primary-wash: linear-gradient(#0c7690f0, #085468f5);
+  --material-send-wash: linear-gradient(#0c7690, #085468);
+  --material-send-edge: #0f8aa3;
+  --material-chosen-wash: linear-gradient(#a01c7e, #5f0f4b);
+  --material-vital-fill: linear-gradient(90deg, #1f8f66, #56c79a);
+  --material-metal-finish: linear-gradient(135deg, #f4f3f8, #9a96ab 46%, #e4e1ec 52%, #6f6a82);
+  --material-metal-ink: #1a1724;
+  --material-scrim: linear-gradient(#e9e7f099, #e9e7f040 45%, #e9e7f0bb);
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%23c1bcd2' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='40' cy='42' r='15'/%3E%3Ccircle cx='40' cy='42' r='8'/%3E%3Cpath d='M112 26h36M112 34h36M112 42h36M22 128l12-12 12 12M22 140l12-12 12 12M118 142l16-28 16 28z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* What holds in both modes: tube shapes. Keys and chips are round-ended like
+   a bent tube, panels are square-cut glass, fittings are small steel plates. */
+[data-appearance="neon"] {
+  /* The night palette again, in either brightness: what a painting carries
+     (the title screen's top fold) stays night in the day theme too.
+     scripts/test-appearance.mjs holds it equal to the dark block. */
+  --theme-night-background: #08060f;
+  --theme-night-foreground: #e8e6f3;
+  --theme-night-stone-950: #0b0914;
+  --theme-night-stone-900: #13101f;
+  --theme-night-stone-800: #1d1930;
+  --theme-night-stone-700: #2e2947;
+  --theme-night-stone-600: #5c5680;
+  --theme-night-stone-500: #a09bbd;
+  --theme-night-stone-400: #b2aecb;
+  --theme-night-stone-300: #c9c6dc;
+  --theme-night-stone-200: #dcdaea;
+  --theme-night-stone-100: #ebe9f4;
+  --theme-night-stone-50: #f5f4fa;
+  --theme-night-amber-950: #2b0420;
+  --theme-night-amber-900: #470a36;
+  --theme-night-amber-800: #6c1053;
+  --theme-night-amber-700: #961a75;
+  --theme-night-amber-600: #c2259a;
+  --theme-night-amber-500: #e040b6;
+  --theme-night-amber-400: #f266c9;
+  --theme-night-amber-300: #f891d9;
+  --theme-night-amber-200: #fbbbe7;
+  --theme-night-amber-100: #fddff3;
+  --theme-night-amber-50: #fef1fa;
+  --material-fitting-radius: 5px;
+  --material-fitting-wide-radius: 5px;
+  --material-control-radius: 999px;
+  --material-panel-radius: 3px;
+  --material-bubble-radius: 14px 14px 14px 2px;
+  --material-tab-radius: 3px;
+  --material-chip-radius: 999px;
+  --material-sigil-radius: 4px;
+  --appearance-motif-size: 180px 180px;
+  --appearance-corner: 0.2rem;
+  /* The corner piece is a solid box in the top-left 58% of its image, not an
+     open L, so it is sized by how far the box may reach into the page. On the
+     table a 72px piece is a 42px box, 34px of it on screen: at 88px it covered
+     the first letter of the session title and the enlarged map's close
+     button. The rail is 28px so the box has a channel its own weight to sit
+     on; the table pads its text from the same width. In the lobby the box
+     reaches about 44px inside the card, short of the text that starts at 50px. */
+  --theme-table-frame-width: 28px;
+  --theme-table-corner-size: 72px;
+  /* On a phone the bottom bar's first label starts 17px from the screen's
+     edge, so the box stays a 17px stud there (30px piece, 14px on screen). */
+  --theme-table-corner-size-small: 30px;
+  --theme-lobby-corner-size: 136px;
+  --theme-lobby-corner-size-small: 68px;
+}
+/* Light is the ornament's and the keys' own, and it is thrown outward: the
+   box and the rails glow into the margin they stand in, the one key that
+   acts glows round its rim, and the chosen picker card is ringed in both
+   tube colours. No glow is laid under a line of text. */
+[data-appearance="neon"][data-theme="dark"] .theme-ornaments > span {
+  filter: drop-shadow(0 0 9px #ff4fd8b0) drop-shadow(0 0 20px #3fe6ff66) drop-shadow(0 2px 3px #000a);
+}
+[data-appearance="neon"][data-theme="dark"] .theme-ornaments::before {
+  filter: drop-shadow(0 0 5px #a67cff80);
+}
+html[data-appearance="neon"][data-theme="dark"] .theme-key-primary:not(.theme-key-danger):not(:disabled) {
+  box-shadow: 0 0 0 1px #f266c9b0, 0 0 14px #e040b680;
+}
+html[data-appearance="neon"][data-theme="dark"] .appearance-option[aria-pressed="true"] {
+  box-shadow: 0 0 0 1px var(--color-amber-400), 0 0 0 3px #3fe6ff80, 0 0 16px #e040b666;
+}
+/* By day the signs are still on, only paler: a thin glow round the corner
+   boxes and the one key that acts. */
+[data-appearance="neon"][data-theme="light"] .theme-ornaments > span {
+  filter: drop-shadow(0 0 7px #dc63bf80) drop-shadow(0 1px 2px #0005);
+}
+html[data-appearance="neon"][data-theme="light"] .theme-key-primary:not(.theme-key-danger):not(:disabled) {
+  box-shadow: 0 0 0 1px #b82a96b0, 0 0 12px #dc63bf73;
+}
+/* A phone's table has no margin to glow into: the bar's labels and icons sit
+   a few pixels from the rail, and the browser scenario phone-frame counts a
+   glow or a shadow over them as cover. The lobby keeps its light. */
+@media (max-width: 1023px) {
+  [data-appearance="neon"][data-theme] .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before,
+  [data-appearance="neon"][data-theme] .theme-ornaments:is([data-surface="table"], [data-surface="overlay"]) > span { filter: none; }
+}
+/* Tube-thin corner brackets where a flat panel keeps the app's own. Each
+   bracket thickens its own two sides, so neither closes into a box. */
+html[data-appearance="neon"] .ornate::before,
+html[data-appearance="neon"] .ornate::after { width: 18px; height: 18px; }
+html[data-appearance="neon"] .ornate::before { border-width: 2px 0 0 2px; }
+html[data-appearance="neon"] .ornate::after { border-width: 0 2px 2px 0; }

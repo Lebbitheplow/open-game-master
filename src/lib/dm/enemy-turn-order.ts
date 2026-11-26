@@ -13,12 +13,13 @@
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { controlledMountRefusal } from "@/lib/dm/enemy-riders";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { AttackStop } from "@/lib/dm/turn-lines-logic";
 
 export function enemyTurnRefusal(
   encounter: Encounter | null,
-  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status">,
+  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status" | "ledBy">,
   turn: Pick<DmTurn, "id" | "actor">,
 ): (ToolError & { stop?: AttackStop }) | null {
   if (turn.actor !== "ai") {
@@ -30,7 +31,7 @@ export function enemyTurnRefusal(
 // The same rule without the console's free hand, and the words it gives.
 function offTurnRefusal(
   encounter: Encounter | null,
-  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status">,
+  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status" | "ledBy">,
   turn: Pick<DmTurn, "id" | "actor">,
   ownTurnWords?: (current: string, before: string | null) => string,
 ): (ToolError & { stop?: AttackStop }) | null {
@@ -44,15 +45,18 @@ function offTurnRefusal(
   if (enemy.status !== "alive") {
     return { error: `${enemy.displayName} is ${enemy.status} and cannot act.`, retry: true };
   }
-  const slot = encounter.order.findIndex((entry) => entry.kind === "enemy" && entry.enemyId === enemy.id);
+  // A controlled mount has no place in the order: its turn is its rider's
+  // (issue 1055, ruling 2: enemy-riders.ts), so it is asked of that slot.
+  const turnOf = enemy.ledBy ?? enemy.id;
+  const slot = encounter.order.findIndex((entry) => entry.kind === "enemy" && entry.enemyId === turnOf);
   if (slot < 0 || slot < encounter.turnIndex) {
     return null;
   }
   const legendary = encounter.legendary;
   const handedOver =
-    (legendary.handoff?.turnId === turn.id && legendary.handoff.enemyIds.includes(enemy.id)) ||
-    (legendary.due ?? []).includes(enemy.id);
-  const owed = legendary.acted?.round === encounter.round && (legendary.acted.owed ?? []).includes(enemy.id);
+    (legendary.handoff?.turnId === turn.id && legendary.handoff.enemyIds.includes(turnOf)) ||
+    (legendary.due ?? []).includes(turnOf);
+  const owed = legendary.acted?.round === encounter.round && (legendary.acted.owed ?? []).includes(turnOf);
   const strike = (legendary.strikes ?? []).includes(enemy.id);
   if (handedOver || owed || strike) {
     return null;
@@ -61,6 +65,10 @@ function offTurnRefusal(
   // Tagged so a line for the table says so (turn-lines-logic.ts): a person's
   // "run the monsters" read "does not attack this turn" with no reason
   // (issue #666).
+  // A controlled mount waits for its rider's turn, told so to a person too.
+  if (enemy.ledBy) {
+    return { error: `${enemy.displayName} is a controlled mount and moves on ${encounter.order[slot].name}'s turn, which has not come yet this round: it is ${current?.name ?? "another combatant"}'s turn.`, retry: true, stop: "turn" };
+  }
   if (ownTurnWords) {
     return { error: ownTurnWords(current?.name ?? "another combatant", slot > 0 ? (encounter.order[slot - 1]?.name ?? null) : null), retry: true, stop: "turn" };
   }
@@ -77,14 +85,14 @@ function offTurnRefusal(
 // A creature the pointer rests on is on its turn.
 export function enemyFleeTurnRefusal(
   encounter: Encounter | null,
-  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status">,
+  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status" | "ledBy">,
   turn: Pick<DmTurn, "id" | "actor">,
 ): (ToolError & { stop?: AttackStop }) | null {
   if (turn.actor === "ai") {
     return enemyTurnRefusal(encounter, enemy, turn);
   }
   const resting = encounter?.order[encounter.turnIndex];
-  if (resting?.kind === "enemy" && resting.enemyId === enemy.id) {
+  if (resting?.kind === "enemy" && resting.enemyId === (enemy.ledBy ?? enemy.id)) {
     return null;
   }
   return offTurnRefusal(encounter, enemy, turn, (current, before) =>
@@ -100,9 +108,6 @@ export function enemyCallOutOfTurn(
   rawArguments: string,
   key: "enemyId" | "casterEnemyId",
 ): ToolError | null {
-  if (turn.actor !== "ai") {
-    return null;
-  }
   let ref: unknown;
   try {
     ref = (JSON.parse(rawArguments || "{}") as Record<string, unknown>)[key];
@@ -114,5 +119,11 @@ export function enemyCallOutOfTurn(
   }
   const encounter = getActiveEncounter(campaignId);
   const enemy = encounter ? resolveEnemyRef(encounter.id, ref) : null;
+  // A controlled mount makes no attack and uses no ability, on any turn and
+  // at the console too: the rule, not the order (enemy-riders.ts).
+  const steered = enemy && enemy.status === "alive" ? controlledMountRefusal(enemy, key === "enemyId" ? "attack" : "use of a spell or ability") : null;
+  if (steered) {
+    return { error: steered, refused: "rules" };
+  }
   return enemy ? enemyTurnRefusal(encounter, enemy, turn) : null;
 }

@@ -27,6 +27,7 @@ import { damageAdjust } from "@/lib/dm/damage-logic";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { petResistLine } from "@/lib/dm/pet-underwater";
 import { recordRoll } from "@/lib/dm/roll-record";
+import { saveParts } from "@/lib/roll-parts";
 import { proficiencyForCr } from "@/lib/srd/creature-drain-logic";
 import type { MountState } from "@/lib/srd/mounts";
 import { findSummonForm, type SummonForm } from "@/lib/srd/summon-forms";
@@ -78,7 +79,7 @@ export function mountRider(
     const rolled = rollExpression(`1d20${bonus >= 0 ? "+" : ""}${bonus}`, undefined, { purpose: { roller: "enemy", kind: "save", who: mount.name } });
     // Thrown here on the server's dice (landing null): the rider's own
     // decided save, filed under the same character, is not this roll.
-    recordRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "saving_throw", detail: `${mount.name}: ${onHit.save.toUpperCase()} save against ${enemy.displayName}'s ${attack.name}`, dc: onHit.dc, result: rolled, turn, landing: null });
+    recordRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "saving_throw", detail: `${mount.name}: ${onHit.save.toUpperCase()} save against ${enemy.displayName}'s ${attack.name}`, parts: saveParts(onHit.save), dc: onHit.dc, result: rolled, turn, landing: null });
     saved = rolled.total >= onHit.dc;
     lines.riderSave = `${rolled.total} vs DC ${onHit.dc}`;
     lines.riderSaved = saved;

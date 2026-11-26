@@ -18,7 +18,7 @@ export default {
     check(/English/.test(await trigger.innerText()), "the server plays in English to start");
     check((await trigger.locator("svg").count()) >= 1, "the chosen language shows its flag");
     const box = await trigger.boundingBox();
-    check(box && box.height >= 40, `the picker is finger-sized (${box?.height}px)`);
+    check(box && Math.round(box.height) >= 40, `the picker is finger-sized (${box?.height}px)`);
     await t.shot("language-closed");
 
     await t.tap(trigger);

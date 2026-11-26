@@ -21,7 +21,7 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
-import { aiEngine, call, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
+import { aiEngine, call, fakeModel, held, reply, settleQueue } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-turn-handoff");
 const world = await openWorld({ campaign: { maxPlayers: 8 }, gameSettings: { ttsEnabled: false } });
@@ -402,6 +402,136 @@ await test("A later reply that recalls this turn's own swing is not sent back as
   assert.deepEqual(corrections().map((message) => String(message.content).slice(0, 80)), [], "the recalled swing was sent back");
   assert.equal(model.served(), 1);
   assert.equal(current(), avery.id);
+});
+
+// Issues 1099 and 1101: the reply that opened a fight told its first
+// character the turn was theirs ("Jason (12) > The Sentry (12). It is your
+// turn."), the reader read that as the turn handed on, and the player's turn
+// ended before they had one: the enemies went and the round turned over. A
+// line written before the fight ("...seeing if they're approaching") counted
+// as the player's word for that turn, and so did a card played while the
+// opening was still being narrated.
+const { englishOwnTurn } = await import("../src/lib/dm/claims-logic.ts");
+const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
+const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
+
+await test("Words that tell the acting character the turn is theirs are no hand-off; words that end it still are", () => {
+  for (const quote of ["It is your turn.", "It's your turn. What do you do?", "Jason (12) > The Sentry (12). It is your turn.", "Jason, you're up.", "It is Jason's turn now.", "The sentry's turn is done; it is your turn.", "You act first."]) {
+    assert.equal(englishOwnTurn(quote, "Jason"), true, quote);
+  }
+  for (const quote of ["Your turn ends.", "Your turn is over. The goblins act next.", "It is now Bram's turn.", "The goblins act next.", "That ends Jason's turn.", "Jason's turn is done."]) {
+    assert.equal(englishOwnTurn(quote, "Jason"), false, quote);
+  }
+});
+
+await test("A fight the DM turn itself opens: the line that tells its first character the turn is theirs ends nothing, in any language", async () => {
+  for (const language of ["english", "italian"]) {
+    updateGameSettings(world.campaignId, { tableLanguage: language });
+    await kit.endFight();
+    // The goblin's initiative, then Avery's and Kara's.
+    world.dice(3, 20, 5);
+    const text = "A goblin breaks from the tree line, blade out. Avery is quickest. It is your turn. What do you do?";
+    const message = await playerTurn(
+      `I watch the tree line, seeing if they are approaching or running away (${language}).`,
+      [reply({ calls: [call("start_encounter", { enemies: [{ monster: "goblin", count: 1 }], summary: "A goblin at the tree line" })] }), reply({ text })],
+      // The reader reads the announcement as a hand-off, as it did in the reports.
+      [[{ kind: "turn_over", quote: "It is your turn." }], [{ kind: "turn_over", quote: "It is your turn." }]],
+    );
+    const fight = world.encounter();
+    assert.equal(fight?.orderReady, true, `${language}: the fight never opened`);
+    assert.equal(fight.round, 1, `${language}: the round turned over on the fight's opening`);
+    assert.equal(current(), avery.id, `${language}: the turn the fight opened on was ended by its own announcement`);
+    assert.match(message?.content ?? "", /It is your turn\./, `${language}: the announcement was cut from the story`);
+  }
+  updateGameSettings(world.campaignId, { tableLanguage: "english" });
+});
+
+await test("A fight the DM turn opens and resolves a declared attack in is still handed on by its narration", async () => {
+  await kit.endFight();
+  // The ogre's initiative, Avery's and Kara's, then Avery's swing.
+  world.dice(3, 20, 5, 15, 4);
+  await playerTurn(
+    "I charge the ogre and cut at it with my longsword.",
+    [
+      reply({ calls: [call("start_encounter", { enemies: [{ monster: "ogre", count: 1 }], summary: "An ogre on the road", distanceFeet: 5 })] }),
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: "Ogre", weapon: "Longsword", approach: true })] }),
+      reply({ text: "Avery's longsword bites into the ogre's hide. It is now Kara's turn." }),
+    ],
+    [[{ kind: "turn_over", quote: "It is now Kara's turn." }], [{ kind: "turn_over", quote: "It is now Kara's turn." }]],
+  );
+  const swing = model.results(model.requests.at(-1)).at(-1)?.result;
+  assert.equal(swing?.error, undefined, JSON.stringify(swing));
+  assert.equal(current(), kara.id, "a turn the fight opened on, attacked in and told over stayed open");
+});
+
+await test("In a running fight, words that tell the waiting character the turn is theirs hand nothing on and stay in the story", async () => {
+  await stage();
+  const text = "Avery shifts his grip and eyes the goblin. It is your turn, Avery. What do you do?";
+  const message = await playerTurn("I size the goblin up.", [reply({ text })], [[{ kind: "turn_over", quote: "It is your turn, Avery." }]]);
+  assert.equal(current(), avery.id, "the turn was ended by the words that gave it");
+  assert.match(message?.content ?? "", /It is your turn, Avery\./, "the words were cut from the story");
+});
+
+await test("A card played while the DM turn was already running is not the word its narration answers", async () => {
+  await stage();
+  // Kara speaks out of turn; Avery, whose turn it is, has said nothing when the DM turn begins.
+  const slow = held(reply({ text: "Kara calls a warning across the stones. The goblins act next." }));
+  model.claims([[{ kind: "turn_over", quote: "The goblins act next." }], [{ kind: "turn_over", quote: "The goblins act next." }]]);
+  model.script([slow.entry]);
+  const seq = allocateSeq(world.campaignId);
+  insertCampaignMessage({ campaignId: world.campaignId, seq, authorType: "player", userId: kara.userId, characterId: kara.id, content: "\"Watch the ledge, Avery!\"" });
+  const { startDmTurn } = await import("../src/lib/dm/turn.ts");
+  const running = startDmTurn(world.campaignId);
+  // The reply is on its way when Avery's player plays a card from the Hand.
+  for (let waited = 0; waited < 400 && model.served() < 1; waited += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  const [goblin] = world.enemies();
+  insertCampaignMessage({
+    campaignId: world.campaignId,
+    seq: allocateSeq(world.campaignId),
+    authorType: "player",
+    userId: avery.userId,
+    characterId: avery.id,
+    content: "I attack the goblin with my Longsword.",
+    intent: { card: "attack", targetKind: "enemy", targetId: goblin.id, targetName: goblin.displayName },
+  });
+  slow.release();
+  await running;
+  assert.equal(current(), avery.id, "a card the narration never read let that narration end its player's turn");
+  await settleQueue(world.campaignId);
+  world.clearDice();
+});
+
+// Issue 1104: a two-weapon fighter's scimitar card was answered with the
+// model's own end_turn. The enemy went, and the Second Wind the player played
+// next came back as "the fight moved on before the GM answered it".
+await test("The AI's own end_turn is refused while the Attack action's off-hand attack is open, and ends the turn once the player's words do", async () => {
+  const goblin = await stage();
+  world.patch(avery.id, { equipment: PAIR });
+  try {
+    world.dice(15, 4);
+    const ending = call("end_turn", { characterId: avery.id });
+    await playerTurn("I attack the goblin with my Scimitar.", [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Scimitar" })] }),
+      reply({ calls: [ending] }),
+      reply({ text: "Avery's scimitar bites deep. What does Avery do?" }),
+    ], [[]]);
+    const refused = model.requests.flatMap((request) => model.results(request)).find((entry) => entry.id === ending.id)?.result;
+    assert.match(String(refused?.error ?? ""), /off-hand attack with Shortsword.*stays open/, JSON.stringify(refused));
+    assert.equal(refused?.retry, true);
+    assert.equal(current(), avery.id, "the model's end_turn took the off-hand attack");
+    const second = await stage();
+    world.dice(15, 4);
+    await playerTurn("I slash at the goblin with my Scimitar. That's my turn.", [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: second.id, weapon: "Scimitar" })] }),
+      reply({ calls: [call("end_turn", { characterId: avery.id })] }),
+      reply({ text: "Avery's scimitar bites, and Avery falls back a step." }),
+    ], [[]]);
+    assert.equal(current(), kara.id, "the player's own words ended nothing");
+  } finally {
+    world.patch(avery.id, { equipment: LONGSWORD });
+  }
 });
 
 await kit.endFight();

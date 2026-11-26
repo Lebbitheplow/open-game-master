@@ -251,7 +251,10 @@ const ENGLISH_INTENT: Array<[ToolGroupId, RegExp]> = [
   ["hazards", /\b(trap|traps|fall|falls|jump|leap|climb|drown|swim|lava|fire|burning|freezing|suffocat\w*)\b/i],
   ["mounts", /\b(horse|horses|mount|mounts|saddle|steed|pony)\b/i],
   ["custody", /\b(prisoners?|captives?|tie (?:him|her|them) up|bind (?:him|her|them)|untie|shackles?|knock (?:him|her|them) out)\b/i],
-  ["gear", /\b(drops?|dropping|draws?|drawing|sheathes?|stows?|shield|picks? up|(?:hand|give)(?:s|ed)? (?:it|him|her|them|over|my|the|his|their))\b/i],
+  // A player asking to change weapons says swap, switch or equip far more
+  // often than draw or stow: "swap my dagger for the shortsword" opened no
+  // group, and the storyteller narrated a change it never made (issue 1105).
+  ["gear", /\b(drops?|dropping|draws?|drawing|sheathes?|unsheathes?|stows?|shield|picks? up|swap(?:s|ped|ping)?|switch(?:es|ed|ing)?|(?:un)?equip(?:s|ped|ping)?|wield(?:s|ed|ing)?|put(?:s|ting)? away|(?:take|takes|taking|took) out|(?:hand|give)(?:s|ed)? (?:it|him|her|them|over|my|the|his|their))\b/i],
   ["relationships", /\b(romance|kiss|flirt|court|befriend|friendship)\b/i],
   ["pets", /\b(familiar|pet|animal companion)\b/i],
   ["binder", /\b(quest|quests|handout|map of|letter|journal)\b/i],
@@ -365,8 +368,11 @@ export const COMPACT_OMITS: Record<string, string[]> = {
   // list: the 16K core had under ten tokens to spare when it came (a shop
   // turn's group no longer fitted beside it), and a pair fielded at the
   // console or by a larger model is told in GAME STATE all the same.
-  start_encounter: ["enemies[].mount"],
-  add_enemies: ["enemies[].mount"],
+  start_encounter: ["enemies[].mount", "enemies[].controlled"],
+  add_enemies: ["enemies[].mount", "enemies[].controlled"],
+  // Where an enemy steps down from its mount (issue 1091): with neither, the
+  // nearest open square beside it.
+  dismount: ["x", "y"],
 };
 
 // Arguments only a table with a pet can use (ProfileSignals.pets): a compact

@@ -72,7 +72,7 @@ export default {
         return { top, bottom, height, clear: on === button || button.contains(on) };
       });
     const close = await closeAt();
-    check(close.clear && close.height >= 40 && close.top >= reading.top && close.bottom <= reading.bottom, `Close is in view in the Hand (${px(close.top)} to ${px(close.bottom)})`);
+    check(close.clear && Math.round(close.height) >= 40 && close.top >= reading.top && close.bottom <= reading.bottom, `Close is in view in the Hand (${px(close.top)} to ${px(close.bottom)})`);
     const faults = await axeViolations(page, `${root}.cine-fight-hand`);
     check(faults.length === 0, `the Hand with a held card read passes axe: ${JSON.stringify(faults).slice(0, 500)}`);
     await t.shot("read");

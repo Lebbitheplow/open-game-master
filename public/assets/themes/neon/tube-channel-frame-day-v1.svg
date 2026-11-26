@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <!-- Neon District day frame: the night frame in daylight steel, same geometry. Four extruded steel channels, each holding one
+       lit tube in a black glass groove: cyan along the top and bottom, magenta
+       down the sides. Every rail is uniform along its length, so the stretched
+       middle of a nine-slice has nothing to repeat. Slice 22%: each rail and
+       its glow stay inside the outer 220 units; the centre is empty. -->
+  <defs>
+    <linearGradient id="steel-h" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6f6fb"/>
+      <stop offset=".05" stop-color="#c9cbd9"/>
+      <stop offset=".1" stop-color="#9a9db0"/>
+      <stop offset=".24" stop-color="#b1b4c5"/>
+      <stop offset=".29" stop-color="#5d6073"/>
+      <stop offset=".31" stop-color="#05060a"/>
+      <stop offset=".69" stop-color="#05060a"/>
+      <stop offset=".71" stop-color="#5d6073"/>
+      <stop offset=".76" stop-color="#b1b4c5"/>
+      <stop offset=".9" stop-color="#9a9db0"/>
+      <stop offset=".95" stop-color="#c9cbd9"/>
+      <stop offset="1" stop-color="#7b7e92"/>
+    </linearGradient>
+    <linearGradient id="steel-v" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f6f6fb"/>
+      <stop offset=".05" stop-color="#c9cbd9"/>
+      <stop offset=".1" stop-color="#9a9db0"/>
+      <stop offset=".24" stop-color="#b1b4c5"/>
+      <stop offset=".29" stop-color="#5d6073"/>
+      <stop offset=".31" stop-color="#05060a"/>
+      <stop offset=".69" stop-color="#05060a"/>
+      <stop offset=".71" stop-color="#5d6073"/>
+      <stop offset=".76" stop-color="#b1b4c5"/>
+      <stop offset=".9" stop-color="#9a9db0"/>
+      <stop offset=".95" stop-color="#c9cbd9"/>
+      <stop offset="1" stop-color="#7b7e92"/>
+    </linearGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eeeff6"/>
+      <stop offset=".5" stop-color="#a3a6b8"/>
+      <stop offset="1" stop-color="#777a8e"/>
+    </linearGradient>
+    <filter id="halo" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="bloom" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <clipPath id="rails">
+      <path d="M8 8H992V992H8ZM212 212V788H788V212Z" clip-rule="evenodd"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#rails)">
+    <!-- Channels -->
+    <rect x="8" y="8" width="984" height="204" fill="url(#steel-h)"/>
+    <rect x="8" y="788" width="984" height="204" fill="url(#steel-h)"/>
+    <rect x="8" y="8" width="204" height="984" fill="url(#steel-v)"/>
+    <rect x="788" y="8" width="204" height="984" fill="url(#steel-v)"/>
+
+    <!-- Light thrown on the glass and the lips of each channel -->
+    <g filter="url(#halo)" opacity=".5">
+      <rect x="100" y="96" width="800" height="28" fill="#19d3ff"/>
+      <rect x="100" y="876" width="800" height="28" fill="#19d3ff"/>
+      <rect x="96" y="100" width="28" height="800" fill="#ff2bd0"/>
+      <rect x="876" y="100" width="28" height="800" fill="#ff2bd0"/>
+    </g>
+    <g filter="url(#bloom)">
+      <rect x="100" y="98" width="800" height="24" fill="#3fe6ff"/>
+      <rect x="100" y="878" width="800" height="24" fill="#3fe6ff"/>
+      <rect x="98" y="100" width="24" height="800" fill="#ff4fd8"/>
+      <rect x="878" y="100" width="24" height="800" fill="#ff4fd8"/>
+    </g>
+
+    <!-- Corner plates: the tube runs end in them; the corner piece sits on top -->
+    <g fill="url(#plate)" stroke="#4a4d5e" stroke-width="6">
+      <rect x="8" y="8" width="204" height="204"/>
+      <rect x="788" y="8" width="204" height="204"/>
+      <rect x="8" y="788" width="204" height="204"/>
+      <rect x="788" y="788" width="204" height="204"/>
+    </g>
+
+    <!-- Tubes: a white-hot core in a coloured wall -->
+    <g stroke-width="7">
+      <rect x="196" y="100" width="608" height="20" fill="#f2feff" stroke="#3fe6ff"/>
+      <rect x="196" y="880" width="608" height="20" fill="#f2feff" stroke="#3fe6ff"/>
+      <rect x="100" y="196" width="20" height="608" fill="#fff0fb" stroke="#ff4fd8"/>
+      <rect x="880" y="196" width="20" height="608" fill="#fff0fb" stroke="#ff4fd8"/>
+    </g>
+    <!-- Ferrules where each tube enters a plate -->
+    <g fill="#3a3c4a" stroke="#d6d8e3" stroke-width="5">
+      <rect x="190" y="86" width="26" height="48"/><rect x="784" y="86" width="26" height="48"/>
+      <rect x="190" y="866" width="26" height="48"/><rect x="784" y="866" width="26" height="48"/>
+      <rect x="86" y="190" width="48" height="26"/><rect x="86" y="784" width="48" height="26"/>
+      <rect x="866" y="190" width="48" height="26"/><rect x="866" y="784" width="48" height="26"/>
+    </g>
+  </g>
+</svg>

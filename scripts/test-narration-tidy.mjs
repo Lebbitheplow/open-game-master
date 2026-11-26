@@ -10,7 +10,9 @@ import {
   repeatedClosing,
   repeatsNarration,
   tableNarrationParts,
+  withoutLineLabels,
   withoutCombatBookkeeping,
+  withoutEarlierPassages,
   withoutOrphanClosers,
   withoutRepeatedSentences,
   withoutToolTalk,
@@ -139,6 +141,28 @@ check("a reply that is mostly the last turn's narration is a repeat; one shared 
   assert.equal(repeatsNarration(last, ""), false);
 });
 
+// gpt-oss-20b, a live play of 2026-11-24: the label the transcript gives a
+// player's line, at the head of the storyteller's own reply.
+check("a player's line label at the head of a reply or a paragraph goes and the narration under it stays; the story's own brackets stay", () => {
+  const party = ["Avery", "Bram", "Old Pike"];
+  assert.equal(withoutLineLabels("[Avery] You grip your shortsword, but the nearest bandits are still far off.", party), "You grip your shortsword, but the nearest bandits are still far off.");
+  assert.equal(withoutLineLabels("[Bram | turn]\nThe wind shifts, carrying the scent of pine.", party), "The wind shifts, carrying the scent of pine.");
+  assert.equal(withoutLineLabels("The fire pops.\n\n[Old Pike | attempt] He leans in.", party), "The fire pops.\n\nHe leans in.");
+  for (const kept of [
+    "[Softly] \"Come closer,\" the witch says.",
+    "The note is signed [Avery] in a careful hand.",
+    "[Averys] is nobody at this table.",
+    "[roll:0b7a52a2-6c0f-4a53-9d0e-6a8e3a7a1c11]\n\nThe blade bites.",
+    "Two  spaces and no label stay as they came.",
+  ]) {
+    assert.equal(withoutLineLabels(kept, party), kept);
+  }
+  assert.equal(withoutLineLabels("[Avery] You wait.", []), "[Avery] You wait.", "a table with nobody named cuts nothing");
+  // The turn's tidy cuts it with the rest, in or out of a fight.
+  assert.deepEqual(tableNarrationParts(["[Avery] You grip your shortsword.", "[Bram | turn]\n\nThe wind shifts."], [], "english", party), ["You grip your shortsword.", "The wind shifts."]);
+  assert.deepEqual(tableNarrationParts(["[Avery] You grip your shortsword."], [], "english"), ["[Avery] You grip your shortsword."], "as before for a caller that names nobody");
+});
+
 check("a sentence naming a DM tool is the model thinking aloud and goes; tool names that are words stay", () => {
   const leaked =
     'Bram presses forward through the mud. The correct next step is to call move_token for Bram to move somewhere. So we interpret: he intends to close in. The goblin snarls.';
@@ -253,6 +277,28 @@ check("a turn's parts read as the table read them, for finalize and for a reroll
   ];
   assert.deepEqual(tableNarrationParts(parts, [], "english"), ["The hammer hangs from the strap.", "The strap creaks and the door gives way."]);
   assert.deepEqual(tableNarrationParts(["**Round 1:** The goblin snarls."], ["Goblin"], "english"), ["The goblin snarls."]);
+});
+
+// Issues 1104 and 1109: a reply told something new and pasted under it the
+// paragraphs an earlier reply had closed on, once with a name changed.
+check("a paragraph pasted from an earlier passage is cut; what is new, a short line and a turn of nothing else stay", () => {
+  const before = [
+    "The bandit staggers, blood on the snow.\n\nThe silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.\n\nYou stand over the dead sentry, your breath pluming in the cold air. The camp is alert now, but the fog still shrouds the trees.\n\nThe camp is waking up. What do you do?",
+  ];
+  const pasted = "You close the distance in a heartbeat, the snow muffling your steps.\n\nThe silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.\n\nYou stand over the dead bandit, your breath pluming in the cold air. The camp is alert now, but the fog still shrouds the trees.\n\nThe camp is waking up. What do you do?";
+  assert.deepEqual(withoutEarlierPassages([pasted], before), ["You close the distance in a heartbeat, the snow muffling your steps.\n\nThe camp is waking up. What do you do?"]);
+  // One sentence shared with an earlier passage is a callback, not a paste.
+  const callback = "The fog swallows your footsteps again. This time the lookout is facing the fire, his back to you, and the path behind the wagons is clear.";
+  assert.deepEqual(withoutEarlierPassages([callback], ["The fog swallows your footsteps again. A dog barks somewhere in the camp, twice, and is hushed."]), [callback]);
+  // A reply that is nothing but old paragraphs is never emptied: the checks before this send it back.
+  const only = "The silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.\n\nWhat do you do?";
+  assert.deepEqual(withoutEarlierPassages([only], before), [only]);
+  assert.deepEqual(withoutEarlierPassages([pasted], []), [pasted]);
+  // A part cut to nothing goes; the others keep their order.
+  assert.deepEqual(
+    withoutEarlierPassages(["The silence that follows is heavy, broken only by the crackle of the distant fire. From the tents, voices call out, confused and wary.", "A horn sounds from the stockade, long and low, and every head in the camp turns toward it."], before),
+    ["A horn sounds from the stockade, long and low, and every head in the camp turns toward it."],
+  );
 });
 
 console.log(`narration tidy: ${passed} checks passed`);

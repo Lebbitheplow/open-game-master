@@ -45,6 +45,7 @@ const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getDmTurn, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { rollPhysical } = await import("../src/lib/roll-parts.ts");
 const { entryDice } = await import("../src/lib/dice.ts");
 const { listEventsSince } = await import("../src/lib/events.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
@@ -354,7 +355,7 @@ await test("a healing roll the player lets the server make is not marked as thei
   assert.equal(landed.status, 200, JSON.stringify(landed.json).slice(0, 200));
   const [roll] = rollsSince(mark);
   assert.ok(roll, "the healing roll is not on record");
-  assert.doesNotMatch(roll.detail, /physical/);
+  assert.ok(!rollPhysical(roll));
   assert.equal(announced(world.campaignId, seq, roll.id)?.source, "digital");
 });
 

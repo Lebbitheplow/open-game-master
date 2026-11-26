@@ -1,4 +1,4 @@
-import { isErrorResponse, requireMember } from "@/lib/campaign-api";
+import { forSeat, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getPendingRoll, publicPendingRoll, setPendingAdvantage } from "@/lib/db/dm-turns";
@@ -81,5 +81,5 @@ export async function POST(
     publishPersisted(campaignId, "sheet_updated", { sheet: spent });
   }
   publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(updated) });
-  return Response.json({ pendingRoll: publicPendingRoll(updated) });
+  return Response.json(forSeat(context, { pendingRoll: publicPendingRoll(updated) }));
 }

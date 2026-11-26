@@ -15,7 +15,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { latestRoll } from "@/lib/db/rolls";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
@@ -56,6 +56,7 @@ import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 import { classSaveDc, controlUndead } from "@/lib/dm/command-undead";
 import { openFailedSave, turnFailedSave } from "@/lib/dm/save-turned";
+import { rollAbility, rollResists } from "@/lib/roll-parts";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -585,21 +586,21 @@ function preserveLife(
 // and the new roll stands. On a success, the conditions that failure put on
 // them (those that end on that same save) come off.
 function indomitable(campaign: Campaign, turnId: string, sheet: CharacterSheet): Resolution {
-  const failed = listRecentRolls(campaign.id, 60).find(
+  const failed = latestRoll(
+    campaign.id,
+    60,
     (roll) =>
       roll.characterId === sheet.id &&
       roll.kind === "saving_throw" &&
       roll.dc !== null &&
       roll.total < roll.dc,
   );
-  const ability = failed
-    ? ((/\b(str|dex|con|int|wis|cha)\b/i.exec(failed.detail)?.[1] ?? "").toLowerCase() as Ability | "")
-    : "";
+  const ability = failed ? (rollAbility(failed) ?? "") : "";
   if (!failed || !ability) {
     return { error: `${sheet.name} has no failed saving throw to reroll; Indomitable was not spent.`, refused: "rules" };
   }
   const dc = failed.dc!;
-  const against = /\bvs\.? (.+)$/i.exec(failed.detail)?.[1];
+  const against = rollResists(failed);
   const save = rollFeatureSave(campaign, sheet, ability, dc, "Indomitable reroll", against);
   const bulwark = bulwarkReroll(campaign, sheet, ability, dc, against);
   if (!save.success) {
@@ -634,19 +635,19 @@ function indomitable(campaign: Campaign, turnId: string, sheet: CharacterSheet):
 
 // Bulwark (Banneret 18): with an Intelligence, Wisdom or Charisma save
 // rerolled and the fighter not incapacitated, one ally in range that failed
-// the same save rerolls it too, and an effect that save ends lets go.
+// the same save rerolls it too, and an effect that save ends lets go. Of
+// several such allies it is the one who failed it last.
 function bulwarkReroll(campaign: Campaign, sheet: CharacterSheet, ability: Ability, dc: number, against: string | undefined): { bulwark?: string } {
   const held = activeAuthored(sheet, "indomitable_ally")[0];
   if (!held || !["int", "wis", "cha"].includes(ability) || incapacitatedBy(sheet.conditions)) {
     return {};
   }
   const encounter = getActiveEncounter(campaign.id);
-  const failed = listRecentRolls(campaign.id, 60).find((roll) => {
+  const failed = latestRoll(campaign.id, 60, (roll) => {
     if (roll.characterId === sheet.id || roll.kind !== "saving_throw" || roll.dc !== dc || roll.total >= dc) {
       return false;
     }
-    const rolledAbility = (/\b(str|dex|con|int|wis|cha)\b/i.exec(roll.detail)?.[1] ?? "").toLowerCase();
-    return rolledAbility === ability && (!encounter || withinFeet(encounter.id, sheet.id, roll.characterId ?? "", held.effect.rangeFt));
+    return rollAbility(roll) === ability && (!encounter || withinFeet(encounter.id, sheet.id, roll.characterId ?? "", held.effect.rangeFt));
   });
   const ally = failed?.characterId ? getSheetById(failed.characterId) : null;
   if (!ally || ally.campaignId !== campaign.id) {

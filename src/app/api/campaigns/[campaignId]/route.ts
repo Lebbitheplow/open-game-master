@@ -35,6 +35,7 @@ import { listLiveClockTurns } from "@/lib/db/clock-moves";
 import { listTurnChangeViews } from "@/lib/db/turn-rows";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import { getSheetForUser, listSheets } from "@/lib/db/sheets";
 import { speciesAtTable } from "@/lib/characters/species-rules";
 import { subclassExtrasAtTable } from "@/lib/db/subclass-extras";
@@ -122,6 +123,29 @@ export async function GET(
   // and the party panel offers whoever runs the story the repair for it.
   const libraryRoles = libraryRolesFor(sheets.map((sheet) => sheet.libraryCharacterId ?? ""));
   const messages = listRecentMessages(campaignId, 100);
+  // The table's record: the lists the stream sends an event at a time, in
+  // which a creature the GM keeps off the board is "someone unseen"
+  // (src/lib/table-delivery.ts NAMING_TYPES). They take the same replacement
+  // here, at one place, or a reload names what the live table kept back. A
+  // list that can name a creature in a fight joins them. The rest of the
+  // snapshot does not pass through it: a sheet, a note and the campaign's
+  // own words are a seat's to edit and send back, and must come as written.
+  const record = hiddenFromSeat(campaignId, caps.fullMap, {
+    messages,
+    // Blind and DM-only rolls are redacted or dropped here, not in the UI;
+    // a player's snapshot must never carry a number they are not meant to
+    // have (src/lib/dm/viewer.ts).
+    rolls: listRollsVisibleTo(campaignId, caps, ownedCharacterIds, 20),
+    pendingRolls: listOpenPendingRolls(campaignId).map(publicPendingRoll),
+    // A correction of someone's notes is listed without them, as their sheet
+    // is (src/lib/dm/sheet-view.ts).
+    // The newest fifty changes; the rounds' time-only ticks among them ride
+    // along without taking a change's place (issue #622).
+    auditLog: listRecentAuditChanges(campaignId, 50).map((entry) =>
+      auditEntryForViewer(entry, campaignSeats(campaign), user.id, ownedCharacterIds),
+    ),
+    encounter: activePublicEncounter(campaignId, { enemyNumbers: caps.enemyNumbers }),
+  });
   return Response.json({
     campaign: publicCampaign(campaign),
     // A test fight's workshop (issue 553), for its way back there; null at
@@ -170,19 +194,10 @@ export async function GET(
     feats: Object.fromEntries(tableFeatsFrom(getDatabase(), campaignId)),
     // The character this user is playing when they have several (11.3).
     activeSheetId: getSheetForUser(campaignId, user.id)?.id ?? "",
-    messages,
-    // Blind and DM-only rolls are redacted or dropped here, not in the UI;
-    // a player's snapshot must never carry a number they are not meant to
-    // have (src/lib/dm/viewer.ts).
-    rolls: listRollsVisibleTo(campaignId, caps, ownedCharacterIds, 20),
-    pendingRolls: listOpenPendingRolls(campaignId).map(publicPendingRoll),
-    // A correction of someone's notes is listed without them, as their sheet
-    // is (src/lib/dm/sheet-view.ts).
-    // The newest fifty changes; the rounds' time-only ticks among them ride
-    // along without taking a change's place (issue #622).
-    auditLog: listRecentAuditChanges(campaignId, 50).map((entry) =>
-      auditEntryForViewer(entry, campaignSeats(campaign), user.id, ownedCharacterIds),
-    ),
+    messages: record.messages,
+    rolls: record.rolls,
+    pendingRolls: record.pendingRolls,
+    auditLog: record.auditLog,
     locations: listLocations(campaignId),
     chapters: listChaptersForSnapshot(campaignId),
     notes: listNotesVisibleTo(campaignId, user.id, caps.steersStory),
@@ -194,7 +209,7 @@ export async function GET(
     // the board, a prepared event, a test die, a card. An older host sends
     // none.
     turnChanges: listTurnChangeViews(campaignId),
-    encounter: activePublicEncounter(campaignId, { enemyNumbers: caps.enemyNumbers }),
+    encounter: record.encounter,
     // An owner-only offer (a pact's approach, issue 503) only to its player
     // and the storyteller.
     itemProposals: listOpenItemProposals(campaignId)

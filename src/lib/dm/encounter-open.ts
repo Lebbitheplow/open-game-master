@@ -15,6 +15,11 @@ import { initiativeWaits, rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
+import { getRoll } from "@/lib/db/rolls";
+import { rollDecidesSurprise, rollSkill } from "@/lib/roll-parts";
+
+// What the party's Stealth is filed as when a fight opens on its ambush.
+const AMBUSH_DETAIL = "stealth, lying in wait";
 
 // What happens as a fight opens (SRD 5.1, Combat Step by Step): who is
 // surprised, decided by the hiders' Stealth against each opponent's passive
@@ -84,8 +89,19 @@ export function decideAmbush(
   // The Stealth that stays hidden from every one of them: a held die is
   // added only to a roll it lifts to that (forced-save.ts heldDieWaits).
   const unseen = enemies.length ? Math.max(...enemies.map((enemy) => watchfulPassivePerception(enemy.stats))) : null;
+  const reused: string[] = [];
   for (const stale of sheets) {
     const sheet = getSheetById(stale.id) ?? stale;
+    // The Stealth check the GM already asked of them in this same turn is the
+    // one that decides the surprise: "I sneak up behind him" was rolled once
+    // on the GM's request_roll, and then again here as the fight opened, a
+    // second card for the same creep (issue 1109).
+    const crept = stealthThisTurn(sheet.id);
+    if (crept !== null) {
+      stealth.push(crept);
+      reused.push(sheet.name);
+      continue;
+    }
     const waits = heldDieWaits(sheet, unseen);
     const resolved = resolveRollExpression(
       { kind: "skill_check", skill: "stealth", characterId: sheet.id } as RollArgs,
@@ -98,13 +114,17 @@ export function decideAmbush(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
+    // Filed as the ambush's own, so a call run again does not take it for
+    // the GM's earlier ask (stealthThisTurn below).
+    const parts = { ...resolved.parts, purpose: "surprise" as const };
     // The player's own Stealth (src/lib/dm/character-roll.ts): a seat on
     // physical dice rolls it before the surprise is decided, as it then
     // rolls its initiative.
     const outcome = rollCharacterD20(campaign, sheet, {
       kind: "skill_check",
       expression: resolved.expression,
-      detail: "stealth, lying in wait",
+      detail: AMBUSH_DETAIL,
+      parts,
       dc: unseen,
       settleHeldDie: waits,
     });
@@ -115,7 +135,8 @@ export function decideAmbush(
       characterId: sheet.id,
       requestedBy: "dm",
       kind: "skill_check",
-      detail: "stealth, lying in wait",
+      detail: AMBUSH_DETAIL,
+      parts,
       result: outcome,
     });
     stealth.push(outcome.total);
@@ -126,12 +147,29 @@ export function decideAmbush(
   return {
     surprisedIds: surprised.map((enemy) => enemy.id),
     lines: [
-      `The party's Stealth: ${stealth.join(", ")}.`,
+      `The party's Stealth: ${stealth.join(", ")}${reused.length ? ` (${reused.join(" and ")}'s Stealth check of this turn stands: it was not rolled again)` : ""}.`,
       surprised.length
         ? `${surprised.map((enemy) => enemy.displayName).join(", ")} ${surprised.length === 1 ? "is" : "are"} caught unaware and surprised.`
         : "The enemies spot the ambush in time; nobody is surprised.",
     ],
   };
+}
+
+// The total of the Stealth check this character already made in the GM call's
+// own turn, on a request_roll: the newest one, or null. Read from the turn
+// the running call belongs to (held-call.ts), so a fight a person opens at
+// the console, on no turn, rolls as before. The ambush's own roll is not one
+// of these: a call run again after a player's dice landed finds its own
+// rolls by their place, not here.
+function stealthThisTurn(characterId: string): number | null {
+  const turn = globalThis.__odmHeldCallTurn?.() ?? null;
+  for (const id of [...(turn?.rollIds ?? [])].reverse()) {
+    const roll = getRoll(id);
+    if (roll && roll.characterId === characterId && roll.kind === "skill_check" && rollSkill(roll, ["stealth"]) && !rollDecidesSurprise(roll)) {
+      return roll.total;
+    }
+  }
+  return null;
 }
 
 // Initiative for every character whose dice the server rolls (a player who

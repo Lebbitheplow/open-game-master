@@ -42,10 +42,10 @@ export const ui = {
     "inline-flex items-center gap-1.5 rounded-lg border border-stone-600/60 bg-stone-900/50 px-3 py-1.5 text-sm text-stone-300 shadow-[0_1px_0_rgba(233,230,244,0.05)_inset] hover:border-amber-500/40 hover:bg-stone-800/70 hover:text-amber-100 disabled:opacity-50 motion-press",
   // Small icon action pinned to a card or message. Fades in on hover for mouse
   // users and stays visible on touch (see .reveal-on-hover in globals.css).
-  // The padding keeps the tap target reachable on a phone; add a negative
-  // margin at call sites where the surrounding row is tight.
+  // It keeps its 28 px on screen; on a phone its tap reaches 40 px round it
+  // (.tap-reach, kit.css), so a tight row does not grow.
   iconAction:
-    "reveal-on-hover rounded-md p-1.5 text-stone-600 hover:text-amber-200 focus-visible:text-amber-200 motion-nudge",
+    "reveal-on-hover tap-reach rounded-md p-1.5 text-stone-600 hover:text-amber-200 focus-visible:text-amber-200 motion-nudge",
   // Fields
   input:
     "w-full rounded-lg border border-stone-700/70 bg-stone-950/80 px-3 py-2 text-sm text-stone-100 shadow-[0_2px_6px_rgba(4,2,12,0.45)_inset] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-stone-500 focus:border-amber-400/70 focus:shadow-[0_0_0_3px_rgba(212,171,58,0.12),0_2px_6px_rgba(4,2,12,0.45)_inset] motion-input",

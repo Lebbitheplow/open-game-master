@@ -13,7 +13,7 @@
 // the spell is measured and lands, and goes on to where it walked afterwards
 // (as it does after a weapon's swing, a Sentinel's included).
 import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
-import { getBattleMapForEncounter, getTokenByRef, moveToken } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -98,9 +98,24 @@ export function warCasterChoice(campaign: Campaign, stale: CharacterSheet, varia
   };
 }
 
+// The spell this character's opportunity attack would cast now, or null when
+// the weapon swings: none named, one the feat no longer allows, or their own
+// turn. Asked before the cast where the player has a choice to make first
+// (a mounted pair, opportunity.ts).
+export function opportunitySpellNow(encounter: Encounter, stale: CharacterSheet): string | null {
+  const sheet = getSheetById(stale.id) ?? stale;
+  const named = opportunitySpellOf(sheet);
+  if (!named || ownTurnOf(encounter, sheet.id)) {
+    return null;
+  }
+  const { facts, mech, problem } = eligible(sheet, named);
+  return facts && mech && !problem ? facts.name : null;
+}
+
 const slotsOf = (sheet: CharacterSheet | null) => JSON.stringify([sheet?.spellcasting?.slots ?? null, sheet?.spellcasting?.pact ?? null, sheet?.resources ?? null]);
 
-// The cast at the creature that provoked, or null when the weapon swings
+// The cast at the creature that provoked (`enemy`: of a mounted pair, the one
+// the player chose), or null when the weapon swings
 // instead: no spell named, one this casting cannot be (no slot left, out of
 // range, a silence), or the caster's own turn (the cast doors price a turn's
 // action there). `at` is the square the creature stood on as it left the
@@ -148,7 +163,9 @@ export function warCasterOpportunity(input: {
   try {
     result = input.turn ? cast(input.turn) : withOpportunityTurn(campaign.id, cast);
   } finally {
-    const live = map && walkedTo ? getTokenByRef(map.id, enemy.id) : null;
+    // By the token's own id: a rider the spell dropped has handed the pair's
+    // token to its mount (enemy-riders.ts partPair).
+    const live = map && walkedTo && token ? listTokens(map.id).find((entry) => entry.id === token.id) : null;
     if (live && walkedTo) {
       moveToken(live.id, walkedTo.x, walkedTo.y, walkedTo.moved);
     }

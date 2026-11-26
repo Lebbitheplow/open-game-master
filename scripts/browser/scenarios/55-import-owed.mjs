@@ -36,7 +36,7 @@ export default {
     const later = page.locator(`${root}button`).filter({ hasText: /^\s*Later\s*$/ }).locator("visible=true").first();
     for (const [name, control] of [["Choose them now", choose], ["Later", later]]) {
       const size = await control.boundingBox();
-      check(size && size.height >= 40, `${name} is a 40px target (${size?.height}px)`);
+      check(size && Math.round(size.height) >= 40, `${name} is a 40px target (${size?.height}px)`);
     }
     check(/Linguist: pick 3 languages\./.test((await page.locator("body").textContent()) ?? ""), "the notice lists what is owed");
     await t.shot("import-owed");

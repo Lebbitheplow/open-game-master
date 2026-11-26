@@ -1016,7 +1016,7 @@ function HandInner({
                 setTutorialAsked(true);
               }}
               aria-label={t("How the hand works")}
-              className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
+              className="tap-reach flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
             >
               <CircleHelp className="size-4" />
             </button>
@@ -1031,7 +1031,7 @@ function HandInner({
                 setMoreOpen(true);
               }}
               aria-label={t("Customize your hand")}
-              className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
+              className="tap-reach flex size-9 items-center justify-center rounded-lg text-stone-500 hover:text-amber-200 sm:size-7"
             >
               <SlidersHorizontal className="size-4" />
             </button>

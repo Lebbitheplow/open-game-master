@@ -7,8 +7,9 @@
 // the table ended on the empty-turn line (and why), whether the tool-leak
 // rescue fired and recovered, and whether the narration carries anything a
 // player should never read (tool JSON, tool names, system notes, template
-// tokens, grid coordinates, degenerate text). Checks are soft: a weak turn is
-// recorded, not fatal, so one run measures the whole campaign.
+// tokens, grid coordinates, degenerate text), and whether it reads the dice
+// back as figures (scripts/lib/narration-figures.mjs). Checks are soft: a
+// weak turn is recorded, not fatal, so one run measures the whole campaign.
 //
 // Not part of `npm test`: it needs a running model and takes minutes per run.
 // Unlike smoke-openai.mjs it spends nothing and checks behaviour, not a bill.
@@ -18,11 +19,12 @@
 //   node scripts/smoke-local.mjs --provider local --model gemma4:31b-it-qat [--runs 6]
 //       (Ollama native API at OLLAMA_BASE_URL; LOCAL_TEXT_CONTEXT caps num_ctx)
 //   options: --turns N (how many of the scenario's turns to play, default all)
-//            --scenario ford|town|skirmish|split (the ford's five turns, the
+//            --scenario ford|town|skirmish|split|camp (the ford's five turns, the
 //            town's eight: arrival, an NPC, persuasion, a purchase, stealth, a
 //            fight, attacks; the skirmish's nine, a fight over several rounds;
-//            or the split's five, a party that splits up, acts in two places
-//            at once and comes back together)
+//            the split's five, a party that splits up, acts in two places
+//            at once and comes back together; or the camp's seven, a fight
+//            with two of the people a place holds and a look back at the rest)
 //            --label NAME  --out DIR (writes <label>.json)
 //            --context N (the window the prompt packs against; custom provider)
 //            --key KEY (the custom provider's API key, default OPENAI_COMPAT_API_KEY;
@@ -36,6 +38,7 @@ import path from "node:path";
 import { register } from "node:module";
 import { parseArgs } from "node:util";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
+import { figuresIn } from "./lib/narration-figures.mjs";
 
 const { values: args, positionals } = parseArgs({
   allowPositionals: true,
@@ -64,6 +67,8 @@ const METRICS = [
   ["rescueEmpty", "Tool-leak rescues that came back empty"],
   ["artifacts", "Turns whose narration shows an artifact"],
   ["artifactKinds", "… by kind"],
+  ["figures", "Turns whose story states a game figure"],
+  ["figureKinds", "… by kind"],
   ["softFails", "Scripted expectations missed"],
   ["calls", "Model calls"],
   ["meanSeconds", "Mean seconds per turn"],
@@ -401,7 +406,53 @@ function speakerFor(script, players, campaignId) {
   return current ?? players[script.fallback];
 }
 
+// --scenario camp: a place the story fills with more people than the fight
+// that follows (issue #1094). The party counts a bandit camp, the story says
+// who is there (`told`: a passage the GM has already given, so every run
+// starts from the same five), two of them are drawn off and fought, and the
+// party looks back at the fire. A small model told the camp's captain into a
+// fight whose order held two soldiers, and could not say afterwards who was
+// left. No check reads this for you (a captain named as still at the fire is
+// right, one named as striking is not): read the passages. The fight is the
+// creatures in its order (each turn records them as `foes`), and the camp
+// afterwards holds the captain and the two archers.
+const CAMP_TOLD =
+  "Five bandits hold the camp. A captain in a long grey coat sits nearest the fire, a dagger across his knee. Two soldiers sharpen their blades beside him, and two archers doze against the far log, their bows unstrung.";
+const CAMP = [
+  {
+    label: "scout",
+    who: "avery",
+    text: "From the ridge I count the bandits around the campfire below, and pick out which of them is the leader.",
+  },
+  {
+    label: "lure",
+    who: "bram",
+    told: [CAMP_TOLD],
+    text: "We wait for nightfall. I toss a stone into the brush to draw the two soldiers away from the fire, out of sight of the captain and the archers, and when those two come looking we jump them.",
+    expect: (turn) => (turn.encounter ? null : "no encounter started (the fight was narrated instead)"),
+  },
+  ...["round-1a", "round-1b", "round-2a", "round-2b"].map((label) => ({
+    label,
+    who: "current",
+    fallback: "avery",
+    text: "I close in on the nearest of the two soldiers and attack him, then I end my turn.",
+    expect: FIGHTING("the turn was told in prose with no combat tool"),
+  })),
+  {
+    label: "aftermath",
+    who: "current",
+    fallback: "avery",
+    text: "If either of the two soldiers is still standing I close in and attack him. Otherwise I look back toward the fire: who is still at the camp, and have they noticed anything?",
+  },
+];
+
 const SCENARIOS = {
+  camp: {
+    title: "The Pine Clearing",
+    description: "Bandits have made camp in a pine clearing off the road, and the party means to thin them out.",
+    theme: "low fantasy, a forest road at dusk",
+    turns: CAMP,
+  },
   skirmish: {
     title: "The Goblin Ravine",
     description: "Goblins have been raiding the road, and the party follows them home.",
@@ -535,6 +586,10 @@ async function playRun(runNumber) {
 
   const turns = [];
   for (const script of TURNS.slice(0, MAX_TURNS)) {
+    // What the GM has already told, ahead of the players' lines (the camp).
+    for (const passage of script.told ?? []) {
+      insertCampaignMessage({ campaignId: campaign.id, seq: allocateSeq(campaign.id), authorType: "dm", content: passage, speech: [] });
+    }
     const player = speakerFor(script, players, campaign.id);
     // Lines other players send in the same beat, ahead of this one.
     for (const extra of script.also ?? []) {
@@ -595,6 +650,8 @@ async function playRun(runNumber) {
       tools: calls.flatMap((call) => call.tools),
       rolls: listRecentRolls(campaign.id, 500).length - rollsBefore,
       encounter: Boolean(getActiveEncounter(campaign.id)),
+      // Who the fight holds as the turn ends, by the engine's own list.
+      foes: ((fight) => (fight ? listEnemies(fight.id).map((enemy) => `${enemy.displayName} ${enemy.status}`) : []))(getActiveEncounter(campaign.id)),
       // How many passages answered the beat, where the scene is, who is
       // elsewhere, and what the server told the table about it.
       passages: dm.length,
@@ -609,6 +666,9 @@ async function playRun(runNumber) {
       cause: empty ? emptyCause(calls, rescues) : null,
       rescues: rescues.map((rescue) => (rescue.ok ? "ok" : "empty")),
       artifacts: empty ? [] : artifactsIn(narration, toolNames),
+      // Every passage the turn wrote, not only its last: an enemy's turn
+      // told after the player's is where the report's "rolls a 19" stood.
+      figures: empty ? [] : figuresIn(dm.map((message) => String(message.content).replace(ROLL_MARKER, "")).join("\n\n")),
       narration,
       callLog: calls.map((call) => ({ index: call.index, content: String(call.content).slice(0, 300), tools: call.tools })),
     };
@@ -625,6 +685,7 @@ async function playRun(runNumber) {
       ...Array(turn.emptyRetries).fill("empty-retry"),
       ...turn.rescues.map((rescue) => `leak-rescue:${rescue}`),
       ...turn.artifacts.map((artifact) => `ARTIFACT:${artifact.kind}`),
+      ...turn.figures.map((figure) => `FIGURE:${figure.kind}`),
       turn.softFail ? `MISSED:${turn.softFail}` : "",
     ].filter(Boolean);
     say(`  run ${runNumber} ${turn.label.padEnd(10)} ${String(seconds).padStart(4)}s ${turn.calls} calls  tools: ${turn.tools.join(", ") || "(none)"}${flags.length ? `  [${flags.join("; ")}]` : ""}`);
@@ -681,6 +742,8 @@ const summary = {
   rescueEmpty: turns.flatMap((turn) => turn.rescues).filter((rescue) => rescue === "empty").length,
   artifacts: turns.filter((turn) => turn.artifacts.length).length,
   artifactKinds: tally(turns.flatMap((turn) => turn.artifacts.map((artifact) => artifact.kind))),
+  figures: turns.filter((turn) => turn.figures.length).length,
+  figureKinds: tally(turns.flatMap((turn) => turn.figures.map((figure) => figure.kind))),
   softFails: turns.filter((turn) => turn.softFail).length,
   calls: turns.reduce((sum, turn) => sum + turn.calls, 0),
   meanSeconds: Math.round(turns.reduce((sum, turn) => sum + turn.seconds, 0) / Math.max(1, turns.length)),

@@ -128,6 +128,14 @@
       height: max(100%, 2.5rem);
       translate: -50% -50%;
     }
+    /* A row of small controls a few px apart (the board's Point, Draw and
+       Enlarge, a party card's heading and its options): each reach covers
+       a neighbour's edge, and the one painted later took a tap on the
+       other's face. In the row's own stacking context every reach sits
+       below every control, so a tap on a control's face is that control's,
+       and the reach still lies over the row round them. */
+    .tap-row { isolation: isolate; }
+    .tap-row .tap-reach::after { z-index: -1; }
   }
 }
 /* Compact on a desk, a finger still gets 40 px (as .kit-select-sm): the

@@ -3,8 +3,12 @@
 // src/lib/dm/ai-gate.ts):
 //
 //   - apply_damage, heal, damage_enemy and split_damage take dice the server
-//     rolls, or a total the server rolled this turn that nothing has spent;
-//     a number of the model's own is refused and nothing changes.
+//     rolls, or a total the model asked the server for this turn
+//     (request_roll) that has paid for nothing yet; a number of the model's
+//     own is refused and nothing changes. Which rolls were asked for, and
+//     which have paid, the turn keeps (dm-turns.ts askedRollIds,
+//     paidRollIds; issue #1073): no case here passes because a roll was
+//     stamped afterwards.
 //   - set_condition lays a binding condition only after the save the server
 //     rolls; clear_condition never lifts one a spell or a save keeps.
 //   - The console keeps its free hand.
@@ -24,6 +28,7 @@ const { createDmTurn, getDmTurn, listOpenPendingRolls } = await import("../src/l
 const { getRoll } = await import("../src/lib/db/rolls.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const { getLatestEndedEncounter } = await import("../src/lib/db/encounters.ts");
+const { gateAiCall } = await import("../src/lib/dm/ai-gate.ts");
 
 const hero = world.addHero({ class: "fighter", level: 5, maxHp: 40, abilities: { wis: 10 }, proficiencies: TRAINED });
 
@@ -155,7 +160,7 @@ await test("A total the AI asked for still pays after another call's dice came u
   assert.equal(hp(), 32);
 });
 
-await test("A total spent inside the engine's own call is no blow the character dealt: the fight's card counts nothing for a fall or rubble that hurt them.", async () => {
+await test("A total the engine rolled and used inside its own call is no blow the character dealt: the fight's card counts nothing for a fall or rubble that hurt them.", async () => {
   await stage();
   const call = aiTurn();
   world.dice(2, 3, 4);
@@ -215,9 +220,8 @@ await test("Dice thrown as a waiting roll lands on the AI's turn pay for no bare
     assert.ok(blow, "the hit's damage is not on the turn");
     const before = table.sheet(blade.id).currentHp;
     const call = (name, args) => invokeEngine(table.campaign(), { kind: "ai", turnId: pending.turnId }, { name, args });
-    // The poison's roll is the one the landing stamps. The blow's own was
-    // stamped as it landed (attack-blow.ts landRoll), and is here so the
-    // gate is seen to refuse both.
+    // Neither is a roll the model asked for: the landing threw the poison's
+    // dice and the blow's own, and the gate is seen to refuse both.
     for (const roll of [poison, blow]) {
       const again = await call("apply_damage", { characterId: blade.id, amount: roll.total, type: "poison" });
       assert.equal(again.ok, false, `the ${roll.total} of "${roll.detail}" paid for a bare number`);
@@ -285,8 +289,11 @@ await test("A total the AI rolled for a hazard and then sent for a creature land
   assert.equal(first.ok, true, first.error);
   assert.doesNotMatch(JSON.stringify(first), /already applied/, "the hazard's own total was taken for a blow already landed");
   assert.equal(kit.enemy(enemy.id).currentHp, 95, "the oil's 5 did not land");
-  const [paid] = getDmTurn(turn.id).rollIds.map((id) => getRoll(id));
-  assert.equal(paid.applied, true, "the total is still unspent");
+  const kept = getDmTurn(turn.id);
+  const [paid] = kept.rollIds.map((id) => getRoll(id));
+  assert.deepEqual(kept.askedRollIds, [paid.id], "the roll the AI asked for is not on the turn's asked list");
+  assert.deepEqual(kept.paidRollIds, [paid.id], "the roll that paid is not on the turn's paid list");
+  assert.equal(paid.applied, false, "a total that paid for a number is stamped as landed");
   assert.equal(paid.targetEnemyId, null, "a total that paid for a number reads as a blow the server landed");
   const again = await call("apply_damage", oil);
   assert.equal(again.ok, false, "one roll paid for two hits");
@@ -310,6 +317,83 @@ await test("A total the AI rolled and then sent for a character is no blow that 
   assert.ok(line, "the hero has no line on the card");
   assert.equal(line.taken, 5);
   assert.equal(line.dealt, 0, "the poison's 5 reads as damage the hero dealt");
+});
+
+// The roll's own stamp was written to the database as the gate took the
+// total. The turn's paid list is written the same way, on the stored row at
+// once, and not left to the next save of the turn in hand.
+await test("A payment is on the turn's stored row from the moment the gate takes the total, before the turn in hand is saved: a turn that halts there cannot spend the roll a second time.", async () => {
+  await stage();
+  const turn = createDmTurn(world.campaignId, []);
+  world.dice(5);
+  const rolled = await invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name: "request_roll", args: { characterId: hero.id, kind: "damage", expression: "1d8", reason: "poison" } });
+  world.clearDice();
+  assert.equal(rolled.ok, true, rolled.error);
+  const sheetsById = new Map([[hero.id, world.sheet(hero.id)]]);
+  const sent = JSON.stringify({ characterId: hero.id, amount: 5, type: "poison" });
+  const inHand = getDmTurn(turn.id);
+  assert.equal(inHand.askedRollIds.length, 1, "the roll the AI asked for is not on the turn's asked list");
+  const first = gateAiCall("apply_damage", sent, { campaign: world.campaign(), turn: inHand, sheetsById });
+  assert.ok("args" in first, `the gate refused the total the AI asked for: ${JSON.stringify(first)}`);
+  assert.deepEqual(getDmTurn(turn.id).paidRollIds, inHand.askedRollIds, "the payment is on the turn in hand and not on its stored row");
+  // The turn in hand is lost unsaved. Read again, the turn holds the payment.
+  const again = gateAiCall("apply_damage", sent, { campaign: world.campaign(), turn: getDmTurn(turn.id), sheetsById });
+  assert.ok("result" in again, "the roll paid a second time once the turn in hand was lost");
+});
+
+// A connected agent program's calls are not queued: two can each hold a copy
+// of the turn read before either paid. The payment is taken on the stored
+// row, so the second finds the roll spent.
+await test("Two copies of one turn, each read before the other paid, cannot both spend the same roll: the second is refused.", async () => {
+  await stage();
+  const turn = createDmTurn(world.campaignId, []);
+  world.dice(5);
+  const rolled = await invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name: "request_roll", args: { characterId: hero.id, kind: "damage", expression: "1d8", reason: "poison" } });
+  world.clearDice();
+  assert.equal(rolled.ok, true, rolled.error);
+  const sheetsById = new Map([[hero.id, world.sheet(hero.id)]]);
+  const sent = JSON.stringify({ characterId: hero.id, amount: 5, type: "poison" });
+  const [one, other] = [getDmTurn(turn.id), getDmTurn(turn.id)];
+  const first = gateAiCall("apply_damage", sent, { campaign: world.campaign(), turn: one, sheetsById });
+  assert.ok("args" in first, `the gate refused the total the AI asked for: ${JSON.stringify(first)}`);
+  assert.deepEqual(other.paidRollIds, [], "the second copy was read after the payment, so this case holds nothing");
+  const second = gateAiCall("apply_damage", sent, { campaign: world.campaign(), turn: other, sheetsById });
+  assert.ok("result" in second, "a second copy of the turn spent the roll the first had spent");
+  assert.deepEqual(getDmTurn(turn.id).paidRollIds, one.askedRollIds, "the roll is on the paid list more than once");
+});
+
+// A damage roll that names a creature is landed by the server as it resolves
+// (enemy-blow.ts autoApplyDamageRoll), so nothing of it is left to send and
+// it is not marked as asked for. One that names no creature still standing is
+// answered that it was not applied and told to send the total: that one is
+// marked, and pays.
+await test("A damage roll the AI aimed at a creature is landed by the server and pays for no bare number after; one that named no creature still standing was not landed, and its total pays once.", async () => {
+  const enemy = await stage();
+  const turn = createDmTurn(world.campaignId, []);
+  const call = (name, args) => invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+  world.dice(5);
+  const landed = await call("request_roll", { kind: "damage", expression: "1d8", targetEnemyId: enemy.id, reason: "a falling beam" });
+  world.clearDice();
+  assert.equal(landed.ok, true, landed.error);
+  assert.equal(kit.enemy(enemy.id).currentHp, 95, "the server did not land the roll on the creature it named");
+  assert.deepEqual(getDmTurn(turn.id).askedRollIds, [], "a roll the server landed itself is marked as one left to send");
+  const again = await call("apply_damage", { characterId: hero.id, amount: 5, type: "bludgeoning" });
+  assert.equal(again.ok, false, "the beam's 5 paid for a second blow");
+  assert.match(String(again.error), /rolled by the server, never written/, "refused, but not by the number gate");
+  assert.equal(hp(), 40);
+  world.dice(6);
+  const missed = await call("request_roll", { kind: "damage", expression: "1d8", targetEnemyId: "no-such-creature", reason: "a second beam" });
+  world.clearDice();
+  assert.equal(missed.ok, true, missed.error);
+  assert.match(JSON.stringify(missed), /NOT applied/, "the roll that named nobody was not answered so");
+  assert.equal(getDmTurn(turn.id).askedRollIds.length, 1, "the roll the server could not land is not marked as asked for");
+  const beam = { enemyId: enemy.id, amount: 6, type: "bludgeoning", source: "hazard", reason: "a second beam" };
+  const sent = await call("apply_damage", beam);
+  assert.equal(sent.ok, true, sent.error);
+  assert.equal(kit.enemy(enemy.id).currentHp, 89, "the total the AI was told to send did not land");
+  const twice = await call("apply_damage", beam);
+  assert.equal(twice.ok, false, "one roll paid for two hits");
+  assert.equal(kit.enemy(enemy.id).currentHp, 89);
 });
 
 // The guard reads as it did: the stamp of a blow the server landed. That

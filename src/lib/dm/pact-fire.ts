@@ -34,6 +34,7 @@ import { publicItemProposal } from "@/lib/dm/proposal-view";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-subject";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { revealRolls } from "@/lib/dm/roll-record";
+import { checkParts } from "@/lib/roll-parts";
 import { listPriceCp } from "@/lib/dm/trade-value";
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -224,7 +225,7 @@ export function firePact(campaign: Campaign, turnId: string, stale: Pact, where:
 // passive Perception. Unseen, the party's best thing (or its fullest purse)
 // goes into the thief's pack and leaves with the thief's sheet.
 function theft(campaign: Campaign, turnId: string, thief: CharacterSheet, party: readonly CharacterSheet[]): { exposed: boolean; line: string } {
-  const roll = rollCard(campaign, null, thief.id, "skill_check", `${thief.name}: Sleight of Hand, in the night`, d20Expression(skillMod(thief, "sleight_of_hand")), sheetAttacker(thief));
+  const roll = rollCard(campaign, null, thief.id, "skill_check", `${thief.name}: Sleight of Hand, in the night`, d20Expression(skillMod(thief, "sleight_of_hand")), sheetAttacker(thief), undefined, checkParts({ skill: "sleight_of_hand" }));
   const watch = bestWatcher(campaign, party, "perception");
   if (watch && notices(watch.score, roll.total)) {
     return { exposed: true, line: `${watch.sheet.name} caught ${thief.name} with a hand in the party's packs.` };
@@ -261,10 +262,10 @@ function theft(campaign: Campaign, turnId: string, thief: CharacterSheet, party:
 // Survival. Noticed, the party keeps to the road; not, it loses a day and
 // the pact slips away.
 function falseTrail(campaign: Campaign, guide: CharacterSheet, party: readonly CharacterSheet[]): { exposed: boolean; line: string } {
-  const theirs = rollCard(campaign, null, guide.id, "skill_check", `${guide.name}: Survival, a false trail`, d20Expression(skillMod(guide, "survival")), sheetAttacker(guide));
+  const theirs = rollCard(campaign, null, guide.id, "skill_check", `${guide.name}: Survival, a false trail`, d20Expression(skillMod(guide, "survival")), sheetAttacker(guide), undefined, checkParts({ skill: "survival" }));
   const tracker = party.filter(standing).sort((a, b) => skillMod(b, "survival") - skillMod(a, "survival"))[0];
   if (tracker) {
-    const ours = rollCard(campaign, null, tracker.id, "skill_check", `${tracker.name}: Survival, keeping to the road`, d20Expression(skillMod(tracker, "survival")), sheetAttacker(tracker));
+    const ours = rollCard(campaign, null, tracker.id, "skill_check", `${tracker.name}: Survival, keeping to the road`, d20Expression(skillMod(tracker, "survival")), sheetAttacker(tracker), undefined, checkParts({ skill: "survival" }));
     if (ours.total >= theirs.total) {
       return { exposed: true, line: `${tracker.name} saw ${guide.name} turning the party from the road in time.` };
     }

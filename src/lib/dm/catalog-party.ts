@@ -262,7 +262,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
     name: "remove_item",
     label: "Take an item",
     category: "party",
-    summary: "Stolen or destroyed for good. Something dropped goes through Handle an item, where it stays on the ground; consumables being used through Use an item.",
+    summary: "Given away, stolen or destroyed for good. Something dropped goes through Handle an item, where it stays on the ground; consumables being used through Use an item.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", required: true },
       { name: "item", label: "Item", kind: "text", required: true },

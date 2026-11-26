@@ -56,6 +56,14 @@
 @media (min-width: 640px) {
   .session-hbtn { min-width: 2.25rem; height: 2.25rem; }
 }
+/* A control that carries its name beside its painting (Voice, from md up,
+   where the name shows). These rules are unlayered, so a padding utility on
+   the button loses to the 0.2rem above and the name ran into the border; the
+   room is given here. The left inset matches the painting's inset from the
+   top, so its plate sits in the round of a pill's end. */
+@media (min-width: 768px) {
+  .session-hbtn-wide { padding: 0 0.8rem 0 0.3125rem; }
+}
 .session-hbtn:hover { background: rgba(212, 171, 58, 0.1); color: var(--color-amber-100); }
 .session-hbtn:focus-visible { outline: none; border-color: rgba(212, 171, 58, 0.7); }
 .session-hbtn-lit {
@@ -671,11 +679,19 @@ html[data-effects="low"] .dice-tray-result-fresh[data-crit="nat1"] { animation: 
 }
 .sound-tile:disabled { cursor: default; }
 .sound-tile-missing { opacity: 0.4; filter: grayscale(0.8); }
+/* Two lines, not an ellipsis: a six-across tile is 85 px wide and most
+   scene names ("Night forest", "Open country") are two words, which one line
+   cut to "Night fore…". A tile's content starts at its top and the grid
+   stretches a row to its tallest tile, so the paintings stay level and a row
+   of one-word names stays one line tall. */
 .sound-tile-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: center;
   font-size: 0.68rem;
   line-height: 1.1;
   font-family: var(--font-display);

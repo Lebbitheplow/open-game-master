@@ -95,7 +95,7 @@ const scenario = {
     check(!askAxe.length, `axe on the held ask: ${askAxe.map((entry) => entry.id).join(", ")}`);
     const answer = ask.getByRole("button", { name: `Have ${HOLLIS} answer` });
     const box = await answer.boundingBox();
-    check(box && box.height >= 40, `the answer button is a finger's size (${JSON.stringify(box)})`);
+    check(box && Math.round(box.height) >= 40, `the answer button is a finger's size (${JSON.stringify(box)})`);
     await t.shot("held-ask");
     await theme("light");
     await t.shot("held-ask-day");

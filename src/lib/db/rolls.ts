@@ -1,6 +1,8 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { redactRoll, rollAccessFor, type ViewerCaps } from "@/lib/dm/viewer";
 import type { Advantage, RollResult } from "@/lib/dice";
+import type { RollParts, RollSaid } from "@/lib/roll-parts";
+import { rollSentence } from "@/lib/roll-words";
 
 export type RollKind =
   | "skill_check"
@@ -65,16 +67,22 @@ export type StoredRoll = {
   messageId: string | null;
   // Damage rolls only: the enemy the server itself landed this roll's total
   // on, set together with `applied` (the damage_enemy double-apply guard).
-  // Nothing else is written here: a roll that is only used up names nobody.
   targetEnemyId: string | null;
-  // Spent: the server applied its total, the engine threw it inside a call
-  // of its own or as a roll card landed (markRollSpent), or it paid for what
-  // an AI GM sent (markRollPaid), so it pays for no number sent later.
+  // The server landed this roll's total on `targetEnemyId`: set with it,
+  // and by nothing else (markRollApplied, landRoll). Which rolls an AI GM
+  // asked for, and which of those have paid for a number it sent, are the
+  // turn's own lists (src/lib/db/dm-turns.ts askedRollIds, paidRollIds), not
+  // this. A row stored before those lists may hold a stamp with no target,
+  // from when a roll was stamped spent here; nothing reads one.
   applied: boolean;
   // Attack and damage rolls: who rolled, or the source of a roll nobody made
   // (a fall). Null for other kinds of roll, and for rolls stored before it
   // was recorded.
   attacker: RollAttacker | null;
+  // What a rule reads back from this roll (src/lib/roll-parts.ts, the only
+  // module that reads it or the sentence). Null for a roll stored before its
+  // parts were: that one is read by its words.
+  parts: RollParts | null;
   createdAt: string;
 };
 
@@ -96,6 +104,7 @@ type RollRow = {
   target_enemy_id: string | null;
   applied: number;
   attacker_json: string | null;
+  parts_json: string | null;
   created_at: string;
 };
 
@@ -122,6 +131,7 @@ function mapRoll(row: RollRow): StoredRoll {
     targetEnemyId: row.target_enemy_id ?? null,
     applied: Boolean(row.applied),
     attacker: parseJson<RollAttacker | null>(row.attacker_json ?? "null", null),
+    parts: row.parts_json === null ? null : parseJson<RollParts>(row.parts_json, {}),
     createdAt: row.created_at,
   };
 }
@@ -130,40 +140,12 @@ function mapRoll(row: RollRow): StoredRoll {
 // damage_enemy double-apply guard, the after-fight card, the evidence Ask
 // reads (src/lib/dm/ask.ts) and the swarm's die taken back
 // (authored-spend-more.ts swarmDieBack) read these. Only for a blow the
-// server lands itself as its dice resolve: a roll that is used up some other
-// way is stamped below, with no target.
+// server lands itself as its dice resolve, here and in landRoll below: no
+// other function writes the stamp.
 export function markRollApplied(rollId: string, targetEnemyId: string) {
   getDatabase()
     .prepare(`UPDATE rolls SET applied = 1, target_enemy_id = ? WHERE id = ?`)
     .run(targetEnemyId, rollId);
-}
-
-// Stamp a roll as having paid for what an AI GM sent: the total behind a
-// bare damage or healing number, or the check behind a trap's hold lifted
-// (src/lib/dm/ai-gate.ts). It names no target. The gate used to stamp a
-// paying total with whatever its number was sent for, in the column that
-// says where the server landed a blow. Sent for a creature by its id, the
-// total then read to the damage_enemy guard as a blow already landed there,
-// and the hazard it was rolled for did nothing. And whatever it was sent
-// for, the after-fight card counted it as damage dealt by the character the
-// roll was made for: poison a hero took read as damage that hero dealt.
-export function markRollPaid(rollId: string) {
-  getDatabase().prepare(`UPDATE rolls SET applied = 1 WHERE id = ?`).run(rollId);
-}
-
-// Stamp a damage or custom roll the engine threw and used inside one of its
-// own calls (a spell's damage, a hazard's, the dice a damage or healing tool
-// was sent) as spent, so its total never pays for a number an AI GM sends
-// later (src/lib/dm/ai-gate.ts number, src/lib/dm/held-call.ts runHeld). The
-// dice thrown as a roll card lands outside any call are stamped the same way
-// (src/lib/dm/pending-roll-land.ts), and so are the dice entered for a held
-// call that is refused once they land (held-call.ts runHeldAgain). It
-// names no target: what the roll landed on is the call's own business, and
-// the damage_enemy guard reads only a stamp that names its enemy.
-export function markRollSpent(rollId: string) {
-  getDatabase()
-    .prepare(`UPDATE rolls SET applied = 1 WHERE id = ? AND applied = 0 AND roll_kind IN ('damage', 'custom')`)
-    .run(rollId);
 }
 
 // Lands a damage roll with its stamp already on. The blow that ends a fight
@@ -184,13 +166,18 @@ export type RollInsert = {
   campaignId: string;
   characterId?: string | null;
   requestedBy: "dm" | "player";
-  detail?: string;
   advantage?: Advantage;
   dc?: number | null;
   result: RollResult;
   visibility?: RollVisibility;
   messageId?: string | null;
-} & (
+  // `detail`, the sentence the roll's site wrote, or `parts` that make its
+  // words (src/lib/roll-words.ts): one of the two, always. `parts` is also
+  // what a rule may read back from this roll: said here, as a field, and
+  // never left for a reader to find in `detail` (src/lib/roll-parts.ts).
+  // Null only for the dice of a roll card dealt before cards kept their
+  // parts (dm-turns.ts PendingRoll): that roll is stored without them.
+} & RollSaid & (
   | { kind: "attack" | "damage"; attacker: RollAttacker }
   | { kind: Exclude<RollKind, "attack" | "damage">; attacker?: RollAttacker | null }
 );
@@ -206,9 +193,9 @@ export function insertRoll(input: RollInsert): StoredRoll {
         INSERT INTO rolls (
           id, campaign_id, character_id, requested_by, roll_kind, detail,
           expression, advantage, dc, total, success, breakdown_json,
-          visibility, message_id, attacker_json, created_at
+          visibility, message_id, attacker_json, parts_json, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     )
     .run(
@@ -217,7 +204,7 @@ export function insertRoll(input: RollInsert): StoredRoll {
       input.characterId ?? null,
       input.requestedBy,
       input.kind,
-      input.detail ?? "",
+      rollSentence(input),
       input.result.expression,
       input.advantage ?? "none",
       input.dc ?? null,
@@ -227,6 +214,9 @@ export function insertRoll(input: RollInsert): StoredRoll {
       input.visibility ?? "public",
       input.messageId ?? null,
       input.attacker ? JSON.stringify(input.attacker) : null,
+      // A roll stored from now on has its parts, '{}' where it names none,
+      // so it is read by its fields and never by its words.
+      input.parts === null ? null : JSON.stringify(input.parts ?? {}),
       nowIso(),
     );
   // A held call keeps which roll its decided dice became (held-call.ts).
@@ -259,14 +249,22 @@ export function firstStoredAfter(rollId: string, among: readonly string[]): stri
   return among.find((id) => later.has(id)) ?? null;
 }
 
-// The label of a character's own latest attack roll ("Longbow vs Goblin",
-// src/lib/roll-labels.ts rollAgainst), or null: what a fight's guess at the
-// weapon in hand reads (src/lib/dm/held-default.ts).
-export function lastAttackDetail(campaignId: string, characterId: string): string | null {
+// A character's own latest attack roll, or null: what a fight's guess at the
+// weapon in hand reads (src/lib/dm/held-default.ts), through the roll's
+// parts (src/lib/roll-parts.ts rollWeaponRow). Their own by who made it:
+// `character_id` is also the target of a creature's attack and the owner of
+// a pet's, and the latest of those named no weapon of theirs, so the guess
+// forgot the one they had swung. A roll stored before rolls said who made
+// them is taken as theirs, as it was.
+export function lastAttackRoll(campaignId: string, characterId: string): StoredRoll | null {
   const row = getDatabase()
-    .prepare(`SELECT detail FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack' ORDER BY created_at DESC, rowid DESC LIMIT 1`)
-    .get(campaignId, characterId) as { detail: string } | undefined;
-  return row?.detail || null;
+    .prepare(
+      `SELECT * FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack'
+         AND (attacker_json IS NULL OR (json_extract(attacker_json, '$.kind') = 'sheet' AND json_extract(attacker_json, '$.id') = character_id))
+       ORDER BY created_at DESC, rowid DESC LIMIT 1`,
+    )
+    .get(campaignId, characterId) as RollRow | undefined;
+  return row ? mapRoll(row) : null;
 }
 
 // Whether a creature has made an attack roll at this character. An enemy's
@@ -299,6 +297,13 @@ export function listRecentRolls(campaignId: string, limit = 20): StoredRoll[] {
     )
     .all(campaignId, limit) as RollRow[];
   return rows.map(mapRoll);
+}
+
+// The latest of a campaign's recent rolls that fits, or null. The list above
+// comes oldest first, so its first match is the oldest: a rule that answers
+// "the save last failed" or "their last check" asks here.
+export function latestRoll(campaignId: string, among: number, fits: (roll: StoredRoll) => boolean): StoredRoll | null {
+  return listRecentRolls(campaignId, among).findLast(fits) ?? null;
 }
 
 // The recent rolls one seat may see. A hidden roll is dropped outright and a
