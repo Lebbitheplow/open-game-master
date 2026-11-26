@@ -597,8 +597,7 @@ export function resolvePcOpportunityWalk(
   // The cards of each swing's line, by the line's place in `notes`.
   const cards = new Map<number, string[]>();
   // The walker's size: an ogre leaves a reach when its last square does.
-  const walkerSize = enemyFootprint(getFoe(enemyId));
-  const moverFootprint: MoverSpace = spaces ?? walkerSize;
+  const moverFootprint: MoverSpace = spaces ?? enemyFootprint(getFoe(enemyId));
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
   // Whether the walk can go no further: dropped, or its speed at 0.
@@ -806,7 +805,7 @@ export function resolvePcOpportunityWalk(
   // strike it as it goes (opportunity-sides.ts posts its own lines), over
   // the squares it walked.
   if (moverKind === "enemy" && !disengaged) {
-    notes.push(...enemiesStrikeWalker(campaign.id, enemyId, Number.isFinite(stopStep) ? steps.slice(0, stopStep + 1) : steps, walkerSize));
+    notes.push(...enemiesStrikeWalker(campaign.id, enemyId, Number.isFinite(stopStep) ? steps.slice(0, stopStep + 1) : steps, moverFootprint));
   }
   return { notes, ...(stoppedAt ? { stoppedAt } : {}) };
 }

@@ -22,7 +22,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { listSheets } from "@/lib/db/sheets";
-import { enemyFootprint, type Footprint } from "@/lib/battlemap/footprint";
+import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -36,7 +36,7 @@ import { landCreatureBlow } from "@/lib/dm/enemy-blow";
 import { blowByType, sizedAttack } from "@/lib/dm/enemy-hit";
 import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
-import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
+import { leavesReachAt, type MoverSpace } from "@/lib/dm/opportunity-reach-logic";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { enemyOpportunityRiders, strikeCards, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
@@ -60,8 +60,10 @@ function unseenByReactor(encounterId: string, reactor: EncounterEnemy, walker: E
 }
 
 // The enemies of the other side whose reach the walker (an enemy row) leaves
-// strike it; returns the lines it posted.
-export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps: XY[], walkerFootprint: Footprint): string[] {
+// strike it; returns the lines it posted. `walkerFootprint` is a size for
+// each step when the walker changes size on the way (a rider getting on or
+// off a Large mount, enemy-mounting.ts), as the characters' swings read it.
+export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps: XY[], walkerFootprint: MoverSpace): string[] {
   const campaign = getCampaignById(campaignId);
   const encounter = getActiveEncounter(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;

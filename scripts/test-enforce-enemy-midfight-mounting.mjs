@@ -638,6 +638,23 @@ await test("Ruling 6: getting down out of a hero's reach draws that hero's oppor
   assert.ok(world.encounter().reactionsUsed.includes(hero.id));
 });
 
+await test("Ruling 6: a creature fighting for the party measures the pair's whole space too: one beside both a rider and its Large mount makes no swing as the rider gets on.", async () => {
+  // A warhorse at (13,4) to (14,5), its rider at (12,5), and a wolf that
+  // fights for the party at (13,6): beside the rider and beside the
+  // warhorse's lower row, two squares from the warhorse's top corner.
+  const { world, rider, mount, rest } = await afoot({ rider: "hobgoblin", mount: "warhorse", riderAt: { x: 12, y: 5 }, mountAt: { x: 13, y: 4 }, extra: ["wolf"] });
+  const [wolf] = rest;
+  await layMap(world, OPEN(), { [rider.id]: { x: 12, y: 5 }, [mount.id]: { x: 13, y: 4 }, [wolf.id]: { x: 13, y: 6 } });
+  setEncounterSides(world.encounter().id, { ...world.encounter().sides, [wolf.id]: "party" });
+  turnOf(world, rider.id);
+  world.dice(2);
+  const up = await mountUp(world, rider, mount);
+  world.clearDice();
+  assert.equal(up.ok, true, up.error);
+  assert.equal(up.result.opportunityAttacks, undefined, `a creature the pair's space still touches swung: ${JSON.stringify(up.result.opportunityAttacks)}`);
+  assert.equal(world.encounter().reactionsUsed.includes(wolf.id), false, "the wolf spent its reaction on a rider that never left its reach");
+});
+
 await test("A rider struck down by the swing as it reaches for its mount never gets on, and the mount keeps its own token.", async () => {
   const { world, rider, mount } = await afoot({ riderAt: { x: 12, y: 4 }, mountAt: { x: 13, y: 4 }, heroAt: { x: 11, y: 4 } });
   patchEnemyHp(rider.id, 1, "alive");
