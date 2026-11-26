@@ -46,10 +46,10 @@ import { speciesSpellsShown } from "@/lib/srd/species-spell-view";
 import { SummonDoor } from "@/app/campaigns/[campaignId]/SummonDoor";
 import { DefensesLine, HitDiceSpend, StateTags } from "@/components/sheet/SheetState";
 import { SheetBetween } from "@/components/sheet/SheetBetween";
-import { acView, conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
+import { acView, conditionDetail, handsFullOf, handsFullWords, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
 import { FeatureChoicePicker, OtherSpeeds } from "@/components/sheet/SheetChoices";
 import { OwedPicks } from "@/components/sheet/OwedPicks";
-import { wearQuestion, type PendingWear } from "@/components/sheet/SheetGearRow";
+import { wearQuestion, type PendingAsk } from "@/components/sheet/SheetGearRow";
 import { SheetPaperdoll } from "@/components/sheet/SheetPaperdoll";
 import { DollDragGhost, useDollDrag } from "@/components/sheet/SheetDollDrag";
 import { dollDropPlace } from "@/components/sheet/paperdoll-logic";
@@ -198,8 +198,9 @@ export function CharacterSheetDialog({
   // it took, already on the clock.
   const [timeNote, setTimeNote] = useState<string | null>(null);
   // Putting on what fills a full place (a second cloak) asks first: the swap,
-  // or for the DM and the lead the SRD's exception (issue 412).
-  const [pendingWear, setPendingWear] = useState<PendingWear | null>(null);
+  // or for the DM and the lead the SRD's exception (issue 412). Full hands
+  // ask which weapon goes back in the pack (issue 1105).
+  const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null);
   const spends = mine || corrects;
   // The usage route's own refusal for a dead character's spend.
   const deadNote = dead && !corrects ? t("{name} is dead and spends nothing.", { name: sheet.name }) : null;
@@ -228,11 +229,17 @@ export function CharacterSheetDialog({
       });
       const data = await response.json().catch(() => null);
       const conflict = data?.wearConflict as WearConflict | undefined;
+      const hands = handsFullOf(data?.handsFull);
       if (!response.ok && conflict?.item) {
         // The server saw a fuller place than this sheet did: ask the same way.
-        setPendingWear({ name: conflict.item, conflict, change: { equipped: true } });
+        setPendingAsk({ name: conflict.item, conflict, change: { equipped: true } });
+      } else if (!response.ok && hands?.swaps.length) {
+        // Both hands are full and making room costs nothing: the route sent
+        // the choices, and the row asks which weapon goes back in the pack.
+        setPendingAsk({ name: hands.item, hands });
       } else if (!response.ok) {
-        setRefusal({ text: typeof data?.error === "string" ? data.error : t("That change was refused."), at });
+        const said = typeof data?.error === "string" ? data.error : t("That change was refused.");
+        setRefusal({ text: hands ? handsFullWords(t, said, sheet.name, hands) : said, at });
       } else if (typeof data?.timePassed === "string" || typeof data?.note === "string") {
         // Out of a fight armor takes minutes to put on or take off, and the
         // route moved the table's clock by them (src/lib/dm/don-doff.ts); a
@@ -258,7 +265,7 @@ export function CharacterSheetDialog({
       const item = carriedRow(name);
       if (!item || !dropPlace(item)) return;
       const question = wearQuestion(item, sheet.equipment, { equipped: true });
-      setPendingWear(question);
+      setPendingAsk(question);
       if (!question) void adjustUsage({ gear: { [item.name]: { equipped: true } } }, "gear");
     },
   });
@@ -656,8 +663,8 @@ export function CharacterSheetDialog({
                     myTurn={myTurn}
                     dead={dead}
                     busy={busy}
-                    pending={pendingWear}
-                    onPending={setPendingWear}
+                    pending={pendingAsk}
+                    onPending={setPendingAsk}
                     onGear={(gear) => void adjustUsage({ gear }, "gear")}
                     drag={dollDrag.drag}
                     canDrag={sheet.equipment.some((item) => dropPlace(item) !== null)}

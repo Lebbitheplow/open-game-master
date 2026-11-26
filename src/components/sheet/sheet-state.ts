@@ -22,6 +22,7 @@ import {
   pcResistances,
 } from "@/lib/dm/condition-logic";
 import { attunementRefusal } from "@/lib/dm/usage-rules";
+import type { HandsFull } from "@/lib/dm/gear-hands";
 import type { CharacterSheet, EquipmentItem, SheetPet } from "@/lib/schemas/sheet";
 import { effectiveAcFor, speedFor } from "@/lib/srd";
 import { UNLIMITED_USES, resourceDef } from "@/lib/srd/class-resources";
@@ -345,6 +346,31 @@ export function isAttunable(item: Pick<EquipmentItem, "name" | "slug" | "srdName
 // Where a weapon is, in the words the Hand's cards, its More sheet, its
 // weapon picker and the sheet's own toggle all use (HandCard.wield).
 export const WIELD_LABEL: Record<"in-hand" | "stowed", string> = { "in-hand": "In hand", stowed: "Packed" };
+
+// The usage route's answer for full hands (src/lib/dm/gear-hands.ts
+// HandsFull), read off a response: null for an older server's answer, which
+// carries none, and for anything that is not its shape.
+export function handsFullOf(value: unknown): HandsFull | null {
+  const told = value as Partial<HandsFull> | null | undefined;
+  const names = (list: unknown): list is string[] => Array.isArray(list) && list.every((name) => typeof name === "string");
+  if (!told || typeof told.item !== "string" || !names(told.holding) || !Array.isArray(told.swaps) || !told.swaps.every(names)) {
+    return null;
+  }
+  return { item: told.item, holding: told.holding, swaps: told.swaps };
+}
+
+// A fight's full-hands refusal in the reader's language. The Hand's card
+// already said it so (src/lib/battlemap/hand-gear.ts handsFullReason) while
+// the sheet showed the route's English to a French reader. Matched exactly,
+// as there: a sentence this has not met keeps the engine's words.
+export function handsFullWords(t: Translator, said: string, who: string, hands: Pick<HandsFull, "item" | "holding">): string {
+  const items = hands.holding.join(" and ");
+  const what = hands.item;
+  if (said === `${who}'s hands are full (${items}), so ${what} cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.`) {
+    return t("{name}'s hands are full ({items}), so {what} cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.", { name: who, items, what });
+  }
+  return said;
+}
 
 // Whether a row is a weapon the hands hold, by the same table the attack
 // reads (a homebrew block, the SRD by name).
