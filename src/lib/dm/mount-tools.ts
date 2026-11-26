@@ -50,6 +50,7 @@ import { independentMountOf, summonedSteed } from "@/lib/dm/mount-link";
 import { leaveFightAsMount, standBesideRider } from "@/lib/dm/summon-store";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { spaceToMount, takeMountSpace } from "@/lib/dm/mount-space";
+import { enemyGetsDown, enemyMountsUp, enemyNamedAsRider } from "@/lib/dm/enemy-mounting";
 
 // The SRD's exotic saddle row, every spelling of it.
 const EXOTIC_SADDLE = matchGear("Saddle, Exotic");
@@ -86,17 +87,17 @@ export const mountTools: ToolDef[] = [
     type: "function",
     function: {
       name: "mount_up",
-      description: `Put a character on a mount: a known one in mount by its listed name (${MOUNTS.map((mount) => mount.name).join(", ")}), or customName. While mounted they move at the mount's speed rather than their own (the board lets them walk that far), and mounting costs half their movement, taken from their own turn's movement in a fight. A mount must be one size larger than its rider.`,
+      description: `Put a character on a mount: a known one in mount by its listed name (${MOUNTS.map((mount) => mount.name).join(", ")}), or customName. Mounted, they move at the mount's speed (the board lets them walk that far); mounting costs half their movement, from their own turn in a fight. A mount is one size larger than its rider.`,
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
-          characterId: { type: "string", description: "Exact characterId from GAME STATE." },
+          characterId: { type: "string", description: "Exact characterId from GAME STATE. A character's or an enemy's id: an enemy rides the enemy mount names." },
           mount: { type: "string", description: "A known mount by its listed name, whatever the table calls it ('cavallo' is 'Riding horse'). Or a creature they called up, by its own name (Find Steed's steed): that creature is then the mount." },
           customName: { type: "string", description: "Only for an animal no list has, by its name, with a speed and a size." },
-          speed: { type: "integer", minimum: 0, maximum: 200, description: "For a custom mount." },
-          size: { type: "string", enum: [...MOUNT_SIZES], description: "For a custom mount." },
-          controlled: { type: "boolean", description: "Default: true, it moves on its rider's turn. False only for a creature they called up that acts as it wishes: it keeps its own turn, which you play, and its move carries the rider." },
+          speed: { type: "integer", minimum: 0, maximum: 200 },
+          size: { type: "string", enum: [...MOUNT_SIZES] },
+          controlled: { type: "boolean", description: "Default: true (an enemy rider: false), it moves on its rider's turn. False only for a creature they called up that acts as it wishes: it keeps its own turn, which you play, and its move carries the rider." },
         },
         required: ["characterId"],
       },
@@ -106,17 +107,19 @@ export const mountTools: ToolDef[] = [
     type: "function",
     function: {
       name: "dismount",
-      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. A mount moved against its will asks their DC ${DISMOUNT_SAVE_DC} DEX save, and they come off, landing prone, only on a failure. The server settles a push, a pull or a forced move_token of the pair by itself, so send nothing for those; cause forced-move is only for a move the board did not make. A rider knocked prone is asked the same save by the server as the call that knocked them down finishes, so send nothing for it; cause rider-prone is only for a rider the table says was knocked prone that no call laid prone (it lays the prone and asks the save once). A mount that goes down (mount-prone) costs their reaction to land standing (prone without one). Do not roll the save or set the condition yourself.`,
+      description: `Take a character off their mount. A voluntary dismount costs half their movement (from their own turn on the board) and needs no roll. A mount moved against its will asks their DC ${DISMOUNT_SAVE_DC} DEX save, and they come off, landing prone, only on a failure. The server settles a push, a pull or a forced move_token of the pair itself, and asks a rider knocked prone the same save as that call finishes: send nothing for those. Cause forced-move is only for a move the board did not make, and rider-prone only for a rider the table says was knocked prone that no call laid prone (it lays the prone and asks the save once). A mount that goes down (mount-prone) costs their reaction to land standing (prone without one). Do not roll the save or set the condition yourself.`,
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
-          characterId: { type: "string", description: "Exact characterId from GAME STATE." },
+          characterId: { type: "string", description: "Exact characterId from GAME STATE. A character's or an enemy's id." },
           cause: {
             type: "string",
             enum: ["voluntary", "forced-move", "mount-prone", "rider-prone"],
             description: "Why they came off. Default: 'voluntary'.",
           },
+          x: { type: "integer", description: "x, y: where an enemy steps down." },
+          y: { type: "integer" },
         },
         required: ["characterId"],
       },
@@ -136,6 +139,8 @@ const mountSchema = z.object({
 const dismountSchema = z.object({
   characterId: z.string(),
   cause: z.enum(["voluntary", "forced-move", "mount-prone", "rider-prone"]).optional(),
+  x: z.coerce.number().int().optional(),
+  y: z.coerce.number().int().optional(),
 });
 
 function tableNote(campaign: Campaign, content: string) {
@@ -160,7 +165,7 @@ export function handleMountUp(
   rawArguments: string,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
-  turn?: Pick<DmTurn, "actor">,
+  turn?: Pick<DmTurn, "id" | "actor">,
 ): ToolResult {
   let args: z.infer<typeof mountSchema>;
   try {
@@ -170,7 +175,9 @@ export function handleMountUp(
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {
-    return unknownSheetRef("characterId", args.characterId, sheets);
+    // An enemy's id: it mounts another enemy of its fight (issue 1091).
+    const foe = enemyNamedAsRider(campaign.id, args.characterId);
+    return foe ? enemyMountsUp(campaign, foe, args, sheets, sheetsById, turn) : unknownSheetRef("characterId", args.characterId, sheets);
   }
   // Bond of Fang and Scale: the bonded drake carries its ranger, by its
   // name (pet-command.ts drakeMount); the listed mounts refused it.
@@ -382,7 +389,9 @@ export function handleDismount(
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {
-    return unknownSheetRef("characterId", args.characterId, sheets);
+    // An enemy's id: it gets down from the enemy it rides (issue 1091).
+    const foe = enemyNamedAsRider(campaign.id, args.characterId);
+    return foe ? enemyGetsDown(campaign, foe, args, turn) : unknownSheetRef("characterId", args.characterId, sheets);
   }
   const current = getMounts(campaign.id)[sheet.id];
   if (!current) {

@@ -60,7 +60,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budget";
 import { suggestEnemies } from "@/lib/bestiary";
 import { carriedIndexes, enemyRequestSchema, groupInitiatives, ledIndexes, pairLine, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
-import { linkPairs, onOwnToken, seatFreedMounts, takingOwnTurn } from "@/lib/dm/enemy-riders";
+import { linkPairs, onOwnToken, seatFreedMounts, takingOwnTurn, unseatLedMounts } from "@/lib/dm/enemy-riders";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
 import { fieldPartyNpcs, partyNpcRows } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
@@ -1883,7 +1883,10 @@ function advancePointer(
   // A controlled mount whose rider came off it has its own place in the
   // order from here on (enemy-riders.ts): made sure of on this copy of the
   // fight, the one this walk saves.
-  if (seatFreedMounts(encounter, { settle: true })) {
+  // One steered from the middle of the fight has given its place up (issue
+  // 1091), made sure of here for the same reason.
+  const unseated = unseatLedMounts(encounter);
+  if (seatFreedMounts(encounter, { settle: true }) || unseated) {
     saveEncounter(encounter);
   }
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));

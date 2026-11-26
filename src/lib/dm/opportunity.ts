@@ -12,13 +12,13 @@ import { sideOf } from "@/lib/dm/combatant";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { enemiesStrikeWalker } from "@/lib/dm/opportunity-sides";
 import { echoTokens } from "@/lib/dm/mt-fb-echo";
-import { entersReachAt, leavesReachAt, movesWithinReachAt } from "@/lib/dm/opportunity-reach-logic";
+import { entersReachAt, leavesReachAt, movesWithinReachAt, type MoverSpace } from "@/lib/dm/opportunity-reach-logic";
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { rollAgainst } from "@/lib/roll-labels";
-import { enemyFootprint } from "@/lib/battlemap/footprint";
+import { enemyFootprint, type Footprint } from "@/lib/battlemap/footprint";
 import { characterFootprint } from "@/lib/dm/board-reach";
 
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
@@ -574,6 +574,9 @@ export function resolvePcOpportunityWalk(
   path?: XY[],
   disengaged = false,
   alsoStrikesDisengaged?: (sheet: CharacterSheet) => boolean,
+  // The walker's space at each step, for a walk it changes size on: a rider
+  // getting on or off its mount (enemy-mounting.ts).
+  spaces?: readonly Footprint[],
 ): { notes: string[]; stoppedAt?: XY } {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -594,7 +597,8 @@ export function resolvePcOpportunityWalk(
   // The cards of each swing's line, by the line's place in `notes`.
   const cards = new Map<number, string[]>();
   // The walker's size: an ogre leaves a reach when its last square does.
-  const moverFootprint = enemyFootprint(getFoe(enemyId));
+  const walkerSize = enemyFootprint(getFoe(enemyId));
+  const moverFootprint: MoverSpace = spaces ?? walkerSize;
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
   // Whether the walk can go no further: dropped, or its speed at 0.
@@ -802,7 +806,7 @@ export function resolvePcOpportunityWalk(
   // strike it as it goes (opportunity-sides.ts posts its own lines), over
   // the squares it walked.
   if (moverKind === "enemy" && !disengaged) {
-    notes.push(...enemiesStrikeWalker(campaign.id, enemyId, Number.isFinite(stopStep) ? steps.slice(0, stopStep + 1) : steps, moverFootprint));
+    notes.push(...enemiesStrikeWalker(campaign.id, enemyId, Number.isFinite(stopStep) ? steps.slice(0, stopStep + 1) : steps, walkerSize));
   }
   return { notes, ...(stoppedAt ? { stoppedAt } : {}) };
 }
