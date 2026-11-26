@@ -62,6 +62,7 @@ import { enemyActedThisRound } from "@/lib/dm/can-act";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { characterHealthWord, characterStageRows, enemyStageRows } from "@/lib/battlemap/view-stage";
 import { ownSquareFacts, targetEdges, targetSight } from "@/lib/battlemap/view-tactics";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps } from "@/lib/dm/zone-rules";
 import { viewZones } from "@/lib/dm/zone-view";
 import { addSilenceChips, movesProne, viewerMoves } from "@/lib/battlemap/view-moves";
@@ -698,7 +699,11 @@ export function buildPlayerMapView(
             flankingRule: getCampaignById(campaignId)?.gameSettings.variantRules.flanking === true,
           })
         : {},
-    ...(sheet && myToken ? { self: ownSquareFacts(campaignId, encounter, sheet) } : {}),
+    // The engine's own words for the viewer's square name whoever stands in
+    // their way ("cannot hide: Bandit sees them clearly"): one the GM keeps
+    // off the board is "someone unseen" there, to a view that does not see
+    // the whole map, as the tokens above leave it out.
+    ...(sheet && myToken ? { self: hiddenFromSeat(campaignId, fullVision, ownSquareFacts(campaignId, encounter, sheet)) } : {}),
     ...(sheet && myToken && encounter.kind === "fight"
       ? { sight: targetSight({ campaignId, encounterId: encounter.id, characterId: sheet.id, enemyIds: tokens.filter((token) => token.kind === "enemy" && (!token.hidden || fullVision)).map((token) => token.refId) }) }
       : {}),

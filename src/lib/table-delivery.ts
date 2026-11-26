@@ -201,7 +201,9 @@ export function tablePayload(type: string, payload: unknown): unknown {
 // The events whose words or entries can name a creature in a fight. The
 // narration's own words are the model's, told "someone unseen" in its game
 // state; its stream (dm_delta, a token at a time) is left out of this.
-const NAMING_TYPES: ReadonlySet<string> = new Set(["roll_result", "sheet_audit", "message_added", "encounter_updated", "fx"]);
+// A roll card waiting on its dice says whom its roll is against, as the
+// roll will: in its words and in its reason.
+const NAMING_TYPES: ReadonlySet<string> = new Set(["roll_result", "roll_pending", "sheet_audit", "message_added", "encounter_updated", "fx"]);
 
 // The creatures of a campaign's fight its table has not seen, by encounter:
 // one whose token the GM hides, kept as it leaves the board (a creature that
@@ -237,6 +239,24 @@ function unseenNames(campaignId: string): string[] {
     ...listSheets(campaignId).map((sheet) => sheet.name),
   ];
   return namesToHide([...names.values()], shown);
+}
+
+// What a seat reads outside the event stream (a page's first load, the
+// routes that read its lists one by one, the board's words for the viewer's
+// own square): the stream's own replacement, for a seat that does not see
+// the whole map. The stream alone used to make it, so a reload showed a
+// player the creature the live table had kept from them. Hand it only what
+// the table reads and never sends back: a text a seat edits (a sheet, a
+// note) would be saved with the replacement in it.
+export function hiddenFromSeat<T>(campaignId: string, fullMap: boolean, value: T): T {
+  if (fullMap) {
+    return value;
+  }
+  const names = unseenNames(campaignId);
+  // Nobody is unseen outside a fight; in one, a row from before it began is
+  // left as written (hidden-names-logic.ts hideNames).
+  const fight = names.length ? getActiveEncounter(campaignId) : null;
+  return fight ? hideNames(value, names, { since: fight.createdAt }) : value;
 }
 
 // The payload as the whole table may hold it, for a campaign: tablePayload,

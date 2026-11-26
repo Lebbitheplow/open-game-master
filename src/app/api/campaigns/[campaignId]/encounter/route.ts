@@ -2,6 +2,7 @@ import { capsFor, isErrorResponse, requireMember, requireStoryAuthority } from "
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
 import { endEncounter, getActiveEncounter, listEnemies, patchEnemyHp } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import { afterTheFight, sayFightOver, settleFightState } from "@/lib/dm/enemy-damage";
 import { getClock } from "@/lib/db/clock";
 import { isKnockedOut } from "@/lib/dm/knockout";
@@ -23,11 +24,15 @@ export async function GET(
   if (isErrorResponse(context)) {
     return context;
   }
-  return Response.json({
-    encounter: activePublicEncounter(campaignId, {
-      enemyNumbers: capsFor(context).enemyNumbers,
+  const caps = capsFor(context);
+  // The whole answer is the fight, which the stream sends with a creature
+  // the GM keeps off the board as "someone unseen" (encounter_updated,
+  // src/lib/table-delivery.ts): the last hit's attacker named it here.
+  return Response.json(
+    hiddenFromSeat(campaignId, caps.fullMap, {
+      encounter: activePublicEncounter(campaignId, { enemyNumbers: caps.enemyNumbers }),
     }),
-  });
+  );
 }
 
 // Lead escape hatch: force-end a wedged encounter. No XP, no outcome

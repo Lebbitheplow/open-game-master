@@ -1,7 +1,8 @@
-import { isErrorResponse, requireMember } from "@/lib/campaign-api";
+import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { listMembers } from "@/lib/db/campaigns";
 import { listMessagesBefore } from "@/lib/db/messages";
 import { listSheets } from "@/lib/db/sheets";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +48,11 @@ export async function GET(
     names[sheet.id] = sheet.name;
   }
   return Response.json({
-    messages,
+    // A creature the GM keeps off the board is "someone unseen" in a page of
+    // the transcript, as it was in each line when the stream sent it
+    // (src/lib/table-delivery.ts hiddenFromSeat). The names below are the
+    // seats' own and are left as they are.
+    messages: hiddenFromSeat(campaignId, capsFor(context).fullMap, messages),
     olderBefore: hasOlder && messages.length ? messages[0].seq : null,
     names,
   });

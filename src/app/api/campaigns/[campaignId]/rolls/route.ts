@@ -3,6 +3,7 @@ import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { listSheets } from "@/lib/db/sheets";
 import { actingSheetFor } from "@/lib/character-seat";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
+import { hiddenFromSeat } from "@/lib/table-delivery";
 import { rollExpression, type Advantage } from "@/lib/dice";
 import { trayExpressionProblem } from "@/lib/dice/tray-rules";
 import { findSkill } from "@/lib/srd";
@@ -53,11 +54,12 @@ export async function GET(
   if (isErrorResponse(context)) {
     return context;
   }
+  const caps = capsFor(context);
   const ownedCharacterIds = listSheets(campaignId)
     .filter((sheet) => sheet.userId === context.user.id)
     .map((sheet) => sheet.id);
   return Response.json({
-    rolls: listRollsVisibleTo(campaignId, capsFor(context), ownedCharacterIds, 20),
+    rolls: hiddenFromSeat(campaignId, caps.fullMap, listRollsVisibleTo(campaignId, caps, ownedCharacterIds, 20)),
   });
 }
 
