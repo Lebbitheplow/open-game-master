@@ -14,18 +14,20 @@ const scenario = {
   name: "enemy-midfight-mounting",
   viewports: ["desktop", "phone"],
   async run(t) {
-    const { page, root, ids, base, viewport } = t;
+    const { page, root, ids, base, viewport, api } = t;
     const bench = ids.bench2.saddle[viewport];
     const tokens = page.locator(`${root}[data-token-id]`).locator("visible=true");
     // The turn order's seats, by their full names (a seat shows a first name).
     const seats = () => page.locator(`${root}.cine-ribbon-seat button`).evaluateAll((nodes) => nodes.map((node) => (node.getAttribute("aria-label") ?? "").replace(/, their turn$/, "")));
-    // The GM's own door, as the console's form sends it.
+    // The GM's own door, as the console's form sends it, through the
+    // signed-in request context: in the app shell the page carries a token,
+    // not the cookie page.request would send.
     const invoke = async (name, args) => {
-      const sent = await page.request.post(`${base}/api/campaigns/${bench.id}/dm/invoke`, { data: { name, args } });
+      const sent = await api.post(`${base}/api/campaigns/${bench.id}/dm/invoke`, { data: { name, args } });
       const body = await sent.json().catch(() => ({}));
       return { status: sent.status(), ok: sent.ok() && body.ok !== false && !body.error, error: String(body.error ?? ""), result: body.result ?? body };
     };
-    const enemies = async () => (await (await page.request.get(`${base}/api/campaigns/${bench.id}`)).json()).encounter?.enemies ?? [];
+    const enemies = async () => (await (await api.get(`${base}/api/campaigns/${bench.id}`)).json()).encounter?.enemies ?? [];
     const ridden = async (riderId) => (await enemies()).find((enemy) => enemy.id === riderId)?.ridesEnemyId ?? null;
     const drawn = (count, label) => eventually(async () => (await tokens.count()) === count, { timeoutMs: 30_000, label });
 
