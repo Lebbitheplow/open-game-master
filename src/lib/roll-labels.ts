@@ -14,11 +14,10 @@
 import type { HazardKind, StoredRoll } from "@/lib/db/rolls";
 import { contentName } from "@/lib/content/names";
 import { textKey } from "@/lib/language/text-logic";
+import type { RollParts } from "@/lib/roll-parts";
+import { cardLine, makesWords, rollWords, type CardLine, type RollTranslator as T } from "@/lib/roll-words";
 
-type Worded = Pick<StoredRoll, "kind" | "detail" | "attacker">;
-
-// The shape of a translator, as the pure sentence builders take it.
-type T = ((key: string, vars?: Record<string, string | number>) => string) & { locale?: "en" | "fr" };
+type Worded = Pick<StoredRoll, "kind" | "detail" | "attacker" | "parts">;
 
 function localizeRollWhat(what: string, locale: "en" | "fr"): string {
   if (locale !== "fr" || !what) return what;
@@ -42,6 +41,50 @@ function localizeDetail(detail: string, locale: "en" | "fr"): string {
   }
   return localizeRollWhat(detail, locale);
 }
+
+// A stored roll's words as a seat reads them (issue #1064). Parts that make
+// the words are read alone, in the reader's language
+// (src/lib/roll-words.ts): a site whose family has moved wrote no sentence.
+// Any other roll, and one stored before its parts, is shown by the sentence
+// its site wrote, with the little of it the reader above can put into
+// French.
+function rollDetailWords(t: T, said: Pick<StoredRoll, "detail"> & { parts?: RollParts | null }, tidy: (words: string) => string = (words) => words.trim()): string {
+  return makesWords(said.parts) ? tidy(rollWords(t, said.parts)) : localizeDetail(tidy(said.detail ?? ""), t.locale ?? "en");
+}
+
+// A roll card waiting on its player's dice, as its two faces read it.
+type Waiting = { kind: string; detail: string; reason: string; parts?: RollParts | null; carry?: { line?: CardLine } | null };
+
+// The card's words: from its parts where they make them, as its roll will
+// read once it lands. A card whose site still writes its sentence shows it
+// exactly as written, as it always has: the reader above is for stored
+// rolls, and a waiting card of a family that has not moved is not its to
+// change.
+export function pendingWords(t: T, pending: Waiting): string {
+  return makesWords(pending.parts) ? rollWords(t, pending.parts) : pending.detail;
+}
+
+// What the card says besides: its reason. Where the parts make the words,
+// a card whose site says a line of its own in fields reads that line in the
+// reader's language (`reason` keeps its English). A card that was given
+// none of its own carries its words again as its reason
+// (src/lib/roll-words.ts cardReason): that copy is the English sentence, so
+// it is not shown under a title that already says the words (`titled`), and
+// on a card with no such title it is the words, in the reader's language.
+export function pendingReason(t: T, pending: Waiting, titled: boolean): string {
+  if (makesWords(pending.parts)) {
+    if (pending.carry?.line) {
+      return cardLine(t, pending.kind, pending.parts, pending.carry.line);
+    }
+    if (pending.reason === pending.detail) {
+      return titled ? "" : rollWords(t, pending.parts);
+    }
+  }
+  return pending.reason;
+}
+
+// A skill's id in a card's words reads as words ("sleight_of_hand").
+const spaced = (words: string) => words.replaceAll("_", " ");
 
 // What a source's roll threw (src/lib/roll-sources.ts): its dice, the type
 // of harm, and a few words in front where they are needed ("30 ft").
@@ -119,16 +162,14 @@ export function rollKindLabel(t: T, kind: string): string {
 // The chronicle card's line: "Goblin · Attack roll (Club vs Aria)".
 export function rollCardLabel(t: T, roll: Worded, sheetName: string | undefined): string {
   const who = shownRoller(t, roll, sheetName);
-  const locale = t.locale ?? "en";
-  const detail = roll.detail ? localizeDetail(roll.detail.replaceAll("_", " "), locale) : "";
+  const detail = rollDetailWords(t, roll, spaced);
   return `${who ? `${who} · ` : ""}${rollKindLabel(t, roll.kind)}${detail ? ` (${detail})` : ""}`;
 }
 
 // Cinematic mode's roll pill, up to the dice: "Goblin · Club vs Aria".
 export function rollToastLead(t: T, roll: Worded & Pick<StoredRoll, "requestedBy">, sheetName: string | undefined): string {
   const who = shownRoller(t, roll, sheetName);
-  const locale = t.locale ?? "en";
-  const what = localizeDetail(roll.detail.trim(), locale) || rollKindLabel(t, roll.kind);
+  const what = rollDetailWords(t, roll) || rollKindLabel(t, roll.kind);
   return `${who ? `${who} · ` : roll.requestedBy === "dm" ? t("The GM · ") : ""}${what}`;
 }
 
@@ -138,8 +179,7 @@ export function rollToastLead(t: T, roll: Worded & Pick<StoredRoll, "requestedBy
 // name.
 export function rollChronicleLead(t: T, roll: Worded, sheetName: string | undefined): string {
   const label = rollKindLabel(t, roll.kind);
-  const locale = t.locale ?? "en";
-  const detail = localizeDetail(roll.detail.trim(), locale);
+  const detail = rollDetailWords(t, roll);
   if (roll.attacker) {
     return `${shownRoller(t, roll, sheetName)} · ${detail || label}`;
   }

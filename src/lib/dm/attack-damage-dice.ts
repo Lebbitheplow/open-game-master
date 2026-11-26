@@ -6,6 +6,7 @@
 import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
 import { rollExpression, type DiceTerm, type RollResult } from "@/lib/dice";
 import type { DamageAsk } from "@/lib/dm/attack-record";
+import type { DiceStep } from "@/lib/roll-words";
 
 // The server's dice for a damage roll, with the feats the hit spent on them:
 // Brutal Attack rolls it twice and keeps the better, Savage Attacker the
@@ -69,13 +70,14 @@ export function damageDiceNote(ask: DamageAsk): string {
 // dice the feat never touched. Empty when no feat changes the dice. An
 // opportunity attack's card asks it too, with no feats spent
 // (opportunity-strike.ts).
-export function damageDiceSteps(ask: Pick<DamageAsk, "rerollBelow" | "empower"> & { feats?: DamageAsk["feats"] }): string {
-  const steps = [
-    ask.rerollBelow ? `reroll any die of ${ask.rerollBelow} or less once (Great Weapon Fighting)` : "",
-    ask.feats?.brutal ? "roll the damage a second time and keep the better total (Brutal Attack)" : "",
-    ask.feats?.savage ? "roll the weapon's dice a second time and keep the better total (Savage Attacker)" : "",
-    ask.feats?.piercer ? "reroll the lowest damage die once and keep the new roll (Piercer)" : "",
-    ask.empower ? `reroll up to ${ask.empower} of the damage dice and keep the new rolls (Empowered Spell)` : "",
-  ].filter(Boolean);
-  return steps.length ? `Before you enter your dice: ${steps.join(", then ")}.` : "";
+// They are said as steps by their ids, and the card's line makes the words
+// from them in the player's language (src/lib/roll-words.ts cardLine).
+export function diceSteps(ask: Pick<DamageAsk, "rerollBelow" | "empower"> & { feats?: DamageAsk["feats"] }): DiceStep[] {
+  return [
+    ...(ask.rerollBelow ? [{ step: "reroll_low", below: ask.rerollBelow } as const] : []),
+    ...(ask.feats?.brutal ? [{ step: "brutal" } as const] : []),
+    ...(ask.feats?.savage ? [{ step: "savage" } as const] : []),
+    ...(ask.feats?.piercer ? [{ step: "piercer" } as const] : []),
+    ...(ask.empower ? [{ step: "empower", dice: ask.empower } as const] : []),
+  ];
 }

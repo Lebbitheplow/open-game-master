@@ -12,7 +12,7 @@ import { CheckDie, CheckFrame, ModifierBreakdown } from "@/app/campaigns/[campai
 import { findSkill } from "@/lib/srd";
 import { heldInspiration } from "@/lib/dm/roll-riders";
 import { INSPIRED_KINDS } from "@/lib/dm/pending-inspiration";
-import { rollKindLabel } from "@/lib/roll-labels";
+import { pendingReason, pendingWords, rollKindLabel } from "@/lib/roll-labels";
 import { useT } from "@/lib/locale";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
@@ -94,7 +94,10 @@ export function PendingRollCard({
   const { faces, rerollNotes, values, complete, fullyAutomatic, diceSummary, submissionDice } = entry;
 
   const character = sheets.find((sheet) => sheet.id === pending.characterId);
-  const detailText = pending.detail.replaceAll("_", " ");
+  // The card's words, as the roll's own card will read once it lands.
+  const detailText = pendingWords(t, pending).replaceAll("_", " ");
+  // The title says the words: a reason that only repeats them is left out.
+  const reason = pendingReason(t, pending, true);
   const label = `${character?.name ?? t("Someone")}: ${rollKindLabel(t, pending.kind)}${
     detailText ? ` (${detailText})` : ""
   }`;
@@ -300,7 +303,7 @@ export function PendingRollCard({
             <Dices className="size-4 shrink-0" style={{ color: "var(--check-vine)" }} />
             <span className="min-w-0">{t("Your roll: {label}", { label })}</span>
           </p>
-          {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
+          {reason ? <p className="check-dim mt-0.5 text-xs">{reason}</p> : null}
           {canInspire ? (
             <button
               type="button"

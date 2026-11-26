@@ -107,9 +107,14 @@ function inHandAfter(lay) {
   return world.sheet(borin.id).equipment.filter((item) => item.equipped).map((item) => item.name);
 }
 const swing = { attacker: { kind: "sheet", id: borin.id, name: "Borin" }, dc: null, result: d20(12) };
+// The weapon as an attack roll's fields say it, beside words of the case's
+// own. The builder's whole parts make the roll's words too (issue #1064,
+// step 2), and the door then stores a sentence that cannot disagree with
+// them: these cases are about a roll whose words say something else.
+const madeWith = (name) => ({ used: attackParts({ name, base: name }, { kind: "enemy", id: "a-goblin", name: "Goblin" }).used });
 
 await test("the weapon taken in hand as a fight begins is the one the last attack roll's fields name, the mace, though its words say the longsword", () => {
-  assert.deepEqual(inHandAfter(() => onRecord(borin, "attack", "Longsword vs Goblin", attackParts({ name: "Mace", base: "Mace" }), swing)), ["Mace"]);
+  assert.deepEqual(inHandAfter(() => onRecord(borin, "attack", "Longsword vs Goblin", madeWith("Mace"), swing)), ["Mace"]);
 });
 
 await test("an attack roll stored before rolls kept their parts puts the weapon its words name in hand, the mace", () => {
@@ -121,7 +126,7 @@ await test("a creature's attack on the character, and their pet's, rolled since,
   const goblin = { attacker: { kind: "enemy", id: "a-goblin", name: "Goblin" }, dc: null, result: d20(9) };
   const hound = { attacker: { kind: "pet", id: borin.id, name: "Hound" }, dc: null, result: d20(11) };
   const held = inHandAfter(() => {
-    onRecord(borin, "attack", "Mace vs Goblin", attackParts({ name: "Mace", base: "Mace" }), swing);
+    onRecord(borin, "attack", "Mace vs Goblin", madeWith("Mace"), swing);
     onRecord(borin, "attack", "Scimitar vs Borin", {}, goblin);
     onRecord(borin, "attack", "Bite vs Goblin", {}, hound);
   });

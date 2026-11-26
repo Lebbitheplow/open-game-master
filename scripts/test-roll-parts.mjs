@@ -28,6 +28,12 @@ function test(name, fn) {
   console.log(`ok: ${name}`);
 }
 
+// What an attack is made with, as its roll's fields say it, beside words of
+// the case's own: the builder's parts make the roll's words too (step 2,
+// scripts/test-roll-words.mjs), and these cases need words that disagree.
+const GOBLIN = { kind: "enemy", id: "a-goblin", name: "Goblin" };
+const madeWith = (attack) => ({ used: attackParts(attack, GOBLIN).used });
+
 // A roll as stored now, and one stored before its parts were.
 const stored = (detail, parts = {}) => ({ detail, parts });
 const before = (detail) => ({ detail, parts: null });
@@ -91,20 +97,28 @@ test("the Stealth an ambush rolls says so in a field, and an old one in its word
 
 test("the weapon of an attack is the carried row its field names, and an old roll's is the one its words open with", () => {
   const carried = [{ name: "Longsword" }, { name: "Longbow +1" }];
-  assert.equal(rollWeaponRow(stored("Longsword vs Goblin", attackParts({ name: "Longbow +1", base: "Longbow" })), carried)?.name, "Longbow +1");
+  assert.equal(rollWeaponRow(stored("Longsword vs Goblin", madeWith({ name: "Longbow +1", base: "Longbow" })), carried)?.name, "Longbow +1");
   assert.equal(rollWeaponRow(stored("Longsword vs Goblin"), carried), null, "a roll with parts was matched by its words");
   // A spell that shares a carried row's name is no weapon in hand.
-  assert.equal(rollWeaponRow(stored("Longsword vs Goblin", attackParts({ name: "Longsword", spell: true })), carried), null);
+  assert.equal(rollWeaponRow(stored("Longsword vs Goblin", madeWith({ name: "Longsword", spell: true })), carried), null);
   // Sold since: the row is no longer carried.
-  assert.equal(rollWeaponRow(stored("Glaive vs Goblin", attackParts({ name: "Glaive", base: "Glaive" })), carried), null);
+  assert.equal(rollWeaponRow(stored("Glaive vs Goblin", madeWith({ name: "Glaive", base: "Glaive" })), carried), null);
   assert.equal(rollWeaponRow(before("Longbow +1 vs Goblin"), carried)?.name, "Longbow +1");
   assert.equal(rollWeaponRow(before("Bite vs Aria"), carried), null);
 });
 
 test("an attack's weapon is stored by the name it is carried under and by the content row it is", () => {
-  assert.deepEqual(attackParts({ name: "Longbow +1", base: "Longbow" }), { used: { kind: "weapon", key: "longbow", name: "Longbow +1" } });
-  assert.deepEqual(attackParts({ name: "unarmed strike" }), { used: { kind: "weapon", name: "unarmed strike" } });
-  assert.deepEqual(attackParts({ name: "Fire Bolt", spell: true }), { used: { kind: "spell", name: "Fire Bolt" } });
+  assert.deepEqual(madeWith({ name: "Longbow +1", base: "Longbow" }), { used: { kind: "weapon", key: "longbow", name: "Longbow +1" } });
+  assert.deepEqual(madeWith({ name: "unarmed strike" }), { used: { kind: "weapon", name: "unarmed strike" } });
+  assert.deepEqual(madeWith({ name: "Fire Bolt", spell: true }), { used: { kind: "spell", name: "Fire Bolt" } });
+  // And by whom it is against, with the mark that these parts make its words.
+  assert.deepEqual(attackParts({ name: "Longbow +1", base: "Longbow" }, GOBLIN, "opportunity"), {
+    used: { kind: "weapon", key: "longbow", name: "Longbow +1" },
+    targets: [GOBLIN],
+    aim: "vs",
+    notes: [{ engine: "opportunity" }],
+    worded: 1,
+  });
 });
 
 test("dice rolled at the table are a field, and an old roll's are the last words of its sentence", () => {

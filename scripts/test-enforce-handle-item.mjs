@@ -532,7 +532,7 @@ await test("A fight's guess takes the weapon the character's own last attack rol
   world.patch(archer.id, { equipment: ARCHER_PACK() });
   // The roll as an attack stores it: the archer's own, with its weapon in
   // its fields, which is what the guess reads (src/lib/roll-parts.ts).
-  insertRoll({ campaignId: world.campaignId, characterId: archer.id, requestedBy: "dm", kind: "attack", detail: "Longbow vs Goblin", attacker: { kind: "sheet", id: archer.id, name: archer.name }, parts: attackParts({ name: "Longbow", base: "Longbow" }), advantage: "none", result: { expression: "1d20+5", total: 17, rolls: [{ sides: 20, value: 12 }], modifier: 5 } });
+  insertRoll({ campaignId: world.campaignId, characterId: archer.id, requestedBy: "dm", kind: "attack", detail: "Longbow vs Goblin", attacker: { kind: "sheet", id: archer.id, name: archer.name }, parts: attackParts({ name: "Longbow", base: "Longbow" }, { kind: "enemy", name: "Goblin" }), advantage: "none", result: { expression: "1d20+5", total: 17, rolls: [{ sides: 20, value: 12 }], modifier: 5 } });
   await kit.fight(1);
   assert.deepEqual(heldNames(archer), ["Leather Armor", "Longbow"]);
   assert.deepEqual(guessFlags(archer), ["Shortsword", "Longbow"]);

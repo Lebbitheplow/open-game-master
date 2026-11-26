@@ -80,7 +80,13 @@
 //     recorded (issue #1064, src/lib/roll-parts.ts): one that names nothing
 //     still has its parts, a roll card keeps them while it waits and hands
 //     them over as its dice land, and a database from before the column
-//     keeps its rolls without them, read by their words.
+//     keeps its rolls without them, read by their words;
+//   - a roll whose parts make its words is handed no sentence (issue #1064,
+//     step 2, src/lib/roll-words.ts): the door stores the one built from
+//     them, the mark for the player's own dice included, and a sentence
+//     handed beside such parts is not the one stored. Parts that say only
+//     what a rule reads back leave the site's sentence as it wrote it. A
+//     roll handed neither is refused, so none is stored with no words.
 //
 // And one thing the door must not widen: the number gate for an AI GM's heal
 // and apply_damage (src/lib/dm/ai-gate.ts) takes a bare number that equals a
@@ -119,7 +125,7 @@ const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const { entryDice, rollExpression } = await import("../src/lib/dice.ts");
 const { isHeldPark, parkHeldCall, registerNamedHeldRunner, runHeld, takeDecided } = await import("../src/lib/dm/held-call.ts");
 const { recordRoll, revealRolls } = await import("../src/lib/dm/roll-record.ts");
-const { checkParts, rollPhysical, rollSkill, saveParts } = await import("../src/lib/roll-parts.ts");
+const { attackParts, checkParts, rollPhysical, rollSkill, saveParts } = await import("../src/lib/roll-parts.ts");
 const { dmRoll, rollCard, secretRoll } = await import("../src/lib/dm/roll-card.ts");
 const { rollCharacterCheck, rollFeatureSave } = await import("../src/lib/dm/contest-roll.ts");
 const { characterSave } = await import("../src/lib/dm/between-io.ts");
@@ -1886,6 +1892,33 @@ await test("a roll says what it is in its fields as it is recorded, and one that
   assert.deepEqual(getRoll(save.id).parts, saveParts("dex"));
   const plain = recordRoll(aRoll({ turnId: turn.id }));
   assert.deepEqual(getRoll(plain.id).parts, {}, "a roll stored now has no parts, so a rule would read it by its words");
+});
+
+await test("a roll whose parts make its words is handed no sentence: the door stores the one built from them, with the mark for the player's own dice, and parts that say only what a rule reads back leave the site's sentence alone", () => {
+  const turn = newTurn();
+  const swing = { turnId: turn.id, kind: "attack", attacker: { kind: "sheet", id: hero.id, name: hero.name }, result: rollExpression("1d20", () => 12) };
+  const parts = attackParts({ name: "Longsword", base: "Longsword" }, { kind: "enemy", id: "a-goblin", name: "Goblin" }, "opportunity");
+  const bare = { campaignId: world.campaignId, characterId: hero.id, requestedBy: "dm", ...swing };
+  const worded = getRoll(recordRoll({ ...bare, parts }).id);
+  assert.equal(worded.detail, "Longsword (opportunity attack) vs Goblin");
+  assert.deepEqual(worded.parts, parts);
+  // A sentence handed beside such parts is not stored: the two cannot disagree.
+  assert.equal(getRoll(recordRoll(aRoll({ ...swing, detail: "Mace vs Ogre", parts })).id).detail, "Longsword (opportunity attack) vs Goblin");
+  // The player's own dice: the field, and the words made from it.
+  const theirs = getRoll(recordRoll({ ...bare, parts, landing: { physical: true, source: "physical" } }).id);
+  assert.equal(theirs.detail, "Longsword (opportunity attack) vs Goblin (physical)");
+  assert.deepEqual(theirs.parts, { ...parts, physical: true });
+  // Neither a sentence nor such parts: refused, and nothing is stored.
+  const count = () => getDatabase().prepare("SELECT COUNT(*) AS n FROM rolls WHERE campaign_id = ?").get(world.campaignId).n;
+  const stored = count();
+  assert.throws(() => recordRoll(bare), /neither/);
+  assert.throws(() => recordRoll({ ...bare, parts: checkParts({ skill: "athletics" }) }), /neither/);
+  assert.throws(() => recordRoll({ ...bare, parts: checkParts({ skill: "athletics" }), landing: { physical: true, source: "physical" } }), /neither/);
+  assert.equal(count(), stored, "a roll with no words was stored");
+  // A site whose family has not moved: its sentence, as it wrote it.
+  const check = getRoll(recordRoll(aRoll({ turnId: turn.id, kind: "skill_check", detail: "Grapple: athletics", parts: checkParts({ skill: "athletics" }) })).id);
+  assert.equal(check.detail, "Grapple: athletics");
+  assert.equal(getRoll(recordRoll(aRoll({ turnId: turn.id, kind: "skill_check", detail: "Grapple: athletics", parts: checkParts({ skill: "athletics" }), landing: { physical: true, source: "physical" } })).id).detail, "Grapple: athletics (physical)");
 });
 
 await test("a roll card keeps what its roll is while it waits and hands it to the door as the dice land, with whose dice they were; a card dealt before cards kept it lands a roll read by its words", async () => {

@@ -1,7 +1,8 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { redactRoll, rollAccessFor, type ViewerCaps } from "@/lib/dm/viewer";
 import type { Advantage, RollResult } from "@/lib/dice";
-import type { RollParts } from "@/lib/roll-parts";
+import type { RollParts, RollSaid } from "@/lib/roll-parts";
+import { rollSentence } from "@/lib/roll-words";
 
 export type RollKind =
   | "skill_check"
@@ -165,18 +166,18 @@ export type RollInsert = {
   campaignId: string;
   characterId?: string | null;
   requestedBy: "dm" | "player";
-  detail?: string;
   advantage?: Advantage;
   dc?: number | null;
   result: RollResult;
   visibility?: RollVisibility;
   messageId?: string | null;
-  // What a rule may read back from this roll: said here, as a field, and
+  // `detail`, the sentence the roll's site wrote, or `parts` that make its
+  // words (src/lib/roll-words.ts): one of the two, always. `parts` is also
+  // what a rule may read back from this roll: said here, as a field, and
   // never left for a reader to find in `detail` (src/lib/roll-parts.ts).
   // Null only for the dice of a roll card dealt before cards kept their
   // parts (dm-turns.ts PendingRoll): that roll is stored without them.
-  parts?: RollParts | null;
-} & (
+} & RollSaid & (
   | { kind: "attack" | "damage"; attacker: RollAttacker }
   | { kind: Exclude<RollKind, "attack" | "damage">; attacker?: RollAttacker | null }
 );
@@ -203,7 +204,7 @@ export function insertRoll(input: RollInsert): StoredRoll {
       input.characterId ?? null,
       input.requestedBy,
       input.kind,
-      input.detail ?? "",
+      rollSentence(input),
       input.result.expression,
       input.advantage ?? "none",
       input.dc ?? null,
