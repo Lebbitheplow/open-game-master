@@ -499,6 +499,27 @@ await test("Ruling 5: the steering mark is cleared when the rider gets down, and
   assert.match(down.result.note, /takes a turn of its own from now on/);
 });
 
+await test("Ruling 5: a steered mount whose rider gets down by choice on its own turn has had its turn this round: it neither acts nor moves again until the next round.", async () => {
+  const { world, hero, rider, mount } = await afoot({ rider: "hobgoblin", mount: "warhorse", first: "rider", heroAt: { x: 22, y: 1 } });
+  turnOf(world, rider.id);
+  assert.equal((await mountUp(world, rider, mount, { controlled: true })).ok, true);
+  saveEncounter({ ...world.encounter(), turnIndex: 0, turnBudget: null });
+  nextTurn(world);
+  turnOf(world, rider.id);
+  // The warhorse carries the pair 35 of its 60 feet, and the rider gets down
+  // before it has taken its action.
+  const ride = await world.invoke("move_token", { token: mount.id, x: 20, y: 4 });
+  assert.equal(ride.ok, true, ride.error);
+  const down = await getDown(world, rider);
+  assert.equal(down.ok, true, down.error);
+  assert.equal(enemyActedThisRound(world.encounter(), mount.id), true, "the warhorse still has a turn of its own this round");
+  const walk = await world.invoke("move_token", { token: mount.id, x: 21, y: 1 });
+  assert.equal(walk.ok, false, "the warhorse walked on after its rider got down");
+  const kick = await world.invoke("enemy_attack", { enemyId: mount.id, targetCharacterId: hero.id });
+  assert.equal(kick.ok, false, "the warhorse attacked after its turn was its rider's");
+  assert.match(down.result.note, /from next round/);
+});
+
 await test("Ruling 5: the steering mark is cleared however the pair comes apart: the rider slain, and the rider pushed out of the saddle.", async () => {
   const slain = await afoot({ first: "rider" });
   turnOf(slain.world, slain.rider.id);

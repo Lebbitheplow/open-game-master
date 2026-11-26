@@ -25,7 +25,8 @@
 // Must not import map-tools, encounter-tools or enemy-damage: they call in.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getBattleMapForEncounter, handTokenTo, insertToken, listTokens } from "@/lib/db/battle-maps";
+import { getBattleMapForEncounter, handTokenTo, insertToken, listTokens, moveToken } from "@/lib/db/battle-maps";
+import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { getEncounter, getEnemy, listEnemies, saveEncounter, setEnemyMount, setEnemySlotOwed, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { enemyActedThisRound, markEnemyActed } from "@/lib/dm/can-act";
 import { spliceIntoOrder } from "@/lib/dm/encounter-logic";
@@ -201,6 +202,26 @@ function freeMount(rider: EncounterEnemy, mount: EncounterEnemy) {
   if (seated || spent) {
     saveEncounter(encounter);
   }
+}
+
+// A steered mount whose rider got down by choice on the rider's own turn:
+// its turn this round was that one (SRD 5.1, Controlling a Mount), so it
+// neither acts nor walks on before the next round. freeMount marks it so only
+// when the rider has acted, and a rider who gets down first has not. Returns
+// true, for the caller's words.
+export function spendLedMountTurn(mount: EncounterEnemy): true {
+  const encounter = getEncounter(mount.encounterId);
+  if (encounter?.orderReady && !enemyActedThisRound(encounter, mount.id)) {
+    markEnemyActed(encounter, mount.id);
+    saveEncounter(encounter);
+  }
+  const map = getBattleMapForEncounter(mount.encounterId);
+  const token = map ? listTokens(map.id).find((entry) => entry.refId === mount.id) : undefined;
+  const rest = token ? enemyMoveBudget(encounter, getEnemy(mount.id) ?? mount, token).tilesLeft : 0;
+  if (token && rest > 0) {
+    moveToken(token.id, token.x, token.y, token.movedThisRound + rest);
+  }
+  return true;
 }
 
 // Gives each freed mount its place in a locked order: its rider's count,

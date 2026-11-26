@@ -6,12 +6,9 @@
 // that has an appropriate anatomy can serve as a mount" (SRD 5.1, Mounting
 // and Dismounting).
 //
-// A pair was made only as a fight opened or reinforcements arrived
-// (enemy-riders.ts), and came apart only when something forced it
-// (enemy-rider-falls.ts): a goblin thrown from its wolf could not get back
-// on, and a hobgoblin could not swing down to hold a doorway. mount_up and
-// dismount now take an enemy's id in characterId (mount-tools.ts), and come
-// here. The rulings on issue 1091:
+// A pair was made only as a fight opened (enemy-riders.ts) and parted only
+// by force (enemy-rider-falls.ts). mount_up and dismount now take an enemy's
+// id in characterId (mount-tools.ts) and come here. The rulings on 1091:
 //
 //   2. enemies mount enemies only: a riderless enemy of the same fight and
 //      side, at least one size larger, within 5 feet of any square it fills,
@@ -50,7 +47,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { pairLine } from "@/lib/dm/encounter-spawn";
 import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
-import { mountOf, mountSizeProblem, partPair, riderOf, unseatLedMounts } from "@/lib/dm/enemy-riders";
+import { mountOf, mountSizeProblem, partPair, riderOf, spendLedMountTurn, unseatLedMounts } from "@/lib/dm/enemy-riders";
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { enemyTurnEntry, forgetEnemyTurns, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
@@ -480,13 +477,16 @@ export function enemyGetsDown(campaign: Campaign, fight: Fight, args: DismountAr
       moveToken(landed.id, spot.x, spot.y, half);
     }
   }
+  // Its turn this round was its rider's, which is running (enemy-riders.ts).
+  const spentTurn = steered && charged && spendLedMountTurn(mount);
   releaseGrapplesOutOfReach(campaign);
   const leashesEnded = afterMoveLeashes(campaign);
   publishEphemeral(campaign.id, "battle_map_updated", {});
   publishEncounter(campaign.id);
   tableNote(campaign, rider, `${rider.displayName} gets down from ${mount.displayName}.`);
   const left = landed && charged ? enemyMoveBudget(getActiveEncounter(campaign.id) ?? liveEncounter, getEnemy(rider.id) ?? after, { ...landed, movedThisRound: half }).tilesLeft * 5 : null;
-  const turnWords = steered ? `takes a turn of its own from now on, on ${rider.displayName}'s place in the order, with all its actions` : "keeps its turn";
+  const ownTurnWords = `takes a turn of its own from now on, on ${rider.displayName}'s place in the order`;
+  const turnWords = !steered ? "keeps its turn" : spentTurn ? `${ownTurnWords}, from next round: its turn this round was ${rider.displayName}'s` : `${ownTurnWords}, with all its actions`;
   return {
     ok: true,
     dismounted: mount.displayName,
