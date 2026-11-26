@@ -246,7 +246,6 @@ function unseenOf(campaignId: string): { names: string[]; ids: ReadonlySet<strin
   return { names: namesToHide([...names.values()], shown), ids: new Set(names.keys()) };
 }
 
-
 // What a seat reads outside the event stream (a page's first load, the
 // routes that read its lists one by one, the board's words for the viewer's
 // own square): the stream's own replacement, for a seat that does not see
