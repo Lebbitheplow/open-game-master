@@ -31,6 +31,7 @@ import { funeralMarchCovers } from "@/lib/dm/genre-cc-a-march";
 import { listSheets } from "@/lib/db/sheets";
 import { footprintDistance, enemyFootprint, footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { healthWord } from "@/lib/battlemap/health-words";
+import { mountVitals } from "@/lib/dm/mount-link";
 import {
   getBattleMapForEncounter,
   getExplored,
@@ -523,6 +524,11 @@ export function buildPlayerMapView(
   ]);
   const tokenConditions: PlayerMapView["tokenConditions"] = {};
   const tokenHealth: PlayerMapView["tokenHealth"] = {};
+  // The mount under each shown rider (issue 1055): its own health word and
+  // conditions, under the same gate as the rider's, since they ride the
+  // rider's token and a token this viewer is not shown is not in the loop.
+  const tokenMounts: NonNullable<PlayerMapView["tokenMounts"]> = {};
+  const riddenBy = getMounts(campaignId);
   const tokenAuras: PlayerMapView["tokenAuras"] = {};
   const tokenFootprint: PlayerMapView["tokenFootprint"] = {};
   const tokenElevation: PlayerMapView["tokenElevation"] = {};
@@ -559,6 +565,11 @@ export function buildPlayerMapView(
       tokenHealth[shown.id] = healthWord(enemy.currentHp, enemy.maxHp, {
         dead: enemy.status === "dead",
       });
+      const under = enemy.ridesEnemyId ? enemiesById.get(enemy.ridesEnemyId) : undefined;
+      if (under && under.status === "alive") {
+        const mountRows = enemyStageRows(under, nameOf, tableT(campaignId));
+        tokenMounts[shown.id] = { refId: under.id, name: under.displayName, health: healthWord(under.currentHp, under.maxHp), ...(mountRows.length ? { conditions: mountRows } : {}) };
+      }
       const footprint = enemyFootprint(enemy);
       if (footprint > 1) {
         tokenFootprint[shown.id] = footprint;
@@ -573,6 +584,18 @@ export function buildPlayerMapView(
         tokenConditions[shown.id] = rows;
       }
       tokenHealth[shown.id] = characterHealthWord(pcSheet);
+      // What the character rides: a steed that is a creature's sheet is read
+      // from that sheet; a mount on record has a health word only when the
+      // record keeps hit points (mountVitals), which a blow to it lowers.
+      const ridden = riddenBy[pcSheet.id];
+      if (ridden) {
+        const steed = ridden.sheetId ? sheetsById.get(ridden.sheetId) : undefined;
+        const steedRows = steed ? characterStageRows(steed, nameOf, tableT(campaignId)) : [];
+        const vitals = steed ? null : mountVitals(ridden);
+        tokenMounts[shown.id] = steed
+          ? { refId: steed.id, name: steed.name, health: characterHealthWord(steed), ...(steedRows.length ? { conditions: steedRows } : {}) }
+          : { ...(ridden.sheetId ? {} : { slug: ridden.ref }), name: ridden.name, ...(vitals ? { health: healthWord(vitals.hp, vitals.maxHp) } : {}) };
+      }
       // A rider is drawn in the mount's space (issue 1055).
       const riding = characterFootprint(pcSheet.id);
       if (riding > 1) {
@@ -677,11 +700,12 @@ export function buildPlayerMapView(
     fullVision,
     labels: labelsFor(map.labels, map.width, { dm: fullVision, explored }),
     drops: dropsOn(campaignId, map.id, map.width, explored, myToken),
-    mounts: Object.fromEntries(Object.entries(getMounts(campaignId)).map(([characterId, mount]) => [characterId, mount.name])),
+    mounts: Object.fromEntries(Object.entries(riddenBy).map(([characterId, mount]) => [characterId, mount.name])),
     spellZones,
     drawings: drawingsFor(map.drawings, { dm: fullVision, round: encounter.round }),
     tokenConditions,
     tokenHealth,
+    tokenMounts,
     tokenAuras,
     tokenFootprint,
     tokenElevation,

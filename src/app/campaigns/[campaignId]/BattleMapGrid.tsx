@@ -508,6 +508,7 @@ export const BattleMapGrid = memo(
               health={view.tokenHealth[token.id]}
               conditions={view.tokenConditions[token.id]}
               elevation={view.tokenElevation[token.id]}
+              mount={view.tokenMounts?.[token.id]?.name}
               isCurrent={isCurrent}
               held={overlay?.selectedTokenId === token.id}
               hp={view.tokenHp?.[token.id]}

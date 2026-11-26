@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, EyeOff, X } from "lucide-react";
 import { litOrderRows, pointerOrderIndex } from "@/lib/battlemap/initiative-rows";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { GameIcon } from "@/components/ui/GameIcon";
@@ -419,6 +419,11 @@ function ConditionRow({ id, label, rounds, note }: { id: string; label: string; 
 // A high-level fight piles buffs on debuffs, so the list comes a page at a
 // time: four on a phone, six from sm up. Hovered, the plate shows the first
 // page and names the rest; pinned, it pages through them.
+//
+// A mounted figure is two creatures on one token (issue 1055): under the
+// rider's name the plate names the mount, with its face and its own health
+// word, and the conditions come in two lists, each under its creature's
+// name, the rider's first, paged as one run.
 const PAGE_NARROW = 4;
 const PAGE_WIDE = 6;
 
@@ -430,6 +435,7 @@ export function TokenPlate({
   face,
   health,
   conditions,
+  mount,
   edge,
   anchor,
   pinned = false,
@@ -442,6 +448,8 @@ export function TokenPlate({
   face: Array<string | null | undefined>;
   health?: HealthWord;
   conditions?: Array<{ id: string; label: string; rounds?: number; note?: string }>;
+  // The mount under the figure, as the view carries it (tokenMounts).
+  mount?: { name: string; face: Array<string | null | undefined>; health?: HealthWord; conditions?: Array<{ id: string; label: string; rounds?: number; note?: string }> };
   edge?: TargetEdge;
   // Where an addon's board view drew the figure (TokenHud.tsx says how).
   anchor?: [number, number, number];
@@ -522,7 +530,9 @@ export function TokenPlate({
   const left = anchor ? anchor[0] * 100 : ((token.x + footprint / 2) / boardWidth) * 100;
   const top = anchor ? anchor[1] * 100 : (token.y / boardHeight) * 100;
   const height = anchor ? (anchor[2] - anchor[1]) * 100 : (footprint / boardHeight) * 100;
-  const all = conditions ?? [];
+  const mountName = mount ? contentName("monsters", mount.name, locale) : "";
+  const own = conditions?.length ?? 0;
+  const all = mount?.conditions ? [...(conditions ?? []), ...mount.conditions] : conditions ?? [];
   const listed = all.length > 0;
   // Three or more conditions stood in one column would run past a phone's
   // screen: on a phone the portrait shrinks to a header beside the name and
@@ -534,6 +544,14 @@ export function TokenPlate({
   const at = Math.min(page, pages - 1);
   const onPage = all.slice(at * size, (at + 1) * size);
   const rest = pinned ? [] : all.slice(size);
+  // Whose each run of rows is: one unnamed list for a figure on foot, and
+  // for a pair the rider's rows, then the mount's, each under its name.
+  const split = Math.max(0, Math.min(onPage.length, own - at * size));
+  const lists = mount
+    ? [{ name: plateName, rows: onPage.slice(0, split), from: 0 }, { name: mountName, rows: onPage.slice(split), from: split }].filter((list) => list.rows.length)
+    : [{ name: "", rows: onPage, from: 0 }];
+  const named = (rows: typeof all) => rows.map((condition) => contentName("conditions", condition.label, locale)).join(", ");
+  const restOwn = Math.max(0, own - size);
   const paged = pinned && pages > 1;
   useEffect(() => {
     pagedRef.current = paged;
@@ -544,7 +562,7 @@ export function TokenPlate({
     <div
       ref={plateRef}
       role={pinned ? "dialog" : "tooltip"}
-      aria-label={pinned ? t("{name}: details", { name: token.name }) : undefined}
+      aria-label={pinned ? (mount ? t("{rider} on {mount}: details", { rider: token.name, mount: mount.name }) : t("{name}: details", { name: token.name })) : undefined}
       tabIndex={pinned ? -1 : undefined}
       data-pinned={pinned ? "true" : undefined}
       className={cn(
@@ -567,8 +585,8 @@ export function TokenPlate({
       ) : null}
       <div
         className={cn(
-          "flex shrink-0 sm:w-[160px] sm:flex-col sm:items-center sm:gap-0",
-          crowded ? "w-full flex-row items-center gap-2" : "w-[124px] flex-col items-center",
+          "flex shrink-0 sm:w-[160px] sm:flex-col sm:flex-nowrap sm:items-center sm:gap-0",
+          crowded ? "w-full flex-row flex-wrap items-center gap-x-2" : "w-[124px] flex-col items-center",
         )}
       >
         {/* The plates are square paintings; a square frame shows all of one. */}
@@ -587,6 +605,18 @@ export function TokenPlate({
           {health ? <HealthWordChip word={health} /> : null}
           {edge && crowded ? <EdgeChips edge={edge} /> : null}
         </span>
+        {mount ? (
+          <span
+            data-plate-mount
+            className="mt-1 flex w-full min-w-0 items-center gap-1.5 border-t border-[rgba(107,99,148,0.4)] pt-1 text-left"
+          >
+            <TokenFace candidates={mount.face} name={mount.name} enemy={token.kind === "enemy"} className="size-8 shrink-0 rounded-full border border-[rgba(227,193,92,0.35)] text-sm" />
+            <span className="flex min-w-0 flex-col items-start">
+              <span data-plate-mount-name className="block max-w-full break-words font-display text-[11px] font-semibold leading-tight">{t("Riding {mount}", { mount: mountName })}</span>
+              {mount.health ? <HealthWordChip word={mount.health} /> : null}
+            </span>
+          </span>
+        ) : null}
         {edge && !crowded ? <EdgeChips edge={edge} /> : null}
       </div>
       {listed ? (
@@ -605,19 +635,28 @@ export function TokenPlate({
               </button>
             </div>
           ) : null}
-          <ul
-            className={cn("min-w-0 gap-1.5", crowded ? "grid w-full grid-cols-1 sm:grid-cols-2 sm:gap-x-3" : "flex flex-col")}
-            aria-label={t("Conditions")}
-          >
-            {onPage.map((condition, index) => (
-              <ConditionRow key={`${condition.id}-${at * size + index}`} {...condition} />
-            ))}
-          </ul>
+          {lists.map((list) => (
+            <Fragment key={list.name}>
+              {list.name ? <p className="text-[10px] font-semibold uppercase tracking-wide text-[#aeaac6]" aria-hidden="true">{list.name}</p> : null}
+              <ul
+                className={cn("min-w-0 gap-1.5", crowded ? "grid w-full grid-cols-1 sm:grid-cols-2 sm:gap-x-3" : "flex flex-col")}
+                aria-label={list.name ? t("{name}: conditions", { name: list.name }) : t("Conditions")}
+              >
+                {list.rows.map((condition, index) => (
+                  <ConditionRow key={`${condition.id}-${at * size + list.from + index}`} {...condition} />
+                ))}
+              </ul>
+            </Fragment>
+          ))}
           {/* Hovered, the rest are named: a click opens the plate to page them. */}
           {rest.length ? (
             <p className="text-[10px] leading-snug text-[#aeaac6]" data-plate-more>
               <span className="font-semibold text-[#ecd287]">{t("+{count} more: ", { count: rest.length })}</span>
-              <span className="capitalize">{rest.map((condition) => contentName("conditions", condition.label, locale)).join(", ")}</span>
+              <span className="capitalize">
+                {mount
+                  ? [[plateName, rest.slice(0, restOwn)] as const, [mountName, rest.slice(restOwn)] as const].filter(([, rows]) => rows.length).map(([name, rows]) => `${name}: ${named(rows)}`).join("; ")
+                  : named(rest)}
+              </span>
             </p>
           ) : null}
         </div>

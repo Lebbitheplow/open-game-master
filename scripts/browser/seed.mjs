@@ -4551,6 +4551,47 @@ const bench2Titles = {};
     const pick = (enemy) => ({ id: enemy.id, name: enemy.displayName });
     bench2.saddle[viewport] = { id: table.id, scout: pick(scout), wolf: pick(wolf), lancer: pick(lancer), horse: pick(horse) };
   }
+  // mounted-pair-plate (152): a table the player runs, the lead a player at
+  // it, so the plate is read as the party reads it. A goblin on a wolf, the
+  // goblin unhurt and the wolf at a third of its hit points and prone; a
+  // goblin on a Large warhorse with five conditions between the two; the
+  // lead's fighter on a warhorse on record; a paladin on the warhorse Find
+  // Steed made, hurt and poisoned. The lead's turn.
+  bench2.pairPlate = {};
+  for (const viewport of ["desktop", "phone"]) {
+    const { caster } = await import("../lib/enforce-spell-kit.mjs");
+    const table = tableFor(`Pair Plate Table (${viewport})`, player, world.owner);
+    const mara = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Mara Voss", class: "fighter", level: 5, maxHp: 44 }));
+    const maren = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Maren Holt", maxHp: 44, ...caster("paladin", "cha", ["Find Steed"], [], 5, { speed: 30 }) }));
+    const cast = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, { name: "cast_buff", args: { characterId: maren.id, spell: "Find Steed", level: 2, variant: "warhorse" } });
+    if (!cast.ok) {
+      throw new Error(`Maren's steed did not come: ${cast.error}`);
+    }
+    const steed = sheets.listSheets(table.id).find((sheet) => sheet.summon?.casterId === maren.id);
+    const { rows, place } = await fightAt(table, player, [{ monster: "goblin", mount: "wolf" }, { monster: "goblin", mount: "warhorse" }]);
+    const pairOn = (slug) => {
+      const mount = named(rows, slug);
+      const rider = rows.find((enemy) => enemy.ridesEnemyId === mount.id) ?? (() => { throw new Error(`no rider on a ${slug}`); })();
+      return { rider: { id: rider.id, name: rider.displayName }, mount: { id: mount.id, name: mount.displayName } };
+    };
+    const [wolf, horse] = [pairOn("wolf"), pairOn("warhorse")];
+    [[mara.id, -5, -2], [maren.id, -5, 2], [steed.id, -4, 2], [wolf.rider.id, 0, -1], [horse.rider.id, 2, 2]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+    for (const [rider, mountName] of [[mara, "Warhorse"], [maren, steed.name]]) {
+      turnOf(table, rider.id);
+      const up = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, { name: "mount_up", args: { characterId: rider.id, mount: mountName } });
+      if (!up.ok) {
+        throw new Error(`${rider.name} did not mount: ${up.error}`);
+      }
+    }
+    const setFoe = (id, hp, conditions) => getDatabase().prepare("UPDATE encounter_enemies SET max_hp = 60, current_hp = ?, conditions_json = ? WHERE id = ?").run(hp, JSON.stringify(conditions), id);
+    setFoe(wolf.rider.id, 60, []);
+    setFoe(wolf.mount.id, 20, ["prone"]);
+    setFoe(horse.rider.id, 40, ["frightened", "poisoned"]);
+    setFoe(horse.mount.id, 10, ["restrained", "blinded", "deafened"]);
+    sheets.patchSheet(steed.id, { currentHp: Math.max(1, Math.floor(steed.maxHp / 3)), conditions: ["poisoned"] });
+    turnOf(table, mara.id);
+    bench2.pairPlate[viewport] = { id: table.id, wolf, horse, mara: mara.name, mount: "Warhorse", maren: maren.name, steed: steed.name };
+  }
 }
 
 // The character creator audit's screens (cc1113, 138-creator-*): what a
