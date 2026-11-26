@@ -117,9 +117,13 @@ const NOOP = () => {};
 const TURN_BUTTON =
   "motion-press min-h-10 rounded-lg border border-[rgba(107,99,148,0.5)] bg-[rgba(13,11,28,0.9)] px-3 py-1.5 text-[#e9e6f4] shadow-elev-1 hover:border-[rgba(212,171,58,0.6)] hover:text-[#f9ecc8] disabled:opacity-50 @md:min-h-0";
 
+// `refId` and `name` only when the token is a mounted pair's and the one
+// the dial is working on is the mount under its rider.
 type Prompt = {
   kind: "damage" | "heal" | "condition";
   tokenId: string;
+  refId?: string;
+  name?: string;
 };
 
 // The plate and the action ring sit on the figure an addon's view drew. The
@@ -255,6 +259,9 @@ export function BattleMapPanel({
   }, [encounter?.enemies]);
   // The pair's token a tap asked about, until one of the two is chosen.
   const [pairAskId, setPairAskId] = useState<string | null>(null);
+  // The GM's dial on a pair's token, its Damage or Condition waiting on the
+  // same choice: the dial used to reach the rider alone.
+  const [dialAsk, setDialAsk] = useState<Prompt | null>(null);
   // An addon's way of drawing the board (AddonBoardView.tsx), when this
   // device chose one: offered for every board, or only on the maps that
   // addon's generator made when it needs their data.
@@ -995,7 +1002,7 @@ export function BattleMapPanel({
   }
 
   // The pair a tap asked about, while a target is still being picked.
-  const pairAskToken = pairAskId && (targeting || handAim?.active) ? tokensById.get(pairAskId) : undefined;
+  const pairAskToken = dialAsk ? tokensById.get(dialAsk.tokenId) : pairAskId && (targeting || handAim?.active) ? tokensById.get(pairAskId) : undefined;
   const pairAskMount = pairAskToken ? mountOfRider.get(pairAskToken.refId) : undefined;
   const pairAsk = pairAskToken && pairAskMount ? { token: pairAskToken, mount: pairAskMount } : null;
 
@@ -1019,6 +1026,7 @@ export function BattleMapPanel({
     const meant = mount && refId === mount.id ? mount : { id: token.refId, name: token.name };
     const asks = Boolean(mount) && refId === undefined;
     setPairAskId(null);
+    setDialAsk(null);
     if (nativeHudSupported && !canDirect && handAim?.active && !handAim.area && (handAim.target === "enemy" || handAim.target === "ally")) {
       if (asks) {
         setPairAskId(tokenId);
@@ -1089,6 +1097,17 @@ export function BattleMapPanel({
   const mySheet = myToken ? sheetsById.get(myToken.refId) : undefined;
   // The turn is a companion's this player commands (src/lib/dm/companion-command.ts).
   const commanding = myTurn && Boolean(mySheet?.isCompanion);
+  // The dial's Damage or Condition: on a mounted pair's token it asks which
+  // of the two first, in the words a player's tap is asked in.
+  const dialOn = (asked: Prompt) => {
+    const token = tokensById.get(asked.tokenId);
+    if (token?.kind === "enemy" && mountOfRider.has(token.refId)) {
+      setDialAsk(asked);
+      setHudTokenId(null);
+      return;
+    }
+    setPrompt(asked);
+  };
   const hudActions: HudAction[] = useMemo(() => {
     if (!hudToken) {
       return [];
@@ -1123,9 +1142,9 @@ export function BattleMapPanel({
           void board({ do: "visibility", tokenId: hudToken.id, hidden });
           setHudTokenId(null);
         },
-        damage: () => setPrompt({ kind: "damage", tokenId: hudToken.id }),
+        damage: () => dialOn({ kind: "damage", tokenId: hudToken.id }),
         heal: () => setPrompt({ kind: "heal", tokenId: hudToken.id }),
-        condition: () => setPrompt({ kind: "condition", tokenId: hudToken.id }),
+        condition: () => dialOn({ kind: "condition", tokenId: hudToken.id }),
         remove: () => {
           void board({ do: "remove", tokenId: hudToken.id });
           setHudTokenId(null);
@@ -1159,7 +1178,7 @@ export function BattleMapPanel({
 
   const closeHud = useCallback(() => {
     setNativeSelection(null); setPlateTokenId(null); setPlatePinned(false);
-    setHudTokenId(null); setTargeting(null); setAimHoverId(null); setTeleporting(null);
+    setHudTokenId(null); setTargeting(null); setAimHoverId(null); setTeleporting(null); setDialAsk(null);
   }, []);
   const hudHint = targeting ? (targeting === "attack" ? t("Tap the enemy you attack") : t("Tap the enemy you cast at"))
     : teleporting === hudToken?.id ? t("Tap the tile it appears on") : undefined;
@@ -1231,7 +1250,7 @@ export function BattleMapPanel({
     panel: nativePanel,
     drawing: nativeBattlefieldActive && drawActive && canDraw ? { kind: drawKind, tone: drawTone } : null,
     tiles: nativeBattlefieldActive ? (areaAim.overlay?.ghost ?? areaAim.overlay?.set)?.cells ?? liveMeasure?.tiles ?? [] : [],
-    prompt: prompt && tokensById.has(prompt.tokenId) ? { title: prompt.kind === "damage" ? t("Damage {name}", { name: tokensById.get(prompt.tokenId)!.name }) : prompt.kind === "heal" ? t("Heal {name}", { name: tokensById.get(prompt.tokenId)!.name }) : t("Condition on {name}", { name: tokensById.get(prompt.tokenId)!.name }), label: prompt.kind === "condition" ? t("Condition") : t("Hit points"), numeric: prompt.kind !== "condition" } : null,
+    prompt: prompt && tokensById.has(prompt.tokenId) ? { title: prompt.kind === "damage" ? t("Damage {name}", { name: prompt.name ?? tokensById.get(prompt.tokenId)!.name }) : prompt.kind === "heal" ? t("Heal {name}", { name: tokensById.get(prompt.tokenId)!.name }) : t("Condition on {name}", { name: prompt.name ?? tokensById.get(prompt.tokenId)!.name }), label: prompt.kind === "condition" ? t("Condition") : t("Hit points"), numeric: prompt.kind !== "condition" } : null,
   };
 
   const promptToken = prompt ? tokensById.get(prompt.tokenId) : undefined;
@@ -1241,7 +1260,8 @@ export function BattleMapPanel({
         return;
       }
       const isEnemy = promptToken.kind === "enemy";
-      const ref = isEnemy ? { enemyId: promptToken.refId } : { characterId: promptToken.refId };
+      // The mount of a pair the dial was asked about, else whoever the token is.
+      const ref = isEnemy ? { enemyId: prompt.refId ?? promptToken.refId } : { characterId: promptToken.refId };
       // One action for a character or an enemy alike (issue #471): the ref
       // says which.
       let applied: boolean;
@@ -1737,7 +1757,15 @@ export function BattleMapPanel({
             { token: pairAsk.token, face: faceOfToken(pairAsk.token), health: view.tokenHealth[pairAsk.token.id], feet: null, refId: pairAsk.token.refId },
             { token: pairAsk.token, face: faceOfRef(pairAsk.mount.id), feet: null, refId: pairAsk.mount.id, name: pairAsk.mount.name },
           ]}
-          onPick={(tokenId, refId) => handleToken(tokenId, true, refId)}
+          onPick={(tokenId, refId) => {
+            if (!dialAsk) {
+              handleToken(tokenId, true, refId);
+              return;
+            }
+            const mount = refId === pairAsk.mount.id ? pairAsk.mount : null;
+            setPrompt({ ...dialAsk, ...(mount ? { refId: mount.id, name: mount.name } : {}) });
+            setDialAsk(null);
+          }}
         />
       ) : targeting ? (
         <TargetChips
@@ -1924,10 +1952,10 @@ export function BattleMapPanel({
         open={Boolean(prompt && promptToken) && !nativeHudActive}
         title={
           prompt?.kind === "damage"
-            ? t("Damage {name}", { name: promptToken?.name ?? "" })
+            ? t("Damage {name}", { name: prompt.name ?? promptToken?.name ?? "" })
             : prompt?.kind === "heal"
               ? t("Heal {name}", { name: promptToken?.name ?? "" })
-              : t("Condition on {name}", { name: promptToken?.name ?? "" })
+              : t("Condition on {name}", { name: prompt?.name ?? promptToken?.name ?? "" })
         }
         label={prompt?.kind === "condition" ? t("Condition") : t("Hit points")}
         placeholder={prompt?.kind === "condition" ? t("prone") : "8"}
