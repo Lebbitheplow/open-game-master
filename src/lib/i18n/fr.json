@@ -7342,7 +7342,7 @@
     "Sky": "Ciel",
     "Yours to invent": "À toi de les inventer",
     "weather table": "table météo",
-    "The Game Master writes the story in this language, and the server reads the story and your messages in it. The app, the rules reference and the rulebook read French. Any language but English needs a multilingual embedding model on the server (EMBEDDING_MODEL in the README).": "Le Maître du jeu écrit l’histoire dans cette langue, et le serveur lit le récit et tes messages dans celle-ci. L’application, la référence des règles et le livre de règles s’affichent en français. Toute langue autre que l’anglais exige un modèle d’embedding multilingue sur le serveur (EMBEDDING_MODEL dans le README).",
+    "The Game Master writes the story in this language, and the server reads the story and your messages in it. The app and the rulebook read French and Spanish; the rules reference reads French. Any language but English needs a multilingual embedding model on the server (EMBEDDING_MODEL in the README).": "Le Maître du jeu écrit l’histoire dans cette langue, et le serveur lit le récit et tes messages dans celle-ci. L’application et le livre de règles s’affichent en français et en espagnol ; la référence des règles, en français. Toute langue autre que l’anglais exige un modèle d’embedding multilingue sur le serveur (EMBEDDING_MODEL dans le README).",
     "The Storyteller": "Le Conteur",
     "Warm, generous, sweeping.": "Chaleureux, généreux, grandiose.",
     "The Referee": "L’Arbitre",
