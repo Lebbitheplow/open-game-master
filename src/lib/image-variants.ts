@@ -12,8 +12,14 @@
 //
 // Every failure is non-fatal: the original is what campaign data stores and
 // what the serve routes fall back to. Jobs run one at a time.
+//
+// The WebP encoder comes in a SIMD build and a plain one. On some CPUs (a
+// Celeron J4125 in a Synology NAS, #1124) the runtime reports SIMD but the
+// SIMD build writes scrambled pixels, so the first job of a run encodes a
+// test picture with it and decodes it again, and the plain build is used
+// wherever that round trip comes back wrong.
 import { existsSync } from "node:fs";
-import { readFile, realpath, stat } from "node:fs/promises";
+import { readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import {
@@ -34,6 +40,20 @@ const WEBP_QUALITY = 82;
 export type VariantResult = {
   written: string[];
   skipped: string[];
+  error?: string;
+};
+
+// Which WebP encoder build this server uses: "simd" where it is available
+// and encodes faithfully, "plain" where the runtime has no SIMD, "broken"
+// where it has SIMD but the SIMD build fails the round trip (the plain build
+// is used, and copies written before this run are not trusted).
+export type WebpEncoder = "simd" | "plain" | "broken";
+
+type WorkerReply = {
+  ok: boolean;
+  written?: string[];
+  skipped?: string[];
+  encoder?: WebpEncoder;
   error?: string;
 };
 
@@ -71,12 +91,72 @@ function requireFrom(bases) {
   throw new Error("the WebP codecs are not installed beside this server");
 }
 
+const load = (dir, file) => import(pathToFileURL(path.join(dir, file)).href);
+const wasm = (dir, file) => new WebAssembly.Module(fs.readFileSync(path.join(dir, file)));
+
+// One encoder build by name, through its own glue: the package's encode.js
+// picks the SIMD build whenever the runtime has SIMD, which is the build
+// that scrambles pictures on some CPUs.
+async function webpEncoder(dir, name, quality) {
+  const glue = await load(dir, "codec/enc/" + name + ".js");
+  const { defaultOptions } = await load(dir, "meta.js");
+  const module = wasm(dir, "codec/enc/" + name + ".wasm");
+  const codec = await glue.default({
+    noInitialRun: true,
+    instantiateWasm: (imports, callback) => {
+      const instance = new WebAssembly.Instance(module, imports);
+      callback(instance);
+      return instance.exports;
+    },
+  });
+  const options = { ...defaultOptions, quality };
+  return (picture) => {
+    const result = codec.encode(picture.data, picture.width, picture.height, options);
+    if (!result) throw new Error("the WebP encoder returned nothing");
+    return result.buffer;
+  };
+}
+
+// A faithful encode of the test picture at quality 82 is off by under 2 per
+// channel on average; the scrambling SIMD build measured 67 to 81 (#1124).
+const MAX_ROUND_TRIP_ERROR = 16;
+
+async function probeEncoder(req, dir, quality) {
+  const { simd } = req("wasm-feature-detect");
+  if (!(await simd())) {
+    return "plain";
+  }
+  const encode = await webpEncoder(dir, "webp_enc_simd", quality);
+  const decoder = await load(dir, "decode.js");
+  await decoder.init(wasm(dir, "codec/dec/webp_dec.wasm"));
+  // Smooth ramps with ripples, the size the bad build was caught at.
+  const size = 256;
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      data[i] = (x * 255) / size;
+      data[i + 1] = (y * 255) / size;
+      data[i + 2] = 128 + 100 * Math.sin(x / 9) * Math.cos(y / 7);
+      data[i + 3] = 255;
+    }
+  }
+  const back = (await decoder.default(encode(new ImageData(data, size, size)))).data;
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    sum += Math.abs(back[i] - data[i]) + Math.abs(back[i + 1] - data[i + 1]) + Math.abs(back[i + 2] - data[i + 2]);
+  }
+  return sum / ((data.length / 4) * 3) <= MAX_ROUND_TRIP_ERROR ? "simd" : "broken";
+}
+
 async function main() {
-  const { source, format, targets, quality, bases } = workerData;
+  const { probe, source, format, targets, quality, simd, bases } = workerData;
   const req = requireFrom(bases);
   const packageDir = (name) => path.dirname(req.resolve(name));
-  const load = (dir, file) => import(pathToFileURL(path.join(dir, file)).href);
-  const wasm = (dir, file) => new WebAssembly.Module(fs.readFileSync(path.join(dir, file)));
+  const webpDir = packageDir("@jsquash/webp");
+  if (probe) {
+    return { encoder: await probeEncoder(req, webpDir, quality) };
+  }
 
   const bytes = fs.readFileSync(source);
   let image;
@@ -91,9 +171,8 @@ async function main() {
     await decoder.init(wasm(dir, "codec/dec/mozjpeg_dec.wasm"));
     image = await decoder.default(bytes);
   } else if (format === "webp") {
-    const dir = packageDir("@jsquash/webp");
-    const decoder = await load(dir, "decode.js");
-    await decoder.init(wasm(dir, "codec/dec/webp_dec.wasm"));
+    const decoder = await load(webpDir, "decode.js");
+    await decoder.init(wasm(webpDir, "codec/dec/webp_dec.wasm"));
     image = await decoder.default(bytes);
   } else {
     throw new Error("unsupported format " + format);
@@ -102,13 +181,7 @@ async function main() {
   const resizeDir = packageDir("@jsquash/resize");
   const resizer = await load(resizeDir, "index.js");
   await resizer.initResize(wasm(resizeDir, "lib/resize/pkg/squoosh_resize_bg.wasm"));
-  const webpDir = packageDir("@jsquash/webp");
-  const encoder = await load(webpDir, "encode.js");
-  // Its CommonJS build; the encoder's own init runs the same check to pick
-  // the matching glue, so both must agree.
-  const { simd } = req("wasm-feature-detect");
-  const simdReady = await simd();
-  await encoder.init(wasm(webpDir, simdReady ? "codec/enc/webp_enc_simd.wasm" : "codec/enc/webp_enc.wasm"));
+  const encode = await webpEncoder(webpDir, simd ? "webp_enc_simd" : "webp_enc", quality);
 
   const longEdge = Math.max(image.width, image.height);
   const written = [];
@@ -130,7 +203,7 @@ async function main() {
         linearRGB: false,
       });
     }
-    const encoded = await encoder.default(picture, { quality });
+    const encoded = encode(picture);
     if (scale === 1 && encoded.byteLength >= bytes.length) {
       // Same size and no fewer bytes (a flat PNG, a tight JPEG): the
       // original serves better than a copy would.
@@ -162,15 +235,12 @@ function resolutionBases(): string[] {
   return bases;
 }
 
-function runWorker(job: {
-  source: string;
-  format: string;
-  targets: Array<{ width: number; file: string }>;
-}): Promise<VariantResult> {
+// Runs the worker program once and hands back its reply; never rejects.
+function runWorker(job: Record<string, unknown>): Promise<WorkerReply> {
   return new Promise((resolve) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined = undefined;
-    const finish = (result: VariantResult) => {
+    const finish = (result: WorkerReply) => {
       if (!settled) {
         settled = true;
         if (timer) clearTimeout(timer);
@@ -186,27 +256,44 @@ function runWorker(job: {
         workerData: { ...job, quality: WEBP_QUALITY, bases: resolutionBases() },
       });
     } catch (error) {
-      finish({ written: [], skipped: [], error: error instanceof Error ? error.message : String(error) });
+      finish({ ok: false, error: error instanceof Error ? error.message : String(error) });
       return;
     }
     timer = setTimeout(() => {
       void worker.terminate();
-      finish({ written: [], skipped: [], error: "timed out" });
+      finish({ ok: false, error: "timed out" });
     }, JOB_TIMEOUT_MS);
-    worker.on("message", (message: { ok: boolean; written?: string[]; skipped?: string[]; error?: string }) => {
-      finish(
-        message.ok
-          ? { written: message.written ?? [], skipped: message.skipped ?? [] }
-          : { written: [], skipped: [], error: message.error ?? "failed" },
-      );
-    });
-    worker.on("error", (error) => finish({ written: [], skipped: [], error: error.message }));
+    worker.on("message", (message: WorkerReply) => finish(message));
+    worker.on("error", (error) => finish({ ok: false, error: error.message }));
     worker.on("exit", (code) => {
       if (code !== 0) {
-        finish({ written: [], skipped: [], error: `worker exited with ${code}` });
+        finish({ ok: false, error: `worker exited with ${code}` });
       }
     });
   });
+}
+
+// The encoder check, once per run of the server. A check that could not run
+// (the worker would not start) is tried again by the next job, which uses
+// the plain build meanwhile: slower, never wrong.
+let encoderCheck: Promise<WebpEncoder> | undefined;
+let brokenSince = 0;
+
+export function webpEncoderChoice(): Promise<WebpEncoder> {
+  encoderCheck ??= runWorker({ probe: true }).then((reply) => {
+    if (!reply.ok || !reply.encoder) {
+      encoderCheck = undefined;
+      return "plain";
+    }
+    if (reply.encoder === "broken") {
+      // Before any job of this run writes a copy, so every copy older than
+      // this came from the SIMD build.
+      brokenSince = Date.now();
+      console.warn("[image-variants] this CPU's SIMD WebP encoder scrambles pictures; using the plain encoder");
+    }
+    return reply.encoder;
+  });
+  return encoderCheck;
 }
 
 // Writes the variants of one picture that do not exist yet. Idempotent: a
@@ -257,8 +344,12 @@ export async function writeImageVariants(
   if (!targets.length) {
     return { written: [], skipped };
   }
-  const result = await runWorker({ source, format: kind.format, targets });
-  return { ...result, skipped: [...skipped, ...result.skipped] };
+  const simd = (await webpEncoderChoice()) === "simd";
+  const reply = await runWorker({ source, format: kind.format, targets, simd });
+  if (!reply.ok) {
+    return { written: [], skipped: [], error: reply.error ?? "failed" };
+  }
+  return { written: reply.written ?? [], skipped: [...skipped, ...(reply.skipped ?? [])] };
 }
 
 // One job at a time, keyed by the original's absolute path, so a burst of
@@ -346,6 +437,39 @@ function makeMissingVariants(root: string, original: string): void {
   checking.add(check);
 }
 
+// Where the SIMD build scrambles pictures, the copies an earlier version
+// wrote with it are scrambled too. A marker in each picture folder records
+// when this server first wrote with the plain build there; a copy older than
+// that is deleted when asked for and made again. Elsewhere nothing is read.
+const SCRAMBLED_MARKER = ".webp-copies-scrambled-before";
+const scrambledCutoffs = new Map<string, Promise<number>>();
+
+async function readCutoff(root: string): Promise<number> {
+  const marker = path.join(root, SCRAMBLED_MARKER);
+  try {
+    const recorded = Number((await readFile(marker, "utf8")).trim());
+    if (Number.isFinite(recorded) && recorded > 0) {
+      return recorded;
+    }
+  } catch {
+    // first run with the plain build in this folder
+  }
+  await writeFile(marker, String(brokenSince)).catch(() => undefined);
+  return brokenSince;
+}
+
+async function scrambledCopy(root: string, modifiedMs: number): Promise<boolean> {
+  if ((await webpEncoderChoice()) !== "broken") {
+    return false;
+  }
+  let cutoff = scrambledCutoffs.get(root);
+  if (!cutoff) {
+    cutoff = readCutoff(root);
+    scrambledCutoffs.set(root, cutoff);
+  }
+  return modifiedMs < (await cutoff);
+}
+
 // The segments a serve route should stream for a ?w= request: the variant's
 // when it exists (waiting briefly for one that is being written right now,
 // as happens when a client asks the moment the picture lands), else the
@@ -372,10 +496,16 @@ export async function servedSegments(
     await Promise.race([inFlight, new Promise((resolve) => setTimeout(resolve, waitMs))]);
   }
   const variant = [...segments.slice(0, -1), variantFileName(name, width)];
+  const variantPath = path.resolve(root, ...variant);
   try {
-    const info = await stat(path.resolve(root, ...variant));
+    const info = await stat(variantPath);
     if (info.isFile()) {
-      return variant;
+      if (!(await scrambledCopy(root, info.mtimeMs))) {
+        return variant;
+      }
+      await rm(variantPath, { force: true });
+      // Made again even if its other size was made this run.
+      tried.delete(original);
     }
   } catch {
     // no copy in that size

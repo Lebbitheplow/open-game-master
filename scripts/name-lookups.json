@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/image-variants.ts#number": [["parse",1,"the time this server first wrote WebP copies with the plain encoder, read back from the marker file it wrote into the picture folder: no record's name"]],
     "lib/roll-parts.ts#whole": [["identity",1,"a carried line by its whole own name, as the attack roll stored it in its parts"],["key",3,"a skill's or an ability's id, as a roll's parts store it or as the engine wrote it, among the ids a rule asks about"]],
     "lib/roll-words.ts#whole-single": [["identity",1,"what a roll used, by its whole name through textKey against the key of the content row its roll stored: only a name that is its row's own is put into the reader's language, and any other is shown as written"]],
     "lib/roll-parts.ts#partial": [["parse",8,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: its skill, its ability, what a save was against, the weapon its label opens with, its marks and the ambush it was rolled for"]],
