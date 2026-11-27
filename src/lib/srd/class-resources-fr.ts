@@ -4,7 +4,7 @@
 // loads it; until it is in, a French reader sees the stored English def.
 import { frTables } from "@/lib/i18n/fr-tables";
 
-type Locale = "en" | "fr";
+type Locale = "en" | "fr" | "es";
 
 // A resource's display name in the reader's language; null outside French or
 // when the map does not carry the id, so the caller falls back to the def.

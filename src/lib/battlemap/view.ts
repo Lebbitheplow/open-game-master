@@ -76,6 +76,7 @@ import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logi
 import { castLookup, npcFace } from "@/lib/db/npc-faces";
 import { enemiesAhead, ownTurnOf } from "@/lib/dm/held-turn";
 import { soleSurvivorSpeed } from "@/lib/dm/genre-a-horror-party";
+import { localeOfTableLanguage } from "@/lib/i18n/locale";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -83,7 +84,7 @@ export type { PlayerMapView } from "@/lib/battlemap/view-types";
 // notes ride to every seat, so they are written where they are built.
 function tableT(campaignId: string): (key: string, vars?: Record<string, string | number>) => string {
   const language = getCampaignById(campaignId)?.gameSettings.tableLanguage ?? "english";
-  return (key, vars) => translate(language === "french" ? "fr" : "en", key, vars);
+  return (key, vars) => translate(localeOfTableLanguage(language), key, vars);
 }
 
 // A token's side when it is not its kind's: the rim the board draws.

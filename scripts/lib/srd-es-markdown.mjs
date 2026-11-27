@@ -85,11 +85,13 @@ function table(block) {
   return [line(rows[0]), `|${"---|".repeat(width)}`, ...rows.slice(1).map(line)].join("\n");
 }
 
-const BULLET = /^(?:\*{1,3})?[\u2022\u00b7\u25aa\u25e6\uf0b7]\s*(?:\*{1,3})?\s*/;
+// A list item's bullet is the list's to draw. Where the print sets it in the
+// bold of the item's first words, the bold stays.
+const BULLET = /^(\*{1,3})?[\u2022\u00b7\u25aa\u25e6\uf0b7]\s*/;
 
 function list(block) {
   return block.items
-    .map((item) => inline(item).replace(BULLET, ""))
+    .map((item) => inline(item).replace(BULLET, (_, marks) => marks ?? ""))
     .filter(Boolean)
     .map((text) => (/^\d+\.\s/.test(text) ? text : `- ${text}`))
     .join("\n");

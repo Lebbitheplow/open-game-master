@@ -27,7 +27,7 @@ import type { BuilderState } from "../useBuilderState";
 import { bonusLanguageCount } from "../submit";
 import { StepPanel, inputClass } from "./shared";
 
-function languageHelp(t: (key: string, vars?: Record<string, string | number>) => string, race: RaceOption, background: BackgroundOption | undefined, locale: "en" | "fr" = "en"): string {
+function languageHelp(t: (key: string, vars?: Record<string, string | number>) => string, race: RaceOption, background: BackgroundOption | undefined, locale: "en" | "fr" | "es" = "en"): string {
   const langs = race.languages.join(locale === "fr" ? " et " : " and ");
   const parts = [t("{race} speaks {langs}", { race: contentName("species", race.name, locale), langs })];
   const choice = race.languageChoice;
@@ -310,7 +310,7 @@ function sizeLabel(t: (key: string, vars?: Record<string, string | number>) => s
 // its size and its book. Each offers only the values some lineage has. A
 // lineage whose bumps are the player's to place raises anything they like
 // and suits any class.
-function raceFacets(t: (key: string, vars?: Record<string, string | number>) => string, locale: "en" | "fr", slides: LineageSlide[]): CardFacet[] {
+function raceFacets(t: (key: string, vars?: Record<string, string | number>) => string, locale: "en" | "fr" | "es", slides: LineageSlide[]): CardFacet[] {
   const byId = new Map(slides.map((slide) => [slide.id, slide]));
   const sizeOf = (id: string) => srdRaceFor(id)?.size ?? "";
   const bookOf = (slide: LineageSlide) => slide.source || t("Core rules");

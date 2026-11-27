@@ -2,8 +2,8 @@
 
 import { Suspense, createContext, use, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { loadCatalog } from "./i18n/catalog-loader";
-import { LOCALE_COOKIE } from "./i18n/locale";
-import { catalogInstalled } from "./i18n/translate";
+import { LOCALE_COOKIE, localeOfTag } from "./i18n/locale";
+import { catalogInstalled, isLocale } from "./i18n/translate";
 import { localeTag, translate, translatePlural, type Locale, type MessageKey, type MessageVars } from "./messages-logic";
 
 // The interface's language, beside the theme and the scale (theme-mode.ts).
@@ -19,11 +19,11 @@ const LOCALE_KEY = "odm.locale";
 
 const ServerLocaleContext = createContext<Locale>("en");
 
-// The page the server rendered in French hydrates in French: until the
-// catalog's chunk is in (catalog-loader.ts), the tree waits under Suspense
-// and React keeps the server's HTML, rather than hydrating English over
-// French and throwing the page away. On the server the catalog is already
-// installed (fr-catalog.ts), so nothing waits there.
+// The page the server rendered in French or Spanish hydrates in it: until
+// the catalog's chunk is in (catalog-loader.ts), the tree waits under
+// Suspense and React keeps the server's HTML, rather than hydrating English
+// over it and throwing the page away. On the server the catalogs are already
+// installed (fr-catalog.ts, es-catalog.ts), so nothing waits there.
 function CatalogGate({ locale, children }: { locale: Locale; children: ReactNode }) {
   use(loadCatalog(locale));
   return <>{children}</>;
@@ -86,7 +86,7 @@ export function readLocaleChoice(): LocaleChoice {
     return "auto";
   }
   const stored = window.localStorage.getItem(LOCALE_KEY);
-  return stored === "en" || stored === "fr" ? stored : "auto";
+  return isLocale(stored) ? stored : "auto";
 }
 
 // Headers that tell the server which language the reader chose, for the
@@ -113,12 +113,9 @@ export function resolveLocale(choice: LocaleChoice): Locale {
     return "en";
   }
   for (const tag of navigator.languages ?? [navigator.language]) {
-    const language = tag.toLowerCase().split("-")[0];
-    if (language === "fr") {
-      return "fr";
-    }
-    if (language === "en") {
-      return "en";
+    const locale = localeOfTag(tag);
+    if (locale) {
+      return locale;
     }
   }
   return "en";
@@ -137,7 +134,7 @@ export function writeLocaleChoice(choice: LocaleChoice) {
 }
 
 // The locale the screen shows: the reader's, once its catalog is in. Asked
-// for French before the chunk has arrived it starts the fetch and reads
+// for a language before its chunk has arrived it starts the fetch and reads
 // English, then every translated string switches together when it lands.
 function shownLocale(): Locale {
   const wanted = resolveLocale(readLocaleChoice());

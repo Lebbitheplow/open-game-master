@@ -1,18 +1,35 @@
-import type { Locale } from "./translate";
+import { isLocale, type Locale } from "./translate";
 
 export const LOCALE_COOKIE = "odm_locale";
 
 export function parseLocale(raw: string | null | undefined): Locale | null {
-  if (raw === "fr" || raw === "en") return raw;
-  return null;
+  return isLocale(raw) ? raw : null;
 }
 
+// The menus' language a table language asks for, where the menus have it:
+// French and Spanish, the translations the menus have besides English.
+const LOCALE_OF_LANGUAGE: Record<string, Locale> = { french: "fr", spanish: "es" };
+
 // The menus' language a server's own language asks for (global config
-// serverLanguage, set by its admin): French, the one translation the menus
-// have besides English. English is every server's default and says nothing
-// about its readers, so it leaves the choice to them and their browser.
+// serverLanguage, set by its admin). English is every server's default and
+// says nothing about its readers, so it leaves the choice to them and their
+// browser.
 export function localeOfServerLanguage(language: string | null | undefined): Locale | null {
-  return language === "french" ? "fr" : null;
+  return (language && Object.hasOwn(LOCALE_OF_LANGUAGE, language) && LOCALE_OF_LANGUAGE[language]) || null;
+}
+
+// The language the server's own lines are written in at a table that plays
+// in `language` (a hold's notice, a board's label): the table's, where the
+// menus have it, else English.
+export function localeOfTableLanguage(language: string | null | undefined): Locale {
+  return localeOfServerLanguage(language) ?? "en";
+}
+
+// The interface language a BCP 47 tag names ("fr-CA" is French, "es-419"
+// Spanish), or null for a language the menus do not have.
+export function localeOfTag(tag: string): Locale | null {
+  const language = tag.trim().toLowerCase().split("-")[0];
+  return isLocale(language) ? language : null;
 }
 
 export function localeFromAcceptLanguage(header: string | null | undefined): Locale {
@@ -28,8 +45,8 @@ export function localeFromAcceptLanguage(header: string | null | undefined): Loc
     .filter(({ weight }) => weight > 0)
     .sort((a, b) => b.weight - a.weight || a.at - b.at);
   for (const { tag } of tags) {
-    if (tag === "fr" || tag.startsWith("fr-")) return "fr";
-    if (tag === "en" || tag.startsWith("en-")) return "en";
+    const locale = localeOfTag(tag);
+    if (locale) return locale;
   }
   return "en";
 }

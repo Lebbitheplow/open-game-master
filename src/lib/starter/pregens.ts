@@ -1,5 +1,5 @@
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
-type Locale = "en" | "fr";
+type Locale = "en" | "fr" | "es";
 
 // Four ready-made heroes for a table that wants to start in ten minutes.
 // Each is a complete level 1 sheet in the shape the character builder

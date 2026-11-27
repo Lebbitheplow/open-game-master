@@ -23,8 +23,11 @@ export function formatMessage(template: string, vars?: MessageVars): string {
 }
 
 // The BCP 47 tag a locale resolves to, for toLocaleDateString and friends.
+// Spanish names no country: its readers are in twenty of them.
+const LOCALE_TAGS: Record<Locale, string> = { en: "en-US", fr: "fr-FR", es: "es" };
+
 export function localeTag(locale: Locale): string {
-  return locale === "fr" ? "fr-FR" : "en-US";
+  return LOCALE_TAGS[locale];
 }
 
 export type PluralTranslator = (

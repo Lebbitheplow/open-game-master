@@ -208,7 +208,7 @@ export function buildMathSections({ t, derived, scores, klass, atTable }: BuildM
     })),
   });
 
-  const locale = (t as { locale?: "en" | "fr" }).locale ?? "en";
+  const locale = (t as { locale?: "en" | "fr" | "es" }).locale ?? "en";
   sections.push({
     id: "skills",
     title: t("Skills"),

@@ -55,7 +55,7 @@ const entriesPath = join(root, "scripts", "data", "rulebook-es", "entries.json")
 const PDF_SHA256 = "75c42a82d627fd6c85e8929985157176c699e1ddbd2ca5d2bcbb58af17254651";
 
 const args = process.argv.slice(2);
-const valued = new Set(["--cache", "--suggest", "--draft"]);
+const valued = new Set(["--cache", "--suggest"]);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
 const pdfPath =
   args.find((arg, at) => !arg.startsWith("--") && !valued.has(args[at - 1])) ??
@@ -88,27 +88,13 @@ const OUT_OF_ORDER = { Mago: "T0", Dotes: "T0", Clon: "T3", Búho: "T3m" };
 const MARKS = [
   ["legal-information", "T1", "Información legal"],
   ["racial-traits", "T0", "Razas"],
-  ["elf", "T1", "Elfo"],
-  ["dwarf", "T1", "Enano"],
-  ["human", "T1", "Humano"],
-  ["halfling", "T1", "Mediano"],
-  ["dragonborn", "T1", "Dracónido"],
-  ["gnome", "T1", "Gnomo"],
-  ["half-elf", "T1", "Semielfo"],
-  ["half-orc", "T1", "Semiorco"],
-  ["tiefling", "T1", "Tiefling"],
-  ["barbarian", "T0", "Bárbaro"],
-  ["bard", "T0", "Bardo"],
-  ["warlock", "T0", "Brujo"],
-  ["cleric", "T0", "Clérigo"],
-  ["druid", "T0", "Druida"],
-  ["ranger", "T0", "Explorador"],
-  ["fighter", "T0", "Guerrero"],
-  ["sorcerer", "T0", "Hechicero"],
-  ["wizard", "T0", "Mago"],
-  ["monk", "T0", "Monje"],
-  ["paladin", "T0", "Paladín"],
-  ["rogue", "T0", "Pícaro"],
+  ["elf", "T1", "Elfo"], ["dwarf", "T1", "Enano"], ["human", "T1", "Humano"],
+  ["halfling", "T1", "Mediano"], ["dragonborn", "T1", "Dracónido"], ["gnome", "T1", "Gnomo"],
+  ["half-elf", "T1", "Semielfo"], ["half-orc", "T1", "Semiorco"], ["tiefling", "T1", "Tiefling"],
+  ["barbarian", "T0", "Bárbaro"], ["bard", "T0", "Bardo"], ["warlock", "T0", "Brujo"],
+  ["cleric", "T0", "Clérigo"], ["druid", "T0", "Druida"], ["ranger", "T0", "Explorador"],
+  ["fighter", "T0", "Guerrero"], ["sorcerer", "T0", "Hechicero"], ["wizard", "T0", "Mago"],
+  ["monk", "T0", "Monje"], ["paladin", "T0", "Paladín"], ["rogue", "T0", "Pícaro"],
   ["beyond-1st-level", "T0", "Más allá del nivel 1"],
   ["multiclassing", "T1", "Multiclase"],
   ["alignment", "T1", "Alineamiento"],
@@ -191,7 +177,8 @@ const CHAPTER_TITLES = {
 
 // The three books are this app's own binding (the print has no parts), so
 // their names and blurbs are translations of the English book's, not quotes.
-const PART_TITLES = { players: "Jugadores", "dungeon-master": "El director de juego", monsters: "Monstruos" };
+// The role keeps the name the print itself uses («tu GM»).
+const PART_TITLES = { players: "Jugadores", "dungeon-master": "El Game Master", monsters: "Monstruos" };
 const PART_BLURBS = {
   players: "El Manual del Jugador, hasta donde lo abre el SRD: crear un héroe, jugar la partida y todos los conjuros.",
   "dungeon-master": "La Guía del Dungeon Master, hasta donde la abre el SRD: peligros que dirigir y todos los objetos mágicos.",
@@ -497,7 +484,6 @@ const book = {
   chapters: en.chapters.map((chapter) => ({ ...chapter, title: CHAPTER_TITLES[chapter.id] ?? chapter.title })),
   pages,
 };
-if (option("--draft")) writeFileSync(option("--draft"), JSON.stringify(book));
 if (problems.length) process.exit(1);
 writeFileSync(outPath, `${JSON.stringify(book)}\n`);
 console.log(`Wrote ${pages.length} Spanish pages to ${outPath.slice(root.length + 1)}`);

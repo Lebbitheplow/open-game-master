@@ -170,7 +170,7 @@ const SKILLS = (skillsJson as { skills: Array<{ id: string; name: string; fr?: s
 export function describeSkill(
   t: (key: string, vars?: Record<string, string | number>) => string,
   skillId: string,
-  locale: "en" | "fr" = "en",
+  locale: "en" | "fr" | "es" = "en",
 ): string | null {
   const skill = SKILLS.find((entry) => entry.id === skillId.trim().toLowerCase());
   if (!skill) {

@@ -64,6 +64,18 @@ export default function LicensesPage() {
           </span>
         </p>
         <p>
+          A reader whose interface is in Spanish reads it in Wizards of the Coast&rsquo;s official Spanish
+          translation, the <span lang="es">Documento de referencia del sistema 5.1</span>, under the same
+          license.{" "}
+          <span lang="es">
+            Esta obra incluye materiales extraídos del Documento de referencia del sistema 5.1 (“SRD 5.1”)
+            de Wizards of the Coast LLC, que está disponible en
+            https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia
+            Creative Commons Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está
+            disponible en https://creativecommons.org/licenses/by/4.0/legalcode.es.
+          </span>
+        </p>
+        <p>
           Expanded character options, spells, items, and monsters are imported from the{" "}
           <span className="text-stone-100">Open5e</span> dataset (open5e.com), which
           aggregates open-licensed tabletop content. Each source document and its license

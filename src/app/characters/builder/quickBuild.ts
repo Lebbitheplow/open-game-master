@@ -239,7 +239,7 @@ export type FillContext = {
   // picks' labels read in the reader's language.
   t: (key: string, vars?: Record<string, string | number>) => string;
   // The reader's locale, for the skills' official names.
-  locale?: "en" | "fr";
+  locale?: "en" | "fr" | "es";
   fields: BuilderDraftFields;
   derived: BuilderDerived;
   race: RaceOption | undefined;
@@ -268,7 +268,7 @@ export type FillRound = { patch: Partial<BuilderDraftFields>; filled: FilledPick
 
 // A skill's name in the reader's language (the official French words where
 // the dictionaries carry them), the English row standing in.
-const skillName = (id: string, locale: "en" | "fr" = "en") => skillLabel(id, locale);
+const skillName = (id: string, locale: "en" | "fr" | "es" = "en") => skillLabel(id, locale);
 const has = (list: readonly string[], name: string) => list.some((entry) => textKey(entry) === textKey(name));
 
 // Fills a slot-indexed list's blanks (and the slots past its end) from the

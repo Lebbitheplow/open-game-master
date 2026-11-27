@@ -20,7 +20,7 @@ import { weaponNamed, type SrdWeapon } from "@/lib/srd/weapons";
 
 type Row = Record<string, unknown>;
 type T = (key: string, vars?: Record<string, string | number>) => string;
-type Locale = "en" | "fr";
+type Locale = "en" | "fr" | "es";
 
 const enT: T = (key, vars) => translate("en", key, vars);
 
