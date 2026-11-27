@@ -6,7 +6,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { recordRoll } from "@/lib/dm/roll-record";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, actionUsed, foeTarget } from "@/lib/roll-parts";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
@@ -422,7 +422,7 @@ export function handlePetAttack(
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "attack",
-    detail: rollAgainst(attack.name, enemy.displayName),
+    parts: actionParts(attack, foeTarget(enemy)),
     result: hitOutcome,
     attacker: { kind: "pet", id: sheet.id, name: pet.name },
     turn,
@@ -471,7 +471,7 @@ export function handlePetAttack(
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "damage",
-    detail: rollAgainst(`${attack.name}${crit ? " (CRIT)" : ""}`, enemy.displayName),
+    parts: actionParts(attack, foeTarget(enemy), crit && "crit"),
     result: damageOutcome,
     attacker: { kind: "pet", id: sheet.id, name: pet.name },
     turn,
@@ -507,6 +507,7 @@ export function handlePetAttack(
         attacker: { kind: "pet", sheetId: sheet.id, name: pet.name },
         holderId: null,
         attack: `${pet.name}'s ${attack.name}`,
+        used: actionUsed(attack, `${pet.name}'s ${attack.name}`),
         enemyId: enemy.id,
         onHit: attack.onHit,
       })

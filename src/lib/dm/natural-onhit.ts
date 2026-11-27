@@ -21,7 +21,7 @@ import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { settleEnemyIncapacitation } from "@/lib/dm/enemy-incapacitation";
 import { rollEnemySave } from "@/lib/dm/forced-save";
-import { rollAgainst } from "@/lib/roll-labels";
+import { foeTarget, riderNote, strikeParts, type RollUsed } from "@/lib/roll-parts";
 import { onHitWords, type CreatureOnHit } from "@/lib/srd/creature-attacks";
 
 export type NaturalHit = {
@@ -32,6 +32,9 @@ export type NaturalHit = {
   attacker: { kind: "sheet" | "pet"; sheetId: string; name: string };
   holderId: string | null;
   attack: string;
+  // What the hit was made with, as its own roll said it: the damage its
+  // rider deals is worded from it.
+  used: RollUsed;
   enemyId: string;
   onHit: CreatureOnHit;
 };
@@ -85,7 +88,7 @@ export function resolveNaturalOnHit(campaign: Campaign, hit: NaturalHit): { line
       characterId: hit.attacker.sheetId,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(`${label} (${onHit.damageType ?? "rider"})`, enemy.displayName),
+      parts: strikeParts(hit.used, foeTarget(enemy), [riderNote(onHit.damageType)]),
       result: outcome,
       attacker: { kind: hit.attacker.kind, id: hit.attacker.sheetId, name: hit.attacker.name },
       turn: hit.turn,

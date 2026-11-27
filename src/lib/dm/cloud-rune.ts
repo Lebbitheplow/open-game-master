@@ -42,7 +42,7 @@ import { canStopAfterThrow, stopAfterThrow } from "@/lib/dm/held-call";
 import { applyPcDamage, type BlowFlags } from "@/lib/dm/pc-damage";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, sheetTarget } from "@/lib/roll-parts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 const NAME = "Cloud Rune";
@@ -198,7 +198,7 @@ export function landTurnedBlow(input: {
     characterId: taker.kind === "sheet" ? taker.id : null,
     requestedBy: "dm",
     kind: "damage",
-    detail: rollAgainst(attack.name, taker.name),
+    parts: actionParts(attack, taker.kind === "sheet" ? sheetTarget(taker) : { kind: "enemy", id: taker.id, name: taker.name }),
     result: outcome,
     attacker: { kind: "enemy", id: attacker.id, name: attacker.displayName },
     turn,

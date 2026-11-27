@@ -29,18 +29,21 @@ import type { StoredRoll } from "@/lib/db/rolls";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { rollAgainst } from "@/lib/roll-labels";
-import { PHYSICAL, WORDS_VERSION, type RollNoteId } from "@/lib/roll-words";
+import { ACTION_WORDS_VERSION, isDamageNote, PHYSICAL, WORDS_VERSION, type RollNoteId } from "@/lib/roll-words";
 import { findSkill, SRD_SKILLS } from "@/lib/srd";
 import type { Ability } from "@/lib/srd/authored-effects-types";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 
-// What was used, by its content key where it has one. A creature's own
-// action ("Bite") has a kind of its own and no key: its names have no table
-// yet, and the rows already say what they are on the day they get one.
-// `key` is what says the engine knows which content row this is: a roll's
-// words put a name into another language by its key alone, and a name with
-// none is shown as it was written, by a person, the model or a stat block
+// What was used, by its content key where it has one. `key` is what says
+// the engine knows which content row this is: a roll's words put a weapon's
+// or a spell's name into another language by its key alone, and one with
+// none is shown as it was written, by a person or the model
 // (src/lib/roll-words.ts).
+// A creature's own action ("Bite") has a kind of its own and is stored by
+// the name its stat block gives it, with no key: its words look that name
+// up in the creature attack names (issue #1121). It has a key only where it
+// is carried under more than its own name: a beast form's "Wolf Bite" is
+// the form's Bite, and the key says so.
 export type RollUsed = {
   kind: "weapon" | "spell" | "feature" | "item" | "trap" | "skill" | "ability" | "tool" | "action";
   key?: string;
@@ -50,7 +53,9 @@ export type RollUsed = {
 // The content row a name is, where the engine knows one: the table it is in
 // and a name the row answers to there. For a spell that is the name it was
 // cast under, which may be an alias of the row's own.
-export type RollRow = { kind: "weapon" | "spell"; name: string };
+// For a creature's action it is the attack's own name, as the stat block has
+// it (a beast form's "Bite", carried as "Wolf Bite").
+export type RollRow = { kind: "weapon" | "spell" | "action"; name: string };
 
 // What a rule later asks of a roll. A closed list: the save that keeps
 // concentration, and the Stealth a fight's opening rolls to decide surprise
@@ -64,8 +69,9 @@ export type RollPurpose = "concentration" | "surprise";
 // ("someone unseen"). The second is never written to a roll's or a card's
 // own row: it is what a seat not owed the creature is sent, and what the
 // table's event log keeps, in place of the creature's name and id
-// (src/lib/hidden-names-logic.ts).
-export type RollTarget = { kind: "sheet" | "enemy" | "pet"; id?: string; name: string } | { kind: "object"; name?: string } | { kind: "unseen" };
+// (src/lib/hidden-names-logic.ts). A pet and a mount are a character's own
+// creatures: a roll names them as that character's sheet does, with no id.
+export type RollTarget = { kind: "sheet" | "enemy" | "pet" | "mount"; id?: string; name: string } | { kind: "object"; name?: string } | { kind: "unseen" };
 
 // What is left to say of a roll. An engine's note is one of the engine's
 // own, by its id (src/lib/roll-words.ts ROLL_NOTES), so the dictionaries can
@@ -103,7 +109,7 @@ export type RollParts = {
 
 // Parts that make a roll's words: what a moved family's builders return,
 // and what a site may hand the door in place of a sentence.
-export type WordedParts = RollParts & { worded: typeof WORDS_VERSION };
+export type WordedParts = RollParts & { worded: typeof WORDS_VERSION | typeof ACTION_WORDS_VERSION };
 
 // What a roll says of itself as it is recorded or dealt as a card: the
 // sentence its site wrote, or parts that make its words. One of the two,
@@ -140,9 +146,65 @@ export function saveParts(ability: Ability, purpose?: RollPurpose): RollParts {
 // know): it has no key, and is shown as written. These parts make the
 // roll's words, so the site writes no sentence.
 export function attackParts(attack: { name: string; base?: string | null; row?: RollRow | null; spell?: boolean }, target: RollTarget, note?: RollNoteId): WordedParts {
+  return strikeParts(attackUsed(attack), target, note ? [{ engine: note }] : []);
+}
+
+// What such an attack is made with. A natural attack (a beast form's, a
+// summoned creature's) is its stat block's own action, carried under the
+// creature's name too ("Wolf Bite"): its row is the attack ("Bite").
+function attackUsed(attack: { name: string; base?: string | null; row?: RollRow | null; spell?: boolean }): RollUsed {
   const row: RollRow | null = attack.row ?? (attack.base ? { kind: "weapon", name: attack.base } : null);
-  const used: RollUsed = { kind: attack.spell || row?.kind === "spell" ? "spell" : "weapon", ...(row ? { key: textKey(row.name) } : {}), name: attack.name };
-  return { used, targets: [target], aim: "vs", ...(note ? { notes: [{ engine: note }] } : {}), worded: WORDS_VERSION };
+  if (row?.kind === "action") {
+    // A spell attack is a spell whatever its profile was built from, and an
+    // action's name is no spell's key.
+    return attack.spell ? { kind: "spell", name: attack.name } : actionUsed(row, attack.name);
+  }
+  return { kind: attack.spell || row?.kind === "spell" ? "spell" : "weapon", ...(row ? { key: textKey(row.name) } : {}), name: attack.name };
+}
+
+// One thing used against one target, with what is left to say of it: the
+// parts every attack and damage roll of a moved family is made of. A
+// creature's action under its stat block's own name makes the second
+// version of the words (roll-words.ts ACTION_WORDS_VERSION), so a reader
+// built before it shows the roll by its sentence. One carried under more
+// than its own name has a key and stays in the first: that reader shows it
+// as written, which is what its sentence said.
+export function strikeParts(used: RollUsed, target: RollTarget, notes: readonly RollNote[] = []): WordedParts {
+  const bare = used.kind === "action" && !used.key;
+  return { used, targets: [target], aim: "vs", ...(notes.length ? { notes: [...notes] } : {}), worded: bare ? ACTION_WORDS_VERSION : WORDS_VERSION };
+}
+
+// A creature's own attack or its damage, by the action its stat block names
+// and whom it is against. The name is stored as the stat block has it, with
+// no key: a bundled creature's, a content pack's and a homebrew one's are
+// read the same way, through the creature attack names
+// (src/lib/roll-words.ts). `notes` are said in the order given; a site
+// passes one of the engine's own by its id, or none where a condition does
+// not hold.
+export function actionParts(attack: { name: string }, target: RollTarget, ...notes: (RollNoteId | RollNote | null | undefined | false)[]): WordedParts {
+  const said = notes.filter((note): note is RollNoteId | RollNote => Boolean(note)).map((note): RollNote => (typeof note === "string" ? { engine: note } : note));
+  return strikeParts(actionUsed(attack), target, said);
+}
+
+// A creature's own action as what a roll was made with. `carried`: the name
+// the roll says it under, where that is more than the attack's own (a beast
+// form's "Wolf Bite", a pet's "Rex's Bite"). The key then says which attack
+// it is, so its words can put the attack's name into the reader's language
+// and leave the creature's as written.
+export function actionUsed(attack: { name: string }, carried: string = attack.name): RollUsed {
+  return carried === attack.name ? { kind: "action", name: attack.name } : { kind: "action", key: textKey(attack.name), name: carried };
+}
+
+// What a creature's hit goes on to deal besides the blow, as a note: its
+// damage type where it is one of the engine's own, the word its stat block
+// wrote where it is not (a homebrew creature's), and "rider" where it names
+// none.
+export function riderNote(damageType: string | null | undefined): RollNote {
+  const type = damageType?.trim();
+  if (!type) {
+    return { engine: "rider" };
+  }
+  return isDamageNote(type) ? { engine: type } : { typed: type };
 }
 
 // The same, read off an attack's profile or its record
@@ -152,6 +214,12 @@ export function attackParts(attack: { name: string; base?: string | null; row?: 
 // whether or not the content knows the spell.
 export function swingParts(attack: { weapon: string; base?: string; named?: RollRow }, target: RollTarget, said: { spell?: boolean; note?: RollNoteId } = {}): WordedParts {
   return attackParts({ name: attack.weapon, base: attack.base, row: attack.named, spell: said.spell }, target, said.note);
+}
+
+// What that attack is made with, alone: for a roll its hit goes on to make
+// (the damage a natural attack's rider deals, src/lib/dm/natural-onhit.ts).
+export function swingUsed(attack: { weapon: string; base?: string; named?: RollRow }, spell = false): RollUsed {
+  return attackUsed({ name: attack.weapon, base: attack.base, row: attack.named, spell });
 }
 
 // The same roll with one more of the engine's own notes on it ("half on a
@@ -164,6 +232,17 @@ export function noted(parts: WordedParts, note: RollNoteId): WordedParts {
 // the party, who is struck as one (src/lib/dm/sheet-foe.ts).
 export function foeTarget(foe: { id: string; displayName: string; slug?: string }): RollTarget {
   return { kind: isSheetFoe(foe) ? "sheet" : "enemy", id: foe.id, name: foe.displayName };
+}
+
+// A character as a roll's target.
+export function sheetTarget(sheet: { id: string; name: string }): RollTarget {
+  return { kind: "sheet", id: sheet.id, name: sheet.name };
+}
+
+// A character's own creature as a roll's target: a pet or a mount, by the
+// name it is kept under on its owner's sheet.
+export function keptTarget(kind: "pet" | "mount", creature: { name: string }): RollTarget {
+  return { kind, name: creature.name };
 }
 
 // ---- What a rule reads back ----

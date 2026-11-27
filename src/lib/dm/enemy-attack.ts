@@ -33,7 +33,7 @@ import {
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { recordRoll } from "@/lib/dm/roll-record";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, sheetTarget } from "@/lib/roll-parts";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
@@ -807,7 +807,7 @@ export function handleEnemyAttack(
       characterId: target.id,
       requestedBy: "dm",
       kind: "attack",
-      detail: rollAgainst(attack.name, target.name),
+      parts: actionParts(attack, sheetTarget(target)),
       advantage,
       result: hitOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
@@ -924,7 +924,7 @@ export function handleEnemyAttack(
       characterId: target.id,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(attack.name, target.name),
+      parts: actionParts(attack, sheetTarget(target)),
       result: damageOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       turn,
