@@ -25,7 +25,7 @@ export function LanguageSection() {
       glyph="system-lore"
       intro={t("The language of the menus and screens, kept on this device. Automatic follows the server where the menus have its language, else the browser. The Game Master narrates in whatever language the table speaks.")}
     >
-      <div data-pill-group="" role="group" aria-label={t("Language")} className="flex flex-wrap gap-2">
+      <div data-pill-group="" role="group" aria-label={t("Language")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {CHOICES.map((entry) => {
           const label = entry.id === "auto" ? t("Automatic") : entry.label;
           return (

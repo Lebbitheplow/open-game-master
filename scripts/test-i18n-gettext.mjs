@@ -165,6 +165,10 @@ for (const [en, ctxMap] of Object.entries(frCatalog.contexts)) {
 // the rule is a saving throw.
 assert.equal(translate("es", "Save"), "Guardar");
 assert.equal(translate("es", "Save", { context: "workshop.bestiary.attack.save" }), "Salvación");
+assert.equal(translate("es", "Cover"), "Portada", "a campaign's cover");
+assert.equal(translate("es", "Cover", { context: "rulebook.quick" }), "Cobertura", "cover from an arrow");
+assert.equal(translate("fr", "Cover", { context: "rulebook.quick" }), "Couverture", "French says both with one word");
+assert.equal(translate("es", "Conditions"), "Estados", "the official word, as the Spanish book's appendix has it");
 // No em dash where the English has none (the house style; scripts and copy
 // alike).
 for (const [en, said] of Object.entries(esCatalog.messages)) {

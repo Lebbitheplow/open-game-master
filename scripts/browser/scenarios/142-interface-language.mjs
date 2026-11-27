@@ -10,7 +10,7 @@ import { check, eventually } from "../lib.mjs";
 
 export default {
   name: "interface-language",
-  viewports: ["desktop"],
+  viewports: ["desktop", "phone"],
   async run(t) {
     const { page, root } = t;
     const errors = [];
@@ -43,6 +43,10 @@ export default {
     await eventually(async () => (await page.evaluate(() => document.documentElement.lang)) === "es", { timeoutMs: 20_000, label: "html lang turns es once the catalog is in" });
     await eventually(async () => /Idioma/.test(await page.locator(root || "body").first().innerText()), { timeoutMs: 20_000, label: "the section heading reads Idioma" });
     check(!/Langue/.test(await page.locator(root || "body").first().innerText()), "no French left on a Spanish page");
+    // The four choices sit on one even grid, at a phone's width too.
+    await spanish.scrollIntoViewIfNeeded();
+    const boxes = await page.locator(`${root}[role="group"] button[aria-pressed]`).filter({ hasText: /Automático|English|Français|Español/ }).evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect()).map((box) => ({ width: Math.round(box.width), height: Math.round(box.height) })));
+    check(boxes.length === 4 && boxes.every((box) => Math.abs(box.width - boxes[0].width) <= 1 && box.height >= 40), `four language buttons of one size, finger-high: ${JSON.stringify(boxes)}`);
     await t.shot("spanish-live");
     if (!t.app) {
       await page.reload();

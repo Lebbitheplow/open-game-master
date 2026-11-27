@@ -58,6 +58,8 @@ const PART_BLURB: Record<string, string> = {
 // The quick links' words (QUICK_LINKS in src/lib/rulebook/book.ts), keyed by
 // the English label, which is the link's own id in the data; an unlisted
 // label falls back to itself.
+// They are asked for as the rules' words ("rulebook.quick"): English spells a
+// book's cover and cover from an arrow the same, and Spanish does not.
 const QUICK_KEY: Record<string, string> = {
   Conditions: "Conditions",
   "Actions in combat": "Actions in combat",
@@ -304,7 +306,7 @@ export function RulebookContents({
                 <div className="rb-chips">
                   {contents.quick.map((link) => (
                     <button key={link.label} type="button" className="rb-chip motion-press" onClick={() => onOpen(link.page, link.at)}>
-                      {QUICK_KEY[link.label] ? t(QUICK_KEY[link.label]) : link.label}
+                      {QUICK_KEY[link.label] ? t(QUICK_KEY[link.label], { context: "rulebook.quick" }) : link.label}
                     </button>
                   ))}
                 </div>
