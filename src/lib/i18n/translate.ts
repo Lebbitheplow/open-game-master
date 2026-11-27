@@ -1,6 +1,6 @@
 // The interface's languages. English is the source every string is written
 // in; the others are catalogs keyed by the English (fr.json, es.json).
-export const LOCALES = ["en", "fr", "es"] as const;
+const LOCALES = ["en", "fr", "es"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export function isLocale(raw: unknown): raw is Locale {

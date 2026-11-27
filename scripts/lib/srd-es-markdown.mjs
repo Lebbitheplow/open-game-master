@@ -12,7 +12,7 @@ export const squeeze = (text) => text.replace(/[\s\u00a0]+/g, " ").replace(/\u00
 // hyphen between two lowercase letters is such a break, but for the few
 // words that are spelled with one.
 const SPELLED_WITH_A_HYPHEN = /^(?:histórico-fantásticos|amarillo-verdosa|yuan-tis?|humanoide-\p{L}+|systems-reference|Urb-luu)$/u;
-export const mend = (text) => text.replace(/\p{L}*\p{Ll}-\p{Ll}\p{L}*/gu, (word) => (SPELLED_WITH_A_HYPHEN.test(word) ? word : word.replace("-", "")));
+const mend = (text) => text.replace(/\p{L}*\p{Ll}-\p{Ll}\p{L}*/gu, (word) => (SPELLED_WITH_A_HYPHEN.test(word) ? word : word.replace("-", "")));
 
 // A paragraph the print carries over a column or a page comes as two: the
 // first stops in the middle of its sentence and the second goes on in lower
