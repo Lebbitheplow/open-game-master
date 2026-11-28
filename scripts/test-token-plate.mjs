@@ -20,7 +20,7 @@ assert.match(markup, /role="tooltip"/);
 assert.match(markup, /pointer-events-none/);
 // At the plate's size it asks for the 1024 pixel copy the server keeps of a
 // portrait, neither the full painting nor the small copy a rail face takes.
-assert.match(markup, /src="\/uploads\/portrait.png\?w=1024"/, "the uploaded portrait wins, at the size the plate shows it");
+assert.match(markup, /src="\/uploads\/portrait.png\?w=1024&amp;v=2"/, "the uploaded portrait wins, at the size the plate shows it");
 assert.match(markup, /sm:size-\[160px\] size-\[124px\]/, "the painting is shown large");
 for (const text of ["Ogre Brute", "Prone"]) assert.ok(markup.includes(text), text);
 assert.match(markup, /w-\[312px\] sm:w-\[380px\]/, "a plate with conditions is wider, not taller");
@@ -80,6 +80,41 @@ assert.match(held, /aria-label="Next conditions"/);
 assert.match(held, /aria-live="polite"[^>]*>Page 1 of 2</, "held: which page, said as it turns");
 assert.doesNotMatch(held, /data-plate-more/, "held: the pager, not a list of names");
 assert.doesNotMatch(plate({ conditions: pile.slice(0, 4), pinned: true }), /Next conditions/, "one page needs no pager");
+
+// A mounted pair is two creatures on one token (issue 1055): the plate names
+// the mount under the rider with its face and its own health word, and lists
+// each one's conditions under its own name, so nobody reads the rider's as
+// the mount's.
+const wolf = { name: "Wolf", face: ["/assets/placeholders/wolf.webp"], health: "critical" };
+const riding = plate({ conditions: [], mount: wolf });
+assert.match(riding, /data-plate-mount/, "the plate says nothing of the mount under the rider");
+assert.match(riding, /data-plate-mount[^]*src="\/assets\/placeholders\/wolf.webp/, "the mount's own face");
+assert.match(riding, /data-plate-mount[^]*Riding Wolf[^]*Near collapse/, "the mount's name and its own health word");
+assert.ok(riding.includes("Bloodied"), "the rider keeps its own health word");
+assert.doesNotMatch(riding, /<ul/, "no conditions, no list");
+assert.match(riding, /w-\[136px\] sm:w-\[172px\]/, "a mount with no conditions leaves the plate its size");
+assert.doesNotMatch(plate({ conditions: [] }), /data-plate-mount|Riding/, "a figure on foot has no mount line");
+assert.doesNotMatch(plate({ conditions: [], health: undefined, mount: { name: "Old Bess", face: [] } }), /Unharmed|Near collapse|Bloodied/, "a mount with no hit points on record has no health word");
+const both = plate({ conditions: [{ id: "frightened", label: "frightened" }], mount: { ...wolf, conditions: [{ id: "prone", label: "prone" }] } });
+assert.match(both, /aria-label="Ogre Brute: conditions"[^>]*>(?:(?!<\/ul>)[^])*frightened(?:(?!<\/ul>)[^])*<\/ul>/, "the rider's condition is under the rider's name");
+assert.match(both, /aria-label="Wolf: conditions"[^>]*>(?:(?!<\/ul>)[^])*prone(?:(?!<\/ul>)[^])*<\/ul>/, "the mount's condition is under the mount's name");
+assert.doesNotMatch(both, /aria-label="Ogre Brute: conditions"[^>]*>(?:(?!<\/ul>)[^])*>prone</, "the mount's condition is listed as the rider's");
+assert.doesNotMatch(both, /aria-label="Conditions"/, "a pair's lists each say whose they are");
+const onlyMount = plate({ conditions: [], mount: { ...wolf, conditions: [{ id: "prone", label: "prone" }] } });
+assert.match(onlyMount, /aria-label="Wolf: conditions"/);
+assert.doesNotMatch(onlyMount, /Ogre Brute: conditions/, "a rider with no conditions has no list");
+// Paged as one run, the rider's first: three of the rider's and three of the
+// mount's are four on the first page and two on the second.
+const three = (ids) => ids.map((id) => ({ id, label: id }));
+const piled = { conditions: three(["prone", "restrained", "poisoned"]), mount: { ...wolf, conditions: three(["hasted", "blessed", "invisible"]) } };
+const pairHovered = plate(piled);
+assert.equal((pairHovered.match(/<li/g) ?? []).length, 4, "a pair's first page is four rows across the two");
+assert.match(pairHovered, /aria-label="Wolf: conditions"[^>]*>(?:(?!<\/ul>)[^])*>hasted</, "the mount's first row is on the first page, under its name");
+assert.match(pairHovered, /data-plate-more[^>]*>.*\+2 more: <\/span><span class="capitalize">Wolf: blessed, invisible/, "hovered: the rest are named with whose they are");
+assert.match(plate({ ...piled, conditions: three(["prone", "restrained", "poisoned", "frightened", "stunned"]) }), /\+4 more: <\/span><span class="capitalize">Ogre Brute: stunned; Wolf: hasted, blessed, invisible/, "hovered: the rider's rest and the mount's");
+const pairHeld = plate({ ...piled, pinned: true });
+assert.match(pairHeld, /aria-label="Ogre Brute on Wolf: details"/, "held: a screen reader is told both names");
+assert.match(pairHeld, /aria-live="polite"[^>]*>Page 1 of 2</);
 
 const { placePlate } = await import("../src/lib/battlemap/plate-place.ts");
 const view = { width: 1280, height: 800 };

@@ -148,7 +148,7 @@ export function WorldGroup({
           onChange={(tableLanguage) => patch({ tableLanguage })}
           className={selectClass}
         />
-        <span className="text-stone-500">{t("The Game Master writes the story in this language, and the server reads the story and your messages in it. The app, the rules reference and the rulebook read French. Any language but English needs a multilingual embedding model on the server (EMBEDDING_MODEL in the README).")}</span>
+        <span className="text-stone-500">{t("The Game Master writes the story in this language, and the server reads the story and your messages in it. The app and the rulebook read French and Spanish; the rules reference reads French. Any language but English needs a multilingual embedding model on the server (EMBEDDING_MODEL in the README).")}</span>
       </div>
       <EmbeddingLanguageLine languages={[settings.tableLanguage]} />
       {aiNarrates ? (

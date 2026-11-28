@@ -9,8 +9,12 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/image-variants.ts#number": [["parse",1,"the time this server first wrote WebP copies with the plain encoder, read back from the marker file it wrote into the picture folder: no record's name"]],
     "lib/roll-parts.ts#whole": [["identity",1,"a carried line by its whole own name, as the attack roll stored it in its parts"],["key",3,"a skill's or an ability's id, as a roll's parts store it or as the engine wrote it, among the ids a rule asks about"]],
-    "lib/roll-words.ts#whole-single": [["identity",1,"what a roll used, by its whole name through textKey against the key of the content row its roll stored: only a name that is its row's own is put into the reader's language, and any other is shown as written"]],
+    "lib/roll-words.ts#whole": [["identity",1,"a creature's action carried under more than its own name (a beast form's \"Wolf Bite\", a pet's \"Rex's Bite\"): the attack the name ends with is the one whose key its roll stored, textKey on both sides, and a name that does not end with it is shown as written; and a names table's answer told from a miss, which hands the same name back"]],
+    "lib/roll-parts.ts#whole-single": [["key",1,"the name a roll says a creature's action under against the attack's own name, both as the engine holds them: the same text means the action is carried under its own name and needs no key"]],
+    "lib/roll-words.ts#partial": [["parse",1,"a creature's action carried under more than its own name, cut at its spaces to find where the attack's own name starts: the attack is the one whose key the roll stored, matched whole through textKey, so no record is chosen by a word of the name"]],
+    "lib/roll-words.ts#whole-single": [["identity",2,"what a roll used, by its whole name through textKey against the key its roll stored: a weapon or a spell is put into the reader's language only under its row's own name, and any other is shown as written; a creature's action carried under more than its own name (a beast form's \"Wolf Bite\") is told from one carried under its own by the same key"]],
     "lib/roll-parts.ts#partial": [["parse",8,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: its skill, its ability, what a save was against, the weapon its label opens with, its marks and the ambush it was rolled for"]],
     "lib/srd/barding.ts#whole": [["key",1,"the one word barding against each word of a carried row, both through textKey, to tell a suit made for a mount; the suit itself is then found by its whole name (armorNamed)"]],
     "lib/dm/party-npcs-fight.ts#whole": [["key",1,"an NPC's stored place against the party's current place, both written by the server, to field only who is where the fight is: no record a person named"]],
@@ -2690,7 +2694,7 @@
     "lib/report-bundle.ts#partial": [["key",1,"a narrator tool's name tested for the whisper tools (protocol)"],["parse",1,"a page path cut at its query and fragment"],["pattern",1,"session and cookie shapes cut out of text"],["key",1,"a host matched against the public services by domain suffix (protocol)"],["pattern",4,"addresses and home folders cut out of text by shape; reads no record's name"],["pattern",2,"the browser's ResizeObserver notice told from a page error, as it is kept and as a stored ring is sent; reads no record's name"]],
     "lib/report-bundle.ts#whole": [["key",1,"a host matched against the public services by its exact name (protocol)"]],
     "lib/rulebook/book.ts#number": [["parse",1,"the request's Accept-Language and X-Odm-Locale headers: BCP 47 language tags and their q weights (protocol), never a record's name"]],
-    "lib/rulebook/book.ts#partial": [["parse",5,"the request's Accept-Language and X-Odm-Locale headers: BCP 47 language tags and their q weights (protocol), never a record's name"]],
+    "lib/rulebook/book.ts#partial": [["parse",3,"the request's Accept-Language and X-Odm-Locale headers: BCP 47 language tags and their q weights (protocol), never a record's name"]],
     "lib/rulebook/catalog-rows.ts#fallback": [["key",1,"the SRD race page for a race's English name forms"]],
     "lib/rulebook/catalog-rows.ts#first": [["key",1,"a race's rulebook page by its id's forms"]],
     "lib/rulebook/catalog-rows.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
@@ -3552,7 +3556,7 @@
     "lib/i18n/locale.ts#partial": [
       [
         "parse",
-        7,
+        6,
         "Accept-Language BCP 47 tag/q-weight parsing and cookie header splitting (protocol), never a record's name"
       ]
     ],
@@ -3596,20 +3600,6 @@
         "key",
         2,
         "French damage type display words (DAMAGE_TYPE_WORDS_FR)"
-      ]
-    ],
-    "lib/locale.tsx#normalizer": [
-      [
-        "key",
-        1,
-        "navigator.language tag normalization"
-      ]
-    ],
-    "lib/locale.tsx#partial": [
-      [
-        "key",
-        1,
-        "navigator.language prefix split"
       ]
     ],
     "lib/characters/class-words.ts#whole-single": [

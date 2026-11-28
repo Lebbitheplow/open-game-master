@@ -64,13 +64,16 @@
 //           (issue #1064, step 2, src/lib/roll-words.ts). A roll whose
 //           parts make its words stores the sentence they make and no
 //           other, names every target in it, carries only notes that are
-//           the engine's own, and a key that is a real row. No site of a
-//           moved family writes a typed note, so one stored here is an
-//           engine's words in a person's field. And the rows of a family that has moved (WORDED_ROWS)
-//           store no attack or damage roll of the seat's whose site wrote
-//           its own sentence, nor deal a card for one: a site there that
-//           goes back to writing its sentence fails its row. A missing
-//           French line fails nothing: the words read in English.
+//           the engine's own, and a key that is a real row. The one
+//           typed note a moved family writes is a damage type of a stat
+//           block's own making (roll-parts.ts riderNote), which no row here
+//           has, so one stored here is an engine's words in a person's
+//           field. And the rows of a family that has moved (WORDED_ROWS)
+//           store no attack or damage roll of that family's (the seat's
+//           own, or a creature's: FAMILY_ROLLS) whose site wrote its own
+//           sentence, nor deal a card for one: a site there that goes back
+//           to writing its sentence fails its row. A missing French line
+//           fails nothing: the words read in English.
 //
 // One function does all of these (src/lib/dm/roll-record.ts recordRoll), and
 // every row passes all six. `rows` in scripts/roll-record-sites.json held
@@ -104,6 +107,7 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { ABILITIES, rollAbility, rollKeepsConcentration, rollPhysical, rollSkill, rollWeaponRow } = await import("../src/lib/roll-parts.ts");
 const { makesWords, ROLL_NOTES, rollSentence } = await import("../src/lib/roll-words.ts");
 const { UNARMED_STRIKE_KEY, weaponNamed } = await import("../src/lib/srd/weapons.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
 const { spellFactsFor } = await import("../src/lib/content/index.ts");
 const { SRD_SKILLS } = await import("../src/lib/srd/index.ts");
 const { REAL_DICE_SCOPE } = await import("../src/lib/dice/held-rolls.ts");
@@ -469,27 +473,43 @@ function partsGaps(roll) {
   return gaps;
 }
 
-// The rows whose call makes a character's own attack, by the family that
-// moved them (scripts/roll-parts-sites.json `moved`): the seat's own attack
-// and damage rolls there say their words in fields.
+// The families that have moved (scripts/roll-parts-sites.json `moved`), each
+// by whose attack and damage rolls it moved: the seat's own, or a
+// creature's.
+const FAMILY_ROLLS = {
+  "a character's attacks and their damage": (said) => (said.attacker ? said.attacker.kind === "sheet" && said.attacker.id === hero.id : said.characterId === hero.id),
+  "creatures' attacks and their damage": (said) => said.attacker?.kind === "enemy" || said.attacker?.kind === "pet",
+};
+// The rows whose call makes such an attack, by its family: its attack and
+// damage rolls there say their words in fields.
 const WORDED_ROWS = {
   "pc_attack.weapon": "a character's attacks and their damage",
   "pc_attack.spell": "a character's attacks and their damage",
   "damage_object.weapon": "a character's attacks and their damage",
   "opportunity.enemy_walks_off": "a character's attacks and their damage",
   "opportunity.enemy_flees": "a character's attacks and their damage",
+  "enemy_attack.rider_save": "creatures' attacks and their damage",
 };
 // The tables a part's key is checked against, by what it names. A skill's
 // or an ability's key is held by `parts` above.
 // An unarmed strike is the engine's own row (src/lib/srd/weapons.ts).
-const REAL_KEY = { weapon: (key) => key === UNARMED_STRIKE_KEY || Boolean(weaponNamed(key)), spell: (key) => Boolean(spellFactsFor(key)), skill: () => true, ability: () => true };
+// A creature's action has no table of rows: it is stored by its stat block's
+// name, and has a key only where it is carried under more than that name
+// ("Wolf Bite"), which then ends with the attack the key names.
+const REAL_KEY = {
+  weapon: (key) => key === UNARMED_STRIKE_KEY || Boolean(weaponNamed(key)),
+  spell: (key) => Boolean(spellFactsFor(key)),
+  skill: () => true,
+  ability: () => true,
+  action: (key, used) => textKey(used.name).endsWith(` ${key}`),
+};
 
 // What is wrong with the words of a roll, or of a card dealt for one: for
 // parts that make the words, their structure; for a row of a family that
 // has moved, that they do.
 function wordsGaps(said, family) {
   const parts = said.parts;
-  const own = (said.kind === "attack" || said.kind === "damage") && (said.attacker ? said.attacker.kind === "sheet" && said.attacker.id === hero.id : said.characterId === hero.id);
+  const own = (said.kind === "attack" || said.kind === "damage") && Boolean(FAMILY_ROLLS[family]?.(said));
   if (!makesWords(parts)) {
     return family && own ? [`its site wrote its own sentence, and its family ("${family}") says its words in fields (src/lib/roll-parts.ts)`] : [];
   }
@@ -498,7 +518,7 @@ function wordsGaps(said, family) {
     gaps.push(`its stored sentence is not the one its parts make, "${rollSentence(said)}"`);
   }
   const used = parts.used;
-  if (used?.key && !(REAL_KEY[used.kind] ?? (() => false))(used.key)) {
+  if (used?.key && !(REAL_KEY[used.kind] ?? (() => false))(used.key, used)) {
     gaps.push(`its key "${used.key}" is no row of what it says it is (${used.kind})`);
   }
   for (const note of parts.notes ?? []) {
@@ -528,8 +548,8 @@ function recordProblems(mark, seq, cards, hazardRow = false, askedRow = false, f
     const dealt = { kind: card.kind, characterId: hero.id, detail: kept?.detail ?? "", parts: typeof kept?.parts_json === "string" ? JSON.parse(kept.parts_json) : null };
     problems.words.push(...wordsGaps(dealt, family).map((gap) => `the ${card.kind} card "${dealt.detail}": ${gap}`));
   }
-  if (family && !rolls.some((roll) => roll.kind === "attack" && roll.attacker?.id === hero.id)) {
-    problems.words.push(`the row is listed as one of "${family}" and stored no attack roll of the seat's`);
+  if (family && !rolls.some((roll) => roll.kind === "attack" && FAMILY_ROLLS[family](roll))) {
+    problems.words.push(`the row is listed as one of "${family}" and stored no attack roll of that family's`);
   }
   const marked = [];
   const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;

@@ -5,14 +5,15 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { useLocaleChoice, useT, writeLocaleChoice, type LocaleChoice } from "@/lib/locale";
 
 // Language, beside Appearance and on the same contract: the reader's own
-// choice, kept on this device, "auto" following a French server, else the
-// browser. The language
-// names stay in their own tongue ("Français", never "French") so someone
-// facing a language they cannot read can still find their own.
+// choice, kept on this device, "auto" following a server whose language the
+// menus have (French, Spanish), else the browser. The language names stay in
+// their own tongue ("Français", never "French") so someone facing a language
+// they cannot read can still find their own.
 const CHOICES: Array<{ id: LocaleChoice; label: string; glyph: string }> = [
   { id: "auto", label: "auto", glyph: "sense-darkvision" },
   { id: "en", label: "English", glyph: "daypart-dusk" },
   { id: "fr", label: "Français", glyph: "daypart-night" },
+  { id: "es", label: "Español", glyph: "daypart-dawn" },
 ];
 
 export function LanguageSection() {
@@ -22,9 +23,9 @@ export function LanguageSection() {
     <PageSection
       heading={t("Language")}
       glyph="system-lore"
-      intro={t("The language of the menus and screens, kept on this device. Automatic follows the server where its language is French, else the browser. The Game Master narrates in whatever language the table speaks.")}
+      intro={t("The language of the menus and screens, kept on this device. Automatic follows the server where the menus have its language, else the browser. The Game Master narrates in whatever language the table speaks.")}
     >
-      <div data-pill-group="" role="group" aria-label={t("Language")} className="flex flex-wrap gap-2">
+      <div data-pill-group="" role="group" aria-label={t("Language")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {CHOICES.map((entry) => {
           const label = entry.id === "auto" ? t("Automatic") : entry.label;
           return (

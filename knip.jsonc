@@ -6,9 +6,11 @@
   "entry": [
     // Every top-level script is a program (`node scripts/<name>.mjs`, npm scripts, the docs).
     "scripts/*.{mjs,js,ts}",
-    // Spawned by path, not imported: scripts/browser/run.mjs, test-boot-resync.mjs, lib/enforce-spell-kit.mjs.
+    // Spawned by path, not imported: scripts/browser/run.mjs, test-boot-resync.mjs, test-boot-workshop-sheets.mjs,
+    // lib/enforce-spell-kit.mjs.
     "scripts/browser/seed.mjs",
     "scripts/lib/boot-db.mjs",
+    "scripts/lib/boot-server-db.mjs",
     "scripts/lib/enforce-spell-nopack.mjs",
     // Imported from a directory listing by scripts/browser/run.mjs.
     "scripts/browser/scenarios/*.mjs",

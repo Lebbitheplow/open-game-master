@@ -28,7 +28,7 @@ import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
 import { planAttackFx } from "@/lib/battlemap/fx-plan";
 import { d20Expression, rollExpression } from "@/lib/dice";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, foeTarget } from "@/lib/roll-parts";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
@@ -220,7 +220,7 @@ export function enemyStrikesEnemy(
       characterId: null,
       requestedBy: "dm",
       kind: "attack",
-      detail: rollAgainst(attack.name, now.displayName),
+      parts: actionParts(attack, foeTarget(now)),
       advantage,
       result: toHit,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
@@ -263,7 +263,7 @@ export function enemyStrikesEnemy(
       characterId: null,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(attack.name, now.displayName),
+      parts: actionParts(attack, foeTarget(now)),
       result: damage,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       turn,

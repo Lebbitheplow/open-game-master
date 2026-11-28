@@ -32,6 +32,7 @@ import {
   type EncounterStatus,
   type EnemyStatus,
 } from "@/lib/db/encounters";
+import { localeOfTableLanguage } from "@/lib/i18n/locale";
 
 // What a client is allowed to know about a fight. Split out of
 // encounters.ts, which is persistence: this is the projection, and it is the
@@ -396,7 +397,7 @@ export function publicEncounter(
   const hidden = new Set(options.hiddenRefIds ?? []);
   const cast = castLookup(encounter.campaignId);
   const language = getCampaignById(encounter.campaignId)?.gameSettings.tableLanguage ?? "english";
-  const t = (key: string, vars?: Record<string, string | number>) => translate(language === "french" ? "fr" : "en", key, vars);
+  const t = (key: string, vars?: Record<string, string | number>) => translate(localeOfTableLanguage(language), key, vars);
   // Names a condition's "until X's turn" or "from X" may show: the order as
   // this viewer sees it.
   const nameOf = namesLookup(

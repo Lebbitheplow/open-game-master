@@ -28,7 +28,7 @@
     "lib/hidden-names-logic.ts#str-eq": [["key",3,"the field that lists whom a roll is against and a target's kind (src/lib/roll-parts.ts RollTarget), the engine's own vocabulary: an object's name is a person's words and keeps its place, a creature kept from the table is replaced whole"]],
     "lib/roll-words.ts#str-eq": [["key",3,"a roll's kind, among the kinds a waiting card's line has a sentence for: the engine's own ids, never words a person wrote"]],
     "lib/roll-words.ts#str-list": [["key",1,"the names of the fields a roll's words are made from (src/lib/roll-parts.ts RollParts), which a waiting card is sent and no others"]],
-    "lib/roll-words.ts#str-key": [["key",2,"the engine's own roll notes and dice steps by their ids, a card line's sentence by the roll's kind, and the names tables by the kind of thing a roll used: a roll's parts store the id and the kind, never the words"]],
+    "lib/roll-words.ts#str-key": [["key",3,"the engine's own roll notes (the thirteen damage types among them, each under its own id) and dice steps by their ids, a card line's sentence by the roll's kind, and the names tables by the kind of thing a roll used: a roll's parts store the id and the kind, never the words"]],
     "lib/roll-parts.ts#\\b": [["english-source",3,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],
     "lib/roll-parts.ts#RegExp i": [["english-source",1,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],
     "lib/roll-parts.ts#toLowerCase": [["english-source",2,"the sentence the engine wrote for a roll stored before its parts (issue #1064), read for those rolls alone: a roll that has parts is read by its fields"]],
@@ -2482,8 +2482,6 @@
     "lib/report-bundle.ts#toLowerCase": [["key",2,"a host name matched against the public services and the loopback names (protocol)"]],
     "lib/report-bundle.ts#toUpperCase": [["display",1,"log level shown"]],
     "lib/roll-labels.ts#str-key": [["key",1,"roll kind ids"]],
-    "lib/rulebook/book.ts#str-eq": [["key",4,"the request's Accept-Language and X-Odm-Locale headers: BCP 47 language tags and their q weights (protocol), never a record's name"]],
-    "lib/rulebook/book.ts#str-startsWith": [["key",2,"the request's Accept-Language and X-Odm-Locale headers: BCP 47 language tags and their q weights (protocol), never a record's name"]],
     "lib/rulebook/book.ts#toLowerCase": [["key",1,"the request's Accept-Language and X-Odm-Locale headers: BCP 47 language tags and their q weights (protocol), never a record's name"]],
     "lib/rulebook/catalog-rows.ts#RegExp i": [["english-source",1,"the bundled SRD rulebook's own Markdown (bundled data)"]],
     "lib/rulebook/catalog-rows.ts#[a-z]": [["english-source",1,"the bundled SRD rulebook's own Markdown (bundled data)"]],
@@ -3562,21 +3560,15 @@
     "lib/inventory-art-logic.ts#re-affix": [["english-source",1,"the plural suffix of a resolved English catalog item's physical form, never an unknown item name"]],
     "lib/inventory-art-logic.ts#re-word": [["english-source",1,"staff, wand and rod prefixes of the resolved English magic-item catalog name select its focus painting"],["english-extra",5,"wooden shield, potion, scroll and rope painting aliases and the of/de/du/des connector after a leading form word, after locale-aware equipment resolution; an unmatched name retains its category icon and no mechanics depend on the painting"]],
     "lib/inventory-art-logic.ts#str-key": [["english-extra",2,"physical-form and gear painting aliases after locale-aware canonical item matching; unidentified loot is excluded, and a name with no painting keeps its category icon without changing rules or identity"]],
+    "lib/i18n/locale.ts#str-key": [["key",1,"the interface's own language codes and BCP 47 tags (protocol), never a record's name or words a person wrote"]],
     "lib/i18n/locale.ts#toLowerCase": [
       [
         "key",
-        1,
+        2,
         "locale tag normalization"
       ]
     ],
-    "lib/i18n/locale.ts#str-eq": [["key",5,"locale code comparisons, and the server's language code (global config serverLanguage)"]],
-    "lib/i18n/locale.ts#str-startsWith": [
-      [
-        "key",
-        2,
-        "locale tag prefix checks"
-      ]
-    ],
+    "lib/i18n/translate.ts#str-list": [["key",1,"the interface's own language codes and BCP 47 tags (protocol), never a record's name or words a person wrote"]],
     "lib/i18n/translate.ts#[a-z]": [
       [
         "key",
@@ -3647,25 +3639,11 @@
         "capitalizing the first letter of a damage type label"
       ]
     ],
-    "lib/locale.tsx#toLowerCase": [
-      [
-        "key",
-        1,
-        "locale tag normalization"
-      ]
-    ],
     "lib/messages-logic.ts#\\w": [
       [
         "key",
         1,
         "message template placeholder pattern"
-      ]
-    ],
-    "lib/locale.tsx#str-eq": [
-      [
-        "key",
-        4,
-        "locale code comparisons"
       ]
     ],
     "lib/srd/index.ts#str-list": [
@@ -3680,13 +3658,6 @@
         "english-source",
         1,
         "SRD ability gain text pattern"
-      ]
-    ],
-    "lib/request-locale.ts#str-eq": [
-      [
-        "key",
-        2,
-        "request locale code comparisons"
       ]
     ],
     "app/api/campaigns/[campaignId]/actions/route.ts#str-startsWith": [

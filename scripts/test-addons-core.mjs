@@ -71,8 +71,8 @@ await test("native portrait bytes survive JSON and reject oversized transfers", 
 });
 await test("a native backdrop keeps its size; only portraits use the small variant", () => {
   assert.equal(typeof nativeFileUrls, "function", "file and face requests need their own fetch order");
-  assert.deepEqual(nativeFileUrls("/generated/hero.png", true), ["/generated/hero.png?w=256"]);
-  assert.deepEqual(nativeFileUrls("/generated/backdrop.png", false), ["/generated/backdrop.png", "/generated/backdrop.png?w=1024"], "a backdrop is never fetched at 256px");
+  assert.deepEqual(nativeFileUrls("/generated/hero.png", true), ["/generated/hero.png?w=256&v=2"]);
+  assert.deepEqual(nativeFileUrls("/generated/backdrop.png", false), ["/generated/backdrop.png", "/generated/backdrop.png?w=1024&v=2"], "a backdrop is never fetched at 256px");
   assert.deepEqual(nativeFileUrls("/api/addons/hello-dungeon/assets/model.glb", false), ["/api/addons/hello-dungeon/assets/model.glb"]);
 });
 await test("native battlefield controls have a bounded explicit contract", () => {

@@ -19,7 +19,8 @@ import { recordRoll } from "@/lib/dm/roll-record";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { speedToTiles } from "@/lib/battlemap/movement";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, keptTarget } from "@/lib/roll-parts";
+import { rollSentence } from "@/lib/roll-words";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { claimOncePerTurn, dashCount } from "@/lib/dm/action-budget";
@@ -230,7 +231,7 @@ export function strikeMount(input: {
       characterId: rider.id,
       requestedBy: "dm",
       kind: "attack",
-      detail: rollAgainst(attack.name, mount.name),
+      parts: actionParts(attack, keptTarget("mount", mount)),
       advantage,
       result: toHit,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
@@ -254,7 +255,7 @@ export function strikeMount(input: {
       characterId: rider.id,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(attack.name, mount.name),
+      parts: actionParts(attack, keptTarget("mount", mount)),
       result: damage,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       turn,
@@ -340,7 +341,9 @@ function steedBlow(input: {
     ...(attack.spellAttack ? { spell: true } : { attack: true }),
     ...(hasTrait(enemy.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
     crit: input.crit,
-    reason: rollAgainst(attack.name, input.mountName),
+    // The hit is filed under its roll's words, as that roll's parts make
+    // them in English.
+    reason: rollSentence({ parts: actionParts(attack, keptTarget("mount", { name: input.mountName })) }),
   });
   const before = getSheetById(input.sheetId);
   const wasProne = before ? before.conditions.some((entry) => isConditionNamed(entry, "prone")) : false;

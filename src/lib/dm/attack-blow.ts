@@ -46,6 +46,7 @@ import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 import { healCasterHalf, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { textKey } from "@/lib/language/text-logic";
+import { swingUsed } from "@/lib/roll-parts";
 import { brawlerUnarmed, CRUSHER_USED, GREAT_WEAPON_MASTER_READY, SLASHER_USED, TAVERN_GRAPPLE_READY } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -314,6 +315,7 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
       attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name },
       holderId: sheet.id,
       attack: record.weapon,
+      used: swingUsed(record, record.kind === "spell"),
       enemyId: enemy.id,
       onHit: extras.creature,
     });

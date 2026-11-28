@@ -24,6 +24,11 @@
 // - spells / monsters / species / backgrounds: the row slug ("acid-arrow",
 //   "adult-black-dragon");
 // - weapons / armor: the Open5e row slug ("crossbow-light", "chain-mail");
+// - actions: the slug of a creature attack's English name ("bite",
+//   "tail-spike"), as a stat block has it. Not extracted with the rest: the
+//   table was paired from the two rulebooks in the repository
+//   (scripts/pair-action-names-fr.mjs), so an extraction folder with no
+//   actions-fr.json keeps the table names-fr.ts already has;
 // - gear: the gearKey of the SRD gear's English name
 //   (src/lib/srd/adventuring-gear.ts): lowercase words, punctuation and
 //   apostrophes dropped ("alchemists fire flask");
@@ -77,6 +82,7 @@ if (fromAt >= 0 && !fromDir) {
 const TABLES = {
   spells: "SPELL_NAMES_FR",
   weapons: "WEAPON_NAMES_FR",
+  actions: "ACTION_NAMES_FR",
   armor: "ARMOR_NAMES_FR",
   gear: "GEAR_NAMES_FR",
   magicitems: "MAGIC_ITEM_NAMES_FR",
@@ -92,6 +98,19 @@ const TABLES = {
   subclasses: "SUBCLASS_NAMES_FR",
 };
 
+// The comment a table is written under, where it has one of its own.
+const TABLE_NOTES = {
+  actions: `// Les noms des attaques des créatures, par le slug du nom anglais
+// (« Bite » : "bite"), tels que le livre français les imprime dans les blocs
+// de statistiques : un jet d'attaque ou de dégâts d'une créature les lit
+// (src/lib/roll-words.ts). Un nom imprimé de plusieurs façons (la « Griffe »
+// d'un dragon, la « Pince » d'un scorpion géant) prend la plus fréquente ; une
+// attaque qui porte le nom d'une arme (« Scimitar ») se lit dans la table des
+// armes et n'a pas de ligne ici. scripts/pair-action-names-fr.mjs les
+// réimprime depuis les deux livres du dépôt.
+`,
+};
+
 const tsLiteral = (value) => JSON.stringify(value);
 const record = (name, entries, type = "Record<string, string>") =>
   `export const ${name}: ${type} = {\n${Object.entries(entries)
@@ -102,6 +121,13 @@ const record = (name, entries, type = "Record<string, string>") =>
 // contributor's own pipeline does after a new extraction.
 function writeNamesFrom(dir) {
   const read = (table) => JSON.parse(readFileSync(join(resolve(dir), `${table}-fr.json`), "utf8"));
+  // A table as names-fr.ts has it now, read from its lines.
+  const kept = (name) => {
+    const text = readFileSync(namesFile, "utf8").replace(/\r\n/g, "\n");
+    const from = text.indexOf(`export const ${name}:`);
+    const block = from < 0 ? "" : text.slice(from, text.indexOf("\n};", from));
+    return Object.fromEntries([...block.matchAll(/^  (".*?"): (".*"),$/gm)].map((line) => [JSON.parse(line[1]), JSON.parse(line[2])]));
+  };
   // The classes file carries the 12 bare class names beside the feature keys
   // ("cleric:..."), which the extractor wrote into one JSON; split them.
   const classes = {};
@@ -112,6 +138,7 @@ function writeNamesFrom(dir) {
   const tables = {
     spells: read("spells"),
     weapons: read("weapons"),
+    actions: existsSync(join(resolve(dir), "actions-fr.json")) ? read("actions") : kept(TABLES.actions),
     armor: read("armor"),
     gear: read("gear"),
     magicitems: read("magic-items"),
@@ -148,7 +175,7 @@ function writeNamesFrom(dir) {
 // les aptitudes de classe. L'aide qui les lit est src/lib/content/names.ts.
 `;
   const body = [
-    ...Object.entries(TABLES).map(([table, name]) => record(name, tables[table])),
+    ...Object.entries(TABLES).map(([table, name]) => `${TABLE_NOTES[table] ?? ""}${record(name, tables[table])}`),
     `// The combined lookup the render helper reads, one table at a time. Typed`,
     `// as a plain string-keyed record: the table names are data here, and the`,
     `// narrow union of tables lives in src/lib/content/names.ts.`,

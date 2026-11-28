@@ -3,7 +3,8 @@ import { getContentDb } from "@/lib/content/db";
 import { repairedWeight } from "@/lib/content/item-weights";
 import { gearFromHomebrewData } from "@/lib/homebrew/gear";
 import { workshopClassFrom, type WorkshopClass } from "@/lib/homebrew/class-data";
-import { registerWorkshopClasses, workshopClassName } from "@/lib/classes/workshop-registry";
+import { workshopClassName } from "@/lib/classes/workshop-registry";
+import { registerWorkshopClassesFrom } from "@/lib/db/workshop-class-sync";
 import { SRD_ARMOR } from "@/lib/srd/armor";
 import { magicItemNamed } from "@/lib/srd/magic-items";
 import { matchGear } from "@/lib/srd/adventuring-gear";
@@ -180,11 +181,7 @@ export function workshopClassesFor(userIds: string[]): WorkshopClass[] {
 // (src/lib/characters/catalog.ts); a forgotten class still answers for the
 // sheets that hold it. Run at start-up and after any write to a class.
 export function syncWorkshopClasses(): void {
-  const rows = getDatabase().prepare(`SELECT * FROM homebrew_entries WHERE kind = 'class'`).all() as HomebrewRow[];
-  registerWorkshopClasses(
-    rows.map(mapEntry).flatMap((entry) => workshopClassFrom(entry) ?? []),
-    { replace: true },
-  );
+  registerWorkshopClassesFrom(getDatabase());
 }
 
 export function updateHomebrew(

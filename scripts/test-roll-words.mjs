@@ -27,9 +27,20 @@
 //   - a roll handed neither a sentence nor parts that make its words is
 //     refused.
 //
+// The second family is a creature's own attacks and their damage (issue
+// #1121). This holds as well:
+//
+//   - a creature's action is stored by the name its stat block gives it,
+//     and a French table reads it through the creature attack names, then
+//     the weapons and the spells, never through the interface's dictionary:
+//     a bundled creature's, a homebrew one's and a beast form's alike;
+//   - every attack of the bundled bestiary reads as it did under the reader
+//     this replaces, or better.
+//
 // The sites themselves are held, on their own paths and both doors, by
 // scripts/test-enforce-roll-words.mjs and the dice-site sweep.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
@@ -37,11 +48,16 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { translate } = await import("../src/lib/i18n/translate.ts");
 // The catalog and the name tables as a server process installs them.
 await import("../src/lib/i18n/fr-catalog.ts");
+await import("../src/lib/i18n/es-catalog.ts");
 const { hideNames } = await import("../src/lib/hidden-names-logic.ts");
 const { pendingReason, pendingWords, rollAgainst, rollCardLabel, rollChronicleLead, rollToastLead } = await import("../src/lib/roll-labels.ts");
-const { attackParts, checkParts, foeTarget, noted, swingParts } = await import("../src/lib/roll-parts.ts");
+const { actionParts, actionUsed, attackParts, checkParts, foeTarget, keptTarget, noted, riderNote, sheetTarget, strikeParts, swingParts, swingUsed } = await import("../src/lib/roll-parts.ts");
+const { contentName } = await import("../src/lib/content/names.ts");
+const { ACTION_NAMES_FR, WEAPON_NAMES_FR } = await import("../src/lib/content/names-fr.ts");
+const { DAMAGE_TYPES } = await import("../src/lib/dm/damage-logic.ts");
+const CREATURES = JSON.parse(readFileSync(new URL("../src/lib/srd/srd-creatures.json", import.meta.url), "utf8"));
 const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
-const { cardLine, cardReason, makesWords, PHYSICAL, ROLL_NOTES, rollSentence, rollWords, seatSentences, wordParts, WORDS_VERSION } = await import("../src/lib/roll-words.ts");
+const { ACTION_WORDS_VERSION, cardLine, cardReason, makesWords, PHYSICAL, ROLL_NOTES, rollSentence, rollWords, seatSentences, wordParts, WORDS_VERSION } = await import("../src/lib/roll-words.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -53,6 +69,7 @@ function test(name, fn) {
 const translator = (locale) => Object.assign((key, vars) => translate(locale, key, vars), { locale });
 const en = translator("en");
 const fr = translator("fr");
+const es = translator("es");
 
 const GOBLIN = { id: "a-goblin", displayName: "Goblin" };
 const ARIA = { kind: "sheet", id: "aria", name: "Aria" };
@@ -263,7 +280,7 @@ test("a roll whose site still writes its sentence, one stored before its parts, 
   // A newer server's row, whose fields may mean something this build does
   // not know: its English sentence is always stored, and is what is shown.
   assert.equal(WORDS_VERSION, 1);
-  const later = { kind: "attack", detail: "Longsword vs Goblin, from above", attacker: ARIA, parts: { ...attackParts(longsword, foeTarget(GOBLIN)), worded: WORDS_VERSION + 1 } };
+  const later = { kind: "attack", detail: "Longsword vs Goblin, from above", attacker: ARIA, parts: { ...attackParts(longsword, foeTarget(GOBLIN)), worded: ACTION_WORDS_VERSION + 1 } };
   assert.equal(makesWords(later.parts), false);
   assert.equal(rollCardLabel(en, later, "Aria"), "Aria · Attack roll (Longsword vs Goblin, from above)");
   // The mark of step 2's first build, before it was a number, is no version.
@@ -449,10 +466,277 @@ test("a waiting card of a family that has not moved shows its sentence and its r
   }
 });
 
+// ---- the second family: a creature's own attacks and their damage ----
+
+// A creature's own action is stored by the name its stat block gives it,
+// with no key, and its words look that name up in the creature attack names,
+// then the weapons and the spells (issue #1121). Each row below: the site,
+// the sentence it built by hand before, and the parts it hands the door now.
+const ARIA_STRUCK = sheetTarget({ id: "aria", name: "Aria" });
+const REX = keptTarget("pet", { name: "Rex" });
+const THUNDER = keptTarget("mount", { name: "Thunder" });
+const GOBLIN_ROLLS = { kind: "enemy", id: "a-goblin", name: "Goblin" };
+const bite = { name: "Bite" };
+const beastBite = { weapon: "Wolf Bite", named: { kind: "action", name: "Bite" } };
+const riderOf = (damageType) => `${damageType ?? "rider"}`;
+const CREATURE_SITES = [
+  ["enemy_attack, a creature's attack roll and its damage (enemy-attack.ts)", rollAgainst(bite.name, "Aria"), actionParts(bite, ARIA_STRUCK)],
+  ["a creature's attack at another creature (enemy-strike.ts), and one a Cloud Rune turns (cloud-rune.ts)", rollAgainst(bite.name, "Goblin"), actionParts(bite, foeTarget(GOBLIN))],
+  ["what a creature's hit goes on to deal, by its damage type (enemy-hit.ts, enemy-hit-rows.ts)", rollAgainst(`${bite.name} (${riderOf("poison")})`, "Aria"), actionParts(bite, ARIA_STRUCK, riderNote("poison"))],
+  ["the same, where its stat block names no type", rollAgainst(`${bite.name} (${riderOf(undefined)})`, "Aria"), actionParts(bite, ARIA_STRUCK, riderNote(undefined))],
+  ["the same, by a word of the stat block's own", rollAgainst(`${bite.name} (${riderOf("Rot")})`, "Aria"), actionParts(bite, ARIA_STRUCK, riderNote("Rot"))],
+  ["a creature's opportunity attack and its damage (opportunity.ts)", rollAgainst(`${bite.name} (opportunity attack)`, "Aria"), actionParts(bite, ARIA_STRUCK, "opportunity")],
+  ["the same at a creature that walks off (opportunity-sides.ts)", rollAgainst(`${bite.name} (opportunity attack)`, "Goblin"), actionParts(bite, foeTarget(GOBLIN), "opportunity")],
+  ["the same at a pet that pulls away (opportunity-pets.ts)", rollAgainst(`${bite.name} (opportunity attack)`, "Rex"), actionParts(bite, REX, "opportunity")],
+  ["a creature's attack at a pet, and a hit's damage that is no critical (pet-strike.ts)", rollAgainst(bite.name, "Rex"), actionParts(bite, REX, false)],
+  ["what such a hit goes on to deal (pet-strike.ts)", rollAgainst(`${bite.name} (rider)`, "Rex"), actionParts(bite, REX, "rider")],
+  ["a creature's attack at a mount and its damage (mount-combat.ts)", rollAgainst(bite.name, "Thunder"), actionParts(bite, THUNDER)],
+  ["what such a hit goes on to deal (mount-blow.ts)", rollAgainst(`${bite.name} (rider)`, "Thunder"), actionParts(bite, THUNDER, "rider")],
+  ["a pet's attack and its damage (pet-tools.ts)", rollAgainst(bite.name, "Goblin"), actionParts(bite, foeTarget(GOBLIN))],
+  ["a pet's damage on a critical hit (pet-tools.ts)", rollAgainst(`${bite.name}${" (CRIT)"}`, "Goblin"), actionParts(bite, foeTarget(GOBLIN), "crit")],
+  ["what a pet's hit goes on to deal (natural-onhit.ts)", rollAgainst(`${"Rex's Bite"} (${riderOf("poison")})`, "Goblin"), strikeParts(actionUsed(bite, "Rex's Bite"), foeTarget(GOBLIN), [riderNote("poison")])],
+  ["a beast form's natural attack and its damage (natural-attack.ts, through pc_attack)", rollAgainst("Wolf Bite", "Goblin"), swingParts(beastBite, foeTarget(GOBLIN))],
+  ["a beast form's opportunity attack (opportunity-strike.ts)", rollAgainst(`${"Wolf Bite"} (opportunity attack)`, "Goblin"), swingParts(beastBite, foeTarget(GOBLIN), { note: "opportunity" })],
+  ["what a beast form's hit goes on to deal (natural-onhit.ts)", rollAgainst(`${"Wolf Bite"} (${riderOf("poison")})`, "Goblin"), strikeParts(swingUsed(beastBite), foeTarget(GOBLIN), [riderNote("poison")])],
+];
+
+test("each site of the second family stores the sentence it wrote by hand before, word for word, with the creature in front of its card", () => {
+  for (const [site, before, parts] of CREATURE_SITES) {
+    assert.equal(rollSentence({ parts }), before, site);
+    assert.equal(parts.used.kind, "action", site);
+    const roll = { kind: "attack", detail: rollSentence({ parts }), attacker: GOBLIN_ROLLS, parts };
+    assert.equal(rollCardLabel(en, roll, undefined), `Goblin · Attack roll (${before})`, site);
+    assert.equal(rollToastLead(en, { ...roll, requestedBy: "dm" }, undefined), `Goblin · ${before}`, site);
+    assert.equal(rollChronicleLead(en, roll, undefined), `Goblin · ${before}`, site);
+  }
+});
+
+test("one sentence of the second family changed: a critical hit's damage on a pet says its note before the pet, where every other note sits", () => {
+  // pet-strike.ts wrote the note after the whole sentence; pet-tools.ts,
+  // for the same critical the other way round, wrote it after the attack.
+  const before = `${rollAgainst(bite.name, "Rex")}${" (CRIT)"}`;
+  assert.equal(before, "Bite vs Rex (CRIT)");
+  assert.equal(rollSentence({ parts: actionParts(bite, REX, "crit") }), "Bite (CRIT) vs Rex");
+});
+
+test("a creature's action is stored by its stat block's name with no key, and a note that does not hold is left out", () => {
+  assert.deepEqual(actionParts(bite, ARIA_STRUCK), { used: { kind: "action", name: "Bite" }, targets: [{ kind: "sheet", id: "aria", name: "Aria" }], aim: "vs", worded: ACTION_WORDS_VERSION });
+  assert.deepEqual(actionParts(bite, REX, false, null, undefined).notes, undefined);
+  assert.deepEqual(actionParts(bite, REX, false && "crit", "rider").notes, [{ engine: "rider" }]);
+  // A pet and a mount are kept on a character's sheet: a name, and no id.
+  assert.deepEqual(REX, { kind: "pet", name: "Rex" });
+  assert.deepEqual(THUNDER, { kind: "mount", name: "Thunder" });
+  // A waiting card would be sent them by name, as it is any target.
+  assert.deepEqual(wordParts(actionParts(bite, THUNDER)).targets, [{ kind: "mount", name: "Thunder" }]);
+  // Carried under more than its own name, the key says which attack it is.
+  assert.deepEqual(actionUsed(bite), { kind: "action", name: "Bite" });
+  assert.deepEqual(actionUsed(bite, "Rex's Bite"), { kind: "action", key: "bite", name: "Rex's Bite" });
+  assert.deepEqual(swingParts(beastBite, foeTarget(GOBLIN)).used, { kind: "action", key: "bite", name: "Wolf Bite" });
+  assert.deepEqual(swingUsed(beastBite), { kind: "action", key: "bite", name: "Wolf Bite" });
+  // A spell attack is a spell whatever its profile was built from, and an
+  // action's name is no spell's key.
+  assert.deepEqual(swingParts(beastBite, foeTarget(GOBLIN), { spell: true }).used, { kind: "spell", name: "Wolf Bite" });
+});
+
+test("a creature's action under its stat block's name makes a version of the words of its own, so an app built before it shows the roll by its sentence, and every other roll stays in the first", () => {
+  // A reader takes a roll's words from its parts only in a version it
+  // knows (makesWords). One built before this family knows the first alone:
+  // handed a creature's roll it falls back to the stored sentence, where it
+  // already read a goblin's "Scimitar" as "Cimeterre". Marked with the first
+  // version, the same roll would have read "Scimitar" there, and a critical
+  // hit's note as its id.
+  assert.equal(ACTION_WORDS_VERSION, 2);
+  for (const [site, , parts] of CREATURE_SITES) {
+    // An action carried under more than its own name has a key (a beast
+    // form's, a pet's rider): that reader shows it as written, with its
+    // note in French, as it did. In the second version it would lose the
+    // note's French and a waiting card's whole line.
+    assert.equal(parts.worded, parts.used.key ? WORDS_VERSION : ACTION_WORDS_VERSION, site);
+    assert.equal(makesWords(parts), true, site);
+  }
+  for (const [site, , parts] of SITES) {
+    assert.equal(parts.worded, WORDS_VERSION, site);
+    assert.equal(makesWords(parts), true, site);
+  }
+  assert.equal(actionParts(bite, ARIA_STRUCK, "crit").worded, ACTION_WORDS_VERSION);
+  assert.equal(swingParts(beastBite, foeTarget(GOBLIN), { note: "opportunity" }).worded, WORDS_VERSION);
+  assert.equal(strikeParts(actionUsed(bite, "Rex's Bite"), foeTarget(GOBLIN), [riderNote("poison")]).worded, WORDS_VERSION);
+  // No roll in the first version carries a note that version did not have.
+  for (const [site, , parts] of [...SITES, ...CREATURE_SITES]) {
+    if (parts.worded === WORDS_VERSION) {
+      assert.equal((parts.notes ?? []).some((note) => note.engine === "crit"), false, site);
+    }
+  }
+});
+
+test("a note's id this build does not know reads as its id and is never looked up, whatever the dictionary or an object holds under it", () => {
+  const withNote = (engine) => ({ ...actionParts(bite, ARIA_STRUCK), notes: [{ engine }] });
+  assert.equal(translate("fr", "Close"), "Fermer");
+  assert.equal(rollWords(fr, withNote("Close")), "Morsure (Close) c/ Aria");
+  assert.equal(rollWords(fr, withNote("toString")), "Morsure (toString) c/ Aria");
+  assert.equal(rollWords(en, withNote("constructor")), "Bite (constructor) vs Aria");
+});
+
+const creatureCard = (parts, kind = "attack", t = fr) => rollCardLabel(t, { kind, detail: rollSentence({ parts }), attacker: GOBLIN_ROLLS, parts }, undefined);
+
+test("a French table reads a creature's attack in French: the attack by the creature attack names, its note by the dictionaries", () => {
+  assert.equal(creatureCard(actionParts(bite, ARIA_STRUCK)), "Goblin · Jet d’attaque (Morsure c/ Aria)");
+  assert.equal(creatureCard(actionParts(bite, ARIA_STRUCK), "damage"), `Goblin · ${translate("fr", "Damage")} (Morsure c/ Aria)`);
+  // Read as a sentence, "Bite (opportunity attack)" was nothing the reader
+  // knew, and neither was "Bite".
+  assert.equal(creatureCard(actionParts(bite, ARIA_STRUCK, "opportunity")), "Goblin · Jet d’attaque (Morsure (attaque d’opportunité) c/ Aria)");
+  assert.equal(creatureCard(actionParts(bite, ARIA_STRUCK, riderNote("poison")), "damage"), `Goblin · ${translate("fr", "Damage")} (Morsure (poison) c/ Aria)`);
+  assert.equal(rollWords(fr, actionParts({ name: "Claw" }, ARIA_STRUCK, riderNote("fire"))), "Griffe (feu) c/ Aria");
+  assert.equal(rollWords(fr, actionParts(bite, REX, "rider")), "Morsure (effet additionnel) c/ Rex");
+  assert.equal(rollWords(fr, actionParts(bite, REX, "crit")), "Morsure (CRITIQUE) c/ Rex");
+  // A word of the stat block's own is shown as written.
+  assert.equal(rollWords(fr, actionParts(bite, ARIA_STRUCK, riderNote("Rot"))), "Morsure (Rot) c/ Aria");
+  // A beast form's and a pet's: the attack's name where it stands, and the
+  // creature's as written.
+  assert.equal(rollWords(fr, swingParts(beastBite, foeTarget(GOBLIN))), "Wolf Morsure c/ Goblin");
+  assert.equal(rollWords(fr, strikeParts(actionUsed(bite, "Rex's Bite"), foeTarget(GOBLIN), [riderNote("poison")])), "Rex's Morsure (poison) c/ Goblin");
+  assert.equal(rollWords(fr, strikeParts(actionUsed({ name: "Tail Spike" }, "Giant Manticore Tail Spike"), foeTarget(GOBLIN))), "Giant Manticore Piquant caudal c/ Goblin");
+  // A key the name does not end with says nothing: the name as written.
+  assert.equal(rollWords(fr, strikeParts({ kind: "action", key: "claw", name: "Wolf Bite" }, foeTarget(GOBLIN))), "Wolf Bite c/ Goblin");
+  // "rider" is a mount's rider elsewhere in the app: the note has a line of
+  // its own, and the plain word none.
+  assert.equal(translate("fr", "rider"), "rider");
+  // The toast and the chronicle's line, from the same parts.
+  const roll = { kind: "attack", detail: "", requestedBy: "dm", attacker: GOBLIN_ROLLS, parts: actionParts(bite, ARIA_STRUCK, "opportunity") };
+  assert.equal(rollToastLead(fr, roll, undefined), "Goblin · Morsure (attaque d’opportunité) c/ Aria");
+  assert.equal(rollChronicleLead(fr, roll, undefined), "Goblin · Morsure (attaque d’opportunité) c/ Aria");
+});
+
+test("a Spanish table reads a creature's attack by its English name, as Spanish has no creature attack names, and its notes and joining words in Spanish", () => {
+  const card = (parts, kind = "attack") => creatureCard(parts, kind, es);
+  assert.equal(card(actionParts(bite, ARIA_STRUCK)), `Goblin · ${translate("es", "Attack roll")} (Bite ${translate("es", "vs", { context: "roll.aim" })} Aria)`);
+  assert.equal(rollWords(es, actionParts({ name: "Scimitar" }, ARIA_STRUCK)), "Scimitar contra Aria");
+  assert.equal(rollWords(es, actionParts(bite, ARIA_STRUCK, "opportunity")), "Bite (ataque de oportunidad) contra Aria");
+  assert.equal(rollWords(es, actionParts(bite, ARIA_STRUCK, riderNote("poison"))), "Bite (veneno) contra Aria");
+  // The note "rider" has its Spanish under the note's own context, as in French.
+  assert.equal(rollWords(es, actionParts(bite, REX, "rider")), "Bite (efecto adicional) contra Rex");
+  assert.equal(rollWords(es, actionParts(bite, REX, "crit")), "Bite (CRÍTICO) contra Rex");
+  // A beast form's and a pet's attack, carried under more than its own name.
+  assert.equal(rollWords(es, swingParts(beastBite, foeTarget(GOBLIN))), "Wolf Bite contra Goblin");
+  assert.equal(rollWords(es, strikeParts(actionUsed(bite, "Rex's Bite"), foeTarget(GOBLIN), [riderNote(null)])), "Rex's Bite (efecto adicional) contra Goblin");
+});
+
+test("a creature's action is looked up by its name in the creature attack names, the weapons and the spells, and never as a word of the interface", () => {
+  const words = (name) => rollWords(fr, actionParts({ name }, ARIA_STRUCK));
+  // A stat block's attack named like a weapon reads by the weapons table,
+  // as it did when it was read as a sentence.
+  assert.equal(words("Scimitar"), "Cimeterre c/ Aria");
+  assert.equal(words("Light Crossbow"), "Arbalète légère c/ Aria");
+  // One named for a spell reads by the spells table, as it did.
+  assert.equal(words("Fire Bolt"), "Trait de feu c/ Aria");
+  // A name typed in another case is still that attack.
+  assert.equal(words("bite"), "Morsure c/ Aria");
+  // The dictionary holds "Horn" as an instrument and "Touch" as a spell's
+  // range; the attack names say what a unicorn and a fire elemental do.
+  assert.equal(translate("fr", "Touch"), "Contact");
+  assert.equal(words("Horn"), "Corne c/ Aria");
+  assert.equal(words("Touch"), "Contact c/ Aria");
+  // A homebrew creature's attack is looked up the same way, by its name.
+  // One named like a word of the interface stays as its author wrote it: no
+  // names table holds it.
+  for (const name of ["Log", "Turn", "Close", "Back", "Save", "Custom", "Hide", "Shadow Lash"]) {
+    assert.equal(words(name), `${name} c/ Aria`, `a homebrew attack called ${name}`);
+  }
+  assert.equal(translate("fr", "Turn"), "Trahison");
+  assert.equal(translate("fr", "Log"), "Journal");
+  // In English nothing is looked up.
+  assert.equal(rollWords(en, actionParts(bite, ARIA_STRUCK)), "Bite vs Aria");
+  // The same name under another kind is not an action's: a weapon nobody
+  // keyed is still shown as written (the first family's rule).
+  assert.equal(rollWords(fr, attackParts({ name: "Bite" }, foeTarget(GOBLIN))), "Bite c/ Goblin");
+});
+
+test("every attack of the bundled bestiary reads as it did under the reader this replaces, or better, and the common ones read in French", () => {
+  const before = (words) => rollCardLabel(fr, { kind: "attack", detail: words, attacker: GOBLIN_ROLLS, parts: null }, undefined);
+  const names = new Map();
+  for (const creature of Object.values(CREATURES.creatures)) {
+    for (const attack of creature.attacks ?? []) {
+      names.set(attack.name, (names.get(attack.name) ?? 0) + 1);
+    }
+  }
+  assert.ok(names.size >= 90, `the bestiary's attacks were not read: ${names.size} names`);
+  let french = 0;
+  let total = 0;
+  for (const [name, count] of names) {
+    const english = `Goblin · Jet d’attaque (${name} c/ Aria)`;
+    const old = before(rollAgainst(name, "Aria"));
+    const now = creatureCard(actionParts({ name }, ARIA_STRUCK));
+    // What the reader of sentences put into French (a weapon's name), the
+    // parts put into the same French.
+    if (old !== english) {
+      assert.equal(now, old, name);
+    }
+    total += count;
+    french += now === english ? 0 : count;
+  }
+  for (const name of ["Bite", "Claw", "Claws", "Tail", "Slam", "Hooves", "Beak", "Talons", "Gore", "Sting", "Ram", "Rock", "Tentacle", "Constrict", "Fist"]) {
+    assert.notEqual(creatureCard(actionParts({ name }, ARIA_STRUCK)), `Goblin · Jet d’attaque (${name} c/ Aria)`, `${name} has no French name`);
+  }
+  // Nine attacks in ten: a name with no line reads in English, and fails
+  // nothing.
+  assert.ok(french / total > 0.9, `${french} of ${total} attacks of the bestiary read in French`);
+});
+
+test("the creature attack names are keyed as a name is looked up, and none repeats a weapon's line", () => {
+  for (const [key, name] of Object.entries(ACTION_NAMES_FR)) {
+    assert.match(key, /^[a-z0-9]+(-[a-z0-9]+)*$/, key);
+    assert.ok(name.trim(), key);
+    // An attack named like a weapon reads through the weapons table: a
+    // second line for it here could only disagree with the first.
+    // Asked as the weapons table is: the crossbows' lines are keyed the
+    // other way round.
+    const spoken = key.replaceAll("-", " ");
+    assert.equal(contentName("weapons", spoken, "fr"), spoken, `${key} is a weapon's line too`);
+    assert.equal(key in WEAPON_NAMES_FR, false, `${key} is a weapon's line too`);
+  }
+  assert.equal(ACTION_NAMES_FR.bite, "Morsure");
+});
+
+test("what a creature's hit goes on to deal is said by its damage type where it is one of the engine's thirteen", () => {
+  for (const type of DAMAGE_TYPES) {
+    assert.deepEqual(riderNote(type), { engine: type }, type);
+    assert.equal(ROLL_NOTES[type], type);
+    assert.notEqual(rollWords(fr, actionParts(bite, ARIA_STRUCK, riderNote(type))), "", type);
+  }
+  assert.deepEqual(riderNote(undefined), { engine: "rider" });
+  assert.deepEqual(riderNote(null), { engine: "rider" });
+  assert.deepEqual(riderNote("  "), { engine: "rider" });
+  // Written as the stat block has it: another case is another word, shown
+  // as written, so the English sentence is the one the site wrote.
+  assert.deepEqual(riderNote("Poison"), { typed: "Poison" });
+  assert.deepEqual(riderNote("shadow"), { typed: "shadow" });
+  // A word every object has is no damage type.
+  assert.deepEqual(riderNote("constructor"), { typed: "constructor" });
+});
+
+test("a hidden creature a creature attacks is \"someone unseen\" to a seat not owed it, and a seen one named like it keeps its name", () => {
+  const hidden = new Set(["bandit-1"]);
+  const at = (foe) => {
+    const parts = actionParts(bite, foeTarget(foe), "opportunity");
+    return { id: "r", kind: "attack", detail: rollSentence({ parts }), attacker: { kind: "enemy", id: "wolf-1", name: "Wolf" }, parts };
+  };
+  const reword = seatSentences;
+  const unseen = hideNames({ roll: at({ id: "bandit-1", displayName: "Bandit" }) }, ["Bandit"], { ids: hidden, reword }).roll;
+  assert.deepEqual(unseen.parts.targets, [{ kind: "unseen" }]);
+  assert.equal(unseen.detail, "Bite (opportunity attack) vs someone unseen");
+  assert.equal(JSON.stringify(unseen).includes("bandit-1"), false, "the hidden creature's id rode the roll");
+  assert.equal(rollCardLabel(fr, unseen, undefined), "Wolf · Jet d’attaque (Morsure (attaque d’opportunité) c/ quelqu’un hors de vue)");
+  const seen = hideNames({ roll: at({ id: "captain-1", displayName: "Bandit Captain" }) }, ["Bandit"], { ids: hidden, reword }).roll;
+  assert.deepEqual(seen.parts.targets, [{ kind: "enemy", id: "captain-1", name: "Bandit Captain" }]);
+  assert.equal(seen.detail, "Bite (opportunity attack) vs Bandit Captain");
+  assert.equal(rollCardLabel(fr, seen, undefined), "Wolf · Jet d’attaque (Morsure (attaque d’opportunité) c/ Bandit Captain)");
+});
+
 // ---- the notes ----
 
 test("an engine's note is one of the engine's own, by its id; a typed note is shown as written; a roll says more than one in order", () => {
-  assert.deepEqual(Object.keys(ROLL_NOTES).sort(), ["half_on_miss", "opportunity"]);
+  // The first family's two, the second's two, and the thirteen damage types.
+  assert.deepEqual(Object.keys(ROLL_NOTES).sort(), ["crit", "half_on_miss", "opportunity", "rider", ...DAMAGE_TYPES].sort());
   const base = attackParts(longsword, foeTarget(GOBLIN));
   assert.equal(rollWords(en, { ...base, notes: [{ typed: "from the rafters" }] }), "Longsword (from the rafters) vs Goblin");
   // A person's words are theirs: the dictionary is not asked, even for a

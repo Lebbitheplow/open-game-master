@@ -298,6 +298,20 @@ export function pageHarness({ page, base, ids, app, viewport, outDir, tag, api }
     if (url.startsWith(base) && url.includes("/api/") && response.status() >= 500) {
       fails.push(`status ${response.status()} ${url.slice(base.length)}`);
     }
+    // The app's own origin holds only the files the app carries, so a 404
+    // there is a picture, a sound or a font a screen asked the app for that
+    // only the host has. On the website the same address is the server's own
+    // and answers, which is how the theme previews in the apps' Settings
+    // stood without their frames (scenario 148) with every suite green. A
+    // screen's root-relative address has to reach the app's copy or the host
+    // before the browser asks for it. A call (/api/) is left out: a panel the
+    // shell draws with no host connected asks what the host can do, finds
+    // nobody, and reads that as no answer.
+    if (app && response.status() === 404 && !url.startsWith(base) && url.startsWith(`${new URL(page.url()).origin}/`)) {
+      const asked = new URL(url).pathname;
+      const missing = `the app was asked for ${asked}, which it does not carry`;
+      if (!asked.startsWith("/api/") && !fails.includes(missing)) fails.push(missing);
+    }
   });
   const root = app ? ".game-root " : "";
   const touch = VIEWPORTS[viewport].touch;

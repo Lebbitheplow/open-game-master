@@ -10,6 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createRequire, register, syncBuiltinESMExports } from "node:module";
+import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
 import { removeTempDir } from "./lib/remove-temp-dir.mjs";
 import { staticImports } from "./lib/static-imports.mjs";
@@ -20,7 +21,7 @@ const { imageSize, isVariantFileName, pixelBudget, sniffImage, variantFileName, 
   "../src/lib/image-format.ts"
 );
 const { servedSegments, writeImageVariants } = await import("../src/lib/image-variants.ts");
-const { imageVariantsSettled, scheduleImageVariants } = await import("../src/lib/image-variants.ts");
+const { imageVariantsSettled, scheduleImageVariants, webpEncoderChoice } = await import("../src/lib/image-variants.ts");
 const workerThreads = createRequire(import.meta.url)("node:worker_threads");
 const realWorker = workerThreads.Worker;
 const fsPromises = createRequire(import.meta.url)("node:fs/promises");
@@ -29,9 +30,8 @@ const realReadFile = fsPromises.readFile;
 const repo = path.resolve(import.meta.dirname, "..");
 const samplePng = path.join(repo, "scripts", "fixtures", "render-sample.png");
 
-// A PNG of random RGBA noise: incompressible, so it weighs what a piece of
-// scene art weighs and every WebP copy comes out smaller.
-function noisePng(width, height) {
+// A PNG from raw RGBA rows.
+function pngOf(width, height, rowAt) {
   const crc = (bytes) => {
     let value = ~0;
     for (const byte of bytes) {
@@ -57,7 +57,7 @@ function noisePng(width, height) {
   header[9] = 6; // RGBA
   const rows = [];
   for (let y = 0; y < height; y += 1) {
-    rows.push(Buffer.concat([Buffer.from([0]), randomBytes(width * 4)]));
+    rows.push(Buffer.concat([Buffer.from([0]), rowAt(y)]));
   }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -67,6 +67,58 @@ function noisePng(width, height) {
   ]);
 }
 
+// A PNG of random RGBA noise: incompressible, so it weighs what a piece of
+// scene art weighs and every WebP copy comes out smaller.
+function noisePng(width, height) {
+  return pngOf(width, height, () => randomBytes(width * 4));
+}
+
+// Red ramps left to right and green top to bottom: a copy of it at any size
+// is known pixel by pixel, so a scrambled encode cannot pass for one.
+function rampPng(size) {
+  return pngOf(size, size, (y) => {
+    const row = Buffer.alloc(size * 4);
+    for (let x = 0; x < size; x += 1) {
+      row[x * 4] = Math.round((x * 255) / (size - 1));
+      row[x * 4 + 1] = Math.round((y * 255) / (size - 1));
+      row[x * 4 + 2] = 128;
+      row[x * 4 + 3] = 255;
+    }
+    return row;
+  });
+}
+
+if (typeof globalThis.ImageData === "undefined") {
+  // The decoder returns browser ImageData; Node has none.
+  globalThis.ImageData = class ImageData {
+    constructor(data, width, height) {
+      this.data = data;
+      this.width = width;
+      this.height = height;
+    }
+  };
+}
+const webpDir = path.dirname(createRequire(import.meta.url).resolve("@jsquash/webp"));
+const webpDecoder = await import(pathToFileURL(path.join(webpDir, "decode.js")).href);
+await webpDecoder.init(new WebAssembly.Module(fs.readFileSync(path.join(webpDir, "codec/dec/webp_dec.wasm"))));
+
+// Mean difference per channel between a WebP copy of rampPng and the ramp
+// it should show at its own size.
+async function rampError(file) {
+  const image = await webpDecoder.default(fs.readFileSync(file));
+  const { width, height, data } = image;
+  let sum = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = (y * width + x) * 4;
+      sum += Math.abs(data[i] - (x * 255) / (width - 1));
+      sum += Math.abs(data[i + 1] - (y * 255) / (height - 1));
+      sum += Math.abs(data[i + 2] - 128);
+    }
+  }
+  return sum / (width * height * 3);
+}
+
 let passed = 0;
 async function test(name, fn) {
   await fn();
@@ -74,8 +126,14 @@ async function test(name, fn) {
 }
 
 await test("variantUrl adds ?w= only to the server's own pictures", () => {
-  assert.equal(variantUrl("/generated/a.png", 256), "/generated/a.png?w=256");
-  assert.equal(variantUrl("/uploads/b.jpg", 1024), "/uploads/b.jpg?w=1024");
+  // v=2: a browser that kept a copy the SIMD encoder scrambled (#1124),
+  // served immutable for a year, asks again at the new address.
+  assert.equal(variantUrl("/generated/a.png", 256), "/generated/a.png?w=256&v=2");
+  assert.equal(variantUrl("/uploads/b.jpg", 1024), "/uploads/b.jpg?w=1024&v=2");
+  for (const width of [256, 1024]) {
+    const asked = new URL(variantUrl("/uploads/b.jpg", width), "http://host");
+    assert.equal(variantWidth(asked.searchParams.get("w")), width, "the routes read the size from a versioned address");
+  }
   assert.equal(variantUrl("/generated/a.png?w=256", 1024), "/generated/a.png?w=256");
   assert.equal(variantUrl("/generated/a.png#x", 256), "/generated/a.png#x");
   for (const src of [
@@ -175,6 +233,19 @@ try {
     assert.ok(small.length < large.length);
     assert.ok(large.length < noise.length);
     assert.ok(!fs.existsSync(path.join(generated, "sample.w256.webp.tmp-" + process.pid)));
+  });
+
+  await test("the copies show the picture: the SIMD encoder is used only where it encodes faithfully", async () => {
+    // Where the runtime has SIMD the check says "simd" or, on a CPU whose
+    // SIMD build scrambles pictures (#1124), "broken"; either way the copy
+    // below must be the ramp.
+    assert.ok(["simd", "plain", "broken"].includes(await webpEncoderChoice()));
+    const ramp = path.join(generated, "ramp.png");
+    fs.writeFileSync(ramp, rampPng(512));
+    const result = await writeImageVariants(ramp, [256]);
+    assert.equal(result.error, undefined);
+    const error = await rampError(path.join(generated, "ramp.w256.webp"));
+    assert.ok(error < 6, `the 256 px copy is off by ${error.toFixed(1)} per channel`);
   });
 
   await test("a same-size copy that would weigh more than the original is not written", async () => {
@@ -402,6 +473,51 @@ try {
         ["book.pdf", "notes.png", "portrait.png", "portrait.w1024.webp", "portrait.w256.webp"],
         "nothing but the portrait's two copies was written",
       );
+    });
+
+    await test("where the SIMD encoder scrambles pictures, the plain one writes the copies and older copies are made again", async () => {
+      // A module of its own, so its encoder check is not the one above.
+      const fresh = await import("../src/lib/image-variants.ts?simd-scrambles");
+      const folder = path.join(dir, "public", "nas");
+      fs.mkdirSync(folder, { recursive: true });
+      fs.writeFileSync(path.join(folder, "map.png"), rampPng(512));
+      // A copy an earlier version wrote with the SIMD build: noise, an hour old.
+      const scrambled = path.join(folder, "map.w256.webp");
+      fs.copyFileSync(path.join(generated, "sample.w256.webp"), scrambled);
+      const hourAgo = new Date(Date.now() - 3_600_000);
+      fs.utimesSync(scrambled, hourAgo, hourAgo);
+      const asked = [];
+      workerThreads.Worker = function Worker(source, options) {
+        if (options.workerData.probe) {
+          // What the check reports on a CPU like the Celeron J4125.
+          const reply = new EventEmitter();
+          reply.terminate = () => Promise.resolve(0);
+          setImmediate(() => reply.emit("message", { ok: true, encoder: "broken" }));
+          return reply;
+        }
+        asked.push(options.workerData.simd);
+        return new realWorker(source, options);
+      };
+      syncBuiltinESMExports();
+      const warnings = [];
+      const realWarn = console.warn;
+      console.warn = (message) => warnings.push(message);
+      try {
+        assert.deepEqual(await fresh.servedSegments("nas", ["map.png"], 256), ["map.png"], "the scrambled copy was served");
+        await fresh.imageVariantsSettled();
+        assert.deepEqual(asked, [false], "the jobs asked for the SIMD build");
+        const error = await rampError(scrambled);
+        assert.ok(error < 6, `the remade copy is off by ${error.toFixed(1)} per channel`);
+        assert.deepEqual(await fresh.servedSegments("nas", ["map.png"], 256), ["map.w256.webp"]);
+        assert.deepEqual(await fresh.servedSegments("nas", ["map.png"], 1024), ["map.w1024.webp"]);
+        assert.ok((await rampError(path.join(folder, "map.w1024.webp"))) < 6);
+        assert.ok(fs.existsSync(path.join(folder, ".webp-copies-scrambled-before")));
+        assert.ok(warnings.some((message) => message.includes("scrambles")), warnings.join("\n"));
+      } finally {
+        console.warn = realWarn;
+        workerThreads.Worker = realWorker;
+        syncBuiltinESMExports();
+      }
     });
 
     if (process.platform !== "win32") {

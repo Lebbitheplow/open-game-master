@@ -17,6 +17,9 @@ export function naturalAttackProfile(
   const { expression, typed } = attackDamage(attack);
   return {
     weapon: label.weapon,
+    // The stat block's own action, whatever name the attack is carried
+    // under ("Wolf Bite"): a roll's words read it as one (roll-parts.ts).
+    named: { kind: "action", name: attack.name },
     toHit: attack.toHit,
     damageExpression: expression,
     damageType: attack.type,

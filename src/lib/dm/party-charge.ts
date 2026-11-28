@@ -88,6 +88,7 @@ export function partyChargeAfterHit(
         attacker: input.attacker,
         holderId: null,
         attack: `${who}'s ${trait.name}`,
+        used: { kind: "action", name: `${who}'s ${trait.name}` },
         enemyId: input.enemyId,
         onHit: { save: trait.save.ability, dc: trait.save.dc, condition: "prone" },
       })

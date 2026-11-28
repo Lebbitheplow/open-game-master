@@ -39,7 +39,7 @@ export const DAMAGE_TYPE_WORDS_FR: Record<string, string> = {
   thunder: "Tonnerre",
 };
 
-export type DamageLocale = "en" | "fr";
+export type DamageLocale = "en" | "fr" | "es";
 
 // A damage type as a word on screen ("Slashing", « Tranchants »): the French
 // SRD's own capitalized list heading; a type the maps do not carry stays as

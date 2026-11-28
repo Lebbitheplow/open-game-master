@@ -380,6 +380,76 @@ export const WEAPON_NAMES_FR: Record<string, string> = {
   "whip": "Fouet",
 };
 
+// Les noms des attaques des créatures, par le slug du nom anglais
+// (« Bite » : "bite"), tels que le livre français les imprime dans les blocs
+// de statistiques : un jet d'attaque ou de dégâts d'une créature les lit
+// (src/lib/roll-words.ts). Un nom imprimé de plusieurs façons (la « Griffe »
+// d'un dragon, la « Pince » d'un scorpion géant) prend la plus fréquente ; une
+// attaque qui porte le nom d'une arme (« Scimitar ») se lit dans la table des
+// armes et n'a pas de ligne ici. scripts/pair-action-names-fr.mjs les
+// réimprime depuis les deux livres du dépôt.
+export const ACTION_NAMES_FR: Record<string, string> = {
+  "beak": "Bec",
+  "beaks": "Becs",
+  "beard": "Barbe",
+  "bite": "Morsure",
+  "bite-bear-or-hybrid-form-only": "Morsure (forme d’ours ou hybride uniquement)",
+  "bite-rat-or-hybrid-form-only": "Morsure (formes de rat et hybride uniquement)",
+  "bite-tiger-or-hybrid-form-only": "Morsure (forme de tigre ou hybride uniquement)",
+  "bite-wolf-or-hybrid-form-only": "Morsure (forme de loup ou hybride uniquement)",
+  "bites": "Morsures",
+  "blood-drain": "Succion du sang",
+  "chain": "Chaîne",
+  "claw": "Griffe",
+  "claw-tiger-or-hybrid-form-only": "Griffe (forme de tigre ou hybride uniquement)",
+  "claws": "Griffes",
+  "constrict": "Constriction",
+  "crush": "Écrasement",
+  "fist": "Poing",
+  "fork": "Fourche",
+  "gore": "Coup de corne",
+  "harpoon": "Harpon",
+  "hooves": "Sabots",
+  "horn": "Corne",
+  "horns": "Cornes",
+  "hurl-flame": "Jet de flammes",
+  "intoxicating-touch": "Contact enivrant",
+  "life-drain": "Absorption de vie",
+  "longbow-humanoid-or-hybrid-form-only": "Arc long (forme humanoïde ou hybride uniquement)",
+  "paralyzing-touch": "Contact paralysant",
+  "pincer": "Pince",
+  "poisoned-dart": "Fléchette empoisonnée",
+  "pseudopod": "Pseudopode",
+  "rake": "Ratissage",
+  "ram": "Coup de bélier",
+  "rock": "Rocher",
+  "rotting-fist": "Poing putréfié",
+  "rotting-touch": "Contact putréfiant",
+  "scimitar-humanoid-or-hybrid-form-only": "Cimeterre (forme humanoïde ou hybride uniquement)",
+  "shield-bash": "Coup de bouclier",
+  "shock": "Décharge",
+  "slam": "Coup",
+  "slaying-longbow": "Arc long tueur",
+  "smother": "Étouffement",
+  "snake-hair": "Chevelure de serpents",
+  "spit-poison": "Crachat empoisonné",
+  "sting": "Dard",
+  "stinger": "Dard caudal",
+  "stomp": "Piétinement",
+  "strength-drain": "Ponction de force",
+  "sword": "Épée",
+  "tail": "Queue",
+  "tail-spike": "Piquant caudal",
+  "talons": "Serres",
+  "tendril": "Filament",
+  "tentacle": "Tentacule",
+  "tentacles": "Tentacules",
+  "touch": "Contact",
+  "tusk": "Défense",
+  "unarmed-strike-vampire-form-only": "Attaque à mains nues (forme de vampire uniquement)",
+  "withering-touch": "Contact flétrissant",
+};
+
 export const ARMOR_NAMES_FR: Record<string, string> = {
   "breastplate": "Cuirasse",
   "chain-mail": "Cotte de mailles",
@@ -1531,6 +1601,7 @@ export const SUBCLASS_NAMES_FR: Record<string, string> = {
 export const FR_NAMES_BY_TABLE: Record<string, Record<string, string>> = {
   spells: SPELL_NAMES_FR,
   weapons: WEAPON_NAMES_FR,
+  actions: ACTION_NAMES_FR,
   armor: ARMOR_NAMES_FR,
   gear: GEAR_NAMES_FR,
   magicitems: MAGIC_ITEM_NAMES_FR,
@@ -1546,5 +1617,5 @@ export const FR_NAMES_BY_TABLE: Record<string, Record<string, string>> = {
   subclasses: SUBCLASS_NAMES_FR,
 };
 
-// 1,591 official pairs in total, by table.
-export const FR_NAME_COUNTS: Record<string, number> = {"spells":319,"weapons":38,"armor":17,"gear":154,"magicitems":239,"conditions":15,"feats":1,"species":9,"backgrounds":1,"monsters":317,"classes":12,"classFeatures":270,"speciesTraits":50,"backgroundFeatures":1,"subclasses":20};
+// 1,522 official pairs in total, by table.
+export const FR_NAME_COUNTS: Record<string, number> = {"spells":319,"weapons":38,"actions":59,"armor":17,"gear":154,"magicitems":239,"conditions":15,"feats":1,"species":9,"backgrounds":1,"monsters":317,"classes":12,"classFeatures":270,"speciesTraits":50,"backgroundFeatures":1,"subclasses":20};

@@ -10,6 +10,13 @@ export type VariantWidth = (typeof VARIANT_WIDTHS)[number];
 
 const VARIANT_ROOTS = ["/generated/", "/uploads/"];
 
+// Which copies an address asks for. The serve routes hand copies out as
+// immutable for a year, so a browser that once took a wrong copy keeps it
+// until the address changes; this number is raised whenever copies already
+// handed out were wrong. 2: the copies the SIMD WebP encoder scrambled on
+// some CPUs (#1124). The routes read only w and ignore it.
+const VARIANT_VERSION = 2;
+
 // A picture address with the size a consumer wants. Only the server's own
 // generated and uploaded pictures have variants, so anything else (data:,
 // blob:, built-in art, another origin, an address that already carries a
@@ -23,5 +30,5 @@ export function variantUrl(src: string, width: VariantWidth): string {
   if (src.includes("?") || src.includes("#")) {
     return src;
   }
-  return `${src}?w=${width}`;
+  return `${src}?w=${width}&v=${VARIANT_VERSION}`;
 }

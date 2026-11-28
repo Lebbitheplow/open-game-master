@@ -67,6 +67,28 @@ carries the French attribution statement Wizards asks for:
 The French rulebook shows the attribution on its contents page and ends with
 the print's own legal notice (« Informations juridiques ») as its last page.
 
+`src/lib/rulebook/srd-5.1-es.json` is the same book again in Wizards of the
+Coast's official Spanish translation, the Documento de referencia del sistema
+5.1 (`SRD_CC_v5.1_ES.pdf`, https://dnd.wizards.com/es/resources/systems-reference-document),
+which a reader whose interface is in Spanish reads instead. It is built by
+`scripts/import-srd-rulebook-es.mjs`, which reads the PDF itself, binds the
+print's pages under the English book's page ids and quotes its text as
+printed. It is licensed under CC-BY-4.0
+(https://creativecommons.org/licenses/by/4.0/legalcode.es) and carries the
+Spanish attribution statement Wizards asks for:
+
+> Esta obra incluye materiales extraídos del Documento de referencia del
+> sistema 5.1 (“SRD 5.1”) de Wizards of the Coast LLC, que está disponible en
+> https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1
+> tiene la licencia Creative Commons Atribución/Reconocimiento 4.0 Licencia
+> Pública Internacional, que está disponible en
+> https://creativecommons.org/licenses/by/4.0/legalcode.es.
+
+The Spanish rulebook shows the attribution on its contents page and ends with
+the print's own legal notice («Información legal») as its last page. The
+interface's own Spanish (`src/lib/i18n/es.json`) is a machine translation of
+this project's English strings, under the project's own license.
+
 ### The SRD 5.1 goods in the content pack
 
 The seven equipment packs, ammunition bundles, mounts and tack the Open5e v1

@@ -15,10 +15,18 @@
 //                   row's own name: the key says which content row it is,
 //                   so the row's name in the reader's language is shown. A
 //                   name with no key (an improvised "Log", a homebrew
-//                   spell, a wild shape's bite) and one carried under
+//                   spell) and one carried under
 //                   another name than its row's (a "Longsword +1", a
 //                   renamed blade) are shown as written. A name is never
 //                   looked up as a word: "Log" is no "Journal";
+//   a creature's    by its name, in the creature attack names and then the
+//   own action      weapons and the spells (a goblin's "Scimitar" is the
+//                   weapon): a stat block wrote the name, and those tables
+//                   hold nothing but such names, so no word of the
+//                   interface can land on one. A homebrew creature's "Bite"
+//                   is looked up the same way. A beast form's attack is
+//                   carried under the form's name too ("Wolf Bite"), and its
+//                   key says which attack it is;
 //   a note          one of the engine's own (ROLL_NOTES), by its id, so the
 //                   dictionary can find it; a typed note is shown as
 //                   written;
@@ -45,23 +53,56 @@
 
 import { contentName, type FrNamesTable } from "@/lib/content/names";
 import { UNSEEN_NAME } from "@/lib/hidden-names-logic";
-import { interpolate } from "@/lib/i18n/translate";
+import { interpolate, type Locale } from "@/lib/i18n/translate";
 import { textKey } from "@/lib/language/text-logic";
 import type { RollNote, RollParts, RollTarget, RollUsed, WordedParts } from "@/lib/roll-parts";
 
 // The shape of a translator, as the pure sentence builders take it.
-export type RollTranslator = ((key: string, vars?: Record<string, string | number>) => string) & { locale?: "en" | "fr" };
+export type RollTranslator = ((key: string, vars?: Record<string, string | number>) => string) & { locale?: "en" | "fr" | "es" };
 
 // The version of the words `worded` parts make. Raised when a field these
 // words are made from changes its meaning: rows are never rewritten, so a
 // reader tells the old from the new by this number.
 export const WORDS_VERSION = 1;
 
+// The version of the words a creature's own action makes where it is stored
+// under its stat block's name (issue #1121): that name is looked up in the
+// creature attack names, and such a roll's notes include one the first
+// version did not have. A build that knows only the first version shows
+// such a roll by its stored sentence, as it showed it before the family
+// moved: a goblin's "Scimitar" still reads "Cimeterre" on an app not yet
+// updated, through the reader of sentences. Every other roll is still made
+// in the first version, and reads there as it did: the first family's, and
+// an action carried under more than its own name (a beast form's "Wolf
+// Bite"), which that build shows as written with its note in French.
+export const ACTION_WORDS_VERSION = 2;
+
 // The fields a roll's words are made from, and no others: rollWords cannot
 // read a field that is not listed here, and a waiting card is sent exactly
 // these (wordParts), so a card and its landed roll are worded from the same.
 const WORD_FIELDS = ["used", "targets", "aim", "notes", "physical", "worded"] as const;
 type RollWordParts = Pick<RollParts, (typeof WORD_FIELDS)[number]>;
+
+// The thirteen damage types (src/lib/dm/damage-logic.ts DAMAGE_TYPES, which
+// scripts/test-roll-words.mjs holds this list to), each a note under its own
+// id: what a creature's hit goes on to deal besides the blow is said by its
+// type ("Bite (poison) vs Aria"). Written out here so this module stays
+// light enough for a client component.
+const DAMAGE_NOTES = {
+  acid: "acid",
+  bludgeoning: "bludgeoning",
+  cold: "cold",
+  fire: "fire",
+  force: "force",
+  lightning: "lightning",
+  necrotic: "necrotic",
+  piercing: "piercing",
+  poison: "poison",
+  psychic: "psychic",
+  radiant: "radiant",
+  slashing: "slashing",
+  thunder: "thunder",
+} as const;
 
 // The engine's own notes, each by its id. The words are English and are the
 // dictionaries' key, as the app's other words are. A site names a note by
@@ -70,8 +111,19 @@ type RollWordParts = Pick<RollParts, (typeof WORD_FIELDS)[number]>;
 export const ROLL_NOTES = {
   opportunity: "opportunity attack",
   half_on_miss: "half on a miss",
+  // The damage of a critical hit, where a creature's site says so.
+  crit: "CRIT",
+  // What a creature's hit goes on to deal besides the blow, where its stat
+  // block names no damage type for it.
+  rider: "rider",
+  ...DAMAGE_NOTES,
 } as const;
 export type RollNoteId = keyof typeof ROLL_NOTES;
+
+// Whether a damage type is one of the engine's own, and so a note's id.
+export function isDamageNote(type: string): type is keyof typeof DAMAGE_NOTES {
+  return Object.hasOwn(DAMAGE_NOTES, type);
+}
 
 // What the door writes after the words of dice rolled at the table, in every
 // row, old and new (src/lib/roll-parts.ts rollPhysical reads it in an old
@@ -86,14 +138,27 @@ export const PHYSICAL = `(${PHYSICAL_WORD})`;
 // context of their own.
 const AIM_CONTEXT = "roll.aim";
 
+// A note's words are looked up under a context of their own where the
+// dictionaries keep one: "rider" is also a mount's, elsewhere in the app. A
+// note with no line under it reads by its plain entry, as the first notes
+// and the damage types do.
+const NOTE_CONTEXT = "roll.note";
+
 // The names table of each kind of thing that has a content key.
 const KEY_TABLES: Partial<Record<RollUsed["kind"], FrNamesTable>> = { weapon: "weapons", spell: "spells" };
+
+// The names tables a creature's own action is looked up in, by its name, in
+// this order (issue #1121): the creature attack names, then the weapons and
+// the spells, which the reader of a sentence already tried for it
+// (src/lib/roll-labels.ts localizeRollWhat). The interface's dictionary is
+// not among them: a unicorn's "Horn" is no "Cor".
+const ACTION_TABLES: readonly FrNamesTable[] = ["actions", "weapons", "spells"];
 
 const ENGLISH: RollTranslator = Object.assign((key: string, vars?: Record<string, string | number>) => interpolate(key, vars), { locale: "en" as const });
 
 // Whether these parts make a roll's words, in a version this build knows.
 export function makesWords(parts: RollParts | null | undefined): parts is WordedParts {
-  return parts?.worded === WORDS_VERSION;
+  return parts?.worded === WORDS_VERSION || parts?.worded === ACTION_WORDS_VERSION;
 }
 
 // What was used, in the reader's language: its row's name where its key says
@@ -101,16 +166,50 @@ export function makesWords(parts: RollParts | null | undefined): parts is Worded
 function usedWords(t: RollTranslator, used: RollUsed): string {
   const table = KEY_TABLES[used.kind];
   const locale = t.locale ?? "en";
-  if (locale === "en" || !table || !used.key || textKey(used.name) !== used.key) {
+  if (locale === "en") {
+    return used.name;
+  }
+  if (used.kind === "action") {
+    return actionWords(used, locale);
+  }
+  if (!table || !used.key || textKey(used.name) !== used.key) {
     return used.name;
   }
   return contentName(table, used.name, locale);
 }
 
+// A creature's action by its name, in the first table that has it; as
+// written where none does.
+function actionName(name: string, locale: Locale): string {
+  for (const table of ACTION_TABLES) {
+    const found = contentName(table, name, locale);
+    if (found !== name) {
+      return found;
+    }
+  }
+  return name;
+}
+
+// A creature's own action, in the reader's language. One carried under more
+// than its own name says which attack it is by its key: a beast form's
+// "Wolf Bite" is the Bite, so the attack's name is put into the reader's
+// language where it stands, and the form's name stays as it was written.
+function actionWords(used: RollUsed, locale: Locale): string {
+  if (!used.key || textKey(used.name) === used.key) {
+    return actionName(used.name, locale);
+  }
+  const words = used.name.split(" ");
+  const from = words.findIndex((_word, at) => at > 0 && textKey(words.slice(at).join(" ")) === used.key);
+  return from < 0 ? used.name : `${words.slice(0, from).join(" ")} ${actionName(words.slice(from).join(" "), locale)}`;
+}
+
 function noteWords(t: RollTranslator, note: RollNote): string {
+  if ("typed" in note) {
+    return note.typed;
+  }
   // An id this build does not know (a row a newer server stored) reads as
-  // its id, which says more than nothing.
-  return "typed" in note ? note.typed : t(ROLL_NOTES[note.engine] ?? note.engine);
+  // its id, which says more than nothing, and is no word to look up.
+  return Object.hasOwn(ROLL_NOTES, note.engine) ? t(ROLL_NOTES[note.engine], { context: NOTE_CONTEXT }) : String(note.engine);
 }
 
 function targetWords(t: RollTranslator, target: RollTarget): string {

@@ -15,7 +15,7 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BattleMapGrid, type MapOverlay } from "@/app/campaigns/[campaignId]/BattleMapGrid";
 import {
   BoardToolRail,
@@ -243,6 +243,12 @@ export function BattleMapPanel({
     [sheetsById, faces],
   );
   const faceOfToken = useCallback((token: StageToken) => faceOfRef(token.refId), [faceOfRef]);
+  // The mount under a figure, for its plate: an enemy's or a steed's face by
+  // its id, a mount on record's by the creature it is.
+  const plateMount = (token: StageToken) => {
+    const under = view.tokenMounts?.[token.id];
+    return under ? { ...under, face: under.refId ? faceOfRef(under.refId) : [under.slug ? monsterPlaceholder("beast", { genre, slug: under.slug, name: under.name }) : null] } : undefined;
+  };
   // The mount under each mounted enemy, by its rider's id (issue 1055). The
   // two stand on one token, the rider's, so wherever a tap on a token picks
   // a creature the board asks which of the two (ruling 5: no default).
@@ -1091,6 +1097,17 @@ export function BattleMapPanel({
   // away or hidden from this viewer nothing is held, or hovering, which
   // leaves a held plate be, stayed switched off for every other figure.
   const plateHeld = platePinned && plateToken !== undefined;
+  // The grid keeps the hover handler it was first given until it draws again
+  // (it reads its handlers through refs), so the handler reads this through
+  // a ref too: a plate a player's click held open used to close as the
+  // pointer left the figure for the plate. A layout effect, so the ref is
+  // set before the next pointer event: the apps run these pages on Preact,
+  // which runs a plain effect a frame later, and a phone's tap there let the
+  // mouse-leave that follows it close the plate the tap had just held open.
+  const plateHeldRef = useRef(false);
+  useLayoutEffect(() => {
+    plateHeldRef.current = plateHeld;
+  });
   const myTurn = Boolean(view.turn && view.myTokenId && view.turn.tokenId === view.myTokenId);
   // A walk this turn that can still be taken back (the move route keeps it).
   const undoFeet = myTurn && !canDirect && view.board === "fight" ? view.undoMove?.feet ?? null : null;
@@ -1219,10 +1236,11 @@ export function BattleMapPanel({
   const nativePanel = nativeBattlefieldActive && !prompt ? handStatus?.panel ?? (confirmation ? { title: confirmation.title, lines: [confirmation.line], controls: [{ id: "confirm" as const, label: t("Confirm"), disabled: null }, closePanel] } : orderPanel ?? (toolsOpen ? toolsPanel : null)) : null;
 
   const selectedFigure = nativeSelection?.mapId === view.mapId ? tokensById.get(nativeSelection.tokenId) : undefined;
+  const selectedMount = selectedFigure ? view.tokenMounts?.[selectedFigure.id] : undefined;
   const battlefieldHud: BoardHud = {
     selection: selectedFigure && !selectedFigure.hidden ? {
       tokenId: selectedFigure.id, name: selectedFigure.name,
-      lines: [view.tokenHealth[selectedFigure.id] ? healthLabel(t, view.tokenHealth[selectedFigure.id]) : "", ...(view.tokenConditions[selectedFigure.id] ?? []).map(entry => [entry.label, entry.rounds ? `${entry.rounds} rd` : "", entry.note].filter(Boolean).join(" · ")),
+      lines: [view.tokenHealth[selectedFigure.id] ? healthLabel(t, view.tokenHealth[selectedFigure.id]) : "", ...(selectedMount ? [[t("Riding {mount}", { mount: selectedMount.name }), ...(selectedMount.health ? [healthLabel(t, selectedMount.health)] : [])].join(" · ")] : []), ...(view.tokenConditions[selectedFigure.id] ?? []).map(entry => [entry.label, entry.rounds ? `${entry.rounds} rd` : "", entry.note].filter(Boolean).join(" · ")),
         ...(selectedFigure.kind === "enemy" && view.edges?.[selectedFigure.refId] ? (() => {
           const edge = view.edges[selectedFigure.refId];
           return [edge.blocked ? t("No line of sight") : edge.cover ? t("Cover: +{ac} AC", { ac: edge.cover }) : "", edge.flanking ? t("Flanked: advantage in melee") : "", edge.hostileBeside && !edge.adjacent ? t("Ranged at disadvantage: enemy beside you") : ""];
@@ -1427,7 +1445,7 @@ export function BattleMapPanel({
           }
           onTokenClick={handleToken}
           onTokenHover={(tokenId) => {
-            if (!plateHeld) {
+            if (!plateHeldRef.current) {
               setPlateTokenId(tokenId);
               setPlatePinned(false);
             }
@@ -1588,6 +1606,7 @@ export function BattleMapPanel({
                 face={faceOfToken(plateToken)}
                 health={view.tokenHealth[plateToken.id]}
                 conditions={view.tokenConditions[plateToken.id]}
+                mount={plateMount(plateToken)}
                 edge={plateToken.kind === "enemy" ? view.edges?.[plateToken.refId] : undefined}
                 pinned={platePinned}
                 onClose={closePlate}
@@ -1755,7 +1774,7 @@ export function BattleMapPanel({
           label={t("{rider} or {mount}?", { rider: pairAsk.token.name, mount: pairAsk.mount.name })}
           targets={[
             { token: pairAsk.token, face: faceOfToken(pairAsk.token), health: view.tokenHealth[pairAsk.token.id], feet: null, refId: pairAsk.token.refId },
-            { token: pairAsk.token, face: faceOfRef(pairAsk.mount.id), feet: null, refId: pairAsk.mount.id, name: pairAsk.mount.name },
+            { token: pairAsk.token, face: faceOfRef(pairAsk.mount.id), health: view.tokenMounts?.[pairAsk.token.id]?.health, feet: null, refId: pairAsk.mount.id, name: pairAsk.mount.name },
           ]}
           onPick={(tokenId, refId) => {
             if (!dialAsk) {
@@ -1772,8 +1791,8 @@ export function BattleMapPanel({
           targets={aimTargets.map((entry) => ({
             token: entry.token,
             face: entry.refId ? faceOfRef(entry.refId) : faceOfToken(entry.token),
-            // The token's health word is its rider's.
-            health: entry.refId ? undefined : view.tokenHealth[entry.token.id],
+            // The token's health word is its rider's; the mount has its own.
+            health: entry.refId ? view.tokenMounts?.[entry.token.id]?.health : view.tokenHealth[entry.token.id],
             feet: entry.feet,
             ...(entry.refId ? { refId: entry.refId, name: entry.name } : {}),
           }))}

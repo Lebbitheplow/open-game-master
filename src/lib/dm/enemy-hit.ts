@@ -10,7 +10,7 @@ import { getEnemy, patchEnemyHp, type EncounterEnemy } from "@/lib/db/encounters
 import { enemyHpCap } from "@/lib/dm/monster-abilities";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { recordRoll } from "@/lib/dm/roll-record";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, riderNote, sheetTarget } from "@/lib/roll-parts";
 import { publishPersisted } from "@/lib/events";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
@@ -177,7 +177,7 @@ export function resolveOnHit(
       characterId: target.id,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(`${attack.name} (${rider.damageType ?? "rider"})`, target.name),
+      parts: actionParts(attack, sheetTarget(target), riderNote(rider.damageType)),
       result: outcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       turn,

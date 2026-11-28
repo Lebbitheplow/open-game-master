@@ -14,7 +14,7 @@ import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { isValidExpression, rollExpression } from "@/lib/dice";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, foeTarget, riderNote } from "@/lib/roll-parts";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
@@ -75,7 +75,7 @@ export function resolveRowOnHit(
       characterId: null,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(`${attack.name} (${rider.damageType ?? "rider"})`, target.displayName),
+      parts: actionParts(attack, foeTarget(target), riderNote(rider.damageType)),
       result: outcome,
       attacker: { kind: "enemy", id: attacker.id, name: attacker.displayName },
       turn,

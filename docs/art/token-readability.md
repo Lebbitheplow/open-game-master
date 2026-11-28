@@ -32,8 +32,10 @@ represent a visually different creature.
 
 Keep each painted square under the 48 KiB limit (128 KiB is the ceiling for
 scenes) and check the complete set with `node scripts/test-placeholders.mjs`,
-which holds those limits and the 12 MiB total. Account for other open art PRs
-when checking the total budget. Preserve generation prompts, original and final
+which holds those limits and the 17.25 MiB total. That total is the ceiling for
+the finished set: reuse a painting that ships wherever the stat block is the
+same creature, and past it a new plate replaces one. Account for other open
+art PRs when checking the total budget. Preserve generation prompts, original and final
 hashes, encoding settings, and the review previews. Keep historical vote records
 unchanged: a repaint has not received its predecessor's votes.
 

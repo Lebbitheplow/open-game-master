@@ -24,7 +24,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, keptTarget } from "@/lib/roll-parts";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
 import { attackContext, effectiveSpeed, mergeAdvantage } from "@/lib/dm/condition-logic";
@@ -127,12 +127,12 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
       ...(effect.advantage ? ["advantage" as const] : []),
       ...(effect.disadvantage || water?.disadvantage ? ["disadvantage" as const] : []),
     ]);
-    const label = rollAgainst(`${attack.name} (opportunity attack)`, pet.name);
+    const parts = actionParts(attack, keptTarget("pet", pet), "opportunity");
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
     // On the line this strike posts (opportunity-strike.ts strikeCards), and
     // thrown here, on the server's dice.
-    const hitRoll = recordRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, home: "line", landing: null });
+    const hitRoll = recordRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "attack", parts, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, home: "line", landing: null });
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= pet.ac);
     if (!hit) {
       cards.set(notes.length, strikeCards([hitRoll.id]));
@@ -145,7 +145,7 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
-    const damageRoll = recordRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, home: "line", landing: null });
+    const damageRoll = recordRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", parts, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, home: "line", landing: null });
     const blow = blowByType(attack, damage, crit);
     // Enlarge/Reduce's floor and Ray of Enfeeblement's halving on the whole
     // blow, then a blow of two types (a hell hound's piercing and fire) meets

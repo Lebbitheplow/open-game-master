@@ -217,6 +217,8 @@ export type TokenFigureProps = {
   health?: HealthWord;
   conditions?: Array<{ id: string; label: string; rounds?: number; note?: string }>;
   elevation?: "flying" | "burrowing";
+  // The mount under the figure, by name: a pair is read out as two.
+  mount?: string;
   isCurrent: boolean;
   held: boolean;
   hp?: { current: number; max: number };
@@ -239,6 +241,7 @@ export const TokenFigure = memo(function TokenFigure({
   health,
   conditions,
   elevation,
+  mount,
   isCurrent,
   held,
   hp,
@@ -281,6 +284,7 @@ export const TokenFigure = memo(function TokenFigure({
   const title = [
     token.name,
     health ? healthLabel(t, health) : null,
+    mount ? t("Riding {mount}", { mount }) : null,
     offSide,
     ...(conditions ?? []).map((c) =>
       c.note ? `${c.label} (${c.rounds ? `${c.rounds} rd, ` : ""}${c.note})` : c.rounds ? `${c.label} (${c.rounds})` : c.label,

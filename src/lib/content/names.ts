@@ -11,7 +11,7 @@
 // (src/lib/srd/index.ts) already works for skills.
 
 import { textKey } from "@/lib/language/text-logic";
-type Locale = "en" | "fr";
+type Locale = "en" | "fr" | "es";
 import { srdRaceId } from "@/lib/srd/race-id";
 import { frTables } from "@/lib/i18n/fr-tables";
 
@@ -19,6 +19,9 @@ import { frTables } from "@/lib/i18n/fr-tables";
 export type FrNamesTable =
   | "spells"
   | "weapons"
+  // A creature's attack by its name ("Bite"), as its stat block has it: read
+  // only for a roll's creature action (src/lib/roll-words.ts).
+  | "actions"
   | "armor"
   | "gear"
   | "magicitems"

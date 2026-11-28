@@ -25,7 +25,7 @@ import { listSheets } from "@/lib/db/sheets";
 import { enemyFootprint } from "@/lib/battlemap/footprint";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, foeTarget } from "@/lib/roll-parts";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { canEnemyAct } from "@/lib/dm/can-act";
@@ -142,10 +142,10 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const vsAc = enemyAcWithEffects(campaign.id, walker) + coverFor(encounter.id, reactor.id, walker.id, leftFrom);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
     spendEnemyRiders(reactor, own.riders);
-    const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
+    const parts = actionParts(attack, foeTarget(walker), "opportunity");
     // On the line this strike posts (opportunity-strike.ts strikeCards), and
     // thrown here, on the server's dice.
-    const hitRoll = recordRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName }, home: "line", landing: null });
+    const hitRoll = recordRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", parts, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName }, home: "line", landing: null });
     const struck = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= vsAc);
     // The walker's Parry or Shield, as on every other door (enemy-reactions.ts).
     const parry = struck && toHit.crit !== "nat20" ? tryParry({ encounter, enemy: walker, total: toHit.total, natural20: false, ac: vsAc, melee: true, attackerUnseen: attackerUnseen(reactor.conditions, walker.conditions, sight) }) : null;
@@ -164,7 +164,7 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: reactor.displayName } },
     );
-    const damageRoll = recordRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName }, home: "line", landing: null });
+    const damageRoll = recordRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", parts, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName }, home: "line", landing: null });
     // What the blow goes on to roll on its short turn, for the line.
     const onTurn: string[] = [];
     const blow = blowByType(attack, damage, crit);
