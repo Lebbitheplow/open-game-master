@@ -1,0 +1,1693 @@
+{
+  "recordedOn": "2026-11-26",
+  "author": "Smoebo",
+  "generator": "Grok Build command-line tool 1.0.60, image_gen, one call per plate with the prompt recorded here unchanged",
+  "subjectBasis": "Original designs for entries of the cyberpunk bestiary (src/lib/bestiary/cyberpunk.json), per docs/art/creature-art-guidance.md: its people and its machines, which had no fantasy plate to borrow. No published illustration, film character, film robot or real person was named or supplied as an input.",
+  "encoding": "Each 1024x1024 JPEG original resized once to 256x256 (cover) and encoded once to WebP quality 75 with sharp.",
+  "review": "Each shipped plate was viewed at full size and in a round crop at 96px and 40px on dark and light surrounds. Six are second paintings. The first chassis frame was a chrome skull with a red eye and the first masculine netrunner stood in falling green code, each too close to a well-known film; both were repainted as plain original designs. The guardian seraph first came back inside a painted round frame. The neutral alley crusher and solo read as men until the second prompt covered the face, and the feminine stim slammer was repainted in a closed vest. The Board Chairman, the Immortality Baron and the Sewer Cell Operative are painted as the people their cards present; paintings of what they are were made for the reveal feature and ship with it.",
+  "presentations": {
+    "cyberpunk-data-cultist": {
+      "masculine": "cyberpunk-data-cultist-masculine",
+      "feminine": "cyberpunk-data-cultist-feminine",
+      "neutral": "cyberpunk-data-cultist-neutral"
+    },
+    "cyberpunk-gutter-punk": {
+      "masculine": "cyberpunk-gutter-punk-masculine",
+      "feminine": "cyberpunk-gutter-punk-feminine",
+      "neutral": "cyberpunk-gutter-punk-neutral"
+    },
+    "cyberpunk-wirehead": {
+      "masculine": "cyberpunk-wirehead-masculine",
+      "feminine": "cyberpunk-wirehead-feminine",
+      "neutral": "cyberpunk-wirehead-neutral"
+    },
+    "cyberpunk-alley-crusher": {
+      "masculine": "cyberpunk-alley-crusher-masculine",
+      "feminine": "cyberpunk-alley-crusher-feminine",
+      "neutral": "cyberpunk-alley-crusher-neutral"
+    },
+    "cyberpunk-stim-slammer": {
+      "masculine": "cyberpunk-stim-slammer-masculine",
+      "feminine": "cyberpunk-stim-slammer-feminine",
+      "neutral": "cyberpunk-stim-slammer-neutral"
+    },
+    "cyberpunk-signal-prophet": {
+      "masculine": "cyberpunk-signal-prophet-masculine",
+      "feminine": "cyberpunk-signal-prophet-feminine",
+      "neutral": "cyberpunk-signal-prophet-neutral"
+    },
+    "cyberpunk-deacon": {
+      "masculine": "cyberpunk-deacon-masculine",
+      "feminine": "cyberpunk-deacon-feminine",
+      "neutral": "cyberpunk-deacon-neutral"
+    },
+    "cyberpunk-solo": {
+      "masculine": "cyberpunk-solo-masculine",
+      "feminine": "cyberpunk-solo-feminine",
+      "neutral": "cyberpunk-solo-neutral"
+    },
+    "cyberpunk-arena-champion": {
+      "masculine": "cyberpunk-arena-champion-masculine",
+      "feminine": "cyberpunk-arena-champion-feminine",
+      "neutral": "cyberpunk-arena-champion-neutral"
+    },
+    "cyberpunk-netrunner": {
+      "masculine": "cyberpunk-netrunner-masculine",
+      "feminine": "cyberpunk-netrunner-feminine",
+      "neutral": "cyberpunk-netrunner-neutral"
+    },
+    "npc/cyberpunk-street-doc": {
+      "masculine": "npc/cyberpunk-street-doc",
+      "feminine": "cyberpunk-ripperdoc-feminine",
+      "neutral": "cyberpunk-ripperdoc-neutral"
+    },
+    "npc/cyberpunk-corp-exec": {
+      "masculine": "cyberpunk-fixer-masculine",
+      "feminine": "npc/cyberpunk-corp-exec",
+      "neutral": "cyberpunk-fixer-neutral"
+    }
+  },
+  "plates": [
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-scrap-urchin.webp",
+      "prompt": "A feral street kid in an oversized hood and a scavenged respirator mask with mismatched goggle lenses, gender impossible to tell, aiming a taped-together zip-gun. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "bede6c889b3c375b17a30e45877ba08cbd38b6418cb681fa7ce1e43646912b79"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12366,
+        "sha256": "c6429654d66eed2c71359749c9e79bcccd6a65af670c2928ad98aa5326200e09"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-rooftop-spotter.webp",
+      "prompt": "A gang lookout in a hooded rain poncho with a mirrored visor over the eyes and a scarf over the mouth, a long scoped rifle barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of wet slate blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7d633d930a772d851a10022d6ce79a1efc30c4ea297c22b93d6401bac23fe212"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9990,
+        "sha256": "1754de11364435cf504bbb2bc341cba549477f7248d78eb5fa414a0c921a9c45"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-corpo-samurai.webp",
+      "prompt": "A corporate champion in sleek powered plate armour styled like samurai armour with a fully closed mirrored face plate and a company crest, a glowing mono-katana hilt at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep crimson, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c8f4c64306797cc072f3f081494e242be74bddd0b552789b591d8b2d44811f4c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13644,
+        "sha256": "0c6865752b5c04565c351406f0d3f620d07c7fa16507fc4529df43ffe5a9587d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-wetwork-specialist.webp",
+      "prompt": "A professional assassin in a matte black bodysuit and a featureless smooth black helmet with one thin red sensor line, a suppressed pistol held upright. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "595a299fd547db6476fffea23fa8929f32e12d89c4460948347ac10e4b403978"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6050,
+        "sha256": "e396733eae96f05f09085751459977646eb5bf15cdc85ba2667b2c72839198a2"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-sewer-operative.webp",
+      "prompt": "An infiltrator in a grey undercity maintenance jumpsuit with a half-face rebreather and goggles, hood up, a narrow twitchy posture, plainly a person. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sewer green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d18219adde6e83c614a5c408eb0b31ea282723860f4cc222fc25f99fe9aae5a9"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6752,
+        "sha256": "0c5ad500f0f3c1dcdcb46d69e5e9fa5a701c00b7a7535e02b3979ce622738fab"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ai-architect.webp",
+      "prompt": "A legendary fugitive hacker shown as a hooded figure whose face is a smooth dark visor filled with a glowing geometric fractal, cables rising from the shoulders like a crown. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep ultraviolet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c5d931296dbd04dfe7b6283274ee595223d8d8d631d5b365a1757b0cf26e087a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11708,
+        "sha256": "8dc0d81c01593187728e9f9a187e73b2219e09251da334ae450a93a151e8faa6"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-organ-harvester.webp",
+      "prompt": "A back-alley organ thief in a bloodied surgical gown and mask with fingers replaced by long scalpel blades raised beside the face, cold eyes above the mask. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sterile mint, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e468d9e855628e373f3e0442899530b16cd990f922566b17670ea13c8218d6cf"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14196,
+        "sha256": "f194987ae8d2c6429fe15bfdba4db5b79bcd686dfa67b52df2938c233c41611e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-blood-bank-runner.webp",
+      "prompt": "A gaunt blood-addicted courier with translucent pale skin and dark veins, a corporate cooler bag strap on the shoulder and an IV line taped to the neck, hungry eyes, plainly a person and no fangs. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of clinical red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "5e0f0ef5a492eecbd18be4484073d9ad0eea6dadcf7a566ddde3dcfb5fac8d09"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6272,
+        "sha256": "be360a9ca3fef7118e5af208e3ee0f562a4d89cfb3f6e8d77b65b683ef2f6235"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-oyabun.webp",
+      "prompt": "An augmented crime-syndicate lord, a heavy elderly man in a dark kimono-collared suit with a chrome oni-style half mask over the lower face and full sleeve tattoos showing at the neck. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ink blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "28d6dc458034b5b94db92e03d7f2c3d65d871848f2da088cc704194c6bc7dc0d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8466,
+        "sha256": "944a660eb27b742bd31ae1aa3897a7e57576d94d4a97de025c3eb4a597c6ff8f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-braindance-queen.webp",
+      "prompt": "A dream-selling club queen, a glamorous woman with a crown of neural-interface cables fanning out like a headdress and mirrored eyes, a languid smile. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of hot magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c427f7f7ed84a96c05dc806f35a60de22c34082472f0fe186f5b99a0c93a978a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14736,
+        "sha256": "99e10eeda955fc56474b8efd4ccfed794bb600ddef63102e1666f5300b41635c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-lockdown-warden.webp",
+      "prompt": "A riot-suppression warden in heavy black armour with a helmet whose visor is a ring of pale glowing stasis emitters, the face unseen. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold white-blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4a1d946a6f3faf72283a151fb948ab1679a3cc6697f7818cf7fc463e8faccdfe"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11252,
+        "sha256": "bfca387e8c4cfb13e47742889156894a0ab5c97c9edcb2cb6dd972fe265d8a4e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-furnace-foreman.webp",
+      "prompt": "An industrial overseer in a scorched silver heat suit with a dark glass faceplate reflecting orange fire, a crackling shock lash coiled at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of molten orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4c77de544151a98d842b657dd334a680d6402dd307c11204e6550e3a74d526a0"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15480,
+        "sha256": "a2ffeef930bab0104731d69c02f6b1cf59a0f3ad7c2aa67dbe70f8d424dffa5f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-board-chairman.webp",
+      "prompt": "An untouchable corporate chairman, a silver-haired man in an immaculate charcoal suit with an amber-eyed predatory stare and a faint knowing smile, tiger-eye cufflink raised at the collar, plainly a human. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6965569e3fd5092b9d33fafb8fd17feafba9472deb520df311edee2a6acdfde9"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10700,
+        "sha256": "4d08d3238bcfe87769daa5075d4a6dd98936e3fe938174426b43290692e7d782"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-immortality-baron.webp",
+      "prompt": "A fabulously wealthy longevity magnate, a man with an unnaturally smooth young face and very old eyes, a white suit and a thin medical choker at the throat, plainly a person and no fangs. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale rose, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "0831a6243fe1584b288d3d3d73e9e8cd8f6bb53059266f12a0c29c6c9682b8cc"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6338,
+        "sha256": "bd53ae1894aa1e06c0f4dd2c66d60e7f09d889afcf0fb107d7faa7058e691308"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ceo.webp",
+      "prompt": "The most powerful executive in the city, an imposing figure in a black suit seen slightly from below, face lit hard from one side with red light, a cold absolute stare, plainly a human. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of blood red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7c75ebd4c1c9b86c0d9e7b56a31756d75b94f2a6495200a9ace83cc86205c32f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5344,
+        "sha256": "d12d5adf510a8ba2164f18a0bbf199daf4fe5768381ff20f5ca855f8f659138e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-valkyrie.webp",
+      "prompt": "A corporate executive enforcer, a severe woman in a black tailored suit with huge black mechanical wings folded behind her shoulders, an earpiece and a drawn mono-blade at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of storm grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "923b2a218e7996c08edd0efa8623828049c65882cce36948214d6ccfb4a1cfe5"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7772,
+        "sha256": "8dc5e89a294ea482dfeecb9ee54d4fea922de5b4f0c0c12a6fd281dc7f630d95"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-uploaded-founder.webp",
+      "prompt": "A flickering blue-white hologram of a long-dead company founder in an old-fashioned suit, scan lines and glitches across a stern aged face, hollow bright eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of black-glass teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "cabe5f960febe83145ec485ebfadb64ad852e335b86cf521f78c4557d295ea6d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14028,
+        "sha256": "97e8fbecce387ff43d1caecf4f3bec98c3e837d29a5054b959fa482da887f2e6"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-full-borg.webp",
+      "prompt": "A chrome giant more machine than flesh, a huge full-body cyborg with a human jaw under a steel skull plate and a single optic band, hydraulic shoulders. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of gunmetal orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "cdf88cf0b1f6872d398b89518bb692dd2ae715eadf75be701d0ddbc90d404485"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15262,
+        "sha256": "6d0f443088364345f6f47d9749e8a275dca1820b9ff8bbe90e516185fff63fd6"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-regen-escapee.webp",
+      "prompt": "An escaped bioweapon prototype, a towering lanky figure with grey-green regenerating flesh knitting over wounds, vat tubes still trailing from its back, a hospital wristband. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of biohazard green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9b2a42e54ae83161f81f450683deaacc29e7cd2819900992c94b7b043c400324"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8244,
+        "sha256": "18797294c87d0bcfab002729b0293eb8ba543ca39342e47c6aaf51b3daae08d9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-foundry-boss.webp",
+      "prompt": "A towering industrial zone boss in a heat-shielded powered exo-suit, scorched yellow and black hazard-striped armour plates, a welding-visor helmet with a glowing orange slit, coolant hoses at the neck and splashes of bright molten metal cooling on the shoulders, a person in a manufactured suit and not a rock or lava creature. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The helmet and massive shoulders fill about 80 percent of the frame and run off the bottom edge only. Plain painterly backdrop of furnace orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "18eaf230d5d46414ce0fe81ff08aa2e883c3745e1cdd058e337c6ef6500b0dea"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12990,
+        "sha256": "98d1b1467939ec7c46670dee3b0ae3885eb7de23972ce029abff20ec3f674f93"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-cryo-juggernaut.webp",
+      "prompt": "A huge industrial exo-frame from the freezer docks, frost-covered blue-white plating, a small frosted cockpit window like a face, a coolant cannon arm raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ice blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c8c1b3fa4e9a4385cbf18c732259912585613e6d304e5c6aa738940764081015"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 18916,
+        "sha256": "c14693e4db708eeb89f49b93e665eb09b22160bd5c8f1d2f8b18e13cf6f667d0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-optic-camo-assassin.webp",
+      "prompt": "An assassin in optical camouflage, the body a shimmering transparent distortion of the backdrop with only a faint outline and two tiny lens glints. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rain-streak grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e3204be2b1b0bb3c48dab97f3dd5a942ff011e6941aeee55e7bc5c7700a0f569"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10640,
+        "sha256": "fc9a9330fd8692683ec102bce9e8c00b35a158a7bbd3fcb5dc30931dc295a3f0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vat-heavy.webp",
+      "prompt": "A lab-grown muscle brute with a barcode on its neck, pale seamless skin with surgical ports, a blank resentful face, shock-collar at the throat. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of laboratory teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "de671e88eed12094154abf5881260c733e930b20a9a446679c199ddc47522448"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7580,
+        "sha256": "b2b0394ce1db336cbc51259a906aa349f30d48ba57037c483a57153c9a04e9dd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-overdose-shambler.webp",
+      "prompt": "A combat-drug burnout that keeps coming, a grey-skinned figure in a torn street jacket with dead white eyes and auto-injectors still stuck in its neck, slack jaw. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sick yellow-green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "77d36412c1418922fce844a6c872d97475923870db466a49e16a543e72ff2d6c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8580,
+        "sha256": "821b5cec4ddce8c079eae912b1463c00007e1475d5b0f799edddea6f2abe991e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-chassis-frame.webp",
+      "prompt": "A stripped android frame with no skin and no skull shape, a smooth featureless white ceramic head with one vertical blue optic slit and no teeth or jaw, exposed orange cable bundles and brushed aluminium struts at the neck and shoulders, an original design unlike any film robot. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The android head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of dark steel blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4267e314206aa1ffb8d2bb81cc1122b6360bf410cd64c0e0b78157ecdf1c1a56"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7944,
+        "sha256": "9323724a7d17a99f7897c4ac73b129bb2d91c48d5e89e6c4ba7deb2cc7db36b0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-corrupted-upload.webp",
+      "prompt": "A dead mind leaking out of the network, a screaming face made of fragmented blue-white pixels and glitch blocks dissolving at the edges. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The glitching face fills about 80 percent of the frame. Plain painterly backdrop of black-violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "fe865585ba3ca76d25413dbe9756fc034d4bd491048020a7951a40e8be85b3f2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15156,
+        "sha256": "5dbdad713f040e1ae116b1c499444c3db934fe8d1dcd263c58cee496bb882870"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-deadman-protocol.webp",
+      "prompt": "A revived corporate security officer, grey dead skin under tactical armour, a glowing chest reactivation implant and empty blue-lit eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f426290ff847d3f9076ad1ee1ea47aca773c4ddc81afe5e7db1411e182ff36e7"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9582,
+        "sha256": "c02f221de6baf536a86caa0c6a8d10fdab49290913e2d5118a6f3d3150d913b6"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vault-preserver.webp",
+      "prompt": "A long-dead company founder preserved in clear shrink-wrap plastic and gold-foil cabling like a mummy, a withered face behind the plastic, a firmware port glowing at the temple. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of vault gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c4dc06d0ce405c83c583307ee1542890c816603d51542beabd2ebcfd17b5b676"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 17712,
+        "sha256": "13867141378cbdd59d16d800014e92ebf180222ec28ba7eee8a81a7a9771c38b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-legacy-ai.webp",
+      "prompt": "An old artificial intelligence haunting dead hardware, a ghostly green wireframe face rising out of a cracked cathode-ray monitor. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The monitor and face fill about 80 percent of the frame. Plain painterly backdrop of phosphor green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "eb9a0762febf36bba61cedf73a93543112f4f61c4f4f0663857095129137b82a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11874,
+        "sha256": "3f9df252e2cf7e10f727b9992e5de346d4a7e464d9a333ac40db961907f66e30"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-black-ice-reaper.webp",
+      "prompt": "A lethal network security program given a body, a tall hooded humanoid hologram built of sharp black hard-light polygons and wireframe edges with cyan circuit traces running through it, two white scan-line eyes under the hood, its outline breaking into square glitch blocks at the shoulders, a digital construct and not a ghost or a cloak of cloth. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The hooded head and shoulders fill about 80 percent of the frame and run off the bottom edge only. Plain painterly backdrop of pale cold grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "219a2ad09013a40c9aaa80147e36cafed363d157902a7a981d81e062bd88169e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12164,
+        "sha256": "0ca2f50cf0c34aaae940c9268948a33f6e5a2319157a630e50dad8a7d45f1bbb"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-drone-blade.webp",
+      "prompt": "A slim dart-shaped security drone flying point first, its whole nose one long straight glowing orange mono-edge blade, a compact black body behind the blade with one red lens and two small ducted fans at the rear like the guard of a sword, seen at a diagonal as it lunges. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The drone runs corner to corner and fills about 90 percent of the frame, blade tip and fans just clear of the edges. Plain painterly backdrop of mid steel blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d2489e22106aa9de4be8e7c9b86d70b18d415d341ed86c60990389b84fdc9c17"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5138,
+        "sha256": "4e1daeafb6c3b1c32e5845e1a8627d16face0fdbbedd7bb644e4f436adcf59de"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-exo-suit.webp",
+      "prompt": "An empty suit of powered combat armour moving on its own, the cracked visor showing nothing inside but dangling cables, stuck in a combat stance. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The helmet and shoulders fill about 80 percent of the frame. Plain painterly backdrop of olive grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7ec77f271f3ede6e54e2fb033e2c7a3d2b26cf470579292d8166d087ee564d11"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12122,
+        "sha256": "e1792c14c137b1678ba0f97a1cd03df169edba11ce0d0f9a94a37f13b5ff83e7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-bodyguard-automaton.webp",
+      "prompt": "A sleek white-and-black bodyguard robot with a smooth face plate and a deployable ballistic shield arm raised, bullet scars on the chassis. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The robot's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of executive grey-blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b5f559db5040c6815f9b6321508c51d1a9c93448e71ea92afdcea1f648cff592"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9792,
+        "sha256": "9989bc8772c8de905d7a33be0b1be11d885abedc5bf550f4e78ab6b6482c41cb"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-riot-hulk.webp",
+      "prompt": "A hulking crowd-control robot with a blunt armoured head, flashing red and blue light bars and huge padded riot arms, one eye sensor cracked. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The robot's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of riot blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c98485f819cdb274023efab1755b537c4e578c1fcee026c2d910b56c3987a194"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11378,
+        "sha256": "a51bea91b13f6d5fc60d849e954d4831855fbc504c3db1e0a3d46d54673b6bd8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vault-guardian.webp",
+      "prompt": "A massive bank security robot standing guard, a broad slab-like armoured body with a round vault-door wheel set in its chest, a small head with one red slit sensor, heavy shoulders and two thick arms ending in gun barrels. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The robot is shown from head to waist, filling about 80 percent of the frame and running off the bottom edge only. Plain painterly backdrop of bank green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b833715247762a63a0176e2d2185e973c163cb0092ca7bdff884e87181fced26"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9928,
+        "sha256": "9d686511b97d9ce8ed0cc56c62cce1f5bf4d418f0e711a52a19ded8af4e53d80"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-siegebreaker.webp",
+      "prompt": "The front of a colossal military walker, an armoured cockpit head with a row of red sensors, missile pods on the shoulders and green exhaust venting. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The walker's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of smoke magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7a339f5b8228956b527d57bc20c582103809992f729275455c9b1428bb952159"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12908,
+        "sha256": "292d555ca5eeb8a8297e71c2e40e5cd8f8bf63251c6b2b18943eb97192539a77"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-cyber-hound.webp",
+      "prompt": "A lean hunting dog with a sensor-cluster visor for eyes and a steel jaw with a radio antenna, synthetic skin over a metal frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The hound's head and neck fill about 80 percent of the frame. Plain painterly backdrop of neon teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a4356cf00874414ed4c757ed81e74702dff6daa1c9b5715d1dfdf45f4eca8866"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11662,
+        "sha256": "792fb74029fc39323a5fb10ec78d27a135522d47ecf35fcf5169970d135614be"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-attack-mastiff.webp",
+      "prompt": "A heavy military robot attack dog with armour plating, a blunt mastiff head with a single red eye bar and steel teeth. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The dog's head and neck fill about 80 percent of the frame. Plain painterly backdrop of army olive, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "307aade64dbb35a00f9983b552c4ebf219db94ba8ee1be2f14706c241d564507"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8142,
+        "sha256": "f9e8d5f5d4febf9d830924a137b0f2e17e3ab3ee089669e253cf68604419c711"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-cyber-mastiff.webp",
+      "prompt": "A robotic attack dog built of polished chrome plates over black hydraulics, a squared mechanical head with two red optic lenses, steel jaws open with a jet of flame from a nozzle in its throat and a row of glowing orange heat vents along its neck. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The dog's head, neck and shoulders fill about 80 percent of the frame and run off the bottom edge only. Plain painterly backdrop of deep rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f3cbd498f4813825f9d477ae7e5a6908816428dfcb0287137ad3340c2dcd1779"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14444,
+        "sha256": "1caa934afe1e0dad577bf39bbd4fbb0a245aaf38fe298900f425e0b8cf513aaf"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-cryo-hound.webp",
+      "prompt": "A white pursuit hound machine with coolant tanks along its spine and freezing vapour pouring from its jaws, pale blue eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The hound's head and neck fill about 80 percent of the frame. Plain painterly backdrop of frost blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2722d131c75f0badf70117319d590ebc086a3dfa8aae9f97d631c74bfe0bc934"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12886,
+        "sha256": "b31db8a02e55eb1b3d8352b97f6da56f887b0714d2a71863cf65d822517d6c1d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ad-drone.webp",
+      "prompt": "A flying advertising drone with a smiling projected hologram face, speaker horns like wings and grabbing claw arms beneath. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The drone fills about 80 percent of the frame. Plain painterly backdrop of hot pink, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "569ee0b494ae9870ab2ef97de213ce212f6d7f85f5b127d3778698d0cb21e340"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7358,
+        "sha256": "e0c4696a61c7906f1227544d40e21733d7ff03c9324b2ecf567c26ce29ab794e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-maintenance-crawler.webp",
+      "prompt": "A hacked eight-legged repair robot like a mechanical spider with a cluster of red camera eyes and cable spinnerets. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The robot fills about 80 percent of the frame, eyes centred. Plain painterly backdrop of service-tunnel yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "92a682304c63f19675283214d7c3d2d872bf701bc8e2d69030f738ce5ae3a426"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14838,
+        "sha256": "67b411fd22596c21afc6d03cd11c4d4e734a947dbb8677c16f88a740c9482a01"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ledge-sentry.webp",
+      "prompt": "A folding gun-turret drone crouched on the edge of a skyscraper ledge, disguised as a building ornament, an angular robot of concrete-grey panels with folded wing-like armour plates, one gun barrel emerging from its chest and one red sensor eye, clearly a machine with panel seams. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame with its whole silhouette inside the frame, nothing cut off. Plain painterly backdrop of dusk violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6a180cdf6c9839cc9460f75b6e07f56bb2375feedafbc622fbc8fee7065a91f5"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8092,
+        "sha256": "61221f32cb57b1b54669bd3b49f5683419d87872bd0a9e63d0bc6ccf06624162"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vending-unit.webp",
+      "prompt": "A modern street drink vending machine that doubles as a security sentry, an ordinary lit product window with rows of cans and a neon price strip, a side panel swung open with a small gun turret on an arm emerging from it, a steel restraint clamp snapped shut across the dispensing hatch, and one red sensor eye above the coin slot, with no mouth, no teeth and no tongues. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame with its whole silhouette inside the frame, nothing cut off. Plain painterly backdrop of hot magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "775731666015b745e61af4fef30a5c263cf728121cbc4f25d349293cd244df5c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8342,
+        "sha256": "126f5165524293a750536b07b09029b21b810d91727ccbbfd9595dc799f9dc2d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-courier-interceptor.webp",
+      "prompt": "A winged pursuit drone like a mechanical bird of prey with swept carbon wings, a hooked sensor beak and grabbing talons. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The drone's head and wing roots fill about 80 percent of the frame. Plain painterly backdrop of sky-traffic blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4812551306c3a40cb1103f842c72d922d69a59526916a53d629e98b9069ca839"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12088,
+        "sha256": "21475eb59ee96b57ac4ebcac4cb8161fd54fd4689c8ec11f14f69a1eb8c0b271"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-glitch-stalker.webp",
+      "prompt": "A spider-legged stalker machine half phased out of reality, its body splitting into offset colour-shifted copies like a visual glitch. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame. Plain painterly backdrop of ultraviolet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "45ba40beabaabbb63ff04d518214b6deb5f8ab3eb2b78fa50070326961a18e13"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11378,
+        "sha256": "bd168004a14dae01b2e63905cdcf04ea0c31b04fea937b8eabe528789b09f3a6"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-freeze-sentinel.webp",
+      "prompt": "A low four-legged crowd-control robot shaped like a squat armoured lizard, matte grey panels and four stubby mechanical legs planted on the ground, its head one huge round pale-blue freeze-ray lens, seen in three-quarter view. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame with its whole silhouette inside the frame, nothing cut off. Plain painterly backdrop of sterile cyan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8a66c2033ab741f3ab3d136e1d59dedee5a8d53b2bfcbffe17f9652b17ac86fb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9114,
+        "sha256": "f6e4b8142cd13d40bb2626a16939af06663f2b05ff06bcea1e901094a5043f4b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-gunship-chimera.webp",
+      "prompt": "A flying weapons platform, a blunt armoured gunship drone with four rotor pods, a wide nose with a grille, stub wings with rocket pods, and an articulated tail gun raised over its back like a scorpion's tail, an aircraft only, with no face and no animal head. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame with its whole silhouette inside the frame, nothing cut off. Plain painterly backdrop of rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "fd7cb5e605bfe1866aea2f669e6d4d7ec02cde9d96dafe7d37d5dae72cb99561"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8786,
+        "sha256": "93560afa8588cbcb859a465bccb88528f681531812543641b04c5a9c460f72b8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-swarm-core.webp",
+      "prompt": "A self-repairing turret cluster, five gun-turret heads on flexible armoured necks sprouting from one core, one freshly regrown. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The cluster of turret heads fills about 80 percent of the frame. Plain painterly backdrop of warning red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4021f9062a39df0c9e56142b862d563b2d40798b2b46a6c5f66f9a88dbd3950b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7794,
+        "sha256": "1ca6bcde629c1c5577219923cc370f13782528f950b2beb25f1dbee9750339f2"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-undernet-oracle.webp",
+      "prompt": "A coiled serpentine machine intelligence, a snake-like body of black cable and server lights ending in a calm mask-like face of white ceramic. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The face and upper coils fill about 80 percent of the frame. Plain painterly backdrop of deep data blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "04ad85edf06dbf40bb10ca7d5285667ca48883cfb99d7519a545f4fb5f9fd257"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10602,
+        "sha256": "701873eddf0177bbb07f63d4018dffa0b9957dca221989fb40ebd146813b7a66"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-maglev-serpent.webp",
+      "prompt": "A huge serpent machine built from maglev train cars with a wedge-shaped locomotive head and lightning arcing in its open maw. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The serpent's head fills about 80 percent of the frame. Plain painterly backdrop of rail yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "68d4e06b9bf213fcfeebf26487b748c37615f3080381d3e2be9c62a260f37bbc"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11462,
+        "sha256": "b271969bfab19ce7e07936ae5954620c1d5a0fc40eb06ad0ea421c7d508f0415"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-plasma-djinn.webp",
+      "prompt": "A humanoid torso and head made of contained white-blue plasma inside cracked reactor shielding, burning eyes, magnetic rings floating round it. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of reactor violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "35ebeaeb0e572a5540b0aead5c2054c8e60c4c6061e4c2d3eebc4db5db84f5fb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15024,
+        "sha256": "604f69d198f9ca8eb23e849f93917041dd8a30d3169d3eecd5d020eaf5d638df"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-twin-core-walker.webp",
+      "prompt": "A ramshackle scrap walker with two separate cockpit pods side by side like two heads, each with its own glaring window. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Both cockpit heads fill about 80 percent of the frame. Plain painterly backdrop of junkyard teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "33631867e84f660598e589f259d8e1dbc96be671ef64f3b54ca4071b2d947ecc"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13514,
+        "sha256": "1f7b99f8cc7cd19f320fff42ddbf31978d6c2f9c845d9408f38b8fa48a3b445e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-demolition-mech.webp",
+      "prompt": "A construction walker with hazard-striped armour, a cab like a blunt head and a giant wrecking-ball arm raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The cab and wrecking arm fill about 80 percent of the frame. Plain painterly backdrop of construction yellow-grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1b607781a0b3dcddc5f8d9d6c385c7edc3194dafcccc9abd0112be0f9d8e8421"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13184,
+        "sha256": "623db4c4fa39ad2dfb738167cfbb695f65fb0c6c30e83aeea6059502692b6d92"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-repo-unit.webp",
+      "prompt": "A tall thin repossession robot with a bone-white plastic casing over black steel struts, a narrow head with a red barcode-scanner bar for eyes, two hands of long surgical extraction tools raised in front of its chest, and a segmented steel cable tail curling up behind one shoulder, a complete intact figure. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The robot is shown from head to waist, filling about 80 percent of the frame and running off the bottom edge only, nothing torn off or floating. Plain painterly backdrop of invoice red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9b511bc8ca5cd96b4f70bae362c5319726baee71100878dbb29c2bcc1e7a4823"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11300,
+        "sha256": "d030b9ddf27f822eac40b14967298f127bf3b6976019bc4ab45abbee49821856"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-guardian-seraph.webp",
+      "prompt": "A benevolent flying security drone with no arms and no legs, a long slim serpentine body of white and gold segmented plates that coils once beneath it, a smooth blank white face plate with one soft gold light at the brow, no cross and no symbol, and two wide wings made of flat glowing gold hexagonal light panels. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The head, both whole wings and the coiled body fill about 90 percent of the frame, the wing tips just clear of the edges. Plain painterly backdrop of deep royal blue, darker than the white drone so that it stands out, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9a08185782e44f7f6c6712340319e933504475f0623b0d284109e8d34ad4073b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8658,
+        "sha256": "3988cf545376756c7309c988a7bca518a17c2504b551e188edfa2c1a685cfab7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-strike-drone.webp",
+      "prompt": "A heavy military aerial gun drone, a grey angular unmanned aircraft with swept wings, twin ducted fans, a sensor ball under the nose, a rotary cannon under the belly and a long tail boom ending in a glowing green toxin injector needle, an aircraft only, with no head, no jaws and no scales. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame with its whole silhouette inside the frame, nothing cut off. Plain painterly backdrop of smog green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ba2795c498c7c264e01ba3bf01abd68673393db356bd54691bc355e02bae12e4"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7110,
+        "sha256": "d4d21ad6e9530febc453048884e40785fd28fcd25e98f4927494307a407d107f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-orbital-gunship.webp",
+      "prompt": "A huge corporate military gunship aircraft seen head on, an angular black armoured hull with a narrow cockpit canopy, swept wings carrying engine pods that glow red, and a large nose cannon with fire building in its muzzle, an aircraft only, with no face, no eyes, no horns and no teeth. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The whole aircraft fills about 85 percent of the frame, both wing tips inside the frame. Plain painterly backdrop of burning orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "88787468bfdac2d506513e3a35c1e54824a35f3c7383ce142583f905a676c3fb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6328,
+        "sha256": "97474060cacb0b85f3f14d41b4a1c466460a96f76c70ae9433494e678206d1ca"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-deep-server.webp",
+      "prompt": "An ancient machine intelligence in a flooded server hall, a mass of black cables like tentacles around a cluster of three red lenses, submerged in dark water. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The lens cluster and cables fill about 80 percent of the frame. Plain painterly backdrop of abyssal teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a8a59ae33aa521174bc2dba28376539d10a8fa13ed71ed738f3d8639bd49fad8"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13258,
+        "sha256": "73825610836a11478725ad6bc3e3ed42bad7e429e81abf745207d1ed3d6de666"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-data-cultist-masculine.webp",
+      "prompt": "Cyberpunk machine-cult initiate, a man with a thin goatee with a shaved head and glowing circuit tattoos across the scalp, a fibre-optic rosary and a hooded synthetic robe, eyes rolled toward a signal only they hear. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "31c4b98f0f80f054957f1d20f8d62c56230df8aad04780ffa23bc0cb13b819f2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10276,
+        "sha256": "cf1235f2558e60cdac660dcb04594ff62c9560a7fcc760c5ce2db34268af2f05"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-data-cultist-feminine.webp",
+      "prompt": "Cyberpunk machine-cult initiate, a woman with a shaved head and glowing circuit tattoos across the scalp, a fibre-optic rosary and a hooded synthetic robe, eyes rolled toward a signal only they hear. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of electric teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "37e01f729539e5472d98510025744fe398d67eeb587231ede1cc3ab4831209eb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10358,
+        "sha256": "4dea10bb3f194972cbef053abb2cfe211e3058fc451cc4764ab1cc874221433f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-data-cultist-neutral.webp",
+      "prompt": "Cyberpunk machine-cult initiate, a person with a smooth soft-featured beardless face that could be a woman's or a man's with a shaved head and glowing circuit tattoos across the scalp, a fibre-optic rosary and a hooded synthetic robe, eyes rolled toward a signal only they hear. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of signal amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "215ef146d079f97e123f11b6d93a9ef1cdd65c5c8f4123f0b7a667c9455ab5fd"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8336,
+        "sha256": "096147c519df304f2cc8750a9306ba1215854ec8dcb385a740660f4417d293d4"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-gutter-punk-masculine.webp",
+      "prompt": "Cyberpunk street scavenger, a lean quick man with scruffy stubble with a neon-dyed mohawk, cheap chrome jaw implant and a patched plastic rain jacket, a jagged shiv held near the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of acid yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "74558ac132807547352721d9e816f9fc08689fa89b7acf817d151e1a72887036"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13716,
+        "sha256": "11ae574fccde66e18870fafe9282d1f82f45b05048ee637bc24b2ce401bf64a7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-gutter-punk-feminine.webp",
+      "prompt": "Cyberpunk street scavenger, a lean quick woman with a neon-dyed mohawk, cheap chrome jaw implant and a patched plastic rain jacket, a jagged shiv held near the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of hot pink, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6d0184d684cb4da807b627d400177ef311f1150e942a46e7ac6aa0611ecf00e3"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12046,
+        "sha256": "84731a976b3154926bd2924dac124a8d48075b94eb9136d49e9489c8109da886"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-gutter-punk-neutral.webp",
+      "prompt": "Cyberpunk street scavenger, a lean quick person with a smooth soft-featured beardless face that could be a woman's or a man's with a neon-dyed mohawk, cheap chrome jaw implant and a patched plastic rain jacket, a jagged shiv held near the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rain grey-blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2064dc721669e36ace58e84d19b19c9fa807c382621bea306b6b4b1c5bd4d92e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10076,
+        "sha256": "cf06153e7a358ca9de5224a3ebf69f9d41c148302e6ea646936c5f22f95e5265"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-wirehead-masculine.webp",
+      "prompt": "Cyberpunk pain-editor junkie in a killing frenzy, a gaunt screaming man with a patchy beard with a mess of cables jacked into the skull and pinprick pupils, veins lit faintly blue. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of toxic violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b3989dda9ba4b797eda7b48627ce094ffdab7bd504ec2414bc26fd6b9e15e704"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10836,
+        "sha256": "ca9fa4a8fdf0ecd5e04f5ef113301a47c0815b092e7ed0ad1ad3caea3f7df5c5"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-wirehead-feminine.webp",
+      "prompt": "Cyberpunk pain-editor junkie in a killing frenzy, a gaunt screaming woman with a mess of cables jacked into the skull and pinprick pupils, veins lit faintly blue. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warning red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "adf7ce63b459dae1b477628dc6b6c8afadc0bafcd8fc744dfbacf147de599e0d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14050,
+        "sha256": "c621a111d02d98c59d13f19c1347b4bbcfda4553b2a3326b93c8ae1a863fbd20"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-wirehead-neutral.webp",
+      "prompt": "Cyberpunk pain-editor junkie in a killing frenzy, a gaunt screaming person with a smooth soft-featured beardless face that could be a woman's or a man's with a mess of cables jacked into the skull and pinprick pupils, veins lit faintly blue. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sick green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "bf045f41ce74660075466c6a1fba9f5b80b5e3c22fbef1c3e48ac8cbc9f3cdd9"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9564,
+        "sha256": "5a1bde47c98a0ebfeb18945bb6ac546e2cc31abf1008bb825f776f3a30943b0a"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-alley-crusher-masculine.webp",
+      "prompt": "Cyberpunk ambush mugger, a huge heavy man with a broken nose and thick neck with one massive industrial hydraulic arm raised at the edge of the frame, a hooded jacket and scarred face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of alley teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "50d675b622cfb7171fdfd1f59328c3ba33f4797eccd5077bd71e7dd55859934a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10156,
+        "sha256": "9f0e0e56f22178e330cb2976ca58982d7beb958789c1770957a12ba1a0cf9994"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-alley-crusher-feminine.webp",
+      "prompt": "Cyberpunk ambush mugger, a huge heavy woman with one massive industrial hydraulic arm raised at the edge of the frame, a hooded jacket and scarred face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e009c19489fb3f5acdecc258214948acffafa0658ab16c76ba919a5cb1fd6dfc"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10992,
+        "sha256": "d1c508f3cef318aaad1e66fb1a26ea66695ed95a5b3c576321bf136ce9238215"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-alley-crusher-neutral.webp",
+      "prompt": "Cyberpunk ambush mugger, a huge heavy figure in a hooded jacket with a filter mask over the nose and mouth and the hood shadowing the brow so only hard eyes show, gender impossible to tell, one massive industrial hydraulic arm raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sodium-lamp yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8acac7a2bf9e01fae4a98c18ad2fe3988763de8860fcefe4d9646f1a9196a7ad"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12344,
+        "sha256": "7fe27ec46891efb2732de16386de22303ad138d17ecfd9be4b89a6cad2cce4fb"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-stim-slammer-masculine.webp",
+      "prompt": "Cyberpunk combat-stim berserker, a sweat-slick man with a buzz cut with auto-injector ports along the neck, dilated glowing pupils and a savage grin, tactical vest torn open. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of hazard orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "46a27ec9ff50b28cc4d411c66984deff294b7eff48a7df2132eb8e686b26572e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10746,
+        "sha256": "70cdeb859b456340f02ef35fa71468e84e51fc48f8a7a600a220e84735794d67"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-stim-slammer-feminine.webp",
+      "prompt": "Cyberpunk combat-stim berserker, a sweat-slick woman with auto-injector ports along the neck, dilated glowing pupils and a savage grin, a fully zipped high-collared tactical vest, head and shoulders only. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold cyan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c8b1271a2d60e3c49105c67f66bebd99961d566619529899dde8cff5d562f1f0"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12412,
+        "sha256": "04c91964d5227b04f2e2b680f8cb7de99233b75145d9830d2808dd48dc1c3dae"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-stim-slammer-neutral.webp",
+      "prompt": "Cyberpunk combat-stim berserker, a sweat-slick person with a smooth soft-featured beardless face that could be a woman's or a man's with auto-injector ports along the neck, dilated glowing pupils and a savage grin, tactical vest torn open. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of bruise purple, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b8d3186e803b79db18e90b91556358d5ef2c6ddba88a929fbfdd66ccde138d6c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8932,
+        "sha256": "edc04902b84f5f1f19c8100ae15b15c1abb223a716b97ea8c484718e6c791cc3"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-signal-prophet-masculine.webp",
+      "prompt": "Cyberpunk street preacher of the machine god, a wild-eyed man with a long matted beard wearing a halo of scavenged antennas and a cracked screen hung on the chest showing static, one hand raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of static white-blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6ef0fe1dc3ede2c9a50911480aa869916e63f126fc9d62d13a714492193823d2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 20800,
+        "sha256": "18cc9b6bfd24734f1479fcaf0cf11d1429eeffc60438af7f3903b81ccd01523e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-signal-prophet-feminine.webp",
+      "prompt": "Cyberpunk street preacher of the machine god, a wild-eyed woman wearing a halo of scavenged antennas and a cracked screen hung on the chest showing static, one hand raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "425a884e3cdd517ac29193fe80869d249daf99c432632f65298af04974193582"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13034,
+        "sha256": "809faa6a93bca2af65fc8fad91dc813b371000b0c6cc0c1fcdca1e60d1b9fbfd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-signal-prophet-neutral.webp",
+      "prompt": "Cyberpunk street preacher of the machine god, a wild-eyed person with a smooth soft-featured beardless face that could be a woman's or a man's wearing a halo of scavenged antennas and a cracked screen hung on the chest showing static, one hand raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a57ec35e83e458eb7a9be068c9d4232849bef2b240bb24beded2e611a900ee4e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13172,
+        "sha256": "146324a922ae160fb62486fd576c5abe3cdbfe9ec57a7cb9cf9cde84de2b0f5d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-deacon-masculine.webp",
+      "prompt": "Cyberpunk chrome-chapel faith healer, a serene man with a neat grey beard in a white clerical collar and a mirrored chrome stole, one hand a polished surgical cyber-hand raised in blessing with faint nanite glow. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of chapel violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "00a562daef7bbc5dbde1138368c1070a793222f2ac9b59c2893048ed66c1b6b6"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12204,
+        "sha256": "f9bbab4b292e57790f15739ba47da79a2d22f2a2e55d0e604dd49f332e002671"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-deacon-feminine.webp",
+      "prompt": "Cyberpunk chrome-chapel faith healer, a serene woman in a white clerical collar and a mirrored chrome stole, one hand a polished surgical cyber-hand raised in blessing with faint nanite glow. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of soft cyan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6aa7fdc53c1562c30ce5304a2ceebf59f6a44036810f012b498a5bb2391cee32"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13376,
+        "sha256": "8eb476d244154cf4ac0a9328a3c888d6ae185bd262fadaa563d28c85344d3b89"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-deacon-neutral.webp",
+      "prompt": "Cyberpunk chrome-chapel faith healer, a serene person with a smooth soft-featured beardless face that could be a woman's or a man's in a white clerical collar and a mirrored chrome stole, one hand a polished surgical cyber-hand raised in blessing with faint nanite glow. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warm gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "66b23823e15b9d39d55fdbb43f81340e7b263d55de16644eafb74e4b5f5f3a5e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11982,
+        "sha256": "664ea2dfe0d5e711135bf4b4c2d848e3b6c1e78a4879927b751e308e5ebbd52a"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-solo-masculine.webp",
+      "prompt": "Cyberpunk freelance mercenary, a hard-eyed decorated man with grey stubble with a subdermal armour plate visible at the jaw, a cybernetic eye glowing red, a worn combat jacket with old unit patches, rifle sling at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of gunmetal blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f7c0b8e3e84e2c2d89a97513d373461148ea776a9017fd7e67fc2756b52c3e2e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7222,
+        "sha256": "0e02d2867d92229813e0164253b613436f1d52f2c28a5801de61e6e27cad341f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-solo-feminine.webp",
+      "prompt": "Cyberpunk freelance mercenary, a hard-eyed decorated woman with a subdermal armour plate visible at the jaw, a cybernetic eye glowing red, a worn combat jacket with old unit patches, rifle sling at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dusk orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "43f884e4774fb4681a93c7762ab264540cab4e13127a1be6d0d57294d4a499fa"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9064,
+        "sha256": "52edf424ccb1d53ebb210456867c71c386158db96905f98ee5ac6c7299c4f7f5"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-solo-neutral.webp",
+      "prompt": "Cyberpunk freelance mercenary in a worn combat jacket with old unit patches, a ballistic half-mask over the nose and mouth and cropped hair, one cybernetic eye glowing red, gender impossible to tell, rifle sling at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of smoke green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9a39bca85b13112378016981a467de193f0aa42ae877ce909d454f733c81a3ed"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6802,
+        "sha256": "9dfce5a1f90d3666599ad21b21c656789dbbcf8185d7522416f3ff3470937b91"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-arena-champion-masculine.webp",
+      "prompt": "Cyberpunk pit-fight star, a muscular man with a sculpted beard with sponsor decals on chrome shoulder plates, neon face paint and a split lip, a taped cyber-fist raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of arena magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "51c16be74082a6fdfb556287e46e4906bc9aa3232d64934ba77d9cfc63097f20"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 16526,
+        "sha256": "aa3f31d50da060fad11a2c550795b200725233264bb5e4e8e8ca507229e8b0bd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-arena-champion-feminine.webp",
+      "prompt": "Cyberpunk pit-fight star, a muscular woman with sponsor decals on chrome shoulder plates, neon face paint and a split lip, a taped cyber-fist raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of spotlight yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ad995045d75c5c8e65548fe3fab1cc310cad36aec327ff03a983d2120a625936"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15734,
+        "sha256": "c539eed13e876b616a04374b778897657005ebc098f0e7a67f1fc6539fe26a1e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-arena-champion-neutral.webp",
+      "prompt": "Cyberpunk pit-fight star, a muscular person with a smooth soft-featured beardless face that could be a woman's or a man's with sponsor decals on chrome shoulder plates, neon face paint and a split lip, a taped cyber-fist raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of electric blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2ba81ad96874caf91182a9b91d1827e586f279faacb3f4dd5f4ea6b030baff41"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13170,
+        "sha256": "3591ee8601400f801c1b8180702145ff0ed23b928627b42301cde01ab024674c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-netrunner-masculine.webp",
+      "prompt": "Cyberpunk rogue hacker, a pale intense man with a wispy moustache in a high-collared cooling suit with data cables running into ports behind the ear, a visor pushed up, faint amber light on the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of plain flat deep teal with no falling code, no symbols and no pattern, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f47eb9d1c459d40ef458611a776dd9e5d8b5183388d9e289988df9d12a7b843e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7152,
+        "sha256": "f75aa95fb722d352e5aad8dee8a7eec061441e9815446ece982f0dc3416206d8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-netrunner-feminine.webp",
+      "prompt": "Cyberpunk rogue hacker, a pale intense woman in a high-collared cooling suit with data cables running into ports behind the ear, a visor pushed up, holographic code reflecting on the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep ultraviolet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "124701a32a988a06f0eed0cabe7e1856234948629bbd8974a1c2acc2f68388eb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10950,
+        "sha256": "805d7fd101ef3a6ea885caed2c9ab3e84d58e4f9a776076dbfb6ce897a6de98a"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-netrunner-neutral.webp",
+      "prompt": "Cyberpunk rogue hacker, a pale intense person with a smooth soft-featured beardless face that could be a woman's or a man's in a high-collared cooling suit with data cables running into ports behind the ear, a visor pushed up, holographic code reflecting on the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of terminal amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "bc2c61896995e311c6c14116cece7d5fb38b292aa4d04af3968af3e406091aae"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8262,
+        "sha256": "878db4696e527653f2c502c25e0390072b7074c22e20d2c115e5c6c3ad4f0482"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ripperdoc-feminine.webp",
+      "prompt": "Cyberpunk back-alley medtech, a tired sharp woman with a glowing green surgical monocle implant, a stained scrub top and a nano-injector held up beside her face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of clinic green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7cc68ab562aa028f0f78fbcf0a4dde21451e2666a0743656de8c5e4a0830d18f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9334,
+        "sha256": "2b612ebbf924b82ea7ab0db3f2bd1449a9d7ac511b2a878c4ea4b999d45b65b8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ripperdoc-neutral.webp",
+      "prompt": "Cyberpunk back-alley medtech in a surgical mask and a glowing green surgical monocle implant, hair under a scrub cap, gender impossible to tell, a nano-injector held up beside the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f108b3d4be6aaf0195c95a9279ded686d368da0baa616d5ac750038d0102c598"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9192,
+        "sha256": "6f1424558fdc4e2dc4db7ac5015e8ded77926a2963df9d4ce4baf6311352516f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-fixer-masculine.webp",
+      "prompt": "Cyberpunk corporate fixer, a smiling sleek man in a tailored white suit with a subtle chrome line along the cheekbone, a slim blade half hidden at the cuff. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ice blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "87ac38edc8ce5144957154ce22f32c792f211793fcae0fadcef11e15dd80ed6c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7978,
+        "sha256": "bdc43995e743b633a4d9a177a0deaff4de5653a209d0e207a692a29dac69d8a3"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-fixer-neutral.webp",
+      "prompt": "Cyberpunk corporate fixer, a smiling sleek person with a smooth soft-featured beardless face that could be a woman's or a man's, in a tailored white suit with a subtle chrome line along the cheekbone, a slim blade half hidden at the cuff. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "cbb8576611308803285dbcfd08dc78b228bf40a47cd25f11510ef508c5a58b26"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7730,
+        "sha256": "239c276c73a4c7d049983b8cd8cc9cd440f3ab06b624d3c45568a314c457e330"
+      }
+    }
+  ],
+  "paintedForTheRevealFeature": [
+    {
+      "id": "cyberpunk-board-chairman-revealed",
+      "prompt": "A corporate chairman revealed as a gene-spliced predator, a tiger-striped furred face with slit amber eyes and fangs above a torn charcoal suit collar and loosened tie, chrome claws raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c29e5d2e3be38e1bba5e60d001d6a59031296af8d0f7470f64ad86c84357fca0"
+      },
+      "at": "W:/ogm/grok-batch-1/cyberpunk/cyberpunk-board-chairman-revealed.jpg"
+    },
+    {
+      "id": "cyberpunk-immortality-baron-revealed",
+      "prompt": "A longevity magnate revealed, an unnaturally young face on a wasted ancient body with translucent skin, transfusion lines running into the collar of a white suit, eyes with a red medical sheen, science gone wrong and no cape and no fangs. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale rose, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9c23166381b5466da4e4c9995b78d794aaaa8e660480ebc55df46243ddd4a560"
+      },
+      "at": "W:/ogm/grok-batch-1/cyberpunk/cyberpunk-immortality-baron-revealed.jpg"
+    },
+    {
+      "id": "cyberpunk-sewer-operative-revealed",
+      "prompt": "An infiltrator revealed as a rat-spliced mutant, a furred rat-like face with long incisors and whiskers under a pushed-back hood, the rebreather hanging loose, grey tactical jumpsuit. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sewer green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "32c7698f1220a5b1db6d25aa919c4959438bbcf082149599de1869013d7dc659"
+      },
+      "at": "W:/ogm/grok-batch-1/cyberpunk/cyberpunk-sewer-operative-revealed.jpg"
+    }
+  ],
+  "repainted": [
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-black-ice-reaper.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "d72d24bbd4dcceab76e71f5eb07f81a319f7a27a89665e1165dcf71b6f9298a9",
+      "replacedPrompt": "Lethal counter-intrusion software given a body, a tall hooded reaper made of jagged black crystalline shards with a thin white light for eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ice white, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-cyber-mastiff.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "e921d687ff546453a4ef2750432de835e86d7739dde351148cbf3b599ff14088",
+      "replacedPrompt": "A chrome attack hound with glowing flame vents along its neck and fire spilling from its steel jaws, red eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The hound's head and neck fill about 80 percent of the frame. Plain painterly backdrop of ember orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-drone-blade.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "88243197c0426a2bc5b83f67fd2e1e96c04ae672a636826f7173949ed04cdaf3",
+      "replacedPrompt": "A hovering security drone shaped like a single long glowing mono-edge blade with a small rotor housing and one red sensor. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The drone fills about 80 percent of the frame. Plain painterly backdrop of night blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-foundry-boss.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "04a338bc58d3ed0d72089cfa0d9b1424f0b6b8ab69c5c50ee41408d3797714d3",
+      "replacedPrompt": "A giant industrial-zone boss in heavy heat-shielded exo-armour splashed with glowing molten metal, a welded mask with a furnace glow behind the eye slits. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of furnace orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-freeze-sentinel.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "48a7448be39dc789876c760ded1a8926ddbc477c9d2b0d4c7dd12b489f69098e",
+      "replacedPrompt": "A crowd-control unit with a low reptilian armoured head and a single huge glowing pale lens that locks targets in place. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The head and lens fill about 80 percent of the frame. Plain painterly backdrop of sterile cyan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-guardian-seraph.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "f9a7cbbb4843da525bc96149df2cb39cd5fca9e85182d907744e255f24ac3945",
+      "replacedPrompt": "A benevolent winged security drone with a smooth blank white ceramic mask face with one soft gold light at the brow and no cross or symbol, feathered wings made of glowing light panels spread behind it. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The mask face and wing roots fill about 80 percent of the frame. Plain painterly backdrop of dawn blue that runs flat to every edge and corner of the square image with no vignette, no white corners and no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-gunship-chimera.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "b07036aa68b48843241dffbc5a7c988cc0112bd566cb986ec54114884fa8d10b",
+      "replacedPrompt": "A flying weapons platform with a blunt armoured nose like a lion's head, stub wings and a segmented tail gun that fires flechettes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The nose and wing roots fill about 80 percent of the frame. Plain painterly backdrop of storm orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-ledge-sentry.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "a554fcd3f19057d34c2f183e54576bfdb761266b51aec8d633979c117f923b38",
+      "replacedPrompt": "A folding gun-turret drone disguised as an ornamental building gargoyle, stone-grey casing splitting open to show a barrel and a red lens. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The sentry fills about 80 percent of the frame. Plain painterly backdrop of concrete grey-violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-orbital-gunship.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "08133cd3039eb2b134ee1fa35798ebd8788b75c0e81f387a74d5a72459d3be2e",
+      "replacedPrompt": "A huge dragon-like corporate gunship seen head on, an armoured cockpit like a dragon's skull with glowing red intakes and fire building in its nose cannon. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The gunship's nose fills about 80 percent of the frame. Plain painterly backdrop of burning orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-repo-unit.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "2dfd707fbd07d4d6d0ebbc6ee7bab45a2b84251689efa7971082e1df27d18ed5",
+      "replacedPrompt": "A skeletal repossession robot with a narrow bone-white frame, long extraction-tool fingers and a barbed cable tail, a barcode scanner for an eye. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The robot's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of invoice red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-strike-drone.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "b7758a52cc47eb5a35ecf2ead491f3004348428c74baae081ff05b63d6638f87",
+      "replacedPrompt": "A heavy aerial gun drone shaped like a wyvern, angular wings, a sensor-nosed head and a tail-mounted toxin injector. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The drone's head and wing roots fill about 80 percent of the frame. Plain painterly backdrop of smog green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vault-guardian.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "867f68fa5c9696fc27ee8b10b5b9c9bb3982f5adecd57357d5b97258ede5a85f",
+      "replacedPrompt": "A massive immovable bank-vault defence unit, a squat armoured torso like a safe door with a single slit sensor and recessed gun ports. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The unit's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of bank green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vending-unit.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "90224ae99e560eb2c62bc8e5c10aee17621b654386d1a401e0d26942ed07093c",
+      "replacedPrompt": "A black-market vending machine that is a trap, its dispensing slot opened into a maw of steel teeth with grabbing cable tongues, flickering lit panel with no lettering. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame, the maw centred. Plain painterly backdrop of alley magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-guardian-seraph.webp",
+      "why": "Repainted again 2026-11-27 to follow the source creature: the couatl is a winged serpent with no limbs, the mimic is an ordinary object that grabs, and the flying sword is the blade itself in flight. Albert asked for a sentry vending machine, not a toothed one.",
+      "replacedOriginalSha256": "513ef45264d966c5a8e70067cf2ceccbfbe57dd934b6d82e5adf310e79d94b27",
+      "replacedPrompt": "A benevolent hovering security drone seen close, a slim white and gold android head and upper torso with a smooth blank white face plate and one soft gold light at the brow, no cross and no symbol, and two wings made of flat glowing gold hexagonal light panels on slim mechanical arms spread wide behind its shoulders. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The head, upper torso and both whole wings fill about 90 percent of the frame, the wing tips just clear of the edges. Plain painterly backdrop of deep royal blue, darker than the white drone so that it stands out, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-vending-unit.webp",
+      "why": "Repainted again 2026-11-27 to follow the source creature: the couatl is a winged serpent with no limbs, the mimic is an ordinary object that grabs, and the flying sword is the blade itself in flight. Albert asked for a sentry vending machine, not a toothed one.",
+      "replacedOriginalSha256": "4469a1c61041231699564703587772231f246331888bc4bbead1ef425c8c8b7e",
+      "replacedPrompt": "A modern street vending machine with a lit product window and a neon price strip, its front panel split open into a maw of steel teeth with cable tongues reaching out, coin slot and buttons visible, clearly a vending machine and not a chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 80 percent of the frame with its whole silhouette inside the frame, nothing cut off. Plain painterly backdrop of hot magenta, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/cyberpunk-drone-blade.webp",
+      "why": "Repainted again 2026-11-27 to follow the source creature: the couatl is a winged serpent with no limbs, the mimic is an ordinary object that grabs, and the flying sword is the blade itself in flight. Albert asked for a sentry vending machine, not a toothed one.",
+      "replacedOriginalSha256": "c28a0ce9c9b4dc3e5f1944580865ecf054e12c76d2af6f67ac120e4a21ebc75c",
+      "replacedPrompt": "A hovering security drone seen close from the front, a chunky black four-rotor body with one large red lens, carrying one long broad glowing orange mono-edge blade slung beneath it like a stinger, clearly a drone and not a sword. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The drone and its blade fill about 90 percent of the frame, rotor tips just clear of the edges. Plain painterly backdrop of mid steel blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration."
+    }
+  ]
+}

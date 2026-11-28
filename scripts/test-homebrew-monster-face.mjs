@@ -72,7 +72,7 @@ test("rulebook monsters keep the faces they had", () => {
   assert.equal(plate(monsterPlaceholder("monstrosity", { cr: 3, genre: "high_fantasy", slug: "owlbear", name: "Owlbear" })), "owlbear");
   assert.equal(plate(monsterPlaceholder("undead", { cr: 1, genre: "high_fantasy", name: "Ghoul 2" })), "ghoul", "a name-only monster (no slug) still finds its family");
   assert.equal(plate(monsterPlaceholder("undead", { cr: 1, genre: "high_fantasy", slug: "custom", name: "Ghoul" })), "ghoul", "an invented enemy (slug custom) too");
-  assert.equal(plate(monsterPlaceholder("beast", { cr: 0.125, genre: "cyberpunk", seed: "giant-rat", slug: "giant-rat", name: "Sump Rat" })), "beast", "the reskin guard is unchanged");
+  assert.equal(plate(monsterPlaceholder("beast", { cr: 0.125, genre: "cyberpunk", seed: "giant-rat", slug: "giant-rat", name: "Drain Vermin" })), "beast", "the reskin guard is unchanged for a name the genre's tables do not know");
 });
 
 console.log(`test-homebrew-monster-face: ${passed} passed`);

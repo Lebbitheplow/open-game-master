@@ -1,0 +1,793 @@
+{
+  "recordedOn": "2026-11-26",
+  "author": "Smoebo",
+  "generator": "Grok Build command-line tool 1.0.60, image_gen, one call per plate with the prompt recorded here unchanged",
+  "purpose": "A second and a neutral presentation for each generic role, so a role's plate agrees with the gender its foe carries. The first presentation of each role is recorded in role-plates-2026-11-26.json and mystery-horror-plates-2026-11-26.json, or is an NPC roster plate.",
+  "subjectBasis": "Original designs of generic roles, per docs/art/creature-art-guidance.md. No published illustration or real person was named or supplied as an input.",
+  "encoding": "Each 1024x1024 JPEG original resized once to 256x256 (cover) and encoded once to WebP quality 75 with sharp.",
+  "review": "Each shipped plate was viewed at full size and in a round crop at 96px and 40px on dark and light surrounds. Seven neutral plates are second paintings: a prompt asking only for an androgynous person returned a plainly masculine face, so the second prompt covers the face (the guard's aventail, the smuggler's scarf) or asks for features that could be a woman's or a man's.",
+  "presentations": {
+    "acolyte": {
+      "masculine": "acolyte-masculine",
+      "feminine": "acolyte-feminine",
+      "neutral": "acolyte-neutral"
+    },
+    "berserker": {
+      "masculine": "berserker-masculine",
+      "feminine": "berserker-feminine",
+      "neutral": "berserker-neutral"
+    },
+    "mage": {
+      "masculine": "mage-masculine",
+      "feminine": "mage-feminine",
+      "neutral": "mage-neutral"
+    },
+    "tribal-warrior": {
+      "masculine": "tribal-warrior-masculine",
+      "feminine": "tribal-warrior-feminine",
+      "neutral": "tribal-warrior-neutral"
+    },
+    "veteran": {
+      "masculine": "veteran-masculine",
+      "feminine": "veteran-feminine",
+      "neutral": "veteran-neutral"
+    },
+    "npc/guard": {
+      "masculine": "guard-masculine",
+      "feminine": "npc/guard",
+      "neutral": "guard-neutral"
+    },
+    "npc/noble": {
+      "masculine": "noble-masculine",
+      "feminine": "npc/noble",
+      "neutral": "noble-neutral"
+    },
+    "npc/commoner": {
+      "masculine": "npc/commoner",
+      "feminine": "commoner-feminine",
+      "neutral": "commoner-neutral"
+    },
+    "npc/priest": {
+      "masculine": "npc/priest",
+      "feminine": "priest-feminine",
+      "neutral": "priest-neutral"
+    },
+    "mystery-constable": {
+      "masculine": "mystery-constable-masculine",
+      "feminine": "mystery-constable-feminine",
+      "neutral": "mystery-constable-neutral"
+    },
+    "mystery-heir": {
+      "masculine": "mystery-heir-masculine",
+      "feminine": "mystery-heir-feminine",
+      "neutral": "mystery-heir-neutral"
+    },
+    "npc/mystery-inspector": {
+      "masculine": "npc/mystery-inspector",
+      "feminine": "mystery-investigator-feminine",
+      "neutral": "mystery-investigator-neutral"
+    },
+    "mystery-poacher": {
+      "masculine": "mystery-poacher-masculine",
+      "feminine": "mystery-poacher-feminine",
+      "neutral": "mystery-poacher-neutral"
+    },
+    "mystery-prizefighter": {
+      "masculine": "mystery-prizefighter-masculine",
+      "feminine": "mystery-prizefighter-feminine",
+      "neutral": "mystery-prizefighter-neutral"
+    },
+    "mystery-smuggler": {
+      "masculine": "mystery-smuggler-masculine",
+      "feminine": "mystery-smuggler-feminine",
+      "neutral": "mystery-smuggler-neutral"
+    },
+    "mystery-fixer": {
+      "masculine": "mystery-fixer-masculine",
+      "feminine": "mystery-fixer-feminine",
+      "neutral": "mystery-fixer-neutral"
+    },
+    "mystery-occultist": {
+      "masculine": "mystery-occultist-masculine",
+      "feminine": "mystery-occultist-feminine",
+      "neutral": "mystery-occultist-neutral"
+    },
+    "mystery-night-clerk": {
+      "masculine": "mystery-night-clerk-masculine",
+      "feminine": "mystery-night-clerk-feminine",
+      "neutral": "mystery-night-clerk-neutral"
+    },
+    "mystery-puppetmaster": {
+      "masculine": "mystery-puppetmaster-masculine",
+      "feminine": "mystery-puppetmaster-feminine",
+      "neutral": "mystery-puppetmaster-neutral"
+    },
+    "mystery-magnate": {
+      "masculine": "mystery-magnate-masculine",
+      "feminine": "mystery-magnate-feminine",
+      "neutral": "mystery-magnate-neutral"
+    }
+  },
+  "plates": [
+    {
+      "file": "public/assets/placeholders/monster/acolyte-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Young woman temple acolyte in plain cream hooded robes, a small bronze holy symbol at the collar, calm watchful face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of soft slate blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f90fbda5f3f34d6eb4dc08d4c6e46a5db93f2eb5c33f5743a46eb4594e3565e8"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7366,
+        "sha256": "dad2f7eb6dfec269b76dd5edbd22b4ff6b8efee1130610dd8670e6f5f362c868"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/acolyte-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous young temple acolyte of ambiguous gender in plain cream hooded robes, a small bronze holy symbol at the collar, calm watchful face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of soft sage green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2f0e18f538084cdc2bf092317a0ede47bd62156b7ae4b61b4f36dce41bf93f1a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8250,
+        "sha256": "7ef1c0774ab4c3bf258ebada2650a0c6724b16d5c6a02cba92c6c7e40907b1f8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/berserker-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Wild-haired warrior woman mid-roar, scarred bare shoulders, a fur mantle, blue war paint across the eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of storm grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1f083eb31cc8dcf90f5abc3d0a5a2deac35452e7cd255870f9f03c51e875cd3e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13024,
+        "sha256": "a8ed198c5b89e332683ce4302ee63905dfdf1dca584a692a428b6be8f2185f87"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/berserker-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous beardless wild-haired warrior of ambiguous gender mid-roar, scarred shoulders, a fur mantle, blue war paint across the eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of burnt rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "445d8dec6d46140f7c3de3b78cfc65482c2f5905c852b23bf9ce1b5a5db3fc18"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 17206,
+        "sha256": "e756dffa991292b6ba72a28b9b1523eecd5978aa03980f5c28ad866c68f8409e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mage-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Middle-aged woman mage in a deep blue high-collared robe, grey-streaked hair pinned back, faint arcane glow lighting the face from below. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of muted amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d4420f3eeea824c6700e0e4c011e63d1cf07fcf0748c8a804054b7341ee5d25f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8834,
+        "sha256": "f5f34881b7d716484bf75e50130eda74d9418edb1b91b5388c0a8ba4f4f652b9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mage-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Mage in a deep blue high-collared robe with the hood up, a smooth soft-featured beardless face that could be a woman's or a man's, shoulder-length grey hair, faint arcane glow from below. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dusky rose, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2112ee9493658b11e14c1792ea4e70cc5c466f966bd1d74e639a8007cfdf0cf3"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7716,
+        "sha256": "dd15769b28ca9ec37bf4dd3693d601291c5f0368753242cd93b6aa6b2339028a"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/tribal-warrior-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Lean tribal warrior woman with braided hair, bone and feather ornaments, ochre face paint, hide cloak. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale sky blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c689f703427e0a97814cd04e25b330eeb7c6f35da1da3fb05298f426bf98f053"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13414,
+        "sha256": "de6924220686315db0ec1ae94995a7bbe23a4fc4f281c0846769ff040fd2c9bc"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/tribal-warrior-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous lean tribal warrior of ambiguous gender with braided hair, bone and feather ornaments, ochre face paint, hide cloak. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of moss green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "578de104dc813f0f16f56975ab575377210336d01d1c3c913076e931e74cceee"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13142,
+        "sha256": "99591c90c562e9d081ccf48aecc553100223a07da7227454c0cd58b2d66f98cd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/veteran-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Grizzled mercenary woman with a scarred cheek and cropped grey hair, dented steel gorget and worn leather. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold steel blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "53f5685576e1722ee835736ea70db6289bc2257933b67be5a70a4cb2cc06fc7c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9146,
+        "sha256": "f09ca20119d37eb5576894d08982bddee5e35a08b6ad92cd16b981d42ed6cdc9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/veteran-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Grizzled mercenary with a scarred cheek, a soft-featured beardless face that could be a woman's or a man's, grey hair tied back, a wool scarf at the throat, dented steel gorget and worn leather. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dull ochre, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "95ee551da2ac479501f0a2e80aa79c2110b8eb04d71fbaa3f9df34754867f193"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8628,
+        "sha256": "027c436a2a7bfe15ef5c2aa8abfde302eec935a4748ef311654cf1e853e930d7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/guard-masculine.webp",
+      "presentation": "masculine",
+      "prompt": "Town guardsman in a steel kettle helm and mail coif, stern bearded face, a spear shaft just visible at one shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warm sandstone, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b372147163c8394bec2ab31f0faf6025cf31f3a261a66ec8824c06c196a35c99"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13242,
+        "sha256": "5673d04c1b38106d639fabffffd81bb76053ce9ac7bd416131053e1fc867be73"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/guard-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Town guard in a steel kettle helm with a mail aventail drawn across the nose and mouth, only calm watchful eyes showing, gender impossible to tell, a spear shaft at one shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dusty teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "20ee9034d13f6d29aa2d294269d720c96a4c0520a750dc431ef1858cc19fb454"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13554,
+        "sha256": "9a65b5ca9a95c815919172c2ad7dcbf92dc1125a9ef69a442a0c55e9d6caaf3c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/noble-masculine.webp",
+      "presentation": "masculine",
+      "prompt": "Haughty nobleman in a crimson velvet doublet with a fur collar and a thin gold circlet, one eyebrow raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d841ffc1416e139e4f7c0e317a615fd36a3291e917f688b9152fa60527f1ef17"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8452,
+        "sha256": "b771e7c034bff4afa400bb74af069205529275e272f891c0fab2b484451ed195"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/noble-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous haughty young noble of ambiguous gender in a crimson velvet doublet with a fur collar and a thin gold circlet, one eyebrow raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f8eaf19e556ce6c870e7f0731c1b41c044d86c141832f481c6ac542dd2f0e6cf"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12368,
+        "sha256": "35dbdae6b0300fd51e13699332cd17cbf70751b0c554ee9f3ef2a9ecb033245d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/commoner-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Weathered middle-aged village woman in a rough wool headscarf and patched shawl, wary tired eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of muted warm ochre, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2dd6af0dff6ac8de80f8227f8192dd0bf1bd242f777bd2efa173e3dd41279fe0"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8838,
+        "sha256": "e35b97d61dd7bea07d6a0c147015576efd991d0fac3770c5606110342a0a3434"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/commoner-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous weathered villager of ambiguous gender in a rough wool hood and patched tunic, no beard, wary tired eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of faded blue-grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "297ca5432d63729cee782a090a2dbdd0ee7ef5a505b023c4da8630c83d0f2ed0"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7698,
+        "sha256": "bda25e2b7f7aa28db07fc3b98cf63b1802f9a14600437031bada365550024083"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/priest-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Senior priestess in white and gold vestments with a tall ceremonial cap, a radiant golden holy symbol on the chest, silver hair. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep sky blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "22da7e8e27b472a112752d6ab923a99351a3b90a98c4104db008a9bfcb322725"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12494,
+        "sha256": "11404d2d944b2010fd710d7f7bce4c5666c12d64f06c493dea9d88d90c0cedd5"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/priest-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous senior priest of ambiguous gender in white and gold vestments with a tall ceremonial cap, no beard, a radiant golden holy symbol on the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warm violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "55d5f58d7e2f0c1df3be16445fda9794f087982723dacd867162a967446a9d47"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10850,
+        "sha256": "c12c435d1b4e92f1ba279b9f561e7e6e1a236a07f890131ca5162febf3501e4c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-constable-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Victorian woman police constable in a tall custodian helmet with a brass badge, hair pinned beneath it, dark blue high-collared tunic, stern face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of gaslit amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7e964084aecb61e8a269f7239ad85a05252ccecaaee44f4dfe1c180141fc6338"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7722,
+        "sha256": "6fe78f9f2775f7eedbca05de1378f7c2fc72b43d4631ea1154fc48eebd15c2bf"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-constable-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous Victorian police constable of ambiguous gender in a tall custodian helmet with a brass badge, clean-shaven stern face, dark blue high-collared tunic. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of foggy grey-green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c2f386447f2925b19b9aa2dc6695c39ecca3aa9114aff02b0816c8565fb04d16"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 4224,
+        "sha256": "7bc4744a278a65c4d5f2f35adbe2d49e55d4d186c7b45915b7735c6f14ca7b37"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-heir-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Sneering young Victorian heiress in silk and jewels with pinned-up hair, flushed with drink, a silver-handled parasol at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep plum, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d35d58d765fa55ad22b65d10a4e55e511b0bb92c30590dbb6e9abd6f116364f0"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8250,
+        "sha256": "db7ade40a683f9f1984c8a8bf830a11a6a905fa1c260a131f70f210f81042640"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-heir-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous sneering young Victorian heir of ambiguous gender in a silk cravat and tailcoat, slicked hair, flushed with drink, a silver cane handle at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of muted olive, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "3906aa0bbbad8a86bb92ff93706313feb69b622ca5e42bd395aaa12f080f7b54"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5814,
+        "sha256": "2467ce52b1009a9cc300fd6fc9d465d7131f957ff8bf9811178ebf8b31d937c1"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-investigator-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Sharp-eyed Victorian woman private detective in a small brimmed hat and tweed travelling coat with the collar up, knowing half-smile. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Plain painterly backdrop of smoky slate blue lit by gaslight, lighter than the figure, with no scenery. One role cue only. The figure's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "765eb08d155794cbbeb15ba7b493b78bff84ae16976b57c0e48898077b4ab62a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6200,
+        "sha256": "2ae61e32b7711dedd0af741d2d2e5b41baf246b2bb701d25e4f230b8d1ced3b6"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-investigator-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous sharp-eyed Victorian private detective of ambiguous gender in a bowler hat and tweed overcoat with the collar up, knowing half-smile. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of smoky amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "23763e5b3cebd3af55fd7950561025a13dcb1caa442362a6f215408a19a3771a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8472,
+        "sha256": "8e444f0cc5b2f4c13b0a0096af04fd9e3e469c52da973921948c19813e51ac6d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-poacher-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Rough Victorian countrywoman poacher in a flat cap and red neckerchief, sly sideways glance, a shotgun barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of autumn gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "30533a23d07abee46e484412b3869e34ec44b2b72bf986b9e8c1f6e8c1f61726"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12708,
+        "sha256": "ac464c59b77f9969dfd2d0d906f1e92a31ce7a53d6aff07f638fb3be13d3d19d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-poacher-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Androgynous rough Victorian poacher of ambiguous gender in a flat cap and red neckerchief, no beard, sly sideways glance, a shotgun barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of misty green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "19ecd21aaa22b89a07e84279bfbc79c60d4cbe6fb9bf8c7f184a0678aa2cbc96"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7846,
+        "sha256": "e53a1cb936d79f2637438e4b3a4396ab2d9355b8da9abd76a27d261c9231af33"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-prizefighter-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Victorian bare-knuckle boxing woman with a broken nose, hair tied back hard, muscular shoulders in a sleeveless vest, a raised taped fist at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of brick red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "5ec3cebed56cb66a653548de236ba0adc5804620352735eb80fd6c164a72c123"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9578,
+        "sha256": "b487afe9df73bb2b0316e7ecf2be5868d2c32793db10e759387ed017e02b7b54"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-prizefighter-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Victorian bare-knuckle boxer with a broken nose and a shaved head, a lean soft-featured beardless face that could be a woman's or a man's, a loose high-necked training shirt, a raised taped fist at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of chalk blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "5efe9b00b597262208528961b735efc800c8dacb579345d161b0d5a931c3263f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9460,
+        "sha256": "ccdee618cc8f52ac211b85eff8be5772f502bc6b62d8ef507ab461fed893df0f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-smuggler-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Hard-faced Victorian coastal smuggler woman in an oilskin coat and knit cap, grey braid, a small lantern glow on one side of the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sea green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2a1fbddae300c3d40a8773daaad5cd49b983a39b26314e716562b80ab4adf691"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9752,
+        "sha256": "922619e9a1308b4e3f476d3a1531150ad0e3afdac8508b6432dee323751b1d03"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-smuggler-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Victorian coastal smuggler in an oilskin coat and knit cap with a woollen scarf pulled up over the nose and mouth, only hard weathered eyes showing, gender impossible to tell, a small lantern glow. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of storm blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8c7a3adb92e7efe1d2cdf2d0702ce378a97742a1eea38e491712386e63599a59"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8196,
+        "sha256": "1928f866aed8b2be083301f831b74c577dc6e0d230a7657080fec3bb8cfe7e5d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-fixer-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Heavy-set Victorian woman in a severe black clerical dress with a purple sash and white collar, black leather gloves, a cold bland smile. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of muted moss green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f2ed24a0943a138bd835ae54aaf5a0cdadad05772c02c08f31a4669700e4f5e8"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7408,
+        "sha256": "682af1bbf3bbd19ca327c08e9a325bf888eb56b0125a194e6488731bd974c55e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-fixer-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Heavy-set Victorian cleric in a black cassock with a purple sash and white collar, a round smooth beardless face that could be a woman's or a man's, short curled hair, black leather gloves, a cold bland smile. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dull gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1f07c3bb776d2cff5bc2603217b0df528d0dffa6bdd488b6c0cab53a465bbb2b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7088,
+        "sha256": "54b9eb5123303e63d14f41578070feec80e3c32ece78f81c57d519dd61c38f4b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-occultist-masculine.webp",
+      "presentation": "masculine",
+      "prompt": "Gaunt Victorian scholar man in a dark frock coat with small round smoked spectacles, a silver occult pendant, thin greying hair, lit from below. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dusty violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "742d329dd2f025576313d9e18cdf25f81eb0cbad1265d7b318a3e1db82f74beb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5646,
+        "sha256": "5c8b11896a5b70a818a1a83446109292351c747add2d1928d11fae2a75e3a1ae"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-occultist-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Gaunt Victorian scholar in a dark high-collared coat with small round smoked spectacles and a silver occult pendant, natural pale skin, a smooth beardless face that could be a woman's or a man's, chin-length grey hair, lit warmly from below. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of faded teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "86108760559389cba03a6836d58a5455f1de9337e30f5f4b2b2288ddea11bf51"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5354,
+        "sha256": "c4492e8a7034e8706d137a8ce7d383745072157b69356b60d3e52baf6ff49b8b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-night-clerk-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Pale ageless woman hotel night clerk in a neat high-collared blouse and waistcoat with sleeve garters, an unblinking polite smile, plainly a living person. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dim lamp amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a0d392556977a60afb139d6ee11bcb869cc6a43ae8a35ca8ef1ddf12a6f90194"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5682,
+        "sha256": "c9a8ec151e6affbd3ea61657018f9e845d59851052ffe3e7eef3a64add35f309"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-night-clerk-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Pale ageless hotel night clerk in a neat waistcoat and sleeve garters, a smooth soft-featured beardless face that could be a woman's or a man's, chin-length dark hair, an unblinking polite smile, plainly a living person. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of muted sage green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "27082f7a7c17385574162f78243851b0232dcadbda8d90d12102806a2976e6ff"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5288,
+        "sha256": "1724c3b3fccaa81e8dbfe75d96249647b7c9f763031ecae6472ae3477758de97"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-puppetmaster-feminine.webp",
+      "presentation": "feminine",
+      "prompt": "Elegant elderly woman mastermind with silver hair and sharp eyes in a dark high-collared dress, steepled fingers trailing a few fine puppet strings. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep indigo, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "102fb4d19e90fc514cba6101605a393705601e26ac877114af87a880cd3121bd"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5114,
+        "sha256": "f84743245d5169bc802d93cd255b17132394c12c89350d62957af9a670a293da"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-puppetmaster-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Elegant elderly mastermind in a dark high-collared coat, a smooth sharp-eyed beardless face that could be a woman's or a man's, swept-back silver hair, steepled fingers trailing a few fine puppet strings. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep wine red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7161da5bcf0816b9768f4c60c824d01a8b9b265787f6f215c3a8e135257df095"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6704,
+        "sha256": "247c8e28d98d6d422d2c1358b9057baab8fd7d8d2dc767c437314fb94ace5f7d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-magnate-masculine.webp",
+      "presentation": "masculine",
+      "prompt": "Imposing Victorian businessman in a dark fur-collared coat with a gold watch chain, a cold confident smile and a tiger-eye tie pin. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rich amber gold, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4678374c998f293acb8205d1a64611edfb130a3739c216a05330fe708e879759"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9740,
+        "sha256": "23d009edc01be930175c67c7689c1ebd15ac370a4bb06b17d6e20baaaf7a0764"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-magnate-neutral.webp",
+      "presentation": "neutral",
+      "prompt": "Imposing Victorian magnate in a dark fur-collared coat with a gold watch chain and a tiger-eye brooch, a smooth soft-featured beardless face that could be a woman's or a man's, short dark hair, a cold confident smile. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale jade, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "69285bd2f64d1b611977413069e268041aa2d006602c75fdfa85f830388f992f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8146,
+        "sha256": "c9a24eccce284086237568cd2c634b11b8714027992b76df6b2e189c16e9634f"
+      }
+    }
+  ]
+}

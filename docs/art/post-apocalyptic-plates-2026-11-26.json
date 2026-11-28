@@ -1,0 +1,822 @@
+{
+  "recordedOn": "2026-11-26",
+  "author": "Smoebo",
+  "generator": "Grok Build command-line tool 1.0.60, image_gen, one call per plate with the prompt recorded here unchanged",
+  "subjectBasis": "Original designs for entries of the post-apocalyptic bestiary (src/lib/bestiary/post-apocalyptic.json), per docs/art/creature-art-guidance.md: its people, its machines and the creatures whose fantasy plate was the wrong picture. Uniforms are of invented armies. No published illustration, film character or real person was named or supplied as an input.",
+  "encoding": "Each 1024x1024 JPEG original resized once to 256x256 (cover) and encoded once to WebP quality 75 with sharp.",
+  "review": "Each shipped plate was viewed at full size and in a round crop at 96px and 40px on dark and light surrounds. Six are second paintings. The dead commander and the junta trooper first came back in uniforms that read as a historical army's, and were repainted as an invented one. The three shelter medics first wore a red cross, a protected emblem, and now wear a green first-aid cross. The neutral old soldier read as a man until the second prompt covered the face. The Blood Baron is painted as the person the card presents; a painting of what he is was made for the reveal feature and ships with it.",
+  "presentations": {
+    "post-apocalyptic-tunnel-scav": {
+      "masculine": "post-apocalyptic-tunnel-scav-masculine",
+      "feminine": "post-apocalyptic-tunnel-scav-feminine",
+      "neutral": "post-apocalyptic-tunnel-scav-neutral"
+    },
+    "post-apocalyptic-shelter-medic": {
+      "masculine": "post-apocalyptic-shelter-medic-masculine",
+      "feminine": "post-apocalyptic-shelter-medic-feminine",
+      "neutral": "post-apocalyptic-shelter-medic-neutral"
+    },
+    "post-apocalyptic-crater-brute": {
+      "masculine": "post-apocalyptic-crater-brute-masculine",
+      "feminine": "post-apocalyptic-crater-brute-feminine",
+      "neutral": "post-apocalyptic-crater-brute-neutral"
+    },
+    "post-apocalyptic-chem-fiend": {
+      "masculine": "post-apocalyptic-chem-fiend-masculine",
+      "feminine": "post-apocalyptic-chem-fiend-feminine",
+      "neutral": "post-apocalyptic-chem-fiend-neutral"
+    },
+    "post-apocalyptic-atomic-priest": {
+      "masculine": "post-apocalyptic-atomic-priest-masculine",
+      "feminine": "post-apocalyptic-atomic-priest-feminine",
+      "neutral": "post-apocalyptic-atomic-priest-neutral"
+    },
+    "post-apocalyptic-old-soldier": {
+      "masculine": "post-apocalyptic-old-soldier-masculine",
+      "feminine": "post-apocalyptic-old-soldier-feminine",
+      "neutral": "post-apocalyptic-old-soldier-neutral"
+    },
+    "post-apocalyptic-champion": {
+      "masculine": "post-apocalyptic-champion-masculine",
+      "feminine": "post-apocalyptic-champion-feminine",
+      "neutral": "post-apocalyptic-champion-neutral"
+    },
+    "post-apocalyptic-tech-shaman": {
+      "masculine": "post-apocalyptic-tech-shaman-masculine",
+      "feminine": "post-apocalyptic-tech-shaman-feminine",
+      "neutral": "post-apocalyptic-tech-shaman-neutral"
+    },
+    "npc/post-apocalyptic-caravan-guard": {
+      "masculine": "post-apocalyptic-sniper-masculine",
+      "feminine": "npc/post-apocalyptic-caravan-guard",
+      "neutral": "post-apocalyptic-sniper-neutral"
+    }
+  },
+  "plates": [
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-junkyard-imp.webp",
+      "prompt": "A small fast junkyard scavenger child in a dented cooking-pot helmet and welding goggles with a rag over the mouth, gender impossible to tell, clutching a sharpened scrap blade. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ef02eb5f3f43a6bc7c026b52f6a74e33952dc95ae75d1c27a328e6481f70be50"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10386,
+        "sha256": "530962cfc0d84952d26d212b118cd820052f823d511279b1cda3050611ca7c43"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-junta-trooper.webp",
+      "prompt": "A trooper of an invented future remnant army in a rounded modern composite combat helmet painted with a single orange stripe, a full-face respirator with one wide visor, patched blue-grey fatigues with plain rank bars, rifle at the shoulder, not a historical uniform. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of drab khaki, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "006d8930f6e28c36deb2685072d0a89e237331835c50fa839b99d61200fd83d2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8878,
+        "sha256": "224dbd25634c9c013eaddf2377fd5827426cdf4656b3a613c020f0e5c1b0d891"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-overpass-troll.webp",
+      "prompt": "A hulking ambusher lurking in an underpass, a huge figure in layered tarpaulin and tyre-rubber armour with a road-sign shield, the face hidden under a hood and a welded mask with small eye slits. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of concrete grey-blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "89903767374231cafe0e24b369e27aead669ac258d03e3abf3e46365780c8f5d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10514,
+        "sha256": "3b992ecc7971c2c131110efd85ce6d196019fcb42038b6b270b3a4840c6202b8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-contract-ghost.webp",
+      "prompt": "A wasteland assassin in a dust-grey hooded cloak with a smooth blank white mask and a suppressed pistol held upright beside the mask. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale bone white, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "dd8518bbf5ff9831d2dcc7ea79f2e6ee0a777f302b0ff691d75162a18c8ec965"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8474,
+        "sha256": "119e5dd2ff81c7109fb39bc3a4829093427df95e759f06b5a807cc91d529a53f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-vault-director.webp",
+      "prompt": "An ancient scientist kept alive in a sealed glass life-support helmet full of pale fluid, a withered calm face behind the glass, a white lab coat with a vault number badge, tubes at the collar. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold laboratory blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ef4c144e39bb59c96e9d6cfb5aaa89a1e573701f863fe2cfb3d2b4fea84a55bf"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9998,
+        "sha256": "88054bb68ec5fcc20147955a920c0b0d89af2f0f2da53de1defffc7c8ecd36c3"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-dune-warlord.webp",
+      "prompt": "A giant desert warlord wrapped in sand-coloured scarves with tinted goggles and a horned helmet made of car parts, the face fully covered, sand streaming off the shoulders. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sandstorm ochre, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e201fa0199d73544ccd2eba35cf25532bde275a5e8483b930dd7fa9c8127b42c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15040,
+        "sha256": "aaf75098ff17477e44c0dd541402216b5a6e258ea1c709c4b597dca0aec71db5"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-winter-warlord.webp",
+      "prompt": "A giant northern warlord in salvaged plate armour made of car doors and road signs with a closed snowplough-blade helmet, frost on the metal, a fur mantle. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ice blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b3fde14396f3737a29bcb1e9e6a5a3fb0d95b005e330ee375b4f8c6079b1346c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 16808,
+        "sha256": "09c6174787503c96d4606119f2c14be85899d1d806fe2ac2812bdf85d0833b73"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-blood-baron.webp",
+      "prompt": "A gaunt wasteland baron in a long patched leather coat with a high collar and a necklace of blood-bank tags, slicked grey hair, a thin cold smile, pale but plainly a living man. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dried-blood red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6c1ab5d5086994502848d77a848b3d603fdcd7df2e0bdc84a50c79187f11850d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6918,
+        "sha256": "7e65540b88a3811e8301563d324f47e6ac13a759cf337e2dcae029964c81dd09"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-ash-walker.webp",
+      "prompt": "A walking human skeleton fused with rusted rebar and wire, concrete dust in the eye sockets, a scorched hard hat melted to the skull. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The skull and upper ribcage fill about 80 percent of the frame, eye sockets clearly visible. Plain painterly backdrop of ash grey-white, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "cba8a400777db94e0af04dc0b55539b3d6b2069cff097b8bc037608de26ab6b7"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13924,
+        "sha256": "df4f51e17cb46f627193f9634d535376c3c80df9046f0fbeb04eee2079abbde4"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-dead-commander.webp",
+      "prompt": "A dead military commander still at his post in an invented future army, grey desiccated skin under a dusty maroon beret with a plain blank brass badge, a tattered sand-coloured field jacket with plain coloured ribbon bars and no crosses or eagles, pale glowing eyes, not a historical uniform. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of checkpoint green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8f840707f3783506655f7c039ceabc7456e2e69f5530d0cd313918070236482f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11092,
+        "sha256": "6170059060ac6324d32a16e36c41f7a6c9678be1ea3a5b28b11e338eccc4c0f3"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-haywire-exo-rig.webp",
+      "prompt": "An empty yellow industrial exoskeleton work-suit moving on its own, a cracked visor with nothing behind it, sparking hydraulic arms raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The rig's helmet and shoulders fill about 80 percent of the frame. Plain painterly backdrop of hazard yellow-grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f407f328154f6877f00f8a29675ce8ef6e27cb4742ef924967c359d480acdb25"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 20238,
+        "sha256": "9018a81f4f38a8a69fc6c44199d100023c2216724f31e69922f5ebe023da405d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-supply-crate.webp",
+      "prompt": "An olive military supply crate that is alive, its lid split into a toothed maw with a wet tongue, stencilled markings worn off, a few tins spilling from the mouth. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The crate fills about 80 percent of the frame, the mouth centred. Plain painterly backdrop of dust brown, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1f6ffcc9954037c087f8ae7e740e89736411ebb0400fc5ca2826ce4f26e7f630"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10932,
+        "sha256": "87d2144dc6942328914fd7083218c5f475acb10f24b6af9378753f2f9bf437ab"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-statue-sentinel.webp",
+      "prompt": "A weathered bronze monument statue of a soldier come to life, verdigris-green metal face with cracked blank eyes, one arm raised, pigeons' streaks and bullet dents. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The statue's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of plaza stone grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2a091e437c0b674b0a51e3fba8d2283092a72bde8c8d6d1ddfb29754cdccd169"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10406,
+        "sha256": "4bea3d867d23d647449144f99e9c282800b665e03e72d56fceff56e89b0be1c7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-camo-assassin.webp",
+      "prompt": "A soldier in an active-camouflage suit that is half invisible, the outline shimmering and glitching, only a helmet visor with one red sensor fully visible. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of heat-haze tan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2f49d439c8d578021f9494eb2a9d6032118c363573f9790048952623df058260"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12224,
+        "sha256": "b77df1f59ab8de79378aa6285d0bb59692cdca3fc374aa350a46cfe6c21d4cf1"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-guardian-automaton.webp",
+      "prompt": "A battered pre-Fall security robot bodyguard with a dented white chassis, a single blue sensor eye and a key-card slot in its chest, one arm raised as a shield. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The robot's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of faded teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "3c0b645ba9307eb0ebb5895d347a33a3ebbedc7a6937f55a17ec6631cb915161"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15238,
+        "sha256": "a9a5eb77ed50a4fcb2d3bbbb10fedb4cf4d3291a89a8f25144edd6c8576267b0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-loader-mech.webp",
+      "prompt": "A rusted yellow cargo-loader walker with huge clamp arms raised, its empty operator cage lit by red warning lights. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The walker's cab and clamps fill about 80 percent of the frame. Plain painterly backdrop of warehouse orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "637659b8b7f471c95f1e9818d764a1e24b41ce7ecc7bc53fd09e9bbeb717544b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13772,
+        "sha256": "b41f77c626e14430171bbcbddcad3310bd335dbf64a0c9bb93ebc86069d8e018"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-bunker-guardian.webp",
+      "prompt": "A massive old-world bunker security robot standing guard, a broad body armoured in poured concrete slabs bolted over a steel frame with rebar showing at the chipped edges, a low head with an amber slit visor, and two thick arms ending in heavy steel fists. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The robot is shown from head to waist with both whole arms in frame, filling about 85 percent of the frame and running off the bottom edge only. Plain painterly backdrop of dull green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a337fff56e1de4f5e1a636ed07597e7999b9485a8fff82b8d94ff68f9b15f2f2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13320,
+        "sha256": "fa8cde6ba33410ceb9e78220a022f28d56ed91acf2c05960283bc59b9bede74e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-war-machine.webp",
+      "prompt": "A colossal old-world war machine that is half tank and half walker, a rust-streaked armoured tank hull with a huge forward cannon and a red sensor eye, risen up on four massive piston-driven armoured legs, missile racks on its back, green poison gas venting from its belly, wrecked cars at its feet to show its size, seen from the front three-quarter and from low down. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The machine fills about 90 percent of the frame, legs and cannon inside the frame. Plain painterly backdrop of pale dusty tan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4d8be580ffc01077432f96ec985db7f45e889aa6bc4e067a0f484ba6e9d67e0a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13130,
+        "sha256": "7f123e7162737ae3dc5141763100a1fd7a91bd0eaca16d55fd74621434b62985"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-firestorm-engine.webp",
+      "prompt": "A colossal salvaged flying war machine seen from the front, a rusted patchwork bomber hull with scorched steel plates, short stubby wings carrying four smoking jet engines, and a huge flamethrower nozzle in its nose pouring fire, an aircraft only, with no face, no horns and no scales. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The whole aircraft fills about 80 percent of the frame, with clear backdrop between each wing tip and the edge of the image. Plain painterly backdrop of pale smoky amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a6e9ccd0c1853707bdf9265ef8467b55206b6fc00df3580a39bd1547e3a31adb"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7694,
+        "sha256": "4962b39431e88b4f84812aa86d863e5a6dcd96e50cf0dd93eeef65e163e20cc2"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-tunnel-scav-masculine.webp",
+      "prompt": "Post-apocalyptic metro tunnel scavenger, a wiry pale man with a patchy beard in patched rags with a cracked miner's headlamp, a tripwire coil and tin-can alarm at the shoulder, squinting. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of tunnel teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7f89db1fc00e586c97cc32d5747fa9c76d73bda51d0b3de0e56fb640059305ba"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10264,
+        "sha256": "27df52fbd0279fe3a35ee8f343375e0002c28c380e917f2dc834447559d79b22"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-tunnel-scav-feminine.webp",
+      "prompt": "Post-apocalyptic metro tunnel scavenger, a wiry pale woman in patched rags with a cracked miner's headlamp, a tripwire coil and tin-can alarm at the shoulder, squinting. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of rust orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "0af563a74b347fdc8b6dea50eb9dde9df3a3fb62fef969b3a1b33b80a5123e1e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12686,
+        "sha256": "2ccf568f923c670ba4f32529783a3131df0fe10ec9749fed66182df0efddaf02"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-tunnel-scav-neutral.webp",
+      "prompt": "Post-apocalyptic metro tunnel scavenger, a wiry pale person with a smooth soft-featured beardless face that could be a woman's or a man's in patched rags with a cracked miner's headlamp, a tripwire coil and tin-can alarm at the shoulder, squinting. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of concrete grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a96160b777fe8928d06dd217c77ff3cfd3a985c667a03c2768428f568a945fe4"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8750,
+        "sha256": "837ca31b7693f3337a0adeb72f848c85e11aaabba3c1994fce05636a9d89cd65"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-shelter-medic-masculine.webp",
+      "prompt": "Post-apocalyptic vault medic, a tired steady man with grey stubble in a patched white coat over scavenged armour with a faded green first-aid cross armband, a salvaged syringe gun at the shoulder, no red cross anywhere. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sterile mint green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d9f68c0b48dc3f5aaf4e1cc14799f41f9955f738ce2d1faba0c6b73fd5c18c7c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11232,
+        "sha256": "f71799329748e534e574003d092f448ac403743a00fac2b21d051c1db653f40c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-shelter-medic-feminine.webp",
+      "prompt": "Post-apocalyptic vault medic, a tired steady woman in a patched white coat over scavenged armour with a faded green first-aid cross armband, a salvaged syringe gun at the shoulder, no red cross anywhere. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dust rose, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "31f60f7af60302a374488cb8a2fc22671435910e835c03eac34ba14c0502de91"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10980,
+        "sha256": "94af496d69b4cd186e0f7682d74c323ac5c07262a6f7d794fab3750f3cabc6dd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-shelter-medic-neutral.webp",
+      "prompt": "Post-apocalyptic vault medic in a patched white coat over scavenged armour with a surgical mask and a scrub cap so only tired steady eyes show, gender impossible to tell, a faded green first-aid cross armband, a salvaged syringe gun at the shoulder, no red cross anywhere. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of faded blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f88c083516c0a1b3b72b3e5a9c85604838538eaef01865d698f771f7fe7ad189"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12384,
+        "sha256": "b66077f49abd9ec8bf595b93af42a5816e8b6713a1958793666fad77286678f8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-crater-brute-masculine.webp",
+      "prompt": "Post-apocalyptic mutant shock raider, a man with a scarred bald head with a mutation-swollen lumpy brow and one oversized shoulder, scrap-metal pauldron, tusk-like teeth, warpaint of ash. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of toxic yellow-green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1a40c0a7bfac796abffe64b423fec4c9bc825ae4bf47f3b91e71664e2c90550a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12438,
+        "sha256": "cfdf2f645f449cb096cea26fbb74f617f7e6b174bc978ff01575a41ef1dd7a0e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-crater-brute-feminine.webp",
+      "prompt": "Post-apocalyptic mutant shock raider, a woman with a mutation-swollen lumpy brow and one oversized shoulder, scrap-metal pauldron, tusk-like teeth, warpaint of ash. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of burnt orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "20d84bd42dafc25260986de0463ef82379eaa13708fa332ec755f60acbc93508"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13116,
+        "sha256": "60a16b89effb3c0ac1c406ef8c6ff57e8013edcbea7bf8d585376217cbcf69b9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-crater-brute-neutral.webp",
+      "prompt": "Post-apocalyptic mutant shock raider, a person with a smooth soft-featured beardless face that could be a woman's or a man's with a mutation-swollen lumpy brow and one oversized shoulder, scrap-metal pauldron, tusk-like teeth, warpaint of ash. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ash violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "019fff113b724732d8d4dd1ea5fbd1c444b92771b3cccf4ffe37d1b91e7b9239"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10178,
+        "sha256": "9391861d5676fc10a0f8de55cdd04f89df125237a81ae21b649c8df9db6065a0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-chem-fiend-masculine.webp",
+      "prompt": "Post-apocalyptic combat-drug berserker, a wild-eyed man with a shaved scalp with scars with bulging veins and bloodshot eyes, chemical injector tubes taped to the neck, teeth bared in a frenzy. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of acid green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d5680d19252e4d0952c7fe0c07089dc9c5214a2d8a9ab629cfc3c500a97d7f7d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10690,
+        "sha256": "76131ed352b5507cd5acf59ddc0db605896a43dea9185c71c444230e6e2e13f9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-chem-fiend-feminine.webp",
+      "prompt": "Post-apocalyptic combat-drug berserker, a wild-eyed woman with bulging veins and bloodshot eyes, chemical injector tubes taped to the neck, teeth bared in a frenzy. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of hazard orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ca255c3c1b06a2c34577b79b723cb093462a6f1ae97f7ee5a9fb618227b94403"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14914,
+        "sha256": "a72e61b5932fc1c6323f783dd961692b4b03a701a96e318b36012dad2baed1a2"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-chem-fiend-neutral.webp",
+      "prompt": "Post-apocalyptic combat-drug berserker, a wild-eyed person with a smooth soft-featured beardless face that could be a woman's or a man's with bulging veins and bloodshot eyes, chemical injector tubes taped to the neck, teeth bared in a frenzy. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of bruise purple, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "780d65b76aa3526f14792dfcf4877bc36fab754eff3b46141ceb487e1dafd09d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9758,
+        "sha256": "623611a38b090b28797179366fa3f273fa91c31389de51504a8e5acb702f5d9a"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-atomic-priest-masculine.webp",
+      "prompt": "Post-apocalyptic radiation-cult priest, a serene man with a long white beard in a robe stitched from yellow hazard sheeting with a trefoil-shaped holy symbol, faintly glowing skin, hands raised in blessing. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warm glowing amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "816db4368bd2400ff9d5e3b9e816b960c6cd9d283832962113e387b111425b0d"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14662,
+        "sha256": "b9cdf444cf798d2abd36f720567601edf86ab408c026160d8593a825307874e5"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-atomic-priest-feminine.webp",
+      "prompt": "Post-apocalyptic radiation-cult priest, a serene woman in a robe stitched from yellow hazard sheeting with a trefoil-shaped holy symbol, faintly glowing skin, hands raised in blessing. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e66b1233eb2debbb5b1a37d61699be869b9073cf5c81402f1c2206df88adf1d9"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14068,
+        "sha256": "a3d4cd8963b49700105b5e2158bc8bd0c7e183dcd293fc7ac08d23dc01af1289"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-atomic-priest-neutral.webp",
+      "prompt": "Post-apocalyptic radiation-cult priest, a serene person with a smooth soft-featured beardless face that could be a woman's or a man's in a robe stitched from yellow hazard sheeting with a trefoil-shaped holy symbol, faintly glowing skin, hands raised in blessing. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ash grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "557323c996b813ff2aec587ab1f3d11459722e9bac802a8ce45a1dd5b7f8a53a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13394,
+        "sha256": "2ec6459a661d81a331fbc03ceb889db71ffe5dbe897d229c2f394c42afeec9f1"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-old-soldier-masculine.webp",
+      "prompt": "Post-apocalyptic veteran of the old world's army, a hard disciplined man with a grey crew cut and stubble in a worn but maintained pre-Fall military uniform and patched helmet, dog tags, rifle sling at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of faded olive, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "02d8a9b26c9eb21d15ccd8552a2adbb82d857647a4aa0c39d2f46174fc690e5e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7406,
+        "sha256": "b9db7f0871f36fe3e8aad2f0ad4d117caadb8ab3de9ffd98c30f9e05a483b113"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-old-soldier-feminine.webp",
+      "prompt": "Post-apocalyptic veteran of the old world's army, a hard disciplined woman in a worn but maintained pre-Fall military uniform and patched helmet, dog tags, rifle sling at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dust tan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e3d850001ee0f0f3636aa2de4a620f77435fb39b53a48abb006f1333919a1a7f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11058,
+        "sha256": "0ef2c7857513c0d7ce94fda3b3f9bb5885ccbe72ca97a2b839a3e9bac9c1100d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-old-soldier-neutral.webp",
+      "prompt": "Post-apocalyptic veteran of the old world's army in a worn but maintained olive uniform and a patched modern helmet, a dust scarf and goggles covering the face so only the set of the head shows, gender impossible to tell, dog tags, rifle sling at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of storm blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9db3eb2f7a456b57ece6410a28ce73b7f8dc73300b9d87fe183c7a18dc95b024"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9340,
+        "sha256": "d388832d1af31ed8c197abf019743af7168d042dac6097b4bc9e7b94a0a81a8d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-champion-masculine.webp",
+      "prompt": "Post-apocalyptic pit-fighting champion, a scarred muscular man with a mohawk and beard with a spiked scrap pauldron and chains wrapped round one forearm raised at the edge of the frame, crowd-pleasing snarl. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of arena rust red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9685b4beccc5560ad802baf8fce0466dfcde06a8a0f145a5553d666c8beaa29b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12104,
+        "sha256": "e6d970d0c346a6b7add6c4c14a98c036a8d4211fd8d2b7021e4caae335d7d923"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-champion-feminine.webp",
+      "prompt": "Post-apocalyptic pit-fighting champion, a scarred muscular woman with a spiked scrap pauldron and chains wrapped round one forearm raised at the edge of the frame, crowd-pleasing snarl. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of floodlight yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a2528dfd5ca76cc27b6eaa904c588deb21089839c65870e17c94f8d081ce7045"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15876,
+        "sha256": "136309a849fe94605aec0799de9a4275b5ca16f5f446e685d0d63b46ddaeb0eb"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-champion-neutral.webp",
+      "prompt": "Post-apocalyptic pit-fighting champion, a scarred muscular person with a smooth soft-featured beardless face that could be a woman's or a man's with a spiked scrap pauldron and chains wrapped round one forearm raised at the edge of the frame, crowd-pleasing snarl. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of smoke blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4c1205e1a69bbf522c40e6f43bbd9e230f018e17ca2b1029dacfddf8fccc528b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9868,
+        "sha256": "d94d7951c8ba99b235652d0f2dbc913eaca1e69bf7c90b71e4300f04701b2a55"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-tech-shaman-masculine.webp",
+      "prompt": "Post-apocalyptic tech-shaman, a man with a braided grey beard draped in old circuit boards, cables and vacuum tubes worn like charms, face paint in the pattern of printed circuits, a softly glowing salvaged screen held up beside the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of screen-glow cyan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "300889c5f509085c54667da1cbf0b791e14079a45cf5529f79146d61d275cca2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 16062,
+        "sha256": "7c2f32f6c3afc7d14cfbc657140c6f5646088455b99ea9220d8dc14c3d817a85"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-tech-shaman-feminine.webp",
+      "prompt": "Post-apocalyptic tech-shaman, a woman draped in old circuit boards, cables and vacuum tubes worn like charms, face paint in the pattern of printed circuits, a softly glowing salvaged screen held up beside the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of copper orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8ee470a527e9954b617aec4cdc2827bed26a75b0e96139151305bdbeb297460e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 16812,
+        "sha256": "b05140a9ee5c1be70769ec05640e993e0f68e91f0996cd0f5d1f307a7bf29dd1"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-tech-shaman-neutral.webp",
+      "prompt": "Post-apocalyptic tech-shaman, a person with a smooth soft-featured beardless face that could be a woman's or a man's draped in old circuit boards, cables and vacuum tubes worn like charms, face paint in the pattern of printed circuits, a softly glowing salvaged screen held up beside the face. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dusk violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c4c290cb5c22194d53139fc006c0e25193dcb2d197869926ae7e8d271a5d0ef8"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12318,
+        "sha256": "5cc7cd449f2b60f99551da90b8f352337d5024447894ca998606f76e8fb661f7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-sniper-masculine.webp",
+      "prompt": "Post-apocalyptic overpass sniper, a weathered man with a short beard in a sand-coloured headwrap and goggles pushed up, armoured scrap vest, a long scoped rifle barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale dust yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "4224ff3472a5b30c3bd2bdd5ce4d62094cf50322cc221e04883d2e9ea0bb8a94"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13738,
+        "sha256": "d352df3694c2798d30b00e442d3dc6ee24aae1be6ec5689b3f2e723db2b99a6b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-sniper-neutral.webp",
+      "prompt": "Post-apocalyptic overpass sniper in a sand-coloured headwrap drawn across the nose and mouth and dark goggles over the eyes, gender impossible to tell, armoured scrap vest, a long scoped rifle barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of hazy sky blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "887d81f7fb1127f6ee2214d5d16405bdc648b1124aab59e76504bb4336a757f3"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15430,
+        "sha256": "47d4430b0c09aa13cad409de130b4c93b440bf85d594962cb6927afb97c42a32"
+      }
+    }
+  ],
+  "paintedForTheRevealFeature": [
+    {
+      "id": "post-apocalyptic-blood-baron-revealed",
+      "prompt": "A gaunt wasteland warlord wired into a salvaged dialysis rig, clear tubing running dark red into his neck and collar, blood bags worn like armour on a long leather coat, translucent grey skin and red-rimmed eyes, a science-gone-wrong blood addict and no cape. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dried-blood red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "029ef61b275b4f4f1d6fe249540cf8ec650d5e94f075f5fdde2e9b960f620219"
+      },
+      "at": "W:/ogm/grok-batch-1/postapoc/post-apocalyptic-blood-baron-revealed.jpg"
+    }
+  ],
+  "repainted": [
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-firestorm-engine.webp",
+      "why": "Repainted 2026-11-27 after Albert's review: the first painting read as a fantasy creature or had parts cut off. Painted again with a hard science fiction machine style in place of the dark fantasy style line.",
+      "replacedOriginalSha256": "839e1090375e76802a5a740239b64e2feae88258a732328b7a07f9753dfcd337",
+      "replacedPrompt": "A dragon-shaped flying war machine of scorched steel plates with jet intakes for nostrils and fire pouring from its jaws, glowing furnace eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The machine's head and neck fill about 80 percent of the frame, eyes clearly visible. Plain painterly backdrop of smoke-black orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-bunker-guardian.webp",
+      "why": "Repainted 2026-11-27 after Albert's review, following the source creature and the card's own line.",
+      "replacedOriginalSha256": "2feebbd7444487c0e2162a222a2ac202b3c16192456719a886c5d71cb1aa377a",
+      "replacedPrompt": "A massive grey concrete-and-steel bunker defence unit like a squat statue with a slit visor glowing amber, blast-door plating for shoulders. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The unit's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of deep vault green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-war-machine.webp",
+      "why": "Repainted 2026-11-27 after Albert's review, following the source creature and the card's own line.",
+      "replacedOriginalSha256": "fea3639b888785f6c9138f3120648cccc43e0d8dd958611d5ce989ec9c74b362",
+      "replacedPrompt": "The front of a colossal rust-streaked battle tank, its turret like a brutal face with a searchlight eye and the main gun pointing forward, chains and spikes welded on. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The tank's front and turret fill about 80 percent of the frame. Plain painterly backdrop of gunmetal amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-war-machine.webp",
+      "why": "Repainted 2026-11-27: the twin cannons splayed outward. They now sit parallel and point straight ahead.",
+      "replacedOriginalSha256": "2336d3e651ff1c724ba13c3601a729dc4e3099b3551e9011c31d77d42e760acd",
+      "replacedPrompt": "The last super-heavy battle tank of the old world, driving itself, seen head on and slightly from below so it towers, a colossal rust-streaked hull as wide as a house on four separate track units, twin huge cannons in one main turret, a smaller gun turret on each shoulder of the hull, one large round sensor lens glowing red in the centre of the turret like an eye, faded white army numbers, green gas venting from side grilles, with no spikes and no chains. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The whole tank fills about 90 percent of the frame, cannon muzzles and tracks just inside the frame. Plain painterly backdrop of pale dusty tan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/post-apocalyptic-war-machine.webp",
+      "why": "Repainted 2026-11-27: Albert found the two-barrel tank lacklustre and chose the tank on legs from three takes. The source creature, the iron golem, walks and is Large.",
+      "replacedOriginalSha256": "237bba11d771745153c05952b95fda06ae5d8166c0c1e83c949585ea9cac64fd",
+      "replacedPrompt": "The last super-heavy battle tank of the old world, driving itself, seen head on and slightly from below so it towers, a colossal rust-streaked hull as wide as a house on wide tracks, one large main turret with two long cannon barrels mounted side by side, exactly parallel and both pointing straight forward at the viewer so each muzzle is a dark round opening, one round sensor lens glowing red between the barrels like an eye, faded white army numbers on the hull, thin green gas venting from side grilles, with no spikes and no chains and no barrels angled outward. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting of hard science fiction industrial design: machined metal and composite panels with seams, bolts, cables, lenses and warning decals. A manufactured machine, with no stone, no scales, no horns, no fur and no organic skin. Crisp focal detail, saturated colour, strong contrast. The whole tank fills about 90 percent of the frame, tracks and turret inside the frame. Plain painterly backdrop of pale dusty tan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. The backdrop runs flat to every edge and corner of the square image, with no vignette, no round shape and no cut-out. No border, no circular frame, no text, no lettering, no watermark, no logo. Original design, unlike any film robot, film vehicle or published illustration."
+    }
+  ]
+}

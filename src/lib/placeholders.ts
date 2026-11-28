@@ -446,6 +446,9 @@ const ENEMY_ROLES = new Set([
   "bandit", "cultist", "assassin", "necromancer", "dark-knight", "archer",
   "gladiator", "pirate", "battle-shaman", "alchemical-saboteur",
   "executioner", "houndmaster", "tyrant",
+  // The SRD NPC blocks painted once, not per race (scripts/placeholder-set.mjs
+  // SRD_NPC_ROLE_PLATES): with a recorded race they draw that race's portrait.
+  "acolyte", "berserker", "mage", "tribal-warrior", "veteran",
 ]);
 
 // The roles painted again for each common race and presentation, under
@@ -533,12 +536,15 @@ export function enemyNpcPlaceholder(
     if (column && ENEMY_NPC_VARIANT_ROLE_SET.has(id)) {
       return `${BASE}/enemy-npc/${id}-${column}-${presentation}.webp`;
     }
-    const family = raceFamily(race);
+    // The plain word ("dwarf", which no character sheet uses but a GM types)
+    // is not a race id raceFamily knows; its column names the same portrait.
+    // Only a role not painted per race reaches this with a column.
+    const family = raceFamily(race) ?? column;
     if (family) {
       return `${BASE}/character-race/${family}-${presentation}.webp`;
     }
   }
-  return `${BASE}/monster/${id}.webp`;
+  return platePath(id, look);
 }
 
 // A monster draws its own creature family's plate when one is painted, else
@@ -629,7 +635,7 @@ export const MONSTER_FAMILIES: Readonly<Record<string, string>> = {
   "polar-bear": "brown-bear",
   spider: "giant-spider",
   rat: "giant-rat",
-  "mummy-lord": "mummy",
+  "mummy-lord": "mummy-lord",
   // The second 24.
   "air-elemental": "air-elemental",
   ankheg: "ankheg",
@@ -930,10 +936,16 @@ export const MONSTER_FAMILIES: Readonly<Record<string, string>> = {
   executioner: "executioner",
   houndmaster: "houndmaster",
   tyrant: "tyrant",
+  // The SRD NPC stat blocks that are no enemy role above, each its own face.
+  acolyte: "acolyte",
+  berserker: "berserker",
+  mage: "mage",
+  "tribal-warrior": "tribal-warrior",
+  veteran: "veteran",
   // ...from the SRD NPC stat block that plays the role. A stat block maps
-  // only where the role is plainly what it is: a mage, a priest, a veteran
-  // or a berserker stays on the humanoid plate, since a hired mage is not a
-  // necromancer nor a temple priest a battle shaman.
+  // only where the role is plainly what it is: a hired mage is not a
+  // necromancer nor a temple priest a battle shaman, so those draw the plain
+  // mage above and the NPC roster's priest (SRD_ROLE_NPC_PLATES).
   "bandit-captain": "bandit",
   thug: "executioner",
   "cult-fanatic": "cultist",
@@ -985,6 +997,95 @@ function familyOf(value: string | null | undefined): string | null {
   return key ? (MONSTER_FAMILIES[key] ?? null) : null;
 }
 
+// The SRD NPC stat blocks the NPC roster already paints: an enemy guard is
+// the same guard a table meets at the gate, so it draws that plate instead of
+// a second painting of one role. Values name the group as well as the plate
+// (platePath), since these live under npc/ and not monster/.
+const SRD_ROLE_NPC_PLATES: Readonly<Record<string, string>> = {
+  guard: "npc/guard",
+  noble: "npc/noble",
+  priest: "npc/priest",
+  commoner: "npc/commoner",
+};
+
+function npcRoleOf(value: string | null | undefined): string | null {
+  const key = familyKey(value);
+  return key && Object.prototype.hasOwnProperty.call(SRD_ROLE_NPC_PLATES, key) ? (SRD_ROLE_NPC_PLATES[key] ?? null) : null;
+}
+
+// The roles painted once per presentation. Every foe carries a gender (what
+// the GM said, else a pick stored when it arrived, src/lib/actor-sex-logic.ts)
+// and a 3D board view draws its model from it, so one face per role agreed
+// with that gender half the time: a guardsman the GM had just introduced as
+// a man drew the roster's woman guard. Keyed by the stem the lookup reaches;
+// a value may be an NPC roster plate where that roster already paints the
+// presentation. Named people whose card says who they are (The Colonel,
+// Granny Underhill) and creatures are not here and keep one plate.
+export const ROLE_PRESENTATION_PLATES: Readonly<Record<string, Readonly<Record<PlaceholderGender, string>>>> = {
+  acolyte: { masculine: "acolyte-masculine", feminine: "acolyte-feminine", neutral: "acolyte-neutral" },
+  berserker: { masculine: "berserker-masculine", feminine: "berserker-feminine", neutral: "berserker-neutral" },
+  mage: { masculine: "mage-masculine", feminine: "mage-feminine", neutral: "mage-neutral" },
+  "tribal-warrior": { masculine: "tribal-warrior-masculine", feminine: "tribal-warrior-feminine", neutral: "tribal-warrior-neutral" },
+  veteran: { masculine: "veteran-masculine", feminine: "veteran-feminine", neutral: "veteran-neutral" },
+  "npc/guard": { masculine: "guard-masculine", feminine: "npc/guard", neutral: "guard-neutral" },
+  "npc/noble": { masculine: "noble-masculine", feminine: "npc/noble", neutral: "noble-neutral" },
+  "npc/commoner": { masculine: "npc/commoner", feminine: "commoner-feminine", neutral: "commoner-neutral" },
+  "npc/priest": { masculine: "npc/priest", feminine: "priest-feminine", neutral: "priest-neutral" },
+  "mystery-constable": { masculine: "mystery-constable-masculine", feminine: "mystery-constable-feminine", neutral: "mystery-constable-neutral" },
+  "mystery-heir": { masculine: "mystery-heir-masculine", feminine: "mystery-heir-feminine", neutral: "mystery-heir-neutral" },
+  "npc/mystery-inspector": { masculine: "npc/mystery-inspector", feminine: "mystery-investigator-feminine", neutral: "mystery-investigator-neutral" },
+  "mystery-poacher": { masculine: "mystery-poacher-masculine", feminine: "mystery-poacher-feminine", neutral: "mystery-poacher-neutral" },
+  "mystery-prizefighter": { masculine: "mystery-prizefighter-masculine", feminine: "mystery-prizefighter-feminine", neutral: "mystery-prizefighter-neutral" },
+  "mystery-smuggler": { masculine: "mystery-smuggler-masculine", feminine: "mystery-smuggler-feminine", neutral: "mystery-smuggler-neutral" },
+  "mystery-fixer": { masculine: "mystery-fixer-masculine", feminine: "mystery-fixer-feminine", neutral: "mystery-fixer-neutral" },
+  "mystery-occultist": { masculine: "mystery-occultist-masculine", feminine: "mystery-occultist-feminine", neutral: "mystery-occultist-neutral" },
+  "mystery-night-clerk": { masculine: "mystery-night-clerk-masculine", feminine: "mystery-night-clerk-feminine", neutral: "mystery-night-clerk-neutral" },
+  "mystery-puppetmaster": { masculine: "mystery-puppetmaster-masculine", feminine: "mystery-puppetmaster-feminine", neutral: "mystery-puppetmaster-neutral" },
+  "mystery-magnate": { masculine: "mystery-magnate-masculine", feminine: "mystery-magnate-feminine", neutral: "mystery-magnate-neutral" },
+  "steampunk-constable": { masculine: "steampunk-constable-masculine", feminine: "steampunk-constable-feminine", neutral: "steampunk-constable-neutral" },
+  "steampunk-chirurgeon": { masculine: "steampunk-chirurgeon-masculine", feminine: "steampunk-chirurgeon-feminine", neutral: "steampunk-chirurgeon-neutral" },
+  "steampunk-union-buster": { masculine: "steampunk-union-buster-masculine", feminine: "steampunk-union-buster-feminine", neutral: "steampunk-union-buster-neutral" },
+  "steampunk-stokehold-bruiser": { masculine: "steampunk-stokehold-bruiser-masculine", feminine: "steampunk-stokehold-bruiser-feminine", neutral: "steampunk-stokehold-bruiser-neutral" },
+  "steampunk-airship-lookout": { masculine: "steampunk-airship-lookout-masculine", feminine: "steampunk-airship-lookout-feminine", neutral: "steampunk-airship-lookout-neutral" },
+  "steampunk-foreign-agent": { masculine: "steampunk-foreign-agent-masculine", feminine: "steampunk-foreign-agent-feminine", neutral: "steampunk-foreign-agent-neutral" },
+  "steampunk-navvy": { masculine: "steampunk-navvy-masculine", feminine: "steampunk-navvy-feminine", neutral: "steampunk-navvy-neutral" },
+  "steampunk-engine-prophet": { masculine: "steampunk-engine-prophet-masculine", feminine: "steampunk-engine-prophet-feminine", neutral: "steampunk-engine-prophet-neutral" },
+  "steampunk-cathedral-engineer": { masculine: "steampunk-cathedral-engineer-masculine", feminine: "steampunk-cathedral-engineer-feminine", neutral: "steampunk-cathedral-engineer-neutral" },
+  "steampunk-campaigner": { masculine: "steampunk-campaigner-masculine", feminine: "steampunk-campaigner-feminine", neutral: "steampunk-campaigner-neutral" },
+  "steampunk-pugilist": { masculine: "steampunk-pugilist-masculine", feminine: "steampunk-pugilist-feminine", neutral: "steampunk-pugilist-neutral" },
+  "steampunk-bodysnatcher": { masculine: "steampunk-bodysnatcher-masculine", feminine: "steampunk-bodysnatcher-feminine", neutral: "steampunk-bodysnatcher-neutral" },
+  "npc/steampunk-inventor": { masculine: "npc/steampunk-inventor", feminine: "steampunk-aetherist-feminine", neutral: "steampunk-aetherist-neutral" },
+  "post-apocalyptic-tunnel-scav": { masculine: "post-apocalyptic-tunnel-scav-masculine", feminine: "post-apocalyptic-tunnel-scav-feminine", neutral: "post-apocalyptic-tunnel-scav-neutral" },
+  "post-apocalyptic-shelter-medic": { masculine: "post-apocalyptic-shelter-medic-masculine", feminine: "post-apocalyptic-shelter-medic-feminine", neutral: "post-apocalyptic-shelter-medic-neutral" },
+  "post-apocalyptic-crater-brute": { masculine: "post-apocalyptic-crater-brute-masculine", feminine: "post-apocalyptic-crater-brute-feminine", neutral: "post-apocalyptic-crater-brute-neutral" },
+  "post-apocalyptic-chem-fiend": { masculine: "post-apocalyptic-chem-fiend-masculine", feminine: "post-apocalyptic-chem-fiend-feminine", neutral: "post-apocalyptic-chem-fiend-neutral" },
+  "post-apocalyptic-atomic-priest": { masculine: "post-apocalyptic-atomic-priest-masculine", feminine: "post-apocalyptic-atomic-priest-feminine", neutral: "post-apocalyptic-atomic-priest-neutral" },
+  "post-apocalyptic-old-soldier": { masculine: "post-apocalyptic-old-soldier-masculine", feminine: "post-apocalyptic-old-soldier-feminine", neutral: "post-apocalyptic-old-soldier-neutral" },
+  "post-apocalyptic-champion": { masculine: "post-apocalyptic-champion-masculine", feminine: "post-apocalyptic-champion-feminine", neutral: "post-apocalyptic-champion-neutral" },
+  "post-apocalyptic-tech-shaman": { masculine: "post-apocalyptic-tech-shaman-masculine", feminine: "post-apocalyptic-tech-shaman-feminine", neutral: "post-apocalyptic-tech-shaman-neutral" },
+  "npc/post-apocalyptic-caravan-guard": { masculine: "post-apocalyptic-sniper-masculine", feminine: "npc/post-apocalyptic-caravan-guard", neutral: "post-apocalyptic-sniper-neutral" },
+  "cyberpunk-data-cultist": { masculine: "cyberpunk-data-cultist-masculine", feminine: "cyberpunk-data-cultist-feminine", neutral: "cyberpunk-data-cultist-neutral" },
+  "cyberpunk-gutter-punk": { masculine: "cyberpunk-gutter-punk-masculine", feminine: "cyberpunk-gutter-punk-feminine", neutral: "cyberpunk-gutter-punk-neutral" },
+  "cyberpunk-wirehead": { masculine: "cyberpunk-wirehead-masculine", feminine: "cyberpunk-wirehead-feminine", neutral: "cyberpunk-wirehead-neutral" },
+  "cyberpunk-alley-crusher": { masculine: "cyberpunk-alley-crusher-masculine", feminine: "cyberpunk-alley-crusher-feminine", neutral: "cyberpunk-alley-crusher-neutral" },
+  "cyberpunk-stim-slammer": { masculine: "cyberpunk-stim-slammer-masculine", feminine: "cyberpunk-stim-slammer-feminine", neutral: "cyberpunk-stim-slammer-neutral" },
+  "cyberpunk-signal-prophet": { masculine: "cyberpunk-signal-prophet-masculine", feminine: "cyberpunk-signal-prophet-feminine", neutral: "cyberpunk-signal-prophet-neutral" },
+  "cyberpunk-deacon": { masculine: "cyberpunk-deacon-masculine", feminine: "cyberpunk-deacon-feminine", neutral: "cyberpunk-deacon-neutral" },
+  "cyberpunk-solo": { masculine: "cyberpunk-solo-masculine", feminine: "cyberpunk-solo-feminine", neutral: "cyberpunk-solo-neutral" },
+  "cyberpunk-arena-champion": { masculine: "cyberpunk-arena-champion-masculine", feminine: "cyberpunk-arena-champion-feminine", neutral: "cyberpunk-arena-champion-neutral" },
+  "cyberpunk-netrunner": { masculine: "cyberpunk-netrunner-masculine", feminine: "cyberpunk-netrunner-feminine", neutral: "cyberpunk-netrunner-neutral" },
+  "npc/cyberpunk-street-doc": { masculine: "npc/cyberpunk-street-doc", feminine: "cyberpunk-ripperdoc-feminine", neutral: "cyberpunk-ripperdoc-neutral" },
+  "npc/cyberpunk-corp-exec": { masculine: "cyberpunk-fixer-masculine", feminine: "npc/cyberpunk-corp-exec", neutral: "cyberpunk-fixer-neutral" },
+};
+
+// A plate stem as a path: under monster/ unless the stem names its group,
+// and the presentation's own plate where the role is painted per presentation.
+function platePath(stem: string, look: EnemyNpcLook = {}): string {
+  const presented = Object.prototype.hasOwnProperty.call(ROLE_PRESENTATION_PLATES, stem) ? ROLE_PRESENTATION_PLATES[stem] : undefined;
+  const plate = presented ? presented[normalizePresentation(look.presentation, look.gender)] : stem;
+  return plate.includes("/") ? `${BASE}/${plate}.webp` : `${BASE}/monster/${plate}.webp`;
+}
+
 // The genres whose bestiaries (src/lib/bestiary/*.json) keep the SRD stat
 // block and rename the creature: a cyberpunk giant-rat is a Sump Rat, a
 // horror werewolf is The Good Doctor, a mystery mimic is The Locked Chest.
@@ -1017,6 +1118,75 @@ export type GenreEnemyTable = { names: Record<string, string[]>; slugs: Record<s
 export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
   cyberpunk: {
     names: {
+      "cyberpunk-scrap-urchin": ["Scrap Urchin"],
+      "cyberpunk-rooftop-spotter": ["Rooftop Spotter"],
+      "cyberpunk-corpo-samurai": ["Corpo Samurai"],
+      "cyberpunk-wetwork-specialist": ["Wetwork Specialist"],
+      "cyberpunk-sewer-operative": ["Sewer Cell Operative"],
+      "cyberpunk-ai-architect": ["AI Architect"],
+      "cyberpunk-organ-harvester": ["Organ Harvester"],
+      "cyberpunk-blood-bank-runner": ["Blood-Bank Runner"],
+      "cyberpunk-oyabun": ["Yakuza Oyabun"],
+      "cyberpunk-braindance-queen": ["Braindance Queen"],
+      "cyberpunk-lockdown-warden": ["Lockdown Warden"],
+      "cyberpunk-furnace-foreman": ["Furnace-Line Foreman"],
+      "cyberpunk-board-chairman": ["Board Chairman"],
+      "cyberpunk-immortality-baron": ["Immortality Baron"],
+      "cyberpunk-ceo": ["The CEO"],
+      "cyberpunk-valkyrie": ["Corporate Valkyrie"],
+      "cyberpunk-uploaded-founder": ["The Uploaded Founder"],
+      "cyberpunk-full-borg": ["Full-Borg Heavy"],
+      "cyberpunk-regen-escapee": ["Regen-Vat Escapee"],
+      "cyberpunk-foundry-boss": ["Foundry Boss"],
+      "cyberpunk-cryo-juggernaut": ["Cryo-Rig Juggernaut"],
+      "cyberpunk-optic-camo-assassin": ["Optic-Camo Assassin"],
+      "cyberpunk-vat-heavy": ["Vat-Grown Heavy"],
+      "cyberpunk-overdose-shambler": ["Overdose Shambler"],
+      "cyberpunk-chassis-frame": ["Chassis Frame"],
+      "cyberpunk-corrupted-upload": ["Corrupted Upload"],
+      "cyberpunk-deadman-protocol": ["Deadman Protocol"],
+      "cyberpunk-vault-preserver": ["Vault Preserver"],
+      "cyberpunk-legacy-ai": ["Legacy AI Fragment"],
+      "cyberpunk-black-ice-reaper": ["Black-Ice Reaper"],
+      "cyberpunk-drone-blade": ["Rogue Drone Blade"],
+      "cyberpunk-exo-suit": ["Empty Exo-Suit"],
+      "cyberpunk-bodyguard-automaton": ["Bodyguard Automaton"],
+      "cyberpunk-riot-hulk": ["Riot Suppression Hulk"],
+      "cyberpunk-vault-guardian": ["Vault Guardian"],
+      "cyberpunk-siegebreaker": ["Siegebreaker Mech"],
+      "cyberpunk-cyber-hound": ["Cyber-Hound"],
+      "cyberpunk-attack-mastiff": ["Attack Mastiff Mk II"],
+      "cyberpunk-cyber-mastiff": ["Cyber-Mastiff"],
+      "cyberpunk-cryo-hound": ["Cryo-Hound"],
+      "cyberpunk-ad-drone": ["Siren Ad-Drone"],
+      "cyberpunk-maintenance-crawler": ["Maintenance Crawler"],
+      "cyberpunk-ledge-sentry": ["Ledge Sentry Unit"],
+      "cyberpunk-vending-unit": ["Trapped Vending Unit"],
+      "cyberpunk-courier-interceptor": ["Courier Interceptor"],
+      "cyberpunk-glitch-stalker": ["Glitch Stalker"],
+      "cyberpunk-freeze-sentinel": ["Freeze-Ray Sentinel"],
+      "cyberpunk-gunship-chimera": ["Gunship Chimera"],
+      "cyberpunk-swarm-core": ["Self-Repair Swarm Core"],
+      "cyberpunk-undernet-oracle": ["Undernet Oracle"],
+      "cyberpunk-maglev-serpent": ["Maglev Serpent"],
+      "cyberpunk-plasma-djinn": ["Plasma Djinn"],
+      "cyberpunk-twin-core-walker": ["Twin-Core Walker"],
+      "cyberpunk-demolition-mech": ["Demolition Mech"],
+      "cyberpunk-repo-unit": ["Repo Unit"],
+      "cyberpunk-guardian-seraph": ["Guardian Seraph Unit"],
+      "cyberpunk-strike-drone": ["Strike Drone Heavy"],
+      "cyberpunk-orbital-gunship": ["Orbital Gunship 'Dragon'"],
+      "cyberpunk-deep-server": ["The Deep Server"],
+      "cyberpunk-data-cultist": ["Data-Cult Initiate"],
+      "cyberpunk-gutter-punk": ["Gutter Punk"],
+      "cyberpunk-wirehead": ["Wirehead Screamer"],
+      "cyberpunk-alley-crusher": ["Alley Crusher"],
+      "cyberpunk-stim-slammer": ["Combat-Stim Slammer"],
+      "cyberpunk-signal-prophet": ["Signal Prophet"],
+      "cyberpunk-deacon": ["Chapel-of-Chrome Deacon"],
+      "cyberpunk-solo": ["Ex-Military Solo"],
+      "cyberpunk-arena-champion": ["Arena Champion"],
+      "cyberpunk-netrunner": ["Rogue Netrunner"],
       "cyberpunk-corp-squad": [
         "Corpo Rent-a-Cop", "Corpo Enforcer", "Merc Trooper", "Corp Squad", "Corporate Tactical Squad",
         "Corporate Security", "Corp Security", "Security Trooper", "Tactical Squad",
@@ -1032,6 +1202,33 @@ export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
   },
   steampunk: {
     names: {
+      "steampunk-gear-gremlin": ["Gear Gremlin"],
+      "steampunk-sootling": ["Sootling"],
+      "steampunk-wired-cadaver": ["Wired Cadaver"],
+      "steampunk-clockwork-saber": ["Clockwork Saber"],
+      "steampunk-dock-strangler": ["Dock Strangler"],
+      "steampunk-late-foreman": ["The Late Foreman"],
+      "steampunk-engine-hound": ["Glacier Engine Hound"],
+      "steampunk-tunneling-beast": ["Tunneling Engine Beast"],
+      "steampunk-cloaked-agent": ["Aether-Cloaked Agent"],
+      "steampunk-difference-guard": ["Difference-Engine Guard"],
+      "steampunk-clockmakers-knife": ["The Clockmaker's Knife"],
+      "steampunk-manifold-horror": ["The Manifold Horror"],
+      "steampunk-leviathan-engine": ["The Leviathan Engine"],
+      "steampunk-steam-knight": ["Steam Knight"],
+      "steampunk-peer": ["The Peer of the Realm"],
+      "steampunk-constable": ["Watch Constable", "City Watch Constable"],
+      "steampunk-chirurgeon": ["Guild Chirurgeon", "Chirurgeon"],
+      "steampunk-union-buster": ["Union Buster", "Strikebreaker"],
+      "steampunk-stokehold-bruiser": ["Stokehold Bruiser", "Stoker"],
+      "steampunk-airship-lookout": ["Airship Lookout"],
+      "steampunk-foreign-agent": ["Foreign Agent"],
+      "steampunk-navvy": ["Piston-Armed Navvy", "Navvy"],
+      "steampunk-engine-prophet": ["Engine Prophet"],
+      "steampunk-cathedral-engineer": ["Cathedral Engineer"],
+      "steampunk-campaigner": ["Crimean Campaigner", "Old Campaigner"],
+      "steampunk-pugilist": ["Exhibition Pugilist"],
+      "steampunk-bodysnatcher": ["Bodysnatcher"],
       "steampunk-sky-pirate": ["Sky Pirate Captain", "Ironclad Marine", "Sky Pirate", "Air Pirate", "Boarding Marine"],
       "steampunk-surgeon": ["Rogue Surgeon", "Mad Doctor", "Galvanist", "Mad Scientist"],
       "steampunk-clockwork-spider": ["Clockwork Spider", "Brass Spider", "Clockwork Arachnid"],
@@ -1048,6 +1245,33 @@ export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
   },
   "post-apocalyptic": {
     names: {
+      "post-apocalyptic-junkyard-imp": ["Junkyard Imp"],
+      "post-apocalyptic-junta-trooper": ["Junta Trooper"],
+      "post-apocalyptic-overpass-troll": ["Overpass Troll"],
+      "post-apocalyptic-contract-ghost": ["Contract Ghost"],
+      "post-apocalyptic-vault-director": ["The Vault Director"],
+      "post-apocalyptic-dune-warlord": ["Warlord of the Dunes"],
+      "post-apocalyptic-winter-warlord": ["Winter Warlord"],
+      "post-apocalyptic-blood-baron": ["The Blood Baron"],
+      "post-apocalyptic-ash-walker": ["Ash Walker"],
+      "post-apocalyptic-dead-commander": ["Dead Commander"],
+      "post-apocalyptic-haywire-exo-rig": ["Haywire Exo-Rig"],
+      "post-apocalyptic-supply-crate": ["Trapped Supply Crate"],
+      "post-apocalyptic-statue-sentinel": ["Statue Sentinel"],
+      "post-apocalyptic-camo-assassin": ["Camo-Field Assassin"],
+      "post-apocalyptic-guardian-automaton": ["Guardian Automaton"],
+      "post-apocalyptic-loader-mech": ["Berserk Loader Mech"],
+      "post-apocalyptic-bunker-guardian": ["Bunker Guardian"],
+      "post-apocalyptic-war-machine": ["War Machine Prime"],
+      "post-apocalyptic-firestorm-engine": ["The Firestorm Engine"],
+      "post-apocalyptic-tunnel-scav": ["Tunnel Scav"],
+      "post-apocalyptic-shelter-medic": ["Shelter Medic"],
+      "post-apocalyptic-crater-brute": ["Crater Brute"],
+      "post-apocalyptic-chem-fiend": ["Chem-Fiend"],
+      "post-apocalyptic-atomic-priest": ["Atomic Priest"],
+      "post-apocalyptic-old-soldier": ["Old-World Soldier"],
+      "post-apocalyptic-champion": ["Thunderdome Champion", "Pit Champion"],
+      "post-apocalyptic-tech-shaman": ["Tech-Shaman"],
       "post-apocalyptic-raider": ["Road Raider", "Raid Boss", "Warlord's Enforcer", "Raider", "Marauder", "Armored Scavenger"],
       "post-apocalyptic-hazmat": ["Hazmat Trooper", "Hazmat Soldier", "Decon Trooper"],
       "post-apocalyptic-stalker": ["Rad-Feral", "Feral Cannibal", "Pit Feeder", "Contaminated Stalker", "Irradiated Ghoul", "Stalker"],
@@ -1098,6 +1322,23 @@ export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
       "horror-doll": ["Doll", "Sinister Doll", "Porcelain Doll", "Haunted Doll"],
       "horror-fungal-host": ["Fungal Host", "Spore Host", "Infested Host"],
       "horror-parasite-swarm": ["The Skittering", "Parasite Swarm", "Crawling Parasite Swarm", "Crawling Swarm"],
+      "horror-cellar-bones": ["Cellar Bones"],
+      "horror-quarry-man": ["Quarry Man"],
+      "horror-revival-preacher": ["Revival Preacher"],
+      "horror-wrong-door": ["The Wrong Door"],
+      "horror-landlord": ["The Landlord"],
+      "horror-yard-warden": ["The Warden of the Yard"],
+      "horror-granny": ["Granny Underhill"],
+      "horror-good-doctor": ["The Good Doctor"],
+      "horror-night-caller": ["The Night Caller"],
+      "horror-retired-occultist": ["The Retired Occultist"],
+      "horror-butchers-mistake": ["The Butcher's Mistake"],
+      "horror-quiet-man": ["The Quiet Man"],
+      "horror-coat-on-hook": ["The Coat on the Hook"],
+      "horror-man-behind-curtain": ["The Man Behind the Curtain"],
+      "horror-old-family": ["The Old Family"],
+      "horror-first-founder": ["The First Founder"],
+      "horror-archivist": ["The Archivist"],
     },
     slugs: {},
   },
@@ -1107,6 +1348,36 @@ export const GENRE_ENEMY_TOKENS: Readonly<Record<string, GenreEnemyTable>> = {
       "mystery-burglar": ["The Unseen Burglar", "Burglar", "Masked Burglar", "Cat Burglar", "Cracksman"],
       "mystery-poisoner": ["Poisoner"],
       "mystery-occult-enforcer": ["Secret Society Member", "Society Grandmaster", "Occult Enforcer", "Occult Society Enforcer", "Society Enforcer"],
+      "mystery-constable": ["Constable", "Police Constable", "Watch Constable", "Policeman"],
+      "mystery-heir": ["Belligerent Heir", "Heir", "Disgraced Heir"],
+      "mystery-curate": ["Parish Curate", "Curate"],
+      "mystery-poacher": ["Poacher-Turned-Informant", "Poacher"],
+      "mystery-prizefighter": ["Prizefighter", "The Ring Champion", "Ring Champion", "Bare-Knuckle Boxer", "Pugilist"],
+      "mystery-smuggler": ["Smuggling Ring Leader", "Smuggler", "Smuggler Captain"],
+      "mystery-colonel": ["The Colonel", "Retired Colonel"],
+      "mystery-baronet": ["The Duelist Baronet", "Duelist Baronet", "Baronet", "Duelist"],
+      "mystery-occultist": ["The Consulting Occultist", "Consulting Occultist", "Occultist"],
+      "mystery-fixer": ["The Bishop's Fixer", "Bishop's Fixer"],
+      "mystery-sewer-waif": ["Sewer Waif", "Street Urchin", "Urchin"],
+      "mystery-walled-up-victim": ["The Walled-Up Victim"],
+      "mystery-resurrection-man": ["The Resurrection Man", "Grave Robber", "Body Snatcher"],
+      "mystery-opera-ghost": ["The Opera Ghost"],
+      "mystery-moor-hound": ["The Moor Hound"],
+      "mystery-asylum-escapee": ["The Asylum Escapee", "Asylum Escapee"],
+      "mystery-fortune-teller": ["The Fortune Teller"],
+      "mystery-family-curse": ["The Family Curse"],
+      "mystery-disinherited": ["The Disinherited"],
+      "mystery-sculptors-secret": ["The Sculptor's Secret"],
+      "mystery-ferryman-brothers": ["The Ferryman Brothers"],
+      "mystery-gamekeeper": ["The Gamekeeper"],
+      "mystery-undercroft-tenant": ["The Undercroft Tenant"],
+      "mystery-night-clerk": ["The Night Clerk"],
+      "mystery-clockwork-butler": ["The Clockwork Butler"],
+      "mystery-opera-cloak": ["The Opera Cloak"],
+      "mystery-puppetmaster": ["The Puppetmaster"],
+      "mystery-magnate": ["The Untouchable Magnate"],
+      "mystery-patriarch": ["The Patriarch"],
+      "mystery-founder": ["The Founder in the Vault"],
     },
     // bandit and thug are the Hired Rough and the Loan Shark's Muscle,
     // assassin is The Poisoner, cultist and cult-fanatic are the society.
@@ -1167,12 +1438,259 @@ function genreEnemyPlate(genre: string, slug: string | null | undefined, name: s
   return key && Object.prototype.hasOwnProperty.call(table.slugs, key) ? (table.slugs[key] ?? null) : null;
 }
 
+// ---- reskins that are still the creature ----
+
+// The guard above is right for a Chassis Frame (an android, not a skeleton)
+// and for The Good Doctor (the plate would give the werewolf away), but it
+// also sent a cyberpunk Sump Rat to the generic beast and a steampunk Bridge
+// Troll to the generic giant while a painted rat and a painted troll sat
+// unused. These are the genre bestiaries' reskins (src/lib/bestiary/*.json)
+// whose painted fantasy plate is still the right picture: each was checked
+// against the shipped plate, not only its description. A reskin is left out
+// when the plate shows the wrong thing for the setting (a machine drawn as an
+// animal, medieval dress on a modern person, an elf or an orc standing in for
+// a human role) or when it would show more than the card does today (the
+// lycanthropes and vampires that horror and mystery present as people).
+// Keyed by the whole name on the card, as the genre tokens are, so a GM's own
+// rename of the same stat block still keeps the genre's plate. The value on
+// the left is the plate's file stem under monster/; it need not be the stat
+// block's own plate (a Feral Guard Dog fights as a wolf and is drawn as the
+// mastiff).
+export const GENRE_FAMILY_REUSE: Readonly<Record<string, Readonly<Record<string, string[]>>>> = {
+  cyberpunk: {
+    "npc/cyberpunk-street-doc": ["Ripperdoc Intern"],
+    "npc/cyberpunk-corp-exec": ["Corporate Fixer"],
+    "giant-rat": ["Sump Rat"],
+    mastiff: ["Feral Guard Dog"],
+    shadow: ["Blackout Ghost"],
+    "will-o-wisp": ["Stray Arc-Node"],
+    "fire-elemental": ["Reactor Breach"],
+    "air-elemental": ["Turbine Ghost"],
+  },
+  steampunk: {
+    "npc/steampunk-inventor": ["Rogue Aetherist"],
+    "giant-rat": ["Boiler Rat"],
+    bandit: ["Sky-Dock Footpad"],
+    cultist: ["Aether Devotee"],
+    wolf: ["Moor Wolf"],
+    gnoll: ["Smog Jackal"],
+    shadow: ["Smog Wraith"],
+    "rust-monster": ["Corrosion Beetle"],
+    magmin: ["Firebox Sprite"],
+    specter: ["Factory Ghost"],
+    imp: ["Contract Homunculus"],
+    "giant-spider": ["Cable Spinner"],
+    "animated-armor": ["Parade Automaton"],
+    harpy: ["Foghorn Siren"],
+    gargoyle: ["Foundry Grotesque"],
+    mimic: ["Trapped Strongbox"],
+    ogre: ["Steam-Lifter Brute"],
+    wererat: ["Sewer Guildsman"],
+    "will-o-wisp": ["Stray Aether Charge"],
+    griffon: ["Courier Gryphon"],
+    ankheg: ["Tunnel Borer Beast"],
+    "gelatinous-cube": ["Solvent Mass"],
+    "hell-hound": ["Furnace Hound"],
+    doppelganger: ["The Understudy"],
+    basilisk: ["Vitrifying Lizard"],
+    "phase-spider": ["Aether-Phase Spider"],
+    manticore: ["Ornithopter Beast"],
+    mummy: ["The Exhibition Piece"],
+    "green-hag": ["Canal Crone"],
+    ettin: ["The Boiler Twins"],
+    ghost: ["The Lady of the Gallery"],
+    lamia: ["The Cabaret Queen"],
+    couatl: ["Aetheric Guardian"],
+    troll: ["Bridge Troll"],
+    "vampire-spawn": ["The Night Shift"],
+    wraith: ["The Collier's Shade"],
+    "flesh-golem": ["The Galvanist's Man"],
+    "fire-elemental": ["Boiler Burst"],
+    "water-elemental": ["Canal Surge"],
+    "earth-elemental": ["Quarry Golem"],
+    "air-elemental": ["Turbine Djinn"],
+    salamander: ["Forge Master"],
+    medusa: ["The Daguerreotype Widow"],
+    wyvern: ["Dirigible Raptor"],
+    chimera: ["The Vivisection"],
+    "stone-giant": ["Viaduct Titan"],
+    "spirit-naga": ["The Séance Serpent"],
+    "bone-devil": ["The Repossessor"],
+    "fire-giant": ["The Ironmaster"],
+    "clay-golem": ["Foundry Colossus"],
+    "stone-golem": ["The Bank Guardian"],
+    aboleth: ["The Thing in the Waterworks"],
+    behir: ["The Rail Serpent"],
+    djinni: ["The Weather Engine's Spirit"],
+    efreeti: ["The Furnace Sultan"],
+    "adult-red-dragon": ["The Firedrake of the Yards"],
+  },
+  "post-apocalyptic": {
+    "npc/post-apocalyptic-caravan-guard": ["Overpass Sniper"],
+    cultist: ["Doomsayer"],
+    stirge: ["Blood Wasp"],
+    "giant-poisonous-snake": ["Glass Viper"],
+    "giant-centipede": ["Pipe Crawler"],
+    gnoll: ["Howler"],
+    shadow: ["Fallout Shade"],
+    "rust-monster": ["Oxide Beast"],
+    specter: ["Echo of the Fall"],
+    "giant-spider": ["Silo Spinner"],
+    harpy: ["Screech Mutant"],
+    ogre: ["Muta-Hulk"],
+    "will-o-wisp": ["Reactor Ghost"],
+    wererat: ["Sewer King's Agent"],
+    "ochre-jelly": ["Chem-Spill Mass"],
+    "hell-hound": ["Furnace Hound"],
+    werewolf: ["Moon-Howler"],
+    minotaur: ["Maze Mutant"],
+    "phase-spider": ["Blink Stalker"],
+    basilisk: ["Glass-Gaze Lizard"],
+    manticore: ["Spine-Launcher"],
+    doppelganger: ["Skin-Taker"],
+    "green-hag": ["Bog Witch"],
+    ettin: ["Fused Twins"],
+    ghost: ["Vault Echo"],
+    "black-pudding": ["Toxic Bloom"],
+    chuul: ["Harbor Horror"],
+    troll: ["Rad-Troll"],
+    "vampire-spawn": ["Blood Baron's Thrall"],
+    wraith: ["Ground-Zero Shade"],
+    "flesh-golem": ["Lab-Stitched Brute"],
+    "fire-elemental": ["Living Firestorm"],
+    "earth-elemental": ["Rubble Walker"],
+    otyugh: ["Dump Dweller"],
+    medusa: ["Glass Widow"],
+    wyvern: ["Ridge Terror"],
+    "stone-giant": ["Quarry Titan"],
+    hydra: ["Chem-Hydra"],
+    "tyrannosaurus-rex": ["Gene-Vault Rex"],
+    "fire-giant": ["Foundry Tyrant"],
+    treant: ["Elder Overgrowth"],
+    aboleth: ["The Reservoir Mind"],
+    behir: ["Pipeline Serpent"],
+    efreeti: ["Reactor Djinn"],
+    "storm-giant": ["The Storm Caller"],
+    "purple-worm": ["The Deep Devourer"],
+  },
+  horror: {
+    "npc/horror-warden": ["Chapel Warden"],
+    "giant-rat": ["Wall Rat"],
+    bandit: ["Road Vulture"],
+    stirge: ["Attic Leech"],
+    "giant-poisonous-snake": ["Bed Serpent"],
+    zombie: ["The Returned"],
+    wolf: ["Treeline Watcher"],
+    "violet-fungus": ["Basement Bloom"],
+    shadow: ["The Long Dark"],
+    "gray-ooze": ["Drain Sludge"],
+    "rust-monster": ["Lock-Eater"],
+    darkmantle: ["Ceiling Smother"],
+    ghoul: ["Graveyard Regular", "The Thing in the Well"],
+    specter: ["Cold Spot"],
+    quasit: ["Nursery Whisperer"],
+    imp: ["Contract Familiar"],
+    "giant-spider": ["Loft Weaver"],
+    "animated-armor": ["The Standing Suit"],
+    harpy: ["The Crying Woman"],
+    "death-dog": ["Two-Headed Stray"],
+    "will-o-wisp": ["Marsh Light"],
+    gargoyle: ["Church Roof Watcher"],
+    "ochre-jelly": ["The Spreading Stain"],
+    "rug-of-smothering": ["Parlor Rug"],
+    "sea-hag": ["The Washerwoman"],
+    ghost: ["The Previous Tenant"],
+    mummy: ["The Museum Piece"],
+    doppelganger: ["Not-Quite-Him"],
+    "hell-hound": ["The Black Dog"],
+    "phase-spider": ["Between-Walls Thing"],
+    basilisk: ["The Garden Keeper"],
+    minotaur: ["The Hedge Warden"],
+    manticore: ["The Steeple Beast"],
+    ettin: ["The Brothers Grole"],
+    succubusincubus: ["The Midnight Suitor"],
+    "black-pudding": ["The Cellar Dark"],
+    chuul: ["The Lake Warden"],
+    lamia: ["The Lady of the Manor"],
+    troll: ["The Bridge Keeper"],
+    wraith: ["The Harvest Shade"],
+    "shambling-mound": ["The Compost Heap"],
+    "night-hag": ["The Dream Merchant"],
+    "flesh-golem": ["The Doctor's Son"],
+    otyugh: ["The Thing Below the Privy"],
+    roper: ["The Cave Mouth"],
+    medusa: ["The Veiled Widow"],
+    "invisible-stalker": ["The House Guest"],
+    drider: ["The Spinner in the Belfry"],
+    oni: ["The Collector of Children"],
+    "giant-ape": ["The Orchard Terror"],
+    hydra: ["The Bog Mother"],
+    "spirit-naga": ["The Returning Serpent"],
+    "bone-devil": ["The Debt Collector"],
+    treant: ["The Hanging Tree"],
+    aboleth: ["The Memory in the Reservoir"],
+    "guardian-naga": ["The Crypt's Keeper"],
+    behir: ["The Mine Serpent"],
+    "purple-worm": ["The God Below"],
+  },
+  mystery: {
+    "npc/mystery-inspector": ["Rival Investigator"],
+    "giant-rat": ["Dockside Rat"],
+    zombie: ["The Exhumed"],
+    mastiff: ["Estate Hound"],
+    shadow: ["The Follower"],
+    specter: ["The Study's Chill"],
+    imp: ["The Patron's Errand-Thing"],
+    "giant-spider": ["Conservatory Horror"],
+    "animated-armor": ["The Hall Suit"],
+    wererat: ["The Informant"],
+    mimic: ["The Locked Chest"],
+    "will-o-wisp": ["The Marsh Lantern"],
+    gargoyle: ["The Courthouse Grotesque"],
+    "sea-hag": ["The Harbor Witch"],
+    ghoul: ["The Crypt Dweller"],
+    doppelganger: ["The Impostor"],
+    "phase-spider": ["The Impossible Intruder"],
+    mummy: ["The Expedition's Cargo"],
+    "hell-hound": ["The Hound of the Fen"],
+    manticore: ["The Menagerie Escape"],
+    ghost: ["The First Wife"],
+    lamia: ["The Salon Hostess"],
+    succubusincubus: ["The Blackmailer"],
+    wraith: ["The Judge's Shade"],
+    "night-hag": ["The Governess"],
+    "flesh-golem": ["The Surgeon's Assistant"],
+    medusa: ["The Veiled Heiress"],
+    oni: ["The Foreign Gentleman"],
+    "spirit-naga": ["The Séance Spirit"],
+    "bone-devil": ["The Creditor"],
+    "clay-golem": ["The Foundry Watchman"],
+    aboleth: ["The Thing in the Cistern"],
+    "guardian-naga": ["The Museum Guardian"],
+  },
+};
+
+const GENRE_FAMILY_REUSE_LOOKUP: Record<string, Map<string, string>> = Object.fromEntries(
+  Object.entries(GENRE_FAMILY_REUSE).map(([genre, table]) => [
+    genre,
+    new Map(
+      Object.entries(table).flatMap(([plate, names]) =>
+        names.flatMap((name) => genreNameSpellings(name).map((spelling) => [spelling, plate] as const)),
+      ),
+    ),
+  ]),
+);
+
 // Which family plate, if any, this monster draws. The slug is the real
 // answer when the caller has it; a name only counts when the whole name is a
 // family (a homebrew monster called "Owlbear"), never a word inside one.
 function familyPlate(genre: string, slug: string | null | undefined, name: string | null | undefined): string | null {
-  const fromName = familyOf(name);
-  const family = familyOf(slug) ?? fromName;
+  const reused = GENRE_FAMILY_REUSE_LOOKUP[genre]?.get(familyKey(name));
+  if (reused) {
+    return reused;
+  }
+  const fromName = familyOf(name) ?? npcRoleOf(name);
+  const family = familyOf(slug) ?? npcRoleOf(slug) ?? fromName;
   if (!family) {
     return null;
   }
@@ -1219,13 +1737,13 @@ export function monsterPlaceholder(
   if (!ownStatBlock(options.slug)) {
     const token = genreEnemyPlate(slug, options.slug, options.name);
     if (token) {
-      return `${BASE}/monster/${token}.webp`;
+      return platePath(token, options);
     }
     const family = familyPlate(slug, options.slug, options.name);
     if (family) {
       // An enemy NPC role with a recorded race draws that race's face
       // (enemyNpcPlaceholder); with none it is the role token, as before.
-      return enemyNpcPlaceholder(family, options) ?? `${BASE}/monster/${family}.webp`;
+      return enemyNpcPlaceholder(family, options) ?? platePath(family, options);
     }
   }
   if (typeof options.cr === "number" && options.cr >= BOSS_CR_FLOOR && BOSS_GENRES.has(slug)) {

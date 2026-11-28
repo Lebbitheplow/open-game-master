@@ -1,0 +1,957 @@
+{
+  "recordedOn": "2026-11-26",
+  "author": "Smoebo",
+  "generator": "Grok Build command-line tool 1.0.60, image_gen, one call per plate with the prompt recorded here unchanged",
+  "subjectBasis": "Original designs for entries of the steampunk bestiary (src/lib/bestiary/steampunk.json), per docs/art/creature-art-guidance.md: its people, its machines and the creatures whose fantasy plate was the wrong picture. No published illustration, film character or real person was named or supplied as an input.",
+  "encoding": "Each 1024x1024 JPEG original resized once to 256x256 (cover) and encoded once to WebP quality 75 with sharp.",
+  "review": "Each shipped plate was viewed at full size and in a round crop at 96px and 40px on dark and light surrounds. Four are second paintings: the feminine cathedral engineer came back inside a painted gold disc, and the neutral campaigner, union buster and pugilist read as men until the second prompt covered the face. The Peer of the Realm is painted as the person the card presents; the vampire it fights as is left to the reveal.",
+  "presentations": {
+    "steampunk-constable": {
+      "masculine": "steampunk-constable-masculine",
+      "feminine": "steampunk-constable-feminine",
+      "neutral": "steampunk-constable-neutral"
+    },
+    "steampunk-chirurgeon": {
+      "masculine": "steampunk-chirurgeon-masculine",
+      "feminine": "steampunk-chirurgeon-feminine",
+      "neutral": "steampunk-chirurgeon-neutral"
+    },
+    "steampunk-union-buster": {
+      "masculine": "steampunk-union-buster-masculine",
+      "feminine": "steampunk-union-buster-feminine",
+      "neutral": "steampunk-union-buster-neutral"
+    },
+    "steampunk-stokehold-bruiser": {
+      "masculine": "steampunk-stokehold-bruiser-masculine",
+      "feminine": "steampunk-stokehold-bruiser-feminine",
+      "neutral": "steampunk-stokehold-bruiser-neutral"
+    },
+    "steampunk-airship-lookout": {
+      "masculine": "steampunk-airship-lookout-masculine",
+      "feminine": "steampunk-airship-lookout-feminine",
+      "neutral": "steampunk-airship-lookout-neutral"
+    },
+    "steampunk-foreign-agent": {
+      "masculine": "steampunk-foreign-agent-masculine",
+      "feminine": "steampunk-foreign-agent-feminine",
+      "neutral": "steampunk-foreign-agent-neutral"
+    },
+    "steampunk-navvy": {
+      "masculine": "steampunk-navvy-masculine",
+      "feminine": "steampunk-navvy-feminine",
+      "neutral": "steampunk-navvy-neutral"
+    },
+    "steampunk-engine-prophet": {
+      "masculine": "steampunk-engine-prophet-masculine",
+      "feminine": "steampunk-engine-prophet-feminine",
+      "neutral": "steampunk-engine-prophet-neutral"
+    },
+    "steampunk-cathedral-engineer": {
+      "masculine": "steampunk-cathedral-engineer-masculine",
+      "feminine": "steampunk-cathedral-engineer-feminine",
+      "neutral": "steampunk-cathedral-engineer-neutral"
+    },
+    "steampunk-campaigner": {
+      "masculine": "steampunk-campaigner-masculine",
+      "feminine": "steampunk-campaigner-feminine",
+      "neutral": "steampunk-campaigner-neutral"
+    },
+    "steampunk-pugilist": {
+      "masculine": "steampunk-pugilist-masculine",
+      "feminine": "steampunk-pugilist-feminine",
+      "neutral": "steampunk-pugilist-neutral"
+    },
+    "steampunk-bodysnatcher": {
+      "masculine": "steampunk-bodysnatcher-masculine",
+      "feminine": "steampunk-bodysnatcher-feminine",
+      "neutral": "steampunk-bodysnatcher-neutral"
+    },
+    "npc/steampunk-inventor": {
+      "masculine": "npc/steampunk-inventor",
+      "feminine": "steampunk-aetherist-feminine",
+      "neutral": "steampunk-aetherist-neutral"
+    }
+  },
+  "plates": [
+    {
+      "file": "public/assets/placeholders/monster/steampunk-gear-gremlin.webp",
+      "prompt": "A small mischievous gremlin with oily grey-green skin, huge ears and bright yellow eyes, clutching a stolen brass cog, a wrench tucked behind one ear. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The gremlin's head and shoulders fill about 80 percent of the frame, eyes clearly visible. Plain painterly backdrop of copper orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "0f192283eaff84bf98a8b272e63b2362d02a420048815d6ea11869245c23622e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12030,
+        "sha256": "61f334458820847b52ad5e048e7a5010e3e72c93c220103204cfe6b6a2aab1d2"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-sootling.webp",
+      "prompt": "A small soot-black chimney goblin with glowing ember eyes and a grin, a brass spoon and stolen pocket watch on a string round its neck. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The creature's head and shoulders fill about 80 percent of the frame, eyes clearly visible. Plain painterly backdrop of pale smoke grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "eed01b6200ac6758112511717709b8bc0fafd47a276f32756fd122e7a93468a2"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8782,
+        "sha256": "0c91f890dee19ac04a2290d39fb9451a65e9347a35b2d097ad18ea922a30f5fa"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-wired-cadaver.webp",
+      "prompt": "A preserved anatomy-school cadaver made to stand again, a gaunt grey corpse with dry leathery skin drawn tight over the bones, sunken eyes and a neat stitched dissection seam down the chest, brass electrodes clamped at the temples and neck and thin copper wires running up out of frame like puppet strings with small blue sparks, a dried specimen with no blood. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale laboratory blue that runs flat to every edge and corner with no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c817be921fd246dc39eef761ed6343d838188a00146094bb8c649c35d3d51df4"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9556,
+        "sha256": "8899fd60ad082e1a61b16681d625c16709bef94c25ee5f14af1b14a7bd0145d9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-clockwork-saber.webp",
+      "prompt": "A flying clockwork sabre with no hand and no arm, one broad curved shining steel cavalry blade whose brass basket hilt is packed with visible turning gears and a wound mainspring, and a small whirring brass propeller on the pommel that holds it in the air, the blade pointing up and to the right as it slashes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The sabre is large and thick, runs diagonally and fills about 90 percent of the frame, blade tip and propeller just clear of the edges. Plain painterly backdrop of pale parchment cream, much lighter than the sabre, that runs flat to every edge and corner with no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "362cbaf69fd6edcbcb9430c86c4ead009e5888a19c0de4933fa9e28a9a8d6976"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6006,
+        "sha256": "df1c2334664c8b710ce2716bcaf178d5dcd37c9265a8526535a5e44a5b3d152f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-dock-strangler.webp",
+      "prompt": "A hulking dockside ambusher in a tarred longshoreman's coat, a knit cap pulled low and a scarf over the nose and mouth so only small cold eyes show, a knotted rope garrotte stretched between gloved fists. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of harbour fog green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b1b9b129de652d909659463652b2fa5ed3bc043edd135d5f1e827efee2fe79f1"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8552,
+        "sha256": "ea5f3ef1f36ddd61d6e4ad1e3c77ec12a1d355acb49c5f48300def05e270f6c8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-late-foreman.webp",
+      "prompt": "A dead factory foreman, grey-skinned and hollow-eyed in a dusty bowler hat and waistcoat, still holding a brass pocket watch and a ledger, faint ghost-light at the edges. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cold mill blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "da8ae96b95cadca135fd1761e771dbb6736e18f5544803307af368f19fedc811"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5576,
+        "sha256": "4e8fb3183cc541128fb4df0cfbc3c2a25abef8b5d15b91c5c06d2cda8503c314"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-engine-hound.webp",
+      "prompt": "A large white wolf-like hound with brass coolant pipes along its neck and frost breath pouring from its jaws, pale blue eyes. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The hound's head and neck fill about 80 percent of the frame, eyes clearly visible. Plain painterly backdrop of glacier blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "365d0e9fc0e10827bae6eff3045cdf9e2e9a118e92fb7471617fd071740df3fe"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12578,
+        "sha256": "01b0c8dd5af9080b85ef8ab5e9b3828aefcfc83439c32e30479f6311bc9d7765"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-tunneling-beast.webp",
+      "prompt": "A huge armoured burrowing predator bursting up through cobblestones, a heavy four-legged body under overlapping riveted iron plates like a living tunnelling machine, a blunt shark-like head whose wide round maw is ringed with rows of grinding iron cutter teeth, small furious eyes, thick digging claws, steam venting from its back. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The beast's head, forelegs and armoured shoulders fill about 80 percent of the frame. Plain painterly backdrop of brick orange that runs flat to every edge and corner with no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9ff9f3d93ca9ac86fa1a739babd4e45f2cee20bd99c2ad4f663cbf89e780428c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13398,
+        "sha256": "c4fe901cac7356f812e3798d9f44ecb7d9c4d54fe87538cb8280395f30527d5f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-cloaked-agent.webp",
+      "prompt": "A government assassin made nearly invisible by an aether cloak, the glassy half-transparent outline of a figure in a bowler hat and long greatcoat with the backdrop showing through the body, only a pair of round brass goggles with pale glowing lenses and a brass dial on the chest fully solid. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of fog violet that runs flat to every edge and corner with no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1c417f13be4d319a28433e516c19d911280d201e9dd9fb29b74a805c2e934c47"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5462,
+        "sha256": "9da40e6dbb2ba71112a1113ebaad61ce801e21a41d0d8914180bbe63f9698729"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-difference-guard.webp",
+      "prompt": "A tall brass bodyguard automaton with a punch-card slot in its chest and a round glass face showing turning gear wheels, one shield arm raised. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The automaton's head and shoulders fill about 80 percent of the frame. Plain painterly backdrop of deep green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "050291c1296ab9d33586bab28ffff7f10baf97def4599e7ebf4cdc00a0e8e812"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11268,
+        "sha256": "22e94308f8b024a2a6254dcc2b571e29576f8d51bc79d59856553677b1c43f86"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-clockmakers-knife.webp",
+      "prompt": "A precise assassin in a fitted black coat and a smooth brass mask engraved like a clock face with the hands at midnight, a thin stiletto held upright beside the mask. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale ivory, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "99f7b0c75c79a10583de62ead8c5675c942b829f5acfb5e216d1b9deeb9f9636"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7216,
+        "sha256": "c926ed583ad28d9c88f2b17956e55eaddee0047ead897e51826cfe801b6c3f3d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-manifold-horror.webp",
+      "prompt": "A many-headed monster made of writhing iron steam pipes, each neck ending in a toothed valve mouth venting steam, five heads. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The cluster of heads fills about 80 percent of the frame. Plain painterly backdrop of boiler red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7ecd62ee79fd36ddced4aaba790604e1f436bc19f0415094e21a8a8addba49bd"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11426,
+        "sha256": "21eb4beb6e806dcafdaa03caebb8c44048e0a085f78532b61e6f2f9f2538bfa0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-leviathan-engine.webp",
+      "prompt": "A colossal walking iron siege machine seen from the front, a riveted hull like a helmeted head with furnace-glow slits for eyes and twin smokestacks like horns. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The machine's front fills about 80 percent of the frame. Plain painterly backdrop of coal-smoke amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d25b14d0c4cb83a2c68e783530317bbda6120036e701dcd1f2861d28e743a635"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11776,
+        "sha256": "557540c922db726c91ee4a852fa9ce8dbed4800105a4f06384d48d234373a08e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-steam-knight.webp",
+      "prompt": "A cavalry knight in riveted brass and steel plate with a fully closed helm, a small boiler and brass pipes on the back, a steam vent at the helm, lance shaft at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of royal blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "88efb3547422f3a233f26fdfa104fedbe928eda5df2e8b51db04e27dedc66c68"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12590,
+        "sha256": "8ff0fab434985a77d7d54eabe7397018d316619dccb1c99c8a0b2e61827ae488"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-peer.webp",
+      "prompt": "Steampunk aristocrat, a very pale elderly lord in an immaculate black evening coat with a white cravat, a top hat and a brass-rimmed monocle, a thin closed-mouth smile, plainly a living man and no visible teeth. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep crimson, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a73ae02ddf79bee18bb609ee081a76cf817b780f16ee8eba4c769f5a7919560c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7592,
+        "sha256": "ab0929ea46204ec1695e889c9809827f7378c1b69da682c5a8acee181c26c608"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-constable-masculine.webp",
+      "prompt": "Steampunk city watch constable, a man with a waxed moustache in a brass-buttoned dark coat and a domed helmet with a brass badge and small goggles pushed up on it. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of foggy teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "612f59b043aa29925bf8ceb63c482863bedde2072c349232a4b86ed441b8fb46"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7612,
+        "sha256": "048b8190d13bcf0ecea60d20401631d9279aeca37f6f715f3f6521feb8d65075"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-constable-feminine.webp",
+      "prompt": "Steampunk city watch constable, a woman in a brass-buttoned dark coat and a domed helmet with a brass badge and small goggles pushed up on it. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warm brass yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "c716578b4545c2aea0f84539ea92666c022e0c09acff857933262a2040099819"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8984,
+        "sha256": "437a7db44ae7bcc5ee3d2b5626dfe8c139fff04da21a588464a3ec5cfe23471c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-constable-neutral.webp",
+      "prompt": "Steampunk city watch constable, a person with a smooth soft-featured beardless face that could be a woman's or a man's in a brass-buttoned dark coat and a domed helmet with a brass badge and small goggles pushed up on it. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of slate violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "836635a3199d042ebb6bf910c9968aaa2558e6ab3b519fe0053c5881a5ca4a7c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6436,
+        "sha256": "3541da48923fcc6da18c73daab71a658f8c43f06bd03ec60807a035b8fa04007"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-chirurgeon-masculine.webp",
+      "prompt": "Steampunk guild surgeon, a man with grey side-whiskers in a leather apron and high collar with a brass magnifying monocle rig over one eye and a steaming instrument at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of pale clinical green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "19deec37fb84922f11df8e0d8a7b90d366174efbbc6ee5128970f394e61c3f86"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9802,
+        "sha256": "fe3b9ff69cb3abad7687596d5c36562b9930e6a6c930e3a651887a2ecf226f4b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-chirurgeon-feminine.webp",
+      "prompt": "Steampunk guild surgeon, a woman in a leather apron and high collar with a brass magnifying monocle rig over one eye and a steaming instrument at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of dusty rose, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "12ac39b279f69a6a129339fcdb35f78145eff8ca908932bdafb0ce88f1bfe1f4"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10664,
+        "sha256": "f927f56ef2f45c43e84461afa5f7238092a69d4c014f651dce8c682e48aff7ee"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-chirurgeon-neutral.webp",
+      "prompt": "Steampunk guild surgeon, a person with a smooth soft-featured beardless face that could be a woman's or a man's in a leather apron and high collar with a brass magnifying monocle rig over one eye and a steaming instrument at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of steel blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "98127ec9998f673657f93311f06fe36041f47af3154938dfd612ed5ab8ac097f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7734,
+        "sha256": "2507a307233960c599c8a8a24ac4e62e0000cb10d05b53b2eaa4ad72514e9cbe"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-union-buster-masculine.webp",
+      "prompt": "Steampunk hired strikebreaker, a heavy-set man with a broken nose and stubble in a bowler hat and waistcoat with rolled sleeves and brass knuckles raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of brick red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "9f75daaab09bdcecab6010016ac8d9219d0fb2069fbaaa71bc441427478a04d6"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9990,
+        "sha256": "5a1355d44024c76c6e0c41b487762e74c4fa3b17aa9f74149d7c284d85d98dc9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-union-buster-feminine.webp",
+      "prompt": "Steampunk hired strikebreaker, a heavy-set woman in a bowler hat and waistcoat with rolled sleeves and brass knuckles raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of smoky ochre, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "f8eb33f20ad07080d9dacef831f9db44480e450141f798972f2ece3cc68619f3"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10810,
+        "sha256": "4d86f9269d6872455601daaff70d6c8e22ed01803626c58471f1d1ea7566e5f7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-union-buster-neutral.webp",
+      "prompt": "Steampunk hired strikebreaker, a heavy-set figure in a bowler hat and waistcoat with rolled sleeves, a spotted kerchief tied over the nose and mouth so only hard eyes show, gender impossible to tell, brass knuckles raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of slate blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e60c3a7509ac279cbeee0fdf825cf8a49d61c2b7849118e62be12edd8df20974"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8528,
+        "sha256": "d14e2018c83c127efc30857654cf070296c75abf937bad4e01055ce2abaec218"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-stokehold-bruiser-masculine.webp",
+      "prompt": "Steampunk engine-room stoker, a huge soot-blackened man with a shaved head with massive shoulders, a leather harness and a coal shovel handle at the shoulder, sweat cutting lines through the soot. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of furnace orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "48ea52cb22f6c5b7b98abd7597e8c430693b406b18b7d4b66365a2acbf36a393"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10876,
+        "sha256": "a4f3ea15e0bbe6956ee9492862b64f3453838b012611034d5de3e868e5ec244e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-stokehold-bruiser-feminine.webp",
+      "prompt": "Steampunk engine-room stoker, a huge soot-blackened woman with massive shoulders, a leather harness and a coal shovel handle at the shoulder, sweat cutting lines through the soot. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "109d1ebdd5c2134ca490c90be4102f36dc0f62a42bfc450eb9a3300ce4d35946"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10490,
+        "sha256": "e51f52e3bad0ace7eca85842369477c183686952c9cce05e84e123636b0f06ec"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-stokehold-bruiser-neutral.webp",
+      "prompt": "Steampunk engine-room stoker, a huge soot-blackened person with a smooth soft-featured beardless face that could be a woman's or a man's with massive shoulders, a leather harness and a coal shovel handle at the shoulder, sweat cutting lines through the soot. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ash grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d5216b1c51940ea9f47bbd1a133b44c1b934562ab0abb8bfae38d2184022c016"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8438,
+        "sha256": "a1ffb1c7189fcb6797acf884f9d9b020fc1e0950ff26b89511f1676325c7c4cd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-airship-lookout-masculine.webp",
+      "prompt": "Steampunk airship lookout, a wind-burned man with a short beard in a fleece-collared flight jacket and leather flying cap with brass goggles on the forehead, a long rifle barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of high sky blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8d5082c51167288add3d000fd398a0f6ba264d70008667d16c9261e19d8708b9"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11540,
+        "sha256": "5854b9d06918238e79bca19a932438b9b073b5abf6b9bdb60996a0a4bf086dc4"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-airship-lookout-feminine.webp",
+      "prompt": "Steampunk airship lookout, a wind-burned woman in a fleece-collared flight jacket and leather flying cap with brass goggles on the forehead, a long rifle barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sunset amber, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "5a5deffe65531e9560a2396b56f210ca8311e6229626c7a2b8278cb06f7bddbd"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12878,
+        "sha256": "51cb84437726f44a038707e000eb9c2612a93fd60b31afc1398c70fc9d704553"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-airship-lookout-neutral.webp",
+      "prompt": "Steampunk airship lookout, a wind-burned person with a smooth soft-featured beardless face that could be a woman's or a man's in a fleece-collared flight jacket and leather flying cap with brass goggles on the forehead, a long rifle barrel at the shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of cloud grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ab2b818a2551c0a73a2318aa04527707b870937a2b65d6454028f8bd8befdb7c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10354,
+        "sha256": "a16f7a186a9c61e834bea206cba3bb0a863eb1a5bf362341b279b013e61c7217"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-foreign-agent-masculine.webp",
+      "prompt": "Steampunk spy, an elegant man with a thin moustache in a dark travelling coat with the collar up and a wide-brimmed hat, a rolled blueprint tucked under the arm, a cool appraising look. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep wine red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "863517ebdb42f1bb37be14f7a9a62b81fb4c7adfaa0f8bea1cb721ea9e222428"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5876,
+        "sha256": "efe558e5763de92a9106d3b60cac46d350b655c5fef7d127a79dc4fea06b467c"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-foreign-agent-feminine.webp",
+      "prompt": "Steampunk spy, an elegant woman in a dark travelling coat with the collar up and a wide-brimmed hat, a rolled blueprint tucked under the arm, a cool appraising look. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of midnight teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6a1e13f3256632a8414e9f03a6dd5647a47677fee725095739a9460030907e3a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7388,
+        "sha256": "91788063311917fdbc51170e825eb3161db568d4d870c503a7a2570bd83e81cf"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-foreign-agent-neutral.webp",
+      "prompt": "Steampunk spy, an elegant person with a smooth soft-featured beardless face that could be a woman's or a man's in a dark travelling coat with the collar up and a wide-brimmed hat, a rolled blueprint tucked under the arm, a cool appraising look. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of muted mustard, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1053ee7b411cbd5506250d315456615455db86adc6e3dff3fe51ea8eef36f59c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7946,
+        "sha256": "4a7a7da5be956421bc4d7e1e1425ec68b62f4224d45b4371d6f7552474a1d279"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-navvy-masculine.webp",
+      "prompt": "Steampunk labourer gone berserk, a wild-eyed mud-spattered man with a matted beard with one arm replaced by a hissing brass piston arm raised at the edge of the frame, torn work shirt. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of clay brown-orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "befddbcd6bc9e94c1d018133681e60a70e2b18b9574001313ac6e8e95f032e76"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 13794,
+        "sha256": "891bb511353740f1f1851225544ef0ae1d22cf74d012e0897a5b48fb491976a0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-navvy-feminine.webp",
+      "prompt": "Steampunk labourer gone berserk, a wild-eyed mud-spattered woman with one arm replaced by a hissing brass piston arm raised at the edge of the frame, torn work shirt. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of steam white-grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1cf7ccb5e93ca23e9ed44e909606c12ea873a7c0cc66fb28b923d2f82f82973a"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 16974,
+        "sha256": "dccdeddecc6aa4ed0d055f88275fc5e7f2172c73de56b051bf8d843d334048b4"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-navvy-neutral.webp",
+      "prompt": "Steampunk labourer gone berserk, a wild-eyed mud-spattered person with a smooth soft-featured beardless face that could be a woman's or a man's with one arm replaced by a hissing brass piston arm raised at the edge of the frame, torn work shirt. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of moss green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "8ae1b06d05b09c60263f9493378ab9ad724ad091b43e34a6d80924b31d9a9d47"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 15480,
+        "sha256": "84e4a9bca89c518f901695b1dd50d992e1fadb0b01feb83044d704419843714b"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-engine-prophet-masculine.webp",
+      "prompt": "Steampunk machine-cult prophet, a fervent man with a long grey beard in oil-stained robes hung with brass pressure gauges, soot-ringed staring eyes, a cog-shaped holy symbol on the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of boiler-room copper, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e36283b5fe58e91b5c6db3088bd46b45f604db20111a96e4711c32d22e5e6793"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14592,
+        "sha256": "38528d2d6613c951f2b4819a84cf8e921ca096abc02dc1a391f76b6f090bdd4a"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-engine-prophet-feminine.webp",
+      "prompt": "Steampunk machine-cult prophet, a fervent woman in oil-stained robes hung with brass pressure gauges, soot-ringed staring eyes, a cog-shaped holy symbol on the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of lurid green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "fafcb1610943348643b79cf3ea5cea1c7bb99902d1637bbcb0987da9f6f237e7"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11498,
+        "sha256": "ef487db42b2deb0319d55e51c085605b5780f3e0b5f19c8b33b68bc16f782182"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-engine-prophet-neutral.webp",
+      "prompt": "Steampunk machine-cult prophet, a fervent person with a smooth soft-featured beardless face that could be a woman's or a man's in oil-stained robes hung with brass pressure gauges, soot-ringed staring eyes, a cog-shaped holy symbol on the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep indigo, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "e5390c962578d74f860545d441cda8480dc5c9adf7934c1f5186cc26e4a3f223"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10472,
+        "sha256": "48a8af69dafa6307d59f9065e59a825076959413cc3cf23d1ed59e5f308d78f8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-cathedral-engineer-masculine.webp",
+      "prompt": "Steampunk cathedral priest-engineer, a calm man with a trimmed white beard in white clerical vestments under a leather tool harness, a brass wrench held like a sceptre, small organ pipes embroidered on the stole. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of stained-glass blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "1c307af6b2116149ff1c0fd421261a0148d8d88ce0d6d4a4a6938e33d3854017"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 16548,
+        "sha256": "9965c0fdf665d31283bd1e9b7dd55636d0a10b2523d6479d1f36005564885729"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-cathedral-engineer-feminine.webp",
+      "prompt": "Steampunk cathedral priest-engineer, a calm woman in white clerical vestments under a leather tool harness, a brass wrench held like a sceptre, small organ pipes embroidered on the stole. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of flat warm gold that runs evenly to every edge and corner of the square image with no halo, no disc and no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "15e4a626ef062e8d31e6b3de65a66d853ff84abe4819dde90b308c9815067936"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12166,
+        "sha256": "9d9b7967e6d6c34f400b8e152063cea2ba7f35057fec4898af59a73d518c69e9"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-cathedral-engineer-neutral.webp",
+      "prompt": "Steampunk cathedral priest-engineer, a calm person with a smooth soft-featured beardless face that could be a woman's or a man's in white clerical vestments under a leather tool harness, a brass wrench held like a sceptre, small organ pipes embroidered on the stole. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of soft violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "ed318e0f9a82ad027882c343e64e6e421e5590790a2e3008114cf17105703143"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10032,
+        "sha256": "b4991aa53ea817b276a3366d43b417f2f349e5da187e9d1f71a6ea399d44cfe7"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-campaigner-masculine.webp",
+      "prompt": "Steampunk old soldier, a weathered man with a grey walrus moustache in a faded scarlet army tunic with campaign medals, one arm a brass clockwork prosthetic raised to the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of parchment tan, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "38b152287dc4dfafc6c8900bbd0d6ceeae352015c127e2ec27e693a4491b5791"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11924,
+        "sha256": "98b43f0597903b6e6d71ae2a294ba7bb8dc5a06d23051105b0017c4a47fa0c6f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-campaigner-feminine.webp",
+      "prompt": "Steampunk old soldier, a weathered woman in a faded scarlet army tunic with campaign medals, one arm a brass clockwork prosthetic raised to the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of battle-smoke grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6515af9cde7e5cfa5678f8506c93469b4ab3e193ff9ae5344c22111928af920b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 9948,
+        "sha256": "a882b234814e0e9d3e080a5e36132b80ba65bb1c41580cb9579dccdc5eac1d77"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-campaigner-neutral.webp",
+      "prompt": "Steampunk old soldier in a faded scarlet army tunic with campaign medals and a peaked cap, a wool scarf wound over the nose and mouth against the cold so only weathered eyes show, gender impossible to tell, one arm a brass clockwork prosthetic raised to the chest. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of faded olive, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d8ef2d6ae59e898eb91a9a2e3eef1c5cf6bf44e7862665de7909abdeb0d5881c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10690,
+        "sha256": "405a3a6df1c4fa40b0520c420fb538ed2c615560d3a54b178cd23be785bba195"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-pugilist-masculine.webp",
+      "prompt": "Steampunk exhibition prizefighter, a muscular man with a handlebar moustache in a striped sleeveless boxing vest with brass-studded leather hand wraps, one fist raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of poster red, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7fdcbd26c014ae2157928fe8283b7b566b414a91245b7b30452dae14f749245e"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11524,
+        "sha256": "b523056eb6d07194d205cb2f1d3d36083e0814c36d3d56b870294843e15983df"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-pugilist-feminine.webp",
+      "prompt": "Steampunk exhibition prizefighter, a muscular woman in a striped sleeveless boxing vest with brass-studded leather hand wraps, one fist raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ring-light yellow, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "cd4c75d4d4a857141ca5b5b85cf978f43fdaa60c57cb3b524c74d4662428ff4b"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12596,
+        "sha256": "b81f4cfcb3829f2212e74c2522b7a42755c450e981b4250297d5f6584aac2dfc"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-pugilist-neutral.webp",
+      "prompt": "Steampunk exhibition prizefighter in a striped sleeveless boxing vest and a padded leather sparring helmet that covers the cheeks and jaw, only fierce eyes and a broken nose showing, gender impossible to tell, brass-studded leather hand wraps, one fist raised at the edge of the frame. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of canvas blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "0bfdbf9f25023cd0be3314ae597a019750c67afde3dcecb53aae9a98d78130ef"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11364,
+        "sha256": "5f87690509a2d97c1755432b8bd8dd3be131a34300e5ce854a7b4e180f7f0f30"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-bodysnatcher-masculine.webp",
+      "prompt": "Steampunk grave robber who supplies the anatomy schools, a furtive pale man with sunken stubbled cheeks in a muddy coat and a battered top hat with a hooded brass lantern, a canvas sack over one shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of graveyard blue-grey, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "48ce030f1569550103a90825bd506adf7433b2a1dfbb450c0d7e07b1fbc12eb7"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8432,
+        "sha256": "f3c175d230b8c21344dfdd878bee4c7568710c6f74f09481b21611996813e5d0"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-bodysnatcher-feminine.webp",
+      "prompt": "Steampunk grave robber who supplies the anatomy schools, a furtive pale woman in a muddy coat and a battered top hat with a hooded brass lantern, a canvas sack over one shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of sickly green, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "3d11a398d2bf7915efd3b49c9f00c0ad855fb538d2e750c7599c124ad962e10c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 10336,
+        "sha256": "03095d9b4a6b52ed3344036025a203091474a884d11b5f4a17779882ab59c5d5"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-bodysnatcher-neutral.webp",
+      "prompt": "Steampunk grave robber who supplies the anatomy schools, a furtive pale person with a smooth soft-featured beardless face that could be a woman's or a man's in a muddy coat and a battered top hat with a hooded brass lantern, a canvas sack over one shoulder. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of fog violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "230e7da5cfda94f11914cd3938d9ff4b94ab50f75fb1a19ddf82921084dcf1f5"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8796,
+        "sha256": "1d30ed77f25b394d0b544a8307db1780f09f05b6d6adc4ee218fc43d807b7419"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-aetherist-feminine.webp",
+      "prompt": "Steampunk rogue scientist, a gleeful wild-haired woman in a red waistcoat with brass goggles pushed up on her forehead, crackling blue aether sparks at her fingertips. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of deep teal, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "2779280acd3bbe4f26506e78037afc29fb4a89f9d7a456fc32e395dd2f011659"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 14866,
+        "sha256": "5f29d162ec5009303896ba00fc04cf44fc67142bd22e8c35d1a78e07624598d3"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-aetherist-neutral.webp",
+      "prompt": "Steampunk rogue scientist, a gleeful wild-haired person with a smooth soft-featured beardless face that could be a woman's or a man's, in a red waistcoat with brass goggles pushed up on the forehead, crackling blue aether sparks at the fingertips. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of warm violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7497c34d167e689e43f6f60d3100e434f46fc9b94a1fb3faa35e53535a5cedc6"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11414,
+        "sha256": "8899748c3b5bfa0c35ef3feceab2d459ed3c81711dd103bdb8ef373e4c934e47"
+      }
+    }
+  ],
+  "repainted": [
+    {
+      "file": "public/assets/placeholders/monster/steampunk-tunneling-beast.webp",
+      "why": "Repainted 2026-11-27 after Albert's review, following the source creature and the card's own line.",
+      "replacedOriginalSha256": "51ac04451f01dfc75471ad72524d45ba7848d99b2283a67c5ba36ed532b24313",
+      "replacedPrompt": "A burrowing armoured beast with a huge spiral drill-shaped snout of bone and riveted iron plates over a grey hide, small furious eyes, bursting upward. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The beast's head and drill snout fill about 80 percent of the frame. Plain painterly backdrop of earth brown-orange, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-wired-cadaver.webp",
+      "why": "Repainted 2026-11-27 after Albert's review, following the source creature and the card's own line.",
+      "replacedOriginalSha256": "1cbfb884797a68a8366501903268e7f37366c20b227cde9ecd435f026d334b69",
+      "replacedPrompt": "A dry anatomical skeleton hung on brass rods and copper wires with small galvanic sparks at the joints, a paper specimen tag at the collarbone. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The skull and upper ribcage fill about 80 percent of the frame, eye sockets clearly visible. Plain painterly backdrop of clinical pale blue, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-clockwork-saber.webp",
+      "why": "Repainted 2026-11-27 after Albert's review, following the source creature and the card's own line.",
+      "replacedOriginalSha256": "a8b5809003b0cf2e1d74d323b3979f7925ea868c07379c770efbdce3899b56ab",
+      "replacedPrompt": "A detached brass clockwork fencing arm with exposed gears and pistons gripping a slim sabre, hovering upright on its own. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The arm and the sabre hilt fill about 80 percent of the frame. Plain painterly backdrop of deep burgundy, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-cloaked-agent.webp",
+      "why": "Repainted 2026-11-27 after Albert's review, following the source creature and the card's own line.",
+      "replacedOriginalSha256": "2ccbeb250685c546a74b1212350205cda4592bb13710820b089fb52295db263a",
+      "replacedPrompt": "A government assassin wrapped in a shimmering half-transparent aether cloak, hood up, the face only a faint outline with two pale lenses, edges of the figure dissolving into haze. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible, intense expression. Plain painterly backdrop of ministry grey-violet, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    },
+    {
+      "file": "public/assets/placeholders/monster/steampunk-clockwork-saber.webp",
+      "why": "Repainted 2026-11-27: Albert found the hand did not hold the blade and asked whether it needed one. The source creature is the flying sword, so the plate is the sabre alone with a clockwork hilt.",
+      "replacedOriginalSha256": "15927c7af01ef43d0327c1aa20928f4f427187dfc91f699417a9c80ac2a6fe67",
+      "replacedPrompt": "A detached bright polished brass clockwork fencing arm flying by itself in a lunge, thick jointed brass fingers gripping a broad shining steel sabre, and at the shoulder stump a whirring brass propeller with a spinning gyroscope cage that holds it in the air. Square 1:1 role-playing game token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast. The arm, sabre and propeller are large and thick, run diagonally and fill about 90 percent of the frame, nothing cut off. Plain painterly backdrop of pale parchment cream, much lighter than the brass arm, that runs flat to every edge and corner with no round shape, lighter than the subject, with no scenery. One identifying cue only. The subject's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no lettering, no watermark, no logo. Original design, not a likeness of any real person, film character or published illustration."
+    }
+  ]
+}
