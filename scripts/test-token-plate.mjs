@@ -20,7 +20,7 @@ assert.match(markup, /role="tooltip"/);
 assert.match(markup, /pointer-events-none/);
 // At the plate's size it asks for the 1024 pixel copy the server keeps of a
 // portrait, neither the full painting nor the small copy a rail face takes.
-assert.match(markup, /src="\/uploads\/portrait.png\?w=1024"/, "the uploaded portrait wins, at the size the plate shows it");
+assert.match(markup, /src="\/uploads\/portrait.png\?w=1024&amp;v=2"/, "the uploaded portrait wins, at the size the plate shows it");
 assert.match(markup, /sm:size-\[160px\] size-\[124px\]/, "the painting is shown large");
 for (const text of ["Ogre Brute", "Prone"]) assert.ok(markup.includes(text), text);
 assert.match(markup, /w-\[312px\] sm:w-\[380px\]/, "a plate with conditions is wider, not taller");
