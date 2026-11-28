@@ -1,11 +1,11 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ThemeIcon } from "@/components/ThemeIcon";
 import { APPEARANCE_THEMES, genreShortlist, themeArt, themeArtStyle, themeDescription, themeName, type AppearanceTheme, type CampaignAppearance } from "@/lib/appearance-themes";
 import { useT } from "@/lib/locale";
-import { useThemePanel, useThemePrefs, writeAppearanceChoice, writeThemeChoice, type ThemeChoice } from "@/lib/theme-mode";
+import { preloadThemeArrival, useThemePanel, useThemePrefs, writeAppearanceChoice, writeThemeChoice, type ThemeChoice } from "@/lib/theme-mode";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // "Match device" was "System": a reader took that for the campaign's genre.
@@ -36,6 +36,9 @@ export function AppearancePicker({ layout = "grid" }: { layout?: "grid" | "panel
   const [wantsTable, setWantsTable] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState("");
+  // The way a theme arrives is fetched here, as the picker opens, so the
+  // first pick plays it.
+  useEffect(preloadThemeArrival, []);
   const forTable = maySetTable && wantsTable;
   const tableSetting: CampaignAppearance = table?.setting ?? "genre";
   const selected: AppearanceTheme | null = forTable ? (tableSetting === "genre" ? null : tableSetting) : appearanceChoice === "campaign" ? null : appearanceChoice;
