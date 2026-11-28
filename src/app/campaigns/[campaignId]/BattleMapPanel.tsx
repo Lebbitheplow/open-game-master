@@ -15,7 +15,7 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BattleMapGrid, type MapOverlay } from "@/app/campaigns/[campaignId]/BattleMapGrid";
 import {
   BoardToolRail,
@@ -1100,9 +1100,12 @@ export function BattleMapPanel({
   // The grid keeps the hover handler it was first given until it draws again
   // (it reads its handlers through refs), so the handler reads this through
   // a ref too: a plate a player's click held open used to close as the
-  // pointer left the figure for the plate.
+  // pointer left the figure for the plate. A layout effect, so the ref is
+  // set before the next pointer event: the apps run these pages on Preact,
+  // which runs a plain effect a frame later, and a phone's tap there let the
+  // mouse-leave that follows it close the plate the tap had just held open.
   const plateHeldRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     plateHeldRef.current = plateHeld;
   });
   const myTurn = Boolean(view.turn && view.myTokenId && view.turn.tokenId === view.myTokenId);
