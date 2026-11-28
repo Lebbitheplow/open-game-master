@@ -48,6 +48,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { translate } = await import("../src/lib/i18n/translate.ts");
 // The catalog and the name tables as a server process installs them.
 await import("../src/lib/i18n/fr-catalog.ts");
+await import("../src/lib/i18n/es-catalog.ts");
 const { hideNames } = await import("../src/lib/hidden-names-logic.ts");
 const { pendingReason, pendingWords, rollAgainst, rollCardLabel, rollChronicleLead, rollToastLead } = await import("../src/lib/roll-labels.ts");
 const { actionParts, actionUsed, attackParts, checkParts, foeTarget, keptTarget, noted, riderNote, sheetTarget, strikeParts, swingParts, swingUsed } = await import("../src/lib/roll-parts.ts");
@@ -68,6 +69,7 @@ function test(name, fn) {
 const translator = (locale) => Object.assign((key, vars) => translate(locale, key, vars), { locale });
 const en = translator("en");
 const fr = translator("fr");
+const es = translator("es");
 
 const GOBLIN = { id: "a-goblin", displayName: "Goblin" };
 const ARIA = { kind: "sheet", id: "aria", name: "Aria" };
@@ -603,6 +605,20 @@ test("a French table reads a creature's attack in French: the attack by the crea
   const roll = { kind: "attack", detail: "", requestedBy: "dm", attacker: GOBLIN_ROLLS, parts: actionParts(bite, ARIA_STRUCK, "opportunity") };
   assert.equal(rollToastLead(fr, roll, undefined), "Goblin · Morsure (attaque d’opportunité) c/ Aria");
   assert.equal(rollChronicleLead(fr, roll, undefined), "Goblin · Morsure (attaque d’opportunité) c/ Aria");
+});
+
+test("a Spanish table reads a creature's attack by its English name, as Spanish has no creature attack names, and its notes and joining words in Spanish", () => {
+  const card = (parts, kind = "attack") => creatureCard(parts, kind, es);
+  assert.equal(card(actionParts(bite, ARIA_STRUCK)), `Goblin · ${translate("es", "Attack roll")} (Bite ${translate("es", "vs", { context: "roll.aim" })} Aria)`);
+  assert.equal(rollWords(es, actionParts({ name: "Scimitar" }, ARIA_STRUCK)), "Scimitar contra Aria");
+  assert.equal(rollWords(es, actionParts(bite, ARIA_STRUCK, "opportunity")), "Bite (ataque de oportunidad) contra Aria");
+  assert.equal(rollWords(es, actionParts(bite, ARIA_STRUCK, riderNote("poison"))), "Bite (veneno) contra Aria");
+  // The note "rider" has its Spanish under the note's own context, as in French.
+  assert.equal(rollWords(es, actionParts(bite, REX, "rider")), "Bite (efecto adicional) contra Rex");
+  assert.equal(rollWords(es, actionParts(bite, REX, "crit")), "Bite (CRÍTICO) contra Rex");
+  // A beast form's and a pet's attack, carried under more than its own name.
+  assert.equal(rollWords(es, swingParts(beastBite, foeTarget(GOBLIN))), "Wolf Bite contra Goblin");
+  assert.equal(rollWords(es, strikeParts(actionUsed(bite, "Rex's Bite"), foeTarget(GOBLIN), [riderNote(null)])), "Rex's Bite (efecto adicional) contra Goblin");
 });
 
 test("a creature's action is looked up by its name in the creature attack names, the weapons and the spells, and never as a word of the interface", () => {
