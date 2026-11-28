@@ -14,6 +14,7 @@ import {
 } from "@/lib/dm/session-hold-logic";
 import { latestEventOfType, publishPersisted, publishWithSeq } from "@/lib/events";
 import { translate } from "@/lib/messages-logic";
+import { localeOfTableLanguage } from "@/lib/i18n/locale";
 
 // Between sessions (src/lib/dm/session-hold-logic.ts has the rules). The DM
 // queue is held at its gate under its own reason, beside a break or a
@@ -63,7 +64,7 @@ function chronicleLine(campaignId: string, content: string): number {
 // rewritten, so the language at write time is the one it keeps.
 function chronicleT(campaignId: string): (key: string, vars?: Record<string, string | number>) => string {
   const language = getCampaignById(campaignId)?.gameSettings.tableLanguage ?? "english";
-  return (key, vars) => translate(language === "french" ? "fr" : "en", key, vars);
+  return (key, vars) => translate(localeOfTableLanguage(language), key, vars);
 }
 
 // Ending an ended session changes nothing: the first end stands, with its

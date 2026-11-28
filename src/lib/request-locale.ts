@@ -4,15 +4,16 @@
 // their refusals in this language, falling back to English.
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { localeOfServerLanguage, resolveRequestLocale } from "@/lib/i18n/locale";
-import { translate, type Locale, type TranslateVars } from "@/lib/i18n/translate";
-// Routes answer in French with the catalog installed (translate.ts).
+import { isLocale, translate, type Locale, type TranslateVars } from "@/lib/i18n/translate";
+// Routes answer in French or Spanish with the catalog installed (translate.ts).
 import "@/lib/i18n/fr-catalog";
+import "@/lib/i18n/es-catalog";
 
 export type BookLocale = Locale;
 
 export function bookLocaleOf(request: Request): BookLocale {
   const own = request.headers.get("x-odm-locale");
-  if (own === "fr" || own === "en") {
+  if (isLocale(own)) {
     return own;
   }
   return resolveRequestLocale(request, null, localeOfServerLanguage(getGlobalConfig().serverLanguage));

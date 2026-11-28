@@ -1,11 +1,13 @@
 // The rulebook on the server: the SRD 5.1 pages (srd-5.1.json, built by
-// scripts/import-srd-rulebook.mjs) and, for a request that reads French, the
-// same book as the official French print (srd-5.1-fr.json, built by
-// scripts/import-srd-rulebook-fr.mjs from SRD_CC_v5.1_FR.pdf). The two books
+// scripts/import-srd-rulebook.mjs) and, for a request that reads French or
+// Spanish, the same book as the official print in that language
+// (srd-5.1-fr.json, built by scripts/import-srd-rulebook-fr.mjs from
+// SRD_CC_v5.1_FR.pdf; srd-5.1-es.json, built by
+// scripts/import-srd-rulebook-es.mjs from SRD_CC_v5.1_ES.pdf). The books
 // bind the same pages under the same ids in the same order, so bookmarks,
-// links and folios hold in both. Every English page has a French print today;
-// a page the French book ever lacks falls back to the English page in the
-// same binding position.
+// links and folios hold in all of them. Every English page has a French and
+// a Spanish print today; a page a translated book ever lacks falls back to
+// the English page in the same binding position.
 //
 // The contents, one page with its neighbours, and search are answered per
 // locale; the search index is built on the first search of that locale, in
@@ -13,6 +15,9 @@
 // read once per process and never changes while it runs.
 import data from "./srd-5.1.json";
 import frData from "./srd-5.1-fr.json";
+import esData from "./srd-5.1-es.json";
+import { isLocale, type Locale } from "../i18n/translate.ts";
+import { localeOfTag } from "../i18n/locale.ts";
 import { buildIndex, buildIndexInSlices, searchRulebook, type RulebookIndex } from "./search";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 import type {
@@ -25,12 +30,12 @@ import type {
   SearchResponse,
 } from "./types";
 
-export type BookLocale = "en" | "fr";
+export type BookLocale = Locale;
 
 // The book language an Accept-Language header asks for: the most preferred
-// tag that names French or English wins (by q, ties in the header's order);
-// a tag weighted q=0 is one the reader refuses; a header that names neither
-// reads English.
+// tag that names a language the book is printed in wins (by q, ties in the
+// header's order); a tag weighted q=0 is one the reader refuses; a header
+// that names none reads English.
 export function localeFromAcceptLanguage(header: string | null): BookLocale {
   if (!header) return "en";
   const tags = header
@@ -44,8 +49,8 @@ export function localeFromAcceptLanguage(header: string | null): BookLocale {
     .filter(({ weight }) => weight > 0)
     .sort((a, b) => b.weight - a.weight || a.at - b.at);
   for (const { tag } of tags) {
-    if (tag === "fr" || tag.startsWith("fr-")) return "fr";
-    if (tag === "en" || tag.startsWith("en-")) return "en";
+    const locale = localeOfTag(tag);
+    if (locale) return locale;
   }
   return "en";
 }
@@ -55,11 +60,11 @@ export function localeFromAcceptLanguage(header: string | null): BookLocale {
 // hands a French answer to an English request or the other way round.
 export const BOOK_LOCALE_VARY = "Accept-Language, X-Odm-Locale";
 
-// The reader's own choice (X-Odm-Locale, only "en" or "fr"; anything else is
-// ignored) wins over the browser's Accept-Language.
+// The reader's own choice (X-Odm-Locale, one of the interface's languages;
+// anything else is ignored) wins over the browser's Accept-Language.
 export function bookLocaleOf(request: Request): BookLocale {
   const own = request.headers.get("x-odm-locale");
-  if (own === "fr" || own === "en") {
+  if (isLocale(own)) {
     return own;
   }
   return localeFromAcceptLanguage(request.headers.get("accept-language"));
@@ -67,18 +72,18 @@ export function bookLocaleOf(request: Request): BookLocale {
 
 const enBook = data as RulebookData;
 
-// The French book's pages, with the English page substituted where the
-// French print has none, so its folio count and page order match the
-// English book's exactly.
-function mergedFrBook(): RulebookData {
-  const frPages = new Map((frData as RulebookData).pages.map((page) => [page.id, page]));
-  return { ...(frData as RulebookData), pages: enBook.pages.map((page) => frPages.get(page.id) ?? page) };
+// A translated book's pages, with the English page substituted where the
+// print has none, so its folio count and page order match the English
+// book's exactly.
+function merged(book: RulebookData): RulebookData {
+  const printed = new Map(book.pages.map((page) => [page.id, page]));
+  return { ...book, pages: enBook.pages.map((page) => printed.get(page.id) ?? page) };
 }
 
-const books: Record<BookLocale, RulebookData> = { en: enBook, fr: mergedFrBook() };
+const books: Record<BookLocale, RulebookData> = { en: enBook, fr: merged(frData as RulebookData), es: merged(esData as RulebookData) };
 
 // A book's search stems as the language the book is written in.
-const INDEX_LANGUAGE: Record<BookLocale, TableLanguage> = { en: "english", fr: "french" };
+const INDEX_LANGUAGE: Record<BookLocale, TableLanguage> = { en: "english", fr: "french", es: "spanish" };
 
 // The rules a table reaches for in the middle of a session. Every anchor is
 // asserted to exist by scripts/test-rulebook.mjs. The labels are the

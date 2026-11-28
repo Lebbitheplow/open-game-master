@@ -422,7 +422,133 @@ try {
     assert.match(work.snippet, /travaux/, work.snippet);
   });
 
+  // ---- the Spanish book ----
+  // The same binding again in the official Spanish print (srd-5.1-es.json,
+  // built by scripts/import-srd-rulebook-es.mjs from the PDF itself).
+  await test("the Spanish book binds the same pages under the same ids", () => {
+    const enPages = rulebookPages();
+    const esPages = rulebookPages("es");
+    assert.deepEqual(esPages.map((page) => page.id), enPages.map((page) => page.id));
+    assert.deepEqual(esPages.map((page) => [page.chapter, page.kind]), enPages.map((page) => [page.chapter, page.kind]));
+    const esContents = rulebookContents("es");
+    assert.deepEqual(
+      esContents.chapters.map((chapter) => [chapter.id, chapter.numeral, chapter.pages]),
+      rulebookContents().chapters.map((chapter) => [chapter.id, chapter.numeral, chapter.pages]),
+    );
+    assert.deepEqual(
+      esContents.chapters.flatMap((chapter) => chapter.entries.map((entry) => [entry.id, entry.folio])),
+      rulebookContents().chapters.flatMap((chapter) => chapter.entries.map((entry) => [entry.id, entry.folio])),
+    );
+    // Every page is the print's own: none falls back to its English page.
+    const english = new Map(enPages.map((page) => [page.id, page.md]));
+    assert.deepEqual(esPages.filter((page) => page.md === english.get(page.id)).map((page) => page.id), []);
+  });
+
+  await test("the Spanish book reads the print's titles and words", () => {
+    const esContents = rulebookContents("es");
+    assert.deepEqual(
+      esContents.chapters.map((chapter) => chapter.title),
+      [
+        "Razas",
+        "Clases",
+        "Más allá del nivel 1",
+        "Personalidad y trasfondo",
+        "Equipo",
+        "Dotes",
+        "Uso de las puntuaciones de característica",
+        "Aventuras",
+        "Combate",
+        "Lanzamiento de conjuros",
+        "Descripciones de conjuros",
+        "Dirigir el juego",
+        "Objetos mágicos",
+        "Monstruos",
+        "Criaturas diversas",
+        "Personajes no jugadores",
+        "Apéndices",
+      ],
+    );
+    assert.deepEqual(esContents.parts.map((part) => part.title), ["Jugadores", "El Game Master", "Monstruos"]);
+    assert.equal(esContents.source.title, "Documento de referencia del sistema 5.1");
+    const goblin = rulebookPage("goblin", "es").page;
+    assert.equal(goblin.title, "Goblin");
+    assert.equal(goblin.meta, "Humanoide Pequeño (trasgo), neutral malvado");
+    assert.match(goblin.md, /\*\*Clase de Armadura:\*\* 15 \(armadura de cuero, escudo\)/);
+    assert.match(goblin.md, /\| FUE \| DES \| CON \| INT \| SAB \| CAR \|/);
+    assert.match(goblin.md, /###### Acciones/);
+    const fireball = rulebookPage("fireball", "es").page;
+    assert.equal(fireball.title, "Bola de fuego");
+    assert.equal(fireball.meta, "Evocación nivel 3");
+    assert.equal(fireball.group, "Nivel 3", "the spells chapter groups by the Spanish level names");
+    assert.equal(rulebookPage("mage-hand", "es").page.group, "Trucos");
+    assert.equal(rulebookPage("adult-red-dragon-chromatic", "es").page.title, "Dragón rojo adulto");
+    assert.equal(rulebookPage("adult-red-dragon-chromatic", "es").page.family, "Chromatic", "the family is the binding's, as the group letters are");
+    assert.equal(rulebookPage("bag-of-holding", "es").page.title, "Bolsa de contención");
+    assert.equal(rulebookPage("barbarian", "es").page.title, "Bárbaro");
+    assert.match(rulebookPage("barbarian", "es").page.md, /\*\*Table- El bárbaro\*\*/);
+    // The binding never moves: same neighbours as the English book.
+    assert.equal(rulebookPage("fireball", "es").prev.id, rulebookPage("fireball").prev.id);
+    assert.equal(rulebookPage("fireball", "es").next.id, rulebookPage("fireball").next.id);
+  });
+
+  await test("every Spanish page parses with no markdown left in its text", () => {
+    for (const page of rulebookPages("es")) {
+      const text = parseBook(page.md).map(blockText).join(" ");
+      assert.ok(!/\*\*|__|\]\(/.test(text), `${page.id} leaves markdown behind`);
+      assert.ok(!/(^|\s)#{1,6}\s/.test(text), `${page.id} leaves a heading mark behind`);
+      assert.ok(!/[\u00ad\u2010\u2011\u00a0]/.test(page.md), `${page.id} keeps a soft hyphen or a hard space`);
+    }
+  });
+
+  await test("a Spanish stat block and its English page say the same numbers", () => {
+    // The pairs are checked when the book is built; here, that the built
+    // book still holds them.
+    const numbers = (md) => [/(?:Armor Class\*\*|Clase de Armadura:\*\*) (\d+)/.exec(md)?.[1], [...md.replace(/\u2212/g, "-").matchAll(/(\d+) \([+-]\d+\)/g)].slice(0, 6).map((match) => match[1]).join(",")].join("|");
+    const esPages = new Map(rulebookPages("es").map((page) => [page.id, page]));
+    let checked = 0;
+    for (const page of rulebookPages()) {
+      if (page.kind !== "monster" || !/\*\*Armor Class\*\*/.test(page.md)) continue;
+      assert.equal(numbers(esPages.get(page.id).md), numbers(page.md), `${page.id} and «${esPages.get(page.id).title}» are not the same creature`);
+      checked += 1;
+    }
+    assert.equal(checked, 317, "every stat block of the book is compared");
+  });
+
+  await test("the Spanish book ends with the print's whole legal notice", () => {
+    const legal = rulebookPage("legal-information", "es").page;
+    assert.equal(legal.title, "Información legal");
+    assert.ok(legal.md.startsWith("El Documento de referencia del sistema 5.1 se te entrega de manera gratuita"), legal.md.slice(0, 80));
+    assert.ok(
+      legal.md.includes(
+        "Esta obra incluye materiales extraídos del Documento de referencia del sistema 5.1 (“SRD 5.1”) de Wizards of the Coast LLC, que está disponible en https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia Creative Commons Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está disponible en https://creativecommons.org/licenses/by/4.0/legalcode.es.",
+      ),
+    );
+    assert.equal(rulebookContents("es").source.licenseUrl, "https://creativecommons.org/licenses/by/4.0/legalcode.es");
+  });
+
+  const topEs = (query) => rulebookSearch(query, undefined, "es").hits[0];
+  await test("the Spanish book's search stems Spanish and finds the Spanish words", () => {
+    assert.equal(topEs("bola de fuego").page, "fireball");
+    assert.equal(topEs("dragón rojo adulto").page, "adult-red-dragon-chromatic");
+    assert.equal(topEs("bolsa de contención").page, "bag-of-holding");
+    assert.deepEqual([topEs("ataques de oportunidad").page, topEs("ataques de oportunidad").at], ["combat", "ataques-de-oportunidad"]);
+    assert.equal(rulebookSearch("bola de fuego").hits.length, 0, "no Spanish words in the English book's index");
+    assert.equal(topEs("grapple"), undefined, "no English words in the Spanish book's index");
+  });
+
+  await test("the Spanish book's crosswalk reads the English book's names", () => {
+    // « Bola de fuego » is the engine's Fireball; the line itself is English
+    // until someone translates it.
+    const walk = crosswalkFor(rulebookPage("fireball", "es").page, "es");
+    assert.equal(walk.support, "engine");
+    assert.equal(walk.where, crosswalkFor(rulebookPage("fireball").page, "en").where);
+  });
+
   await test("the request's Accept-Language picks the book", () => {
+    assert.equal(localeFromAcceptLanguage("es"), "es");
+    assert.equal(localeFromAcceptLanguage("es-MX,es;q=0.9,en;q=0.8"), "es");
+    assert.equal(localeFromAcceptLanguage("de-DE,es;q=0.9"), "es");
+    assert.equal(localeFromAcceptLanguage("es;q=0,en"), "en");
     assert.equal(localeFromAcceptLanguage(null), "en");
     assert.equal(localeFromAcceptLanguage("fr"), "fr");
     assert.equal(localeFromAcceptLanguage("fr-CA"), "fr");
@@ -474,6 +600,11 @@ try {
     assert.equal(frPage.page.title, "Boule de feu");
     const frFound = await (await searchRoute.GET(new Request(`http://x/api/rulebook/search?q=${encodeURIComponent("boule de feu")}`, inFrench))).json();
     assert.equal(frFound.hits[0].page, "fireball");
+    const inSpanish = { headers: { "Accept-Language": "es-ES,es;q=0.9" } };
+    const esPage = await (await pageRoute.GET(new Request("http://x/api/rulebook/pages/fireball", inSpanish), params("fireball"))).json();
+    assert.equal(esPage.page.title, "Bola de fuego");
+    const esOwn = await pageRoute.GET(new Request("http://x/api/rulebook/pages/fireball", { headers: { "Accept-Language": "fr", "X-Odm-Locale": "es" } }), params("fireball"));
+    assert.equal((await esOwn.json()).page.title, "Bola de fuego", "the reader's own choice wins over the browser's");
     // A request without the header keeps reading the English book.
     const enContents = await (await contentsRoute.GET(new Request("http://x/api/rulebook"))).json();
     assert.equal(enContents.chapters.find((chapter) => chapter.id === "spells").title, "Spells");

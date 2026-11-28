@@ -10,9 +10,10 @@ export async function register() {
     const { installServerLog } = await import("@/lib/server-log");
     installServerLog();
 
-    // The French catalog, for whatever the server says in French outside a
-    // page or a route that imports it (src/lib/i18n/translate.ts).
+    // The catalogs, for whatever the server says in French or Spanish outside
+    // a page or a route that imports them (src/lib/i18n/translate.ts).
     await import("@/lib/i18n/fr-catalog");
+    await import("@/lib/i18n/es-catalog");
 
     const { startJobRunner } = await import("@/lib/jobs");
     startJobRunner();

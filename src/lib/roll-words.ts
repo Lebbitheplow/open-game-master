@@ -58,7 +58,7 @@ import { textKey } from "@/lib/language/text-logic";
 import type { RollNote, RollParts, RollTarget, RollUsed, WordedParts } from "@/lib/roll-parts";
 
 // The shape of a translator, as the pure sentence builders take it.
-export type RollTranslator = ((key: string, vars?: Record<string, string | number>) => string) & { locale?: "en" | "fr" };
+export type RollTranslator = ((key: string, vars?: Record<string, string | number>) => string) & { locale?: "en" | "fr" | "es" };
 
 // The version of the words `worded` parts make. Raised when a field these
 // words are made from changes its meaning: rows are never rewritten, so a

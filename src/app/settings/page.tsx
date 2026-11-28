@@ -62,7 +62,7 @@ type Me = {
 };
 
 function dueDate(iso: string, locale: string): string {
-  return new Date(iso).toLocaleDateString(localeTag(locale as "en" | "fr"), {
+  return new Date(iso).toLocaleDateString(localeTag(locale as "en" | "fr" | "es"), {
     year: "numeric",
     month: "long",
     day: "numeric",

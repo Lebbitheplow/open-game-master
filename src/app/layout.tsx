@@ -1,6 +1,9 @@
 import { LocaleApplier, LocaleProvider } from "@/lib/locale";
-// The server renders a French page with the catalog in hand (translate.ts).
+// The server renders a French or Spanish page with the catalog in hand
+// (translate.ts).
 import "@/lib/i18n/fr-catalog";
+import "@/lib/i18n/es-catalog";
+import { localeTag } from "@/lib/messages-logic";
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { LOCALE_COOKIE, localeOfServerLanguage, resolveLocale } from "@/lib/i18n/locale";
 import { ThemeApplier } from "@/lib/theme-mode";
@@ -79,7 +82,8 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const headerStore = await headers();
-  // A French server opens in French for a reader who chose nothing.
+  // A French or Spanish server opens in its language for a reader who chose
+  // nothing.
   const serverLocale = localeOfServerLanguage(getGlobalConfig().serverLanguage);
   const initialLocale = resolveLocale({
     savedLocale: cookieStore.get(LOCALE_COOKIE)?.value ?? null,
@@ -88,7 +92,7 @@ export default async function RootLayout({
   });
   return (
     <html
-      lang={initialLocale === "fr" ? "fr-FR" : "en-US"}
+      lang={localeTag(initialLocale)}
       className={`${uiSans.variable} ${codeMono.variable} ${sourceSerif.variable} ${cinzel.variable} h-full antialiased`}
       // browser extensions (Grammarly among them) inject attributes into <html>
       // and <body> before React loads

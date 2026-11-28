@@ -137,7 +137,8 @@ function enTitleOf(id: string): string | undefined {
 
 export function crosswalkFor(page: Pick<RulebookPage, "id" | "kind" | "title">, locale: BookLocale = "en"): Crosswalk {
   const french = locale === "fr";
-  const walk = crosswalkEn(french ? { ...page, title: enTitleOf(page.id) ?? page.title } : page);
+  const walk = crosswalkEn(locale === "en" ? page : { ...page, title: enTitleOf(page.id) ?? page.title });
+  // The Spanish book's line is the English one until it is translated.
   if (!french) return walk;
   const fr = WHERE_FR[page.id];
   if (fr) return { ...walk, where: fr.where, ...(fr.template ? { template: fr.template } : {}) };

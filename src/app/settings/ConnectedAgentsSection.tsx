@@ -65,7 +65,7 @@ export function agentScopeHint(t: (key: string) => string, id: AgentScopeId): st
 function makeWhen(t: (key: string) => string, locale: string): (iso: string | null) => string {
   return (iso: string | null) => {
     if (!iso) return t("never");
-    return new Date(iso).toLocaleDateString(localeTag(locale as "en" | "fr"), { month: "short", day: "numeric", year: "numeric" });
+    return new Date(iso).toLocaleDateString(localeTag(locale as "en" | "fr" | "es"), { month: "short", day: "numeric", year: "numeric" });
   };
 }
 

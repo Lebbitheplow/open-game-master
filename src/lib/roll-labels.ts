@@ -19,7 +19,7 @@ import { cardLine, makesWords, rollWords, type CardLine, type RollTranslator as 
 
 type Worded = Pick<StoredRoll, "kind" | "detail" | "attacker" | "parts">;
 
-function localizeRollWhat(what: string, locale: "en" | "fr"): string {
+function localizeRollWhat(what: string, locale: "en" | "fr" | "es"): string {
   if (locale !== "fr" || !what) return what;
   const key = textKey(what);
   const w = contentName("weapons", key, "fr");
@@ -29,7 +29,7 @@ function localizeRollWhat(what: string, locale: "en" | "fr"): string {
   return what;
 }
 
-function localizeDetail(detail: string, locale: "en" | "fr"): string {
+function localizeDetail(detail: string, locale: "en" | "fr" | "es"): string {
   if (locale !== "fr" || !detail) return detail;
   const vsAt = detail.indexOf(" vs ");
   if (vsAt > 0) {
