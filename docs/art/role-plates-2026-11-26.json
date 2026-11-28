@@ -1,0 +1,250 @@
+{
+  "recordedOn": "2026-11-26",
+  "author": "Smoebo",
+  "generator": "Grok Build command-line tool 1.0.60, image_gen, one call per plate with the prompt recorded here unchanged",
+  "subjectBasis": "Original designs of generic roles, per docs/art/creature-art-guidance.md. The five fantasy roles are the SRD 5.1 NPC stat blocks of the same names; the ten mystery roles are the people of that genre's bestiary (src/lib/bestiary/mystery.json) who are what their card says. No published illustration or real person was named or supplied as an input.",
+  "encoding": "Each 1024x1024 JPEG original resized once to 256x256 (cover) and encoded once to WebP quality 75 with sharp.",
+  "review": "Each shipped plate was viewed at full size and in a round crop at 96px and 40px on dark and light surrounds. The baronet, the occultist and the fixer are second paintings: the first three sat on a near-black backdrop that swallowed dark clothing at 40px, and the first baronet read as a vampire.",
+  "plates": [
+    {
+      "file": "public/assets/placeholders/monster/acolyte-masculine.webp",
+      "prompt": "Young temple acolyte in plain cream hooded robes, a small bronze holy symbol at the collar, shaved temples, calm watchful face. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7cf9d61638a9f09fecf5eff3b6298668424774250beabb0b4fe0a147469a73ab"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6306,
+        "sha256": "35d0336ba67aeca1e68b3e076298a53e84f3235b8c70ccf5c366287e12657559"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/berserker-masculine.webp",
+      "prompt": "Wild-haired warrior mid-roar, bare scarred shoulders, a fur mantle, blue war paint across the eyes. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "be1e454feeedb377f02ef7bf7565e6feef43e11ee0ad7574a26f2e4874d0b4d4"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 12912,
+        "sha256": "f78ea0f1d8a19ab6abd3c801e4bb9d86db3a121a3032f7ed1eb8db93541f7729"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mage-masculine.webp",
+      "prompt": "Middle-aged mage in a deep blue high-collared robe, short greying beard, faint arcane glow lighting the face from below. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "d3edbcee69d2f8cabd585fb76c51ba3ff8fd9c14ba05c8b76d4a0fd6c57623de"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 8066,
+        "sha256": "5d59f6cd629f54f8a8da2145af03d3bd6652fff602838ab8e14acd0ba1c9cf46"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/tribal-warrior-masculine.webp",
+      "prompt": "Lean tribal warrior with braided hair, bone and feather ornaments, ochre face paint, hide cloak. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "46285b89bb2b46bf18fec6643e71e1aa9cbfd5d8d6fc3e9d250cbaa2fc68f3ae"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11794,
+        "sha256": "7d47a88fb8e44c9a04c3b16bacdd470756295900a17881d92b8d57662d621683"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/veteran-masculine.webp",
+      "prompt": "Grizzled mercenary with a scarred cheek and cropped grey hair, dented steel gorget and worn leather. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "54f3b27df4542b7685cdf770aa65ccc8480c683cebab70dd3b7a7422cb5e4a13"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6828,
+        "sha256": "0250eec17492f57b98577652f88a172feb22118fdac3a724a1e935f94b12b917"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-constable-masculine.webp",
+      "prompt": "Victorian police constable, tall custodian helmet with a brass badge, mutton-chop whiskers, dark blue high-collared tunic, gaslight. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "87a1ac31fe1134c51279f1ec5553da5c2a5b704c74e84ed22c97c0ec6a48c77f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 5964,
+        "sha256": "df5d5d5836494b8c099784b3f6c9c3550b40b1f7dddebb3d633374fbe5c16717"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-heir-masculine.webp",
+      "prompt": "Sneering young Victorian gentleman in a silk cravat and tailcoat, slicked hair, flushed with drink, silver cane handle at the shoulder. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "b34a33a4333687866ff844056a9aefb1cee56942fbcfde0c86e781c43b5c6c5f"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 4980,
+        "sha256": "5ea4ad4a585fecba01e57258044ccb91ce5278f1f7d9525a20b338470ea4b4d8"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-curate.webp",
+      "prompt": "Thin anxious young Victorian clergyman in a black cassock and white clerical collar, haunted eyes, candlelight. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "7da3ec63e099d1fbdeb547385ffed3eecb07c8aafedc7e040adc67254ece6279"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 3938,
+        "sha256": "8555f0787d2358e73b29e2ef5b1f7ad1937c084016d3687c5155b8c1bbce571d"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-poacher-masculine.webp",
+      "prompt": "Rough Victorian countryman in a flat cap and neckerchief, stubble, sly sideways glance, shotgun barrel at the shoulder. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "48ecf13c24dfee95b2be694b5300ccaf6bd6ab7082718ca73117552b8b5c03ce"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6506,
+        "sha256": "cc973e6f097f85364eb56bc35aa6e4f7e21901631e4938d4839f727529e014db"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-prizefighter-masculine.webp",
+      "prompt": "Victorian bare-knuckle boxer with a broken nose and cauliflower ear, handlebar moustache, bare shoulders, a raised taped fist at the edge of the frame. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "698eca2d2f868cffd6c921577a4582ef1873ca864fc046847e9f9031e07b0342"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7684,
+        "sha256": "8866e9ddd24e4fbb154ddf89c631b9d436f11aa0423d6380891ca5ac3fef18dd"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-smuggler-masculine.webp",
+      "prompt": "Hard-faced Victorian coastal smuggler in an oilskin coat and knit cap, grey beard, lantern glow on one side of the face. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "eaee569951ff4ac6b4884eff9583b899b83962516b6c7266bfb4b540f1c7793c"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7352,
+        "sha256": "86e484c36d5d7ae6bd6fe0d0a92e8d1dc831a79f8ba244c0008375fd5a0295f4"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-colonel.webp",
+      "prompt": "Retired Victorian colonel with a white walrus moustache and monocle, scarlet dress tunic with medals and a high collar. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Simple dark contrasting background with no scenery. One role cue only. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "a74fe853e370f8277056eb4235c6d0797c34f1ec0bcf0421f1da53469c5d5aab"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 7918,
+        "sha256": "0f1087f4b90def074825e0d8959c9a1b214f2ccc16bcec7ed1dd071d68a7cf84"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-baronet.webp",
+      "prompt": "Tanned ruddy Victorian aristocrat with sandy hair, side-whiskers and a duelling scar on the cheek, bottle-green tailcoat and white cravat, a rapier hilt raised beside the face, plainly a living man. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Plain painterly backdrop of warm parchment tan, lighter than the figure, with no scenery. One role cue only. The figure's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "892815c7d2b88abc71dbc937687e3eeb15e3ac5007a125aee5f3f32c3bf29f95"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 11148,
+        "sha256": "04229c0193c1695c626c22c7ebe216bf648dbba5b46caadf37786263a1ff7e5f"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-occultist-feminine.webp",
+      "prompt": "Gaunt Victorian woman scholar with silver-streaked hair pinned up, small round smoked spectacles, dark high-necked dress and a silver occult pendant, lit from below. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Plain painterly backdrop of dusty violet, lighter than the figure, with no scenery. One role cue only. The figure's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "5d0dd6c2cdd8c3987f3d527a2a1b56b33b75d38b5a4f1d4f7f5c3bed9a9c05c9"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 4894,
+        "sha256": "1b39cea40a33aa581bd786a368e602eac8c2f297e87a30ab46343b62adb6ee4e"
+      }
+    },
+    {
+      "file": "public/assets/placeholders/monster/mystery-fixer-masculine.webp",
+      "prompt": "Heavy-set Victorian cleric in a black cassock with a purple sash and a white clerical collar, black leather gloves, a cold bland smile, large well-lit face. Square 1:1 fantasy role-playing game character token portrait. Highly detailed dramatic digital painting in the style of dark fantasy game art, crisp focal detail, saturated colour, strong contrast, intense expression. Head and upper shoulders fill about 80 percent of the frame, face centred and large, eyes clearly visible. Plain painterly backdrop of muted moss green, lighter than the figure, with no scenery. One role cue only. The figure's outline must stand out clearly from the backdrop. Must read clearly as a 40 pixel round token. Full square image, no border, no circular frame, no text, no watermark, no logo. Original character, not a likeness of any real person or published illustration.",
+      "original": {
+        "format": "jpeg",
+        "width": 1024,
+        "height": 1024,
+        "sha256": "6ccb75f2f3a8959ad0fb590414a4b5b7be8bb3768ee68ddb5c2a100c8306d5c5"
+      },
+      "shipped": {
+        "width": 256,
+        "height": 256,
+        "bytes": 6000,
+        "sha256": "94a75d30bd95b93f2ce8135745480c31e589ff1c92b3afe0691884c3557baaf4"
+      }
+    }
+  ]
+}

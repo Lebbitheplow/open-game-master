@@ -590,6 +590,7 @@ const MONSTER_FAMILY_PLATES = [
   { id: "zombie", subject: "a shambling zombie in grave rags" },
   { id: "ghoul", subject: "a ghoul, a gaunt grey corpse-eater crouched on a tomb" },
   { id: "mummy", subject: "a mummy in rotting linen wrappings with glowing eyes" },
+  { id: "mummy-lord", subject: "a mummy lord in rotted linen with a tall golden crown, a jewelled collar and burning green eyes" },
   { id: "werewolf", subject: "a werewolf howling under a full moon" },
   { id: "green-hag", subject: "a green hag, a crone with lank hair over a bubbling cauldron" },
   { id: "troll", subject: "a troll, a lanky green-skinned brute with long claws" },
@@ -857,6 +858,56 @@ const ENEMY_ROLE_PLATES = [
   { id: "tyrant", subject: "a crowned tyrant sorcerer on a dark throne" },
 ];
 
+// The SRD NPC stat blocks that are a person and no enemy role above: one
+// face each, drawn when no race is recorded. They are not painted per race;
+// a recorded race draws that race's own portrait (enemyNpcPlaceholder).
+// The guard, the noble, the priest and the commoner are not here: they draw
+// the plates the NPC roster already has (SRD_ROLE_NPC_PLATES).
+// The roles painted once per presentation, so the plate agrees with the
+// gender a foe carries (src/lib/actor-sex-logic.ts): their plates are
+// <id>-masculine, <id>-feminine and <id>-neutral, and no bare <id>.
+// ROLE_PRESENTATION_PLATES in src/lib/placeholders.ts picks among them.
+const PRESENTED_ROLE_IDS = new Set(["acolyte","berserker","mage","tribal-warrior","veteran","mystery-constable","mystery-heir","mystery-poacher","mystery-prizefighter","mystery-smuggler","mystery-fixer","mystery-occultist","mystery-night-clerk","mystery-puppetmaster","mystery-magnate","steampunk-constable","steampunk-chirurgeon","steampunk-union-buster","steampunk-stokehold-bruiser","steampunk-airship-lookout","steampunk-foreign-agent","steampunk-navvy","steampunk-engine-prophet","steampunk-cathedral-engineer","steampunk-campaigner","steampunk-pugilist","steampunk-bodysnatcher","post-apocalyptic-tunnel-scav","post-apocalyptic-shelter-medic","post-apocalyptic-crater-brute","post-apocalyptic-chem-fiend","post-apocalyptic-atomic-priest","post-apocalyptic-old-soldier","post-apocalyptic-champion","post-apocalyptic-tech-shaman","cyberpunk-data-cultist","cyberpunk-gutter-punk","cyberpunk-wirehead","cyberpunk-alley-crusher","cyberpunk-stim-slammer","cyberpunk-signal-prophet","cyberpunk-deacon","cyberpunk-solo","cyberpunk-arena-champion","cyberpunk-netrunner"]);
+// Presentations painted for a role whose other face is an NPC roster plate
+// (the roster's guard is a woman, so the monster set adds the other two).
+const ROLE_PRESENTATION_EXTRA = [
+  { id: "guard-masculine", subject: "guard, masculine presentation" },
+  { id: "guard-neutral", subject: "guard, neutral presentation" },
+  { id: "noble-masculine", subject: "noble, masculine presentation" },
+  { id: "noble-neutral", subject: "noble, neutral presentation" },
+  { id: "commoner-feminine", subject: "commoner, feminine presentation" },
+  { id: "commoner-neutral", subject: "commoner, neutral presentation" },
+  { id: "priest-feminine", subject: "priest, feminine presentation" },
+  { id: "priest-neutral", subject: "priest, neutral presentation" },
+  { id: "mystery-investigator-feminine", subject: "a period investigator, feminine presentation" },
+  { id: "mystery-investigator-neutral", subject: "a period investigator, neutral presentation" },
+  { id: "steampunk-aetherist-feminine", subject: "steampunk aetherist, feminine presentation" },
+  { id: "steampunk-aetherist-neutral", subject: "steampunk aetherist, neutral presentation" },
+  { id: "post-apocalyptic-sniper-masculine", subject: "post apocalyptic sniper, masculine presentation" },
+  { id: "post-apocalyptic-sniper-neutral", subject: "post apocalyptic sniper, neutral presentation" },
+  { id: "cyberpunk-ripperdoc-feminine", subject: "cyberpunk ripperdoc, feminine presentation" },
+  { id: "cyberpunk-ripperdoc-neutral", subject: "cyberpunk ripperdoc, neutral presentation" },
+  { id: "cyberpunk-fixer-masculine", subject: "cyberpunk fixer, masculine presentation" },
+  { id: "cyberpunk-fixer-neutral", subject: "cyberpunk fixer, neutral presentation" },
+];
+function rolePortraits(portrait, role) {
+  if (!PRESENTED_ROLE_IDS.has(role.id)) {
+    portrait("monster", role.id, role.subject, "creature");
+    return;
+  }
+  for (const presentation of ["masculine", "feminine", "neutral"]) {
+    portrait("monster", `${role.id}-${presentation}`, `${role.subject}, ${presentation} presentation`, "creature");
+  }
+}
+
+const SRD_NPC_ROLE_PLATES = [
+  { id: "acolyte", subject: "a young temple acolyte in a cream hood with a bronze holy symbol" },
+  { id: "berserker", subject: "a roaring berserker with blue war paint and a fur mantle" },
+  { id: "mage", subject: "a grey-bearded mage in a blue high-collared robe lit by an arcane glow" },
+  { id: "tribal-warrior", subject: "a tribal warrior with braided hair, ochre face paint and bone ornaments" },
+  { id: "veteran", subject: "a grizzled veteran mercenary with a scarred cheek and a steel gorget" },
+];
+
 // Every enemy role, painted for each of the four most common races in each
 // presentation: enemy-npc/<role>-<race>-<presentation>.webp, 156 plates (enemyNpcPlaceholder in src/lib/placeholders.ts). A role token above
 // stays the picture for an NPC with no race recorded. The shipped WebPs are
@@ -916,12 +967,182 @@ const GENRE_ENEMY_TOKEN_PLATES = [
   { id: "horror-doll", subject: "a sinister porcelain doll" },
   { id: "horror-fungal-host", subject: "a fungal host, a body overgrown with mushrooms and spores" },
   { id: "horror-parasite-swarm", subject: "a crawling swarm of parasites" },
+  { id: "horror-cellar-bones", subject: "two skeletons in rotted farm clothes slumped shoulder to shoulder" },
+  { id: "horror-quarry-man", subject: "an enormous silent quarry labourer caked in pale dust with a sledgehammer" },
+  { id: "horror-revival-preacher", subject: "a fervent tent preacher with wild white hair raising a worn bible" },
+  { id: "horror-wrong-door", subject: "an old wooden door ajar on darkness, the gap edged with splinters like teeth" },
+  { id: "horror-landlord", subject: "a thin stooped landlord with prominent front teeth, a ring of keys and a hand cupped to his ear" },
+  { id: "horror-yard-warden", subject: "a gaunt dead sexton in a long black coat and wide-brimmed hat with a lantern" },
+  { id: "horror-granny", subject: "a tiny old granny in a lace cap with a too-wide smile offering a teacup" },
+  { id: "horror-good-doctor", subject: "a kindly tired country doctor with spectacles, a grey beard and a scratch on his cheek" },
+  { id: "horror-night-caller", subject: "a very pale polite young woman in an old-fashioned travelling cloak" },
+  { id: "horror-retired-occultist", subject: "a frail old man in a smoking jacket and skullcap clutching a sealed black book" },
+  { id: "horror-butchers-mistake", subject: "a stitched farm beast with a pig's, a goat's and a dog's head on one neck" },
+  { id: "horror-quiet-man", subject: "an unremarkable neat man in a grey overcoat and hat with a forgettable face" },
+  { id: "horror-coat-on-hook", subject: "a dark overcoat on a wall hook, collar turned like a hooded head, sleeves lifting" },
+  { id: "horror-man-behind-curtain", subject: "an elderly man half hidden behind a velvet curtain, one bright eye showing" },
+  { id: "horror-old-family", subject: "a pale aristocratic matriarch in antique mourning dress with a cameo" },
+  { id: "horror-first-founder", subject: "a mummified town founder in a rotted tricorn hat, skin covered in faint script" },
+  { id: "horror-archivist", subject: "a skeletal archivist in a clerk's eyeshade and sleeve protectors with a quill" },
   { id: "mystery-hired-gun", subject: "a period hired gun in a flat cap with a revolver" },
   { id: "mystery-burglar", subject: "a masked cat burglar in dark clothes" },
   { id: "mystery-poisoner", subject: "a poisoner in period dress holding a small vial" },
   { id: "mystery-occult-enforcer", subject: "an occult society enforcer in a robe and signet ring" },
+  { id: "mystery-constable", subject: "a period police constable in a custodian helmet with mutton-chop whiskers" },
+  { id: "mystery-heir", subject: "a sneering young heir in a silk cravat with a silver-headed cane" },
+  { id: "mystery-curate", subject: "an anxious young curate in a black cassock by candlelight" },
+  { id: "mystery-poacher", subject: "a sly poacher in a flat cap and red neckerchief with a shotgun" },
+  { id: "mystery-prizefighter", subject: "a bare-knuckle prizefighter with a broken nose and taped fists" },
+  { id: "mystery-smuggler", subject: "a grey-bearded coastal smuggler in an oilskin coat with a lantern" },
+  { id: "mystery-colonel", subject: "a retired colonel with a white walrus moustache, monocle and scarlet tunic" },
+  { id: "mystery-baronet", subject: "a scarred duelling baronet in a bottle-green tailcoat with a rapier" },
+  { id: "mystery-occultist", subject: "a gaunt occultist in smoked spectacles and a high-necked dress with a silver pendant" },
+  { id: "mystery-fixer", subject: "a heavy-set cleric in a black cassock and purple sash with black gloves" },
+  { id: "mystery-sewer-waif", subject: "a ragged street child in an oversized flat cap baring small teeth" },
+  { id: "mystery-walled-up-victim", subject: "a skeleton in a rotted period dress draped in cobwebs and brick dust" },
+  { id: "mystery-resurrection-man", subject: "a gaunt grave robber in a muddy top hat with a spade" },
+  { id: "mystery-opera-ghost", subject: "an opera soprano in a white half-mask and feathered gown, mouth open in song" },
+  { id: "mystery-moor-hound", subject: "a huge black hound with pale glowing eyes and bared teeth" },
+  { id: "mystery-asylum-escapee", subject: "a wild-eyed unshaven man in a torn canvas straitjacket" },
+  { id: "mystery-fortune-teller", subject: "an old fortune teller in a patterned headscarf and coin jewellery lit by a crystal glow" },
+  { id: "mystery-family-curse", subject: "a haggard young nobleman in a torn nightshirt with a broken chain at his collar" },
+  { id: "mystery-disinherited", subject: "a grave-pale dead gentleman in a mouldering burial suit" },
+  { id: "mystery-sculptors-secret", subject: "a white marble bust of a terrified man mid-scream" },
+  { id: "mystery-ferryman-brothers", subject: "conjoined twin ferrymen in oilskin caps sharing one pair of shoulders, with a lantern" },
+  { id: "mystery-gamekeeper", subject: "a burly gamekeeper in a tweed cap with side-whiskers and a shotgun" },
+  { id: "mystery-undercroft-tenant", subject: "a huge hunched figure in a patched greatcoat and scarf hiding a warty grey-green face" },
+  { id: "mystery-night-clerk", subject: "a pale ageless hotel night clerk in a waistcoat and sleeve garters with an unblinking smile" },
+  { id: "mystery-clockwork-butler", subject: "a brass clockwork butler with a porcelain face mask and a keyhole at the chest" },
+  { id: "mystery-opera-cloak", subject: "an empty black opera cloak with a crimson lining and a floating top hat" },
+  { id: "mystery-puppetmaster", subject: "a silver-haired mastermind with steepled fingers trailing puppet strings" },
+  { id: "mystery-magnate", subject: "an imposing businesswoman in dark furs and pearls with a tiger-eye brooch" },
+  { id: "mystery-patriarch", subject: "a stern silver-haired patriarch in a black frock coat with a signet ring" },
+  { id: "mystery-founder", subject: "an ancient withered banker in black robes and a gold chain of office" },
   { id: "dark-fantasy-plague-soldier", subject: "a plague soldier in a beaked mask and rusted mail" },
   { id: "dark-fantasy-penitent", subject: "a penitent executioner, a hooded flagellant with a heavy blade" },
+  { id: "steampunk-gear-gremlin", subject: "a small oily gremlin with huge ears and yellow eyes clutching a brass cog" },
+  { id: "steampunk-sootling", subject: "a soot-black chimney goblin with ember eyes and a stolen pocket watch" },
+  { id: "steampunk-wired-cadaver", subject: "a preserved grey anatomy-school corpse with brass electrodes and copper wires" },
+  { id: "steampunk-clockwork-saber", subject: "a flying sabre with a clockwork hilt and a propeller on its pommel" },
+  { id: "steampunk-dock-strangler", subject: "a hulking dockside ambusher in a tarred coat, face wrapped, a rope garrotte between gloved fists" },
+  { id: "steampunk-late-foreman", subject: "a dead factory foreman in a bowler hat holding a pocket watch and a ledger" },
+  { id: "steampunk-engine-hound", subject: "a white wolf-like hound with brass coolant pipes and frost breath" },
+  { id: "steampunk-tunneling-beast", subject: "an iron-plated burrowing beast with a round maw of grinding cutter teeth" },
+  { id: "steampunk-cloaked-agent", subject: "a half-transparent figure in a bowler hat with solid brass goggles" },
+  { id: "steampunk-difference-guard", subject: "a brass bodyguard automaton with a gear-wheel glass face and a shield arm" },
+  { id: "steampunk-clockmakers-knife", subject: "an assassin in a black coat and a brass clock-face mask holding a stiletto" },
+  { id: "steampunk-manifold-horror", subject: "a many-headed monster of iron steam pipes with toothed valve mouths" },
+  { id: "steampunk-leviathan-engine", subject: "a colossal walking iron siege machine with furnace-glow eyes and twin smokestacks" },
+  { id: "steampunk-steam-knight", subject: "a cavalry knight in riveted plate with a closed helm and a boiler on the back" },
+  { id: "steampunk-peer", subject: "a very pale elderly lord in a black evening coat, top hat and monocle" },
+  { id: "steampunk-constable", subject: "a city watch constable in a brass-buttoned coat and a domed helmet with goggles" },
+  { id: "steampunk-chirurgeon", subject: "a guild surgeon in a leather apron with a brass monocle rig" },
+  { id: "steampunk-union-buster", subject: "a heavy-set strikebreaker in a bowler hat with brass knuckles" },
+  { id: "steampunk-stokehold-bruiser", subject: "a huge soot-blackened engine-room stoker with a coal shovel" },
+  { id: "steampunk-airship-lookout", subject: "an airship lookout in a fleece-collared flight jacket and goggles with a long rifle" },
+  { id: "steampunk-foreign-agent", subject: "an elegant spy in a travelling coat and wide-brimmed hat with a rolled blueprint" },
+  { id: "steampunk-navvy", subject: "a wild-eyed mud-spattered labourer with a hissing brass piston arm" },
+  { id: "steampunk-engine-prophet", subject: "a machine-cult prophet in oil-stained robes hung with pressure gauges" },
+  { id: "steampunk-cathedral-engineer", subject: "a priest-engineer in white vestments under a tool harness with a brass wrench" },
+  { id: "steampunk-campaigner", subject: "an old soldier in a faded scarlet tunic with medals and a clockwork arm" },
+  { id: "steampunk-pugilist", subject: "an exhibition prizefighter in a striped boxing vest with brass-studded hand wraps" },
+  { id: "steampunk-bodysnatcher", subject: "a furtive grave robber in a muddy coat and battered top hat with a hooded lantern" },
+  { id: "post-apocalyptic-junkyard-imp", subject: "a small scavenger child in a cooking-pot helmet and welding goggles with a scrap blade" },
+  { id: "post-apocalyptic-junta-trooper", subject: "a remnant-army trooper in a striped combat helmet and full-face respirator" },
+  { id: "post-apocalyptic-overpass-troll", subject: "a hulking ambusher in tarpaulin and tyre armour with a welded mask and a road-sign shield" },
+  { id: "post-apocalyptic-contract-ghost", subject: "an assassin in a dust-grey hood and a blank white mask with a suppressed pistol" },
+  { id: "post-apocalyptic-vault-director", subject: "an ancient scientist in a fluid-filled glass life-support helmet and a lab coat" },
+  { id: "post-apocalyptic-dune-warlord", subject: "a giant desert warlord wrapped in sand scarves with goggles and a horned car-part helmet" },
+  { id: "post-apocalyptic-winter-warlord", subject: "a giant northern warlord in car-door plate armour with a closed helm and a fur mantle" },
+  { id: "post-apocalyptic-blood-baron", subject: "a gaunt wasteland baron in a patched leather coat with a necklace of blood-bank tags" },
+  { id: "post-apocalyptic-ash-walker", subject: "a walking skeleton fused with rebar and wire under a scorched hard hat" },
+  { id: "post-apocalyptic-dead-commander", subject: "a dead commander in a maroon beret and a tattered field jacket with glowing eyes" },
+  { id: "post-apocalyptic-haywire-exo-rig", subject: "an empty yellow industrial exoskeleton with a cracked visor and sparking arms" },
+  { id: "post-apocalyptic-supply-crate", subject: "a military supply crate with a toothed maw and a tongue, tins spilling out" },
+  { id: "post-apocalyptic-statue-sentinel", subject: "a verdigris bronze monument statue of a soldier come to life" },
+  { id: "post-apocalyptic-camo-assassin", subject: "a soldier in a glitching half-invisible camouflage suit with one red sensor" },
+  { id: "post-apocalyptic-guardian-automaton", subject: "a battered white security robot with a blue sensor eye and a key-card slot" },
+  { id: "post-apocalyptic-loader-mech", subject: "a rusted yellow cargo-loader walker with clamp arms and red warning lights" },
+  { id: "post-apocalyptic-bunker-guardian", subject: "a massive security robot armoured in concrete slabs with an amber slit visor" },
+  { id: "post-apocalyptic-war-machine", subject: "a rust-streaked tank hull with a long cannon, risen on four piston legs over wrecked cars" },
+  { id: "post-apocalyptic-firestorm-engine", subject: "a colossal rusted flying war machine pouring fire from its nose" },
+  { id: "post-apocalyptic-tunnel-scav", subject: "a wiry metro tunnel scavenger with a cracked headlamp and a tin-can alarm" },
+  { id: "post-apocalyptic-shelter-medic", subject: "a vault medic in a patched white coat with a green first-aid armband and a syringe gun" },
+  { id: "post-apocalyptic-crater-brute", subject: "a mutant shock raider with a swollen brow, tusk-like teeth and a scrap pauldron" },
+  { id: "post-apocalyptic-chem-fiend", subject: "a combat-drug berserker with bulging veins and injector tubes at the neck" },
+  { id: "post-apocalyptic-atomic-priest", subject: "a radiation-cult priest in a yellow hazard-sheet robe with hands raised in blessing" },
+  { id: "post-apocalyptic-old-soldier", subject: "a disciplined veteran in a maintained old-world uniform and patched helmet" },
+  { id: "post-apocalyptic-champion", subject: "a scarred pit-fighting champion with a spiked scrap pauldron and chain-wrapped forearm" },
+  { id: "post-apocalyptic-tech-shaman", subject: "a tech-shaman draped in circuit boards and cables holding a glowing salvaged screen" },
+  { id: "cyberpunk-scrap-urchin", subject: "a feral street kid in a hood and scavenged respirator aiming a zip-gun" },
+  { id: "cyberpunk-rooftop-spotter", subject: "a gang lookout in a rain poncho and mirrored visor with a scoped rifle" },
+  { id: "cyberpunk-corpo-samurai", subject: "a corporate champion in samurai-styled powered plate with a closed face plate" },
+  { id: "cyberpunk-wetwork-specialist", subject: "an assassin in a matte black bodysuit and featureless helmet with one red sensor line" },
+  { id: "cyberpunk-sewer-operative", subject: "an infiltrator in a grey maintenance jumpsuit with a rebreather and goggles" },
+  { id: "cyberpunk-ai-architect", subject: "a hooded hacker whose face is a dark visor filled with a glowing fractal" },
+  { id: "cyberpunk-organ-harvester", subject: "an organ thief in a bloodied surgical gown with scalpel-blade fingers" },
+  { id: "cyberpunk-blood-bank-runner", subject: "a gaunt pale courier with dark veins and an IV line taped to the neck" },
+  { id: "cyberpunk-oyabun", subject: "an augmented syndicate lord with a chrome half mask and sleeve tattoos" },
+  { id: "cyberpunk-braindance-queen", subject: "a club queen with a crown of neural-interface cables and mirrored eyes" },
+  { id: "cyberpunk-lockdown-warden", subject: "a riot warden in black armour with a ring of pale stasis emitters for a visor" },
+  { id: "cyberpunk-furnace-foreman", subject: "an industrial overseer in a scorched silver heat suit with a shock lash" },
+  { id: "cyberpunk-board-chairman", subject: "a silver-haired chairman in a charcoal suit with an amber-eyed stare" },
+  { id: "cyberpunk-immortality-baron", subject: "a longevity magnate with an unnaturally young face and a medical choker" },
+  { id: "cyberpunk-ceo", subject: "an imposing executive in a black suit lit hard with red light" },
+  { id: "cyberpunk-valkyrie", subject: "a severe executive enforcer in a black suit with black mechanical wings" },
+  { id: "cyberpunk-uploaded-founder", subject: "a flickering blue hologram of a long-dead company founder" },
+  { id: "cyberpunk-full-borg", subject: "a chrome full-body cyborg giant with a single optic band" },
+  { id: "cyberpunk-regen-escapee", subject: "a lanky escaped bioweapon with grey-green regenerating flesh and trailing vat tubes" },
+  { id: "cyberpunk-foundry-boss", subject: "a giant in hazard-striped heat-shielded exo-armour splashed with molten metal" },
+  { id: "cyberpunk-cryo-juggernaut", subject: "a frost-covered industrial exo-frame with a coolant cannon arm" },
+  { id: "cyberpunk-optic-camo-assassin", subject: "an assassin in optical camouflage, a shimmering transparent outline" },
+  { id: "cyberpunk-vat-heavy", subject: "a lab-grown muscle brute with a barcode and a shock collar" },
+  { id: "cyberpunk-overdose-shambler", subject: "a grey-skinned drug burnout with dead eyes and injectors in its neck" },
+  { id: "cyberpunk-chassis-frame", subject: "a stripped android frame with a featureless white head and one blue optic slit" },
+  { id: "cyberpunk-corrupted-upload", subject: "a screaming face made of fragmented blue pixels and glitch blocks" },
+  { id: "cyberpunk-deadman-protocol", subject: "a revived security officer with dead skin and a glowing chest implant" },
+  { id: "cyberpunk-vault-preserver", subject: "a dead founder preserved in gold-foil cabling like a mummy" },
+  { id: "cyberpunk-legacy-ai", subject: "a green wireframe face rising out of a cracked old monitor" },
+  { id: "cyberpunk-black-ice-reaper", subject: "a hooded figure of black hard-light polygons with white eyes" },
+  { id: "cyberpunk-drone-blade", subject: "a dart-shaped drone whose nose is one long glowing mono-edge blade" },
+  { id: "cyberpunk-exo-suit", subject: "an empty suit of powered combat armour moving on its own" },
+  { id: "cyberpunk-bodyguard-automaton", subject: "a white bodyguard robot with a smooth face plate and a ballistic shield arm" },
+  { id: "cyberpunk-riot-hulk", subject: "a hulking crowd-control robot with red and blue light bars" },
+  { id: "cyberpunk-vault-guardian", subject: "a massive bank security robot with a vault-door wheel in its chest" },
+  { id: "cyberpunk-siegebreaker", subject: "the front of a colossal military walker with missile pods and green exhaust" },
+  { id: "cyberpunk-cyber-hound", subject: "a lean hunting dog with a sensor visor and a steel jaw" },
+  { id: "cyberpunk-attack-mastiff", subject: "an armoured military robot attack dog with a red eye bar" },
+  { id: "cyberpunk-cyber-mastiff", subject: "a chrome attack hound with flame vents and fire in its jaws" },
+  { id: "cyberpunk-cryo-hound", subject: "a white pursuit hound machine breathing freezing vapour" },
+  { id: "cyberpunk-ad-drone", subject: "a flying advertising drone with a hologram smile, speaker horns and claws" },
+  { id: "cyberpunk-maintenance-crawler", subject: "an eight-legged repair robot with a cluster of red camera eyes" },
+  { id: "cyberpunk-ledge-sentry", subject: "a gun-turret robot crouched on a ledge under folded armour plates" },
+  { id: "cyberpunk-vending-unit", subject: "a drink vending machine with a gun turret on a side arm and a clamp over its hatch" },
+  { id: "cyberpunk-courier-interceptor", subject: "a winged pursuit drone like a mechanical bird of prey" },
+  { id: "cyberpunk-glitch-stalker", subject: "a spider-legged stalker machine splitting into colour-shifted copies" },
+  { id: "cyberpunk-freeze-sentinel", subject: "a squat four-legged crowd-control robot with one huge pale lens for a head" },
+  { id: "cyberpunk-gunship-chimera", subject: "a rotor gunship drone with a tail gun raised like a scorpion's" },
+  { id: "cyberpunk-swarm-core", subject: "a cluster of gun-turret heads on armoured necks from one core" },
+  { id: "cyberpunk-undernet-oracle", subject: "a coiled serpent of black cable with a white ceramic mask face" },
+  { id: "cyberpunk-maglev-serpent", subject: "a serpent machine of maglev train cars with lightning in its maw" },
+  { id: "cyberpunk-plasma-djinn", subject: "a torso of contained white-blue plasma in cracked reactor shielding" },
+  { id: "cyberpunk-twin-core-walker", subject: "a scrap walker with two cockpit pods side by side like heads" },
+  { id: "cyberpunk-demolition-mech", subject: "a hazard-striped construction walker with a wrecking-ball arm" },
+  { id: "cyberpunk-repo-unit", subject: "a skeletal repossession robot with extraction-tool fingers and a cable tail" },
+  { id: "cyberpunk-guardian-seraph", subject: "a white and gold serpent-bodied security drone with wings of hexagonal light panels" },
+  { id: "cyberpunk-strike-drone", subject: "a heavy aerial gun drone with ducted fans and a tail injector" },
+  { id: "cyberpunk-orbital-gunship", subject: "a black corporate gunship aircraft seen head on with a nose cannon" },
+  { id: "cyberpunk-deep-server", subject: "a mass of black cables around three red lenses in dark water" },
+  { id: "cyberpunk-data-cultist", subject: "a machine-cult initiate with circuit tattoos and a fibre-optic rosary" },
+  { id: "cyberpunk-gutter-punk", subject: "a street scavenger with a neon mohawk, chrome jaw and a shiv" },
+  { id: "cyberpunk-wirehead", subject: "a screaming junkie with cables jacked into the skull" },
+  { id: "cyberpunk-alley-crusher", subject: "a huge ambush mugger with one industrial hydraulic arm" },
+  { id: "cyberpunk-stim-slammer", subject: "a combat-stim berserker with injector ports and glowing pupils" },
+  { id: "cyberpunk-signal-prophet", subject: "a street preacher with a halo of antennas and a static screen on the chest" },
+  { id: "cyberpunk-deacon", subject: "a chrome-chapel faith healer with a surgical cyber-hand raised in blessing" },
+  { id: "cyberpunk-solo", subject: "a freelance mercenary with a red cybernetic eye and old unit patches" },
+  { id: "cyberpunk-arena-champion", subject: "a pit-fight star with sponsor decals, neon face paint and a cyber-fist" },
+  { id: "cyberpunk-netrunner", subject: "a rogue hacker in a cooling suit with data cables behind the ear" },
 ];
 
 // Threat, which a creature type cannot express. Once the bestiary carries a
@@ -1067,8 +1288,14 @@ export function placeholderJobs() {
   for (const role of ENEMY_ROLE_PLATES) {
     portrait("monster", role.id, role.subject, "creature");
   }
+  for (const role of SRD_NPC_ROLE_PLATES) {
+    rolePortraits(portrait, role);
+  }
   for (const token of GENRE_ENEMY_TOKEN_PLATES) {
-    portrait("monster", token.id, token.subject, "creature");
+    rolePortraits(portrait, token);
+  }
+  for (const plate of ROLE_PRESENTATION_EXTRA) {
+    portrait("monster", plate.id, plate.subject, "creature");
   }
   for (const role of ENEMY_NPC_VARIANT_ROLES) {
     for (const race of ENEMY_NPC_VARIANT_RACES) {
