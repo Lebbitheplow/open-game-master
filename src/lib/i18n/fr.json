@@ -11261,6 +11261,9 @@
     "then": {
       "roll.steps": "puis"
     },
+    "rider": {
+      "roll.note": "effet additionnel"
+    },
     "Hidden": {
       "quests.status.hidden": "Masquée"
     },

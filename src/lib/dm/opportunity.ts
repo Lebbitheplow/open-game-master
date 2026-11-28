@@ -17,7 +17,7 @@ import { entersReachAt, leavesReachAt, movesWithinReachAt, type MoverSpace } fro
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { recordRoll } from "@/lib/dm/roll-record";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, sheetTarget } from "@/lib/roll-parts";
 import { enemyFootprint, type Footprint } from "@/lib/battlemap/footprint";
 import { characterFootprint } from "@/lib/dm/board-reach";
 
@@ -360,7 +360,7 @@ export function resolveOpportunityAttacks(
       characterId: null,
       requestedBy: "dm",
       kind: "attack",
-      detail: rollAgainst(`${attack.name} (opportunity attack)`, sheet.name),
+      parts: actionParts(attack, sheetTarget(sheet), "opportunity"),
       advantage,
       result: hitOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
@@ -401,7 +401,7 @@ export function resolveOpportunityAttacks(
       characterId: null,
       requestedBy: "dm",
       kind: "damage",
-      detail: rollAgainst(`${attack.name} (opportunity attack)`, sheet.name),
+      parts: actionParts(attack, sheetTarget(sheet), "opportunity"),
       result: damageOutcome,
       attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       home: "line",

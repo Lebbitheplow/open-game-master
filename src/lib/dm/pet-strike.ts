@@ -22,7 +22,7 @@ import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { recordRoll } from "@/lib/dm/roll-record";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, isValidExpression, rollExpression } from "@/lib/dice";
-import { rollAgainst } from "@/lib/roll-labels";
+import { actionParts, keptTarget } from "@/lib/roll-parts";
 import { riderSpares, type OnHitRider } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
@@ -121,11 +121,10 @@ export function strikePet(input: {
       ...(effect.advantage ? ["advantage" as const] : []),
       ...(effect.disadvantage || swing.underwater ? ["disadvantage" as const] : []),
     ]);
-    const label = rollAgainst(attack.name, pet.name);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
     recordRoll({
-      campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "attack", parts: actionParts(attack, keptTarget("pet", pet)), advantage, result: toHit, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       turn,
       // Thrown here, on the server's dice.
       landing: null,
@@ -144,7 +143,7 @@ export function strikePet(input: {
       { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
     recordRoll({
-      campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", detail: `${label}${crit ? " (CRIT)" : ""}`, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+      campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", parts: actionParts(attack, keptTarget("pet", pet), crit && "crit"), result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
       turn,
       // Thrown here, on the server's dice.
       landing: null,
@@ -200,7 +199,7 @@ function landRider(campaign: Campaign, turn: DmTurn, owner: CharacterSheet, enem
     if (share !== "none") {
       const rolled = rollExpression(rider.damage, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
       recordRoll({
-        campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", detail: rollAgainst(`${attack.name} (rider)`, pet.name), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
+        campaignId: campaign.id, characterId: owner.id, requestedBy: "dm", kind: "damage", parts: actionParts(attack, keptTarget("pet", pet), "rider"), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName },
         turn,
         // Thrown here, on the server's dice.
         landing: null,

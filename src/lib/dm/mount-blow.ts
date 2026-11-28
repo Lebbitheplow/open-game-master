@@ -19,7 +19,6 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
-import { rollAgainst } from "@/lib/roll-labels";
 import { riderSpares, type OnHitRider } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
@@ -27,7 +26,7 @@ import { damageAdjust } from "@/lib/dm/damage-logic";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { petResistLine } from "@/lib/dm/pet-underwater";
 import { recordRoll } from "@/lib/dm/roll-record";
-import { saveParts } from "@/lib/roll-parts";
+import { actionParts, keptTarget, saveParts } from "@/lib/roll-parts";
 import { proficiencyForCr } from "@/lib/srd/creature-drain-logic";
 import type { MountState } from "@/lib/srd/mounts";
 import { findSummonForm, type SummonForm } from "@/lib/srd/summon-forms";
@@ -87,7 +86,7 @@ export function mountRider(
   let dealt = 0;
   if (onHit.damage && isValidExpression(onHit.damage) && !(saved && !onHit.halfOnSave)) {
     const rolled = rollExpression(onHit.damage, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
-    recordRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "damage", detail: rollAgainst(`${attack.name} (rider)`, mount.name), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, turn, landing: null });
+    recordRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "damage", parts: actionParts(attack, keptTarget("mount", mount), "rider"), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, turn, landing: null });
     const amount = saved ? Math.floor(rolled.total / 2) : rolled.total;
     const landed = adjusted(campaign.id, rider.id, form, [{ amount, type: onHit.damageType }], Boolean(attack.magical));
     dealt = landed.dealt;

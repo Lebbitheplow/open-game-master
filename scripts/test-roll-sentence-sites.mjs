@@ -31,7 +31,18 @@
 // is seen), any use at all of a sentence builder's name, and any `reason`
 // written into any object: the line a waiting card says under its title is
 // a sentence too, and a moved family says it in fields (`line`,
-// src/lib/roll-words.ts cardLine).
+// src/lib/roll-words.ts cardLine). One `reason` is not a card's: the one
+// written straight into what a call that takes a reason of its own is
+// handed (OWN_REASON: why a blow's damage lands, why advantage was
+// claimed).
+//
+// A file is listed under `moved` only when every roll in it has moved. A
+// family's file that still holds another family's roll (the save a
+// creature's hit forces, beside the hit's damage) stays under `sites`, with
+// the count it has left. One whose only roll left goes through a helper
+// that takes its words (a pet's save, src/lib/dm/pet-save-roll.ts) is on
+// neither list: the helper is counted where it hands the words on, and the
+// file is held like any other that writes no sentence to a door.
 //
 // And everywhere: a note written as typed (`notes: [{ typed: ... }]`) with
 // words in the code. A typed note is what a person or the model typed, so it holds a
@@ -101,6 +112,18 @@ function schemaField(node) {
   }
   return ts.isIdentifier(at) && at.text === "z";
 }
+// The calls that take a `reason` of their own, which is no card's line: why
+// a blow's damage lands on a character or a steed, and why an attack's
+// advantage was claimed. A `reason` written straight into what one of them
+// is handed is that call's. Any other, in a moved file, is counted: one
+// handed to a door or to a wrapper of one, held in an object first, or
+// spread.
+const OWN_REASON = new Set(["applyPcDamage", "hurtSteed", "claimedAdvantage"]);
+function handedElsewhere(node) {
+  const literal = node.parent;
+  const call = literal && ts.isObjectLiteralExpression(literal) ? literal.parent : null;
+  return Boolean(call && ts.isCallExpression(call) && call.arguments.includes(literal) && ts.isIdentifier(call.expression) && OWN_REASON.has(call.expression.text));
+}
 const literalWords = (node) => ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node);
 
 function sentencesIn(file, text, key) {
@@ -122,8 +145,13 @@ function sentencesIn(file, text, key) {
         count += 1;
       }
       // A waiting card's own line, written by hand: a `reason` in any object,
-      // but for a tool's argument of that name in its schema (`z....`).
-      if ((ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) && named(node) === "reason" && !(ts.isPropertyAssignment(node) && schemaField(node.initializer))) {
+      // but for a tool's argument of that name in its schema (`z....`) and
+      // one that is another call's own (`handedElsewhere`).
+      if ((ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) && named(node) === "reason" && !(ts.isPropertyAssignment(node) && schemaField(node.initializer)) && !handedElsewhere(node)) {
+        count += 1;
+      }
+      // Words handed by position, as in any file.
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text in BY_PLACE && node.arguments.length > BY_PLACE[node.expression.text]) {
         count += 1;
       }
       ts.forEachChild(node, visit);
@@ -205,4 +233,4 @@ for (const where of typedByHand) {
   problems.push(`${where}: a typed note with words written in the code. A typed note holds what a person or the model typed; the engine's own words are a note of its own, by its id (src/lib/roll-words.ts ROLL_NOTES), so the dictionaries can find them.`);
 }
 assert.deepEqual(problems, [], problems.join("\n"));
-console.log(`test-roll-sentence-sites: ${movedFiles.size} files in ${Object.keys(ledger.moved).length} moved family, none writes a sentence; ${Object.keys(ledger.sites).length} files still do, ${total} times`);
+console.log(`test-roll-sentence-sites: ${movedFiles.size} files in ${Object.keys(ledger.moved).length} moved families, none writes a sentence; ${Object.keys(ledger.sites).length} files still do, ${total} times`);

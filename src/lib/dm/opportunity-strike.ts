@@ -37,7 +37,7 @@ import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { diceSteps } from "@/lib/dm/attack-damage-dice";
 import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getRoll, markRollApplied } from "@/lib/db/rolls";
-import { foeTarget, swingParts } from "@/lib/roll-parts";
+import { foeTarget, swingParts, swingUsed } from "@/lib/roll-parts";
 import type { CardLine } from "@/lib/roll-words";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
@@ -469,7 +469,7 @@ export function pcOpportunitySwing(input: {
       notes.push(wound);
     }
     if (!dropped && profile.creatureOnHit && !isSheetFoe(enemy)) {
-      notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, enemyId: enemy.id, onHit: profile.creatureOnHit }));
+      notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, used: swingUsed(profile), enemyId: enemy.id, onHit: profile.creatureOnHit }));
     }
     const after = getFoe(enemy.id);
     return {
