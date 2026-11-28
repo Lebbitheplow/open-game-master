@@ -25,6 +25,7 @@ import { ROW_TEXT, settleLoreTexts } from "@/lib/worldforge/account";
 import { backfillLegacyItemRows } from "@/lib/db/item-row-backfill";
 import { backfillNarratorVoices } from "@/lib/db/narrator-voice-backfill";
 import { installTurnJournal } from "@/lib/db/turn-journal";
+import { registerWorkshopClassesFrom } from "@/lib/db/workshop-class-sync";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "local-roleplay.sqlite");
@@ -3826,10 +3827,19 @@ function backfillSheetResources(db: SqliteDatabase) {
 export function resyncSheets(db: SqliteDatabase) {
   resyncingDb = db;
   try {
+    // The workshop's classes, registered from this database before a sheet
+    // is re-derived. A server registers them after its first query
+    // (src/instrumentation.ts), and that query is what opens the database
+    // and runs this pass: a sheet of a workshop class was read here as a
+    // class with no features and written back without them.
+    registerWorkshopClassesFrom(db);
     const started = Date.now();
-    const { checked, changed } = resyncSheetResources(db);
+    const { checked, changed, failed, firstFailure } = resyncSheetResources(db);
     if (checked > 0) {
       console.log(`[db] resynced ${checked} character sheets against this build's rules (${changed} changed) in ${Date.now() - started} ms`);
+    }
+    if (failed > 0) {
+      console.warn(`[db] ${failed} character sheets could not be re-derived and stay as stored (the first: ${firstFailure})`);
     }
     const library = resyncLibraryTraining(db);
     if (library > 0) {
@@ -3844,7 +3854,7 @@ export function resyncSheets(db: SqliteDatabase) {
 // boot pay a journal write for every character.
 const RESYNC_BATCH = 200;
 
-function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: number } {
+function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: number; failed: number; firstFailure: string } {
   const sheets = db
     .prepare(
       `SELECT id, campaign_id, class, subclass, race, level, abilities_json, features_json, resources_json,
@@ -3868,7 +3878,7 @@ function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: n
     proficiencies_json: string;
   }>;
   if (!sheets.length) {
-    return { checked: 0, changed: 0 };
+    return { checked: 0, changed: 0, failed: 0, firstFailure: "" };
   }
   const update = db.prepare(
     `UPDATE character_sheets SET features_json = ?, resources_json = ?, proficiencies_json = ? WHERE id = ?`,
@@ -3876,6 +3886,8 @@ function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: n
   const extrasByCampaign = new Map<string, SubclassExtras>();
   const pending: Array<[string, string, string, string]> = [];
   let changed = 0;
+  let failed = 0;
+  let firstFailure = "";
   const flush = db.transaction((rows: Array<[string, string, string, string]>) => {
     for (const [features, resources, proficiencies, id] of rows) {
       update.run(features, resources, proficiencies, id);
@@ -3946,14 +3958,19 @@ function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: n
           flush(pending.splice(0));
         }
       }
-    } catch {
+    } catch (error) {
       // Unparseable rows stay untouched; the sheet UI can still fix them.
+      // Counted for the log, because a fault in the rules lands here too and
+      // was never seen: issue #1129's endless reopening ended, row after
+      // row, as a stack overflow nothing reported.
+      failed += 1;
+      firstFailure ||= error instanceof Error ? error.message : String(error);
     }
   }
   if (pending.length) {
     flush(pending.splice(0));
   }
-  return { checked: sheets.length, changed };
+  return { checked: sheets.length, changed, failed, firstFailure };
 }
 
 // The library's characters, the same repair: a stored Life Domain cleric
@@ -4037,6 +4054,26 @@ function requireDbKey() {
 // includes a full character_sheets backfill and table_info sweeps.
 let schemaEnsured = false;
 
+// The database whose schema pass is running, for a getDatabase call made
+// from inside that pass. The boot resync re-derives every sheet, and the
+// rules it runs read through getDatabase themselves (a workshop species' row,
+// src/lib/characters/species-rules.ts). The database was not handed out yet,
+// so each such read opened the file again and ran the whole pass again
+// inside the first, without end: a server holding one character of a
+// workshop species never answered after its next resync (issue #1129). Such
+// a read is handed the database being opened instead.
+let ensuringDb: SqliteDatabase | null = null;
+
+function ensureSchemaOnce(db: SqliteDatabase) {
+  ensuringDb = db;
+  try {
+    ensureSchema(db);
+    schemaEnsured = true;
+  } finally {
+    ensuringDb = null;
+  }
+}
+
 // Closes the world's database for good in this process: a live restore is
 // about to replace the file (src/lib/ops/backup.ts), and the next open must
 // be a fresh process that reads the restored one.
@@ -4061,10 +4098,12 @@ export function getDatabase() {
   if (maintenance) {
     throw new Error(`The server is in maintenance (${maintenance.reason}); restart it to continue.`);
   }
+  if (ensuringDb) {
+    return ensuringDb;
+  }
   if (globalThis.__localRoleplayDb) {
     if (!schemaEnsured) {
-      ensureSchema(globalThis.__localRoleplayDb);
-      schemaEnsured = true;
+      ensureSchemaOnce(globalThis.__localRoleplayDb);
     }
     installTurnJournal(globalThis.__localRoleplayDb);
     return globalThis.__localRoleplayDb;
@@ -4073,6 +4112,24 @@ export function getDatabase() {
   const key = requireDbKey();
   mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = openDatabase(dbPath);
+  // Nothing below may leave this handle open when it throws: the database is
+  // only kept once it is ready, so every later call opens the file again,
+  // and a start that failed its schema pass held one more handle per request.
+  try {
+    readyDatabase(db, key);
+  } catch (error) {
+    try {
+      db.close();
+    } catch {
+      // The reason the open failed is the error worth reporting.
+    }
+    throw error;
+  }
+  globalThis.__localRoleplayDb = db;
+  return db;
+}
+
+function readyDatabase(db: SqliteDatabase, key: string) {
   if (db.encrypted) {
     db.pragma("cipher='chacha20'");
     db.pragma(`key='${key.replaceAll("'", "''")}'`);
@@ -4088,7 +4145,6 @@ export function getDatabase() {
   try {
     tables = Number(Object.values(db.prepare("SELECT count(*) FROM sqlite_master").get() as object)[0]) || 0;
   } catch {
-    db.close();
     throw new Error(
       db.encrypted
         ? `Could not decrypt ${dbPath}: wrong or missing DB_ENCRYPTION_KEY. ` +
@@ -4100,7 +4156,6 @@ export function getDatabase() {
   // Checked before anything below writes to the file.
   const revision = schemaRevisionOf(db);
   if (revision > SCHEMA_REVISION) {
-    db.close();
     throw new Error(
       `${dbPath} was saved by a newer version of Open Game Master (database revision ${revision}; ` +
         `this version reads up to ${SCHEMA_REVISION}). Update the app or server to open it; nothing in it was changed.`,
@@ -4118,16 +4173,12 @@ export function getDatabase() {
   // the last moment of writes, which the table can live with.
   db.pragma("synchronous = NORMAL");
   db.pragma("foreign_keys = ON");
-  ensureSchema(db);
-  schemaEnsured = true;
+  ensureSchemaOnce(db);
   // Every write a GM turn makes is kept with the turn (turn-journal.ts).
   installTurnJournal(db);
   if (revision < SCHEMA_REVISION) {
     db.pragma(`user_version = ${SCHEMA_REVISION}`);
   }
-
-  globalThis.__localRoleplayDb = db;
-  return db;
 }
 
 export function parseJson<T>(raw: string | null | undefined, fallback: T): T {
