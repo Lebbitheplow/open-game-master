@@ -13,12 +13,42 @@
 // - Escape closes it and focus goes back to the Theme button;
 // - Settings' own picker (the account page; in the apps the shell's Settings,
 //   which draws the server's picker outside the game screens) changes the
-//   theme and the brightness, and the shell's chrome follows.
+//   theme and the brightness, and the shell's chrome follows;
+// - every preview, in the panel and in Settings, shows its theme's frame and
+//   grain. The apps' Settings draws the picker with no host connected, and
+//   nothing sent the previews' "/assets/themes/..." addresses to the app's
+//   own copies there: each one asked the app's origin, got nothing, and
+//   stood as a bare box beside the website's bordered ones.
 import { check, eventually } from "../lib.mjs";
 
 const appearanceOf = (page) => page.evaluate(() => document.documentElement.dataset.appearance);
 const brightnessOf = (page) => page.evaluate(() => document.documentElement.dataset.theme);
 const textureOf = (page) => page.evaluate(() => document.documentElement.style.getPropertyValue("--theme-art-texture"));
+
+// The pictures a picker's previews are painted with that the page cannot
+// load: the frame (a border image) and the grain under it. A picture is
+// loaded by its address as the stylesheet resolved it, through the attribute
+// so the app's own src setter does not stand in for the page.
+const missingPreviewArt = (picker) => picker.evaluate(async (node) => {
+  const loads = (address) => new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image.naturalWidth > 0);
+    image.onerror = () => resolve(false);
+    image.setAttribute("src", address);
+  });
+  const missing = [];
+  const previews = [...node.querySelectorAll('.appearance-preview[data-theme-ornaments="true"]')];
+  for (const preview of previews) {
+    const frame = preview.querySelector(".appearance-preview-frame");
+    const painted = { frame: getComputedStyle(frame).borderImageSource, grain: getComputedStyle(preview).backgroundImage };
+    for (const [part, value] of Object.entries(painted)) {
+      const addresses = [...value.matchAll(/url\("?([^")]+)"?\)/g)].map((match) => match[1]);
+      if (!addresses.length) missing.push(`${preview.dataset.appearance}: no ${part}`);
+      for (const address of addresses) if (!(await loads(address))) missing.push(`${preview.dataset.appearance}: ${part} ${address}`);
+    }
+  }
+  return { previews: previews.length, missing };
+});
 
 export default {
   name: "theme-panel",
@@ -92,6 +122,8 @@ export default {
     await eventually(async () => /manila-card/.test(await textureOf(page)), { label: "Unquiet Depths' day texture on <html>" });
     const preview = await panel.locator('.appearance-preview[data-appearance="depths"]').evaluate((node) => node.style.getPropertyValue("--theme-art-texture"));
     check(/manila-card/.test(preview), `the panel's Unquiet Depths preview shows night art by day (${preview})`);
+    const panelArt = await missingPreviewArt(panel);
+    check(panelArt.previews > 0 && panelArt.missing.length === 0, `the panel's previews miss their artwork (${panelArt.previews} previews): ${panelArt.missing.join("; ")}`);
     await t.shot("depths-day");
 
     // Escape closes it, and focus goes back to the button that opened it.
@@ -112,6 +144,8 @@ export default {
       picker = page.locator(".appearance-picker").locator("visible=true").first();
     }
     await eventually(() => picker.count(), { timeoutMs: 30_000, label: "Settings' theme picker" });
+    const settingsArt = await missingPreviewArt(picker);
+    check(settingsArt.previews > 0 && settingsArt.missing.length === 0, `Settings' previews miss their artwork (${settingsArt.previews} previews): ${settingsArt.missing.join("; ")}`);
     await t.shot("settings-open");
     const inferno = picker.locator("button.appearance-option", { hasText: "Inferno" });
     await inferno.scrollIntoViewIfNeeded();
@@ -126,6 +160,23 @@ export default {
       check(night !== "", "the shell's chrome has no Inferno tokens");
     }
     await t.shot("settings-inferno");
+    if (app) {
+      // The same card from the app's own home, with no host connected: the
+      // way most people reach it, and where the previews stood bare. Over a
+      // world (above) the world's own watch had already sent their artwork to
+      // the app's copies.
+      await page.evaluate(() => window.odmShell.showServers());
+      const gear = page.getByRole("button", { name: "Settings", exact: true }).locator("visible=true").first();
+      await eventually(() => gear.count(), { timeoutMs: 30_000, label: "the Settings button on the app's home" });
+      await t.tap(gear);
+      const homePicker = page.locator(".device-settings .appearance-picker").locator("visible=true").first();
+      await eventually(() => homePicker.count(), { timeoutMs: 30_000, label: "the theme picker in Settings, opened from the app's home" });
+      check((await page.locator(".game-root:not(.device-settings)").count()) === 0, "the app's home still holds a world's screens");
+      const homeArt = await missingPreviewArt(homePicker);
+      check(homeArt.previews > 0 && homeArt.missing.length === 0, `with no host connected, Settings' previews miss their artwork (${homeArt.previews} previews): ${homeArt.missing.join("; ")}`);
+      await homePicker.locator(".appearance-grid").scrollIntoViewIfNeeded();
+      await t.shot("settings-from-home");
+    }
     await page.evaluate(() => {
       window.localStorage.removeItem("odm.appearance");
       window.localStorage.removeItem("odm.theme");
