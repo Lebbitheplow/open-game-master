@@ -27,6 +27,7 @@ written story theme. A player can use Woodland in either day or night mode.
 | Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four corners (a crop of the frame shows its own corner, upright; a separate piece is mirrored into the other three), table, overlay and lobby rails, content clearance, phone sizing and forced-colors behavior |
 | Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
 | Symbols | `src/components/ThemeIcon.tsx`, `ThemeEmblem.tsx` | One checked icon map serves the picker and lobby fitting |
+| Arrival | `src/lib/theme-arrival/` | How each theme spreads over the one before it when it is picked: `THEME_ARRIVALS` names one for every theme, `run.ts` plays it. See "How a theme arrives" |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |
 | Automated checks | `scripts/test-appearance.mjs`, `scripts/appearance/` | Catalog checks and a disposable browser preview |
 
@@ -66,6 +67,10 @@ Next must see each CSS import when building the app.
    `flower`, `cog`, `circuit`, `wrench` and `lamp`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
+
+   Name how the theme arrives in `THEME_ARRIVALS`
+   (`src/lib/theme-arrival/arrivals.ts`): one of the arrivals listed under
+   "How a theme arrives". Type checking stops on a theme with none.
 
 4. Import the new stylesheet in `src/app/globals.css`, alongside the other
    `./styles/themes/` imports. Those load before the shared surface styles,
@@ -303,6 +308,69 @@ phone crops. Record each shipped filename, its creator/source or generation
 prompt, date, encoding, and applicable rights in `art-provenance.json`. Woodland's
 record is an example. Original working PNGs are optional source material; the
 production files and provenance must be present in the PR itself.
+
+## How a theme arrives
+
+A theme does not cut over. When a reader picks one, or changes brightness, or
+the GM gives the table a new one while they sit at it, the new look spreads
+over the old in that theme's own way. There is no setting for it.
+
+| Arrival | Themes | What it is |
+| --- | --- | --- |
+| `spell` | Arcane | A rune circle opens where the reader pressed and widens |
+| `wash` | Ancient Woodland, Twilight Court | Soft blooms of the accent that run together |
+| `pour` | Gothic | Ink runs down from the top edge in drips |
+| `burn` | Hearth & Haven, Deep Forge, Inferno | The old page burns away from the press, with an ember edge |
+| `page` | High Kingdoms | The old page turns over from the bottom corner |
+| `tide` | Sunken Tide | A wave rolls up the screen |
+| `ink` | Unquiet Depths | Drops of ink land, spread and run together |
+| `drop` | Gaslight | One drop of ink from the press |
+| `frost` | Frostbound | Ice grows in from the edges |
+| `hex` | Brassworks | Hex tiles fill in as a wave from the press |
+| `glitch` | Neon District | Bands of the screen cut over with a flicker |
+| `brush` | Wasteland | A broad brush in overlapping passes |
+
+Ink, embers and outlines take the new theme's accent from its palette
+(`--color-amber-300`, `-600` and `-700`), so an arrival needs no colours of
+its own.
+
+What plays and what does not:
+
+- It plays for a change made while the reader watches: their own pick in the
+  panel or in Settings, day and night, and the table's theme changed under
+  them.
+- It does not play when a page loads, when a table is opened or left, when
+  the system turns to night on "Match device", or for a change made in
+  another tab. Those lay the look at once, as before.
+- A reader who asks their device for less motion, and a device on the low
+  effects mode (`src/lib/effects-mode.ts`), gets a plain 280 ms fade.
+- A browser without View Transitions gets the plain swap.
+- A press during an arrival ends it at once and reaches what was under it, so
+  trying one theme after another never waits on the last one.
+
+How it works, for whoever changes it:
+
+- `settle()` in `src/lib/theme-mode.ts` decides between laying the look and
+  playing its arrival. `applyTheme()` always lays it at once. The arrival
+  code is its own chunk, fetched when the picker opens or a theme first
+  changes; no page carries it at first load.
+- `run.ts` starts a view transition. The browser keeps a picture of the old
+  page under the live new one; each frame the new one is cut to the
+  arrival's shape (`clip-path` held by one animation, or a mask for `wash`),
+  and a canvas above both paints the edge.
+- Its rules are a stylesheet made in script and its canvas is styled inline,
+  beside `<body>`. Nothing about it is in `globals.css`: the apps confine
+  that sheet to their page column, and take the document's transition name
+  away for their own page changes. `run.ts` names the document for the
+  length of the arrival.
+- An arrival is a pure shape in `effects-*.ts`: `shape(p)` for progress 0 to
+  1 gives closed outlines, nothing at 0 and the whole screen at 1.
+  `scripts/test-theme-arrival.mjs` holds every one to that on six screen
+  sizes, from a press anywhere, and that half way it is in between. A new
+  arrival is added to `ARRIVALS` and passes the same checks.
+- `scripts/browser/scenarios/153-theme-arrival.mjs` plays it for real, on
+  the website and in the apps (`--app`): it stops an arrival half way by its
+  animation and reads the cut, the canvas and the look under it.
 
 ## Validate in a disposable campaign
 
