@@ -67,7 +67,20 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // re-encoded from q90 to q75 (method 6, sharp-yuv), 2.04 MiB to 0.89 MiB, with
 // no difference at the 96px and 40px token sizes or the 96px portrait, which
 // took the set to 14.25 MiB.
-const BUDGET_TOTAL_BYTES = 14.5 * 1024 * 1024;
+//
+// Raised from 14.5 MiB to 17.25 MiB on 2026-11-27, once, for the creatures
+// of the five genres past fantasy: 255 of their 413 bestiary entries still
+// draw a bare type or boss plate. One whose stat block already has a painting
+// reuses it by slug and adds no bytes; the 3 MiB is for those with no fantasy
+// counterpart, about 250 plates at the monster folder's 12 KB average. The
+// number is the batch Smoebo painted for them, which comes to just over
+// 17 MiB, at the quarter MiB that holds it. The set is 11% of the 131 MB
+// Android APK (client 0.31.2) and this is a little over 2% more. It is sized
+// to finish the set, not to grow it: the earlier raises came a batch at a
+// time, six in two weeks, and each one was a decision nobody had to make
+// about the whole. Past 17.25 MiB a new plate takes the place of one that
+// ships.
+const BUDGET_TOTAL_BYTES = 17.25 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 128 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 48 * 1024;
