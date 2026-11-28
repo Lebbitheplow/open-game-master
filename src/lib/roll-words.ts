@@ -53,7 +53,7 @@
 
 import { contentName, type FrNamesTable } from "@/lib/content/names";
 import { UNSEEN_NAME } from "@/lib/hidden-names-logic";
-import { interpolate } from "@/lib/i18n/translate";
+import { interpolate, type Locale } from "@/lib/i18n/translate";
 import { textKey } from "@/lib/language/text-logic";
 import type { RollNote, RollParts, RollTarget, RollUsed, WordedParts } from "@/lib/roll-parts";
 
@@ -180,7 +180,7 @@ function usedWords(t: RollTranslator, used: RollUsed): string {
 
 // A creature's action by its name, in the first table that has it; as
 // written where none does.
-function actionName(name: string, locale: "en" | "fr"): string {
+function actionName(name: string, locale: Locale): string {
   for (const table of ACTION_TABLES) {
     const found = contentName(table, name, locale);
     if (found !== name) {
@@ -194,7 +194,7 @@ function actionName(name: string, locale: "en" | "fr"): string {
 // than its own name says which attack it is by its key: a beast form's
 // "Wolf Bite" is the Bite, so the attack's name is put into the reader's
 // language where it stands, and the form's name stays as it was written.
-function actionWords(used: RollUsed, locale: "en" | "fr"): string {
+function actionWords(used: RollUsed, locale: Locale): string {
   if (!used.key || textKey(used.name) === used.key) {
     return actionName(used.name, locale);
   }

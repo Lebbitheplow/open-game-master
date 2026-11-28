@@ -7775,6 +7775,9 @@
     "{name} · your turn": "{name} · tu turno",
     "Three-quarters cover (+{ac} AC)": "Cobertura de tres cuartos (+{ac} CA)",
     "{name}: details": "{name}: detalles",
+    "{rider} on {mount}: details": "{rider} sobre {mount}: detalles",
+    "{name}: conditions": "{name}: estados",
+    "Riding {mount}": "A lomos de {mount}",
     "Previous conditions": "Estados anteriores",
     "Next conditions": "Estados siguientes",
     "Page {page} of {pages}": "Página {page} de {pages}",
@@ -11257,6 +11260,9 @@
     },
     "then": {
       "roll.steps": "luego"
+    },
+    "rider": {
+      "roll.note": "efecto adicional"
     },
     "Hidden": {
       "quests.status.hidden": "Oculta"
