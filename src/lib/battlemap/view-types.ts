@@ -164,6 +164,13 @@ export type PlayerMapView = {
   // carries the advantage the roll gets. Absent from an older host.
   sight?: Record<string, TargetSight>;
   tokenHealth: Record<string, HealthWord>;
+  // The mount under a mounted token (issue 1055), by token id. The two stand
+  // on one token, the rider's, so the mount's own health word and conditions
+  // ride beside the rider's, and only for a token this viewer is shown. An
+  // enemy's mount carries its enemy id; a steed that is a creature's sheet
+  // carries that sheet's id; a mount on record carries its slug, and a health
+  // word only when the record keeps hit points. Absent from an older host.
+  tokenMounts?: Record<string, { refId?: string; slug?: string; name: string; health?: HealthWord; conditions?: Array<{ id: string; label: string; rounds?: number; note?: string }> }>;
   tokenAuras: Record<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>;
   tokenFootprint: Record<string, Footprint>;
   tokenElevation: Record<string, "flying" | "burrowing">;
